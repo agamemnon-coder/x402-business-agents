@@ -220,6 +220,9 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
   });
 });
 
+/** 12 Nov (wire-in): Visa's official mark on /visa's header, on the owner's stated permission (docs/evidence/logo-permissions.md). */
+const VISA_MARK = /<img src="assets\/logo-visa\.png" alt="Visa" width="46" height="15">/g;
+
 describe("the redesigned public pages", () => {
   const PAGES = buildPages();
   it("show no number that is not in the run's record (the four tabs, the partner pages, the 404)", () => {
@@ -278,7 +281,7 @@ describe("the redesigned public pages", () => {
     expect(proofPage()).not.toMatch(/<a class="flink" href="visa">|Extra, not an award entry/);
     expect(JSON.stringify(agentRun().scenes)).not.toMatch(/Visa|TAP/);
     // The partners' logo row (docs/assets/logos/built-with.png, the owner's stated permission in docs/evidence/logo-permissions.md, 12 Nov) is the one image that names Visa.
-    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body.replace(/<img src="assets\/built-with\.png"[^>]*>/g, "")), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
+    for (const [name, body] of Object.entries(PAGES)) if (typeof body === "string") expect({ name, img: /<img[^>]*visa/i.test(body.replace(/<img src="assets\/built-with\.png"[^>]*>/g, "").replace(VISA_MARK, "")), words: body.split(/[.!?"]\s/).filter((s) => /Visa|TAP/.test(s)).map((s) => /\b(certified|endorsed|Visa-approved|open-source)\b/i.exec(s)?.[0]).find(Boolean) ?? null }).toEqual({ name, img: false, words: null });
     expect(PAGES.visa).toContain(VISA_CLAIM.replace(/'/g, "&#39;").replace(/&#39;/g, "'"));
     expect(PAGES.visa).not.toMatch(/Dev test|reference code is not used/);
   });

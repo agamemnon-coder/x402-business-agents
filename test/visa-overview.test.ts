@@ -143,7 +143,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(rec.started_at.slice(0, 10)).toBe("2026-11-07");
     const head = main.slice(0, main.indexOf("</h1>"));
     expect(text(head)).toContain(visaRunLabel(airiRun()!));
-    expect(head).toContain('<span class="logo txt">Visa</span>');
+    // 12 Nov (wire-in): the mark is Visa's official file (docs/evidence/logo-permissions.md), its name in alt.
+    expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
     // the control test, the folded rows, and last the TAP fold.
     const order = ["</h1>", esc(VISA_LEAD), esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`].map((x) => ({ x, at: main.indexOf(x) }));

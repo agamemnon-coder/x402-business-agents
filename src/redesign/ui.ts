@@ -3,6 +3,7 @@
 // <script> per page, so the pages keep the dashboard's hash-based CSP. Icons are Lucide (src/ui/icons.ts) plus a few
 // drawn here in the same style.
 
+import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
 import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
@@ -493,6 +494,7 @@ ${o.js}</script>`;
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>${esc(o.title)}</title>
 <style>${CSS}
+${MOTION_CSS}${SITE_MOTION_CSS}
 ${o.css}</style>
 </head>
 <body>

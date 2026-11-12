@@ -5,6 +5,14 @@
 // Airi runs, Airwallex read back, every check (who stopped what, the Face ID decisions: one number, from the run's
 // ledger), the business and the Archive; the utility links last. Nothing typed in by hand.
 
+import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
+import { railRefusals } from "../visuals/facts.js";
+import { MOTION_JS } from "../ui/motion.js";
+import { runTimes, runTimesLine } from "./runTimes.js";
+import { REPO_BLOB } from "./metalStory.js";
+import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
+import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
+import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
@@ -177,11 +185,17 @@ const noteHtml = (note: string | undefined, tag = "p") => (note ? `<${tag} class
 export const fold = (summary: string, items: string[], open = false) => items.length ? `<details class="fold"${open ? " open" : ""}><summary>${esc(summary)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
 const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${esc(l)}</span>`;
 /** Partner names as text, never a brand logo (Max, 7 Nov: "overal alleen tekst"). */
+/**
+ * The partner pages' marks (owner, 12 Nov: logos as images, on his stated permission, docs/evidence/logo-permissions.md):
+ * the official files in src/ui/logos, unchanged, served as /assets/logo-*; on a white chip (Claude's white letters on a
+ * dark one), the name in alt. A mark names a service Purser uses, never an endorsement.
+ */
+const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file}" alt="${name}" width="${w}" height="15"></span>`;
 export const LOGO = {
-  metal: '<span class="logo txt">Metal</span>',
-  airwallex: '<span class="logo txt">Airwallex</span>',
-  claude: '<span class="logo txt">Claude</span>',
-  visa: '<span class="logo txt">Visa</span>',
+  metal: mark("logo-metal.svg", "Metal", 48),
+  airwallex: mark("logo-airwallex.png", "Airwallex", 109),
+  claude: mark("logo-claude.png", "Claude", 69, true),
+  visa: mark("logo-visa.png", "Visa", 46),
 };
 
 /**
@@ -223,6 +237,44 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
  * card's fold the two or three numbers, the other claims, one line, the live proof and a link to the partner's page.
  * A partner without a lead shows its fold only.
  */
+// ── Visa and T:0 on /proof (owner, 12 Nov: "T:0 and Visa are missing"), each from its own dated run record. ──
+
+/** Visa Intelligent Commerce via Airwallex's Airi, the run of 12 Nov (vic-3): its purchase above the limit, in the record's words. */
+export const VIC3_RECORD = "docs/runs/2026-11-12-vic-3.json";
+interface Vic3 { mode: string; label: string; started_at: string; purchases: { step: string; what: string; request?: { amount: string; currency: string }; outcome?: { status?: string; code?: string; by?: string } }[] }
+export function vic3(): Vic3 | null {
+  try { const r = JSON.parse(readFileSync(new URL(`../../${VIC3_RECORD}`, import.meta.url), "utf8")) as Vic3; return r.mode === "live" ? r : null; } catch { return null; }
+}
+function visaCardParts(r: Vic3 | null): { lead: Lead[]; what: string; facts: string; items: string[] } | null {
+  const b = r?.purchases.find((x) => x.step === "B" && x.outcome?.status === "succeeded" && x.request);
+  if (!r || !b?.request) return null;
+  const refused = r.purchases.filter((x) => x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "") && x.step !== "A");
+  const neg = r.purchases.filter((x) => /^F\d$/.test(x.step));
+  return {
+    // One line in sight (owner, 12 Nov); the record's own words for the purchase in the fold.
+    lead: [{ text: `${b.request.currency} ${b.request.amount} above the CFO's limit, paid after Face ID`, href: "visa" }],
+    what: `Visa Intelligent Commerce via Airwallex's Airi, ${dayOf(r.started_at)}: ${b.request.currency} ${b.request.amount} ${b.what}. ${r.label[0]!.toUpperCase()}${r.label.slice(1)}.`,
+    facts: fact(`${b.request.currency} ${b.request.amount}`, "paid after Face ID") + (refused.length ? fact(String(refused.length), "refused by Purser before any Airi call") : ""),
+    items: [
+      ...(neg.length ? [li(`Negative test, our own planted misuse (${neg.map((x) => x.step).join(", ")}): not refused by the Airi/Airwallex sandbox; only Purser enforces the binding here`, "no")] : []),
+      li("The run record", "", { label: "docs/runs/2026-11-12-vic-3.md", href: `${REPO_BLOB}${VIC3_RECORD.replace(/\.json$/, ".md")}` }),
+    ],
+  };
+}
+function t0CardParts(): { lead: Lead[]; what: string; facts: string; items: string[] } | null {
+  let md: string | null = null;
+  try { md = readFileSync(new URL(`../../${T0_JOURNAL_RECORD}`, import.meta.url), "utf8"); } catch { /* no record */ }
+  const j = t0Journal(md);
+  if (!j) return null;
+  return {
+    lead: [{ text: `${j.posted} journal entries in T:0's ledger, ${j.differences} differences`, href: "t0" }],
+    what: `Purser's books of the main run, posted to T:0's shared sandbox entity on ${j.day} and read back line by line. Test data.`,
+    facts: fact(String(j.posted), "entries posted") + fact(String(j.differences), "differences") + fact(`${j.debits} USD`, "debits equal credits"),
+    items: [li("The run record", "", { label: T0_JOURNAL_RECORD.replace(/^docs\/runs\//, ""), href: `${REPO_BLOB}${T0_JOURNAL_RECORD}` })],
+  };
+}
+const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+
 export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" | "claude", Lead[]> = proofLeads(run.record)): string {
   const s = run.record.snapshot, p = partnerProof(run, { tap: false }), st = stops(run.record), sp = split(run.record), pay = payments(run.record);
   const money = run.events.filter((e): e is Extract<Ev, { k: "money" }> => e.k === "money");
@@ -232,16 +284,22 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   // Max, 7 Nov: 2–3 short facts each with its number in bold, no brackets or jargon. Names as text, never a brand logo.
   // In the fold the first claim is not said twice: only its note stays there, or the claim itself when it has links of
   // its own (each card's anchor).
-  const card = (id: "metal" | "airwallex" | "claude", name: string, what: string, facts: string, items: string[], extra = "") => {
-    const [first, ...rest] = lead[id];
-    return `<article class="pcard card" id="${id}"><div class="ph"><h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? lead[id] : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
+  const visa = visaCardParts(vic3()), t0 = t0CardParts();
+  const leads: Record<string, Lead[]> = { ...lead, ...(visa ? { visa: visa.lead } : {}), ...(t0 ? { t0: t0.lead } : {}) };
+  // A card from a separate run names its record (data-rec): its figures are that record's, not the main run's.
+  const recOf: Record<string, string> = { visa: VIC3_RECORD, t0: T0_JOURNAL_RECORD };
+  const card = (id: "metal" | "airwallex" | "claude" | "visa" | "t0", name: string, what: string, facts: string, items: string[], extra = "") => {
+    const [first, ...rest] = leads[id] ?? [];
+    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph"><h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
   };
   const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
-  // In the README's order (jury review, 7 Nov, #12): Airwallex, Metal, Claude. (The signed hash was the Airwallex card's
+  // Owner, 12 Nov: Airwallex, Visa, Metal, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Metal, Claude). (The signed hash was the Airwallex card's
   // first chip since 7 Nov, #12; it is the card's main link now, from the same two read-backs.)
   return `<div class="partners">
 ${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${visa ? card("visa", "Visa", visa.what, visa.facts, visa.items) : ""}
 ${card("metal", "Metal", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Metal at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Metal because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
+${t0 ? card("t0", "T:0", t0.what, t0.facts, t0.items) : ""}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(`${sp.byClaude}/${sp.decisions}`, "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
 </div>`;
 }
@@ -349,6 +407,32 @@ export function readBack(run: AgentRun): string {
   <div class="awrb">${awx1}</div>` : ""}`;
 }
 
+// ── The visuals (owner, 12 Nov: "more visuals and animations"), from src/visuals: one payment's life, animated where
+// the viewer allows motion, and the three rails each holding a payment on their own. Their figures are the visuals'
+// own records (src/visuals/facts.ts, held by test/visuals.test.ts); the wide drawing on a wide screen, the tall one on a
+// phone. Then, folded: each signed approval checked in this browser (src/redesign/verifyTerms.ts) with the Face ID to
+// paid times (src/redesign/runTimes.ts), and the vault's folders (docs/media/vault-tree-*.svg, computed from layout.ts).
+
+// On a wide screen the two drawings sit under the guarantees; on a phone they come last, before the utility links, so
+// the folds keep their place on the first screens (test/browser/pages.check.ts).
+const lifeVisual = (layout: "wide" | "tall") => `<article class="pvis pv-${layout}" data-rec="src/visuals/facts.ts" aria-label="${esc(LIFE_TITLE)}">${lifecycleSvg(layout)}</article>`;
+function railsVisual(layout: "wide" | "tall"): string {
+  const rails = railRefusals();
+  if (!rails.length) return "";
+  const href = (path: string) => `${REPO_BLOB}${path}`;
+  return `<article class="pvis pv-${layout} rails" data-rec="src/visuals/facts.ts" aria-label="${esc(REFUSALS_TITLE)}">${refusalsSvg(rails, href, layout)}</article>`;
+}
+function checkItYourself(): string {
+  const signed = signedByRun();
+  const items = ["awx-1", "platform-e2e-1", "main-1"].flatMap((k) => (signed[k] ?? []).filter((x) => x.terms));
+  const t = runTimes(), line = runTimesLine(t);
+  return `<article class="vfa" data-rec="${esc(Object.values(SIGNED_FILES).join(" "))}"><h3>Check a signature yourself</h3><p class="q">Each button hashes the stored terms here, in your browser, and compares the result with the hash the passkey signed.</p>${verifyList(items)}${line ? `<p class="q">${esc(line)} <a class="pf" href="runs">Every run</a></p>` : ""}</article>`;
+}
+const vaultTree = () => `<article class="vault" data-rec="${VAULT_TREE_RECORD}"><h3>Where every document is filed</h3><picture><source srcset="assets/vault-tree-dark.svg" media="(prefers-color-scheme: dark)"><img src="assets/vault-tree-light.svg" width="505" height="438" alt="The vault's folders: company, year, quarter, then Inkoopfacturen (invoices), Betalingen (payments) and Rapporten (reports), as src/vault/layout.ts files them"></picture><p class="q">Computed from the code (src/vault/layout.ts), with the two invoices of the 7 November run.</p></article>`;
+const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis.pv-tall { display: none; }
+@media (max-width: 999px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
+.proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
+
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   // The Airi runs (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, short: its outcomes and checks, then a link
@@ -375,6 +459,8 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   ${guaranteesHtml()}
+  ${lifeVisual("wide")}
+  ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
   <div class="runline"><span class="pill run">${icon("database", 14)}${esc(run.label)}</span></div>
@@ -382,15 +468,17 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <div class="nums">${nums.map(tile).join("")}</div>
   ${airi ? `<details class="deep"><summary>Visa Intelligent Commerce via Airwallex's Airi</summary><div class="awrb">${airi}</div></details>` : ""}
   <details class="deep"><summary>Airwallex, read back</summary>${readBack(run)}</details>
-  <details class="deep"><summary>Every check</summary>${moreCards(run)}</details>
-  <details class="deep"><summary>Why this is a company</summary>${whyCompanyHtml()}</details>
+  <details class="deep"><summary>Every check</summary>${checkItYourself()}${moreCards(run)}</details>
+  <details class="deep"><summary>Why this is a company</summary>${vaultTree()}${whyCompanyHtml()}</details>
   ${archiveFold(run)}
+  ${lifeVisual("tall")}
+  ${railsVisual("tall")}
   <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH, body, js: JS, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

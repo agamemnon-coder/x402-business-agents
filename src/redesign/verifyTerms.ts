@@ -8,6 +8,7 @@
 // proposals of the main run and agent run whose published copy still hashes to the signed hash. The published ledgers
 // are sanitised, so some of their terms are shortened: those say so in one line and get no button, never a false
 // "Does not match". A record that keeps only the hash (the passkey account on Metal) shows its transaction link alone.
+// The terms ride in the button's data-t attribute (no data <script>: a page keeps one script, its CSP hashes it).
 // test/verify-terms.test.ts runs the browser's code in Node on a real receipt and on tampered terms.
 
 import { createHash } from "node:crypto";
@@ -117,27 +118,27 @@ export function signedByRun(): Record<string, Signed[]> {
 export function verifyItem(s: Signed): string {
   const ref = s.ref ? `<span class="vfr">${esc(s.ref.label)}: ${s.ref.href ? `<a class="pf" href="${esc(s.ref.href)}" target="_blank" rel="noopener">${esc(s.ref.value)} ↗</a>` : `<code>${esc(s.ref.value)}</code>`}</span>` : "";
   const control = s.terms
-    ? `<button type="button" class="vfb" aria-label="${esc(`${VERIFY_WORDS.button} ${s.id}: hash its terms in this browser`)}">${esc(VERIFY_WORDS.button)}</button><output class="vfo" aria-live="polite"></output><script type="application/json" class="vft">${JSON.stringify(s.terms).replace(/</g, "\\u003c")}</script>`
+    ? `<button type="button" class="vfb" data-t="${esc(JSON.stringify(s.terms))}" aria-label="${esc(`${VERIFY_WORDS.button} ${s.id}: hash its terms in this browser`)}">${esc(VERIFY_WORDS.button)}</button><output class="vfo" aria-live="polite"></output>`
     : `<span class="vfn">${esc(s.why === "hash-only" ? VERIFY_WORDS.hashOnly : VERIFY_WORDS.shortened)}</span>`;
-  return `<li class="vf" data-h="${esc(s.hash)}"><span class="vfw"><b>${esc(s.id)}</b> · ${esc(s.what)}</span>${control}${ref}<code class="vfh" title="Signed terms, SHA-256">${esc(s.hash)}</code></li>`;
+  return `<div class="vf" role="listitem" data-h="${esc(s.hash)}"><span class="vfw"><b>${esc(s.id)}</b> · ${esc(s.what)}</span>${control}${ref}<code class="vfh" title="Signed terms, SHA-256">${esc(s.hash)}</code></div>`;
 }
 
 /** The list for one run, or "" when the run has none. */
 export function verifyList(items: Signed[] | undefined): string {
-  return items?.length ? `<ul class="vfl" aria-label="Signed approvals">${items.map(verifyItem).join("")}</ul>` : "";
+  return items?.length ? `<div class="vfl" role="list" aria-label="Signed approvals">${items.map(verifyItem).join("")}</div>` : "";
 }
 
 /** The style: the site's tokens only. */
 export const VERIFY_CSS = `
-.vfl { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px; }
+.vfl { margin: 8px 0; display: grid; gap: 8px; }
 .vf { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 14px; line-height: 1.45; min-width: 0; }
 .vf .vfw { flex: 1 1 220px; min-width: 0; }
-.vf .vfb { font: 650 13px/1 Inter, system-ui, sans-serif; padding: 7px 12px; min-height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.vf .vfb { font: 650 13px/1 Inter, system-ui, sans-serif; padding: 7px 14px; min-height: 44px; min-width: 44px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .vf .vfb:hover { border-color: var(--accent); }
 .vf .vfb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .vf .vfo { font-weight: 650; } .vf .vfo.ok { color: var(--ok); } .vf .vfo.bad { color: var(--bad); }
 .vf .vfn { color: var(--muted); font-size: 13.5px; flex-basis: 100%; }
-.vf .vfr { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; }
+.vf .vfr { color: var(--muted); font-size: 13.5px; overflow-wrap: anywhere; } .vf .vfr a { display: inline-flex; align-items: center; min-height: 44px; }
 .vf .vfh { flex-basis: 100%; color: var(--muted); font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }`;
 
 /**
@@ -164,10 +165,10 @@ export const VERIFY_TERMS_JS = `${VERIFY_TERMS_CORE}
   var W = ${JSON.stringify({ match: VERIFY_WORDS.match, mismatch: VERIFY_WORDS.mismatch, unavailable: VERIFY_WORDS.unavailable })};
   document.querySelectorAll(".vf .vfb").forEach(function (b) {
     b.addEventListener("click", function () {
-      var li = b.closest(".vf"), out = li.querySelector(".vfo"), t = li.querySelector(".vft");
+      var li = b.closest(".vf"), out = li.querySelector(".vfo"), t = b.getAttribute("data-t");
       out.className = "vfo"; out.textContent = "";
       if (!window.crypto || !crypto.subtle) { out.textContent = W.unavailable; return; }
-      vfVerdict(t.textContent, li.getAttribute("data-h")).then(function (v) {
+      vfVerdict(t, li.getAttribute("data-h")).then(function (v) {
         out.textContent = W[v]; out.className = "vfo " + (v === "match" ? "ok mo-rise" : "bad mo-shake");
       }, function () { out.textContent = W.mismatch; out.className = "vfo bad mo-shake"; });
     });

@@ -4,6 +4,7 @@
 // sentences, read from the docs where the page is built (a doc that no longer says one is an error, never a guess).
 // Sandbox and testnet only. No script.
 
+import { ownersRun } from "./metalOnchain.js";
 import { existsSync } from "node:fs";
 import { ZERO_TRUST_REPORT } from "./claudeEvidence.js";
 import { GUARANTEES } from "./guarantees.js";
@@ -165,8 +166,10 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-sign", icon: "scan-face", title: "Signed terms",
       line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
-      links: [siteLink(TRY_URL, "Try it yourself", true)],
-      fold: { summary: "How", lines: [esc(terms.how), code(terms)] },
+      // 12 Nov: the Face ID on chain run (a passkey account on Metal testnet; the second owner a labelled virtual test
+      // passkey), the answer to "the chain did not check Face ID".
+      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("metal#faceid-onchain", "Face ID signs on chain")] : [])],
+      fold: { summary: "How", lines: [esc(terms.how), code(terms), ...(ownersRun() ? [esc("On Metal testnet, 12 Nov: a passkey account changed an agent's mandate only with both owners' passkeys, and checked them on chain; the second owner was a labelled virtual test passkey.")] : [])] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
       more: {
         id: UNAVAILABLE.id, summary: UNAVAILABLE.heading,
@@ -213,11 +216,13 @@ export function securityCards(): SecurityCard[] {
     },
     {
       id: "s-redteam", icon: "shield-alert", title: "Tested by attack", pill: "Test world",
-      line: esc(`Our red team ran ${first.attempts} attacks: ${first.before} stopped before anything moved, ${first.after} found afterwards.`),
+      // Jury check, 12 Nov: the two caught "after" were not prevented; they were detected after (the hash chain, the hourly
+      // reconciliation), on simulated rails; each with how it was detected, in the report.
+      line: esc(`Red team: ${first.attempts} attacks, ${first.before} stopped before anything moved, ${first.after} not prevented (detected after).`),
       // The zero-trust report (12 Nov, docs/zero-trust/report.json): linked once it is in the tree.
-      links: [outLink(repoHref(REDTEAM_REPORT), "The report"), ...(existsSync(new URL(`../../${ZERO_TRUST_REPORT}`, import.meta.url)) ? [outLink(repoHref(ZERO_TRUST_REPORT), "Zero-trust report")] : [])],
+      links: [outLink(repoHref(REDTEAM_REPORT), "The report"), outLink(repoHref(REDTEAM_REPORT), `How the ${first.after} were detected`), ...(existsSync(new URL(`../../${ZERO_TRUST_REPORT}`, import.meta.url)) ? [outLink(repoHref(ZERO_TRUST_REPORT), "Zero-trust report")] : [])],
       fold: { summary: "Later rounds", lines: [
-        `${esc(oct31.day)}, three runs in a row: ${oct31.attempts} attacks, ${oct31.before} stopped before anything moved, ${oct31.after} found afterwards, ${oct31.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_OCT31_README), "The runs")}`,
+        `${esc(oct31.day)}, three runs in a row: ${oct31.attempts} attacks, ${oct31.before} stopped before anything moved, ${oct31.after} not prevented (detected after), ${oct31.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_OCT31_README), "The runs")}`,
         `${esc(night.day)}, tests written by Claude Opus as the attacker: ${night.attempts} run, ${night.blocked} blocked, ${night.notBlocked} not blocked by code's verdict (checked by hand: ${esc(recheck.words)}), ${night.inconclusive} inconclusive. ${outLink(repoHref(REDTEAM_NIGHT_RECORD), "The record")}`,
         esc("Every round ran in a throwaway test world on simulated rails, with test data: not live."),
       ] },

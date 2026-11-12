@@ -17,7 +17,9 @@
 import { readFileSync } from "node:fs";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
 import { AWX_RUN_FILE, AWX_RUN_LOG, awxRun } from "./awxRun.js";
-import { REPO_BLOB } from "./metalStory.js";
+import { REPO_BLOB, separateRuns } from "./metalStory.js";
+import { runTimes, secs, type RunTimes } from "./runTimes.js";
+import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } from "./verifyTerms.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
@@ -257,8 +259,144 @@ export function liveRuns(): RunRow[] {
     files: [{ label: "record (JSON)", href: blob("docs/demo/metal.json") }, { label: "run log", href: blob("docs/runs/2026-10-30-dispute-desk.md") }],
   });
 
+  // 10 and 12 Nov (jury check, 12 Nov): the live runs whose records were not in this list yet, each from its record.
+  rows.push(...extraRuns());
+
   for (const r of rows) r.stats ??= TYPED_STATS[r.key];
   return rows.sort((a, b) => b.iso.localeCompare(a.iso));
+}
+
+/**
+ * The live runs added after the jury check of 12 Nov: payment acceptance, the Metal hold, Face ID on chain, the invoice
+ * token, the batch transfer, the payee check, Moneybird and real customers. The JSON records are read here; a markdown
+ * log's figures are typed and held to the log by test/runs-page.test.ts. A record that is missing leaves its row out.
+ */
+function extraRuns(): RunRow[] {
+  const out: RunRow[] = [];
+  const has = (file: string) => { try { readFileSync(new URL(`../../${file}`, import.meta.url)); return true; } catch { return false; } };
+  const log = (file: string, label = "run log") => ({ label, href: `../../${file}` });
+
+  if (has("docs/runs/2026-11-10-payment-acceptance-sandbox.md")) out.push({
+    key: "acceptance-1", iso: "2026-11-10T05:15:58.542Z", date: day("2026-11-10T05:15:58.542Z"), kind: "sandbox", partners: ["Airwallex"],
+    name: "A customer pays an invoice by card; Purser books it only once Airwallex says SUCCEEDED",
+    line: "EUR 24.90 on Airwallex's documented test card: SUCCEEDED, then booked. 4 of 15 calls. Test card, test money.",
+    title: "Money in by card: Airwallex payment acceptance", rails: "Airwallex sandbox (payment acceptance)",
+    what: "A test customer paid one Northwind invoice (EUR 24.90) by card through Airwallex's payment acceptance; Purser booked it only after Airwallex reported the PaymentIntent SUCCEEDED.",
+    checks: "The PaymentIntent read back SUCCEEDED before anything was booked. 4 of 15 approved calls. No real card; nobody was paid out.", money: "Sandbox · test money",
+    ids: [{ label: "PaymentIntent", value: "int_sgpv9bnppho0sezgl4a" }], files: [log("docs/runs/2026-11-10-payment-acceptance-sandbox.md")],
+  });
+
+  if (has("docs/runs/2026-11-10-metal-extra.md")) out.push({
+    key: "metal-hold-1", iso: "2026-11-12", date: day("2026-11-12T12:00:00Z"), kind: "testnet", partners: ["Metal"],
+    name: "A hold for exactly the approved amount on Metal, then captured to the supplier",
+    line: "0.25 test USD reserved on chain on 10 Nov; the capture sent on 12 Nov. Testnet, test money.",
+    title: "Metal: a hold for exactly the approved amount", rails: "Metal testnet (MIP20 holds)",
+    what: "After an approval, Purser reserved exactly the approved amount on chain for one spender (approve, holdFrom), and captured it to the supplier on 12 Nov (captureHold).",
+    checks: "Each step's receipt status success; the capture simulated read-only first. Every RPC request within a hard cap of 15.", money: "Testnet · test money",
+    ids: [tx("captureHold", "0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859"), tx("holdFrom", "0x41ef8b799002e32015fad9a0a988d1f7c2772636a0552e22f8424ed4e1bb39fb"), tx("approve", "0x2f2d7afce9fce6b21278104828cc552c9d0aea387857f1c8384419cc6b64fb2a")],
+    files: [log("docs/runs/2026-11-10-metal-extra.md")],
+  });
+
+  type Owners = { ran_at: string; account: string; steps: { kind: string; outcome: string; tx: string | null }[]; proposals: { proposal_id: string }[] };
+  const ow = has("docs/runs/2026-11-12-faceid-onchain.json") ? readJson<Owners>("docs/runs/2026-11-12-faceid-onchain.json") : null;
+  if (ow) {
+    const ran = ow.steps.filter((x) => x.kind === "relay" && x.outcome === "executed" && x.tx);
+    const refused = ow.steps.find((x) => x.kind === "refusal" && x.tx);
+    out.push({
+      key: "faceid-onchain-1", iso: ow.ran_at, date: day(ow.ran_at), kind: "testnet", partners: ["Metal"],
+      name: "Face ID signs on chain: the agent's limit changes only when two passkeys sign",
+      line: `${ran.length} mandate changes run by the account only with both signatures; one payment refused on chain, then paid. Second signer: a virtual test passkey.`,
+      title: "The passkey account on chain", rails: "Metal testnet (a passkey account, two owners), CFO passkey, labelled virtual test passkey",
+      what: "A passkey account on Metal testnet with two passkey owners and a threshold of 2 bound, raised and revoked an agent's mandate; the account checked both signatures itself (WebAuthn verifier). The second owner is a labelled virtual test passkey.",
+      checks: `${ran.length} of ${ow.proposals.length} proposals executed by the account; the over-cap payment refused on chain, then paid under the raised cap.`, money: "Testnet · test money",
+      ids: [{ label: "Passkey account", value: ow.account }, ...ran.map((x, i) => tx(`Change ${i + 1}`, x.tx!)), ...(refused?.tx ? [tx("Refused on chain", refused.tx)] : [])],
+      files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-faceid-onchain.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-faceid-onchain.md") }],
+    });
+  }
+
+  type Tok = { date: string; labels: { face_value_scaled_by: number }; face_value: { amount: string }; received: { creditor: string | null; holder: string | null }; transactions: { key: string; hash: string; status: string; at: string }[] };
+  const tk = has("docs/runs/2026-11-12-tokenize.json") ? readJson<Tok>("docs/runs/2026-11-12-tokenize.json") : null;
+  if (tk) {
+    const t = (k: string) => tk.transactions.find((x) => x.key === k && x.status === "success");
+    const last = tk.transactions[tk.transactions.length - 1]!;
+    out.push({
+      key: "tokenize-1", iso: last.at, date: day(last.at), kind: "testnet", partners: ["Metal"],
+      name: "An approved invoice becomes a token, is pre-financed, then settled (prototype)",
+      line: `Face value ${tk.face_value.amount} test USD (divided by ${tk.labels.face_value_scaled_by}); a simulated financier paid ${tk.received.creditor ?? "nothing"}. Metal testnet.`,
+      title: "Invoice token (prototype)", rails: "Metal testnet (an invoice token contract)",
+      what: "An invoice the CFO approved with Face ID on 7 Nov became a token on Metal testnet, was bought by a simulated financier, and was settled by the debtor to its holder.",
+      checks: "Each transaction's receipt status success; the record verified against the chain.", money: "Prototype · testnet · test money",
+      ids: ["mint", "accept", "settle"].map((k) => t(k)).filter((x): x is NonNullable<typeof x> => !!x).map((x) => tx(x.key, x.hash)),
+      files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-tokenize.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-tokenize.md") }],
+    });
+  }
+
+  type Batch = { audit: { ts: string }[]; awx_batches: { awx_batch_id: string; status: string }[]; transfers: { amount: string; currency: string }[]; calls: { total: number } };
+  const bt = has("docs/runs/2026-11-12-airwallex-batch-transfer.json") ? readJson<Batch>("docs/runs/2026-11-12-airwallex-batch-transfer.json") : null;
+  if (bt?.awx_batches[0]) {
+    const at = bt.audit[0]!.ts, b = bt.awx_batches[0];
+    out.push({
+      key: "batch-1", iso: at, date: day(at), kind: "sandbox", partners: ["Airwallex"],
+      name: "One signature, one Airwallex batch of two payouts, read back before submit",
+      line: `${bt.transfers.length} payouts of ${bt.transfers[0]!.currency} ${bt.transfers[0]!.amount} in one batch; read back with 0 differences; Airwallex holds it ${b.status}. A test passkey signed.`,
+      title: "Batch transfer", rails: "Airwallex sandbox (batch transfers), test passkey",
+      what: "Two invoices, signed once as a batch; one batch created at Airwallex under a request id derived from the signed hash, read back item by item, then submitted. Airwallex's approval workflow holds it.",
+      checks: `Read back: 0 differences. ${bt.calls.total} calls. Signed by a labelled virtual test passkey; nobody approved it in Airwallex's web app.`, money: "Sandbox · test money",
+      ids: [{ label: "Airwallex batch", value: b.awx_batch_id }], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-airwallex-batch-transfer.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-airwallex-batch-transfer.md") }],
+    });
+  }
+
+  type Payee = { checks: { match: string; proceed: number; checked_at: string }[]; calls: { total: number } };
+  const pc = has("docs/runs/2026-11-12-airwallex-payee-check.json") ? readJson<Payee>("docs/runs/2026-11-12-airwallex-payee-check.json") : null;
+  if (pc?.checks.length) {
+    const ok = pc.checks.filter((c) => c.proceed).length;
+    out.push({
+      key: "payee-check-1", iso: pc.checks[pc.checks.length - 1]!.checked_at, date: day(pc.checks[0]!.checked_at), kind: "sandbox", partners: ["Airwallex"],
+      name: "The payee's bank checks the name before the CFO is asked",
+      line: `${pc.checks.length} name checks at Airwallex: ${pc.checks.length - ok} refused before any proposal, ${ok} full match let through. Test accounts.`,
+      title: "Payee check", rails: "Airwallex sandbox (verify_account)",
+      what: "Purser asked Airwallex whether the payee's bank holds the account under the supplier's own name; anything but a full match (or could-not-verify) refuses the proposal before the CFO's phone shows it.",
+      checks: `${pc.checks.map((c) => c.match).join(", ")}. ${pc.calls.total} calls.`, money: "Sandbox · test money; none moved",
+      ids: [], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-airwallex-payee-check.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-airwallex-payee-check.md") }],
+    });
+  }
+
+  type Mb = { reconciliation: { read_at: string; documents: number; differences: number } };
+  const mb = has("docs/runs/2026-11-12-moneybird-sandbox.json") ? readJson<Mb>("docs/runs/2026-11-12-moneybird-sandbox.json") : null;
+  if (mb) out.push({
+    key: "moneybird-1", iso: mb.reconciliation.read_at, date: day(mb.reconciliation.read_at), kind: "sandbox", partners: [],
+    name: "Purser's purchase books in Moneybird, read back to the cent",
+    line: `${mb.reconciliation.documents} purchase documents read back from Moneybird: ${mb.reconciliation.differences} differences. Sandbox administration, test data.`,
+    title: "Moneybird", rails: "Moneybird sandbox administration",
+    what: "A small test company's purchase books (suppliers, invoices with their PDF, a payment, a journal entry, a correction) sent to a Moneybird sandbox administration and read back.",
+    checks: `Read back: ${mb.reconciliation.differences} differences in ${mb.reconciliation.documents} documents; the same sync again made 0 requests. No e-mail sent; the payment was on a simulated rail.`, money: "Sandbox · test money; none moved",
+    // No id in sight: the administration's number is 18 digits, which the privacy scans read as a card number; it is in the record.
+    ids: [], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-moneybird-sandbox.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-moneybird-sandbox.md") }],
+  });
+
+  if (has("docs/runs/2026-11-12-real-customers.md")) out.push({
+    key: "real-customers-1", iso: "2026-11-12T14:18:42.959Z", date: day("2026-11-12T14:18:42.959Z"), kind: "sandbox", partners: ["Airwallex"],
+    name: "A new company's Airwallex account opened; hosted onboarding needs a template",
+    line: "Account CREATED and read back; the hosted KYC link answered 400 without a template. 8 of 30 calls. Test data.",
+    title: "Real customers", rails: "Airwallex sandbox (accounts, hosted flows)",
+    what: "Purser opened one connected test account for a new (fake) company and read its status, then asked for Airwallex's hosted onboarding link, which needs a template Airwallex has not given us.",
+    checks: "Account CREATED, read back CREATED; hosted_flows/create answered 400. 8 of 30 approved calls.", money: "Sandbox · test money; none moved",
+    ids: [{ label: "Connected account", value: "acct_tqitvOzLOL2gzTyLb5mgXg" }], files: [log("docs/runs/2026-11-12-real-customers.md")],
+  });
+  // The separate runs on Metal that /metal lists ("Also on Metal"), from the same data (src/redesign/metalStory.ts), so
+  // that both pages count the same runs (jury check, 12 Nov).
+  for (const m of separateRuns()) {
+    const what = m.what.replace(/^\d{1,2} \w+: /, "");
+    const short = what.length <= 168 ? what : `${firstSentence(what).slice(0, 164).replace(/\s+\S*$/, "")}…`;
+    const line = `${short[0]!.toUpperCase()}${short.slice(1)}${/[.…]$/.test(short) ? "" : "."}`;
+    out.push({
+      key: `metal-${m.id}`, iso: m.date, date: day(`${m.date}T12:00:00Z`), kind: "testnet", partners: ["Metal"],
+      name: m.title, line, title: m.title, rails: "Metal testnet", what, checks: `As its run record says.${m.proofs.length ? ` ${pl(m.proofs.length, "transaction")} linked.` : ""}`, money: "Testnet · test money",
+      ids: m.proofs.flatMap((x) => { const h = /0x[0-9a-f]{64}/.exec(x.href ?? "")?.[0]; return h ? [tx(x.label, h)] : []; }),
+      files: [{ label: "run record", href: m.record.href ?? blob("docs/runs") }],
+    });
+  }
+  return out;
 }
 
 /** What each top-level field of docs/demo/main-run.json holds (test/runs-page.test.ts checks each is in the record). */
@@ -371,7 +509,7 @@ const idChip = (i: RunId) => {
  * partners, its rate and its first id. Behind its one fold (or, in the rehearsals group, which is itself the fold, under
  * it, where the first id is not repeated above): every id in full, what ran, the checks, the rails and the money words.
  */
-function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
+function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signed[] }): string {
   const kind = kindOf(r), [first, ...rest] = r.ids;
   // The fold lists every id in full, the first one included: the chip in sight may be cut on a phone (review 12 Nov).
   const more = rest.filter(isId).length;
@@ -382,7 +520,7 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean }): string {
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p></div>`;
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>
@@ -463,6 +601,15 @@ ${FILTER_CSS}
   .runsp .ln { font-size: 15px; max-width: 80ch; }
 }`;
 
+const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; min-height: 44px; }
+.runsp details.ftp summary::-webkit-details-marker { display: none; } .runsp details.ftp summary .i:first-child { color: var(--ok); flex: none; }
+/* The newest run's pulsing dot (src/ui/motion.ts .live-dot), drawn by CSS on its "Newest" mark: no extra line. */
+.runsp li.newest .mk.new { position: relative; }
+.runsp li.newest .mk.new::before { content: ""; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+@media (prefers-reduced-motion: no-preference) { .runsp li.newest .mk.new::before { animation: mo-pulse-in 2s ease-out infinite; } }
+@keyframes mo-pulse-in { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
+.runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
+
 const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   if (!navigator.clipboard) { b.hidden = true; return; }
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
@@ -495,22 +642,39 @@ const FILTER_JS = `(function () {
   window.addEventListener("hashchange", mark);
 })();`;
 
-export function runsPage(all: RunRow[] = liveRuns()): string {
+/**
+ * Face ID to paid (master list 81), one calm line from the run records (src/redesign/runTimes.ts): its median and spread
+ * count up; the payouts and the runs left out sit behind its fold. Nothing when no payout is timed.
+ */
+export function faceIdToPaid(t: RunTimes = runTimes()): string {
+  if (!t.n || t.medianMs === null || t.minMs === null || t.maxMs === null) return "";
+  const n = (ms: number) => `<span class="mo-count">${esc(secs(ms))}</span>`;
+  // One line on a phone (the frame's height, test/browser/pages.check.ts): the median, the spread, the count.
+  const line = `Face ID to paid: median ${n(t.medianMs)}${t.n > 1 ? ` (${n(t.minMs)}–${n(t.maxMs)})` : ""}, ${esc(pl(t.n, "payout"))}`;
+  const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
+  const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
+  return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
+}
+
+export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
   const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
   const last = lastLive(live);
   const filters = FILTERS.map((f) => ({ ...f, n: live.filter(f.has).length })).filter((f) => f.n > 0);
   const chevron = icon("chevron-down", 16);
+  // Verify per approval and payment (master list 686): the signed approvals of each run, read from its records.
+  const signed = signedByRun();
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
+${faceIdToPaid(times)}
 <span class="fa" id="all"></span>${filters.map((f) => `<span class="fa" id="${f.id}"></span>`).join("")}
 <nav class="flt" aria-label="Filter the runs"><a class="all" href="#all">All <b>${live.length}</b></a>${filters.map((f) => `<a href="#${f.id}">${esc(f.label)} <b>${f.n}</b></a>`).join("")}</nav>
 <ol class="tl">
-${live.map((r, i) => entry(r, { newest: i === 0, folded: true })).join("\n")}
+${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
 ${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals and dry runs · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
-${rehearsals.map((r) => entry(r, { folded: false })).join("\n")}
+${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
 </ol>
 <p class="q">Every dry run's log: <a class="f" href="${esc(RUN_LOGS_URL)}" target="_blank" rel="noopener">docs/runs on GitHub ↗</a></p></details>` : ""}
 <details class="gloss"><summary>What the main run's record holds (docs/demo/main-run.json)${chevron}</summary><dl>
@@ -519,8 +683,8 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
 <p class="more-links">Per agent: <a href="agents/sourcing">Sourcing</a><a href="agents/support">Support</a><a href="agents/treasury">Treasury</a><a href="trace">Trace any payment</a><a href="proof">Proof</a></p>
 </main>`;
   return page({
-    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: CSS, body,
-    js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}`, stage: false,
+    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}`, body,
+    js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}\n${VERIFY_TERMS_JS}`, stage: false,
     source: "Source: each run's record in docs/demo and docs/runs (listed per run).",
   });
 }

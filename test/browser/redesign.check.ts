@@ -24,7 +24,8 @@ const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 
 /** The menu: exactly the four tabs, then "More" (closed) with exactly the pages under it, in order (src/ui/more.ts). */
-const MENU = JSON.stringify({ items: ["Home", "Watch", "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
+// Watch is a tab only once the film is on /watch (src/config/film.ts WATCH_IN_MENU), as the menu itself decides.
+const MENU = JSON.stringify({ items: ["Home", ...(WATCH_IN_MENU ? ["Watch"] : []), "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
 async function menu(page: Page, name: string): Promise<void> {
   const seen = await page.evaluate(`(() => {
     const n = document.querySelector('nav[aria-label="Main"]'), d = n && n.querySelector(":scope > details.pmore");
@@ -169,7 +170,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (w < 500) await checkTaps(page, { name: `/proof ${tag}, header and footer`, scopes: CHROME, fail });
     await menu(page, `/proof ${tag}`);
     // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
-    if ((await page.locator(".pcard").count()) !== 3) fail(`/proof ${tag}: not three partner cards`);
+    // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Metal, T:0, Claude.
+    if ((await page.locator(".pcard").count()) !== 5) fail(`/proof ${tag}: not five partner cards`);
     // The jury's order (12 Nov): the guarantees directly under the heading, on the first screen; each partner card with
     // one claim to tap in sight; four tiles; every closed line still closed; the utility links last.
     const order = (await page.evaluate(`(() => {
@@ -182,7 +184,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
       };
     })()`)) as { first: boolean; top: number; promises: number; claims: number; tiles: number; closed: number; last: number | false };
     if (!order.first || order.top < 0 || order.top >= h || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not directly under the heading on the first screen (top ${order.top} px, ${order.promises} promises)`);
-    if (order.claims !== 3 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not three claims in sight, four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
+    if (order.claims !== 5 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not five claims in sight (one per partner card), four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.
     await page.evaluate(() => document.querySelectorAll("details:not(.pmore)").forEach((d) => { (d as HTMLDetailsElement).open = true; }));

@@ -164,7 +164,8 @@ describe("the short Description (Max, 5 Nov)", () => {
     // became "Payables: in repo, not live." (the hosted preview stays private; nothing is said to be live).
     // 12 Nov: the two-locks payout was approved by the owner at Airwallex and went PAID with simulated settlement
     // (docs/runs/2026-11-12-airwallex-two-locks-paid.md), so the sentence about it says so, in the same 74 characters.
-    expect(flat).toContain("After the kit. Airwallex held a test-passkey payout; a person approved; PAID (simulated). Payables: in repo, not live.");
+    // 12 Nov (jury check): one statement on Purser Cloud everywhere (docs/cloud.md): a public test preview at purser-try.
+    expect(flat).toContain("After the kit. Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank).");
     expect("Airwallex held a test-passkey payout; a person approved; PAID (simulated).").toHaveLength(74);
     expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox|not public|unpaid/);
     expect(flat).toContain("The CFO signed option A, a higher cap for Sourcing (P-0002).");

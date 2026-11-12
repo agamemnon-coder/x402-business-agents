@@ -25,6 +25,9 @@ const auto = JSON.parse(read(AGENT_RUN)) as { snapshot: { agent_stats: { agent: 
 const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md");
 const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
 
+/** 12 Nov (jury check): /airwallex's tiles behind flags, each from its own record of 12 Nov. */
+const FLAGGED_RECORDS = ["docs/runs/2026-11-12-airwallex-payee-check.json", "docs/runs/2026-11-12-airwallex-batch-transfer.json", "docs/runs/2026-11-12-airwallex-financial-transactions.json"].map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8")).join("\n");
+
 describe("the partner pages", () => {
   // /airwallex since the jury panel of 12 Nov: no sentence about a run is typed into the page; test/airwallex-products.test.ts
   // holds each tile to its record. Here: the two runs whose record is a run log.
@@ -88,7 +91,7 @@ describe("the partner pages", () => {
   it("invent no id: every Airwallex id, tx and request id on them is in the recorded files", () => {
     for (const page of [AIRWALLEX_PAGE, CLAUDE_PAGE]) {
       for (const tx of page.match(/0x[0-9a-f]{64}/g) ?? []) expect(RECORDED).toContain(tx);
-      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) : "")).toContain(id);
+      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) + FLAGGED_RECORDS : "")).toContain(id);
       for (const req of page.match(/req_[A-Za-z0-9]{10,}/g) ?? []) expect(RECORDED + read("docs/runs/2026-11-01-try-world-dev.md")).toContain(req);
     }
     expect(AIRWALLEX_PAGE).toMatch(/LIMIT_EXCEEDED|over the card's limit/);
@@ -108,7 +111,9 @@ describe("the partner pages", () => {
         expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
         expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
       }
-      expect(page).not.toMatch(/<img[^>]*visa/i);
+      // 12 Nov (wire-in): the partner marks are images on the owner's stated permission (docs/evidence/logo-permissions.md);
+      // only the official file, never another picture of Visa.
+      expect([...page.matchAll(/<img[^>]*visa[^>]*>/gi)].map((m) => m[0])).toEqual(page.includes("logo-visa.png") ? ['<img src="assets/logo-visa.png" alt="Visa" width="46" height="15">'] : []);
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);
       // No script on /claude; /airwallex has one, the shared OPEN_TARGET_JS (a link into its cards' fold opens it).
       expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS}</script>`] : []);

@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 ## Description
 
-Characters: **3,825** (the text between the markers, as pasted; 3,851 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,866** (the text between the markers, as pasted; 3,892 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -54,6 +54,9 @@ text went from 3,971 to 3,826 characters).
 On 12 November the owner decided to merge the product's code into `main` now ([decisions.md](../decisions.md), D29), so
 the line's last sentence, "Payables inbox: not public.", became "Payables: in repo, not live.": the code is in this
 repository, the hosted preview stays private, and nothing is said to be live.
+Later on 12 November (jury check) the claims were made to agree: Purser Cloud runs publicly as a test preview at
+purser-try (test companies, test money on a simulated bank), so the sentence became "Purser Cloud: a public test preview
+(test companies, simulated bank)." ([cloud.md](../cloud.md)).
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.
@@ -76,7 +79,7 @@ repository, the hosted preview stays private, and nothing is said to be live.
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
 - Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
 
-**After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Payables: in repo, not live.
+**After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank).
 
 **The business (not validated with customers yet).** Buyer: a CFO on Airwallex. Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. A hypothesis.
 
