@@ -129,7 +129,7 @@ function render(cut: Cut, demoDay: boolean): void {
   writeFileSync(resolve(out, `script-${n}${demoDay ? "-demoday" : ""}.md`), scriptMarkdown(cut, placed));
   writeFileSync(resolve(out, `missing-${n}${demoDay ? "-demoday" : ""}.txt`), missing.join("\n") + "\n");
   rmSync(build, { recursive: true, force: true });
-  console.log(`\n${master} (${clock(len)})${missing.length ? `\n${missing.length} placeholders or missing shots: out/video/v9/missing-${n}.txt` : ""}`);
+  console.log(`\n${master} (${clock(len)})${missing.length ? `\n${missing.length} placeholders or missing shots: out/video/v9/missing-${n}${demoDay ? "-demoday" : ""}.txt` : ""}`);
 }
 
 function main(): void {
