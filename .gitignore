@@ -19,3 +19,6 @@ test-results/
 coverage/
 # Rendered video (npm run video): large files, made again from the recordings. No slash: a symlink named out is ignored too.
 out
+
+# The Worker's copy of pdf.js (npm run cloud:pdfjs)
+cloud/public/assets/

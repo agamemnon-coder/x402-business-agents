@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { canonicalTerms, type Terms } from "../lib/terms.js";
 import { openWindow } from "../passkey/ledger.js";
 import { currentPolicy, type PolicyEntry } from "../policy/rules.js";
+import { pickLang, type Lang } from "../ui/i18n.js";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 
 export interface RelayProposal {
@@ -61,8 +62,19 @@ export interface RelayState {
     policy: PolicyEntry[];
     /** The ledger's last audit row: signed with the rest, so the phone refuses an older set replayed (review N4). */
     ledger_seq: number;
+    /**
+     * The company's language for the phone's payables pages (screenshot pass, 9 November). Outside the signed part
+     * (src/relay/sign.ts signedPart): it only picks the words a page is written in, never what is signed.
+     */
+    language?: Lang;
   };
   enrolment: RelayEnrolment | null;
+}
+
+/** The company's language: the settings row ui.language (as the payables pages read it), else PURSER_LANGUAGE, else Dutch. */
+function companyLanguage(db: DB): Lang {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'ui.language'").get() as { value: string } | undefined;
+  return pickLang(row?.value, process.env.PURSER_LANGUAGE);
 }
 
 const sha256 = (s: string) => createHash("sha256").update(s, "utf8").digest("hex");
@@ -89,8 +101,10 @@ function plantedByDocument(db: DB): Map<string, string> {
 export const MAX_RELAY_PROPOSALS = 50;
 
 export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; relayToken: string; mfa?: boolean }, now = new Date()): RelayState {
-  const rows = db.prepare(`SELECT * FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?
-    ORDER BY kind != 'policy_change', created_at, proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
+  // A payment in a waiting batch is signed with its batch (src/policy/batch.ts), never on its own: only the batch is listed.
+  const rows = db.prepare(`SELECT * FROM proposals p WHERE p.status = 'PENDING_APPROVAL' AND p.expires_at > ?
+    AND NOT EXISTS (SELECT 1 FROM batch_lines b JOIN proposals bp ON bp.proposal_id = b.batch_id WHERE b.proposal_id = p.proposal_id AND bp.status = 'PENDING_APPROVAL')
+    ORDER BY p.kind != 'policy_change', p.created_at, p.proposal_id LIMIT ${MAX_RELAY_PROPOSALS}`).all(now.toISOString()) as PRow[];
   const planted = plantedByDocument(db);
   // The Treasury agent's last plan (with the agents on): which option it recommends, and its advice in its own words.
   const plans = (db.prepare("SELECT ts, payload_json FROM audit_log WHERE event = 'price_rise.plan' ORDER BY seq").all() as { ts: string; payload_json: string }[])
@@ -160,6 +174,7 @@ export function buildRelayState(db: DB, cfg: { rpId: string; label?: string; rel
     approvals: {
       proposals, names, passkey: { rp_id: cfg.rpId, credentials }, policy: currentPolicy(db),
       ledger_seq: (db.prepare("SELECT MAX(seq) AS n FROM audit_log").get() as { n: number | null }).n ?? 0,
+      language: companyLanguage(db),
     },
     enrolment: w && w.rp_id === cfg.rpId
       ? { window_id: w.window_id, challenge: w.challenge, user_id: w.user_id, user_name: cfg.label ?? "max", code_mac: createHmac("sha256", cfg.relayToken).update(w.code_sha256).digest("hex"), rp_id: w.rp_id, expires_at: w.expires_at }
@@ -176,7 +191,7 @@ export function stateHash(s: RelayState): string {
 }
 
 /** An ES256 passkey's public key (COSE, as stored) as its x and y, base64url; null for any other kind. */
-function es256XY(cose: string): { x: string; y: string } | null {
+export function es256XY(cose: string): { x: string; y: string } | null {
   try {
     const m = isoCBOR.decodeFirst<Map<number, number | Uint8Array>>(Buffer.from(cose, "base64url"));
     if (m.get(1) !== 2 || m.get(-1) !== 1) return null;

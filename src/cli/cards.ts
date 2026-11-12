@@ -82,7 +82,7 @@ const db = openDb();
 // D24: a purchase this script makes is a scripted test purchase, decided by code, not by the agent.
 setScriptOrigin({ actor: "code", rule: "a scripted test purchase (npm run cards)" });
 const need = () => {
-  const awx = issuingFromEnv();
+  const awx = issuingFromEnv(db);
   if (!awx) {
     console.error("the Airwallex sandbox keys are not set (AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY); nothing was done");
     process.exit(2);

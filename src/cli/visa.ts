@@ -48,7 +48,7 @@ if (cmd === "setup") {
   process.exit(0);
 }
 
-const awx = issuingFromEnv();
+const awx = issuingFromEnv(db);
 if (!awx) { console.error("the Airwallex sandbox keys are not set; nothing was done"); process.exit(2); }
 
 // The merchant over HTTP: the request as received, rebuilt for the check with its own Host header.

@@ -17,7 +17,7 @@ import { approvalHint } from "./hint.js";
 const args = process.argv.slice(2);
 const db = openDb();
 const sim = () => {
-  const awx = issuingFromEnv();
+  const awx = issuingFromEnv(db);
   if (!awx) {
     console.error("the Airwallex sandbox keys are not set (AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY); nothing was done");
     process.exit(2);
@@ -32,13 +32,13 @@ if (cmd === "book" && id && amount) {
   // D24: a purchase on a task card is the card's approval at work (the CFO's Face ID on that proposal).
   // A task card within the CFO's policy has no proposal: the CFO asked for it at the runner, and code issued it.
   setScriptOrigin(approvalOrigin(db, id) ?? { actor: "code", rule: "a task card within the CFO's policy, asked for by the CFO at the runner" });
-  console.log(said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: rest.join(" ") || "Skyline Air", amount }, new Date(), issuingFromEnv()?.rail)));
+  console.log(said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: rest.join(" ") || "Skyline Air", amount }, new Date(), issuingFromEnv(db)?.rail)));
 } else if (cmd === "show" && id) {
   console.log(`demonstration on task:${id}, labelled as such in the log:`);
   console.log("  a second charge: " + said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: "Skyline Air (second charge)", amount: "40.00" })));
   console.log("  a hotel:         " + said(await bookOnTaskCard(db, sim(), `task:${id}`, { merchant: "Hotel Adlon (wrong kind)", amount: "120.00", mcc: "7011" })));
 } else if (cmd && !["book", "show"].includes(cmd)) {
-  const r = await askPurser(db, new Tools(db), args.join(" "), new Date(), { rail: issuingFromEnv()?.rail ?? null, from: "runner" });
+  const r = await askPurser(db, new Tools(db), args.join(" "), new Date(), { rail: issuingFromEnv(db)?.rail ?? null, from: "runner" });
   console.log(`Purser: ${r.reply}`);
   if (r.proposalId) console.log(`next: ${approvalHint(db, r.proposalId)}`);
   if (r.taskId) console.log(`next: npm run ask -- book ${r.taskId.slice(5)} <amount>`);

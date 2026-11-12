@@ -9,6 +9,7 @@ import { frozen } from "../policy/rules.js";
 import { pausesNotRevoked } from "../policy/pause.js";
 import { HANDOVER_AFTER, legacyUnfinished, openDecisions } from "../agents/disputeDecision.js";
 import { codeMayCarryOut, escalatedUndecided } from "../agents/disputeSource.js";
+import { failureAlerts, failureCounts } from "../passkey/failures.js";
 
 import type { Alert, Health } from "./publicHealth.js";
 export type { Alert, Health, Severity } from "./publicHealth.js";
@@ -86,6 +87,11 @@ export function health(db: DB, now = new Date()): Health {
   const odd = has(db, "airwallex_events") ? (db.prepare("SELECT COUNT(*) AS n, MIN(received_at) AS since FROM airwallex_events WHERE agrees = 0 AND received_at > ?").get(DAY) as { n: number; since: string | null }) : { n: 0, since: null };
   if (odd.n > 0) alerts.push({ code: "airwallex_disagrees", severity: "critical", since: odd.since, words: `${odd.n} Airwallex webhook(s) in the last day report something the ledger cannot explain; check them on the dashboard.` });
 
+  // Refused passkey submissions (src/passkey/failures.ts): counted, never logged; a burst in the last hour is someone
+  // trying signatures or codes, so a person looks.
+  const pkFail = has(db, "passkey_failures") ? failureCounts(db, now) : { lastHour: 0, last24h: 0, byCode: {} };
+  if (has(db, "passkey_failures")) alerts.push(...failureAlerts(db, now));
+
   const metrics: Record<string, number> = {
     approvals_waiting: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'PENDING_APPROVAL' AND expires_at > ?", now.toISOString()),
     actions_executing: n(db, "SELECT COUNT(*) AS n FROM proposals WHERE status = 'EXECUTING'"),
@@ -99,6 +105,9 @@ export function health(db: DB, now = new Date()): Health {
     principals_revoked: has(db, "principals") ? n(db, "SELECT COUNT(*) AS n FROM principals WHERE status = 'REVOKED'") : 0,
     policy_version: has(db, "policy_versions") ? n(db, "SELECT MAX(version) AS n FROM policy_versions") : 0,
     audit_rows: n(db, "SELECT COUNT(*) AS n FROM audit_log"),
+    passkey_failures_1h: pkFail.lastHour,
+    passkey_failures_24h: pkFail.last24h,
+    ...Object.fromEntries(Object.entries(pkFail.byCode).map(([c, k]) => [`passkey_failures_24h_${c}`, k])),
     alerts: alerts.length,
   };
   return { status: alerts.length ? "alert" : "ok", at: now.toISOString(), alerts, metrics };

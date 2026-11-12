@@ -7,8 +7,9 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, badBatchLines, batchRemovalHash, firstScreenFacts, isPayablesPayment, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
+import { batchRemovalSha256 } from "../src/policy/batch.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
 
 type Fixture = { proposal_id: string; kind: string; terms: Record<string, Json>; terms_sha256: string };
@@ -269,5 +270,90 @@ describe("the approval view's first screen: the agent, and why it needs the CFO"
     expect(whyYou(byId("P-0004").terms, policy, { approved_by: ["controller"] })).toBe("A supplier is paid from the Airwallex account only with your Face ID. It needs two people (four eyes). Approved so far: controller.");
     for (const f of F.proposals) expect(whyYou(f.terms, policy)).not.toMatch(/\n|cannot be approved/);
     expect(whyYou({ kind: "wire_everything" })).toMatch(/cannot be approved on the phone/);
+  });
+});
+
+describe("the first screen of an inbox payment (S6)", () => {
+  const terms = {
+    kind: "supplier_payment", invoice_no: "PC-7781 · Pinecrest Outdoor Supply LLC", vendor: "Pinecrest Outdoor Supply LLC", amount: "7480.00", currency: "USD",
+    reason: "goods_purchased", document_total_line: "Total due USD 7,480.00", document_currency: "USD", test_money: true, source: "payables_inbox",
+  };
+  it("shows the invoice's own total line and the payout reason in words", () => {
+    expect(firstScreenFacts(terms)).toEqual([
+      ["On the invoice", "“Total due USD 7,480.00”"],
+      ["Reason", "Goods purchased"],
+    ]);
+    expect(reasonWords("professional_business_services")).toBe("Professional or business services");
+    expect(reasonWords("travel_expenses")).toBe("Travel expenses");
+  });
+  it("labels test money from the signed terms only", () => {
+    expect(isTestMoney(terms)).toBe(true);
+    expect(isTestMoney({ ...terms, test_money: "yes" })).toBe(false);
+    expect(isTestMoney({ kind: "invoice_payment" })).toBe(false);
+  });
+  it("adds nothing for a payment without the inbox's fields", () => {
+    expect(firstScreenFacts({ kind: "invoice_payment", vendor: "Stockline" })).toEqual([]);
+    expect(firstScreenFacts({ kind: "policy_change" })).toEqual([]);
+  });
+  it("adds nothing for a Kit 11 invoice payment: its real terms carry a payout reason, and none of the inbox's fields", () => {
+    // P-0004 of the rehearsal, as src/agents/euroBill.ts writes every Kit 11 invoice payment: a reason, no total line,
+    // no source. Its first screen stays payee, agent and why, as on main before the product came into this repository
+    // (review of 12 November: a "Reason" row had appeared on the CFO's Kit 11 approval).
+    const kit11 = byId("P-0004").terms;
+    expect(kit11).toMatchObject({ kind: "invoice_payment", reason: "professional_business_services" });
+    expect([kit11.document_total_line, kit11.source, kit11.test_money]).toEqual([undefined, undefined, undefined]);
+    expect(isPayablesPayment(kit11)).toBe(false);
+    expect(firstScreenFacts(kit11)).toEqual([]);
+    expect(isTestMoney(kit11)).toBe(false);
+    for (const f of F.proposals) expect({ id: f.proposal_id, rows: firstScreenFacts(f.terms) }).toEqual({ id: f.proposal_id, rows: [] });
+    // The same payment as the inbox files it does get its two rows.
+    expect(firstScreenFacts({ ...kit11, document_total_line: "Total due EUR 1,850.00", source: "payables_inbox" })).toEqual([
+      ["On the invoice", "\u201cTotal due EUR 1,850.00\u201d"],
+      ["Reason", "Professional or business services"],
+    ]);
+  });
+});
+
+describe("the first screen's label column", () => {
+  const css = readFileSync(new URL("../src/approve/style.css", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../src/approve/client.ts", import.meta.url), "utf8");
+  it("stays 64px on every Kit 11 approval; only the payables and batch views take the wider one", () => {
+    // The stylesheet: one base rule, one modifier, nothing else sets the list's columns.
+    const rules = [...css.matchAll(/^(\.key-facts[^{\n]*) \{([^}]*)\}/gm)].filter((m) => m[2]!.includes("grid-template-columns")).map((m) => [m[1], /grid-template-columns: ([^;]+);/.exec(m[2]!)![1]]);
+    expect(rules).toEqual([[".key-facts", "64px minmax(0, 1fr)"], [".key-facts.wide", "92px minmax(0, 1fr)"]]);
+    // The script: the Kit 11 view (approvePage) builds the plain list; payablesView and batchView ask for "wide".
+    const at = (needle: string) => { const i = client.indexOf(needle); expect({ needle, found: i >= 0 }).toEqual({ needle, found: true }); return i; };
+    const lists = [...client.matchAll(/el\("dl", "(key-facts[^"]*)"/g)].map((m) => ({ cls: m[1], at: m.index }));
+    expect(lists.map((l) => l.cls)).toEqual(["key-facts", "key-facts wide", "key-facts wide"]);
+    const [kit11, payables, batch] = [at("async function approvePage("), at("function payablesView("), at("async function batchView(")];
+    expect(kit11 < lists[0]!.at && lists[0]!.at < payables && payables < lists[1]!.at && lists[1]!.at < batch && batch < lists[2]!.at).toBe(true);
+  });
+});
+
+describe("a payment batch on the phone", () => {
+  const line = (id: string, amount: string, vendor: string, extra: Record<string, Json> = {}) => {
+    const terms = { schema: "kit11.approval-terms/v1", kind: "invoice_payment", proposal_id: id, expires_at: "2026-11-09T12:00:00Z", invoice_no: `BTX-${id}`, vendor, amount, currency: "EUR", fee_max: "15.00", beneficiary_id: "b", beneficiary_name: vendor, iban_last4: "3000", bic: "COBADEFFXXX", method: "SWIFT", reference: id, document_total_line: `Total due EUR ${amount}`, test_money: true, ...extra };
+    return { proposal_id: id, kind: "invoice_payment", terms_sha256: sha256Hex(jcs(terms as Json)), terms };
+  };
+  const batch = (lines: ReturnType<typeof line>[]) => ({ schema: "kit11.approval-terms/v1", kind: "payment_batch", proposal_id: "P-0009", expires_at: "2026-11-09T12:00:00Z", count: String(lines.length), totals: { EUR: "3070.20" }, test_money: true, lines });
+
+  it("names the count, the total and every line, in Dutch, and is approvable when every line is", () => {
+    const f = describeTerms(batch([line("P-0001", "1309.00", "Bergtex Textil GmbH"), line("P-0002", "1761.20", "Bergtex Textil GmbH")]) as unknown as Record<string, unknown>, {});
+    expect(f).toMatchObject({ approvable: true, title: "Betaal 2 facturen in één keer", amount: "EUR 3,070.20", amountLabel: "Totaal" });
+    expect(f.rows.map((r) => r[0])).toEqual(["P-0001", "P-0002"]);
+  });
+
+  it("finds a line whose terms do not hash to the hash the batch lists for it", async () => {
+    const ok = line("P-0001", "1309.00", "Bergtex Textil GmbH");
+    const forged = { ...line("P-0002", "1761.20", "Bergtex Textil GmbH"), terms_sha256: ok.terms_sha256 };
+    expect(await badBatchLines(batch([ok]) as unknown as Record<string, unknown>)).toEqual([]);
+    expect(await badBatchLines(batch([ok, forged]) as unknown as Record<string, unknown>)).toEqual(["P-0002"]);
+  });
+
+  it("signs a line's removal over the same hash the runner checks, never the batch hash or its rejection", async () => {
+    const h = "a".repeat(64);
+    expect(await batchRemovalHash(h, "P-0002")).toBe(batchRemovalSha256(h, "P-0002"));
+    expect(await batchRemovalHash(h, "P-0002")).not.toBe(h);
+    expect(await batchRemovalHash(h, "P-0002")).not.toBe(await rejectionHash(h));
   });
 });

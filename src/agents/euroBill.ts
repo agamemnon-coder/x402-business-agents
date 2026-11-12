@@ -2,6 +2,8 @@
 // Seeding calibrates floors so the demo shows a shortfall whatever the sandbox starts with; planning
 // converts only the shortfall, fee included, on a locked quote, and never below either floor.
 
+import { platformFeeCents, platformPlan } from "../airwallex/binding.js";
+import { batchReservedCents } from "../payouts/planContext.js";
 import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
@@ -18,6 +20,7 @@ import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
 import { eurInFlightCents } from "../policy/available.js";
 import { checkpoint } from "../policy/saga.js";
+import { referenceProblem } from "../payouts/routes.js";
 
 export const SEED_REFERENCE = "kit11-seed-funding";
 /** The proposal number of invoice terms before createProposal assigns the real one (assignId); never stored. */
@@ -109,10 +112,11 @@ export async function seedTreasury(db: DB, rail: AirwallexRail, sim: SandboxSim)
 
 export function treasuryState(db: DB, b: Awaited<ReturnType<AirwallexRail["balances"]>>): TreasuryState {
   return {
-    eurAvailableCents: b.EUR?.availableCents ?? 0,
+    // Less what earlier payments planned for the same batch will draw (0 outside a batch's planning, src/payouts/planContext.ts).
+    eurAvailableCents: (b.EUR?.availableCents ?? 0) - batchReservedCents("EUR"),
     eurFloorCents: toCents(getSetting(db, "eur_floor", fromCents(EUR_FLOOR_CENTS))),
     eurObligationsCents: toCents(getSetting(db, "eur_obligations", "0.00")),
-    usdAvailableCents: b.USD?.availableCents ?? 0,
+    usdAvailableCents: (b.USD?.availableCents ?? 0) - batchReservedCents("USD"),
     usdFloorCents: toCents(getSetting(db, "usd_floor", "0.00")),
     eurInFlightCents: eurInFlightCents(db),
   };
@@ -148,6 +152,9 @@ export interface InvoicePaymentTerms extends Terms {
   floors: { eur_floor: string; eur_obligations: string; usd_floor: string };
   after: { eur_free: string; usd_available: string };
   evidence: { type: string; ref: string; sha256: string }[];
+  // Purser as a platform adds paying_account and, with its fee on, platform_fee (PlatformFields in src/payouts/plan.ts;
+  // absent otherwise, hash unchanged).
+  // The payables inbox adds document_total_line and document_currency (see proposeInvoicePayment's `document`).
 }
 
 /**
@@ -156,16 +163,20 @@ export interface InvoicePaymentTerms extends Terms {
  * and once it was executed (the payment went out; review, 2 November: the Treasury agent's plan and the CFO's own
  * `npm run licence` both pass through this guard).
  */
-export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string): string | null {
+export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(), label?: string, who: LedgerParty = {}): string | null {
   // `label`: the number to name the invoice by in the answer (the agent's facts pass a vouched one, never a row's own).
   // The same invoice with a cosmetically different number ("btx-dup ", another dash) is still the same invoice.
-  const key = invoiceKey(invoiceNo);
+  // However punctuated ("BTX-2026-021", "BTX/2026/21", a zero-width space): the guard before money moves is the loose one.
+  // And however filed: the inbox's "NUM · Supplier" and Kit 11's bare "NUM" for the same supplier are one invoice, in
+  // both orders (red team round 3); the supplier of a bare number is the one its invoices row names.
+  const self = { ...partyOf(db, invoiceNo), ...Object.fromEntries(Object.entries(who).filter(([, v]) => v)) } as LedgerParty;
+  const same = (no: string, vendor?: string | null) => sameLedgerInvoice(invoiceNo, self, no, { ...partyOf(db, no), ...(vendor ? { vendor } : {}) });
   const t = (db.prepare("SELECT invoice_no, status FROM transfers WHERE status <> 'CANCELLED' ORDER BY updated_at DESC").all() as { invoice_no: string; status: string }[])
-    .find((r) => invoiceKey(r.invoice_no) === key);
+    .find((r) => same(r.invoice_no));
   if (t) { const n = label ?? t.invoice_no; return t.status === "PAID" ? `invoice ${n} is already paid` : `invoice ${n} already has a payout (${t.status})`; }
-  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment'
+  const p = (db.prepare(`SELECT proposal_id, status, json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment')
     AND (status IN ('APPROVED', 'EXECUTING', 'EXECUTED') OR (status = 'PENDING_APPROVAL' AND expires_at > ?)) ORDER BY created_at DESC`)
-    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; status: string }[]).find((r) => invoiceKey(r.invoice_no ?? "") === key);
+    .all(now.toISOString()) as { proposal_id: string; invoice_no: string | null; vendor: string | null; status: string }[]).find((r) => same(r.invoice_no ?? "", r.vendor));
   if (!p) return null;
   const n = label ?? p.invoice_no;
   switch (p.status) {
@@ -177,8 +188,14 @@ export function invoiceAlreadyHandled(db: DB, invoiceNo: string, now = new Date(
 }
 
 // The duplicate check's invoice key lives in src/lib/invoiceKey.ts (the hub gate needs it without this module's imports).
-import { invoiceKey } from "../lib/invoiceKey.js";
+import { invoiceKey, sameLedgerInvoice, type LedgerParty } from "../lib/invoiceKey.js";
 export { invoiceKey };
+
+/** Who the payment ledger says an invoice number is from: its invoices row's supplier and account hash, if any. */
+export function partyOf(db: DB, invoiceNo: string): LedgerParty {
+  const r = db.prepare("SELECT vendor, iban_sha256 FROM invoices WHERE invoice_no = ?").get(invoiceNo) as { vendor: string; iban_sha256: string } | undefined;
+  return r ? { vendor: r.vendor, accountSha256: r.iban_sha256 } : {};
+}
 
 export type InvoiceOutcome =
   | { kind: "proposed"; proposal: ProposalRow; terms: InvoicePaymentTerms }
@@ -191,7 +208,13 @@ export type InvoiceOutcome =
 export async function proposeInvoicePayment(
   db: DB, rail: AirwallexRail, inv: Invoice, invoiceText: string, now = new Date(),
   quoteValidity: "MIN_1" | "MIN_15" = "MIN_15",
+  document?: { total_line: string; currency: string; reason?: string },
 ): Promise<InvoiceOutcome> {
+  const refWrong = referenceProblem(inv.reference);
+  if (refWrong) {
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason: refWrong }, now);
+    return { kind: "escalated", reason: refWrong };
+  }
   const check = checkInvoice(db, inv, invoiceText);
   if (!check.ok) {
     // Blocked before any Airwallex call: no balance read, no quote, no proposal.
@@ -206,7 +229,7 @@ export async function proposeInvoicePayment(
     return { kind: "escalated", reason: check.reason, ...(check.fraud ? { fraud: check.fraud } : {}) };
   }
   // A second copy of an invoice (a reminder, a resend) is never paid twice: not after a payout, not while one waits.
-  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now);
+  const dup = invoiceAlreadyHandled(db, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) });
   if (dup) {
     const reason = `${dup}; a second copy is not paid again. Options: check with ${check.name} whether this is a reminder, or reject the open proposal first if this copy replaces it`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -237,6 +260,14 @@ export async function proposeInvoicePayment(
   db.prepare("INSERT OR IGNORE INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, beneficiary_id, doc_sha256, extracted_json, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED')")
     .run(inv.invoice_no, inv.vendor, inv.amount, inv.currency, inv.due_date, ibanSha(inv.iban), inv.bic, check.beneficiaryId, sha256Hex(invoiceText), JSON.stringify(inv));
 
+  // Purser as a platform (red team 6): the account it pays from is the company's own in the binding Purser Cloud signed,
+  // named in the signed terms like a supplier payment's; the executor checks it again before anything moves.
+  const pp = platformPlan(db, now);
+  if (!pp.ok) {
+    const reason = `${pp.reason}; nothing is planned`;
+    audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
+    return { kind: "escalated", reason };
+  }
   const b = await snapshot(db, rail, `plan:${inv.invoice_no}`);
   const s = treasuryState(db, b);
   // Max, 2 November: the fee reserve follows what Airwallex really charged, plus a buffer, never under the ceiling.
@@ -247,7 +278,11 @@ export async function proposeInvoicePayment(
     return { kind: "escalated", reason };
   }
   const feeReserve = feeReserveCents(fees);
-  const plan = planInvoice(check.amountCents, s, feeReserve);
+  // Purser's fee on this route as on a supplier payment's (screenshot pass, 9 November: a batch line of a supplier on
+  // file had none): CFO policy within the cap, in EUR, to Purser's account in the binding. It counts toward what must
+  // be free, or be bought, like the fee reserve.
+  const platformFee = pp.feeBps > 0 ? platformFeeCents(check.amountCents, pp.feeBps) : 0;
+  const plan = planInvoice(check.amountCents + platformFee, s, feeReserve);
   if (plan.kind === "underfunded") {
     const reason = `EUR is already ${fromCents(-plan.freeEurCents)} below its floor plus commitments (available ${fromCents(s.eurAvailableCents)}, floor ${fromCents(s.eurFloorCents)}, committed ${fromCents(s.eurObligationsCents)}); options: restore the EUR reserve first, review the commitments, or pay later`;
     audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason }, now);
@@ -300,7 +335,7 @@ export async function proposeInvoicePayment(
     schema: TERMS_SCHEMA, kind: "invoice_payment", proposal_id: id, expires_at: iso(expires),
     invoice_no: inv.invoice_no, vendor: inv.vendor, amount: inv.amount, currency: "EUR", fee_max: fromCents(feeReserve),
     beneficiary_id: check.beneficiaryId, beneficiary_name: check.name, iban_last4: check.ibanLast4, bic: check.bic, method: "SWIFT",
-    reference: inv.reference, reason: "professional_business_services", transfer_request_id: randomUUID(),
+    reference: inv.reference, reason: document?.reason ?? "professional_business_services", transfer_request_id: randomUUID(),
     conversion: quote && {
       request_id: randomUUID(), quote_id: quote.quoteId, client_rate: quote.clientRate, valid_to: quote.validTo,
       buy_currency: "EUR", buy_amount: fromCents(quote.buyAmountCents), sell_currency: "USD", sell_amount: fromCents(quote.sellAmountCents),
@@ -309,12 +344,20 @@ export async function proposeInvoicePayment(
     floors: { eur_floor: fromCents(s.eurFloorCents), eur_obligations: fromCents(s.eurObligationsCents), usd_floor: fromCents(s.usdFloorCents) },
     after: { eur_free: fromCents(Math.max(0, plan.freeEurCents + (quote?.buyAmountCents ?? 0) - plan.needEurCents)), usd_available: fromCents(usdAfter) },
     evidence: [{ type: "invoice", ref: inv.invoice_no, sha256: sha256Hex(invoiceText) }],
+    ...(pp.paying ? { paying_account: pp.paying } : {}),
+    ...(platformFee > 0 ? { platform_fee: { amount: fromCents(platformFee), currency: "EUR", bps: String(pp.feeBps), to_account: pp.feeTo!, request_id: randomUUID() } } : {}),
+    // The payables inbox only: the document's own total line, verbatim (sanitised, at most 120 characters), and the
+    // currency as read from that line ("" when it names none, or one code does not know), so the CFO sees what the
+    // supplier wrote beside the amount signed for (red team round 2). Kit 11's invoices pass none: their terms are unchanged.
+    // The payables inbox: the supplier's own total line, and that this is test money (this build only talks to the
+    // Airwallex sandbox, src/airwallex/client.ts), both in the signed terms so the phone shows them first (S6).
+    ...(document ? { document_total_line: document.total_line.slice(0, 120), document_currency: document.currency, test_money: true, source: "payables_inbox" } : {}),
   };
   // The duplicate guard again, inside the transaction that files the proposal (Opus review, 2 November): a plan filed by
   // another run (the CFO's `npm run licence`, the agent's plan_invoice) while this one waited for Airwallex is seen here.
   let proposal: ProposalRow;
   try {
-    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now), assignId: true }, now);
+    proposal = createProposal(db, { terms, createdBy: "treasury", evidence: terms.evidence, guard: (tx) => invoiceAlreadyHandled(tx, inv.invoice_no, now, undefined, { vendor: inv.vendor, accountSha256: ibanSha(inv.iban) }), assignId: true }, now);
   } catch (e) {
     if (!(e instanceof ProposalRefused)) throw e;
     const reason = `${e.reason}; a second copy is not paid again (another plan was filed while this one was being prepared)`;

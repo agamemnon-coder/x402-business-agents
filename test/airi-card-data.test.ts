@@ -217,6 +217,14 @@ describe("the committed run records", () => {
     "docs/runs/2026-11-10-payment-acceptance-sandbox.md": ["4035501000000008"],
     "docs/runs/vic-1-plan.md": ["4035501000000008"],
   };
+  /**
+   * Ids that pass the card check digit by chance and are named as something else in the record (12 Nov, merge of
+   * main: the Moneybird sandbox run's invoice id OD-77, its `external_id` in Moneybird; 18 digits, not a card number).
+   */
+  const NOT_A_CARD: Record<string, string[]> = {
+    "docs/runs/2026-11-12-moneybird-sandbox.json": ["503594084810622802"],
+    "docs/runs/2026-11-12-moneybird-sandbox.md": ["503594084810622802"],
+  };
   const read = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
   const all = ["docs/runs", "docs/demo"].flatMap((d) => readdirSync(new URL(`../${d}`, import.meta.url)).filter((n) => /\.(json|md|jsonl|txt|csv)$/.test(n)).map((n) => `${d}/${n}`));
 
@@ -231,7 +239,9 @@ describe("the committed run records", () => {
 
   it("every record under docs/runs and docs/demo: no security-code pattern, and no card number but a published test number where a document names it", () => {
     expect(all.length).toBeGreaterThan(50);
-    const found = all.flatMap((f) => { const t = read(f); const cards = [...new Set(cardNumbersIn(t))]; return cards.length || t.match(CVV_PATTERN) ? [{ f, cards, cvv: t.match(CVV_PATTERN) }] : []; });
+    // Each id let through is in its record, and in the Moneybird run's record it is a Moneybird `external_id`.
+    for (const [f, ids] of Object.entries(NOT_A_CARD)) for (const id of ids) expect({ f, id, named: f.endsWith(".json") ? read(f).includes(`"external_id": "${id}"`) : read(f).includes(`\`${id}\``) }).toEqual({ f, id, named: true });
+    const found = all.flatMap((f) => { const t = read(f); const cards = [...new Set(cardNumbersIn(t))].filter((c) => !(NOT_A_CARD[f] ?? []).includes(c)); return cards.length || t.match(CVV_PATTERN) ? [{ f, cards, cvv: t.match(CVV_PATTERN) }] : []; });
     expect(found).toEqual(Object.entries(PUBLISHED).map(([f, cards]) => ({ f, cards, cvv: null })));
   });
 });

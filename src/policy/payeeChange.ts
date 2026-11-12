@@ -53,6 +53,15 @@ const row = (db: DB, id: string) => {
   return r;
 };
 const normal = (iban: string) => iban.replace(/\s+/g, "").toUpperCase();
+/**
+ * Another supplier on file paid to this account, or null (red team round 4: a bank change to the account the licensor
+ * is paid to adopted the licensor's beneficiary and renamed it, so one account was two suppliers' and the licensor fell
+ * off the list). One account is never two suppliers', whichever way it arrives.
+ */
+function accountOfAnother(db: DB, iban: string, vendor: string): string | null {
+  const r = db.prepare("SELECT name FROM beneficiaries WHERE status = 'ACTIVE' AND iban_sha256 = ? AND name <> ?").get(ibanSha(iban), vendor) as { name: string } | undefined;
+  return r?.name ?? null;
+}
 
 export function requestPayeeChange(db: DB, a: { vendor: string; iban: string; bic: string; source: string | null }, by: Actor, now = new Date()): PayeeChangeRow {
   const iban = normal(a.iban);
@@ -64,6 +73,8 @@ export function requestPayeeChange(db: DB, a: { vendor: string; iban: string; bi
   const on = active(db, a.vendor);
   if (!on) throw new Error(`${a.vendor} is not an allowlisted payee; a new supplier is not a bank-detail change`);
   if (on.iban_sha256 === ibanSha(iban) && on.bic === bic) throw new Error(`these bank details are already on file for ${a.vendor}`);
+  const other = accountOfAnother(db, iban, a.vendor);
+  if (other) throw new Error(`this account is already on file for ${other}; one account is never two suppliers' (a person checks who is paid to it), so nothing was requested`);
   const n = (db.prepare("SELECT COUNT(*) AS n FROM payee_changes").get() as { n: number }).n;
   const id = `B-${String(n + 1).padStart(4, "0")}`;
   db.transaction(() => {
@@ -112,12 +123,17 @@ export async function executePayeeChange(db: DB, rail: AirwallexRail, proposalId
     if (!on || on.beneficiary_id !== terms.old_beneficiary_id || on.iban_last4 !== terms.old_iban_last4) {
       throw new Error(`${terms.vendor}'s account on file is now …${on?.iban_last4 ?? "none"}, not …${terms.old_iban_last4}; nothing changed`);
     }
+    const other = accountOfAnother(db, terms.new_iban, terms.vendor);
+    if (other) throw new Error(`the new account is already on file for ${other}; one account is never two suppliers'; nothing changed`);
   }, now);
   if (!t.new_iban.startsWith("DE")) {
     finishExecution(db, proposalId, "FAILED", { error: "this build adds German (DE) accounts at Airwallex only" }, now);
     throw new Error("this build adds German (DE) accounts at Airwallex only; nothing changed");
   }
-  const existing = await rail.findBeneficiaryByIban(t.new_iban);
+  const found = await rail.findBeneficiaryByIban(t.new_iban);
+  // A beneficiary the ledger holds for another supplier is never adopted (and renamed): a new one is made for this one.
+  const theirs = found ? (db.prepare("SELECT name FROM beneficiaries WHERE beneficiary_id = ? AND name <> ?").get(found.id, t.vendor) as { name: string } | undefined) : undefined;
+  const existing = theirs ? null : found;
   const ben = existing ?? (await rail.createBeneficiary({
     name: t.vendor, iban: t.new_iban, bic: t.new_bic, currency: "EUR", countryCode: "DE",
     // The verified request names the account, not the bank; the BIC identifies the bank for Airwallex's schema.

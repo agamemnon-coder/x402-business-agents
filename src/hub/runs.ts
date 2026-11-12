@@ -7,7 +7,7 @@
 // vocabulary or a checked pattern, and assertSafeBody refuses the body if anything slipped through anyway.
 
 import type { DB } from "../db/open.js";
-import { invoiceKey } from "../lib/invoiceKey.js";
+import { sameLedgerInvoice, type LedgerParty } from "../lib/invoiceKey.js";
 import { fourEyes } from "../policy/fourEyes.js";
 import { counterpartyAllowed, frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
@@ -35,7 +35,7 @@ export interface HubBody {
 export const MAX_RUNS = 12;
 export const MAX_BODY_BYTES = 8 * 1024;
 
-interface ProposalLike {
+export interface ProposalLike {
   proposal_id: string;
   kind: string;
   terms_json: string;
@@ -58,15 +58,17 @@ export function worldId(db: DB): string {
 export const runIdOf = (world: string, proposalId: string) => `${world}/${proposalId}`;
 
 /** The kinds that pay money out; the emergency stop fails these (never a policy change, which may lift the stop). */
-const PAYOUT_KINDS = new Set(["invoice_payment", "refund_batch", "task_card"]);
+const PAYOUT_KINDS = new Set(["invoice_payment", "supplier_payment", "refund_batch", "task_card"]);
 
 /** Why a person decides each kind (the rule that sent it to a person); four eyes overrides it. */
 const RULE_BY_KIND: Record<string, string> = {
   invoice_payment: "invoice_payout_needs_person",
+  supplier_payment: "invoice_payout_needs_person",
   refund_batch: "refund_over_auto_limit",
   mandate_replace: "mandate_change",
   policy_change: "policy_change",
   payee_change: "new_bank_details",
+  payee_add: "new_supplier",
   task_card: "task_card_over_policy",
   quarantine_release: "held_payment",
   agent_onboard: "outside_agent_card",
@@ -76,10 +78,12 @@ const RULE_BY_KIND: Record<string, string> = {
 
 const WHAT_BY_KIND: Record<string, string> = {
   invoice_payment: "Invoice payment",
+  supplier_payment: "Supplier payment",
   refund_batch: "Refund batch",
   mandate_replace: "Mandate change",
   policy_change: "Policy change",
   payee_change: "Supplier bank details",
+  payee_add: "New supplier",
   task_card: "Task card",
   quarantine_release: "Held payment",
   agent_onboard: "Card for an outside agent",
@@ -120,6 +124,11 @@ function amountOf(p: ProposalLike, t: T): { amount: string | null; currency: str
     const a = money(t.amount);
     return { amount: a, currency: a ? "EUR" : null };
   }
+  if (p.kind === "supplier_payment") {
+    // In the invoice's own currency (src/payouts/plan.ts).
+    const a = money(t.amount);
+    return { amount: a, currency: a && typeof t.currency === "string" && /^[A-Z]{3}$/.test(t.currency) ? t.currency : null };
+  }
   if (p.kind === "refund_batch") {
     const a = sumMoney(Array.isArray(t.refunds) ? (t.refunds as T[]).map((r) => r?.amount) : []);
     return { amount: a, currency: a ? "USDZ" : null };
@@ -151,15 +160,22 @@ export function proposalCheck(db: DB, p: ProposalLike): { check: Check; rule: st
   if (p.status === "EXECUTED" || p.status === "REJECTED") return { check: "pass", rule: base };
   const t = terms(p);
   if (PAYOUT_KINDS.has(p.kind) && frozen(db)) return { check: "fail", rule: "emergency_stop" };
-  if (p.kind === "invoice_payment") {
+  if (p.kind === "invoice_payment" || p.kind === "supplier_payment") {
     if (typeof t.beneficiary_name === "string" && !counterpartyAllowed(db, t.beneficiary_name)) return { check: "fail", rule: "payee_blocked" };
     if (paused(db, "treasury") || stopped(db, "treasury")) return { check: "fail", rule: "agent_stopped" };
     if (typeof t.invoice_no === "string") {
-      const key = invoiceKey(t.invoice_no);
+      // The same rule as the executors' (src/lib/invoiceKey.ts sameLedgerInvoice): the supplier's number, however
+      // written or filed (the inbox's "NUM · Supplier" or Kit 11's bare number), from the same supplier, by either kind.
+      const party = (no: string): LedgerParty => {
+        const r = db.prepare("SELECT vendor, iban_sha256 FROM invoices WHERE invoice_no = ?").get(no) as { vendor: string; iban_sha256: string } | undefined;
+        return r ? { vendor: r.vendor, accountSha256: r.iban_sha256 } : {};
+      };
+      const self: LedgerParty = { ...party(t.invoice_no), ...(typeof t.vendor === "string" ? { vendor: t.vendor } : {}) };
+      const same = (no: string, vendor?: string | null) => sameLedgerInvoice(t.invoice_no as string, self, no, { ...party(no), ...(vendor ? { vendor } : {}) });
       const otherPayout = (db.prepare("SELECT invoice_no FROM transfers WHERE request_id <> ? AND status <> 'CANCELLED'").all(String(t.transfer_request_id ?? "")) as { invoice_no: string }[])
-        .some((r) => invoiceKey(r.invoice_no) === key);
-      const otherProposal = (db.prepare("SELECT json_extract(terms_json, '$.invoice_no') AS invoice_no FROM proposals WHERE kind = 'invoice_payment' AND proposal_id <> ? AND status IN ('EXECUTING', 'EXECUTED')").all(p.proposal_id) as { invoice_no: string | null }[])
-        .some((r) => invoiceKey(r.invoice_no ?? "") === key);
+        .some((r) => same(r.invoice_no));
+      const otherProposal = (db.prepare("SELECT json_extract(terms_json, '$.invoice_no') AS invoice_no, json_extract(terms_json, '$.vendor') AS vendor FROM proposals WHERE kind IN ('invoice_payment', 'supplier_payment') AND proposal_id <> ? AND status IN ('EXECUTING', 'EXECUTED')").all(p.proposal_id) as { invoice_no: string | null; vendor: string | null }[])
+        .some((r) => same(r.invoice_no ?? "", r.vendor));
       if (otherPayout || otherProposal) return { check: "fail", rule: "duplicate_invoice" };
     }
   }
