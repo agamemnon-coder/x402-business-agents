@@ -201,7 +201,7 @@ describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
     dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
+    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", pricing: "/pricing", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */
@@ -229,7 +229,8 @@ describe("no served page links to a path the site does not serve", () => {
         if (name !== "notFound") expect({ name, at, status: served(`${SITE}${at}`, pages) }).toEqual({ name, at, status: 200 });
         for (const m of noScript(html).matchAll(/<a\b[^>]*\bhref="([^"#]*)(?:#[^"]*)?"/g)) {
           const href = m[1]!.replace(/&amp;/g, "&");
-          if (!href || /^(https?:|mailto:)/.test(href) || (name === "runs" && RUN_LOG.test(href))) continue;
+          // /health (linked from /status since 12 Nov) is the service's JSON endpoint, answered before the page router.
+          if (!href || /^(https?:|mailto:)/.test(href) || (name === "runs" && RUN_LOG.test(href)) || (name === "status" && /^health(\/live)?$/.test(href))) continue;
           links++;
           const url = new URL(href, `${SITE}${at}`);
           expect({ build, name, href, status: served(url.toString(), pages) }).toEqual({ build, name, href, status: 200 });

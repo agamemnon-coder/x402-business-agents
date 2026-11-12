@@ -71,7 +71,7 @@ refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
 `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` (11:23:33). Treasury's options came at 11:24:07,
 40 s after Metal's refusal and 34 s after that tx, within the same 20.00: option A (P-0002) raises Sourcing's cap to
 0.04 and keeps our price at 0.05; option B (P-0003) takes the same cap and raises our price to 0.07. The CFO signed A;
-after four eyes, both mandates were replaced on chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
+after four eyes (the second signature from a test passkey, not a second person), both mandates were replaced on chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
 `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
 
 **2. The dispute** ([watch](https://kit11.max-31b.workers.dev/replay?scene=2)). A simulated customer disputes 12 orders,
@@ -236,7 +236,7 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
 - **Built, not yet live (stand-ins only):** the Cardputer hub push and gate (a fake hub in the tests), the emergency stop and `npm run smoke:sandbox`.
 
 **Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, above;
-Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain, the compliance contract and
+Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain (two test keys on one machine, not two people), the compliance contract and
 clearing under load (30 October): [docs/runs/](runs/) and [docs/metal-award.md](metal-award.md).
 
 ## Words
@@ -247,6 +247,6 @@ clearing under load (30 October): [docs/runs/](runs/) and [docs/metal-award.md](
 - **x402:** HTTP 402 "Payment Required" as a payment protocol (version 2). On the mandate route the seller checks each payment before it does the work and settles it on Metal before it sends the answer. The protocol leaves the payer's budget to the payer; in Purser that is the CFO's signed limit, checked before anything is signed.
 - **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
 - **Four eyes:** above the CFO's threshold, two approvers must each sign with their own passkey (in production two
-  different people; in the main run the second was the labelled test passkey above); the proposer never approves.
+  different people; in the main run the second signature came from a test passkey, not a second person); the proposer never approves.
 
 </details>

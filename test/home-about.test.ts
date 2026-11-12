@@ -34,9 +34,10 @@ describe("About Purser on Home", () => {
     expect(parts.map((p) => t.indexOf(p))).toEqual([...parts.map((p) => t.indexOf(p))].sort((a, b) => a - b));
     expect(t).toContain("the CFO signs the exact terms with Face ID");
     expect(t).toContain("Claude agents decide within those limits");
-    expect(t).toMatch(/pilots will be priced per invoice, plus a fee per payout through Airwallex connected accounts/);
+    expect(t).toMatch(/pilot pricing is a monthly plan by number of invoices, plus a small fee per payout through Airwallex connected accounts/);
+    expect(about(ON)).toContain('<a class="go" href="pricing">');
     expect(t).toContain("with Airwallex's KYC: built, switched off");
-    expect(about(ON)).toContain(`<a class="runs" href="${RUNS_URL}">`);
+    expect(about(ON)).toContain(`<a class="go" href="${RUNS_URL}">`);
     expect(text(about(ON))).toBe(text(about(OFF)));
   });
 
@@ -66,6 +67,6 @@ describe("About Purser on Home", () => {
     expect(t).not.toMatch(/\bMax\b|Geurtsen|founder/i);
     expect(t).not.toMatch(/revolution|seamless|world-class|game.?chang|cutting.edge|best-in-class|unique|effortless/i);
     // Short: about a minute's reading, closed by default.
-    expect(t.split(" ").length).toBeLessThanOrEqual(125);
+    expect(t.split(" ").length).toBeLessThanOrEqual(130);
   });
 });

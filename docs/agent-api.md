@@ -23,7 +23,7 @@ The outside agent gets five tools:
 | `pay_with_card` | Charges its card. Airwallex approves or declines the charge against the card's limits. |
 | `request_limit_raise` | Asks for a higher limit. This is a policy change, approved with Face ID. |
 | `company_card` | Reads its card, limits, spend this month and recent charges. |
-| `ask_for_task_card` | Asks, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost. This is a proposal, approved with Face ID. |
+| `ask_for_task_card` | Asks, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost. It becomes a proposal the CFO approves with Face ID; the agent never gets a card at once. |
 
 A refusal is a tool result with isError: true and a structured object that names the next tool: the same shape the
 x402 MCP transport uses for a payment refusal (these tools pay by card, not by x402). The sentence stays the first text;

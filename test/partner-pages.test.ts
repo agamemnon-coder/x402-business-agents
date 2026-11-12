@@ -1,11 +1,13 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
-// agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; no Watch since 12 Nov).
+// agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; Watch once
+// the film is set) and lists the partner pages under "More" (12 Nov).
 import { readFileSync } from "node:fs";
 import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";
 import { AGENT_MODELS, airwallexData, claudeData } from "../src/partners/data.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE } from "../src/servers/dashboard.js";
-import { NAV_MAIN } from "../src/ui/nav.js";
+import { NAV_MAIN, navHtml } from "../src/ui/nav.js";
+import { MORE_LABEL, MORE_LINKS, moreLinks } from "../src/ui/more.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { AWX_PAGE_LABEL, CONNECTED_KEY, PLATFORM_FACTS_FILE, PLATFORM_FOLD_ID, TWO_LOCKS_KEY, approvalsTile, twoLocksLogs, twoLocksOfRecord, twoLocksState } from "../src/redesign/airwallexProducts.js";
@@ -114,9 +116,22 @@ describe("the partner pages", () => {
     for (const f of airwallexData().features) for (const d of f.docs) expect(d.href.startsWith("https://www.airwallex.com/docs/")).toBe(true);
   });
 
-  it("are reached from Proof, with the main nav four tabs, and served by the relay", () => {
+  it("are reached from Proof and from More, with the main nav four tabs and More, and served by the relay", () => {
     // Watch is a tab once the film is on /watch (src/config/film.ts).
     expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof"] : ["home", "try", "proof"]);
+    // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
+    expect(MORE_LABEL).toBe("More");
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["pricing", "security", "docs", "status", "airwallex", "metal", "visa", "claude"]);
+    expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
+    // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
+    // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
+    const nav = navHtml("try");
+    const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details><\/nav>$/.exec(nav);
+    expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"]]);
+    expect(more?.[1]).toBe("More");
+    expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
+    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
+    expect(nav).toContain('<a href="try" data-nav="try" class="on" aria-current="page">Try</a>');
     const pages = buildPages();
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);

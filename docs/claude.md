@@ -105,8 +105,8 @@ CFO; it never pays.
 ## The MCP server
 
 Outside agents use Purser through an MCP server (`npm run -s mcp`, [agent-api.md](agent-api.md)): any agent that
-speaks MCP can ask for a company card, pay within its limits and ask the CFO for more. It gets four tools and no keys;
-the CFO policy and Face ID apply to it exactly as to Purser's own agents.
+speaks MCP, Claude Code included, can ask for a company card, pay within its limits and ask the CFO for more. It
+gets five tools and no keys; the CFO policy and Face ID apply to it exactly as to Purser's own agents.
 
 ## Built with Claude Code
 

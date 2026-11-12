@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { startJudge } from "../src/cli/judge.js";
 
 // /runs and the agent pages since 12 Nov (review DC-1: five run-log links on /runs answered 404).
-const PAGES = ["/", "/metal", "/metal/report", "/visa", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury"];
+const PAGES = ["/", "/metal", "/metal/report", "/visa", "/pricing", "/security", "/docs", "/status", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury"];
 let server: Server;
 let base: string;
 

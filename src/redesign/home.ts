@@ -53,7 +53,7 @@ details.about > summary { cursor: pointer; list-style: none; display: flex; alig
 details.about > summary::-webkit-details-marker { display: none; }
 details.about > summary::after { content: "▾"; font-size: 16px; color: var(--accent); } details.about[open] > summary::after { content: "▴"; }
 details.about .body { max-width: 680px; padding: 0 0 8px; display: grid; gap: 10px; } details.about .body p { margin: 0; }
-details.about a.runs { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
+details.about a.go { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; min-height: 44px; }
 p.next { margin: 18px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
@@ -133,7 +133,7 @@ export function aboutFacts(): { runs: number; payout: string; fee: string } {
 /**
  * About Purser: the problem, what Purser does, what ran and the business, closed by default. No date, no "test money",
  * no "live" and no run label here: the hero's provenance line says those once (test/home-story.test.ts A1, A3, A4); no
- * Visa either, as on the rest of Home (its runs are on /runs). The pricing is the owner's plan; no customer, pilot or
+ * Visa either, as on the rest of Home (its runs are on /runs). The pricing is the plan on /pricing (src/config/pricing.ts); no customer, pilot or
  * revenue is claimed (test/home-about.test.ts).
  */
 function aboutHtml(): string {
@@ -143,8 +143,8 @@ function aboutHtml(): string {
   return `<details class="about" id="about"><summary>${esc(ABOUT_HEAD)}</summary><div class="body">
     ${line("The problem:", "AI agents can pay with company money, but nobody signs the exact terms they pay.")}
     ${line("What Purser does:", "the CFO signs the exact terms with Face ID. Airwallex and Metal enforce each agent's limits on their rails. Claude agents decide within those limits, and each payment keeps its proof.")}
-    ${line("What ran:", `${f.runs} runs in sandboxes and on testnet, each with its ids and log.`, ` <a class="runs" href="${RUNS_URL}">See every run${icon("arrow-right", 16)}</a>`)}
-    ${line("The business:", `pilots will be priced per invoice, plus a fee per payout through Airwallex connected accounts${paid}. Companies open their own Airwallex account through Purser, with Airwallex's KYC: built, switched off.`)}
+    ${line("What ran:", `${f.runs} runs in sandboxes and on testnet, each with its ids and log.`, ` <a class="go" href="${RUNS_URL}">See every run${icon("arrow-right", 16)}</a>`)}
+    ${line("The business:", `pilot pricing is a monthly plan by number of invoices, plus a small fee per payout through Airwallex connected accounts${paid}. Companies open their own Airwallex account through Purser, with Airwallex's KYC: built, switched off.`, ` <a class="go" href="pricing">Pricing${icon("arrow-right", 16)}</a>`)}
     <p>No customers, pilots or revenue yet.</p>
   </div></details>`;
 }

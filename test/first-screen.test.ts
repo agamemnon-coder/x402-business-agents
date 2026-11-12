@@ -77,9 +77,10 @@ describe("why this is a company (section D, 6 Nov)", () => {
   // On /proof since Max's round of 7 Nov (Home shows the way through), behind its own closed line.
   const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(PROOF)?.[0] ?? "";
 
-  it("has five lines: the problem, who buys, the intended pricing, why now, why Purser", () => {
-    expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Intended pricing", "Why now", "Why Purser"]);
-    expect(WHY_COMPANY[2]!.text).toBe("€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.");
+  it("has five lines: the problem, who buys, the pilot pricing, why now, why Purser", () => {
+    // The price is the pilot pricing since 12 Nov (one model, src/config/pricing.ts), labelled as that and as a hypothesis.
+    expect(WHY_COMPANY.map((l) => l.label)).toEqual(["The problem", "Who buys", "Pilot pricing", "Why now", "Why Purser"]);
+    expect(WHY_COMPANY[2]!.text).toBe("Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. A hypothesis.");
   });
 
   it("is on the README and on /proof, word for word; the README links each line to its page, /proof once to the case (Max, 7 Nov)", () => {
@@ -101,7 +102,7 @@ describe("why this is a company (section D, 6 Nov)", () => {
 
   it("says each line as docs/business/ does: the price from model.md, the cited source from problem.md", () => {
     const model = read("docs/business/model.md").replace(/\s+/g, " "), problem = read("docs/business/problem.md").replace(/\s+/g, " ");
-    expect(model).toContain("**€49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions.**");
+    expect(model).toContain("**Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.**");
     // Why now: Airwallex's own post, quoted as problem.md quotes it, with its title, date and source number.
     expect(problem).toContain("through underlying infrastructure rather than prompts");
     expect(problem).toContain('[S1] Airwallex, Dan Kim, "Agentic banking starts with governance", published 5 October 2026');
