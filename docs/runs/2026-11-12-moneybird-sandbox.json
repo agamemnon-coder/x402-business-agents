@@ -1,0 +1,596 @@
+{
+  "connector": "moneybird",
+  "administration": "503585935808530148",
+  "labels": [
+    "Moneybird sandbox administration",
+    "test data",
+    "no e-mail sent"
+  ],
+  "calls": {
+    "approved": 44,
+    "used": 33,
+    "by_endpoint": [
+      {
+        "endpoint": "GET moneybird.com/api/v2/503585935808530148/ledger_accounts.json",
+        "calls": 4
+      },
+      {
+        "endpoint": "GET moneybird.com/api/v2/503585935808530148/contacts.json",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET moneybird.com/api/v2/503585935808530148/tax_rates.json",
+        "calls": 4
+      },
+      {
+        "endpoint": "POST moneybird.com/api/v2/503585935808530148/contacts.json",
+        "calls": 4
+      },
+      {
+        "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+        "calls": 6
+      },
+      {
+        "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/attachments.json",
+        "calls": 5
+      },
+      {
+        "endpoint": "GET moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/payments.json",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/general_journal_documents.json",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}.json",
+        "calls": 6
+      }
+    ],
+    "by_step": [
+      {
+        "step": "world-build",
+        "started_at": "2026-11-12T11:58:06.626Z",
+        "ended_at": "2026-11-12T11:58:09.928Z",
+        "exit": 0,
+        "calls": 0,
+        "by_endpoint": []
+      },
+      {
+        "step": "dry-run",
+        "started_at": "2026-11-12T11:58:14.664Z",
+        "ended_at": "2026-11-12T11:58:17.499Z",
+        "exit": 0,
+        "calls": 0,
+        "by_endpoint": []
+      },
+      {
+        "step": "sync-1",
+        "started_at": "2026-11-12T11:58:56.300Z",
+        "ended_at": "2026-11-12T11:59:02.676Z",
+        "exit": 1,
+        "calls": 8,
+        "by_endpoint": [
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/contacts.json",
+            "calls": 4
+          },
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/tax_rates.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/ledger_accounts.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/attachments.json",
+            "calls": 1
+          }
+        ]
+      },
+      {
+        "step": "sync-2",
+        "started_at": "2026-11-12T11:59:22.213Z",
+        "ended_at": "2026-11-12T11:59:30.810Z",
+        "exit": 0,
+        "calls": 11,
+        "by_endpoint": [
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/tax_rates.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/ledger_accounts.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+            "calls": 3
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/attachments.json",
+            "calls": 3
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/payments.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/general_journal_documents.json",
+            "calls": 1
+          }
+        ]
+      },
+      {
+        "step": "world-recode",
+        "started_at": "2026-11-12T11:59:49.286Z",
+        "ended_at": "2026-11-12T11:59:51.884Z",
+        "exit": 0,
+        "calls": 0,
+        "by_endpoint": []
+      },
+      {
+        "step": "sync-3-after-change",
+        "started_at": "2026-11-12T11:59:51.894Z",
+        "ended_at": "2026-11-12T11:59:54.227Z",
+        "exit": 0,
+        "calls": 0,
+        "by_endpoint": []
+      },
+      {
+        "step": "correct",
+        "started_at": "2026-11-12T12:00:00.300Z",
+        "ended_at": "2026-11-12T12:00:07.568Z",
+        "exit": 0,
+        "calls": 5,
+        "by_endpoint": [
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/tax_rates.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/ledger_accounts.json",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json",
+            "calls": 2
+          },
+          {
+            "endpoint": "POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}/attachments.json",
+            "calls": 1
+          }
+        ]
+      },
+      {
+        "step": "sync-again",
+        "started_at": "2026-11-12T12:00:14.479Z",
+        "ended_at": "2026-11-12T12:00:16.876Z",
+        "exit": 0,
+        "calls": 0,
+        "by_endpoint": []
+      },
+      {
+        "step": "read-back",
+        "started_at": "2026-11-12T12:00:16.884Z",
+        "ended_at": "2026-11-12T12:00:22.305Z",
+        "exit": 0,
+        "calls": 6,
+        "by_endpoint": [
+          {
+            "endpoint": "GET moneybird.com/api/v2/503585935808530148/documents/purchase_invoices/{id}.json",
+            "calls": 6
+          }
+        ]
+      }
+    ],
+    "outside_steps": 3,
+    "off_the_list": 0
+  },
+  "sent": [
+    {
+      "at": "2026-11-12T11:58:59.952Z",
+      "event": "erp.pushed",
+      "kind": "vendor",
+      "object": "ben_1",
+      "external_id": "503594057045378916",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:00.316Z",
+      "event": "erp.pushed",
+      "kind": "vendor",
+      "object": "ben_2",
+      "external_id": "503594057381971864",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:00.606Z",
+      "event": "erp.pushed",
+      "kind": "vendor",
+      "object": "ben_3",
+      "external_id": "503594057744779194",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:00.856Z",
+      "event": "erp.pushed",
+      "kind": "vendor",
+      "object": "ben_4",
+      "external_id": "503594058012166094",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:02.630Z",
+      "event": "erp.pushed",
+      "kind": "invoice",
+      "object": "MM-2026-114 · Meelhandel Molenaar B.V. (test)",
+      "external_id": "503594058847880244",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:02.631Z",
+      "event": "erp.push_failed",
+      "kind": "invoice",
+      "object": "OD-77 · Onderdelen Direct B.V. (test)",
+      "external_id": null,
+      "credit_note": null,
+      "replaced": null,
+      "detail": "the approved ERP call budget of 11 is spent; POST moneybird.com/api/v2/503585935808530148/documents/purchase_invoices.json was not sent (ask the owner before any further call)"
+    },
+    {
+      "at": "2026-11-12T11:59:27.914Z",
+      "event": "erp.pushed",
+      "kind": "invoice",
+      "object": "OD-77 · Onderdelen Direct B.V. (test)",
+      "external_id": "503594084810622802",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:29.069Z",
+      "event": "erp.pushed",
+      "kind": "invoice",
+      "object": "VE-889 · Verpakking Express B.V. (test)",
+      "external_id": "503594086720079846",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:30.104Z",
+      "event": "erp.pushed",
+      "kind": "invoice",
+      "object": "ZV-5001 · Zeeland Verpakkingen B.V. (test)",
+      "external_id": "503594087902872689",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:30.447Z",
+      "event": "erp.pushed",
+      "kind": "payment",
+      "object": "c8e03780-6ddf-4e96-966c-240a28ebb515",
+      "external_id": "503594088956691668",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:30.759Z",
+      "event": "erp.pushed",
+      "kind": "journal",
+      "object": "card:tx_3",
+      "external_id": "503594089333130481",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T11:59:54.185Z",
+      "event": "erp.needs_correction",
+      "kind": "invoice",
+      "object": "OD-77 · Onderdelen Direct B.V. (test)",
+      "external_id": "503594084810622802",
+      "credit_note": null,
+      "replaced": null,
+      "detail": null
+    },
+    {
+      "at": "2026-11-12T12:00:07.511Z",
+      "event": "erp.corrected",
+      "kind": "invoice",
+      "object": "OD-77 · Onderdelen Direct B.V. (test)",
+      "external_id": "503594127086061457",
+      "credit_note": "503594126226229000",
+      "replaced": "503594084810622802",
+      "detail": null
+    }
+  ],
+  "objects": [
+    {
+      "kind": "invoice",
+      "object": "MM-2026-114 · Meelhandel Molenaar B.V. (test)",
+      "status": "synced",
+      "external_id": "503594058847880244"
+    },
+    {
+      "kind": "invoice",
+      "object": "OD-77 · Onderdelen Direct B.V. (test)",
+      "status": "synced",
+      "external_id": "503594127086061457"
+    },
+    {
+      "kind": "invoice",
+      "object": "VE-889 · Verpakking Express B.V. (test)",
+      "status": "synced",
+      "external_id": "503594086720079846"
+    },
+    {
+      "kind": "invoice",
+      "object": "ZV-5001 · Zeeland Verpakkingen B.V. (test)",
+      "status": "synced",
+      "external_id": "503594087902872689"
+    },
+    {
+      "kind": "journal",
+      "object": "card:tx_3",
+      "status": "synced",
+      "external_id": "503594089333130481"
+    },
+    {
+      "kind": "payment",
+      "object": "c8e03780-6ddf-4e96-966c-240a28ebb515",
+      "status": "synced",
+      "external_id": "503594088956691668"
+    },
+    {
+      "kind": "vendor",
+      "object": "ben_1",
+      "status": "synced",
+      "external_id": "503594057045378916"
+    },
+    {
+      "kind": "vendor",
+      "object": "ben_2",
+      "status": "synced",
+      "external_id": "503594057381971864"
+    },
+    {
+      "kind": "vendor",
+      "object": "ben_3",
+      "status": "synced",
+      "external_id": "503594057744779194"
+    },
+    {
+      "kind": "vendor",
+      "object": "ben_4",
+      "status": "synced",
+      "external_id": "503594058012166094"
+    }
+  ],
+  "reconciliation": {
+    "connector": "moneybird",
+    "read_at": "2026-11-12T12:00:22.259Z",
+    "documents": 6,
+    "differences": 0,
+    "rows": [
+      {
+        "role": "invoice",
+        "invoice": "MM-2026-114 · Meelhandel Molenaar B.V. (test)",
+        "number": "MM-2026-114",
+        "external_id": "503594058847880244",
+        "purser": {
+          "net": "3.00",
+          "vat": "0.27",
+          "gross": "3.27",
+          "paid": "0.00",
+          "state": "open"
+        },
+        "erp": {
+          "net": "3.00",
+          "vat": "0.27",
+          "gross": "3.27",
+          "paid": "0.00",
+          "state": "open",
+          "reference": "MM-2026-114",
+          "attachments": 1,
+          "payments": 0,
+          "lines": [
+            {
+              "ledger_account_id": "503585935947990807",
+              "tax_rate_id": "503585937204184080",
+              "price": "3.00"
+            }
+          ]
+        },
+        "differences": []
+      },
+      {
+        "role": "invoice",
+        "invoice": "OD-77 · Onderdelen Direct B.V. (test)",
+        "number": "OD-77",
+        "external_id": "503594127086061457",
+        "purser": {
+          "net": "5.00",
+          "vat": "1.05",
+          "gross": "6.05",
+          "paid": "0.00",
+          "state": "open"
+        },
+        "erp": {
+          "net": "5.00",
+          "vat": "1.05",
+          "gross": "6.05",
+          "paid": "0.00",
+          "state": "open",
+          "reference": "OD-77",
+          "attachments": 1,
+          "payments": 0,
+          "lines": [
+            {
+              "ledger_account_id": "503585935952185120",
+              "tax_rate_id": "503585937199989775",
+              "price": "5.00"
+            }
+          ]
+        },
+        "differences": []
+      },
+      {
+        "role": "replaced",
+        "invoice": "OD-77 · Onderdelen Direct B.V. (test)",
+        "number": "OD-77",
+        "external_id": "503594084810622802",
+        "purser": {
+          "net": "5.00",
+          "vat": "1.05",
+          "gross": "6.05",
+          "paid": "-",
+          "state": "-"
+        },
+        "erp": {
+          "net": "5.00",
+          "vat": "1.05",
+          "gross": "6.05",
+          "paid": "0.00",
+          "state": "open",
+          "reference": "OD-77",
+          "attachments": 1,
+          "payments": 0,
+          "lines": [
+            {
+              "ledger_account_id": "503585935947990807",
+              "tax_rate_id": "503585937199989775",
+              "price": "5.00"
+            }
+          ]
+        },
+        "differences": []
+      },
+      {
+        "role": "credit_note",
+        "invoice": "OD-77 · Onderdelen Direct B.V. (test)",
+        "number": "OD-77",
+        "external_id": "503594126226229000",
+        "purser": {
+          "net": "-5.00",
+          "vat": "-1.05",
+          "gross": "-6.05",
+          "paid": "-",
+          "state": "-"
+        },
+        "erp": {
+          "net": "-5.00",
+          "vat": "-1.05",
+          "gross": "-6.05",
+          "paid": "0.00",
+          "state": "open",
+          "reference": "OD-77 (credit note)",
+          "attachments": 0,
+          "payments": 0,
+          "lines": [
+            {
+              "ledger_account_id": "503585935947990807",
+              "tax_rate_id": "503585937199989775",
+              "price": "-5.00"
+            }
+          ]
+        },
+        "differences": []
+      },
+      {
+        "role": "invoice",
+        "invoice": "VE-889 · Verpakking Express B.V. (test)",
+        "number": "VE-889",
+        "external_id": "503594086720079846",
+        "purser": {
+          "net": "2.00",
+          "vat": "0.42",
+          "gross": "2.42",
+          "paid": "2.42",
+          "state": "paid"
+        },
+        "erp": {
+          "net": "2.00",
+          "vat": "0.42",
+          "gross": "2.42",
+          "paid": "2.42",
+          "state": "paid",
+          "reference": "VE-889",
+          "attachments": 1,
+          "payments": 1,
+          "lines": [
+            {
+              "ledger_account_id": "503585935947990807",
+              "tax_rate_id": "503585937199989775",
+              "price": "2.00"
+            }
+          ]
+        },
+        "differences": []
+      },
+      {
+        "role": "invoice",
+        "invoice": "ZV-5001 · Zeeland Verpakkingen B.V. (test)",
+        "number": "ZV-5001",
+        "external_id": "503594087902872689",
+        "purser": {
+          "net": "4.00",
+          "vat": "0.84",
+          "gross": "4.84",
+          "paid": "0.00",
+          "state": "open"
+        },
+        "erp": {
+          "net": "4.00",
+          "vat": "0.84",
+          "gross": "4.84",
+          "paid": "0.00",
+          "state": "open",
+          "reference": "ZV-5001",
+          "attachments": 1,
+          "payments": 0,
+          "lines": [
+            {
+              "ledger_account_id": "503585935947990807",
+              "tax_rate_id": "503585937199989775",
+              "price": "4.00"
+            }
+          ]
+        },
+        "differences": []
+      }
+    ],
+    "not_compared": []
+  },
+  "idempotency": {
+    "step": "sync-again",
+    "requests": 0
+  }
+}

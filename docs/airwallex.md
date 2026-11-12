@@ -1,6 +1,6 @@
 # Airwallex in Purser
 
-This page lists every Airwallex API that Purser calls. For each one it gives the method and path (as in `src/airwallex/*.ts`), what Purser uses it for, why that is a necessary financial action, and the proof.
+This page lists every Airwallex API that the Kit 11 build calls. The calls of what was built after the kit are on their own pages: connected accounts and payouts on a company's behalf in [airwallex-platform.md](airwallex-platform.md), Airwallex's approval workflow and money in by card in [airwallex-approvals.md](airwallex-approvals.md), each with its own sandbox runs. For each call here it gives the method and path (as in `src/airwallex/*.ts`), what Purser uses it for, why that is a necessary financial action, and the proof.
 
 All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1`). The client refuses any other base URL (`src/airwallex/client.ts`).
 
@@ -136,7 +136,7 @@ The Treasury agent pays a euro invoice from a USD balance. It converts only the 
 The rules in code (`src/policy/treasury.ts`, `src/agents/euroBill.ts`):
 
 - **Only the shortfall.** The need is the invoice plus a SWIFT fee ceiling of EUR 20.00. Free EUR is the balance minus the EUR floor and what is already committed. Only the difference is bought. Rehearsal 3: EUR 1,870.00 needed, EUR 1,500.00 free, EUR 370.00 converted. †
-- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged between EUR 13.40 and EUR 13.47 in our runs. The ceiling absorbs that. `npm run verify` fails a fee above the ceiling.
+- **Fee-aware.** The kit says the SWIFT fee is a flat EUR 12.85. Airwallex charged between EUR 13.36 and EUR 13.50 in our runs. The ceiling absorbs that. `npm run verify` fails a fee above the ceiling.
 - **Above the reserve floor.** A quote is usable only if selling its USD keeps USD at or above its floor. If not, the agent escalates with options, asks for no approval and moves nothing (`docs/runs/2026-10-29-f4.md` †). If EUR is already below its floor plus commitments, it makes no plan and gets no quote.
 - **Quote expiry.** A proposal expires 30 seconds before its quote does. A late approval approves nothing (`docs/runs/2026-10-29-f1.md` †). A new quote means a new hash and a new approval.
 - **Single use.** A quote is booked once, under one `request_id`. Airwallex would accept the same quote under a new `request_id`, so the single use is enforced in our code (`src/executors/invoicePayment.ts`).
@@ -264,7 +264,7 @@ The permissions below come from the endpoints on this page. Max creates the key 
 What the key does not need:
 
 - No permission for sensitive card details. Purser never asks for a card number or CVV.
-- No permission for users, roles, API keys, settings, billing or connected accounts.
+- No permission for users, roles, API keys, settings or billing. Connected accounts are needed only for the platform build behind `AIRWALLEX_PLATFORM=on` (off by default; [airwallex-platform.md](airwallex-platform.md)).
 - No read of other products or entities.
 
 Proof that Airwallex enforces key scope: before the Webhooks permission was added, `GET /webhooks` and `POST /webhooks/create` answered `401 Insufficient permissions` (`docs/runs/2026-10-29-cards.md` †).
