@@ -57,6 +57,7 @@
     "ledger": "tsx src/cli/ledger.ts",
     "erp": "tsx src/cli/erp.ts",
     "t0": "tsx src/cli/t0.ts",
+    "vault:tree": "tsx src/cli/vaultTree.ts",
     "dispute": "tsx src/cli/dispute.ts",
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
