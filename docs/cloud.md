@@ -17,7 +17,8 @@ before real money: [go-live.md](go-live.md).
                      (agents, inbox, ledger; the only part that touches Airwallex and Metal)
 ```
 
-- The cloud never moves money and holds no payment keys. The runner keeps doing that, with the CFO's Face ID.
+- Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
+  CFO's Face ID.
 - Every row carries the company (`tenant_id`); routes only reach data through a tenant-scoped layer
   (`cloud/src/tenant.ts`), and a test tries every route against another company's objects.
 - Pushes are idempotent. Ledger entries and audit rows are append-only and their hash chains are recomputed on
@@ -230,6 +231,45 @@ them in a worker (eval off, no XFA), draws up to six pages and stops after 15 se
 network but pdf.js, and cannot reach the console page; the console page parses no supplier PDF at all (red team round
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
+
+## The hands-on deployment
+
+`purser-try` (`cloud/wrangler.try.jsonc`, `HANDS_ON=on`) lets a visitor start a test company of their own on Purser's
+real engine, from `POST /v1/try/start` (code in `cloud/src/try/`). Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank.
+
+- **One object per company.** Each test company is a tenant of its own (`t_try_<16 hex>`) with one Durable Object running
+  the product's engine on its own SQLite ledger: the same inbox, checks, approval and executor a runner has. The seed
+  puts an opening balance of test money and two suppliers on file (their IBANs are published test IBANs); nothing else
+  in a company is made up.
+- **Test money on a simulated bank.** Every payment is made on a bank simulated inside the company's object. No payment
+  reaches a real bank.
+- **The invoice.** Five sample invoices, each chosen by what the engine answers when it reads it (`npm run cloud:samples`,
+  held by `test/engine-try-world.test.ts`), or "write your own": the visitor's fields, checked, rendered to a PDF inside
+  the object and filed through the inbox. At most 8 documents a company, PDF files only.
+- **The held approval and the one pay route.** A test company's approval (its passkey over the SHA-256 of the exact
+  terms) is stored and the payment held. `POST /v1/engine/proposals/{id}/pay` then tries the terms the visitor sends
+  with the signature their browser made, through two layers that always both answer: the product's verifier on that
+  signature over the sent terms, and the executor's own gate asked with the sent terms inside a transaction that is
+  always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank.
+  A changed cent is refused by both and moves nothing (`test/engine-try-pay.test.ts`, `test/try-redteam.test.ts`).
+- **Switches, pools and caps** (`POST /v1/try/admin`, table `try_switches`). Every switch fails closed: a missing row is
+  off (`starts`, `claude`, `agents`, `rail_awx`, `rail_metal`, `own_upload`) or 0 (every Claude cap). Three pools:
+  public, event and jury; event and jury tokens are made by the admin and kept as hashes only. Public starts are
+  limited per address (an IPv6 address by its /64, kept only as a SHA-256 with a salt that changes each UTC day and is
+  deleted after 48 hours) and per day; event and jury starts count against their own pool's day. Claude's spend is
+  capped per action, company, address, pool and day, and in all (`cloud/src/engine/spend.ts`). A test company may call
+  only the routes listed in `cloud/src/try/gate.ts`; its expired session counts against itself, never against the
+  address, so one phone cannot turn away a room on the same Wi-Fi.
+- **Measured limits:** in [the run record](runs/2026-11-13-engine-in-cloud.md); its numbers are not copied here.
+- **The sweep.** Hourly, every company past its 24 hours is wiped: its object, its rows and its documents.
+- **The export.** `GET /v1/engine/export` gives the company in the product's sync format (`purser.cloud-sync/v1`): the
+  invoices with their documents, payments, transactions, the ledger and the audit log; no archive files.
+- **What is not there:** real money; e-mail into a test company; the console's engine actions for a test company; a
+  visitor's own file upload (switch `own_upload`, off); a live Airwallex payment (the sandbox leg is built only if its
+  gate passes, and is then switched on separately).
+
+What a public launch would still need: a bot check, WAF rate rules at Cloudflare, a budget alert on the Claude key, the
+sweep watched, and a limit tested against a hostile PDF on the deployment itself.
 
 ## Tested on D1 itself
 

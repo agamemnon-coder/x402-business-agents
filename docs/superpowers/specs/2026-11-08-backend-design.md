@@ -14,8 +14,7 @@ the bookkeeping core (#108). Nothing is deployed before 15 November.
 - **Where it runs:** a Cloudflare Worker (`cloud/`), next to the relay that already serves the site. Relational data in
   **D1** (SQLite, created with location hint `weur`); documents (invoice PDFs, inbound e-mails) in **R2** with the
   `eu` jurisdiction. EU data stays in the EU.
-- **Who writes:** the company's Purser runner (the agents, the inbox, the ledger) pushes what it records; the cloud never
-  moves money and holds no payment keys. Inbound e-mail is the one thing the cloud receives itself, and it only stores
+- **Who writes:** the company's Purser runner (the agents, the inbox, the ledger) pushes what it records. Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. Inbound e-mail is the one thing the cloud receives itself, and it only stores
   and queues it for the runner.
 - **Who reads:** people (passkey sign-in), and systems (API keys): the company's apps, its accountant, its ERP
   connectors.
