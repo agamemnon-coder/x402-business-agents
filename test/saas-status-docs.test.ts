@@ -90,6 +90,13 @@ describe("/docs: docs and API", () => {
     expect([...fold.matchAll(/<li><code>([a-z_]+)<\/code>: ([^<]+)<\/li>/g)].map((m) => [m[1], decode(m[2]!)])).toEqual(tools.map((t) => [t.name, t.description]));
     // What the tools cannot do, as the server's own file says it.
     expect(read("src/platform/mcpServer.ts")).toContain("no tool approves, sets a limit or touches another agent's card");
+    // 12 Nov (review): the guide the card links, and docs/claude.md, name the same tools and count them right.
+    const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+    const guide = read("docs/agent-api.md");
+    expect(guide).toContain(`The outside agent gets ${words[tools.length]} tools:`);
+    const table = guide.slice(guide.indexOf(`gets ${words[tools.length]} tools:`)).split("\n\n")[1] ?? "";
+    expect([...table.matchAll(/^\| `([a-z_]+)` \|/gm)].map((m) => m[1]).sort()).toEqual(tools.map((t) => t.name).sort());
+    expect(read("docs/claude.md").replace(/\s+/g, " ")).toContain(`gets ${words[tools.length]} tools and no keys`);
     expect(plain(api)).toContain("No tool approves, sets a limit or touches another agent's card.");
     // A sixth tool in the code would be a sixth line here.
     expect(tools.map((t) => t.name)).toEqual(["request_company_card", "company_card", "pay_with_card", "request_limit_raise", "ask_for_task_card"]);

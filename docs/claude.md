@@ -79,7 +79,7 @@ Prices: `src/claude/pricing.ts` (source and date in the file); cost per call: `t
 
 Outside agents use Purser through an MCP server (`npm run -s mcp`, [agent-api.md](agent-api.md)): any agent that
 speaks MCP, Claude Code included, can ask for a company card, pay within its limits and ask the CFO for more. It
-gets four tools and no keys; the CFO policy and Face ID apply to it exactly as to Purser's own agents.
+gets five tools and no keys; the CFO policy and Face ID apply to it exactly as to Purser's own agents.
 
 ## Built with Claude Code
 

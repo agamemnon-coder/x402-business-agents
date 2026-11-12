@@ -15,7 +15,7 @@ example, for Claude Code (`.mcp.json`):
 
 It also needs the Airwallex sandbox keys in its environment, like the runner.
 
-The outside agent gets four tools:
+The outside agent gets five tools:
 
 | Tool | What it does |
 |---|---|
@@ -23,6 +23,7 @@ The outside agent gets four tools:
 | `pay_with_card` | Charges its card. Airwallex approves or declines the charge against the card's limits. |
 | `request_limit_raise` | Asks for a higher limit. This is a policy change, approved with Face ID. |
 | `company_card` | Reads its card, limits, spend this month and recent charges. |
+| `ask_for_task_card` | Asks, in plain words, for a single-use card for one flight, hotel or train, with the most it may cost. It becomes a proposal the CFO approves with Face ID; the agent never gets a card at once. |
 
 The agent cannot approve, set a limit, or reach another agent's card. Once its card is issued:
 
