@@ -22,7 +22,7 @@ matrix (rows 8, 9, 15, 19 and 23, and the accepted risks).
 
 ```text
 outside documents (invoices, emails, notices)  ─┐
-supplier / customer x402 servers               ─┤──>  agents (code)  ──> Claude (reads, advises; no keys, no tools)
+supplier / customer x402 servers               ─┤──>  agents (code)  ──> Claude (reads, advises; no keys; fixed tools, each call checked by code)
                                                 │         │
 phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verifies, decides) ──> executor ──> Metal / Airwallex
                                                 │         │
@@ -30,7 +30,9 @@ phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verif
 ```
 
 Everything left of the runner is untrusted input. That includes every document, every model answer, and the
-relay with whatever it queues. Only the runner holds keys and writes the ledger.
+relay with whatever it queues. Only the runner holds keys and writes the ledger. Claude asks for actions only
+through a fixed set of tools per agent; code checks every call, and the zero-trust report lists the tools each flow
+offered a hostile model.
 
 ## Zero trust, layer by layer
 
