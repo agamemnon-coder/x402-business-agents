@@ -236,7 +236,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         await page.goto(`${base}${path}`, { waitUntil: "load" });
         await checkTaps(page, { name: `${path} ${tag}, header and footer`, scopes: CHROME, fail });
         const head = await page.locator("header").first().evaluate((e) => e.getBoundingClientRect().height);
-        if (head > 65.5) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
+        // /try's header wraps under about 450 px by design (#151, src/ui/nav.ts): its tabs take a line of their own there.
+        if (head > 65.5 && !(path === "/try" && w < 450)) fail(`${path} ${tag}: the header is ${head} px high, taller than before (65)`);
         if (!WATCH_IN_MENU && await page.locator('header nav a[href*="watch"]').count()) fail(`${path} ${tag}: Watch is in the menu`);
       }
     }
@@ -809,7 +810,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (cards !== 4 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and four cards with every fold closed`);
         const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
         if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
-        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#how-to-run"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
+        if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#verify-it-yourself-in-3-commands"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
       } else {
         if (cards !== 2 || (await page.locator("#runs ul.pl > li > a.pf").count()) !== 5 || (await page.locator('#runs a.pf[href="runs"]').count()) !== 1) fail(`/status ${tag}: not two cards with the five latest live runs and the link to every run`);
         if (liveAt < 0) {

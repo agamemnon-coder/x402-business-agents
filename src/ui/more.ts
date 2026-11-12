@@ -81,4 +81,6 @@ export const MORE_CSS = `.pmore { position: relative; flex: none; margin: 0; }
 .pmenu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 60; display: grid; gap: 2px; min-width: 190px; max-width: calc(100vw - 24px); padding: 8px; border-radius: 16px; background: var(--surface, var(--panel, #fff)); border: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 12px 32px -12px rgba(16,24,40,.25); }
 .pmenu a { display: block !important; text-decoration: none !important; white-space: nowrap; border-radius: 10px !important; padding: 9px 12px !important; background: none; color: var(--text, #0b1220) !important; font: 600 15px/1.3 Inter, system-ui, sans-serif !important; }
 .pmenu a:hover, .pmenu a[aria-current="page"] { background: var(--sunken, var(--surface2, rgba(127,127,127,.12))); }
-.pmenu hr { width: auto; height: 0; margin: 4px 6px; border: 0; border-top: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); }`;
+.pmenu hr { width: auto; height: 0; margin: 4px 6px; border: 0; border-top: 1px solid var(--border, var(--line, rgba(127,127,127,.25))); }
+/* On a phone each link in the open menu is a 44 px target, as every other link in the header and footer is. */
+@media (max-width: 430px) { .pmenu a { display: flex !important; align-items: center; min-height: 44px; } }`;
