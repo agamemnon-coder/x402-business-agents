@@ -47,7 +47,7 @@ describe("/ for a guest", () => {
     // Home as one story (12 Nov): the heading's two sentences on two lines, what Purser is, then the one button.
     expect(homeHeadingHtml()).toBe('<h1 class="h-hero"><span>AI agents spend.</span> <span>You sign off.</span></h1>');
     expect(textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim()).toBe(HERO);
-    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="https://purser-try.max-31b.workers.dev/try">`);
+    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(WHAT_IT_IS)}</p>\n    <a class="btn primary big start" href="/try">`);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.
     expect(pages.home).toContain(`<meta name="description" content="${HERO} ${CORE_SENTENCE}">`);
@@ -60,7 +60,7 @@ describe("/ for a guest", () => {
       const html = await r.text();
       expect(html).toBe(pages.home);
       expect(html).toContain(homeHeadingHtml());
-      expect(html).toContain('href="https://purser-try.max-31b.workers.dev/try"');
+      expect(html).toContain('href="/try"');
       expect(html).not.toMatch(/The runner is offline|How the CFO signs in|recorded-data/);
     }
   });

@@ -103,8 +103,8 @@ describe("/replay answers, as a replay under Proof (it was /watch until the film
         expect({ old, status: moved?.status, to: moved?.headers.get("location") }).toEqual({ old, status: 302, to: "/replay" });
       }
     }
-    expect(OFF.replay).toContain('href="https://purser-try.max-31b.workers.dev/try" data-next="try"');
-    expect(html).toContain('href="https://purser-try.max-31b.workers.dev/try" data-next="try"');
+    expect(OFF.replay).toContain('href="/try" data-next="try"');
+    expect(html).toContain('href="/try" data-next="try"');
   });
 
   it("says in its heading that it is a replay of the main run of 3 November, the day read from the record", () => {
@@ -132,7 +132,7 @@ describe("/replay answers, as a replay under Proof (it was /watch until the film
     expect(words).not.toMatch(/Watch the agents/);
     // The numbered "step 2" of the old way through (watch, then try) is gone: the way on is a plain card.
     expect(html).not.toContain('<span class="fn">');
-    expect(html).toContain('<a class="nextstep card" href="https://purser-try.max-31b.workers.dev/try" data-next="try"><span class="ft"><b>Now try it yourself</b>');
+    expect(html).toContain('<a class="nextstep card" href="/try" data-next="try"><span class="ft"><b>Now try it yourself</b>');
   });
 
   // The run's own tool names, from the record: every tool any decision used.

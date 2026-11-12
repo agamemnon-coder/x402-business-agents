@@ -33,6 +33,7 @@ import { docChunks } from "./docChunks.js";
 import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
+import { rpAllowed } from "../hostOrigin.js";
 
 /** What the host needs of the object: its storage. */
 export interface HostCtx { storage: DoStorage & { deleteAll(): Promise<void> } }
@@ -75,6 +76,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   const keepBank = () => state.set("bank", bankToText(bank));
   const blobs = env.DOCS ? r2Blobs(env.DOCS) : sqlBlobs(sql);
   const target = cloudTarget(new TenantDb(sql, tenantId), blobs, () => new Date());
+  const own = { rpId: env.RP_ID, origin: env.ORIGIN };
   const host = new EngineHost({
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: keepBank,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -98,7 +100,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     invoice: async (id) => host.invoice(id),
     propose: async (invoiceId) => host.propose(invoiceId),
     proposal: async (id) => host.proposal(id),
-    passkeyStart: async () => host.passkeyStart(),
+    // The Worker hands the request's relying party (../hostOrigin.ts); one it may not use is not taken: the object's own is.
+    passkeyStart: async (rp) => host.passkeyStart(rp && rpAllowed(rp, own) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
     passkeyFinish: async (a) => host.passkeyFinish(a),
     approve: async (a) => kept(host.approve(a)),
     retry: async (proposalId) => kept(host.retry(proposalId)),
