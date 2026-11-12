@@ -89,7 +89,10 @@ describe("/proof.json", () => {
     // without the repository file path in the verify command: e-mails, keys, tokens, credential or assertion fields,
     // long base64 runs and unknown hashes.
     const noLinks = text.replace(/https:\/\/[^"\s]+/g, "").replace(/\bdocs\/[\w./-]+\.json\b/g, "");
-    expect(privateFindings(noLinks, { known64: new Set(), known40: new Set() })).toEqual([]);
+    // The runs list (docs/runs/README.md, liveRuns) names the hash of the terms signed in a run: a public hash its run
+    // log prints, not a secret; every other 64-hex value is still unknown here.
+    const signedTerms = new Set(liveRuns().flatMap((r) => r.ids.filter((i) => /^Signed terms \(SHA-256\)$/.test(i.label)).map((i) => i.value)));
+    expect(privateFindings(noLinks, { known64: signedTerms, known40: new Set() })).toEqual([]);
   });
 });
 

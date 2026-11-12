@@ -1,6 +1,6 @@
 # Airwallex in Purser
 
-This page lists every Airwallex API that Purser calls: the method and path as the code (`src/airwallex/`) and the run logs show them, what Purser uses it for, why that is a necessary financial action, and the run that proves it. What was built after the kit also has its own pages: [airwallex-platform.md](airwallex-platform.md) and [airwallex-approvals.md](airwallex-approvals.md).
+This page lists every Airwallex API that Purser calls: the method and path as the code (`src/airwallex/`) and the run logs show them, what Purser uses it for, why that is a necessary financial action, and the run that proves it. After the kit, also: [airwallex-platform.md](airwallex-platform.md), [airwallex-approvals.md](airwallex-approvals.md).
 
 All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1`), with test money. The client refuses any other base URL (`src/airwallex/client.ts`).
 
