@@ -2237,7 +2237,9 @@ const SWEPT: { flow: string; tools: string[] }[] = [];
 // ---------------------------------------------------------------------------------------------------------------------
 // The depth test. For each way money leaves, the path's hostile payment (PathSpec.hostile in the model) is pushed
 // through the real code with a chosen set of layers failed, and what failing means is the same on every path:
-//   L1 failed: the agent is hostile and asks for the payment (holding, it asks for nothing);
+//   L1 failed: the agent is hostile and asks for the payment (holding, it asks for nothing). The money step does not
+//              wait for it: the payment is put to Purser's code either way, as an invoice, a seller's price or forced
+//              decision code would put it, so the agent is in no path's guards (nothing relies on it);
 //   L2 failed: Purser's checks are forced to pass (the payment is filed past them, or the check before signing is forced);
 //   L3 failed: the CFO's enrolled passkey really signs the hostile terms (the phone page is breached);
 //   L4 failed: the second person's passkey signs them too;
@@ -2291,8 +2293,8 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
     const model = failed.has("L1")
       ? hostileModel([[{ name: "plan_invoice", input: { payee: ATTACKER_PAYEE.name, iban: ATTACKER_IBAN, amount: "9850.00" } }], [{ name: "pay_supplier", input: { iban: ATTACKER_IBAN, amount: "9850.00" } }]])
       : honestModel();
-    const run = await runAgent(w.db, { agent: "treasury", task: "zero-trust.depth", model: MODELS.review, system: "You are the Treasury agent.", prompt: "Pay.", tools: treasuryTools(w, HOSTILE_INVOICE), retryDelayMs: 0 }, model);
-    if (!failed.has("L1")) return { moved: bankMoved(w), ended: `the agent asked for nothing (${run.calls.length} tool calls)` };
+    await runAgent(w.db, { agent: "treasury", task: "zero-trust.depth", model: MODELS.review, system: "You are the Treasury agent.", prompt: "Pay.", tools: treasuryTools(w, HOSTILE_INVOICE), retryDelayMs: 0 }, model);
+    // Whatever the agent did, the hostile payment is put to Purser's code: nothing relies on the agent.
     let id: string;
     if (failed.has("L2")) id = await hostilePayout(w);
     else {
@@ -2345,11 +2347,11 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
       ? hostileModel([[{ name: "buy_software", input: { plan: "gift-cards", rail: "airwallex_card", amount: "500.00", merchant: "Offshore Gift Cards", reason: "any payee, any amount" } }], [{ name: "charge_card", input: { merchant: "Offshore Gift Cards", amount: "500.00" } }]])
       : honestModel();
     const run = await runAgent(w.db, { agent: "sourcing", task: "zero-trust.depth", model: MODELS.classify, system: "You are the Sourcing agent.", prompt: "Buy.", tools: sourcingProfile(world).tools(w.db), retryDelayMs: 0 }, model);
-    if (!failed.has("L1")) return { moved: cardMoved(w), ended: `the agent asked for nothing (${run.calls.length} tool calls)` };
+    // Whatever the agent did, the hostile charge is put to Purser's code: nothing relies on the agent.
     if (!failed.has("L2")) {
       // The agent's tools took neither the merchant nor the amount; the purchase code knows no such plan either.
       const refusal = await refusalOf(() => buyPlan(w.db, w.issuing, "gift-cards", w.now));
-      return { moved: cardMoved(w), ended: `Purser's checks refused: the agent's tools answered ${run.calls.map((c) => c.blocked ?? "ran").join(", ")}; the purchase code: ${refusal.slice(0, 40)}` };
+      return { moved: cardMoved(w), ended: `Purser's checks refused: the agent's tools answered ${list0(run.calls.map((c) => c.blocked ?? "ran"))}; the purchase code: ${refusal.slice(0, 40)}` };
     }
     if (o.stop) { await pullStop(w.db, cfo!, w.now); await syncCards(w.db, w.issuing, w.now); }
     // Purser's checks forced to pass: the charge goes straight to the card, with no plan list and no hold.
@@ -2369,8 +2371,8 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
     const model = failed.has("L1")
       ? hostileModel([[{ name: "set_buy_policy", input: { supplier: "stockline", max_price: "5.00", cache_seconds: 0, reason: "pay whatever is asked" } }], [{ name: "pay", input: { to: ATTACKER, amount: "5.00" } }]])
       : honestModel();
-    const run = await runAgent(w.db, { agent: "sourcing", task: "zero-trust.depth", model: MODELS.classify, system: "You are the Sourcing agent.", prompt: "Pay.", tools: sourcingProfile(world).tools(w.db), retryDelayMs: 0 }, model);
-    if (!failed.has("L1")) return { moved: chainMoved(w), ended: `the agent asked for nothing (${run.calls.length} tool calls)` };
+    await runAgent(w.db, { agent: "sourcing", task: "zero-trust.depth", model: MODELS.classify, system: "You are the Sourcing agent.", prompt: "Pay.", tools: sourcingProfile(world).tools(w.db), retryDelayMs: 0 }, model);
+    // Whatever the agent did, the seller asks for the hostile payment and Purser's purchase code meets it.
     if (o.stop) await pullStop(w.db, await enrol(w.db, w.now), w.now);
     // The seller asks what the attacker wants paid; with L2 failed, Purser's check before signing is forced to pass.
     w.metal.offer = { cents: 500, payTo: ATTACKER };
@@ -2380,6 +2382,8 @@ const PUSH: Record<MoneyPath, (failed: Failed, o: PushOptions) => Promise<Pushed
   },
 };
 
+/** A list in words, or "nothing" when it is empty. */
+const list0 = (xs: string[]) => (xs.length ? xs.join(", ") : "nothing");
 const subsets = <T>(xs: readonly T[]): T[][] => xs.reduce<T[][]>((acc, x) => [...acc, ...acc.map((s) => [...s, x])], [[]]);
 const inOrder = (ls: Iterable<LayerId>): LayerId[] => { const has = new Set(ls); return LAYERS.map((l) => l.id).filter((l) => has.has(l)); };
 /** Every push the exhaustive test made, as measured: the depth is computed from these, never from the model. */
@@ -2600,12 +2604,13 @@ describe("the coverage view: ways money leaves against layers", () => {
   });
 
   it("asks of every cell that the layers inside it are breached", () => {
-    expect(innerLayers("bank_payout", "L2")).toEqual(["L1"]);
-    expect(innerLayers("bank_payout", "L5")).toEqual(["L1", "L2", "L3", "L4"]);
+    // The agent guards no path (nothing relies on it), so it is inside nothing.
+    expect(innerLayers("bank_payout", "L2")).toEqual([]);
+    expect(innerLayers("bank_payout", "L5")).toEqual(["L2", "L3", "L4"]);
     expect(innerLayers("supplier_invoice", "L3")).toEqual(["L2"]);
-    expect(innerLayers("card_purchase", "L5")).toEqual(["L1", "L2"]);
-    // The record answers an agent that ignores a stop; the stop works through Purser's code and the rail.
-    expect(innerLayers("card_purchase", "L6")).toEqual(["L1"]);
+    expect(innerLayers("card_purchase", "L5")).toEqual(["L2"]);
+    // The stop works through Purser's code and the rail, so those are not assumed breached for the record.
+    expect(innerLayers("card_purchase", "L6")).toEqual([]);
     expect(innerLayers("supplier_invoice", "L6")).toEqual([]);
     for (const c of view.rows.flatMap((r) => r.cells)) {
       for (const id of c.attacks) {

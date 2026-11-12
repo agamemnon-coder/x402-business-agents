@@ -41,8 +41,8 @@ export function pathsOf(a: Pick<Attack, "target" | "alsoTries">): MoneyPath[] {
 
 /**
  * The layers inside `layer` on a path: the path's guards (optional ones included) that come before it. For the
- * record (L6) that is the agent alone, where the agent guards the path: a pause or a stop answers an agent that
- * ignores it, and acts through Purser's code and the rail, so those are not assumed breached there.
+ * record (L6) only an untrusted guard would count, and the agent guards no path: a pause or a stop acts through
+ * Purser's code and the rail, so those are not assumed breached there.
  */
 export function innerLayers(path: MoneyPath, layer: LayerId): LayerId[] {
   const order = LAYERS.map((l) => l.id);
