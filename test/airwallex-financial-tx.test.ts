@@ -13,24 +13,28 @@ describe("Airwallex's financial transactions against the ledger", () => {
   const payout = { kind: "payout" as const, sourceId: "tr_1", label: "SLL-2026-11", currency: "EUR", amountCents: 24_000, feeCents: 1_350 };
   const conversion = { kind: "conversion" as const, sourceId: "cv_1", label: "conv", buyCurrency: "EUR", buyCents: 62_350, sellCurrency: "USD", sellCents: 70_445 };
 
-  it("agrees to the cent as the sandbox books a payout: a PAYOUT row and a FEE row under the transfer id", () => {
+  it("agrees to the cent as the sandbox books a payout: a PAYOUT debit and a FEE debit under the transfer id", () => {
     const rows = [ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_000 }), ft({ sourceId: "tr_1", currency: "EUR", amountCents: -1_350, sourceType: "FEE", transactionType: "FEE" })];
-    expect(reconcileFinancialTransactions([payout], rows).movements[0]).toMatchObject({ agrees: true, how: "a PAYOUT row for the amount and a FEE row for the fee, both under the transfer id" });
+    expect(reconcileFinancialTransactions([payout], rows).movements[0]).toMatchObject({ agrees: true, how: "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id" });
     rows[1]!.amountCents = -1_351;
     expect(reconcileFinancialTransactions([payout], rows).movements[0]).toMatchObject({ agrees: false, how: "amounts differ" });
   });
 
-  it("also agrees with the fee in its own field, or inside the gross amount", () => {
-    expect(reconcileFinancialTransactions([payout], [ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_000, feeCents: -1_350 })]).movements[0]).toMatchObject({ agrees: true, how: "amount and fee in their own fields of one row" });
-    expect(reconcileFinancialTransactions([payout], [ft({ sourceId: "tr_1", currency: "EUR", amountCents: -25_350 })]).movements[0]).toMatchObject({ agrees: true, how: "fee included in the gross amount" });
+  it("does not agree on credits where debits are due, a fee folded into the gross, a fee the ledger lacks, or a row in another currency", () => {
+    const d = (rows: FinancialTx[], m = payout) => reconcileFinancialTransactions([m], rows).movements[0]!;
+    expect(d([ft({ sourceId: "tr_1", currency: "EUR", amountCents: 24_000 }), ft({ sourceId: "tr_1", currency: "EUR", amountCents: 1_350, sourceType: "FEE", transactionType: "FEE" })]).agrees).toBe(false);
+    expect(d([ft({ sourceId: "tr_1", currency: "EUR", amountCents: -25_350 })]).agrees).toBe(false);
+    expect(d([ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_000 }), ft({ sourceId: "tr_1", currency: "EUR", amountCents: -99_999, sourceType: "FEE", transactionType: "FEE" })], { ...payout, feeCents: null as never }).agrees).toBe(false);
+    expect(d([ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_000 }), ft({ sourceId: "tr_1", currency: "EUR", amountCents: -1_350, sourceType: "FEE", transactionType: "FEE" }), ft({ sourceId: "tr_1", currency: "USD", amountCents: -500, sourceType: "FEE", transactionType: "FEE" })]))
+      .toMatchObject({ agrees: false, how: "rows in another currency" });
   });
 
   it("reports one cent's difference, a missing payout and a cancelled row as differences", () => {
     const r = reconcileFinancialTransactions([payout, conversion], [
-      ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_001, feeCents: -1_350 }),
+      ft({ sourceId: "tr_1", currency: "EUR", amountCents: -24_001 }), ft({ sourceId: "tr_1", currency: "EUR", amountCents: -1_350, sourceType: "FEE", transactionType: "FEE" }),
       ft({ sourceId: "cv_1", currency: "EUR", amountCents: 62_350, sourceType: "CONVERSION", status: "CANCELLED" }),
     ]);
-    expect(r.differences.map((d) => [d.sourceId, d.how])).toEqual([["tr_1", "amounts differ"], ["cv_1", "no rows for this conversion"]]);
+    expect(r.differences.map((x) => [x.sourceId, x.how])).toEqual([["tr_1", "amounts differ"], ["cv_1", "no rows for this conversion"]]);
   });
 
   it("checks both legs of a conversion, and lists payouts Airwallex booked that the ledger lacks; cards are out of scope", () => {
@@ -59,6 +63,8 @@ describe("Airwallex's financial transactions against the ledger", () => {
     const got = await listFinancialTransactions(api as never, { from: "2026-11-07T12:00:00Z", to: "2026-11-07T12:30:00Z" });
     expect(got.map((g) => g.id)).toEqual(["f0", "f1", "f2"]);
     expect(queries[0]).toMatchObject({ from_created_at: "2026-11-07T12:00:00Z", to_created_at: "2026-11-07T12:30:00Z", page_size: "1000", page_num: "0" });
+    const noFlag = { call: async () => ({ items: Array.from({ length: 1000 }, (_, i) => ({ id: `f${i}`, amount: 1, currency: "EUR" })) }) };
+    await expect(listFinancialTransactions(noFlag as never, { from: "a", to: "b" })).rejects.toThrow(/without has_more/);
     const endless = { call: async () => ({ items: [], has_more: true }) };
     await expect(listFinancialTransactions(endless as never, { from: "a", to: "b" })).rejects.toThrow(new RegExp(`more than ${MAX_PAGES} pages`));
   });

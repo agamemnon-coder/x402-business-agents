@@ -64,12 +64,15 @@ export interface AwxBatchItem {
     reference: string;
     reason: string | null;
     feeCents: number | null;
+    feeCurrency: string | null;
     payerPaysCents: number | null;
     metadata: Record<string, string>;
   };
 }
 
 export interface BatchTransferRail {
+  /** The connected account this client acts for (x-on-behalf-of), or null for the company's own account. */
+  readonly payingAccount?: string | null;
   createBatch(a: { requestId: string; name: string; metadata: Record<string, string> }): Promise<AwxBatch>;
   /** The batch created under this request_id, if any (GET /batch_transfers?request_id=…, strict). */
   findBatchByRequestId(requestId: string): Promise<AwxBatch | undefined>;
@@ -94,7 +97,7 @@ interface RawItem {
   errors?: { code?: string; source?: string }[] | null;
   transfer_draft?: {
     beneficiary_id?: string | null; transfer_amount?: number | string; transfer_currency?: string; source_currency?: string;
-    transfer_method?: string; reference?: string; reason?: string | null; fee_amount?: number | string | null;
+    transfer_method?: string; reference?: string; reason?: string | null; fee_amount?: number | string | null; fee_currency?: string | null;
     amount_payer_pays?: number | string | null; metadata?: Record<string, string> | null;
   } | null;
 }
@@ -121,7 +124,7 @@ export function toItem(i: RawItem): AwxBatchItem {
     draft: d ? {
       beneficiaryId: d.beneficiary_id ?? null, amountCents: cents(d.transfer_amount ?? 0), currency: d.transfer_currency ?? "",
       sourceCurrency: d.source_currency ?? "", method: d.transfer_method ?? "", reference: d.reference ?? "", reason: d.reason ?? null,
-      feeCents: optCents(d.fee_amount), payerPaysCents: optCents(d.amount_payer_pays), metadata: d.metadata ?? {},
+      feeCents: optCents(d.fee_amount), feeCurrency: d.fee_currency ?? null, payerPaysCents: optCents(d.amount_payer_pays), metadata: d.metadata ?? {},
     } : null,
   };
 }
@@ -136,6 +139,7 @@ export function itemBody(i: BatchItemIn): Record<string, unknown> {
 
 export class AirwallexBatchRest implements BatchTransferRail {
   constructor(private readonly api: Airwallex) {}
+  get payingAccount(): string | null { return this.api.onBehalfOf; }
 
   async createBatch(a: { requestId: string; name: string; metadata: Record<string, string> }): Promise<AwxBatch> {
     // Wallet-funded (no funding_source) and no transfer_date: dispatched as soon as Airwallex (and its approvers) allow.
@@ -242,7 +246,7 @@ export class FakeBatchTransfers implements BatchTransferRail {
     for (const i of b.items) {
       if (i.status === "VALIDATION_FAILED") continue;
       const x = i.input;
-      i.draft = { beneficiaryId: x.beneficiaryId, amountCents: x.amountCents, currency: x.currency, sourceCurrency: x.sourceCurrency, method: x.method, reference: x.reference, reason: x.reason, feeCents: this.feeCents, payerPaysCents: x.amountCents + this.feeCents, metadata: { ...x.metadata } };
+      i.draft = { beneficiaryId: x.beneficiaryId, amountCents: x.amountCents, currency: x.currency, sourceCurrency: x.sourceCurrency, method: x.method, reference: x.reference, reason: x.reason, feeCents: this.feeCents, feeCurrency: x.sourceCurrency, payerPaysCents: x.amountCents + this.feeCents, metadata: { ...x.metadata } };
       const k = `${x.sourceCurrency}${x.currency}`;
       const p = pairs.get(k) ?? { sourceCurrency: x.sourceCurrency, transferCurrency: x.currency, payerPaysCents: 0, feeCents: 0, feeCurrency: x.sourceCurrency };
       p.payerPaysCents += x.amountCents + this.feeCents;

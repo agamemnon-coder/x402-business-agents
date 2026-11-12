@@ -8,6 +8,9 @@ new-supplier and bank-detail-change proposals (`src/ap/vendors.ts`, `src/policy/
 
 ## What ran
 
+The accounts asked are defined in `src/cli/awxDepth.ts` (`PAYEE_CHECKS`, `DOC_EXAMPLE`); the record holds the names,
+answers and verdicts.
+
 | # | Account and name asked | Airwallex's answer | Purser's verdict |
 |---|---|---|---|
 | 1 | Stockline test IBAN (`…2051`), "Stockline Data GmbH" (the name the test beneficiary was created with) | `VERIFIED`, `NOT_MATCHED`, no resolved name | refused: not proposed |
@@ -18,7 +21,8 @@ new-supplier and bank-detail-change proposals (`src/ap/vendors.ts`, `src/policy/
 So the endpoint is enabled on this sandbox key and the sandbox does compare names (3 and 4). For our German test IBAN
 it answered `NOT_MATCHED` whatever the name (1 and 2): the sandbox's answer for that test account, recorded as given.
 
-What Purser does with it (with the flag on): a person's call-back to the supplier, then this check, then the proposal.
+What Purser does with it (with the flag on): a person's call-back to the supplier, then this check of the supplier's own
+name (never an account holder's name taken from the request; fixed after the review), then the proposal.
 Only `VERIFIED` with `FULL_MATCH`, or `CANNOT_VERIFY` (shown to the CFO as "could not verify"), may be proposed; any
 other answer, or no check from the last 24 hours on exactly this name and account, refuses the proposal, so the CFO's
 phone never shows it. Tests: `test/airwallex-payee-name.test.ts` (in-memory bank; a new supplier and a bank-detail
@@ -33,7 +37,8 @@ accounts); `CANNOT_VERIFY` and `EXTERNAL_SERVICE_UNAVAILABLE` (tests only).
 
 ## Wording to apply (other sessions own these pages)
 
-- New supplier and bank-detail change pages: "Checked with the payee's bank through Airwallex before you are asked:
-  account exists, name matches." When refused: "The payee's bank holds this account as <name>, not as <name>."
+- New supplier and bank-detail change pages, when the terms carry `name_check`: "The payee's bank says, through Airwallex,
+  that this account carries <name_check.name> (<name_check.match>)." When refused: "The payee's bank holds this account
+  as <name>, not as <name>."
 - `/airwallex`: "Account name checked with the payee's bank (Airwallex account verification) before a new payee is
   proposed; a mismatch never reaches the CFO. Sandbox: FULL_MATCH, PARTIAL_MATCH and NOT_MATCHED answers seen live."

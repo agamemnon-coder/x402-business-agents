@@ -56,7 +56,16 @@ describe("a new supplier's account, checked with its bank before the CFO is aske
     const c = await checkPayeeAddName(db, bank, id, "human", now);
     expect(c).toMatchObject({ code: "VERIFIED", match: "FULL_MATCH", proceed: 1 });
     const p = proposePayeeAdd(db, id, "treasury", now);
-    expect(JSON.parse(p.terms_json).name_check).toMatchObject({ code: "VERIFIED", match: "FULL_MATCH", label: "the payee's bank confirmed the account and the name" });
+    expect(JSON.parse(p.terms_json).name_check).toMatchObject({ name: "Lagerhaus Nord GmbH", code: "VERIFIED", match: "FULL_MATCH", label: "the payee's bank confirmed the account and the name" });
+  });
+
+  it("checks the supplier's own name, never an account holder named on the request", async () => {
+    const id = await verifiedAdd();
+    const r = db.prepare("SELECT details_json FROM payee_adds WHERE add_id = ?").get(id) as { details_json: string };
+    db.prepare("UPDATE payee_adds SET details_json = ? WHERE add_id = ?").run(JSON.stringify({ ...JSON.parse(r.details_json), accountName: "Mallory Ltd" }), id);
+    bank.accounts.set(LAGERHAUS_IBAN, { name: "Mallory Ltd", entity: "COMPANY", bank: "Test Bank" });
+    await checkPayeeAddName(db, bank, id, "human", now);
+    expect(() => proposePayeeAdd(db, id, "treasury", now)).toThrow(/holds this account as "Mallory Ltd", not as "Lagerhaus Nord GmbH"/);
   });
 
   it("refuses a name the bank does not hold, before any proposal: the CFO's phone never shows it", async () => {

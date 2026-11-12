@@ -25,11 +25,15 @@ const COMMAND = { actor: "cfo-command", command: "npm run awx-depth", moves_mone
 
 /** The two test invoices of the batch: the Stockline licence text with its own numbers and amounts. */
 const base = readFileSync(resolve(repo, "fixtures", "stockline-licence-SLL-2026-11B.txt"), "utf8");
-export const BATCH_INVOICES = [
+// AWX_DEPTH_SERIES picks the two invoice letters (default E,F; the second run used G,H), so a second batch never asks
+// Airwallex to pay an invoice number the first one holds.
+const series = (process.env.AWX_DEPTH_SERIES ?? "E,F").split(",").map((x) => x.trim()).filter((x) => /^[A-Z]$/.test(x));
+if (series.length !== 2) throw new Error("AWX_DEPTH_SERIES is two capital letters, e.g. G,H");
+export const BATCH_INVOICES = series.map((x) => ({
+  no: `SLL-2026-11${x}`,
   // The licence fee in code is EUR 240.00 (a different amount stops for a person), so both lines carry it.
-  { no: "SLL-2026-11E", month: "Data licence, November 2026 (batch test E, awx-depth):" },
-  { no: "SLL-2026-11F", month: "Data licence, November 2026 (batch test F, awx-depth):" },
-].map((i) => ({ ...i, amount: "240.00", text: base.replace(/SLL-2026-11B/g, i.no).replace("Data licence, November 2026 (second payout, two-locks test):", i.month) }));
+  month: `Data licence, November 2026 (batch test ${x}, awx-depth):`,
+})).map((i) => ({ ...i, amount: "240.00", text: base.replace(/SLL-2026-11B/g, i.no).replace("Data licence, November 2026 (second payout, two-locks test):", i.month) }));
 const STOCKLINE = { beneficiaryId: "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb", name: "Stockline Data GmbH", iban: "DE02120300000000202051", bic: "BYLADEM1001" };
 
 const { openDb } = await import("../db/open.js");
@@ -175,6 +179,8 @@ if (cmd === "stand-in") {
     else if (c.endpoint.startsWith("/batch_transfers")) capOfPid.set(c.pid, "batch-transfer");
   }
   const date = (process.env.AWX_DEPTH_DATE ?? new Date().toISOString().slice(0, 10));
+  // AWX_DEPTH_RECORD=batch-transfer-2 writes only that capability's record, from this ledger (a second batch run).
+  const only = process.env.AWX_DEPTH_RECORD ?? null;
   const pick = (events: (e: string) => boolean) => f.audit.filter((a) => events(a.event)).map((a) => ({ seq: a.seq, ts: a.ts, actor: a.actor, event: a.event, subject: a.subject, payload: a.payload }));
   const common = { stream: "airwallex-depth-1112", sandbox: "api.sandbox.airwallex.com", test_money: true, source: "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only", budget: { approved_for_stream: 40, used_by_stream: calls.length } };
   const callsOf = (cap: string) => { const mine = calls.filter((c) => capOfPid.get(c.pid) === cap); return { total: mine.length, by_endpoint: countByEndpoint(mine), lines: mine }; };
@@ -188,7 +194,22 @@ if (cmd === "stand-in") {
     },
   };
   for (const [cap, body] of Object.entries(out)) {
-    const file = resolve(repo, "docs/runs", `${date}-airwallex-${cap}.json`);
+    const name = only ? (only.startsWith(cap) ? only : null) : cap;
+    if (!name) continue;
+    if (cap === "batch-transfer") {
+      // Two batch runs share the call log, each with its own ledger: this ledger's batch calls are the processes that
+      // started from its create (less a minute) until the first process of another run's create.
+      const created = f.audit.find((a) => a.event === "awx_batch.created");
+      const from = created ? Date.parse(created.ts) - 60_000 : Infinity;
+      const firstAt = new Map<number, number>();
+      for (const c of calls) if (!firstAt.has(c.pid)) firstAt.set(c.pid, Date.parse(c.at));
+      const foreign = calls.find((c) => c.endpoint === "/batch_transfers/create" && firstAt.get(c.pid)! >= from && created && Date.parse(c.at) > Date.parse(created.ts) + 60_000);
+      const until = foreign ? firstAt.get(foreign.pid)! : Infinity;
+      const pids = new Set([...firstAt].filter(([pid, at]) => at >= from && at < until && calls.some((c) => c.pid === pid && c.endpoint.startsWith("/batch_transfers"))).map(([pid]) => pid));
+      const sel = calls.filter((c) => pids.has(c.pid));
+      (body as { calls: unknown }).calls = { total: sel.length, by_endpoint: countByEndpoint(sel), lines: sel };
+    }
+    const file = resolve(repo, "docs/runs", `${date}-airwallex-${name}.json`);
     writeFileSync(file, `${JSON.stringify(body, null, 2)}\n`);
     console.log(`WROTE    ${file}`);
   }

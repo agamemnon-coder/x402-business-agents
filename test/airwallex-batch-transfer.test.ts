@@ -14,6 +14,8 @@ import { FakeBatchTransfers, toBatch, toItem, itemBody } from "../src/airwallex/
 import { openDb, type DB } from "../src/db/open.js";
 import { batchRequestId, compareReadBack, executeAsOneAirwallexBatch, followAirwallexBatch, lineShapeRefusal } from "../src/executors/airwallexBatch.js";
 import { decide } from "../src/policy/approvals.js";
+import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
+import { executePaymentBatch } from "../src/executors/paymentBatch.js";
 import { setSetting } from "../src/world/settings.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { EN } from "./fakes/apInvoices.js";
@@ -185,10 +187,97 @@ describe("one signed batch as ONE Airwallex batch transfer", () => {
   });
 });
 
+describe("the review's cases (12 November): never twice, never past a refusal, never on a partial read-back", () => {
+  it("a lost submit answer, then a line-by-line run or a line on its own: refused, nothing sent as a single transfer", async () => {
+    const batch = await signed();
+    const submit = batches.submitBatch.bind(batches);
+    batches.submitBatch = async (id) => { await submit(id); throw new Error("network: no answer"); };
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow(/no answer/);
+    expect([...batches.batches.values()][0]!.batch.status).toBe("IN_APPROVAL");
+    await expect(executePaymentBatch(db, batch.proposal_id, async (id) => { await executeInvoicePayment(db, awx, awx, id); }, now)).rejects.toThrow(/never also run line by line/);
+    for (const l of lines(batch.proposal_id)) await expect(executeInvoicePayment(db, awx, awx, l.proposal_id)).rejects.toThrow(/never sent on its own/);
+    expect(awx.calls.filter((c) => c === "createTransfer")).toEqual([]);
+    // The batch path resumes it: adopted after checking the items, recorded as waiting, never submitted twice.
+    batches.submitBatch = submit;
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    expect(r).toMatchObject({ outcome: "SUBMITTED", status: "IN_APPROVAL" });
+    expect(batches.calls.filter((c) => c === "submitBatch")).toHaveLength(1);
+  });
+
+  it("a refusal whose delete answer was lost finishes as refused on the re-run, never as executed", async () => {
+    const batch = await signed();
+    batches.tamper = (items) => { items[0]!.input.amountCents += 1; };
+    const del = batches.deleteBatch.bind(batches);
+    batches.deleteBatch = async (id) => { await del(id); throw new Error("network: no answer"); };
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow(/no answer/);
+    batches.deleteBatch = del;
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    expect(r.outcome).toBe("REFUSED");
+    expect(row(batch.proposal_id).status).toBe("NEEDS_REAPPROVAL");
+    expect(transfers().map((t) => t.status)).toEqual(["CANCELLED", "CANCELLED"]);
+    expect(batches.calls).not.toContain("submitBatch");
+  });
+
+  it("a batch submitted elsewhere with an item the CFO did not sign is not adopted as executed", async () => {
+    const batch = await signed();
+    batches.submitBatch = async () => { throw new Error("network: no answer"); };
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow();
+    const b = [...batches.batches.values()][0]!;
+    b.items.push({ ...structuredClone(b.items[0]!), id: "bti_x", requestId: "not-signed" });
+    b.batch.status = "IN_APPROVAL";
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    expect(r.outcome).toBe("NOT_PAID");
+    expect(r.differences.join()).toMatch(/not a line the CFO signed/);
+    expect(row(batch.proposal_id).status).toBe("NEEDS_REAPPROVAL");
+    expect(transfers().map((t) => t.status)).toEqual(["IN_APPROVAL", "IN_APPROVAL"]);
+  });
+
+  it("a rejection seen at submit is not recorded as executed", async () => {
+    const batch = await signed();
+    const submit = batches.submitBatch.bind(batches);
+    batches.submitBatch = async (id) => { const b = await submit(id); batches.decideInWebApp(id, "reject"); return { ...b, status: "APPROVAL_REJECTED" }; };
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    expect(r.outcome).toBe("NOT_PAID");
+    expect(row(batch.proposal_id).status).toBe("NEEDS_REAPPROVAL");
+  });
+
+  it("checks the EUR floor again on a re-run before anything is submitted", async () => {
+    const batch = await signed();
+    batches.createBatch = async () => { throw new Error("Airwallex /batch_transfers/create -> 400 validation_error"); };
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow(/400/);
+    setSetting(db, "treasury", "eur_floor", "34000.00");
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow(/floor/);
+    // Its own payout rows are not counted twice: with room for exactly this batch, the re-run goes ahead.
+    setSetting(db, "treasury", "eur_floor", "1000.00");
+    batches.createBatch = FakeBatchTransfers.prototype.createBatch.bind(batches);
+    expect((await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).outcome).toBe("SUBMITTED");
+  });
+
+  it("honours an emergency stop set while the batch was being read back: deleted, nothing submitted", async () => {
+    const batch = await signed();
+    const list = batches.listItems.bind(batches);
+    batches.listItems = async (id) => { db.prepare("INSERT INTO settings (key, value, updated_at) VALUES ('freeze', 'on', ?)").run(now.toISOString()); return list(id); };
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    expect(r.outcome).toBe("REFUSED");
+    expect(r.differences.join()).toMatch(/emergency stop/);
+    expect(batches.calls).not.toContain("submitBatch");
+  });
+
+  it("closes the payout row of an item Airwallex failed to book, so its invoice is not held for ever", async () => {
+    const batch = await signed();
+    const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON });
+    batches.decideInWebApp(r.awx_batch_id!, "approve");
+    const b = [...batches.batches.values()][0]!;
+    b.items[1]!.status = "BOOKING_FAILED"; b.items[1]!.transferId = null; b.batch.status = "PARTIALLY_BOOKED";
+    await followAirwallexBatch(db, batches, batch.proposal_id);
+    expect(transfers().map((t) => t.status).sort()).toEqual(["CANCELLED", "SCHEDULED"]);
+  });
+});
+
 describe("the read-back comparison and the REST mapping", () => {
-  const line = { proposal_id: "P-0002", terms_sha256: "a".repeat(64), terms: { transfer_request_id: "rq-1", beneficiary_id: "ben-1", amount: "100.00", fee_max: "20.00", reference: "INV-1", invoice_no: "INV-1" } as never };
+  const line = { proposal_id: "P-0002", terms_sha256: "a".repeat(64), terms: { transfer_request_id: "rq-1", beneficiary_id: "ben-1", amount: "100.00", fee_max: "20.00", reference: "INV-1", invoice_no: "INV-1", reason: "x" } as never };
   const batch = toBatch({ id: "b1", request_id: "r", status: "DRAFTING", total_item_count: 1, valid_item_count: 1, metadata: { approval_sha256: "s".repeat(64) }, quote_summary: { quotes: [{ amount_payer_pays: 113.4, fee_amount: 13.4, fee_currency: "EUR", source_currency: "EUR", transfer_currency: "EUR" }] } });
-  const item = toItem({ id: "i1", request_id: "rq-1", status: "VALIDATED", transfer_draft: { beneficiary_id: "ben-1", transfer_amount: 100, transfer_currency: "EUR", source_currency: "EUR", transfer_method: "SWIFT", reference: "INV-1", fee_amount: 13.4, amount_payer_pays: 113.4, metadata: { approval_sha256: "a".repeat(64) } } });
+  const item = toItem({ id: "i1", request_id: "rq-1", status: "VALIDATED", transfer_draft: { beneficiary_id: "ben-1", transfer_amount: 100, transfer_currency: "EUR", source_currency: "EUR", transfer_method: "SWIFT", reference: "INV-1", reason: "x", fee_amount: 13.4, fee_currency: "EUR", amount_payer_pays: 113.4, metadata: { approval_sha256: "a".repeat(64) } } });
 
   it("agrees when everything matches, to the cent", () => {
     expect(compareReadBack([line], "s".repeat(64), batch, [item])).toEqual([]);
@@ -196,12 +285,22 @@ describe("the read-back comparison and the REST mapping", () => {
 
   it("names each difference: payee, fee above its ceiling, a missing draft, the batch hash, the payer's total", () => {
     const d = compareReadBack([line], "t".repeat(64), { ...batch, quotes: [{ ...batch.quotes[0]!, payerPaysCents: 12_001 }] },
-      [{ ...item, draft: { ...item.draft!, beneficiaryId: "ben-2", feeCents: 2001 } }]);
+      [{ ...item, draft: { ...item.draft!, beneficiaryId: "ben-2", feeCents: 2001, payerPaysCents: 12_001 } }]);
     expect(d.join("\n")).toMatch(/approval hash/);
     expect(d.join("\n")).toMatch(/payee at Airwallex is ben-2, signed ben-1/);
     expect(d.join("\n")).toMatch(/fee EUR 20.01 is above the signed ceiling EUR 20.00/);
     expect(d.join("\n")).toMatch(/payer would pay EUR 120.01, above the signed EUR 120.00/);
     expect(compareReadBack([line], "s".repeat(64), batch, [{ ...item, draft: null }]).join()).toMatch(/no transfer draft/);
+  });
+
+  it("does not pass without a fee, a payer total or a quote, nor with a fee in another currency or totals that do not add up", () => {
+    const S = "s".repeat(64);
+    expect(compareReadBack([line], S, { ...batch, quotes: [] }, [{ ...item, draft: { ...item.draft!, feeCents: null, payerPaysCents: null } }]).join("\n"))
+      .toMatch(/no fee[\s\S]*no amount the payer pays[\s\S]*no quote/);
+    expect(compareReadBack([line], S, batch, [{ ...item, draft: { ...item.draft!, payerPaysCents: 99_900 } }]).join()).toMatch(/not the amount plus the fee/);
+    expect(compareReadBack([line], S, batch, [{ ...item, draft: { ...item.draft!, feeCurrency: "USD" } }]).join()).toMatch(/fee is in USD/);
+    expect(compareReadBack([line], S, batch, [{ ...item, draft: { ...item.draft!, reason: "other" } }]).join()).toMatch(/reason at Airwallex/);
+    expect(compareReadBack([line], S, { ...batch, quotes: [{ ...batch.quotes[0]!, payerPaysCents: 11_000 }] }, [item]).join()).toMatch(/quote totals EUR 110.00, the items EUR 113.40/);
   });
 
   it("sends each item with the signed amount as a two-decimal string, a saved payee and its hash in metadata", () => {

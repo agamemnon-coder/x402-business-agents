@@ -5,7 +5,7 @@
   "source": "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
   "budget": {
     "approved_for_stream": 40,
-    "used_by_stream": 22
+    "used_by_stream": 32
   },
   "capability": "financial-transactions",
   "calls": {
@@ -232,6 +232,56 @@
             "agrees": true,
             "airwallex": "2 row(s): EUR 623.50, USD 704.45",
             "how": "buy and sell legs",
+            "kind": "conversion",
+            "label": "BTX-2026-11 conversion",
+            "ledger": "buy EUR 623.50, sell USD 704.45",
+            "rows": 2,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f"
+          }
+        ],
+        "out_of_scope": {
+          "CARD_PURCHASE": 2
+        },
+        "to": "2026-11-07T12:30:00+0000",
+        "unknown_at_airwallex": []
+      }
+    },
+    {
+      "seq": 32,
+      "ts": "2026-11-12T14:10:41.081Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 3,
+        "checked": 3,
+        "differences": 0,
+        "from": "2026-11-07T12:00:00+0000",
+        "movements": [
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR -240.00, 1 fee row(s) EUR -13.50",
+            "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "SLL-2026-11",
+            "ledger": "EUR 240.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR -1850.00, 1 fee row(s) EUR -13.50",
+            "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "BTX-2026-11",
+            "ledger": "EUR 1850.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): EUR 623.50, USD -704.45",
+            "how": "a credit in the bought currency and a debit in the sold one",
             "kind": "conversion",
             "label": "BTX-2026-11 conversion",
             "ledger": "buy EUR 623.50, sell USD 704.45",

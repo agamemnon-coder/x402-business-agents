@@ -63,6 +63,8 @@ export async function listFinancialTransactions(api: Pick<Airwallex, "call">, a:
     });
     if (!r || !Array.isArray(r.items)) throw new Error("Airwallex's financial transactions came without items");
     out.push(...r.items.map(toFinancialTx));
+    // has_more must be a yes or no: a full page without it may hide more rows, and is never read as the last.
+    if (typeof r.has_more !== "boolean" && r.items.length >= 1000) throw new Error("Airwallex's financial transactions came as a full page without has_more; nothing is concluded");
     if (r.has_more !== true) return out;
   }
 }
@@ -103,47 +105,53 @@ const money = (cur: string, c: number) => `${cur} ${c < 0 ? "-" : ""}${fromCents
 const TRACKED = new Set(["PAYOUT", "FEE", "CONVERSION"]);
 
 /**
- * Compares the ledger's movements with Airwallex's financial transactions, exactly. A payout agrees when the rows for its
- * transfer id, in its currency, carry exactly the amount and the fee: as the sandbox books it, a PAYOUT row for the
- * amount and a FEE row for the fee; or, in one row, the fee in its own field or inside the gross. A conversion agrees
- * when its buy and sell currencies each carry exactly the amounts the ledger holds. Cancelled rows are not counted.
+ * Compares the ledger's movements with Airwallex's financial transactions, exactly and with their signs. A payout agrees
+ * when the rows for its transfer id are, as the sandbox books it, a PAYOUT debit of exactly the amount and a FEE debit of
+ * exactly the fee, and nothing else. A conversion agrees when the bought currency is credited and the sold one debited by
+ * exactly the amounts the ledger holds, and nothing else. Cancelled rows are not counted.
  */
 export function reconcileFinancialTransactions(ledger: LedgerMovement[], fts: FinancialTx[]): Reconciliation {
   const live = fts.filter((f) => f.status !== "CANCELLED");
   const bySource = new Map<string, FinancialTx[]>();
   for (const f of live) if (f.sourceId) bySource.set(f.sourceId, [...(bySource.get(f.sourceId) ?? []), f]);
+  const isFee = (x: FinancialTx) => x.sourceType === "FEE" || x.transactionType === "FEE";
   const movements: MovementCheck[] = ledger.map((m) => {
+    // Every row Airwallex holds for this source must be accounted for: a row in another currency, a credit where a debit
+    // is due, or a fee the ledger does not know is a difference, never left out.
     const rows = bySource.get(m.sourceId) ?? [];
     if (m.kind === "payout") {
-      const r = rows.filter((x) => x.currency === m.currency);
-      const isFee = (x: FinancialTx) => x.sourceType === "FEE" || x.transactionType === "FEE";
-      const pay = r.filter((x) => !isFee(x)), feeRows = r.filter(isFee);
-      const payAmt = abs(sum(pay, (x) => x.amountCents)), feeRowAmt = abs(sum(feeRows, (x) => x.amountCents)), feeField = abs(sum(r, (x) => x.feeCents));
+      const pay = rows.filter((x) => !isFee(x)), feeRows = rows.filter(isFee);
+      const payAmt = sum(pay, (x) => x.amountCents), feeAmt = sum(feeRows, (x) => x.amountCents), feeField = sum(rows, (x) => x.feeCents);
+      const other = rows.filter((x) => x.currency !== m.currency);
       const ledgerTxt = `${money(m.currency, m.amountCents)}${m.feeCents != null ? ` + fee ${money(m.currency, m.feeCents)}` : " (fee not known in the ledger)"}`;
-      const awxTxt = `${r.length} row(s): ${pay.length} payout ${money(m.currency, payAmt)}, ${feeRows.length} fee row(s) ${money(m.currency, feeRowAmt)}, fee field ${money(m.currency, feeField)}`;
-      let how = "no rows for this transfer";
+      const awxTxt = `${rows.length} row(s): ${pay.length} payout ${money(m.currency, payAmt)}, ${feeRows.length} fee row(s) ${money(m.currency, feeAmt)}${feeField ? `, fee field ${money(m.currency, feeField)}` : ""}${other.length ? `, ${other.length} row(s) in another currency` : ""}`;
+      let how: string;
       let agrees = false;
-      // As the sandbox books it (read 12 November): a PAYOUT row for the amount and a FEE row, both under the transfer id.
-      if (pay.length && m.feeCents != null && payAmt === m.amountCents && feeRowAmt === m.feeCents && feeField === 0) { agrees = true; how = "a PAYOUT row for the amount and a FEE row for the fee, both under the transfer id"; }
-      else if (pay.length && !feeRows.length && m.feeCents != null && payAmt === m.amountCents && feeField === m.feeCents) { agrees = true; how = "amount and fee in their own fields of one row"; }
-      else if (pay.length && !feeRows.length && m.feeCents != null && payAmt === m.amountCents + m.feeCents && feeField === 0) { agrees = true; how = "fee included in the gross amount"; }
-      else if (pay.length && m.feeCents == null && payAmt === m.amountCents) { agrees = true; how = "amount (the ledger holds no fee yet)"; }
-      else if (r.length) how = "amounts differ";
-      return { sourceId: m.sourceId, kind: m.kind, label: m.label, agrees, how, ledger: ledgerTxt, airwallex: awxTxt, rows: r.length };
+      if (!rows.length) how = "no rows for this transfer";
+      else if (other.length) how = "rows in another currency";
+      // As the sandbox books it (read 12 November): a PAYOUT debit for the amount and a FEE debit, both under the
+      // transfer id, signed as money leaving the account.
+      else if (m.feeCents == null) how = "the ledger holds no fee for this payout yet; Airwallex's rows cannot be checked in full";
+      else if (pay.length >= 1 && payAmt === -m.amountCents && feeAmt === -m.feeCents && feeField === 0) { agrees = true; how = "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id"; }
+      else how = payAmt === -m.amountCents && feeAmt === -m.feeCents ? "the rows carry a fee field the ledger cannot place" : "amounts differ";
+      return { sourceId: m.sourceId, kind: m.kind, label: m.label, agrees, how, ledger: ledgerTxt, airwallex: awxTxt, rows: rows.length };
     }
     if (m.kind === "conversion") {
-      const buy = abs(sum(rows.filter((x) => x.currency === m.buyCurrency), (x) => x.amountCents));
-      const sell = abs(sum(rows.filter((x) => x.currency === m.sellCurrency), (x) => x.amountCents));
-      const agrees = rows.length > 0 && buy === m.buyCents && sell === m.sellCents;
+      const buyRows = rows.filter((x) => x.currency === m.buyCurrency), sellRows = rows.filter((x) => x.currency === m.sellCurrency);
+      const buy = sum(buyRows, (x) => x.amountCents), sell = sum(sellRows, (x) => x.amountCents);
+      const stray = rows.length - buyRows.length - sellRows.length;
+      // The bought currency comes in (a credit), the sold one goes out (a debit).
+      const agrees = rows.length > 0 && stray === 0 && buy === m.buyCents && sell === -m.sellCents;
       return {
-        sourceId: m.sourceId, kind: m.kind, label: m.label, agrees, how: rows.length ? (agrees ? "buy and sell legs" : "amounts differ") : "no rows for this conversion",
-        ledger: `buy ${money(m.buyCurrency, m.buyCents)}, sell ${money(m.sellCurrency, m.sellCents)}`, airwallex: `${rows.length} row(s): ${m.buyCurrency} ${fromCents(buy)}, ${m.sellCurrency} ${fromCents(sell)}`, rows: rows.length,
+        sourceId: m.sourceId, kind: m.kind, label: m.label, agrees,
+        how: !rows.length ? "no rows for this conversion" : stray ? "rows in a third currency" : agrees ? "a credit in the bought currency and a debit in the sold one" : "amounts differ",
+        ledger: `buy ${money(m.buyCurrency, m.buyCents)}, sell ${money(m.sellCurrency, m.sellCents)}`, airwallex: `${rows.length} row(s): ${money(m.buyCurrency, buy)}, ${money(m.sellCurrency, sell)}`, rows: rows.length,
       };
     }
     const r = rows.filter((x) => x.currency === m.currency);
-    const amt = abs(sum(r, (x) => x.amountCents));
-    const agrees = r.length > 0 && amt === m.amountCents;
-    return { sourceId: m.sourceId, kind: m.kind, label: m.label, agrees, how: r.length ? (agrees ? "amount" : "amounts differ") : "no rows for this deposit", ledger: money(m.currency, m.amountCents), airwallex: `${r.length} row(s): ${money(m.currency, amt)}`, rows: r.length };
+    const amt = sum(r, (x) => x.amountCents);
+    const agrees = r.length > 0 && r.length === rows.length && amt === m.amountCents;
+    return { sourceId: m.sourceId, kind: m.kind, label: m.label, agrees, how: !r.length ? "no rows for this deposit" : agrees ? "a credit for the amount" : "amounts differ", ledger: money(m.currency, m.amountCents), airwallex: `${rows.length} row(s): ${money(m.currency, amt)}`, rows: rows.length };
   });
   const known = new Set(ledger.map((m) => m.sourceId));
   const unknownAtAirwallex = live.filter((f) => TRACKED.has(f.sourceType) && !(f.sourceId && known.has(f.sourceId)))

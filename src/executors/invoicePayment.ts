@@ -29,6 +29,7 @@ import { eurInFlightCents } from "../policy/available.js";
 import { exclusive, heldPayoutCents, holdPayout, releasePayout } from "../policy/payoutLock.js";
 import { checkpoint, step } from "../policy/saga.js";
 import { authorize } from "../policy/principals.js";
+import { refuseIfInAwxBatch } from "../policy/awxBatchLink.js";
 
 export interface InvoicePaymentResult {
   conversionId: string | null;
@@ -67,6 +68,8 @@ export async function executeInvoicePayment(db: DB, rail: AirwallexRail, sim: Sa
   const terms = await exclusive(async () => {
     const pre = treasuryState(db, await snapshot(db, rail, `pre-exec:${proposalId}`));
     return beginExecution<InvoicePaymentTerms>(db, proposalId, (t) => {
+      // A line of a batch sent to Airwallex as one batch transfer is paid by that batch only (also on a resume).
+      refuseIfInAwxBatch(db, proposalId);
       // Purser as a platform (red team 6): only from the account the CFO signed for, the company's own in its binding.
       checkPayingAccount(db, t, rail as { payingAccount?: string | null }, now());
       // The CFO may block a payee after the approval: checked again here, before Airwallex is called (review L2).

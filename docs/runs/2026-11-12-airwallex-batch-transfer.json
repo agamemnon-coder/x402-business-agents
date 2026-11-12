@@ -5,7 +5,7 @@
   "source": "built by `npm run awx-depth -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
   "budget": {
     "approved_for_stream": 40,
-    "used_by_stream": 22
+    "used_by_stream": 32
   },
   "capability": "batch-transfer",
   "calls": {

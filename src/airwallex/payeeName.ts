@@ -122,11 +122,11 @@ export const NAME_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
  * from the last day, that proceeds. Returns what goes into the signed terms, or throws why nothing is proposed. With
  * the flag off it returns null and the terms are as before (their hash unchanged).
  */
-export function nameCheckGate(db: DB, name: string, accountKey: string, now = new Date(), env: Record<string, string | undefined> = process.env): { code: string; match: string | null; label: string; checked_at: string } | null {
+export function nameCheckGate(db: DB, name: string, accountKey: string, now = new Date(), env: Record<string, string | undefined> = process.env): { name: string; code: string; match: string | null; label: string; checked_at: string } | null {
   if (!payeeCheckOn(env)) return null;
   const r = db.prepare("SELECT * FROM payee_name_checks WHERE check_key = ?").get(checkKey(name, accountKey)) as NameCheckRow | undefined;
   if (!r) throw new Error(`the account of ${name} was not checked with the payee's bank yet (Airwallex account verification); nothing is proposed`);
   if (Date.parse(r.checked_at) + NAME_CHECK_TTL_MS <= now.getTime()) throw new Error(`the bank check of ${name}'s account is older than a day; check again before it is proposed`);
   if (!r.proceed) throw new Error(`${r.label}`);
-  return { code: r.code, match: r.match, label: r.label, checked_at: r.checked_at };
+  return { name: name.trim(), code: r.code, match: r.match, label: r.label, checked_at: r.checked_at };
 }

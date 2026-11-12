@@ -193,8 +193,11 @@ export function closeDeadAdds(db: DB, now = new Date()): void {
   }
 }
 
-/** The name the payee's bank is asked to match: the account holder's name on the details, else the supplier's. */
-const payeeNameOf = (vendor: string, bank: PayeeBank) => (bank.accountName?.trim() || vendor).trim();
+/**
+ * The name the payee's bank is asked to match: always the supplier's own name (review, 12 November: an account holder's
+ * name on the request could name someone else, and its match would then read as the supplier's).
+ */
+const payeeNameOf = (vendor: string, _bank: PayeeBank) => vendor.trim();
 
 /**
  * Asks the payee's bank, through Airwallex, whether this verified request's account exists and carries the supplier's
