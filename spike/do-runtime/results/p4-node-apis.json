@@ -1,8 +1,8 @@
 {
  "probe": "p4-node-apis",
  "http": 200,
- "start_ms": 26,
- "total_ms": 2463,
+ "start_ms": 401,
+ "total_ms": 3244,
  "als_origin_across_awaits": {
   "ok": true,
   "value": {
@@ -12,7 +12,7 @@
    "nested_inner": "cfo",
    "nested_outer_after": "agent"
   },
-  "ms": 12
+  "ms": 17
  },
  "planContext_als_loads": {
   "ok": true,
@@ -93,7 +93,7 @@
    "second_write_wx": "refused: EEXIST",
    "size": 5
   },
-  "ms": 2
+  "ms": 1
  },
  "fs_tmp_from_an_earlier_request": {
   "ok": true,
@@ -146,7 +146,7 @@
    "fileURLToPath": "/purser-cloud/worker.js",
    "pathToFileURL": "file:///a/b.mjs"
   },
-  "ms": 1
+  "ms": 0
  },
  "module_createRequire_resolve": {
   "ok": true,
@@ -238,7 +238,7 @@
    "tapRailInWorld",
    "upstreamCacheOff"
   ],
-  "ms": 27
+  "ms": 24
  },
  "second_request": {
   "second_request_sees_tmp_marker": {
