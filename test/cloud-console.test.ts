@@ -10,6 +10,7 @@ import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
 import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 import { svg } from "../src/ui/payablesKit.js";
+import { icon } from "../src/redesign/ui.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -242,7 +243,8 @@ describe("the console's language, mark and first run", () => {
 
   it("paints in English first: the page's language and the menu's words", () => {
     expect(html).toContain('<html lang="en">');
-    const nav = /<nav class="tabs"[^]*?<\/nav>/.exec(markup)![0];
+    // 12 Nov: the console's own pages moved to a bar under the site's header (cloud/src/siteHeader.ts): nav.apptabs.
+    const nav = /<nav class="apptabs"[^]*?<\/nav>/.exec(markup)![0];
     for (const w of ["Overview", "Invoices", "Transactions", "Books", "Settings"]) expect(nav).toContain(`>${w}<`);
     expect(nav).not.toMatch(/Overzicht|Facturen|Boekhouding|Instellingen/);
     expect(markup).toContain(MESSAGES.en["cs.foot"]);
@@ -272,8 +274,12 @@ describe("the console's language, mark and first run", () => {
     const brand = /<a class="brand"[^]*?<\/a>/.exec(markup)![0];
     expect(brand).not.toMatch(/<span class="mk">P<\/span>/);
     expect(brand).toMatch(/<span class="mk"><svg [^>]*aria-hidden="true">/);
-    expect(brand).toContain(svg("feather", 17));
-    expect(brand).toMatch(/<span class="nm">Purser<\/span><span class="sec">Cloud<\/span>/);
+    // 12 Nov (owner): the site's own brand (src/redesign/ui.ts header), not a lockup of the console's: its feather, its
+    // word Purser; "Purser Cloud" is the current item under the site's "More".
+    expect(brand).toContain(icon("feather", 17));
+    expect(brand).toMatch(/<span class="nm">Purser<\/span><\/a>/);
+    expect(markup).toContain('<a href="/" aria-current="page">Purser Cloud</a>');
+    expect(svg("feather", 17)).toContain("<path");
     // Inline, through the page's own icons: the policy stays what it was.
     expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   });

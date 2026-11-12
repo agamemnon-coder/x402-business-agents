@@ -10,6 +10,8 @@ import { BOOKS_JS, PROOF_URL, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tr
 import { AMOUNT_JS, normaliseAmount } from "../cloud/src/try/amount.js";
 import { liveRuns } from "../src/redesign/runs.js";
 import { ICONS } from "../src/ui/icons.js";
+import { icon } from "../src/redesign/ui.js";
+import { siteHeader } from "../cloud/src/siteHeader.js";
 import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
@@ -155,16 +157,22 @@ describe("the page", () => {
   });
 
   it("has no words outside the copy: the markup's own text is the brand and the start's trust line (the illustration aside)", () => {
-    expect(textOutsideTags(withoutBlocks(html, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual(`${COPY.CHROME.brand} ${COPY.START.trust}`.split(" "));
+    // 12 Nov: the site's header (cloud/src/siteHeader.ts) is the site's navigation, its words the site's: its brand word
+    // stays counted here, its menu is held by test/site-header-shared.test.ts.
+    const own = html.replace(siteHeader("try"), `<header>${COPY.CHROME.brand}</header>`);
+    expect(own).not.toBe(html);
+    expect(textOutsideTags(withoutBlocks(own, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual(`${COPY.CHROME.brand} ${COPY.START.trust}`.split(" "));
     expect(readFileSync(new URL("../cloud/src/tryPage.ts", import.meta.url), "utf8")).not.toMatch(/ui\/i18n/);
   });
 });
 
 describe("the frame and the start", () => {
   it("brands the page with the console's feather lockup, not a letter mark", () => {
-    expect(html).toContain('<header class="top"><span class="brand"><span class="mk"></span><span class="nm">Purser</span></span></header>');
+    // 12 Nov (owner): the site's own header, brand and menu (cloud/src/siteHeader.ts), its feather drawn on the server.
+    expect(html).toContain(siteHeader("try"));
+    expect(html).toContain(`<span class="mk">${icon("feather", 17)}</span><span class="nm">${COPY.CHROME.brand}</span>`);
     expect(html).not.toMatch(/class="mk">P</);
-    expect(script).toContain("$('.brand .mk').append(icon('feather',17));");
+    expect(script).not.toContain("$('.brand .mk').append(");
     const ic = JSON.parse(/const IC=(\{.*?\});\n/.exec(script)![1]!) as Record<string, unknown>;
     expect(ic.feather).toEqual(ICONS.feather);
   });

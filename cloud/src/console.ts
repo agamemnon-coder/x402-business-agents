@@ -12,6 +12,7 @@ import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { tryPageResponse } from "./tryPage.js";
+import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
@@ -21,13 +22,20 @@ const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tabs { display: flex; gap: 4px; margin-left: 18px; overflow-x: auto; scrollbar-width: none; }
-.tabs::-webkit-scrollbar { display: none; }
-.tabs a { padding: 7px 11px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
-.tabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
+/* 12 Nov: the site's header (cloud/src/siteHeader.ts) on top; the console's own bar under it, one thin row: its pages,
+   the company, sign-out and test money. Its tabs look as the kit's nav.tabs did (src/ui/payablesKit.ts), under their
+   own class so neither style reaches the other's. */
+.appbar { border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); background: color-mix(in srgb, var(--bg) 84%, transparent); }
+@media (min-width: 901px) { .appbar { position: sticky; top: 64px; z-index: 30; backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); } }
+.appbar .wrap { display: flex; align-items: center; gap: 12px; }
+.apptabs { display: flex; gap: 4px; margin-left: -12px; overflow-x: auto; scrollbar-width: none; }
+.apptabs::-webkit-scrollbar { display: none; }
+.apptabs a { padding: 7px 12px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 650; font-size: 14px; white-space: nowrap; }
+.apptabs a:hover { color: var(--text); }
+.apptabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
-header.top nav.tabs { flex: none; }
+.appbar nav.apptabs { flex: none; }
 .who-am-i { min-width: 0; flex: 1 1 auto; justify-content: flex-end; }
 .who-am-i #who { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .who-am-i #who .wn { color: var(--text); font-weight: 600; }
@@ -36,11 +44,11 @@ header.top nav.tabs { flex: none; }
 .signed-in .who-am-i { display: inline-flex; }
 .who-am-i button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
 .who-am-i button:hover { color: var(--text); background: var(--sunken); }
-.signed-out .tabs, .signed-out .who-am-i { display: none; }
-header.top .test { margin-left: 12px; }
+.signed-out .appbar, .signed-out .who-am-i { display: none; }
+.appbar .test { margin-left: 12px; }
 label.check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; font-size: 14px; line-height: 1.45; }
 label.check input { margin-top: 3px; }
-header.top .spacer { margin-left: auto; }
+.appbar .spacer { margin-left: auto; }
 .auth { max-width: 460px; margin: 7vh auto 40px; padding: 28px; }
 .auth h1 { font-size: 26px; letter-spacing: -.02em; margin: 0 0 6px; }
 .auth p { color: var(--muted); margin: 0 0 18px; }
@@ -143,8 +151,8 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 .tile .l { align-items: flex-start; } .tile .l .ic { margin-top: 1px; }
 
 /* Round 2 (10 Nov): denser pages, initials, one-hue bars from the store's own numbers. */
-header.top .wrap { height: 56px; }
-header.top .test { padding: 5px 9px; font-size: 12px; }
+.appbar .wrap { height: 48px; }
+.appbar .test { padding: 5px 9px; font-size: 12px; }
 .av2 { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font: 700 11px/1 Inter, system-ui, sans-serif; letter-spacing: .02em; }
 .row > .sup { display: flex; align-items: center; gap: 10px; }
 .row .sup .sn { min-width: 0; }
@@ -205,18 +213,18 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .table.vat th.sh, .table.vat td.sh { display: none; }
 }
 @media (max-width: 900px) {
-  /* Two rows on a phone or a narrow window: the brand, who is signed in and the test-money label; then the pages. */
-  header.top .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 10px; }
-  header.top nav.tabs { order: 9; flex: 1 0 100%; margin: 6px 0 0; padding-bottom: 8px; }
+  /* Two rows on a phone or a narrow window: who is signed in and the test-money label; then the pages. */
+  .appbar .wrap { height: auto; flex-wrap: wrap; row-gap: 0; padding-top: 8px; }
+  .appbar nav.apptabs { order: 9; flex: 1 0 100%; margin: 4px 0 0 -9px; padding-bottom: 6px; }
   .who-am-i #who { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 640px) {
-  header.top .test .tl { display: none; }
+  .appbar .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
   /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
-  header.top nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
-  header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
+  .appbar nav.apptabs { display: flex; flex-wrap: wrap; gap: 2px; }
+  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -276,13 +284,9 @@ ul.files .fd { display: block; color: var(--muted); font-size: 12.5px; overflow-
 /* A phone: on an invoice's page what was done and what to do come before the document. */
 @media (max-width: 980px) { .split.inv > .stack { order: -1; } }
 
-/* The polish (12 Nov): the site's mark as a Purser Cloud lockup, and a lighter first run and sign-in on the site's
-   tokens: more air, the site's card radius and shadow, a step indicator, the brand colour on the one main button. */
-.brand .mk { width: 30px; height: 30px; border-radius: 9px; }
-.brand .nm { font-weight: 750; }
-.brand .sec { font-weight: 500; }
-/* A phone: the word Purser beside the mark while signed out; signed in, the first row keeps its room for the company, the engine and test money. */
-@media (max-width: 640px) { .signed-out header.top .brand > span.nm { display: inline; } .signed-out header.top nav.tabs { display: none; } }
+/* The polish (12 Nov): a lighter first run and sign-in on the site's tokens: more air, the site's card radius and
+   shadow, a step indicator, the brand colour on the one main button. (The Purser Cloud lockup gave way to the site's
+   header the same day: cloud/src/siteHeader.ts.) */
 .auth { max-width: 480px; margin: 9vh auto 48px; padding: 40px 40px 36px; border-radius: 22px; }
 .auth h1 { font-size: 28px; line-height: 1.2; margin: 0 0 10px; }
 .auth p { line-height: 1.6; margin: 0 0 22px; }
@@ -333,11 +337,11 @@ ${SCENE_CSS}`;
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
-<header class="top"><div class="wrap"><a class="brand" href="#/" aria-label="Purser Cloud"><span class="mk">${svg("feather", 17)}</span><span class="nm">Purser</span><span class="sec">Cloud</span></a>
-<nav class="tabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+${siteHeader("cloud")}
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
-<span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></header>
+<span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="hero">${sceneSvg()}</div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
@@ -359,7 +363,7 @@ document.documentElement.lang=L.lang;
 for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
 document.querySelector('#foot').textContent=t('cs.foot');
 for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
-document.querySelector('header .test').title=t('test.title');
+document.querySelector('.appbar .test').title=t('test.title');
 const IC=__ICONS__;
 const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 const $=(s)=>document.querySelector(s);
@@ -596,7 +600,7 @@ function engineStatus(){
   return ENG.p}
 const engineStale=()=>{ENG.p=null};
 // The header's one test-money chip says the engine is there, and in its title what that means.
-function engineChip(on){const c=$('header .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=on?t('cs.eng.foot'):t('cs.foot')}
+function engineChip(on){const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=on?t('cs.eng.foot'):t('cs.foot')}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
@@ -1291,7 +1295,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;

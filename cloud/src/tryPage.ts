@@ -24,7 +24,8 @@
 //   open from blob URLs (BLOBS), revoked on the next screen. Screen 6 (company): the export, start again, the runs.
 // - Icons are SVG elements made one by one with createElementNS from shape data (src/ui/icons.ts), never from markup.
 import { consoleCsp } from "./console.js";
-import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
+import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { SCENE_CSS, sceneSvg } from "./scene.js";
@@ -37,7 +38,7 @@ import type { CloudEnv } from "./app.js";
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
  * screen 6's dated links to single runs (/runs#<key>, keys and dates from src/redesign/runs.ts, held there by a test).
  */
-export const RUNS_URL = "https://kit11.max-31b.workers.dev/runs";
+export const RUNS_URL = `${SITE_ORIGIN}/runs`;
 /** The site's proof page (src/redesign/proof.ts, served at /proof on the same origin): screen 6's last link. */
 export const PROOF_URL = new URL("/proof", RUNS_URL).href;
 
@@ -45,36 +46,30 @@ const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-.top, main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
-.top { display: flex; align-items: center; height: 56px; }
-/* The console's lockup (cloud/src/console.ts): the feather in a dark square, then the name. */
-.brand { display: inline-flex; align-items: center; gap: 9px; font-size: 18px; letter-spacing: -.02em; }
-.brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg); }
-.brand .mk .i { vertical-align: 0; }
-.brand .nm { font-weight: 750; }
+main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
+/* 12 Nov: the page's own brand line gave way to the site's header (cloud/src/siteHeader.ts, its style after this one). */
 main { padding-bottom: 56px; overflow-x: clip; }
 /* Screen 0 in two zones (the console's sign-in has the same): the illustration (cloud/src/scene.ts) in a band on the
-   brand's tokens, the card with the words and the button, the trust line under it. A phone: the band on top (with the
-   brand over it), the card below. A wide screen: the band left, the card right, centred. Other screens: neither. */
+   brand's tokens, the card with the words and the button, the trust line under it. A phone: the site's header, the band,
+   the card below. A wide screen: the header across, the band left, the card right, centred. Other screens: neither. */
 .hero, .trust { display: none; }
 body:has(.screen.start) .hero { display: grid; }
 body:has(.screen.start) .trust { display: block; margin: 0 auto; padding: 14px var(--gut) 18px; max-width: 560px; width: 100%; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
-body:has(.screen.start) .top { position: absolute; top: 0; left: 0; right: 0; z-index: 2; max-width: none; padding: 0 20px; }
 body:has(.screen.start) main { width: calc(100% - 2 * var(--gut)); max-width: 560px; margin: -28px auto 0; position: relative; z-index: 1; padding: 22px 22px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
 body:has(.screen.start) h1 { margin-top: 0; }
 body:has(.screen.start) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
-body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 56px 12px 40px; }
+body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 16px 12px 40px; }
 body:has(.screen.start) .trust { margin-top: auto; }
 .start .lede { margin: 0 0 18px; font-size: 16.5px; }
 .start .btn.big { margin-top: 0; width: 100%; }
 .start .btn .i { vertical-align: 0; }
 .start .fine { margin: 12px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
 @media (min-width: 1024px) {
-  body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto auto 1fr; }
-  body:has(.screen.start) .top { right: 50%; padding: 0 36px; height: 72px; }
-  body:has(.screen.start) .hero { grid-column: 1; grid-row: 1 / -1; height: 100vh; position: sticky; top: 0; padding: 72px 48px 48px; }
-  body:has(.screen.start) main { grid-column: 2; grid-row: 2; width: calc(100% - 96px); max-width: 500px; margin: 0 auto; padding: 36px 36px 32px; }
-  body:has(.screen.start) .trust { grid-column: 2; grid-row: 3; max-width: 500px; padding: 18px 0 0; margin: 0 auto; }
+  body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
+  body:has(.screen.start) header.top { grid-column: 1 / -1; grid-row: 1; }
+  body:has(.screen.start) .hero { grid-column: 1; grid-row: 2 / -1; height: calc(100vh - 65px); position: sticky; top: 65px; padding: 40px 48px 48px; }
+  body:has(.screen.start) main { grid-column: 2; grid-row: 3; width: calc(100% - 96px); max-width: 500px; margin: 0 auto; padding: 36px 36px 32px; }
+  body:has(.screen.start) .trust { grid-column: 2; grid-row: 4; max-width: 500px; padding: 18px 0 0; margin: 0 auto; }
   body:has(.screen.start) h1 { font-size: 32px; }
 }
 h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; margin: 20px 0 12px; }
@@ -92,9 +87,9 @@ p { margin: 0 0 12px; }
 .btn:focus-visible, a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 a { color: var(--accent); }
-.tabs { display: flex; gap: 4px; padding: 4px; margin: 4px 0 16px; background: var(--sunken); border-radius: 999px; }
-.tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: 600 15px/1.2 Inter, system-ui, sans-serif; cursor: pointer; }
-.tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+main .tabs { display: flex; gap: 4px; padding: 4px; margin: 4px 0 16px; background: var(--sunken); border-radius: 999px; }
+main .tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: 600 15px/1.2 Inter, system-ui, sans-serif; cursor: pointer; }
+main .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .samples { display: grid; gap: 8px; }
 .samples .btn { justify-content: flex-start; text-align: left; border-radius: 14px; padding: 12px 16px; font-weight: 600; }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -415,8 +410,7 @@ function icon(name,size){
   return s;
 }
 
-// The brand's mark: the console's feather (src/ui/icons.ts), drawn here like every other icon.
-$('.brand .mk').append(icon('feather',17));
+// The brand's mark comes with the site's header (cloud/src/siteHeader.ts, 12 Nov), drawn on the server.
 
 // The token from the link (#e=… or #j=…): read once, taken out of the address bar at once, and sent only in the start
 // request's body.
@@ -1117,8 +1111,8 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
 <meta name="color-scheme" content="light dark">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}</style></head><body>
-<header class="top"><span class="brand"><span class="mk"></span><span class="nm">${CHROME.brand}</span></span></header>
+<style nonce="${n}">${CSS}${SCENE_CSS}${SITE_HEADER_CSS}</style></head><body>
+${siteHeader("try")}
 <div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
 <p class="trust">${escAttr(START.trust)}</p>

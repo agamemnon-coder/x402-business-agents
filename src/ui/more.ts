@@ -56,9 +56,9 @@ export function menuItemOf(page: string | null): "home" | "watch" | "try" | "pro
  * product pages, one divider, the partner pages. `current` is the page the reader is on, when it is one of these: its
  * link is marked, and so is "More".
  */
-export function moreHtml(current: string | null = null): string {
+export function moreHtml(current: string | null = null, /** 12 Nov: a link's address on another origin (src/redesign/ui.ts HeaderLinks); its own href without. */ hrefOf: (l: MoreLink) => string = (l) => l.href): string {
   const links = moreLinks();
-  const a = (l: MoreLink) => `<a href="${l.href}"${l.key === current ? ' aria-current="page"' : ""}>${l.label}</a>`;
+  const a = (l: MoreLink) => `<a href="${hrefOf(l)}"${l.key === current ? ' aria-current="page"' : ""}>${l.label}</a>`;
   const product = links.filter((l) => l.group === "product"), partner = links.filter((l) => l.group === "partner");
   const on = links.some((l) => l.key === current);
   return `<details class="pmore"><summary${on ? ' class="on"' : ""}>${MORE_LABEL}</summary><div class="pmenu">${product.map(a).join("")}${product.length && partner.length ? "<hr>" : ""}${partner.map(a).join("")}</div></details>`;
