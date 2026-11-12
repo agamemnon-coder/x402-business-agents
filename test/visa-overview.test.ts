@@ -263,12 +263,15 @@ describe("the Visa entry on the rest of the site", () => {
     expect("VISA_EXTRA_LINK" in brand).toBe(false);
   });
 
-  it("puts \"Visa (VIC via Airi)\" in Home's \"Built on\", as text; the flag is renamed and TAP is never in it", () => {
+  // Since 12 Nov "Built on" is one strip in the partner pages' footer, not on Home (the owner; src/redesign/partners.ts,
+  // builtOnItems): Home is one story and has none. Visa stands in it as text, on the VIC run, never TAP, never a logo.
+  it("puts Visa (VIC through Airwallex's Airi) in the partner pages' \"Built on\", as text; the flag is renamed and TAP is never in it", () => {
     expect(VISA_VIC_BUILT_ON).toBe(true);
     expect("VISA_AWARD_ON" in brand).toBe(false);
     expect(VISA_BUILT_ON).toBe("Visa (VIC via Airi)");
-    const built = /<div class="built">[\s\S]*?<\/div>/.exec(home)![0];
-    expect(built).toContain('<span class="logo txt">Visa (VIC via Airi)</span>');
+    expect(home).not.toMatch(/<div class="built">|<p class="builton">/);
+    const built = /<p class="builton">[\s\S]*?<\/p>/.exec(airwallex)![0];
+    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases settled<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 
@@ -282,10 +285,11 @@ describe("the Visa entry on the rest of the site", () => {
     const line = airiSummaryLine(airiRun()!);
     for (const [name, html] of Object.entries({ visa, airwallex, proof })) expect({ name, scripted: text(html).includes(line) }).toEqual({ name, scripted: true });
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
-    // Every README paragraph that says a purchase was paid with a single-use Visa credential says the run was scripted.
-    const paras = readFileSync(new URL("../README.md", import.meta.url), "utf8").split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ")).filter((p) => /paid with a single-use Visa/.test(p));
-    expect(paras.length).toBeGreaterThanOrEqual(2);
-    for (const p of paras) expect({ p: p.slice(0, 80), scripted: /scripted run, no Claude call/.test(p) }).toEqual({ p: p.slice(0, 80), scripted: true });
+    // The README of 12 Nov (#185) names the 7 November Airi run in one table row: it says the purchase was scripted, with
+    // no model call. Any README line that names that run says so.
+    const lines = readFileSync(new URL("../README.md", import.meta.url), "utf8").split("\n").filter((l) => /7 November/.test(l) && /Airi/.test(l));
+    expect(lines.length).toBeGreaterThanOrEqual(1);
+    for (const l of lines) expect({ l: l.slice(0, 80), scripted: /scripted (?:run, no Claude call|purchase with no model call)/.test(l) }).toEqual({ l: l.slice(0, 80), scripted: true });
     expect(readme).not.toMatch(/a second live run|second run \(vic-2\)/i);
     expect(readFileSync(new URL("../llms.txt", import.meta.url), "utf8")).toMatch(/a scripted run, no Claude call/);
     for (const [name, t] of Object.entries({ readme, ...(buildPages() as unknown as Record<string, unknown>) })) {
@@ -321,6 +325,9 @@ describe("only the Sourcing agent signed with TAP", () => {
       const stale = [...t.matchAll(/(each agent signs|every agent signs|our agents sign)[^.|]{0,160}(TAP|Trusted Agent Protocol)/gi)].filter((m) => !/\bWas\b[^|]{0,400}$/.test(t.slice(Math.max(0, m.index - 400), m.index)));
       expect({ f, stale: stale.map((m) => m[0]) }).toEqual({ f, stale: [] });
     }
-    for (const f of ["README.md", "docs/submission/long-description.md"]) expect({ f, says: read(f).replace(/\*\*/g, "").includes(VISA_CLAIM) }).toEqual({ f, says: true });
+    // The README of 12 Nov (#185) no longer carries the claim itself: it links the TAP note in the long description, which
+    // says it word for word.
+    expect(read("docs/submission/long-description.md").replace(/\*\*/g, "").includes(VISA_CLAIM)).toBe(true);
+    expect(read("README.md")).toContain("(docs/submission/long-description.md#visa)");
   });
 });
