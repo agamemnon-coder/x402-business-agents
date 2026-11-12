@@ -2,13 +2,13 @@
 
 For Max. Demo Day is **19 November 2026 in San Francisco, remote participation optional**; finalists are selected on
 **15 November** (microsite, read 5 November). The words come from [pitch.md](pitch.md) ("Demo Day: the 3-minute
-pitch", in the site's order: Home, Watch, live `/try/sign`, Proof), the answers from [qa.md](qa.md), the one page to
+pitch", in this order: Home, the replay at `/watch`, live `/try/sign`, Proof), the answers from [qa.md](qa.md), the one page to
 keep beside the laptop is [cheat-sheet.pdf](cheat-sheet.pdf). Every figure on screen is the main run's (3 November 2026) or a dated record's;
 nothing here moves money.
 
 ## The Demo Day script: a fallback per step
 
-The 3-minute pitch in [pitch.md](pitch.md), step by step, in the site's order (Max, 7 Nov): Home, then Watch, then
+The 3-minute pitch in [pitch.md](pitch.md), step by step, in the order Max set on 7 Nov: Home, then the replay at `/watch` (out of the site's menu since 12 Nov), then
 Try (`/try/sign`), then Proof. The phone is mirrored to the shared screen (QuickTime Player, New Movie Recording, the
 iPhone as the camera, over the cable; test it in rehearsal). The laptop has the tabs of section 4 open, and
 `npm run judge` already running in a second terminal, so the offline replay is one click away.
@@ -16,7 +16,7 @@ iPhone as the camera, over the cable; test it in rehearsal). The laptop has the 
 | Step | Time | Tap or show | If it fails |
 |---|---|---|---|
 | 1. Home: the problem | 0:00–0:15 | Laptop, Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)) | **Network down → the /watch replay** and Home, served offline by `npm run judge` (tab 7, `http://localhost:4311/`; the hosted pages need the network). Screen sharing drops: send the deck PDF in the chat and talk over it ("Let me walk you through the slides while the screen comes back.") |
-| 2. Watch | 0:15–0:20 | **Start: watch the agents**: `/watch` plays the main run's replay | Network down: `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price.mp4` |
+| 2. The replay | 0:15–0:20 | Tab 2, `/watch` (Home has no button to it since 12 Nov): it plays the main run's replay | Network down: `http://localhost:4311/watch?scene=1`. `/watch` stutters: clip `out/video/clips/05-price.mp4` |
 | 3. The test world | 0:20 | Phone, `/try/sign`, opened a minute before: the agents' steps (Claude Sonnet's reading, Purser's code, the live quote, Claude Opus's advice) already in | Network down: the `/watch` replay (step 2's fallback); say: "The network is down, so here is the recorded run; scan the QR afterwards." Then clips `11-turn.mp4` and `12-tamper.mp4` for the signature and the tamper. A busy answer ("many visitors…", "wait a moment"): **Try again**, or the second device, its world opened before |
 | 4. The agent asks | 0:25 | Point at the heading, the agents' steps and the advice | A live agent unavailable: the page shows a recorded real answer or code's reading, each labelled with the reason; say "labelled, as you see" and go on. If the page looks wrong, go to step 3's fallback |
 | 5. Sign with Face ID | 0:35 | **Sign with Face ID** (two prompts: the test passkey, then the signature); wait for the green check | **Face ID fails → a second device, or the recorded run.** Try once more; then the laptop's `/try/sign` (tab 4, its own world, Touch ID); or clip `11-turn.mp4` and say: "Same moment, recorded." |
@@ -114,8 +114,8 @@ figure is on the slides. Say: "Let me walk you through the slides while the scre
   5. Home: [kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/);
   6. the terminal, in the repo, `npm run verify` run once, its result on screen;
   7. `http://localhost:4311/watch` from `npm run judge` (already started in a second terminal, as reserve).
-- [ ] For the Demo Day script (the live version): start on tab 5, Home; **Start: watch the agents** opens the Watch
-  step; tab 3 is the proof.
+- [ ] For the Demo Day script (the live version): start on tab 5, Home; tab 2 is the replay at `/watch` (Home has
+  no button to it since 12 Nov); tab 3 is the proof.
 - [ ] The clips (`out/video/clips/`) open in a player, paused, in the order of the plan B column.
 - [ ] Phone above 80 %, Do Not Disturb on, Face ID works (unlock once).
 - [ ] The phone's hotspot ready as reserve internet (name and password known; tested once that day).
@@ -146,7 +146,7 @@ The Demo Day script (the live version), the same way:
 
 | Part | Target | Run 1 | Run 2 | Run 3 | Too long? What was cut |
 |---|---|---|---|---|---|
-| The problem, and the agents at work (Home, Watch) | 0:20 | | | | |
+| The problem, and the agents at work (Home, the replay at `/watch`) | 0:20 | | | | |
 | Live: sign, cheat, trick, change the rule | 1:10 | | | | |
 | The proof | 0:50 | | | | |
 | The business and the ask | 0:40 | | | | |
