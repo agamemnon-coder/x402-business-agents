@@ -9,7 +9,7 @@ export type SettingKey = "sell_price" | "upstream_price" | "ridgeline_price" | "
 /** Purser as an Airwallex platform (docs/airwallex-platform.md). */
 /** The binding Purser Cloud signed (src/airwallex/binding.ts); the fee itself is CFO policy (platform.fee_bps). */
 export type PlatformSettingKey = "platform.binding";
-export type WorldOptionKey = "world.upstream_cache" | "world.free_eur_target" | "world.tap_rail" | "world.let_one_through";
+export type WorldOptionKey = "world.upstream_cache" | "world.free_eur_target" | "world.tap_rail" | "world.let_one_through" | "world.stand_in_rails";
 
 export function getSetting(db: DB, key: SettingKey, fallback: string): string {
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;

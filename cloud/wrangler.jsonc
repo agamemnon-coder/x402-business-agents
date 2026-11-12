@@ -26,5 +26,33 @@
   // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
-  "triggers": { "crons": ["17 3 * * *"] }
+  "triggers": { "crons": ["17 3 * * *"] },
+  "env": {
+    // The read-only demo of seeded test companies (docs/cloud-demo.md): a Worker of its own with its own database and
+    // bucket, which hold the seed and nothing else. Every wrangler command for it takes --env demo. No secret, no mail
+    // domain and no cron: demo mode signs nobody in, takes no mail and writes nothing (cloud/src/demo.ts).
+    "demo": {
+      "name": "purser-demo",
+      "workers_dev": true,
+      "preview_urls": false,
+      "d1_databases": [
+        // wrangler d1 create purser-demo  → paste its database_id here.
+        { "binding": "DB", "database_name": "purser-demo", "database_id": "SET-AFTER-wrangler-d1-create-purser-demo", "migrations_dir": "migrations" }
+      ],
+      "r2_buckets": [
+        // wrangler r2 bucket create purser-demo-docs
+        { "binding": "DOCS", "bucket_name": "purser-demo-docs" }
+      ],
+      "vars": {
+        "DEMO_PUBLIC": "on",
+        // The seeded companies, in the order the console shows them (npm run cloud:seed-demo prints the same list).
+        "DEMO_SLUGS": "northwind-outdoor,bakery-de-test,fietslab-bike-workshop",
+        // Its workers.dev address: the console's page is built for it.
+        "RP_ID": "purser-demo.max-31b.workers.dev",
+        "ORIGIN": "https://purser-demo.max-31b.workers.dev"
+      },
+      // The static assets (pdf.js) are the same as above: wrangler hands "assets" down to an environment.
+      "triggers": { "crons": [] }
+    }
+  }
 }

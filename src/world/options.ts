@@ -8,6 +8,8 @@
 //   world.free_eur_target = x.xx the free EUR Treasury's first calibration leaves (default 1,500.00): below the licence
 //                                plus its fee ceiling, the licence plan must convert the shortfall on a fresh quote.
 //   world.tap_rail = on          the Sourcing agent's Packwise card purchase is signed with Visa TAP (as KIT11_TAP_RAIL=on).
+//   world.stand_in_rails = on    the world's rails are stand-ins (the cloud's demo world, src/demoworld): its books say
+//                                "stand-in test money" where a sandbox world says "sandbox test money".
 //
 // KIT11_UPSTREAM_CACHE=off in a process's environment turns the cache off too (never on).
 

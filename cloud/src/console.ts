@@ -9,19 +9,25 @@ import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "..
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
+import { BOOKS_JS } from "./consoleBooks.js";
+import { SITE_URL } from "../../src/ui/meta.js";
 import type { CloudEnv } from "./app.js";
 
+/** Where a demo visitor's "What is this?" goes: the public site, which says what Purser is. */
+export const DEMO_SITE = `${SITE_URL}/home`;
+
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy", "landmark", "receipt", "lock"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
 ul.plain { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tabs { display: flex; gap: 4px; margin-left: 18px; overflow-x: auto; scrollbar-width: none; }
+/* The public site's tabs (src/redesign/ui.ts nav.tabs): one segmented control, the current page raised (12 Nov). */
+.tabs { display: flex; gap: 2px; margin-left: 18px; padding: 4px; border-radius: 999px; background: var(--sunken); overflow-x: auto; scrollbar-width: none; }
 .tabs::-webkit-scrollbar { display: none; }
-.tabs a { padding: 7px 11px; border-radius: 10px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
-.tabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
+.tabs a { padding: 6px 13px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap; }
+.tabs a[aria-current="page"] { color: var(--text); background: var(--surface); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
 header.top nav.tabs { flex: none; }
@@ -220,40 +226,62 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
   /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
-  header.top nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+  header.top nav.tabs { display: flex; flex-wrap: wrap; gap: 2px; flex: 0 1 auto; border-radius: 18px; }
   header.top nav.tabs a { padding: 6px 9px; font-size: 13.5px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
+/* Books and the vault (12 Nov): a report card opens its details below it; a booking opens in place. */
+.tile[role="button"] { cursor: pointer; }
+.tile[aria-pressed="true"] { border-color: var(--accent); }
+#cards .tile .v { white-space: normal; }
+#folders button.linkish, #files button.linkish { text-align: left; }
+details.ent > summary { cursor: pointer; list-style: none; }
+details.ent > summary::-webkit-details-marker { display: none; }
+details.ent[open] > summary { margin-bottom: 10px; }
+/* Signed out (or the demo's companies, before one is chosen): no company tabs, on a phone too (12 Nov). */
+body.signed-out header.top nav.tabs { display: none; }
 `;
 
-// The page's frame in Dutch (the default); the script re-words it in the person's language when it starts.
+// The page's frame in English (the default since 12 November: the demo's visitors read English); the script re-words it
+// in the person's language when it starts. The switch to the other language is in the header on every screen.
 const BODY = `
-<header class="top"><div class="wrap"><a class="brand" href="#/"><span class="mk">P</span><span>Purser</span><span class="sec">Cloud</span></a>
-<nav class="tabs" id="tabs" aria-label="${tr("nl", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("nl", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("nl", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("nl", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("nl", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("nl", "cs.nav.settings")}</a></nav>
+<header class="top"><div class="wrap"><a class="brand" href="#/" aria-label="Purser Cloud"><span class="mk">${svg("feather", 16)}</span><span>Purser</span><span class="sec">Cloud</span></a>
+<nav class="tabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/vault" data-tab="vault" data-t="cs.nav.vault">${tr("en", "cs.nav.vault")}</a></nav>
 <span class="spacer"></span>
-<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("nl", "cs.sign_out")}" aria-label="${tr("nl", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
-<span class="test" title="${escAttr(tr("nl", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("nl", "test.label")}</span></span></div></header>
+<span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
+<a class="lang" id="lang" href="#" role="button" lang="nl" title="${escAttr(tr("en", "lang.switch.title"))}"><span class="ll">${tr("en", "lang.switch")}</span><span class="ls">NL</span></a>
+<span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></header>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
-<p class="foot wrap" id="foot">${tr("nl", "cs.foot")}</p>`;
+<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
 const LS=__CATALOGUES__;
 const PREF=(()=>{try{return localStorage.getItem('purser.cloud.lang')}catch(e){return null}})();
-const L=LS[PREF==='en'?'en':'nl'];
+const L=LS[PREF==='nl'?'nl':'en'];
 __I18N__
+__BOOKS__
+const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
+// A demo deployment (cloud/src/demo.ts): anyone may look at its test companies, nobody signs in, and this page sends
+// nothing but GET (api() refuses anything else before it is sent).
+const DEMO=CFG.demo||null;
+// A test world has no Face ID: its own words (cs.demo.o.<key>) take the place of those keys, before anything is drawn.
+if(DEMO)for(const k of Object.keys(L.m))if(k.indexOf('cs.demo.o.')===0)L.m[k.slice(10)]=L.m[k];
 document.documentElement.lang=L.lang;
 for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
-document.querySelector('#foot').textContent=t('cs.foot');
+document.querySelector('#foot').textContent=t(DEMO?'cs.demo.foot':'cs.foot');
 for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
-document.querySelector('header .test').title=t('test.title');
+document.querySelector('header .test').title=t(DEMO?'cs.demo.test_title':'test.title');
 const IC=__ICONS__;
-const CFG=JSON.parse(document.querySelector('meta[name=purser-cloud]').content);
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const ic=(name)=>{const s=document.createElement('span');s.className='ic';s.innerHTML=IC[name]||'';return s};
 const btn=(label,cls,icon)=>{const b=el('button','btn'+(cls?' '+cls:''),[icon?ic(icon):null,label]);b.type='button';return b};
-const today=new Date().toISOString().slice(0,10);
+// Today; in a test world, the day its time stands still (its company's last booking, from the demo's own list), so every
+// screen reads what is due and overdue as of the same day.
+const REAL_TODAY=new Date().toISOString().slice(0,10);let today=REAL_TODAY;
+// A finding in the words a reader gets; in a test world nobody approves with Face ID.
+const fw=(f)=>{const s=finding(f);return DEMO?s.split('with Face ID').join(t('cs.demo.with_face_id')):s};
 const view=()=>$('#view');
 const note=(text,tone)=>el('p','note-'+(tone||'info'),text);
 const chip=(status,words)=>el('span','st '+String(status||'').replace(/[^a-z_]/g,''),statusWords(status,words));
@@ -270,13 +298,21 @@ const KEY='purser.cloud.session';
 const load=()=>{try{const s=JSON.parse(sessionStorage.getItem(KEY)||'null');return s&&s.exp>Date.now()?s:null}catch(e){return null}};
 const save=(s)=>{try{sessionStorage.setItem(KEY,JSON.stringify(s))}catch(e){}};
 const forget=()=>{try{sessionStorage.removeItem(KEY)}catch(e){}};
-let S=load();let ME=null;let notice=null;
+let S=DEMO?null:load();let ME=null;let notice=null;
+// The demo company being looked at (its address, from the page's address), and the demo's companies once asked.
+let CO=null;let COS=null;let COSP=null;
+// A link to one of a company's pages: in demo mode under that company's address.
+const at=(p)=>DEMO?(CO?'#/c/'+CO+p:'#/'):'#'+p;
 
 class Expired extends Error{}
 async function api(path,o){
-  o=o||{};const token=o.token||(S&&S.token);
+  o=o||{};const method=o.method||'GET';
+  if(DEMO&&method!=='GET')throw new Error(t('cs.demo.read_only'));
+  const token=DEMO?null:(o.token||(S&&S.token));
+  // In demo mode a company's reads are asked under /v1/demo/{company}/, the one place the demo serves them.
+  if(DEMO&&/^\/v1\//.test(path)&&!/^\/v1\/demo\//.test(path)){if(!CO)throw new Error(t('cs.not_here'));path='/v1/demo/'+CO+path.slice(3)}
   const headers={};if(token)headers.authorization='Bearer '+token;if(o.body!==undefined)headers['content-type']='application/json';
-  const r=await fetch(path,{method:o.method||'GET',headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
+  const r=await fetch(path,{method,headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
   if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in');throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
   const j=await r.json().catch(()=>({error:r.statusText}));
@@ -286,20 +322,34 @@ async function download(path,name){const r=await api(path,{raw:true});const url=
 const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
 function shell(){
-  document.body.className=S?'signed-in':'signed-out';
-  if(S){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
+  document.body.className=DEMO?(CO?'signed-in demo':'signed-out demo'):S?'signed-in':'signed-out';
+  if(DEMO)demoShell();
+  if(S&&!DEMO){const left=Math.max(0,Math.round((S.exp-Date.now())/60000));const n=ME&&ME.user&&ME.user.display_name?ME.user.display_name:'',c=ME&&ME.tenant?ME.tenant.name:'',e=t('cs.ends_in',{n:left});const w=$('#who');
     // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
     w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
     // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
     const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
       co.append(aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
-  const tab=(location.hash.split('/')[1]||'').split('?')[0];
-  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+  const parts=location.hash.split('?')[0].split('/');const tab=(DEMO&&parts[1]==='c'?parts[3]||'overview':parts[1])||'';
+  for(const a of document.querySelectorAll('#tabs a')){if(DEMO)a.href=at('/'+a.dataset.tab);if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')}
+}
+// The demo's header: the company switcher (in place of the person and the sign-out), filled once the companies are known.
+function companies(){return COSP||(COSP=api('/v1/demo/companies').then((r)=>{COS=r.companies||[];return COS},(e)=>{COSP=null;throw e}))}
+function demoShell(){
+  const sel=$('#cosel');if(!sel)return;
+  if(!COS){companies().then(demoShell,()=>{});return}
+  if(!sel.options.length)for(const c of COS){const o=el('option','',c.name);o.value=c.slug;sel.append(o)}
+  if(CO)sel.value=CO;
 }
 // The person's language (their own, else the company's): when it is not the page's, remember it and load the page again.
 function useLanguage(lang){if(lang!=='nl'&&lang!=='en')return;try{localStorage.setItem('purser.cloud.lang',lang)}catch(e){}if(lang!==L.lang)location.reload()}
-async function me(){if(!ME){ME=await api('/v1/me');if(ME.language&&ME.language!==L.lang)useLanguage(ME.language)}return ME}
+// A demo visitor's language is their own choice in this browser; a demo company's language does not override it.
+async function me(){if(!ME){ME=await api('/v1/me');if(!DEMO&&ME.language&&ME.language!==L.lang)useLanguage(ME.language)}return ME}
+// The switch in the header: the other language, remembered in this browser; a signed-in person's own choice is kept
+// by the cloud too (as Settings keeps it), so it follows them to another browser.
+{const a=$('#lang');const other=L.lang==='en'?'nl':'en';a.lang=other;a.title=t('lang.switch.title');a.querySelector('.ll').textContent=t('lang.switch');a.querySelector('.ls').textContent=other.toUpperCase();
+  a.onclick=async(e)=>{e.preventDefault();if(!DEMO&&S){try{const m=await me();if(m.kind==='session'&&m.user)await api('/v1/me/language',{method:'POST',body:{language:other}})}catch(x){}}useLanguage(other)}}
 const title=(t)=>{document.title=t?'Purser Cloud · '+t:'Purser Cloud'};
 const head=(h,sub,tools)=>el('div','head',[el('div','',[el('h1','',h),sub?el('p','lede',sub):null]),tools?el('div','tools',tools):null]);
 
@@ -438,7 +488,7 @@ const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.w
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 async function overviewView(){
   title(t('cs.nav.overview'));
-  const [m,x,all]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200')]);shell();
+  const [m,x,all]=await Promise.all([me(),api('/v1/insights'+(DEMO?'?as_of='+today:'')),api('/v1/invoices?limit=200')]);shell();
   const items=all.items||[];
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
@@ -447,38 +497,45 @@ async function overviewView(){
     tile(t('cs.t.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('cs.x.due30',{amount:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):null),
     tile(t('cs.t.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?t('cs.x.pay_first'):t('cs.x.in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
     tile(t('cs.t.waits'),'inbox',String(waits),t('cs.x.waits',{faceid:x.waiting.for_cfo,other:x.waiting.for_a_person+x.waiting.for_supplier_check})),
-    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'alert':'calm')]);
+    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?[...new Set(blocked.map(([k])=>tk('cs.w.f.'+k,t('cs.w.blocked'))))].join(' · '):t('cs.x.none_blocked'),nb?'alert':'calm')]);
   // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
   const faceid=items.filter(i=>i.status==='waiting_cfo').length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
-  const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=faceid?'#/invoices?f=waiting_cfo':'#/invoices?f=act';
-  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
-    el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),faceid||todo?ic('chevron-right'):null);
+  const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=at(faceid?'/invoices?f=waiting_cfo':'/invoices?f=act');
+  // In a demo nobody signs: the CFO's approval is said as waiting, never as "your Face ID".
+  const fb=DEMO?t(faceid===1?'cs.demo.next.cfo_1':'cs.demo.next.cfo_n',{n:faceid}):t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid});
+  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','',[el('span','nl',t('cs.next.label')),el('b','',faceid?fb:todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
+    el('span','ns',faceid?t(DEMO?'cs.demo.next.cfo_go':'cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),faceid||todo?ic('chevron-right'):null);
   // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
-  const open=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of open)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
+  // What is due: invoices that can still be paid (a blocked invoice is not paid, and a credit note is never paid), as the tiles count them.
+  const open=items.filter(i=>!['paid','rejected','blocked'].includes(i.status)&&i.doc_kind!=='credit_note');const per={};for(const i of open)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
   const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
   const b=[0,0,0,0];for(const i of open){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
   const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
+  // The bar counts invoices; an accepted credit note is set against them in the Open tile, and said here in one line.
+  const cr=main?((x.credits_cents||{})[main[0]]||0):0;
   const due=el('div','card panel due',[el('h2','',t('cs.due.title')),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
+    cr>0?el('p','fine',t('cs.due.credit',{amount:cur(main[0])+' '+cents(cr),net:cur(main[0])+' '+cents((x.open_net_cents||{})[main[0]]||0)})):null,
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
   const w=items.filter(i=>i.status==='waiting_cfo');
   const wl=el('div','card list');
   if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
   else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
-  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),el('div','ovtop',[nx,due]),tiles,inbox,
-    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl]));
+  // No inbox yet (no mail domain, or a demo): nothing in its place (replaceChildren would write "null").
+  view().replaceChildren(...[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),el('div','ovtop',[nx,due]),tiles,inbox,
+    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl])].filter(Boolean));
 }
 
 // --- Invoices ------------------------------------------------------------------------------------------------------
 // Why, in two or three words with an icon; the whole finding stays in the row's title and on the invoice's page.
-function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(finding(f)):'';
+function why(i){const fs=i.findings||[];const f=fs.filter(x=>x.level!=='warn')[0]||fs[0];const full=f?cap(fw(f)):'';
   if(i.status==='paid')return ['circle-check',i.paid_at?t('cs.w.paid',{date:day(i.paid_at)}):t('paid'),''];if(i.status==='ready')return ['circle-check',t('cs.w.ready'),t('all_checks_passed')];
   if(i.status==='waiting_cfo')return ['scan-face',t('cs.w.phone'),t('cs.why_on_phone')];if(i.status==='rejected')return ['circle-minus',t('cs.w.rejected'),full];
   if(i.status==='needs_vendor')return ['clock',t('cs.w.vendor'),full];if(i.status==='blocked')return ['octagon-x',f?tk('cs.w.f.'+f.code,t('cs.w.blocked')):t('cs.w.blocked'),full];
   return ['triangle-alert',f?tk('cs.w.f.'+f.code,t('cs.w.review')):t('cs.w.review'),full]}
 const rowHead=()=>el('div','row th',[el('span','',t('supplier')),el('span','',t('invoice')),el('span','',t('due')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('why')),el('span','')]);
 function invoiceRow(i){
-  const a=el('a','row');a.href='#/invoices/'+encodeURIComponent(i.id);
+  const a=el('a','row');a.href=at('/invoices/'+encodeURIComponent(i.id));
   const sup=el('span','sup',[av(i.vendor),el('span','sn',i.vendor||t('unknown_supplier'))]);sup.title=i.vendor||'';
   const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
@@ -510,7 +567,7 @@ async function invoiceView(id){
   const i=await api('/v1/invoices/'+encodeURIComponent(id));const r=i.reading||{};
   title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
-  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
+  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href=at('/invoices');
   const top=el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
     el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])]);
   const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
@@ -520,7 +577,7 @@ async function invoiceView(id){
     [t('dt.pay_to'),[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
   const fs=i.findings||[];const fl=el('ul','findings');
   if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
-  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
+  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),fw(f)])]))}
   const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
   const tl=el('ul','timeline');
   tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
@@ -532,16 +589,47 @@ async function invoiceView(id){
   getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
   const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),note(t('cs.approved_on_phone'))])]));
-  drawPdf(id,pages);
+  const pay=el('div','card panel');pay.hidden=true;const book=el('div','card panel');book.hidden=true;
+  // A credit note is not booked (src/ledger/feed.ts leaves it out): its page says so, so Books holds no surprise.
+  view().replaceChildren(back,top,el('div','split',[doc,el('div','stack',[read,checks,i.doc_kind==='credit_note'?note(t('cs.dt.credit_unbooked')):null,pay,book,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),DEMO?null:note(t('cs.approved_on_phone'))].filter(Boolean))]));
+  drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages);
+  movements(i,pay,book).catch((e)=>{if(!(e instanceof Expired)){pay.hidden=false;pay.replaceChildren(note(e.message,'bad'))}});
+}
+// Where a movement's money went: a stand-in rail (the test world's, no money moved) or a sandbox says so, beside its name.
+const kindOf=(r,i)=>/\(stand-in\)$/.test((r&&r.rail_label)||'')||(i&&i.provenance==='stand-in')?'stand-in':(r&&r.provenance)||(i&&i.provenance)||'';
+const kindPill=(k)=>k==='stand-in'?el('span','pill warn',t('cs.stand_in')):k==='sandbox'?el('span','pill',t('cs.sandbox')):null;
+const isDay=(d)=>/^\d{4}-\d{2}-\d{2}$/.test(d||'');
+// An invoice's approval, payment and booking, from the register and the journal the runner pushed: the movements that
+// name this invoice (and the conversions under its payment's approval), and the entries they and its receipt were
+// booked as. Ids and the signed terms' hash come last.
+async function movements(i,pay,book){
+  const rec=String(i.received_at||'').slice(0,10),paid=String(i.paid_at||'').slice(0,10),from=i.issue_date&&i.issue_date<rec?i.issue_date:rec;
+  const [tx,led]=await Promise.all([api('/v1/transactions?limit=200'+(isDay(rec)?'&from='+rec:'')+(isDay(paid)?'&to='+paid:'')),api('/v1/ledger/entries?limit=200'+(isDay(from)?'&from='+from:''))]);
+  const mine=(tx.items||[]).filter((r)=>(r.invoice&&r.invoice.ap_id===i.id)||(!r.invoice&&i.proposal_id&&r.approval&&r.approval.proposal_id===i.proposal_id));
+  const ap=(mine.find((r)=>r.approval&&r.approval.decision)||{}).approval;
+  if(ap||mine.length||i.status==='waiting_cfo'){
+    const kids=[el('h2','',[ic('shield-check'),t('cs.dt.pay_title')])];
+    if(ap&&ap.decision==='APPROVED')kids.push(dl([[t('cs.dt.approved'),stamp(ap.approved_at)],[t('cs.dt.signed_with'),kindOf(null,i)==='stand-in'?t('cs.dt.test_passkey'):ap.method==='passkey'?t('cs.dt.passkey'):String(ap.method||'')],[t('cs.dt.request'),el('code','idc',ap.proposal_id||'')]]));
+    else if(i.status==='waiting_cfo')kids.push(note(t('cs.dt.waits_cfo',{id:i.proposal_id||''})));
+    if(mine.length){kids.push(el('h2','sub-h',[ic('landmark'),t('cs.dt.payment')]));
+      kids.push(el('ul','plain',mine.slice().reverse().map((r)=>el('li','',[el('b','',tk('rail.'+r.rail,r.rail_label||r.rail)),kindPill(kindOf(r,i)),el('span','num',(r.flow==='in'?'+':'−')+cur(r.currency)+' '+amount(r.amount)),el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status)),r.proof?el('code','idc',String(r.proof).slice(0,18)):null]))))}
+    if(ap&&ap.terms_sha256){const f=el('p','fine',t('cs.dt.terms',{hash:String(ap.terms_sha256).slice(0,16)+'…'}));f.title=ap.terms_sha256;kids.push(f)}
+    pay.replaceChildren(...kids);pay.hidden=false;
+  }
+  const ids=new Set(mine.flatMap((r)=>(r.booking&&r.booking.entry_ids)||[]));
+  // In the order they happened: the receipt first, then the payment's entries.
+  const entries=(led.items||[]).filter((e)=>e.source_key==='ap-accrual|'+i.id||ids.has(e.entry_id)).sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);
+  // Each entry on one line, then its accounts with debit or credit: narrow enough for a phone (a table was not).
+  if(entries.length){book.replaceChildren(el('h2','',[ic('receipt'),t('cs.dt.booked')]),...entries.map((e)=>el('div','',[el('p','fine',[el('b','','#'+e.entry_id+' '),day(e.posting_date)+' · '+data('journal',e.description||'')]),
+    el('div','kv',(e.lines||[]).flatMap((l)=>[el('span','',l.account+' · '+t(l.debit_cents?'cs.debit':'cs.credit')+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('span','',cur(l.currency)+' '+cents(l.debit_cents||l.credit_cents))]))])));book.hidden=false}
 }
 // The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
 // a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
 // fetches the bytes (it holds the session) and hands them over; if the frame cannot draw them, the download stays.
 const PDF_MAX_BYTES=16*1024*1024;
-async function drawPdf(id,box){
+async function drawPdf(path,box){
   try{
-    const r=await api('/v1/invoices/'+encodeURIComponent(id)+'/document',{raw:true});
+    const r=await api(path,{raw:true});
     const buf=await r.arrayBuffer();
     if(buf.byteLength>PDF_MAX_BYTES){box.replaceChildren(el('p','wait',t('cs.too_large')));return}
     const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.src='/pdfview';f.className='pdfframe';f.title=t('cs.invoice_drawn');f.setAttribute('referrerpolicy','no-referrer');
@@ -579,7 +667,7 @@ async function transactionsView(){
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow');
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
-      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
+      b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail)+(kindOf(r,null)==='stand-in'?' · '+t('cs.stand_in'):''),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
@@ -588,34 +676,147 @@ async function transactionsView(){
 }
 
 // --- Books ---------------------------------------------------------------------------------------------------------
+// The reports first, as five cards computed by the cloud from the ledger (cloud/src/read.ts, the runner's own report
+// code); a card opens its details below. Then every booking as a timeline, newest first, each opening to its lines and
+// its proof. Whether books, payments and signatures agree is the register's own check (agreement, BOOKS_JS).
 const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
+const camt=(c,v)=>cur(c)+' '+cents(v);
+// The currency may go to its own line on a narrow card; the amount itself never breaks (not even after its minus).
+const big=(c,v)=>{const s=el('span','');const n=el('span','',cents(v));n.style.whiteSpace='nowrap';s.append(el('small','',cur(c)),' ',n);return s};
+const others2=(cs,f)=>cs.slice(1).map((c)=>camt(c,f(c))).join(' · ');
+const kv=(rows)=>el('div','kv',rows.flatMap(([l,v])=>{const a=el('span','',l);a.title=l;return [a,el('span','',v)]}));
+const monthName=(m)=>MONTHS[Number(m.slice(5,7))-1]+' '+m.slice(0,4);
+// A movement's payment id: the payment the runner asked the rail for (a transfer's request id), else the movement's own.
+const paymentId=(r)=>/^transfer:/.test(r.id||'')?r.id.slice(9):String(r.id||'');
+// Every entry, oldest first: pages of 200, at most 2,000 entries.
+async function allEntries(){let out=[],cursor=null;for(let k=0;k<10;k++){const p=await api('/v1/ledger/entries?limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));out=out.concat(p.items||[]);cursor=p.next_cursor;if(!cursor)break}return out}
+// The vault's index when the cloud holds one; none is not an error (a runner files its vault on its own computer).
+const vaultOf=()=>api('/v1/vault').catch((e)=>{if(e instanceof Expired)throw e;return {years:[],files:[]}});
+function agreeBox(check,standIn){
+  const a=agreement(check);let b;
+  if(a.nothing)b=note(t('cs.bk.nothing'));
+  else if(a.ok)b=el('p','note-ok',[el('b','',t('cs.bk.agree')),' · '+t(standIn?'cs.bk.agree_sub_stand_in':'cs.bk.agree_sub',{n:a.moved})]);
+  else{const ul=el('ul','plain',a.parts.map((p)=>el('li','',t('cs.bk.d.'+p.k,{ids:p.ids.join(', ')}))));if(a.unreconciled)ul.append(el('li','',t('cs.bk.d.unreconciled',{n:a.unreconciled})));
+    b=el('div','note-bad',[el('b','',t('cs.bk.differ')),ul])}
+  b.id='agree';return b}
+function vatTable(v){
+  const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
+  const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
+  for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',camt('EUR',r.base_cents)),el('td','r',camt('EUR',r.vat_cents))]))}
+  // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
+  if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td','sh'),el('td',''),el('td','')]));
+  // Each row has the share column the phone hides, so the columns line up there too.
+  tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td',''),el('td','r',camt('EUR',v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td',''),el('td','r',camt('EUR',v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td',''),el('td','r',el('b','',camt('EUR',v.balance_5c_cents)))]));
+  tbl.append(tb);return el('div','scroll',tbl)}
 async function booksView(){
   title(t('cs.nav.books'));
-  const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
-  const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
-  const vat=el('div','card panel');const journal=el('div','card panel');
-  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),el('div','split2',[vat,journal]));
-  async function drawVat(){
-    const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
-    const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
-    const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
-    const eur=(c)=>cur('EUR')+' '+cents(c);
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
-    // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
-    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
-    tbl.append(tb);
-    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
-      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'bad'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
+  const [entries,sum,txp,vlt]=await Promise.all([allEntries(),api('/v1/transactions/summary'),api('/v1/transactions?limit=200'),vaultOf()]);
+  const days=entries.map((e)=>e.posting_date).filter(isDay).sort();
+  const p=period(days[days.length-1]||null,today,!!DEMO);
+  const [trial,pnl,balance,vat,payables]=await Promise.all([api('/v1/reports/trial?to='+p.end),api('/v1/reports/pnl?from='+p.from+'&to='+p.end),api('/v1/reports/balance?to='+p.end),api('/v1/reports/vat?quarter='+p.quarter),api('/v1/reports/payables?as_of='+p.as_of)]);
+  const c=reportCards({trial,pnl,balance,vat,payables});
+  const names={};for(const r of trial.rows||[])names[r.account]=r.name;
+  const acct=(a)=>a+(names[a]?' · '+names[a]:'');
+  // The five cards: the result on the card, the details below it on a click.
+  const tm=c.trial.currencies[0],pm=c.pnl.currencies[0],bm=c.balance.currencies[0],ym=c.payables.currencies[0];
+  const detail=el('div','card panel');detail.id='report';detail.hidden=true;
+  const cards=[
+    ['trial',tile(t('cs.bk.trial'),'circle-check',t(c.trial.balanced?'cs.bk.balanced':'cs.bk.not_balanced'),tm?t('cs.bk.trial_x',{amount:camt(tm,c.trial.by[tm].debit)}):null,c.trial.balanced?'calm':'alert'),()=>
+      c.trial.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv((trial.rows||[]).filter((r)=>r.currency===k).map((r)=>[acct(r.account),camt(k,r.balance_cents)]))])],
+    ['pnl',tile(t('cs.bk.pnl'),'receipt',pm?big(pm,c.pnl.by[pm].result):t('none'),[t('cs.bk.pnl_x',{from:day(c.pnl.from),to:day(c.pnl.to)}),others2(c.pnl.currencies,(k)=>c.pnl.by[k].result)].filter(Boolean).join(' · ')),()=>
+      c.pnl.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv([...(pnl.by_currency[k].accounts||[]).map((a)=>[acct(a.account),camt(k,a.cents)]),[t('cs.bk.result'),camt(k,c.pnl.by[k].result)]])])],
+    ['balance',tile(t('cs.bk.balance'),'landmark',t(c.balance.balanced?'cs.bk.balanced':'cs.bk.not_balanced'),bm?t('cs.bk.balance_x',{amount:camt(bm,c.balance.by[bm].assets)}):null,c.balance.balanced?'calm':'alert'),()=>
+      c.balance.currencies.flatMap((k)=>[el('h2','sub-h',cur(k)||k),kv([...(balance.by_currency[k].accounts||[]).map((a)=>[acct(a.account),camt(k,a.cents)]),[t('cs.bk.result'),camt(k,c.balance.by[k].result)]])])],
+    ['vat',tile(t('cs.bk.vat',{quarter:c.vat.quarter}),'file-text',big('EUR',c.vat.balance),t('cs.bk.vat_prep')),()=>{
+      // The quarters that hold bookings, newest first; the overview is drawn again for the one chosen.
+      const qs=[];if(days.length){let y=Number(days[0].slice(0,4)),q=Math.ceil(Number(days[0].slice(5,7))/3);for(let n=0;n<40;n++){qs.unshift(y+'Q'+q);if(y+'Q'+q===p.quarter)break;q++;if(q>4){q=1;y++}}}
+      const pick=el('select','field');for(const v of qs.length?qs:[p.quarter]){const o=el('option','',v);o.value=v;pick.append(o)}
+      const box=el('div','',[vatTable(vat)]);
+      pick.onchange=()=>api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value)).then((v)=>box.replaceChildren(vatTable(v)),(e)=>{if(!(e instanceof Expired))box.replaceChildren(note(e.message,'bad'))});
+      return [qs.length>1?el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]):null,box,note(NL?t('cs.vat_notice'):(vat.notice||t('cs.vat_notice')))]}],
+    ['payables',tile(t('cs.bk.payables'),'wallet',ym?big(ym,c.payables.by[ym].open):t('none'),[t('cs.bk.pay_x',{n:c.payables.items,amount:ym?camt(ym,c.payables.by[ym].overdue):'0'}),others2(c.payables.currencies,(k)=>c.payables.by[k].open)].filter(Boolean).join(' · ')),()=>
+      [kv((payables.items||[]).map((i)=>[data('party',i.party)+' · '+(i.due_date?day(i.due_date):''),camt(i.currency,i.open_cents)])),(payables.items||[]).length?null:note(t('none'))]],
+  ];
+  const tiles=el('div','tiles');tiles.id='cards';
+  for(const [k,tl,body] of cards){tl.dataset.card=k;tl.setAttribute('role','button');tl.tabIndex=0;tl.setAttribute('aria-pressed','false');
+    const pick=()=>{const on=tl.getAttribute('aria-pressed')!=='true';for(const x of tiles.children)x.setAttribute('aria-pressed','false');tl.setAttribute('aria-pressed',String(on));
+      detail.hidden=!on;if(on)detail.replaceChildren(el('h2','',tl.querySelector('.l').textContent),...body().filter(Boolean))};
+    tl.onclick=pick;tl.onkeydown=(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick()}};tiles.append(tl)}
+  // The bookings, newest first, by month; a closed month says so (its report is in the vault only once it is closed).
+  const txOf={};for(const r of txp.items||[])for(const id of (r.booking&&r.booking.entry_ids)||[])txOf[id]=r;
+  const closed=new Set(closedMonths(vlt.files));
+  const sorted=entries.slice().sort((a,b)=>String(b.posting_date).localeCompare(String(a.posting_date))||b.entry_id-a.entry_id);
+  const book=el('div','card panel',[el('h2','',[ic('calendar-range'),t('cs.bk.bookings')]),el('p','fine',t('cs.bk.bookings_sub'))]);book.id='bookings';
+  let shown=0,month='',list=null;const more=btn(t('cs.bk.more'));
+  function draw(){
+    for(const e of sorted.slice(shown,shown+60)){const m=String(e.posting_date).slice(0,7);
+      if(m!==month){month=m;const lock=closed.has(m)?el('span','pill ok',[ic('lock'),' '+t('cs.bk.closed')]):null;if(lock)lock.title=t('cs.bk.closed_title');
+        book.insertBefore(el('h2','sub-h',[monthName(m),lock]),more);list=el('ul','timeline');book.insertBefore(list,more)}
+      list.append(entryItem(e,txOf[e.entry_id]))}
+    shown=Math.min(sorted.length,shown+60);more.hidden=shown>=sorted.length}
+  function entryItem(e,tx){
+    const k=entryKind(e);const tot={};for(const l of e.lines||[])tot[l.currency]=(tot[l.currency]||0)+(l.debit_cents||0);
+    const inv=(/^ap-accrual\|([^|@]+)/.exec(e.source_key||'')||[])[1]||(tx&&tx.invoice&&tx.invoice.ap_id)||null;
+    const s=el('summary','',[el('b','',t('cs.bk.k.'+k)),el('span','',[day(e.posting_date),data('journal',e.description||''),Object.keys(tot).map((c)=>camt(c,tot[c])).join(' · ')].filter(Boolean).join(' · '))]);
+    const body=[kv((e.lines||[]).map((l)=>[acct(l.account)+' · '+t(l.debit_cents?'cs.debit':'cs.credit'),camt(l.currency,l.debit_cents||l.credit_cents)]))];
+    if(inv){const a=el('a','btn',[ic('file-text'),t('cs.bk.open_invoice',{id:inv})]);a.href=at('/invoices/'+encodeURIComponent(inv));
+      const d=btn(t('cs.bk.document'),'','download');d.onclick=()=>download('/v1/invoices/'+encodeURIComponent(inv)+'/document',inv+'.pdf').catch((x)=>{if(!(x instanceof Expired))d.after(note(x.message,'bad'))});
+      body.push(el('div','row2',[a,' ',d]))}
+    // Ids and hashes last: the payment, the request the CFO approved, the terms that were signed, the entry's own hash.
+    const ap=tx&&tx.approval;
+    body.push(dl([tx?[t('cs.bk.payment_id'),el('span','',[paymentId(tx),' ',kindPill(kindOf(tx,null))])]:null,ap&&ap.proposal_id?[t('cs.dt.request'),ap.proposal_id,'mono']:null,
+      ap&&ap.terms_sha256?[t('cs.vault.terms'),ap.terms_sha256,'mono']:null,[t('cs.bk.entry_hash'),e.entry_hash||'','mono']].filter(Boolean)));
+    const d=el('details','ent',[s,...body]);d.dataset.entry=String(e.entry_id);return el('li','',[d])}
+  more.onclick=draw;book.append(more);draw();
+  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede')),agreeBox(sum.check,(txp.items||[]).some((r)=>kindOf(r,null)==='stand-in')),tiles,detail,el('section','section',[book]));
+}
+
+// --- Vault ---------------------------------------------------------------------------------------------------------
+// The vault as it files the company's documents: its own folders (Dutch names, with the English word beside them),
+// a folder's files, the chosen PDF drawn in the page, a download, and "Verify this document": this browser hashes the
+// bytes it downloaded and compares the SHA-256 with the one on record. A payment proof shows what was signed.
+async function vaultView(){
+  title(t('cs.nav.vault'));
+  const [v,txp]=await Promise.all([vaultOf(),api('/v1/transactions?limit=200')]);
+  const top=head(t('cs.nav.vault'),t('cs.vault.lede'));
+  if(!(v.files||[]).length){view().replaceChildren(top,el('div','card list',[el('div','empty',[el('b','',t('cs.vault.none')),t('cs.vault.none_sub')])]));return}
+  const root=vaultTree(v.files);const all=[];(function walk(n,d){for(const f of n.folders){all.push([f,d]);walk(f,d+1)}})(root,0);
+  const en=(name)=>{const k=dutchName(name);return k&&!NL?el('span','pill',t('cs.vault.n.'+k)):null};
+  const tree=el('ul','plain');const folders=el('div','card panel',[el('h2','',t('cs.vault.folders')),tree]);folders.id='folders';
+  const files=el('div','card panel');files.id='files';const doc=el('div','stack');
+  let at0=null;
+  function drawTree(){tree.replaceChildren(...all.map(([f,d])=>{const b=el('button','linkish',f===at0?el('b','',f.name):f.name);b.type='button';b.onclick=()=>openFolder(f);if(f===at0)b.setAttribute('aria-current','true');
+    const li=el('li','',[b,en(f.name)]);li.style.paddingLeft=(d*14)+'px';return li}))}
+  function openFolder(f){at0=f;drawTree();
+    // What kind of file each is: once beside the folder's name when all are the same kind, else on each file.
+    const kinds=[...new Set(f.files.map((x)=>x.kind))];const kp=(k)=>el('span','pill',tk('cs.vault.k.'+k,k));
+    const ul=el('ul','plain',f.files.map((x)=>{const b=el('button','linkish',x.name);b.type='button';b.onclick=()=>showFile(x);return el('li','',[b,en(x.name)||(kinds.length>1?kp(x.kind):null),x.stored?null:el('span','pill bad',t('cs.vault.not_stored'))])}));
+    files.replaceChildren(el('h2','',[f.name,en(f.name),kinds.length===1&&!en(f.name)?kp(kinds[0]):null]),f.files.length?ul:note(t('cs.vault.no_files')));
+    if(f.files.length)showFile(f.files[0]);else doc.replaceChildren()}
+  function showFile(f){
+    const path='/v1/documents/'+f.sha256;
+    const getDoc=btn(t('cs.download'),'','download');getDoc.id='download';getDoc.onclick=()=>download(path,f.name.replace(/[^\w.-]+/g,'_')).catch((e)=>{if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))});
+    const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
+    const res=el('div','');res.id='verify-result';
+    const ver=btn(t('cs.vault.verify'),'primary','shield-check');ver.id='verify';
+    ver.onclick=async()=>{ver.disabled=true;try{const r=await api(path,{raw:true});const x=await verifyBytes(await r.arrayBuffer(),f.sha256);
+      res.replaceChildren(note(t(x.match?'cs.vault.match':'cs.vault.mismatch'),x.match?'ok':'bad'),dl([[t('cs.vault.on_record'),x.expected,'mono'],[t('cs.vault.computed'),x.actual,'mono']]));res.dataset.match=String(x.match)}
+      catch(e){if(!(e instanceof Expired))res.replaceChildren(note(e.message,'bad'))}finally{ver.disabled=false}};
+    const id=(/^(?:invoice|receipt):(.+)$/.exec(f.key||'')||[])[1]||null;
+    const check=el('div','card panel',[el('div','row2',[ver,id?' ':null,id?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.bk.open_invoice',{id})]);a.href=at('/invoices/'+encodeURIComponent(id));return a})():null]),res]);
+    const kids=[el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',f.name),getDoc]),pages]),check];
+    // A payment proof: the CFO's approval of the exact terms, the payment it released, and the rail's own label.
+    const tx=f.kind==='receipt'&&id?(txp.items||[]).find((r)=>r.invoice&&r.invoice.ap_id===id&&r.approval&&r.approval.decision):null;
+    if(tx){const ap=tx.approval;const pr=el('div','card panel',[el('h2','',[ic('shield-check'),t('cs.dt.pay_title')]),dl([[t('cs.dt.approved'),stamp(ap.approved_at)],
+      [t('cs.dt.signed_with'),kindOf(tx,null)==='stand-in'?t('cs.dt.test_passkey'):ap.method==='passkey'?t('cs.dt.passkey'):String(ap.method||'')],
+      [t('cs.dt.payment'),el('span','',[tk('rail.'+tx.rail,tx.rail_label||tx.rail),' ',kindPill(kindOf(tx,null))])],
+      [t('cs.dt.request'),ap.proposal_id||'','mono'],[t('cs.bk.payment_id'),paymentId(tx),'mono'],[t('cs.vault.terms'),ap.terms_sha256||'','mono']])]);pr.id='proof';kids.push(pr)}
+    doc.replaceChildren(...kids);
+    drawPdf(path,pages);
   }
-  pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
-  const j=await api('/v1/ledger/entries?limit=30');
-  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
-  if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
-  tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
-  await drawVat();
+  view().replaceChildren(top,el('div','split',[el('div','stack',[folders,files]),doc]));
+  // The payment proofs first: the folder a reader asks about first, else the first folder that holds files.
+  openFolder(all.map((x)=>x[0]).find((f)=>dutchName(f.name)==='payments'&&f.files.length)||all.map((x)=>x[0]).find((f)=>f.files.length)||all[0][0]);
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
@@ -777,26 +978,63 @@ function platformView(){
   view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
 }
 
+// --- The demo's companies: one card each, counted by the demo from its rows ----------------------------------------
+async function companiesView(){
+  title(t('cs.demo.companies'));
+  const cs=await companies();shell();
+  const cards=el('div','grid2');
+  for(const c of cs){
+    const by=c.invoices_by_status||{},n=(...ks)=>ks.reduce((x,k)=>x+(by[k]||0),0);
+    const parts=[{l:t('filter.paid'),v:n('paid')},{l:t('cs.t.waits'),v:n('waiting_cfo','ready','needs_review','needs_vendor')},{l:t('filter.blocked'),v:n('blocked')},{l:t('filter.rejected'),v:n('rejected')}].filter((p,k)=>p.v>0||k<3).map((p)=>({...p,t:String(p.v)}));
+    const open=el('a','btn',[t('cs.demo.open'),ic('chevron-right')]);open.href='#/c/'+c.slug+'/overview';
+    // A credit note is counted apart: it is no invoice that waits.
+    const cn=c.counts.credit_notes||0;
+    cards.append(el('div','card panel',[el('h2','',[av(c.name),el('span','',c.name)]),el('p','fine',[t('cs.demo.c.invoices',{n:c.counts.invoices}),cn?t(cn===1?'cs.demo.c.credit_1':'cs.demo.c.credit_n',{n:cn}):''].filter(Boolean).join(' · ')),segbar(parts,t('cs.demo.c.invoices',{n:c.counts.invoices})),
+      el('div','kv',[el('span','',t('cs.demo.c.payments')),el('span','',String(c.counts.payments)),el('span','',t('cs.demo.c.documents')),el('span','',String(c.counts.documents)),el('span','',t('cs.demo.c.entries')),el('span','',String(c.counts.ledger_entries))]),
+      el('div','row2',[open])]));
+  }
+  view().replaceChildren(head(t('cs.demo.companies'),t('cs.demo.companies_lede',{n:cs.length})),el('section','section',[cards]));
+}
+function notHere(){
+  const a=el('a','btn',t(DEMO&&!CO?'cs.demo.all':'cs.back_overview'));a.href=at('/overview');
+  view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),a]));
+}
+
 async function route(){
-  const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
-  S=load();shell();
-  const open={'/sign-in':signInView,'/start':startView,'/platform':platformView};
+  const h=location.hash||'#/';let [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
+  // In demo mode a company's pages are under #/c/{its address}/…; the companies' cards are at #/.
+  if(DEMO){const c=/^\/c\/([a-z0-9][a-z0-9-]{1,40})(\/.*)?$/.exec(path);const co=c&&DEMO.slugs.includes(c[1])?c[1]:null;if(co!==CO){CO=co;ME=null}
+    path=c?(co?c[2]||'/overview':'/not-here'):path==='/'||path===''?'/companies':path;
+    today=REAL_TODAY;if(CO){const cs=await companies().catch(()=>null);const one=cs&&cs.find((x)=>x.slug===CO);if(one&&/^\d{4}-\d{2}-\d{2}$/.test(one.as_of||''))today=one.as_of}}
+  else S=load();
+  shell();
+  const open=DEMO?{'/companies':companiesView}:{'/sign-in':signInView,'/start':startView,'/platform':platformView};
   try{
-    if(path==='/enrol')return enrolView(q);
-    if(open[path])return open[path]();
-    if(!S)return go('#/sign-in');
+    if(!DEMO&&path==='/enrol')return enrolView(q);
+    if(open[path])return await open[path]();
+    if(!DEMO&&!S)return go('#/sign-in');
     if(path==='/'||path==='')return go('#/overview');
+    if(DEMO&&!CO)return notHere();
     view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
-    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView};
-    if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
+    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/vault':vaultView};if(!DEMO)pages['/settings']=settingsView;
+    if(!pages[path])return notHere();
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
-$('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
+if(DEMO){
+  // The demo's frame: no settings, no person, no sign-out; a company switcher; and on every screen one line that says
+  // what this is, with the way back to the public site.
+  const sel=el('select','sel');sel.id='cosel';sel.setAttribute('aria-label',t('cs.demo.switch'));
+  sel.onchange=()=>{const parts=location.hash.split('?')[0].split('/');const tab=['overview','invoices','transactions','books','vault'].includes(parts[3])?parts[3]:'overview';go('#/c/'+sel.value+'/'+tab)};
+  $('.who-am-i').replaceChildren(sel);
+  const what=el('a','',t('cs.demo.what'));what.href=DEMO.site;what.rel='noopener';
+  $('main').before(el('div','wrap',[el('p','banner',[ic('flask'),el('span','',t('cs.demo.banner')),what])]));
+}else $('#out').onclick=async()=>{try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
 window.addEventListener('hashchange',route);
-setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
+// A session ends after 15 minutes; the demo has none, and its data does not change, so it is not asked again.
+if(!DEMO)setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
 route();
 `;
 
@@ -811,14 +1049,16 @@ const nonce = () => {
 const USED = keysUsedIn(SCRIPT + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain). */
-export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string }): string {
-  // Both languages' words (the console's only) as JSON: the script picks the person's, Dutch until it knows.
+export function consolePage(n: string, c: { origin: string; rpId: string; mailDomain: string; demo?: { slugs: string[]; site: string } | null }): string {
+  // A demo deployment says so, with its companies' addresses and where "What is this?" goes; any other says demo: null.
+  const cfg = { ...c, demo: c.demo ?? null };
+  // Both languages' words (the console's only) as JSON: the script picks the person's, English until it knows.
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__ICONS__", ICON_SET(ICONS));
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__BOOKS__", () => BOOKS_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>
@@ -845,6 +1085,12 @@ import {getDocument,GlobalWorkerOptions} from ${lib};
 const LIMIT_MS=15000,MAX_PAGES=6;
 let worker=null,task=null,timer=null,done=false;
 const size=()=>parent.postMessage({type:'size',h:document.documentElement.scrollHeight},'*');
+// The canvas cut below its last line that is not white, with a small margin; unchanged when little would be cut.
+function cropped(c){
+  const w=c.width,h=c.height,d=c.getContext('2d').getImageData(0,0,w,h).data;let last=-1;
+  for(let y=h-1;y>=0&&last<0;y--)for(let x=0;x<w;x+=4){const k=(y*w+x)*4;if(d[k]<240||d[k+1]<240||d[k+2]<240){last=y;break}}
+  const keep=Math.min(h,last+Math.round(h*0.03));if(last<0||keep>h*0.9)return c;
+  const n=document.createElement('canvas');n.width=w;n.height=keep;n.getContext('2d').drawImage(c,0,0);n.style.width=c.style.width;n.setAttribute('aria-label',c.getAttribute('aria-label'));c.replaceWith(n);return n}
 function fail(){if(done)return;done=true;try{task&&task.destroy()}catch(e){}try{worker&&worker.terminate()}catch(e){}document.body.textContent='';parent.postMessage({type:'failed'},'*')}
 addEventListener('message',async(ev)=>{
   if(ev.source!==parent||done)return;const d=ev.data||{};if(d.type!=='pdf'||!(d.data instanceof ArrayBuffer))return;
@@ -856,7 +1102,13 @@ addEventListener('message',async(ev)=>{
     GlobalWorkerOptions.workerPort=worker;
     task=getDocument({data:new Uint8Array(d.data),isEvalSupported:false,enableXfa:false,useSystemFonts:false,stopAtErrors:false,verbosity:0});
     const doc=await task.promise;
-    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});const c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c}).promise;size()}
+    // The print intent draws without waiting for animation frames, which a frame below the fold never gets (12 Nov).
+    // On a phone the page is drawn wider than the frame (about 12 px text) and pans sideways: at the frame's width an A4
+    // page's text is about 5 px and cannot be read (review, 12 Nov).
+    const narrow=innerWidth<560;if(narrow)document.documentElement.style.overflowX='auto';
+    for(let i=1;i<=Math.min(doc.numPages,MAX_PAGES)&&!done;i++){const page=await doc.getPage(i);const vp=page.getViewport({scale:2});let c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;if(narrow)c.style.width='720px';c.setAttribute('aria-label','Page '+i+' of the invoice');document.body.append(c);await page.render({canvasContext:c.getContext('2d'),viewport:vp,canvas:c,intent:'print'}).promise;
+      // A one-page document ends where its content ends: the empty rest of the page is not drawn.
+      if(doc.numPages===1)c=cropped(c);size()}
     if(doc.numPages>MAX_PAGES){const p=document.createElement('p');p.textContent=(doc.numPages-MAX_PAGES)+' more page(s): download the PDF to see them';document.body.append(p)}
     clearTimeout(timer);done=true;size();
   }catch(e){clearTimeout(timer);fail()}
@@ -884,7 +1136,8 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("method not allowed", { status: 405, headers: { "content-type": "text/plain; charset=utf-8", allow: "GET, HEAD" } });
   if (url.pathname === "/") {
     const n = nonce();
-    return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "" }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+    const demo = env.demo ? { slugs: [...env.demo.slugs], site: DEMO_SITE } : null;
+    return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "", demo }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
   if (url.pathname === "/pdfview") {
     const n = nonce();

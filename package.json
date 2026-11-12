@@ -120,6 +120,8 @@
     "reliability": "tsx src/cli/reliability.ts",
     "record-try-agents": "tsx src/cli/recordTryAgents.ts",
     "cloud": "tsx src/cli/cloud.ts",
+    "cloud:seed-demo": "tsx src/cli/cloudSeedDemo.ts",
+    "cloud:smoke-demo": "tsx src/cli/cloudSmokeDemo.ts",
     "two-locks": "tsx src/cli/twoLocks.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
     "contracts:tokenize": "tsx src/tokenize/compile.ts"

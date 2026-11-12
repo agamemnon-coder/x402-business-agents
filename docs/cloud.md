@@ -87,8 +87,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
-| `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
+| `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier; as of today, or of the day in as_of. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
+| `GET /v1/vault` | read | The vault's index for a year (`?year=2026`, the newest by default): each filed file's folder path, kind and SHA-256, and whether the cloud holds it as a document. Only a vault index the cloud was given is shown; a runner push does not send one yet. |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
 | `GET /v1/sync/state` | sync | Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds. |
 | `GET /v1/mail` | sync | Inbound e-mail waiting for the runner; paginated (limit, cursor). |
@@ -169,14 +170,32 @@ sets and overwrites: behind any other proxy this header must not be trusted, and
 
 ## The console
 
-The same Worker serves the company's console at `/` (`cloud/src/console.ts`): sign in with a passkey (no passwords),
-the overview (inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO), invoices and
-each invoice (what Purser read, the checks, the timeline, the document), the transactions register with its filters and
-CSV, the books (VAT overview per quarter, the journal) and, for owners, settings: people and their single-use passkey
-links, API keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes
-the owner's passkey, shows the inbox address and makes the runner's sync key with the one command to run; the starter
-key can then be revoked from the same screen. The console reads and manages; it never pays: payments are approved on
-the CFO's phone with Face ID, through the runner.
+The same Worker serves the company's console at `/` (`cloud/src/console.ts`): sign in with a passkey (no passwords). It
+is in English; a switch in the header changes it to Dutch, and the browser remembers the choice (a signed-in person's
+choice is also saved with them). The menu has five pages:
+
+- **Overview:** the inbox address, what is open, due, overdue, waiting and blocked, and what waits for the CFO.
+- **Invoices**, and each invoice: what Purser read, the checks, the timeline and the document; then how it was approved
+  and paid (what signed, the payment request, each money movement with its rail, the signed terms' SHA-256 last) and
+  how it was booked.
+- **Transactions:** the register with its filters and CSV.
+- **Books:** first, whether the books, the payments and the signatures agree; then five report cards (trial balance,
+  profit and loss, balance sheet, VAT for the quarter, open payables), each opening to its details; then every booking
+  as a timeline by month, a closed month marked with a lock. A booking opens to its lines, then its document, payment
+  and hashes.
+- **Vault:** the vault's folders as filed, the PDF drawn in the page, a download, and "Verify this document": the
+  browser takes the SHA-256 of the downloaded bytes and compares it with the SHA-256 on record (`GET /v1/vault`).
+
+Settings opens from the company name in the header; for owners it holds people and their single-use passkey links, API
+keys, and the export of everything. A new company's first run takes the starter key Purser hands over, makes the owner's passkey,
+shows the inbox address and makes the runner's sync key with the one command to run; the starter key can then be
+revoked from the same screen. The console reads and manages; it never pays: payments are approved on the CFO's phone
+with Face ID, through the runner.
+
+In [demo mode](#demo-mode-a-read-only-deployment-of-test-companies) the same page opens on the test companies, each with
+its invoices by state, and a switch in the header moves between them. Every screen says it is a test world with test
+companies and no real money, and that it is read-only. Sign-in, first run, enrolment and Settings are not there. The
+page sends only GET requests and does not poll.
 
 How it is kept safe: one page under a per-response nonce policy (no inline scripts, styles or handlers; `connect-src
 'self'`); every value from the API is set as text, never as HTML (only the page's own icons go through `innerHTML`, and
@@ -192,6 +211,108 @@ them in a worker (eval off, no XFA), draws up to six pages and stops after 15 se
 network but pdf.js, and cannot reach the console page; the console page parses no supplier PDF at all (red team round
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
+
+## Demo mode: a read-only deployment of test companies
+
+A mode for a deployment of its own that is read without an account: its own D1 database and R2 bucket, holding seeded
+test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
+companies' addresses separated by commas. With `DEMO_PUBLIC` unset (every other deployment) no demo route exists and
+nothing else on this page changes. **No deployment runs in this mode today (12 November): the mode is built and
+tested locally only.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in `cloud/src/app.ts`. Its deployment
+is the environment `demo` in `cloud/wrangler.jsonc` (a Worker, database and bucket of its own, no secret); how to
+deploy it, check it with `npm run cloud:smoke-demo` and roll it back is in [cloud-demo.md](cloud-demo.md).
+
+In demo mode there is one caller, an anonymous read-only visitor, and only this answers:
+
+| Endpoint | What it does |
+|---|---|
+| `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, credit notes apart, suppliers, payments, transactions, documents, ledger entries), the invoices by state (`invoices_by_status`, credit notes left out) and `as_of`, the day of the last booking, where the test world's time stands still (the console reads what is due as of that day on every screen). Says `test_world` and `read_only`. |
+| `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`, `vault`. `me` answers `kind: "demo"`. |
+| `GET /v1/health`, `GET /v1/openapi.json` | The health check says whether the database and the document store answer and how many of the demo companies are there (`demo_companies`); it counts nothing over every company, so it has no mail queue. The OpenAPI document lists the demo's own routes only. |
+
+- **Everything else is off.** Every other method, and every route that signs in, enrols a passkey, recovers an owner,
+  makes a key, pushes, administers, exports or takes mail answers `403` with the code `demo_read_only`. The platform
+  admin routes are off too. Keys, sessions and the platform token are never looked at, so nothing in a request changes
+  who is asking. The e-mail handler refuses every message and the scheduled job does nothing.
+- **A company that is not on the list does not exist.** It answers `404` exactly like an address nobody has, whatever
+  is asked of it.
+- **Nothing is written.** No schema script, no rate counters, no last-used stamps: the database must hold the schema
+  and the seed before the demo is switched on. A demo deployment needs no secret (`SESSION_SECRET`,
+  `ADMIN_TOKEN_SHA256`); `MAIL_DOMAIN` is ignored.
+- **Cost and abuse.** Each address gets 300 requests a minute and each isolate makes at most 600 uncached reads a
+  minute, 120 of them from one address, all counted in memory (`429`, with `retry-after`). An answer is remembered by
+  its route and only the filters a read takes (anything else after the `?` is dropped), so a made-up filter cannot ask
+  for a fresh answer each time. A good answer is remembered for 300 seconds in the
+  isolate's memory and, where the deployment has one, in Cloudflare's edge cache; browsers may keep it for 60 seconds
+  (`cache-control: public`), a document by its hash for 86400 seconds (a day), the health check for 30 seconds. The
+  limits are per isolate: a rate rule at Cloudflare in front of the Worker is still the real bound. Not checked against
+  Cloudflare's documentation in this session (no external calls): whether the edge cache stores anything on a
+  `workers.dev` address. The header `x-purser-cache` (`miss`, `hit`, `edge`) shows where an answer came from.
+- **Documents** go out with the content type of their stored type when it is PDF, PNG, JPEG, plain text, CSV or JSON,
+  and as plain bytes otherwise; never sniffed, always as a download, under a policy that runs no script, and never
+  larger than 5 MB.
+
+`test/cloud-demo.test.ts` builds a real pushed world with one company that is not a demo company, then walks every
+route in the route table in demo mode: only the reads above answer, only for the demo companies, nothing is written and
+no answer carries a secret, a key hash, a session or a person's name. `test/cloud-demo-worker.test.ts` covers the
+Worker's entry (variables, e-mail, the scheduled job). Both also run on local D1. On that run
+`test/cloud-demo-workerd.test.ts` bundles the Worker and starts it locally in workerd, Cloudflare's own runtime: the
+demo's reads answer from local D1 and R2 and nothing is written. None of this ran on Cloudflare's network.
+
+### The demo world: three seeded test companies
+
+`npm run cloud:seed-demo -- --out <a folder outside the repository>` builds the world a demo deployment shows and
+writes it as files. The command loads nothing anywhere, uses no network and reads no key.
+
+| Address | Company | Its own policy |
+|---|---|---|
+| `northwind-outdoor` | Northwind Outdoor (test company), an outdoor shop | keeps EUR 2000.00 in reserve; buys in USD |
+| `bakery-de-test` | Bakery De Test (test company), a bakery | keeps EUR 1500.00 in reserve; buys in TRY |
+| `fietslab-bike-workshop` | Fietslab Bike Workshop (test company), a bike workshop | keeps EUR 1000.00 in reserve; buys in GBP |
+
+- **Built by the real engine, offline.** Each company's invoices go through the real inbox (PDF, parser, checks). New
+  suppliers are verified and approved. Payments are approved over their exact terms with the company's own test
+  passkey (a software authenticator, not Face ID), and the engine verifies each signature. The ledger is fed, October
+  2026 is closed and the vault is filed with its PDFs. Then the runner's own push batches go through the cloud's own
+  `applySync`. No row is written by hand.
+- **What a visitor finds in each company:** invoices paid in the closed month and after it, one paid in a foreign
+  currency with its FX, one waiting for the CFO's signature, one held as possible fraud (changed bank details), one
+  refused as a duplicate, one from a new supplier waiting to be verified, and one credit note. The accepted credit
+  note is set against the same supplier's open invoices on the Overview; Purser does not book credit notes yet
+  (`src/ledger/feed.ts` leaves them out), so it is not in Books, and its page says so.
+- **Stand-in, and labelled so.** No rail and no model is called: payments run on the in-memory stand-in for Airwallex
+  and the parser reads the invoices. Every supplier, invoice and payment says `provenance: "stand-in"`, every
+  transaction's rail name ends in `(stand-in)`, and the opening entry in the books says "stand-in test money, no real
+  account". Nothing in this world comes from a sandbox run. The suppliers and their bank details are the invented
+  ones of the repository's test fixtures; the cloud's rows hold no full account number.
+- **The same bytes every time.** The clock and all randomness are fixed (the world's last moment is 10 November 2026,
+  09:30 UTC), so two builds give the same SQL and the same objects.
+- **Nobody can sign in to these companies.** They hold no passkey credential, no key and no invite.
+- **The vault.** Its PDFs are stored as documents under their SHA-256, like any other. The vault's own index (the
+  runner's `index.json`: each file's folder path, kind and hash) is stored at `t/<tenant>/vault/2026/index.json`, and
+  `GET /v1/vault` serves it. The folder names in it are the runner's Dutch ones; the console shows them as stored, with
+  an English label beside each Dutch name.
+
+The bundle holds `seed.sql` (the rows), `r2/` (every object under its key), `r2-put.sh` (one `wrangler r2 object put`
+per object) and `manifest.json` (what is in it, with every hash). To load it, into the demo deployment's own database
+and bucket and no other:
+
+```sh
+npm run cloud:seed-demo -- --out ../purser-demo-bundle
+npx wrangler d1 migrations apply purser-demo --env demo --remote -c cloud/wrangler.jsonc
+npx wrangler d1 execute purser-demo --env demo --remote --file ../purser-demo-bundle/seed.sql -c cloud/wrangler.jsonc
+(cd ../purser-demo-bundle && sh r2-put.sh purser-demo-docs)
+```
+
+The environment `demo` in `cloud/wrangler.jsonc` sets `DEMO_PUBLIC=on` and
+`DEMO_SLUGS=northwind-outdoor,bakery-de-test,fietslab-bike-workshop`; [cloud-demo.md](cloud-demo.md) is the whole
+runbook, from making the database to rolling back. Seeding again replaces these three companies and touches no other row. `r2-put.sh` hands any further flags to
+wrangler (for example `--jurisdiction eu`). The three wrangler commands were not run in this session (no external
+calls). What is tested: `test/demo-world.test.ts` checks the world itself (the chains, the books to the cent, the
+vault's hashes, every state, the labels, two builds giving the same bytes) and the bundle; `test/cloud-demo-world.test.ts`
+runs every statement of `seed.sql` on an empty database, with `npm run test:d1` on local D1, and reads the world back
+through the demo's routes. For a look on this machine, `localDemo` in `src/demoworld/bundle.ts` gives the cloud's own
+request handler in demo mode over the same world.
 
 ## Tested on D1 itself
 

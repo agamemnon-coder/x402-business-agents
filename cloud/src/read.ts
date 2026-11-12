@@ -117,8 +117,13 @@ export async function report(db: TenantDb, name: string, q: URLSearchParams): Pr
   }
 }
 
-/** The payables picture from the cloud's invoices: open per currency, due soon, overdue, blocked, spend per supplier. */
-export async function insights(db: TenantDb, now: Date): Promise<unknown> {
+/**
+ * The payables picture from the cloud's invoices: open per currency, due soon, overdue, blocked, spend per supplier. As
+ * of today, or of the day `as_of` names (a test world, whose time stands still at its last booking, asks for that day).
+ */
+export async function insights(db: TenantDb, today0: Date, q: URLSearchParams = new URLSearchParams()): Promise<unknown> {
+  const asOf = day(q.get("as_of"), "as_of");
+  const now = asOf ? new Date(`${asOf}T00:00:00Z`) : today0;
   const rows = (await db.select<{ body_json: string; status: string; currency: string; total: string; due_date: string; vendor: string; updated_at: string }>("invoices", {}, { order: ["id"] }));
   const today = now.toISOString().slice(0, 10);
   const plus = (d: number) => new Date(now.getTime() + d * 86_400_000).toISOString().slice(0, 10);

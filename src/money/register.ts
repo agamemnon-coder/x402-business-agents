@@ -65,7 +65,13 @@ export function transactionRegister(db: DB): Register {
 
   // The payables inbox's invoices, by their payment-ledger number.
   const inbox = new Map<string, { id: string; invoice_no: string; vendor: string; doc: string }>();
-  if (has(db, "ap_invoices")) for (const i of apInvoices(db)) inbox.set(ledgerInvoiceNo(i.invoice_no, i.vendor), { id: i.id, invoice_no: i.invoice_no, vendor: i.vendor, doc: `/api/payables/invoices/${i.id}/document` });
+  for (const i of has(db, "ap_invoices") ? apInvoices(db) : []) {
+    const key = ledgerInvoiceNo(i.invoice_no, i.vendor);
+    // A copy of an invoice that is sent again stays in the inbox under the same number, blocked as a duplicate: the
+    // payout belongs to the one that was put up for payment, never to the copy that was not.
+    if (inbox.has(key) && !i.proposal_id) continue;
+    inbox.set(key, { id: i.id, invoice_no: i.invoice_no, vendor: i.vendor, doc: `/api/payables/invoices/${i.id}/document` });
+  }
 
   // Airwallex transfers: supplier and Kit 11 invoice payouts, with the fee Airwallex charged.
   for (const t of db.prepare(`SELECT t.request_id, t.transfer_id, t.invoice_no, t.amount, t.currency, t.fee_actual, t.status, t.failure_reason, t.approval_sha256, t.updated_at,

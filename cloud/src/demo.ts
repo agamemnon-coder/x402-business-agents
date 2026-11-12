@@ -1,0 +1,381 @@
+// Purser Cloud's public demo mode: a deployment of its own (its own database and document store, holding seeded test
+// companies and nothing else) that anyone may read without an account. One deployment variable switches it on
+// (DEMO_PUBLIC=on, with DEMO_SLUGS naming the demo companies). With the variable unset demo mode is off: demoFromVars
+// answers undefined and nothing else in this file runs.
+//
+// In demo mode there is one caller: an anonymous, read-only visitor.
+//   GET /v1/demo/companies               the demo companies, for the console's switcher
+//   GET /v1/demo/{company}/<a read>      the reads in DEMO_READS, for a demo company only
+//   GET /v1/health, GET /v1/openapi.json as on any deployment
+// Everything else answers 403 demo_read_only: every other method, signing in, enrolling, recovering, keys, pushes,
+// administering, mail and the platform's routes. Keys, sessions and the platform token are never looked at, so nothing
+// in a request can change who is asking. Nothing is written: no schema script, no rate counters (the limits live in
+// this isolate's memory), no last-used stamps. A company that is not on the list does not exist here.
+//
+// The gate itself is in app.ts (demoRoute), next to the route table it reads; this file holds its parts.
+
+import { BadRequest } from "./read.js";
+import type { Blobs, Sql } from "./store.js";
+
+/** A company's address, as everywhere else. */
+const SLUG = /^[a-z0-9][a-z0-9-]{1,40}$/;
+/** A demo is a handful of companies; the list is checked on every request. */
+export const DEMO_MAX_COMPANIES = 12;
+/**
+ * Requests one address may make in a minute; reads that may reach the database in a minute, from all addresses and from
+ * one address; per isolate.
+ */
+export const DEMO_RATE = { perMinute: 300, uncachedPerMinute: 600, uncachedPerAddress: 120 };
+/** How long an answer is remembered, in this isolate and in the edge cache: the data is static after seeding. */
+export const DEMO_TTL_SEC = 300;
+/** How long a visitor's browser may keep an answer; a document by its hash (it never changes); the health check, everywhere. */
+export const DEMO_BROWSER_SEC = 60;
+export const DEMO_DOCUMENT_BROWSER_SEC = 86_400;
+export const DEMO_HEALTH_SEC = 30;
+/** The largest document the demo serves. */
+export const DEMO_MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
+
+/** The reads a visitor may ask of a demo company, by the route table's own names (app.ts ROUTES). Nothing else is served. */
+export const DEMO_READS: ReadonlySet<string> = new Set([
+  "GET /v1/me", "GET /v1/invoices", "GET /v1/invoices/{id}", "GET /v1/invoices/{id}/document", "GET /v1/vendors", "GET /v1/payments",
+  "GET /v1/transactions", "GET /v1/transactions/summary", "GET /v1/transactions/export.csv", "GET /v1/transactions/{id}",
+  "GET /v1/ledger/entries", "GET /v1/reports/{name}", "GET /v1/insights", "GET /v1/documents/{sha256}", "GET /v1/vault",
+]);
+/**
+ * The filters each demo read takes, by its route (the names the read functions in read.ts and vault.ts ask for). Any
+ * other name after the "?" is dropped before the cache key is made, so a name a read never looks at cannot turn a
+ * remembered answer into a fresh read of the database.
+ */
+const PAGE = ["limit", "cursor"] as const;
+const TX = ["rail", "currency", "reconciliation", "moved", "from", "to"] as const;
+export const DEMO_FILTERS: Readonly<Record<string, readonly string[]>> = {
+  "/v1/me": [], "/v1/invoices": ["status", "due_from", "due_to", ...PAGE], "/v1/invoices/{id}": [], "/v1/invoices/{id}/document": [],
+  "/v1/vendors": PAGE, "/v1/payments": PAGE, "/v1/transactions": [...TX, ...PAGE], "/v1/transactions/summary": TX, "/v1/transactions/export.csv": TX,
+  "/v1/transactions/{id}": [], "/v1/ledger/entries": ["from", "to", ...PAGE], "/v1/reports/{name}": ["from", "to", "quarter", "as_of"], "/v1/insights": ["as_of"],
+  "/v1/documents/{sha256}": [], "/v1/vault": ["year"],
+};
+/** The routes that name no company and still answer at their own path. */
+export const DEMO_OPEN: ReadonlySet<string> = new Set(["GET /v1/health", "GET /v1/openapi.json"]);
+/** The two reads that return a document's bytes: in demo mode demoDocument serves them. */
+export const DEMO_DOCUMENT_ROUTES: ReadonlySet<string> = new Set(["/v1/invoices/{id}/document", "/v1/documents/{sha256}"]);
+
+/** What the demo says about itself wherever it answers in its own words. */
+export const DEMO_NOTE = "A public, read-only demo of Purser Cloud: test companies and test money, no real company and no real money. Nothing can be changed here.";
+export const DEMO_LABEL = { read_only: true, test_world: true, note: DEMO_NOTE } as const;
+/** The health check as the demo answers it (demoHealth), for the API's description. */
+export const DEMO_HEALTH_SUMMARY = "For an uptime monitor: whether the database and the document store answer, the version, and how many of the demo companies are there; 503 when something is down.";
+/** Why the demo takes no mail (the Worker's e-mail handler). */
+export const DEMO_MAIL_REFUSAL = "this address is a read-only demo and takes no mail";
+
+/** The part of Cloudflare's Cache API used here (caches.default); a test passes a fake. */
+export interface DemoCache {
+  match(request: Request): Promise<Response | undefined>;
+  put(request: Request, response: Response): Promise<unknown>;
+}
+
+export interface DemoEnv {
+  /** The demo companies' addresses, in the order they are shown. */
+  readonly slugs: readonly string[];
+  readonly rate: { readonly perMinute: number; readonly uncachedPerMinute: number; readonly uncachedPerAddress: number };
+  readonly ttlSec: number;
+  /** This isolate's own state: its counters and the answers it remembers. Nothing of it is in the database. */
+  readonly limiter: MemoryLimiter;
+  readonly memo: ResponseMemo;
+  /** The demo companies' ids, each looked up once and kept as long as an answer is (demoTenantId). */
+  readonly tenants: Map<string, { id: string; expires: number }>;
+  /**
+   * Cloudflare's edge cache, shared by the isolates of one data centre. Used when the runtime has one; it is a saving,
+   * never needed (as far as we know it stores nothing on a workers.dev address: the isolate's memory works everywhere).
+   */
+  readonly cache?: DemoCache;
+}
+
+/** A demo's configuration with fresh state. Throws on a list that is empty, too long or holds something that is no address. */
+export function demoEnv(slugs: readonly string[], o: { perMinute?: number; uncachedPerMinute?: number; uncachedPerAddress?: number; ttlSec?: number; cache?: DemoCache } = {}): DemoEnv {
+  const list = [...new Set(slugs)];
+  if (!list.length) throw new Error("DEMO_SLUGS names no company (demo mode needs the demo companies' addresses, separated by commas)");
+  if (list.length > DEMO_MAX_COMPANIES) throw new Error(`DEMO_SLUGS names more than ${DEMO_MAX_COMPANIES} companies`);
+  const bad = list.find((s) => !SLUG.test(s));
+  if (bad !== undefined) throw new Error(`DEMO_SLUGS holds ${JSON.stringify(bad.slice(0, 60))}, which is not a company's address (lowercase letters, digits and dashes)`);
+  return {
+    slugs: list, ttlSec: o.ttlSec ?? DEMO_TTL_SEC,
+    rate: { perMinute: o.perMinute ?? DEMO_RATE.perMinute, uncachedPerMinute: o.uncachedPerMinute ?? DEMO_RATE.uncachedPerMinute, uncachedPerAddress: o.uncachedPerAddress ?? DEMO_RATE.uncachedPerAddress },
+    limiter: new MemoryLimiter(), memo: new ResponseMemo(), tenants: new Map(), ...(o.cache ? { cache: o.cache } : {}),
+  };
+}
+
+/**
+ * Demo mode from the deployment's variables: on only with DEMO_PUBLIC exactly "on"; unset, empty or "off" is off, and
+ * DEMO_SLUGS alone switches nothing on. Any other value is a mistake and is refused, never guessed at.
+ */
+export function demoFromVars(v: { DEMO_PUBLIC?: string; DEMO_SLUGS?: string }, o: { cache?: DemoCache } = {}): DemoEnv | undefined {
+  const flag = v.DEMO_PUBLIC ?? "";
+  if (flag === "" || flag === "off") return undefined;
+  if (flag !== "on") throw new Error('DEMO_PUBLIC must be "on" or "off"');
+  return demoEnv((v.DEMO_SLUGS ?? "").split(/[\s,]+/).filter(Boolean), o);
+}
+
+const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
+const json = (status: number, body: unknown, more: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { ...JSON_HEADERS, ...more } });
+
+/** The one answer to everything the demo does not do: a sentence a person can read on a page, and a code for a program. */
+export function demoRefused(): Response {
+  return json(403, { error: "This is a read-only demo with test companies and test money. Nothing can be changed here, and nobody can sign in.", code: "demo_read_only" });
+}
+
+/** A company the demo does not have: not on the list, never seeded, or closed. One answer for all, naming nothing. */
+export function demoNoCompany(): Response {
+  return json(404, { error: "no such company in this demo; GET /v1/demo/companies lists them", code: "not_found" });
+}
+
+export function demoBusy(demo: DemoEnv, now: Date, error = "too many requests; wait a minute"): Response {
+  return json(429, { error, code: "rate_limited" }, { "retry-after": String(demo.limiter.retryAfterSec(now.getTime())) });
+}
+
+/**
+ * A counter per key in a fixed window, in this isolate's memory: the demo's rate limits write nothing to the database.
+ * It is per isolate, so it bounds what one isolate does, not the deployment as a whole (a rate rule at Cloudflare does
+ * that). Bounded: minutes that are over are dropped, and under a flood of addresses the lightest half goes first, so an
+ * address that is over its limit stays over it.
+ */
+export class MemoryLimiter {
+  private readonly hits = new Map<string, { win: number; n: number }>();
+  constructor(private readonly windowMs = 60_000, private readonly maxKeys = 10_000) {}
+
+  get size(): number { return this.hits.size; }
+
+  /** Counts one; true while the key is within `max` for the current window. */
+  take(key: string, nowMs: number, max: number): boolean {
+    const win = Math.floor(nowMs / this.windowMs);
+    const e = this.hits.get(key);
+    if (e && e.win === win) { e.n += 1; return e.n <= max; }
+    if (!e && this.hits.size >= this.maxKeys) this.prune(win);
+    this.hits.set(key, { win, n: 1 });
+    return max >= 1;
+  }
+
+  /** Seconds until the current window is over. */
+  retryAfterSec(nowMs: number): number {
+    return Math.max(1, Math.ceil((this.windowMs - (nowMs % this.windowMs)) / 1000));
+  }
+
+  private prune(win: number): void {
+    for (const [k, e] of this.hits) if (e.win !== win) this.hits.delete(k);
+    if (this.hits.size < this.maxKeys) return;
+    const lightest = [...this.hits].sort((a, b) => a[1].n - b[1].n).slice(0, Math.ceil(this.hits.size / 2));
+    for (const [k] of lightest) this.hits.delete(k);
+  }
+}
+
+export interface Remembered { status: number; headers: [string, string][]; body: Uint8Array<ArrayBuffer> }
+
+/**
+ * Answers this isolate remembers, each until its time is up: the least recently used goes first once there are too
+ * many or they are too large together, and an answer larger than `entryBytes` is not kept at all.
+ */
+export class ResponseMemo {
+  private readonly map = new Map<string, { v: Remembered; expires: number }>();
+  private total = 0;
+  constructor(private readonly max: { entries: number; bytes: number; entryBytes: number } = { entries: 400, bytes: 8 * 1024 * 1024, entryBytes: 1024 * 1024 }) {}
+
+  get size(): number { return this.map.size; }
+  get bytes(): number { return this.total; }
+
+  get(key: string, nowMs: number): Remembered | undefined {
+    const e = this.map.get(key);
+    if (!e) return undefined;
+    if (e.expires <= nowMs) { this.drop(key); return undefined; }
+    // A Map keeps its keys in the order they were set: the one just used goes to the end.
+    this.map.delete(key);
+    this.map.set(key, e);
+    return e.v;
+  }
+
+  set(key: string, v: Remembered, expiresMs: number): boolean {
+    this.drop(key);
+    if (v.body.byteLength > this.max.entryBytes) return false;
+    this.map.set(key, { v, expires: expiresMs });
+    this.total += v.body.byteLength;
+    for (const k of this.map.keys()) {
+      if (this.map.size <= this.max.entries && this.total <= this.max.bytes) break;
+      if (k !== key) this.drop(k);
+    }
+    return true;
+  }
+
+  private drop(key: string): void {
+    const e = this.map.get(key);
+    if (!e) return;
+    this.total -= e.v.body.byteLength;
+    this.map.delete(key);
+  }
+}
+
+/**
+ * A read's filters, bounded, and its cache key: only the names the read takes (`allowed`, from DEMO_FILTERS) are kept,
+ * and the same read asked with its filters in another order is the same read.
+ */
+export function demoKey(origin: string, path: string, query: URLSearchParams, allowed: readonly string[]): { key: string; query: URLSearchParams } {
+  const all = [...new Set(query.keys())];
+  if (all.length > 12) throw new BadRequest("too many filters in one request");
+  const names = all.filter((n) => allowed.includes(n)).sort();
+  const q = new URLSearchParams();
+  for (const n of names) {
+    // The first value of each, as the routes read it.
+    const v = query.get(n) ?? "";
+    if (n.length > 40 || v.length > 200) throw new BadRequest("a filter is too long");
+    q.set(n, v);
+  }
+  const qs = q.toString();
+  return { key: `${origin}${path}${qs ? `?${qs}` : ""}`, query: q };
+}
+
+/** The headers of an answer that are kept with it; everything else is set again when it is served. */
+const CARRIED = ["content-type", "content-disposition", "x-content-type-options", "content-security-policy", "cross-origin-resource-policy"];
+const carried = (h: Headers): [string, string][] => CARRIED.flatMap((n) => { const v = h.get(n); return v === null ? [] : [[n, v] as [string, string]]; });
+
+function served(v: Remembered, browser: string, from: "hit" | "edge" | "miss"): Response {
+  return new Response(v.body, { status: v.status, headers: [...v.headers, ["cache-control", browser], ["x-purser-cache", from], ["x-purser-demo", "read-only test world"]] });
+}
+
+/**
+ * A demo read, answered from this isolate's memory, else from the edge cache, else made (and then remembered in both).
+ * Only a 200 is remembered; anything else is passed on as it is and made again next time. A read that has to be made
+ * counts against the asking address's budget of uncached reads and then the isolate's: past either the answer is 429
+ * until the minute is over, while remembered answers are still served. `browser` is the Cache-Control the visitor's
+ * browser gets; `who` is the asking address.
+ */
+export async function remembered(demo: DemoEnv, key: string, now: Date, keep: { ttlSec: number; browser: string }, make: () => Promise<Response>, who = "unknown"): Promise<Response> {
+  const nowMs = now.getTime();
+  const kept = demo.memo.get(key, nowMs);
+  if (kept) return served(kept, keep.browser, "hit");
+  if (demo.cache) {
+    try {
+      const hit = await demo.cache.match(new Request(key));
+      if (hit && hit.status === 200) {
+        const v: Remembered = { status: 200, headers: carried(hit.headers), body: new Uint8Array(await hit.arrayBuffer()) };
+        demo.memo.set(key, v, nowMs + keep.ttlSec * 1000);
+        return served(v, keep.browser, "edge");
+      }
+    } catch { /* the edge cache is a saving, never a dependency */ }
+  }
+  // One address first, so an address that is over its own share uses none of what the others share.
+  if (!demo.limiter.take(`uncached:${who}`, nowMs, demo.rate.uncachedPerAddress)) return demoBusy(demo, now);
+  if (!demo.limiter.take("uncached", nowMs, demo.rate.uncachedPerMinute)) return demoBusy(demo, now, "the demo is busy; try again in a minute");
+  const res = await make();
+  if (res.status !== 200) return res;
+  const v: Remembered = { status: 200, headers: carried(res.headers), body: new Uint8Array(await res.arrayBuffer()) };
+  demo.memo.set(key, v, nowMs + keep.ttlSec * 1000);
+  if (demo.cache) {
+    try {
+      await demo.cache.put(new Request(key), new Response(v.body, { status: 200, headers: [...v.headers, ["cache-control", `public, max-age=${keep.ttlSec}`]] }));
+    } catch { /* as above */ }
+  }
+  return served(v, keep.browser, "miss");
+}
+
+export interface DemoCompany {
+  slug: string;
+  name: string;
+  language: "nl" | "en";
+  /** Counted from the company's rows when the answer is made; never typed. A credit note is counted apart, not as an invoice. */
+  counts: { invoices: number; invoices_paid: number; credit_notes: number; suppliers: number; payments: number; transactions: number; documents: number; ledger_entries: number };
+  /** The company's invoices (credit notes left out) by their state (paid, waiting_cfo, blocked, …), for the console's company cards; counted too. */
+  invoices_by_status: Record<string, number>;
+  /**
+   * The day of the company's last booking, or null with none: a test world's time stands still there, so the console
+   * reads what is due and overdue as of this day on every screen (Overview and Books alike), never as of today.
+   */
+  as_of: string | null;
+}
+
+/**
+ * A demo company's id by its address (the caller checked that the address is on the demo's list): asked of the database
+ * once, then kept in this isolate for as long as an answer is. A company that is not there, or closed, is asked again.
+ */
+export async function demoTenantId(sql: Sql, demo: DemoEnv, slug: string, now: Date): Promise<string | null> {
+  const kept = demo.tenants.get(slug);
+  if (kept && kept.expires > now.getTime()) return kept.id;
+  demo.tenants.delete(slug);
+  const t = await sql.first<{ id: string }>("SELECT id FROM tenants WHERE slug = ? AND closed_at IS NULL", [slug]);
+  if (!t) return null;
+  demo.tenants.set(slug, { id: t.id, expires: now.getTime() + demo.ttlSec * 1000 });
+  return t.id;
+}
+
+/**
+ * The demo companies that exist and are open, in the configured order, each with counts of what it holds: one statement
+ * for all of them (one trip to the database; the table names are this file's own).
+ */
+export async function demoCompanies(sql: Sql, slugs: readonly string[]): Promise<{ test_world: true; read_only: true; note: string; companies: DemoCompany[] }> {
+  const count = (table: "invoices" | "vendors" | "payments" | "transactions" | "documents" | "ledger_entries", as: keyof DemoCompany["counts"], and = "") =>
+    `(SELECT COUNT(*) FROM ${table} x WHERE x.tenant_id = t.id${and}) AS ${as}`;
+  // A credit note is a row in invoices too (its body says doc_kind credit_note): counted apart, never as a waiting invoice.
+  const credit = "json_extract(x.body_json, '$.doc_kind') = 'credit_note'";
+  const invoice = ` AND COALESCE(${credit}, 0) = 0`;
+  // The invoices by state as one JSON object per company (SQLite's and D1's json_group_object), in the same statement.
+  const byStatus = `(SELECT json_group_object(s.status, s.n) FROM (SELECT x.status, COUNT(*) AS n FROM invoices x WHERE x.tenant_id = t.id${invoice} GROUP BY x.status) s) AS by_status`;
+  const asOf = "(SELECT MAX(x.posting_date) FROM ledger_entries x WHERE x.tenant_id = t.id) AS as_of";
+  const rows = await sql.all<{ slug: string; name: string; language: string; by_status: string | null; as_of: string | null } & DemoCompany["counts"]>(
+    `SELECT t.slug, t.name, t.language, ${[count("invoices", "invoices", invoice), count("invoices", "invoices_paid", `${invoice} AND x.status = 'paid'`), count("invoices", "credit_notes", ` AND ${credit}`),
+      count("vendors", "suppliers"), count("payments", "payments"), count("transactions", "transactions"), count("documents", "documents"), count("ledger_entries", "ledger_entries"), byStatus, asOf].join(", ")}
+     FROM tenants t WHERE t.closed_at IS NULL AND t.slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]);
+  const companies = slugs.flatMap((slug): DemoCompany[] => {
+    const r = rows.find((x) => x.slug === slug);
+    return r ? [{ slug, name: r.name, language: r.language === "en" ? "en" : "nl",
+      counts: { invoices: r.invoices, invoices_paid: r.invoices_paid, credit_notes: r.credit_notes, suppliers: r.suppliers, payments: r.payments, transactions: r.transactions, documents: r.documents, ledger_entries: r.ledger_entries },
+      invoices_by_status: statusCounts(r.by_status), as_of: /^\d{4}-\d{2}-\d{2}$/.test(r.as_of ?? "") ? r.as_of : null }] : [];
+  });
+  return { ...DEMO_LABEL, companies };
+}
+
+/** The invoices-by-state object the statement made: state names and whole counts only, anything else left out. */
+function statusCounts(json: string | null): Record<string, number> {
+  let o: unknown;
+  try { o = JSON.parse(json ?? "{}"); } catch { return {}; }
+  if (!o || typeof o !== "object") return {};
+  return Object.fromEntries(Object.entries(o as Record<string, unknown>).filter((e): e is [string, number] => /^[a-z_]{1,40}$/.test(e[0]) && Number.isInteger(e[1])).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/**
+ * The demo's health check, for an uptime monitor: whether the database and the document store answer, and how many of
+ * the demo companies are there (0 before the seed is loaded; "down" while the schema is not there at all). It counts
+ * the demo's own companies only: the cloud's health check counts the mail waiting for every company, and a demo says
+ * nothing about a company that is not on its list.
+ */
+export async function demoHealth(sql: Sql, blobs: Blobs, version: string, slugs: readonly string[]): Promise<{ status: number; body: Record<string, unknown> }> {
+  let d1 = "ok", r2 = "ok", companies: number | null = null;
+  try {
+    companies = (await sql.first<{ n: number }>(`SELECT COUNT(*) AS n FROM tenants WHERE closed_at IS NULL AND slug IN (${slugs.map(() => "?").join(", ")})`, [...slugs]))?.n ?? 0;
+  } catch { d1 = "down"; }
+  try { await blobs.list("health/"); } catch { r2 = "down"; }
+  const ok = d1 === "ok" && r2 === "ok";
+  return { status: ok ? 200 : 503, body: { ok, version, d1, r2, demo_companies: companies } };
+}
+
+/** The stored types the demo serves as they are; every other type (HTML, SVG, scripts, anything unknown) goes out as plain bytes. */
+const SAFE_TYPES = new Map([
+  ["application/pdf", "application/pdf"], ["image/png", "image/png"], ["image/jpeg", "image/jpeg"],
+  ["text/plain", "text/plain; charset=utf-8"], ["text/csv", "text/csv; charset=utf-8"], ["application/json", "application/json; charset=utf-8"],
+]);
+export function demoContentType(stored: string): string {
+  return SAFE_TYPES.get((stored.split(";")[0] ?? "").trim().toLowerCase()) ?? "application/octet-stream";
+}
+
+/**
+ * A demo company's document from the store, for anyone: its content type from the stored type (the safe ones only),
+ * never sniffed, never a page (a download, under a policy that runs no script even if a browser showed it), and never
+ * larger than the cap. A row that says it is too large is refused before a byte is read.
+ */
+export async function demoDocument(blobs: Blobs, d: { blob_key: string; filename: string; mime: string; size: number } | null, what: string): Promise<Response> {
+  if (!d) return json(404, { error: `no ${what}`, code: "not_found" });
+  const tooLarge = () => json(413, { error: `this document is larger than ${DEMO_MAX_DOCUMENT_BYTES} bytes; the demo does not serve it`, code: "too_large" });
+  if (d.size > DEMO_MAX_DOCUMENT_BYTES) return tooLarge();
+  const bytes = await blobs.get(d.blob_key);
+  if (!bytes) return json(404, { error: `no ${what}`, code: "not_found" });
+  if (bytes.byteLength > DEMO_MAX_DOCUMENT_BYTES) return tooLarge();
+  return new Response(new Uint8Array(bytes), { status: 200, headers: {
+    "content-type": demoContentType(d.mime), "content-disposition": `attachment; filename="${d.filename.replace(/[^\w.-]+/g, "_")}"`, "x-content-type-options": "nosniff",
+    "content-security-policy": "default-src 'none'; sandbox; frame-ancestors 'none'", "cross-origin-resource-policy": "same-origin", "cache-control": "no-store",
+  } });
+}

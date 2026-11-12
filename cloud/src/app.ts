@@ -15,12 +15,14 @@ import { TenantDb } from "./tenant.js";
 import { closeTenant, eraseUser, exportTenant, PrivacyRefused } from "./privacy.js";
 import { download, ExportRefused, exportStatus, purgeEndedExportParts, signedLink, stageExport } from "./exports.js";
 import { consoleResponse } from "./console.js";
+import { vaultView, VaultNotFound } from "./vault.js";
 import { qrSvg } from "./qr.js";
 import { logEvent } from "./log.js";
 import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_FILTERS, DEMO_HEALTH_SEC, DEMO_HEALTH_SUMMARY, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoHealth, demoKey, demoNoCompany, demoRefused, demoTenantId, remembered, type DemoEnv } from "./demo.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -56,9 +58,17 @@ export interface CloudEnv {
    * hosted onboarding template and the webhook secret. Absent (the default): the /v1/airwallex routes answer 404.
    */
   awxPlatform?: AwxPlatformEnv;
+  /**
+   * The public demo mode (cloud/src/demo.ts): a deployment that holds seeded test companies only and that anyone may
+   * read. Present: nothing but the demo's reads answers; every write, sign-in, key and platform route is off. Absent
+   * (the default, and every deployment that holds a real company): nothing of it runs.
+   */
+  demo?: DemoEnv;
 }
 
-interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
+interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null;
+  /** The call comes through the public demo: its caller is the anonymous read-only visitor, never a key or a person. */
+  demo?: true }
 type Need = "public" | "platform" | Scope;
 interface Route { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: Need; run: (c: Ctx) => Promise<Response> }
 
@@ -130,7 +140,8 @@ const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is res
 
 export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/health", summary: "For an uptime monitor: whether the database and the document store answer, the version, the mail waiting in all (no company's data); 503 when something is down.", need: "public", run: async (c) => {
-    const h = await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
+    // Through the public demo: the demo's own check (its companies only; nothing counted over every company).
+    const h = c.demo && c.env.demo ? await demoHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev", c.env.demo.slugs) : await cloudHealth(c.env.sql, c.env.blobs, c.env.version ?? "dev");
     return json(h.status, h.body);
   } },
   { method: "GET", path: "/v1/status", summary: "Where the company stands, for its owners: the last push from the runner, the mail queue, today's mail quota, the runner's alert codes and the webhook (never its secret).", need: "admin", run: async (c) => json(200, await companyStatus(c.env.sql, c.caller!.tenantId, c.now)) },
@@ -175,7 +186,7 @@ export const ROUTES: Route[] = [
       throw e;
     }
   } },
-  { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
+  { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, c.demo ? demoOpenApi(c.env.origin) : openApi(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
@@ -268,10 +279,12 @@ export const ROUTES: Route[] = [
     const companyLanguage = t?.language === "en" ? "en" : "nl";
     // The company's Airwallex account opened through Purser, for the pages' header (its id is no secret; never a key).
     const awx = await c.env.sql.first<{ account_id: string | null; status: string }>("SELECT account_id, status FROM awx_accounts WHERE tenant_id = ? AND id = 'main'", [c.caller!.tenantId]);
-    return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
+    // Through the public demo the caller is neither a key nor a person: it says so, and labels the world as a test world.
+    return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.demo ? "demo" : c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
-      owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null });
+      owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null,
+      ...(c.demo ? { demo: DEMO_LABEL } : {}) });
   } },
   { method: "POST", path: "/v1/company", summary: "Change the company's display name (its address, the slug, stays) or the pages' language for everyone (nl or en).", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ name: z.string().trim().min(1).max(200).optional(), language: z.enum(["nl", "en"]).optional() }).strict().refine((x) => x.name !== undefined || x.language !== undefined, "send a name or a language"));
@@ -303,7 +316,10 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
-  { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
+  { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier; as of today, or of the day in as_of.", need: "read", run: async (c) => json(200, await insights(db(c), c.now, c.url.searchParams)) },
+  { method: "GET", path: "/v1/vault", summary: "The vault's index for a year (?year=2026, the newest by default): every file filed, its folder path, kind and SHA-256, and whether the cloud holds it; its bytes come from /v1/documents/{sha256}.", need: "read", run: async (c) => {
+    try { return json(200, await vaultView(db(c), c.env.blobs, c.url.searchParams)); } catch (e) { if (e instanceof VaultNotFound) return notFound("vault index for that year"); throw e; }
+  } },
 
   { method: "GET", path: "/v1/documents/{sha256}", summary: "A document the company holds, by its SHA-256 (the export lists them).", need: "read", run: async (c) => {
     const d = await db(c).one<{ blob_key: string; filename: string; mime: string }>("documents", { sha256: c.params[0]! });
@@ -459,12 +475,24 @@ export function ensureSchema(sql: Sql): Promise<void> {
   return p;
 }
 
+/** The route a path names, for the log: its pattern, never a company's address or an object's id. */
+function patternOf(path: string, demo: boolean): string {
+  const named = (p: string) => ROUTES.find((r) => { try { return match(p, r.path) !== null; } catch { return false; } })?.path ?? "unknown";
+  if (!demo) return named(path);
+  // The public demo's own paths: /v1/demo/companies, and a read under /v1/demo/{company}.
+  if (path === "/v1/demo/companies") return path;
+  const under = /^\/v1\/demo\/[^/]+(\/.+)$/.exec(path);
+  if (!under) return named(path);
+  const inner = named(`/v1${under[1]!}`);
+  return `/v1/demo/{company}${inner === "unknown" ? "/unknown" : inner.slice("/v1".length)}`;
+}
+
 /** The API and the console, with one structured log line per request (the route's pattern, never a token or a body). */
 export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const started = Date.now();
   const res = await route(req, env);
   const path = new URL(req.url).pathname;
-  const pattern = path.startsWith("/v1/") ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  const pattern = path.startsWith("/v1/") ? patternOf(path, !!env.demo) : "console";
   logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
   return res;
 }
@@ -475,6 +503,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
   try {
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/")) return consoleResponse(req, url, env);
+    // The public demo: its own gate, and nothing below this line runs (no key, session or platform token is looked at).
+    if (env.demo) return await demoRoute(req, env, env.demo, url, now);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
     // signed-in browser post here (the console keeps its session in the tab and sends it as a bearer token, so there is
     // no cookie to ride on either). The runner and other programs send no Origin.
@@ -542,7 +572,79 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
   }
 }
 
+/**
+ * The public demo's gate (cloud/src/demo.ts): everything under /v1 while demo mode is on. Counted per address in memory
+ * first; then nothing but a GET; then a route from the demo's own short lists, for a company on the demo's list. The
+ * caller it builds is read-only and belongs to that company; the route it runs is one the route table marks "read".
+ * Whatever else is asked answers 403 demo_read_only, and a company that is not on the list answers like no company.
+ */
+async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, now: Date): Promise<Response> {
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (!demo.limiter.take(`ip:${ip}`, now.getTime(), demo.rate.perMinute)) return demoBusy(demo, now);
+  if (req.method !== "GET") return demoRefused();
+  const at = (path: string) => ROUTES.map((r) => ({ r, p: match(path, r.path) })).filter((x) => x.p);
+  const data = { ttlSec: demo.ttlSec, browser: `public, max-age=${Math.min(DEMO_BROWSER_SEC, demo.ttlSec)}` };
+  const seg = url.pathname.split("/"); // "", "v1", "demo", the company, the rest
+  if (seg[2] !== "demo" || seg.length < 4) {
+    // A route at its own path, for no company: the health check and the API's description; nothing else.
+    const candidates = at(url.pathname);
+    if (!candidates.length) return err(404, "no such route");
+    const hit = candidates.find((x) => x.r.method === "GET" && x.r.need === "public" && DEMO_OPEN.has(`GET ${x.r.path}`));
+    if (!hit) return demoRefused();
+    // Neither takes a filter: whatever comes after the "?" is dropped, so it cannot be used to ask for a fresh answer each time.
+    const plain = new URL(`${url.origin}${url.pathname}`);
+    const keep = hit.r.path === "/v1/health" ? { ttlSec: Math.min(DEMO_HEALTH_SEC, demo.ttlSec), browser: `public, max-age=${DEMO_HEALTH_SEC}` } : data;
+    return remembered(demo, plain.toString(), now, keep, () => hit.r.run({ env, req, url: plain, now, params: hit.p!, caller: null, db: null, demo: true }), ip);
+  }
+  if (seg.length === 4 && seg[3] === "companies") return remembered(demo, `${url.origin}/v1/demo/companies`, now, data, async () => json(200, await demoCompanies(env.sql, demo.slugs)), ip);
+  // The company first: one that is not on the list gets the same answer whatever is asked of it.
+  const slug = seg[3]!;
+  if (!demo.slugs.includes(slug)) return demoNoCompany();
+  const inner = `/v1/${seg.slice(4).join("/")}`;
+  const candidates = at(inner);
+  if (!candidates.length) return err(404, "no such route");
+  const hit = candidates.find((x) => x.r.method === "GET" && x.r.need === "read" && DEMO_READS.has(`GET ${x.r.path}`));
+  if (!hit) return demoRefused();
+  // Only the filters this read takes make its key: any other name is dropped, so it cannot ask for a fresh answer each time.
+  const { key, query } = demoKey(url.origin, url.pathname, url.searchParams, DEMO_FILTERS[hit.r.path] ?? []);
+  // A document by its hash never changes, so a browser may keep it for a day.
+  const keep = hit.r.path === "/v1/documents/{sha256}" ? { ttlSec: demo.ttlSec, browser: `public, max-age=${DEMO_DOCUMENT_BROWSER_SEC}, immutable` } : data;
+  return remembered(demo, key, now, keep, async () => {
+    const id = await demoTenantId(env.sql, demo, slug, now);
+    if (!id) return demoNoCompany();
+    const tenant = new TenantDb(env.sql, id);
+    if (DEMO_DOCUMENT_ROUTES.has(hit.r.path)) {
+      const sha = hit.r.path === "/v1/documents/{sha256}" ? hit.p![0]! : (await tenant.one<{ doc_sha256: string }>("invoices", { id: hit.p![0]! }))?.doc_sha256;
+      const row = sha ? await tenant.one<{ blob_key: string; filename: string; mime: string; size: number }>("documents", { sha256: sha }) : null;
+      return demoDocument(env.blobs, row, hit.r.path === "/v1/documents/{sha256}" ? "document" : "invoice");
+    }
+    // The visitor: read-only, of this company, with no key and no person behind it; and no inbox, whatever is configured.
+    const caller: Caller = { tenantId: id, kind: "key", principal: "demo", scopes: new Set<Scope>(["read"]), role: "viewer", user: null };
+    return hit.r.run({ env: { ...env, mailDomain: "" }, req, url: new URL(`${url.origin}${inner}?${query.toString()}`), now, params: hit.p!, caller, db: tenant, demo: true });
+  }, ip);
+}
+
 const ERROR = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
+
+/** The public demo's own description: the routes that answer there and nothing else, from the same route table. */
+function demoOpenApi(origin: string): Record<string, unknown> {
+  const responses = { 200: { description: "OK" }, 400: ERROR("A filter that does not fit"), 403: ERROR("Not in a read-only demo (code demo_read_only)"), 404: ERROR("Not found (also: a company that is not a demo company)"), 413: ERROR("A document over the demo's size cap"), 429: ERROR("Rate limited") };
+  const get = (summary: string, params: string[]) => ({ get: { summary, ...(params.length ? { parameters: params.map((name) => ({ name, in: "path", required: true, schema: { type: "string" } })) } : {}), security: [], responses } });
+  const paths: Record<string, unknown> = { "/v1/demo/companies": get("The demo's test companies: each one's address, name and counts of what it holds.", []) };
+  for (const r of ROUTES) {
+    const params = [...r.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
+    // The health check answers in the demo's own words there (demoHealth): its own companies, no mail queue.
+    if (DEMO_OPEN.has(`${r.method} ${r.path}`)) paths[r.path] = get(r.path === "/v1/health" ? DEMO_HEALTH_SUMMARY : r.summary, params);
+    else if (DEMO_READS.has(`${r.method} ${r.path}`)) paths[`/v1/demo/{company}${r.path.replace(/^\/v1/, "")}`] = get(r.summary, ["company", ...params]);
+  }
+  return {
+    openapi: "3.1.0",
+    info: { title: "Purser Cloud API (public read-only demo)", version: "1.0.0", description: `${DEMO_NOTE} Only the GET routes below answer; signing in, keys and every change are switched off here.` },
+    servers: [{ url: origin }],
+    components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "demo_read_only"], description: "Stable, for a program" } } } } },
+    paths,
+  };
+}
 
 /** OpenAPI 3.1, generated from the route table. */
 export function openApi(origin: string): Record<string, unknown> {

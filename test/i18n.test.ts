@@ -120,6 +120,9 @@ describe("the register's data in Dutch", () => {
 // The English words a Dutch page must not show (whole words, case-insensitive), from the pages' own vocabulary.
 const ENGLISH = /\b(Invoices?|Supplier|Due|Amount|Paid|Blocked|Rejected|Ready to pay|Waits for|Needs a person|Checks?|Timeline|Transactions|Received|Open|Overdue|Nothing|Every|Loading|Reject|Request|Download|Settings|Overview|Books|Sign in|Passed|Total|Subtotal|Reference|Booked|Movement|Approval|Proof|Fees?|Without|Cancel|Close|What|When|Why)\b/i;
 
+/** Dutch words a page in English must not show (the console's frame: tabs, the test label, the foot, the switch). */
+const DUTCH = /\b(Overzicht|Facturen|Transacties|Boekhouding|Instellingen|Uitloggen|Testgeld|alleen|betalingen|goedgekeurd|telefoon|betaalt|nooit)\b/i;
+
 /** The words a page shows: its HTML text and every catalogue string its script carries, without code and values. */
 function shownText(html: string): string {
   return textOutsideTags(withoutBlocks(html, ["script", "style", "svg"], " "));
@@ -220,11 +223,13 @@ describe("the console's language", () => {
     expect((await c.req("GET", "/v1/me", { key: session })).json).toMatchObject({ language: "en" });
   });
 
-  it("serves the console with both catalogues, Dutch first, and no English words in its HTML", () => {
+  // The console is English first since 12 November (the demo's visitors read English); Dutch is one click away.
+  it("serves the console with both catalogues, English first, and no Dutch words in its HTML", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
-    expect(html).toContain('<html lang="nl">');
-    const text = shownText(html).replace(/\b(Purser Cloud|Purser|Face ID|Airwallex)\b/g, " ");
-    expect(ENGLISH.exec(text)?.[0] ?? null).toBeNull();
+    expect(html).toContain('<html lang="en">');
+    const text = shownText(html);
+    expect(DUTCH.exec(text)?.[0] ?? null).toBeNull();
+    expect(text).toContain(t("en", "test.label"));
     expect(html).toContain('"nl":{');
     expect(html).toContain('"en":{');
   });
