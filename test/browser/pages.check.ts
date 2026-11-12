@@ -13,6 +13,8 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright";
 import { startJudge } from "../../src/cli/judge.js";
+import { tokenizeRun } from "../../src/redesign/tokenizeRun.js";
+import { METAL_CSP } from "../../src/servers/dashboard.js";
 
 const args = process.argv.slice(2);
 const liveAt = args.indexOf("--live");
@@ -36,6 +38,15 @@ const JUDGE_KEY = "purser.judge.v1";
 
 /** The agent API's tools, as the code defines them (/docs lists exactly these). */
 const DOCS_TOOLS = agentTools().map((t) => t.name);
+// /metal's second state (see below): the page with an invoice-token run record, built from a record made here.
+const metalWithRecord = liveAt >= 0 ? null : await (async () => {
+  const { sampleRunRecord } = await import("../support/tokenizeWorld.js");
+  const { metalPage } = await import("../../src/redesign/partners.js");
+  const { agentRun } = await import("../../src/redesign/run.js");
+  const { removeTokenizeWorlds } = await import("../support/tokenizeWorld.js");
+  // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
+  try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
+})();
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -437,7 +448,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // heading and checks (the same budgets as test/site-v4.test.ts).
       // /visa 495 since 10 Nov (Max: we compete for the Visa Award, keep it visible): one plain sentence on top; 600 the
       // same day with the overview of the three Visa runs above the Airi run (Max, 10 Nov: more Visa).
-      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? 180 : 150;
+      // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
+      const budget = path === "/airwallex" ? 365 : path === "/visa" ? 600 : path === "/metal" ? (tokenizeRun() ? 230 : 180) : 150;
       // The frame (header and footer): 25 words, 26 since 12 Nov: More and the footer's four product links added five
       // words (18 at 360 and 390 px, 19 at 768 and 1440); /metal and /visa had four to spare. The pages' own budgets are unchanged.
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
@@ -588,6 +600,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
       await broken.screenshot({ path: join(shots, `status-unread-${tag}.png`), fullPage: true });
       await broken.close();
+    // /metal in its other state: with a run record of the invoice token (12 Nov). The page the judge serves has the
+    // block only once a live run is recorded; here the same page is built with a record made on the in-memory chain
+    // (test/support/tokenizeWorld.ts, never written to docs/runs) and served in its place, under the page's own CSP:
+    // one short block after the main run's proof, its transactions folded, nothing wider than the screen.
+    if (metalWithRecord) {
+      await page.route(`${base}/metal`, (r) => r.fulfill({ status: 200, contentType: "text/html; charset=utf-8", headers: { "content-security-policy": METAL_CSP }, body: metalWithRecord }));
+      await page.goto(`${base}/metal`, { waitUntil: "load" });
+      await look(page, `/metal with an invoice-token record ${tag}`, w);
+      const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length;
+      if (words > 230 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 230 plus the frame`);
+      const block = page.locator("#invoice-token");
+      const sight = await block.innerText().catch(() => "");
+      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
+      if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
+      await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
+      await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; }));
+      await look(page, `/metal with an invoice-token record, folds open ${tag}`, w);
+      if ((await block.locator("a.pf[href^='https://testnet.metalntwx.com/tx/0x']").count()) !== 7 || (await block.locator("a.pf[href$='-tokenize.md']").count()) !== 1) fail(`/metal with an invoice-token record ${tag}: not seven transactions and the run record in its fold`);
+      await block.screenshot({ path: join(shots, `metal-token-open-${tag}.png`) });
+      await page.unroute(`${base}/metal`);
     }
     // Proof carries the read-back briefly (section B): the hash pair and the cards' match, with each card in a fold.
     await page.goto(`${base}/proof`, { waitUntil: "load" });

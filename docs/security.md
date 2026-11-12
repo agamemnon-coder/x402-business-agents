@@ -215,7 +215,8 @@ Rate limits, where the docs say them (each asserted in the same test or the test
 ## Checks
 
 - `npm test`: the full suite, including `test/adversarial.test.ts`. CI runs it on every push, with type checks,
-  gitleaks on the pushed commits and the whole history, and `npm audit` for the root and `worker/`.
+  gitleaks on the pushed commits and the whole history of the branch under check, and `npm audit` for the root and
+  `worker/`.
 - `npm run redteam`: 35 scripted attacks plus documents Claude Opus writes as the attacker, each in a fresh
   throwaway world, through the code the runner runs; every attack must fail (report in `docs/redteam/report.json`,
   shown on the landing).
