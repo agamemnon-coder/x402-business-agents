@@ -687,7 +687,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
         if (states.length !== 3 || !/^Signed in Purser( \(test passkey\))?$/.test(states[0] ?? "") || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
         // The platform run's refused payouts are told in its fold, with their cause: never among the tiles.
-        if (/refus/i.test(await page.locator("main .awp").innerText())) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
+        if (/refus/i.test((await page.locator("main .awp").allInnerTexts()).join(" "))) fail(`/airwallex ${tag}: a refusal on a tile (they belong in the platform run's fold)`);
       }
       if (TAP_PAGES.includes(path) && w < 500) await tapTargets(page, `${path} ${tag}`);
       if ((await page.locator("details.fold").count()) < 2) fail(`${path} ${tag}: the details are not folded`);
