@@ -270,7 +270,8 @@ export const VISIBLE = {
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
-    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.send],
+    // H3 (12 Nov): the samples did not load: the calm line and its retry, the button off.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.failed, INVOICE.retry, INVOICE.send],
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.send],
     // The suppliers did not load: the calm line and its retry, the button off.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.suppliersFailed, INVOICE.retry, INVOICE.send],

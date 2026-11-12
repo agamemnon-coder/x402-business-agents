@@ -83,7 +83,8 @@ p { margin: 0 0 12px; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 650 15px/1.2 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn.big { min-height: 52px; padding: 0 24px; font-size: 16px; margin-top: 8px; }
-.btn:disabled { opacity: .55; cursor: progress; }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .55; cursor: progress; }
+.btn.skel { min-height: 46px; border-radius: 14px; border-color: transparent; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 .btn:focus-visible, a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 a { color: var(--accent); }
@@ -571,7 +572,10 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   // Write your own needs the suppliers on file (the supplier and its IBAN): until they are in, the button is off and
   // both fields are a skeleton, so a quick click cannot meet empty required fields.
   let ready=false;let gateFields=[];
-  const gate=()=>{send.disabled=writing&&!ready;for(const f of gateFields)f.classList.toggle('loading',!ready)};
+  // The samples (H3, 12 Nov): until they are in, the button is off (aria-disabled, so a tap still lands) and the cards
+  // are a skeleton; a tap meanwhile is kept and files the first sample once they arrive.
+  let samplesIn=false,queued=false;
+  const gate=()=>{send.disabled=writing&&!ready;const off=!writing&&!samplesIn;if(off)send.setAttribute('aria-disabled','true');else send.removeAttribute('aria-disabled');send.classList.toggle('queued',off&&queued);for(const f of gateFields)f.classList.toggle('loading',!ready)};
   const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w;gate()};
   tA.addEventListener('click',()=>choose(false));tB.addEventListener('click',()=>choose(true));
   const send=btn(C.invoice.send,true);
@@ -580,17 +584,31 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   catchUp();
   // Pick a sample: one button per sample, the title only; the first is picked.
   let picked=null;
-  pick.append(el('p','muted',C.invoice.loading));
-  const samples=WARM.samples||api('GET','/v1/engine/samples');WARM.samples=null;
-  samples.then((r)=>{
-    if(r.status!==200||!Array.isArray(r.json.items)){pick.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
-    const list=el('div','samples');list.setAttribute('role','group');
-    for(const s of r.json.items){if(!s||typeof s.key!=='string')continue;
-      const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
-      b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
-      list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
-    pick.replaceChildren(list);
-  });
+  // The samples' read: the warm-up's, fired with the start (in parallel with GET /v1/engine), or a fresh one.
+  const loadSamples=(r0)=>{
+    samplesIn=false;gate();
+    const sk=el('div','samples');sk.setAttribute('aria-hidden','true');
+    for(let i=0;i<3;i++)sk.append(el('span','btn skel'));
+    pick.replaceChildren(el('p','muted',C.invoice.loading),sk);
+    (r0||api('GET','/v1/engine/samples')).then((r)=>{
+      if(S.screen!=='invoice')return;
+      const items=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
+      if(!items.length){
+        // Calmly, with a retry that reads them again; a kept tap is dropped, the button stays off.
+        queued=false;gate();
+        const again=el('button','link',C.invoice.retry);again.type='button';
+        again.addEventListener('click',()=>loadSamples());
+        pick.replaceChildren(el('p','hint calm',[C.invoice.failed,' ',again]));return}
+      const list=el('div','samples');list.setAttribute('role','group');
+      for(const s of items){
+        const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
+        b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
+        list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
+      pick.replaceChildren(list);samplesIn=true;gate();
+      if(queued){queued=false;gate();file()}
+    });
+  };
+  loadSamples(WARM.samples);WARM.samples=null;
   // Write your own: a supplier on file, the number, the amount, the dates and the IBAN (prefilled, editable).
   const sup=el('select');const no=input('text','INV-'+String(1000+crypto.getRandomValues(new Uint16Array(1))[0]%9000));no.required=true;no.maxLength=40;
   const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='1,850.00';
@@ -635,7 +653,10 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   });
   loadSuppliers();
   function file(){
-    if(!writing){if(picked)show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
+    if(!writing){
+      // Not in yet: keep the tap, it files the first sample when they arrive.
+      if(!samplesIn||!picked){queued=true;gate();return}
+      show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
     const v=amtRead();
     if(v===null){amt.focus();return}
     if(!form.reportValidity())return;

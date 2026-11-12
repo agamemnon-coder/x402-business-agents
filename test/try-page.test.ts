@@ -104,7 +104,9 @@ describe("the page", () => {
     expect(script.indexOf("'/v1/try/start'")).toBeGreaterThan(click);
     // Then, not awaited, before screen 1: the engine's status and the samples, in parallel; screen 1 takes the samples' answer.
     expect(script).toMatch(/WARM\.engine=api\('GET','\/v1\/engine'\);WARM\.samples=api\('GET','\/v1\/engine\/samples'\);show\('invoice'\)/);
-    expect(script).toMatch(/const samples=WARM\.samples\|\|api\('GET','\/v1\/engine\/samples'\);WARM\.samples=null;/);
+    // H3 (12 Nov): screen 1 takes the warm-up's read through loadSamples (its own read when there is none, and on Retry).
+    expect(script).toContain("(r0||api('GET','/v1/engine/samples')).then(");
+    expect(script).toContain("loadSamples(WARM.samples);WARM.samples=null;");
   });
 
   it("shows the invoice card's skeleton and who is reading while the request is in flight, with no value of the outcome", () => {
