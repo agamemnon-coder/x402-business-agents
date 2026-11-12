@@ -65,6 +65,6 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 - [archive/](archive/): kept for history; each file says what replaced it.
 
-Not part of the submission: `internal/` holds only the working notes a test, a script or a record still names
+Not part of the submission: `internal/` holds only the working notes a test, a script or another document still cites
 (two runbooks, a restart plan, a requirements audit and a cheat sheet, in Dutch; the Demo Day card; the
 after-submission list).
