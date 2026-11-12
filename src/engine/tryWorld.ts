@@ -8,8 +8,11 @@
 // "Test invoice (fake)" in their PDF's properties (src/e2e/documents.ts).
 //
 // Host-agnostic: no node: import; the PDF writer is the one the samples script uses (pdfkit through pdfOf).
-import { ALLOWLISTED_PAYEES } from "../agents/euroBill.js";
 import { ibanValid } from "../ap/reading.js";
+// The clean sample and the suppliers on file, as data (src/config/trySample.ts): the cloud Worker's illustration
+// shows the clean sample without loading the engine.
+import { CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields } from "../config/trySample.js";
+export { CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields };
 
 export interface Sample {
   key: string;
@@ -24,18 +27,12 @@ export interface Sample {
 /** A supplier on file, as the visitor's "write your own" offers it. Its IBAN is a published test IBAN. */
 export interface SupplierOnFile { key: string; name: string; iban: string; bic: string }
 
-/** The key a supplier on file is offered under: the first word of its name. */
-export const supplierKey = (name: string): string => name.split(/\s+/)[0]!.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-/** The seeded payees, with the street and city the composed invoice's letterhead shows. */
-export const SEEDED_SUPPLIERS = ALLOWLISTED_PAYEES.map((p) => ({ key: supplierKey(p.name), name: p.name, iban: p.iban, bic: p.bic, street: p.address.street, city: `${p.address.postcode} ${p.address.city}` }));
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number) as [number, number, number]; return `${d} ${MONTHS[m - 1]} ${y}`; };
 const groups = (iban: string) => iban.replace(/(.{4})/g, "$1 ").trim();
 const eur = (cents: number) => `EUR ${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
 
-export interface InvoiceFields { supplier: { name: string; street: string; city: string; bic: string }; invoiceNo: string; amountCents: number; issueDate: string; dueDate: string; iban: string }
 
 /** An invoice's text in the clean sample's layout (test/fakes/apInvoices.ts EN): letterhead, number, dates, VAT at 19%, bank details. */
 export function invoiceText(f: InvoiceFields): string {
@@ -55,10 +52,6 @@ export function invoiceText(f: InvoiceFields): string {
   ].join("\n");
 }
 
-const BERGTEX = SEEDED_SUPPLIERS.find((s) => s.key === "bergtex")!;
-/** The clean sample, on file and payable; the others are variations of it, so each tells one thing. The pages'
- * illustration shows this invoice (cloud/src/scene.ts). */
-export const CLEAN: InvoiceFields = { supplier: BERGTEX, invoiceNo: "BTX-2026-21", amountCents: 185_000, issueDate: "2026-11-09", dueDate: "2026-11-30", iban: BERGTEX.iban };
 /** A new supplier's invoice in its own (Dutch) layout; its IBAN is a published test IBAN. */
 const NEW_SUPPLIER = `Zeeland Verpakkingen B.V.
 BTW-nummer: NL123456789B01
