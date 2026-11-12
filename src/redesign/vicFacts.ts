@@ -143,8 +143,9 @@ export function vicAttemptLines(rec: AiriRunRecord): string[] {
 export function vicAttemptsHtml(rec: AiriRunRecord): string {
   const lines = vicAttemptLines(rec);
   if (lines.length === 0) return "";
-  const first = vicAttemptCount(rec).failedFirst ? " first" : "";
+  const n = vicAttemptCount(rec), first = n.failedFirst ? " first" : "";
   return `<details class="fold" id="${VIC_ATTEMPTS_ID}"><summary>${esc(lines.length === 1 ? `The attempt that failed${first}` : `The ${lines.length} attempts that failed${first}`)}</summary>
+<p>${esc(`${n.paid} of ${n.all} attempts that day paid.`)}</p>
 <ul class="awc">${lines.map((l) => `<li class="no">${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc("Each cause in full: ")}<a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details>`;
 }
