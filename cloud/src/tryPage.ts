@@ -197,7 +197,9 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .proof.xfer { margin: 6px 0 4px; font-size: 26px; line-height: 1.2; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
 /* Screen 5: a calm stamp, the terms' hash, the books' lines sliding in. */
 .paidstamp { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 6px; }
-.paidstamp .ring { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok-soft); color: var(--ok); animation: stampin .6s ease-out both; }
+.paidstamp .ring { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok-soft); color: var(--ok); animation: stampin .45s cubic-bezier(.2,.9,.3,1.15) both; }
+/* The stamp is the first thing screen 5 shows once the pay answer is in: the screen does not slide, the stamp lands. */
+.screen:has(> .paidstamp) { animation: none; }
 .paidstamp .hashpill { margin: 0; }
 table.lines tbody tr { animation: slidein .4s ease-out both; }
 table.lines tbody tr:nth-child(2) { animation-delay: .08s; } table.lines tbody tr:nth-child(3) { animation-delay: .16s; } table.lines tbody tr:nth-child(4) { animation-delay: .24s; }
@@ -930,16 +932,19 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(!cred){
       // After a reload without the kept signature: the passkey again, for the same terms (the challenge is their hash).
       const st=await api('GET','/v1/engine');
-      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){out.replaceChildren(note(C.approve.cancelled));return}
+      main.node.textContent=C.approve.waiting;
+      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){main.set(Y.button,()=>send(intro));out.replaceChildren(note(C.approve.cancelled));return}
       S.cred=cred;save();
     }
-    main.node.textContent=Y.sending;out.replaceChildren();
+    // While the request runs: "Paying…" with the ring; the answer is drawn the moment it is in (paid: screen 5's stamp).
+    main.node.textContent=Y.paying;main.node.classList.add('asking');out.replaceChildren();
+    const slow=el('p','hint',C.approve.slow);
     const body=payBody(T.terms,v,cred);
     const t0=performance.now();
-    pollStart((items)=>live.add(items,t0));
+    pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)out.append(slow)});
     const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/pay',body);
     const ms=performance.now()-t0;
-    pollDone();
+    pollDone();main.node.classList.remove('asking');slow.remove();
     if(S.screen!=='pay')return;
     main.set(Y.button,()=>send(intro));
     outcome(r,ms,body.terms,intro);

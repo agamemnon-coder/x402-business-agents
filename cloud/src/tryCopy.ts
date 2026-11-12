@@ -151,7 +151,8 @@ export const PAY = {
   /** The deadline, from the terms' expires_at ({time}: the browser's local time). */
   until: "Pay before {time}.",
   button: "Pay with my signature",
-  sending: "Sending…",
+  /** On the button while the pay request runs (with the ring). */
+  paying: "Paying…",
   amountBad: "Digits only: 120.50",
   /** Refused: the stamp, then one row per layer that refused. */
   stamp: "Refused by Purser",
@@ -311,7 +312,7 @@ export const VISIBLE = {
     [PAY.heading, PAY.loading],
     [PAY.heading, PAY.line, PAY.until, PAY.button],
     [PAY.heading, PAY.line, PAY.until, PAY.amountBad, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.sending],
+    [PAY.heading, PAY.line, PAY.until, PAY.paying, APPROVE.slow],
     [PAY.heading, PAY.paidOnce, PAY.button],
     [PAY.heading, PAY.fileAgain],
     [PAY.heading, PAY.failed, PAY.retry],
