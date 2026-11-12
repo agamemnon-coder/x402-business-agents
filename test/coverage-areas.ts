@@ -15,6 +15,8 @@ const AREAS: Record<string, { prefixes: string[]; floor: number }> = {
   // Invoice tokens on Metal (docs/tokenize.md), added 12 November with test/property-tokenize.test.ts: 92.5% from the
   // tokenize tests alone that day.
   tokenize: { prefixes: ["tokenize/"], floor: 90 },
+  // The zero-trust model, its coverage view and its report (test/zero-trust.test.ts; added 12 November).
+  zerotrust: { prefixes: ["zerotrust/"], floor: 90 },
 };
 
 const root = resolve(import.meta.dirname, "..");

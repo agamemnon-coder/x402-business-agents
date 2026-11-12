@@ -157,7 +157,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
   }
   const passkey = args.passkey && { credential_id: args.passkey.credentialId, assertion_sha256: args.passkey.assertionSha256 };
   return db.transaction((): ProposalStatus => {
-    const p = get(db, args.proposalId);
+    const p = args.decision === "APPROVED" ? ofSignedKind(get(db, args.proposalId)) : get(db, args.proposalId);
     if (p.status !== "PENDING_APPROVAL") throw new Error(`${p.proposal_id} is ${p.status}, not waiting for approval`);
     // A payment in a waiting batch is decided with its batch only: the CFO signs the list, not the line on its own.
     const inBatch = BATCHABLE.has(p.kind) ? openBatchOf(db, p.proposal_id) : null;
@@ -186,7 +186,7 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
       const person = args.approver.split(" (")[0]!;
       if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
-      const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? ORDER BY created_at, rowid").all(p.proposal_id) as { person: string; approver: string }[];
+      const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
       if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
         .run(p.proposal_id, passkey.credential_id, person, args.approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
@@ -246,7 +246,10 @@ export const resuming = new Set<string>();
 export function beginExecution<T extends Terms>(db: DB, proposalId: string, preconditions: (terms: T) => void = () => {}, now = new Date()): T {
   // Expiry is committed on its own, so the EXPIRED status survives the error thrown below.
   const expired = db.transaction(() => {
-    const p = get(db, proposalId);
+    const row = get(db, proposalId);
+    // The expiry the CFO signed is the one inside the terms. The column is a copy the hash does not cover, so the
+    // earlier of the two counts: pushing the column out buys no time (zero-trust matrix, 12 November).
+    const p = { ...row, expires_at: signedExpiry(row) };
     return (p.status === "APPROVED" || p.status === "FAILED") && Date.parse(p.expires_at) <= now.getTime() ? (expireIfDue(db, p, now), p.expires_at) : null;
   }).immediate();
   if (expired) throw new Error(`${proposalId} expired at ${expired}; approval void`);
@@ -286,6 +289,25 @@ export function beginExecution<T extends Terms>(db: DB, proposalId: string, prec
   }).immediate();
 }
 
+/** When a proposal runs out: the expiry in its terms (the one the hash covers), or the column's when that is earlier or the terms cannot be read. */
+function signedExpiry(p: Pick<ProposalRow, "terms_json" | "expires_at">): string {
+  let inTerms: unknown;
+  try { inTerms = (JSON.parse(p.terms_json) as { expires_at?: unknown }).expires_at; } catch { return p.expires_at; }
+  return typeof inTerms === "string" && Date.parse(inTerms) < Date.parse(p.expires_at) ? inTerms : p.expires_at;
+}
+
+/**
+ * A proposal whose kind column is the kind inside its terms, the one the hash covers; refused otherwise. The column
+ * decides four eyes and batches, so a kind changed beside the terms would let one person approve what needs two
+ * (zero-trust matrix, 12 November).
+ */
+function ofSignedKind(p: ProposalRow): ProposalRow {
+  let inTerms: unknown;
+  try { inTerms = (JSON.parse(p.terms_json) as { kind?: unknown }).kind; } catch { inTerms = null; }
+  if (inTerms !== p.kind) throw new Error(`${p.proposal_id} is filed as ${p.kind}, but its signed terms say ${String(inTerms)}; nothing is approved`);
+  return p;
+}
+
 export function finishExecution(db: DB, proposalId: string, outcome: "EXECUTED" | "FAILED" | "NEEDS_REAPPROVAL", detail: Json = {}, now = new Date()): void {
   db.transaction(() => {
     transition(db, proposalId, "EXECUTING", outcome);
@@ -307,6 +329,28 @@ export function closeAsStale(db: DB, proposalId: string, detail: { error: string
     audit(db, "system", "proposal.needs_reapproval", proposalId, { ...detail, error: detail.error.slice(0, 300), from: p.status }, now);
     return true;
   }).immediate();
+}
+
+/**
+ * The terms a proposal was approved with, for what follows the payment (the books, the archive): the stored terms,
+ * only while they still hash to the stored hash and to the hash the approval records, as the execution guard checks
+ * before the payment. Otherwise why not: the terms were changed after they were signed, or nobody approved them.
+ */
+export function signedTerms<T extends Terms>(db: DB, proposalId: string): { ok: true; terms: T; sha256: string } | { ok: false; reason: string } {
+  const p = db.prepare("SELECT terms_json, terms_sha256 FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string; terms_sha256: string } | undefined;
+  if (!p) return { ok: false, reason: `no proposal ${proposalId}` };
+  const approval = db.prepare("SELECT approved_sha256 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approved_sha256: string } | undefined;
+  if (!approval) return { ok: false, reason: `${proposalId} has no approval` };
+  let terms: T;
+  let recomputed: string;
+  try {
+    terms = JSON.parse(p.terms_json) as T;
+    recomputed = termsHash(terms);
+  } catch {
+    return { ok: false, reason: `${proposalId}: the stored terms cannot be read, so they do not match the approved hash` };
+  }
+  if (recomputed !== p.terms_sha256 || recomputed !== approval.approved_sha256) return { ok: false, reason: `${proposalId}: the stored terms do not match the approved hash` };
+  return { ok: true, terms, sha256: recomputed };
 }
 
 /** Marks every proposal whose time ran out as EXPIRED, so no list shows it as still waiting. */
