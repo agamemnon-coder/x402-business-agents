@@ -5,11 +5,14 @@
 // Sent at most once (src/metal/ownersTx.ts): the transaction's hash is in the ledger (owners.sent) before it leaves,
 // and a later run carries on from it. How a run ends:
 //   - the account ran it: EXECUTED;
-//   - the chain refused it (a revert on chain, or a call the chain would revert, which is then not sent), or it can no
-//     longer run (the signed deadline passed): FAILED, with the account's own error decoded;
+//   - the chain refused it (a revert on chain, or a call the chain would revert, which is then not sent), or it is
+//     known that it can no longer run (nothing was sent and the signed deadline is too close; or the deadline is over
+//     and the sent transaction never landed: no receipt, the sender's nonce still unused): FAILED, with the account's
+//     own error decoded;
 //   - anything that leaves the outcome open (no receipt yet, the network, a spent call budget): the proposal stays
-//     EXECUTING. Both owners' signatures are still good, so the runner's next start resumes it (src/policy/saga.ts)
-//     from the recorded hash, and nothing is sent twice.
+//     EXECUTING, and the runner's next start resumes it (src/policy/saga.ts) from the recorded hash; nothing is sent
+//     twice. That holds after the deadline too when the sender's nonce has moved past the transaction: it may have
+//     landed in time while the node does not show its receipt yet, so nothing is settled and a person looks.
 
 import { encodeFunctionData, type Address, type Hex } from "viem";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
@@ -72,6 +75,8 @@ export async function executeOwnersExecute(db: DB, proposalId: string, relay: Re
   }, now);
   const sends = journal(db, proposalId, terms.account, now);
   const late = BigInt(terms.valid_until) * 1000n < BigInt(now.getTime() + 15_000);
+  /** The signed deadline is over: a transaction that has not landed by now can no longer run. */
+  const over = BigInt(terms.valid_until) * 1000n < BigInt(now.getTime());
   let tx: Hex | null = sends.open()?.tx ?? null;
   try {
     let call: { account: Address; data: Hex };
@@ -102,15 +107,19 @@ export async function executeOwnersExecute(db: DB, proposalId: string, relay: Re
       finishExecution(db, proposalId, "FAILED", { error: message.slice(0, 300) }, now);
       throw e;
     }
-    if (tx && late && e instanceof NoReceiptYet) {
-      // Past the deadline the account refuses these signatures, so a transaction with no receipt by now cannot run any more.
+    const mayHaveLanded = e instanceof NoReceiptYet && e.nonceMoved;
+    if (tx && over && e instanceof NoReceiptYet && !mayHaveLanded) {
+      // The deadline is over and it never landed (the sender's nonce is unused where that was read): the account
+      // refuses these signatures from now on, so this transaction cannot run any more.
       const error = `${proposalId} was sent as ${tx}, but it has no receipt and the signed deadline has passed: the account refuses it from now on; a new proposal is needed`;
       finishExecution(db, proposalId, "FAILED", { error, tx }, now);
       throw new Error(error, { cause: e });
     }
-    // The outcome is open, and both owners' signatures are still good: the proposal stays EXECUTING for the next start.
+    // The outcome is open: the proposal stays EXECUTING for the next start.
     audit(db, "owner-signer", "owners.waiting", proposalId, { ...(tx ? { tx } : {}), why: message.slice(0, 300) }, now);
-    (e as Error).message = `${message}; ${proposalId} stays executing: start the runner again to carry on${tx ? ` from ${tx}` : ""}, nothing is sent twice`;
+    (e as Error).message = tx && mayHaveLanded
+      ? `${message}; ${proposalId} stays executing: it may have landed, so nothing is settled and nothing was sent again; a person looks ${tx} up, and the runner's next start reads its receipt`
+      : `${message}; ${proposalId} stays executing: start the runner again to carry on${tx ? ` from ${tx}` : ""}, nothing is sent twice`;
     throw e;
   }
 }

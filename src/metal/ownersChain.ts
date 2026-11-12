@@ -24,7 +24,8 @@ export interface Receipt { ok: boolean; block: number; gasUsed: bigint }
 
 /** The transaction is not in a block the node shows yet. It may still land: nothing is known, nothing is sent again by itself. */
 export class NoReceiptYet extends Error {
-  constructor(readonly tx: Hex, more = "") { super(`no receipt yet for ${tx}${more ? `; ${more}` : ""}`); this.name = "NoReceiptYet"; }
+  /** `nonceMoved`: the sender's nonce is past this transaction's, so it may be in a block whose receipt the node does not show yet. */
+  constructor(readonly tx: Hex, more = "", readonly nonceMoved = false) { super(`no receipt yet for ${tx}${more ? `; ${more}` : ""}`); this.name = "NoReceiptYet"; }
 }
 /** The node answered the send with a refusal: the transaction is in no pool and can never land. */
 export class NodeRefused extends Error {

@@ -321,6 +321,63 @@ describe("relaying an owners_execute: recorded first, never twice, behind the bu
     expect(status(db)).toBe("FAILED");
   });
 
+  it("before the signed deadline is over, a send with no receipt is not failed: it can still land in time", async () => {
+    const { db } = await approved();
+    await expect(executeOwnersExecute(db, "P-0001", { send: async () => TX, wait: async () => { throw new NoReceiptYet(TX); } }, t0)).rejects.toThrow();
+    // Ten seconds before the deadline: too late to send anything new, not too late for what was sent.
+    const justBefore = new Date((EXP + 60 - 10) * 1000);
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", { send: async () => { throw new Error("must not send"); }, wait: async () => { throw new NoReceiptYet(TX); } }, justBefore))).rejects.toThrow(/no receipt yet.*stays executing/);
+    expect(status(db)).toBe("EXECUTING");
+  });
+
+  it("after the signed deadline, a send whose sender's nonce has moved past it may have landed: it stays executing, nothing is sent, and a person looks", async () => {
+    const { db } = await approved();
+    const node = fakeMetal();
+    const file = join(mkdtempSync(join(tmpdir(), "owners-relay-")), "calls.jsonl");
+    const sponsor = privateKeyToAccount(generatePrivateKey());
+    let receiptsLag = false;
+    const relay = () => {
+      // A node that has the block and not yet the receipt: it answers "none" for a transaction that landed.
+      const chain = ownersChain({ budget: callBudget({ budget: 40, file }), sleep: async () => {}, pollsMs: [1], rpc: async (a) => (receiptsLag && a.method === "eth_getTransactionReceipt" ? null : node.rpc(a)) });
+      chain.step("execute P-0001");
+      return ownersRelay(chain, sponsor);
+    };
+    node.state.receiptAfter = Infinity;
+    await expect(executeOwnersExecute(db, "P-0001", relay(), t0)).rejects.toThrow(/no receipt yet/);
+    const recorded = events(db, "owners.sent").at(-1)!.tx as Hex;
+    // It lands, in time; the runner starts again after the deadline and the node shows no receipt for it yet.
+    node.mine(recorded);
+    receiptsLag = true;
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", relay(), afterDeadline))).rejects.toThrow(new RegExp(`no receipt yet for ${recorded}.*the sender's nonce has moved past it.*P-0001 stays executing: it may have landed, so nothing is settled and nothing was sent again; a person looks ${recorded} up`));
+    expect(status(db)).toBe("EXECUTING");
+    expect(node.sent().map((t) => t.hash)).toEqual([recorded]);
+    expect(events(db, "owners.waiting").at(-1)).toMatchObject({ tx: recorded, why: expect.stringMatching(/nonce has moved past it/) });
+    expect(events(db, "owners.sent")).toHaveLength(1);
+    // The receipt shows: the next start reads it, and the proposal is what the chain says it is.
+    receiptsLag = false;
+    const r = await resume(() => executeOwnersExecute(db, "P-0001", relay(), afterDeadline));
+    expect(r.tx).toBe(recorded);
+    expect(status(db)).toBe("EXECUTED");
+  });
+
+  it("after the signed deadline, a send that never landed (the sender's nonce is still unused) can no longer run: the proposal fails", async () => {
+    const { db } = await approved();
+    const node = fakeMetal();
+    const file = join(mkdtempSync(join(tmpdir(), "owners-relay-")), "calls.jsonl");
+    const sponsor = privateKeyToAccount(generatePrivateKey());
+    const relay = () => {
+      const chain = ownersChain({ budget: callBudget({ budget: 40, file }), sleep: async () => {}, pollsMs: [1], rpc: node.rpc });
+      chain.step("execute P-0001");
+      return ownersRelay(chain, sponsor);
+    };
+    node.state.receiptAfter = Infinity;
+    await expect(executeOwnersExecute(db, "P-0001", relay(), t0)).rejects.toThrow(/no receipt yet/);
+    const recorded = events(db, "owners.sent").at(-1)!.tx as Hex;
+    await expect(resume(() => executeOwnersExecute(db, "P-0001", relay(), afterDeadline))).rejects.toThrow(/no receipt and the signed deadline has passed/);
+    expect(status(db)).toBe("FAILED");
+    expect(node.sent().map((t) => t.hash)).toEqual([recorded]);
+  });
+
   it("with nothing sent and the deadline passed, a restart closes the proposal instead of leaving it executing for ever", async () => {
     const { db } = await approved();
     await expect(executeOwnersExecute(db, "P-0001", { send: async () => { throw new Error("the network is down"); }, wait: async () => true }, t0)).rejects.toThrow(/network is down/);

@@ -78,7 +78,7 @@ export function chainStep(chain: OwnersChain, o: { from: Address; gas?: () => Pr
     },
     async again(earlier) {
       if ((await chain.nonce(o.from, "latest")) > earlier.nonce!) {
-        throw new NoReceiptYet(earlier.tx, "the sender's nonce has moved past it: it landed and its receipt is not readable yet (run again), or another transaction used the nonce (then this one can never land); nothing was sent");
+        throw new NoReceiptYet(earlier.tx, "the sender's nonce has moved past it: it landed and its receipt is not readable yet (run again), or another transaction used the nonce (then this one can never land); nothing was sent", true);
       }
       const s = await o.sign({ nonce: earlier.nonce!, ...(earlier.gas === undefined ? {} : { gas: BigInt(earlier.gas) }) });
       if (s.tx.toLowerCase() !== earlier.tx.toLowerCase()) throw new Error(`signing the step again gave ${s.tx}, not the recorded ${earlier.tx}; nothing was sent`);
