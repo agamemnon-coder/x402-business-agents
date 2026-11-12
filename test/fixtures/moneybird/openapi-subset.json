@@ -1,0 +1,883 @@
+{
+ "_source": {
+  "url": "https://raw.githubusercontent.com/moneybird/openapi/refs/heads/main/openapi.yml",
+  "version": "v2-20261110-3df079017e"
+ },
+ "requests": {
+  "POST /{administration_id}/contacts{format}": {
+   "contentType": "application/*",
+   "schema": {
+    "properties": {
+     "contact": {
+      "properties": {
+       "address1": {
+        "type": "string"
+       },
+       "address2": {
+        "type": "string"
+       },
+       "bank_account": {
+        "type": "string"
+       },
+       "chamber_of_commerce": {
+        "type": "string"
+       },
+       "city": {
+        "type": "string"
+       },
+       "company_name": {
+        "type": "string"
+       },
+       "contact_person": {
+        "properties": {
+         "firstname": {
+          "type": "string"
+         },
+         "lastname": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "firstname",
+         "lastname"
+        ],
+        "type": "object",
+        "unevaluatedProperties": false
+       },
+       "country": {
+        "type": "string"
+       },
+       "custom_fields_attributes": {
+        "oneOf": [
+         {
+          "additionalProperties": {
+           "properties": {
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "value": {
+             "type": "string"
+            }
+           },
+           "required": [
+            "id",
+            "value"
+           ],
+           "type": "object",
+           "unevaluatedProperties": false
+          },
+          "type": "object"
+         },
+         {
+          "items": {
+           "properties": {
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "value": {
+             "type": "string"
+            }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         }
+        ]
+       },
+       "customer_id": {
+        "type": "string"
+       },
+       "delivery_method": {
+        "type": "string"
+       },
+       "direct_debit": {
+        "type": [
+         "boolean",
+         "string"
+        ]
+       },
+       "email_ubl": {
+        "type": [
+         "boolean",
+         "string"
+        ]
+       },
+       "estimate_workflow_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "firstname": {
+        "type": "string"
+       },
+       "invoice_workflow_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "lastname": {
+        "type": "string"
+       },
+       "phone": {
+        "type": "string"
+       },
+       "send_estimates_to_attention": {
+        "type": "string"
+       },
+       "send_estimates_to_email": {
+        "type": "string"
+       },
+       "send_invoices_to_attention": {
+        "type": "string"
+       },
+       "send_invoices_to_email": {
+        "type": "string"
+       },
+       "sepa_active": {
+        "type": [
+         "boolean",
+         "string"
+        ]
+       },
+       "sepa_bic": {
+        "type": "string"
+       },
+       "sepa_iban": {
+        "type": "string"
+       },
+       "sepa_iban_account_name": {
+        "type": "string"
+       },
+       "sepa_mandate_date": {
+        "type": "string"
+       },
+       "sepa_mandate_id": {
+        "type": "string"
+       },
+       "sepa_sequence_type": {
+        "type": "string"
+       },
+       "si_identifier": {
+        "type": "string"
+       },
+       "si_identifier_type": {
+        "type": "string"
+       },
+       "tax_number": {
+        "type": "string"
+       },
+       "zipcode": {
+        "type": "string"
+       }
+      },
+      "required": [],
+      "type": "object",
+      "unevaluatedProperties": false
+     }
+    },
+    "required": [
+     "contact"
+    ],
+    "type": "object",
+    "unevaluatedProperties": false
+   },
+   "scopes": [
+    "estimates"
+   ]
+  },
+  "POST /{administration_id}/documents/general_journal_documents{format}": {
+   "contentType": "application/*",
+   "schema": {
+    "properties": {
+     "general_journal_document": {
+      "properties": {
+       "date": {
+        "format": "date",
+        "type": "string"
+       },
+       "general_journal_document_entries_attributes": {
+        "oneOf": [
+         {
+          "items": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "contact_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "credit": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "debit": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "description": {
+             "type": "string"
+            },
+            "id": {
+             "type": "integer"
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "project_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "row_order": {
+             "type": "integer"
+            },
+            "tax_rate_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "required": [],
+           "type": "object",
+           "unevaluatedProperties": false
+          },
+          "type": "array"
+         },
+         {
+          "additionalProperties": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "contact_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "credit": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "debit": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "description": {
+             "type": "string"
+            },
+            "id": {
+             "type": "integer"
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "project_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "row_order": {
+             "type": "integer"
+            },
+            "tax_rate_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "required": [],
+           "type": "object"
+          },
+          "type": "object"
+         }
+        ]
+       },
+       "journal_type": {
+        "enum": [
+         "fiscal_year_ending"
+        ],
+        "type": "string"
+       },
+       "reference": {
+        "type": "string"
+       }
+      },
+      "required": [],
+      "type": "object",
+      "unevaluatedProperties": false
+     }
+    },
+    "required": [],
+    "type": "object",
+    "unevaluatedProperties": false
+   },
+   "scopes": [
+    "documents"
+   ]
+  },
+  "POST /{administration_id}/documents/purchase_invoices/{id}/attachments{format}": {
+   "contentType": "multipart/form-data",
+   "schema": {
+    "properties": {
+     "file": {
+      "format": "binary",
+      "type": "string"
+     }
+    },
+    "type": "object"
+   },
+   "scopes": [
+    "documents"
+   ]
+  },
+  "POST /{administration_id}/documents/purchase_invoices/{id}/payments{format}": {
+   "contentType": "application/*",
+   "schema": {
+    "properties": {
+     "payment": {
+      "properties": {
+       "financial_account_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "financial_mutation_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "invoice_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "ledger_account_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "manual_payment_action": {
+        "type": "string"
+       },
+       "payment_date": {
+        "type": "string"
+       },
+       "price": {
+        "oneOf": [
+         {
+          "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+          "type": "string"
+         },
+         {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "price_base": {
+        "oneOf": [
+         {
+          "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+          "type": "string"
+         },
+         {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
+          "type": "number"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "transaction_identifier": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "payment_date",
+       "price"
+      ],
+      "type": "object",
+      "unevaluatedProperties": false
+     }
+    },
+    "required": [],
+    "type": "object",
+    "unevaluatedProperties": false
+   },
+   "scopes": [
+    "documents"
+   ]
+  },
+  "POST /{administration_id}/documents/purchase_invoices{format}": {
+   "contentType": "application/*",
+   "schema": {
+    "properties": {
+     "purchase_invoice": {
+      "properties": {
+       "contact_id": {
+        "pattern": "^\\d+$",
+        "type": [
+         "string",
+         "integer"
+        ]
+       },
+       "currency": {
+        "type": "string"
+       },
+       "date": {
+        "format": "date",
+        "type": "string"
+       },
+       "details_attributes": {
+        "oneOf": [
+         {
+          "additionalProperties": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "amount": {
+             "type": [
+              "integer",
+              "string"
+             ]
+            },
+            "automated_tax_enabled": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "description": {
+             "type": "string"
+            },
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "is_optional": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "is_selected": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "period": {
+             "type": "string"
+            },
+            "price": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "product_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "project_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "row_order": {
+             "type": [
+              "integer",
+              "string"
+             ]
+            },
+            "tax_rate_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "required": [],
+           "type": "object",
+           "unevaluatedProperties": false
+          },
+          "type": "object"
+         },
+         {
+          "items": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "amount": {
+             "type": [
+              "integer",
+              "string"
+             ]
+            },
+            "automated_tax_enabled": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "description": {
+             "type": "string"
+            },
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "is_optional": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "is_selected": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "period": {
+             "type": "string"
+            },
+            "price": {
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "maximum": 1000000000,
+               "minimum": -1000000000,
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "product_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "project_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "row_order": {
+             "type": [
+              "integer",
+              "string"
+             ]
+            },
+            "tax_rate_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         }
+        ]
+       },
+       "due_date": {
+        "format": "date",
+        "type": "string"
+       },
+       "fiscal_allocations_attributes": {
+        "oneOf": [
+         {
+          "additionalProperties": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "percentage": {
+             "maximum": 100,
+             "minimum": 0,
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "private_ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "required": [],
+           "type": "object",
+           "unevaluatedProperties": false
+          },
+          "type": "object"
+         },
+         {
+          "items": {
+           "properties": {
+            "_destroy": {
+             "type": [
+              "boolean",
+              "string"
+             ]
+            },
+            "id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            },
+            "percentage": {
+             "maximum": 100,
+             "minimum": 0,
+             "oneOf": [
+              {
+               "pattern": "^-?[0-9]+[,\\.]?[0-9]*$",
+               "type": "string"
+              },
+              {
+               "type": "number"
+              },
+              {
+               "type": "null"
+              }
+             ]
+            },
+            "private_ledger_account_id": {
+             "pattern": "^\\d+$",
+             "type": [
+              "string",
+              "integer"
+             ]
+            }
+           },
+           "type": "object"
+          },
+          "type": "array"
+         }
+        ]
+       },
+       "prices_are_incl_tax": {
+        "type": [
+         "boolean",
+         "string"
+        ]
+       },
+       "reference": {
+        "type": "string"
+       },
+       "revenue_invoice": {
+        "type": [
+         "boolean",
+         "string"
+        ]
+       }
+      },
+      "required": [],
+      "type": "object",
+      "unevaluatedProperties": false
+     }
+    },
+    "required": [],
+    "type": "object",
+    "unevaluatedProperties": false
+   },
+   "scopes": [
+    "documents"
+   ]
+  }
+ }
+}

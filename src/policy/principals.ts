@@ -8,6 +8,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
+import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 
 /** An agent as people read it: "the Support agent" (internal id support), or "agent ext:acme" for an outside one. */
 const who = (id: string) => (id in AGENT_DISPLAY ? `the ${AGENT_DISPLAY[id as keyof typeof AGENT_DISPLAY].name}` : `agent ${id}`);
@@ -19,11 +20,22 @@ export interface Need { tool?: string; rail?: Rail; currency?: string; payee?: P
 
 const OUTSIDE_TOOLS = ["request_company_card", "company_card", "pay_with_card", "request_limit_raise", "ask_for_task_card"];
 
+/**
+ * The currencies the treasury agent may pay in: USDZ on Metal, and every currency Purser pays suppliers in over
+ * Airwallex (src/payouts/routes.ts payableCurrency: two-decimal currencies SWIFT carries). Widened deliberately when
+ * supplier payments began to check the agent's identity (red team round 3): a supplier payment in GBP or TRY is the same
+ * agent doing the same job as a Kit 11 euro payment, and the CFO's Face ID on the terms still decides each one.
+ */
+export const TREASURY_CURRENCIES = ["USDZ", ...SWIFT_CURRENCIES.filter(payableCurrency)];
+
+/** The treasury agent's defaults as written before supplier payments (USDZ, USD and EUR only). */
+const EARLIER_TREASURY = JSON.stringify({ tools: ["sweep", "invoice_payment", "card_purchase"], rails: ["metal", "airwallex", "card"], currencies: ["USDZ", "USD", "EUR"], payees: ["sweep", "beneficiaries", "merchants"] });
+
 /** What each agent may do today, as its code does it: the defaults a principal starts with. */
 export const DEFAULT_CAPABILITIES: Record<string, Capabilities> = {
   sourcing: { tools: ["buy_stock_check", "card_purchase"], rails: ["metal", "card"], currencies: ["USDZ", "EUR"], payees: ["supplier", "merchants"] },
   support: { tools: ["refund", "card_purchase"], rails: ["metal", "card"], currencies: ["USDZ", "EUR"], payees: ["customer", "merchants"] },
-  treasury: { tools: ["sweep", "invoice_payment", "card_purchase"], rails: ["metal", "airwallex", "card"], currencies: ["USDZ", "USD", "EUR"], payees: ["sweep", "beneficiaries", "merchants"] },
+  treasury: { tools: ["sweep", "invoice_payment", "supplier_payment", "card_purchase"], rails: ["metal", "airwallex", "card"], currencies: TREASURY_CURRENCIES, payees: ["sweep", "beneficiaries", "merchants"] },
   outside: { tools: OUTSIDE_TOOLS, rails: ["card"], currencies: ["EUR"], payees: ["merchants"] },
 };
 
@@ -37,6 +49,13 @@ const governed = (id: string) => id in DEFAULT_CAPABILITIES || id.startsWith("ex
 export function principal(db: DB, id: string, now = new Date(), create = true): Row | null {
   if (!governed(id) || !hasTable(db)) return null;
   const row = db.prepare("SELECT * FROM principals WHERE principal_id = ?").get(id) as Row | undefined;
+  if (row && create && id === "treasury" && row.capabilities_json === EARLIER_TREASURY) {
+    // Written with the defaults from before supplier payments (no capability is ever edited, only revoked or expired):
+    // widened to today's defaults once, with a record of it (docs/payables.md).
+    db.prepare("UPDATE principals SET capabilities_json = ?, updated_at = ? WHERE principal_id = ?").run(JSON.stringify(DEFAULT_CAPABILITIES.treasury), now.toISOString(), id);
+    audit(db, "system", "principal.capabilities_widened", id, { currencies: TREASURY_CURRENCIES.join(", "), why: "supplier payments in every payable currency" }, now);
+    return db.prepare("SELECT * FROM principals WHERE principal_id = ?").get(id) as Row;
+  }
   if (row || !create) return row ?? null;
   const outside = id.startsWith("ext:");
   const caps = outside ? DEFAULT_CAPABILITIES.outside! : DEFAULT_CAPABILITIES[id]!;

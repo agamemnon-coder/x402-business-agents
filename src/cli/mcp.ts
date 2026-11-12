@@ -11,6 +11,7 @@ import { agentApiServer } from "../platform/mcpServer.js";
 import { agentId } from "../platform/externalAgents.js";
 
 const id = agentId(process.env.KIT11_AGENT ?? "");
-const server = agentApiServer(openDb(), id, issuingFromEnv()?.sim ?? null);
+const db = openDb();
+const server = agentApiServer(db, id, issuingFromEnv(db)?.sim ?? null);
 await server.connect(new StdioServerTransport());
 console.error(`agent API: serving ${id} on stdio`);

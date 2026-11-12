@@ -10,6 +10,7 @@ import { publicClient } from "../metal/chain.js";
 import { findSettlementByNonce } from "../metal/pay.js";
 import { USDZ } from "../metal/network.js";
 import type { ReconcileSources } from "./reconcile.js";
+import type { DB } from "../db/open.js";
 
 /** Null if the receipt succeeded and carries exactly this *USDZ transfer, otherwise what is wrong. */
 export async function receiptCarries(tx: string, from: string, to: string, cents: number): Promise<string | null> {
@@ -28,10 +29,10 @@ export function authorizationUsed(payer: string, nonce: string): Promise<boolean
   return publicClient().readContract({ address: USDZ, abi: ERC3009, functionName: "authorizationState", args: [payer as `0x${string}`, nonce as `0x${string}`] });
 }
 
-export function reconcileSourcesFromEnv(): ReconcileSources {
+export function reconcileSourcesFromEnv(db?: DB): ReconcileSources {
   const cfg = fromEnv();
   const rest = cfg ? new AirwallexRest(new Airwallex(cfg)) : null;
-  const issuing = issuingFromEnv();
+  const issuing = issuingFromEnv(db);
   return {
     ...(rest ? { transfer: async (id: string) => { const t = await rest.getTransfer(id); return { status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
     ...(rest ? { transferByRequestId: async (requestId: string) => { const t = await rest.findTransferByRequestIdStrict(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),

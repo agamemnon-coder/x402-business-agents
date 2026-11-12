@@ -47,8 +47,12 @@ phone (pages, WebCrypto, passkey)  ⇄  relay Worker on Cloudflare  ⇄  runner 
 - **The approval view.** The first screen, at 390 × 844, holds what the CFO decides on: what (the amount, the payee,
   the agent), why it needs him in one line (the rule that sends it to him, with the policy's own numbers), and two
   buttons, "Approve with Face ID" and Reject. Everything else (the sentence, the exact terms, the hash, the options it
-  is *not*, the agents' advice and Opus's review) is behind one fold, "Details". Warnings (a planted line code
-  ignored, an account holder who is not the vendor) stay in the first screen. The buttons stay on screen as he scrolls.
+  is *not*, the agents' advice and the review) is behind one fold, "Details". The review is labelled by who wrote it:
+  a model's review names the model ("Opus review, advisory: approve"); a note that Purser's own code wrote, with no
+  model, reads "Purser's code (no model), advisory" (until 12 November every note read "Opus review"). Warnings (a
+  planted line code ignored, an account holder who is not the vendor) stay in the first screen. The buttons stay on
+  screen as he scrolls. A payment the payables inbox filed, and a batch of them, have their own first screen in the
+  company's language ([payables.md](payables.md)); every Kit 11 approval keeps this one.
 - **Mis-tap prevention.** Price options sit side by side above the view; choosing one only changes what the view shows,
   and the button names it ("Approve option B with Face ID"). The buttons arm 0.8 s after the view opens or the choice
   changes, so a double tap cannot reach them; the passkey's challenge is that one option's hash. When Opus advises

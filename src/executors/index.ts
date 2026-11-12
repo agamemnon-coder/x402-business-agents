@@ -64,13 +64,13 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       } catch (e) {
         failed = e;
       }
-      await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+      await syncCardsAfterPolicy(db, proposalId, issuingFromEnv(db)?.rail ?? null);
       if (failed) throw failed;
       return;
     }
     executePolicyChange(db, proposalId);
     // A card limit in the policy only counts once the card at Airwallex has it too.
-    await syncCardsAfterPolicy(db, proposalId, issuingFromEnv()?.rail ?? null);
+    await syncCardsAfterPolicy(db, proposalId, issuingFromEnv(db)?.rail ?? null);
     return;
   }
   if (row.kind === "quarantine_release") {
@@ -78,7 +78,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     return;
   }
   if (row.kind === "task_card") {
-    const issuing = issuingFromEnv();
+    const issuing = issuingFromEnv(db);
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the task card cannot be issued");
     await executeTaskCard(db, issuing.rail, proposalId);
     return;
@@ -108,7 +108,7 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
     return;
   }
   if (row.kind === "agent_onboard") {
-    const issuing = issuingFromEnv();
+    const issuing = issuingFromEnv(db);
     if (!issuing) throw new Error("Airwallex sandbox keys are not set; the card cannot be issued");
     await executeAgentOnboard(db, issuing.rail, proposalId);
     return;
@@ -123,10 +123,33 @@ async function executeApproved(db: DB, proposalId: string): Promise<void> {
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the new account cannot be added");
       await executePayeeChange(db, awx.rail, proposalId);
       return;
+    case "payee_add": {
+      // Payables: a new supplier, after a person's verification and the CFO's Face ID (src/ap/vendors.ts).
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the new supplier cannot be added");
+      const { executePayeeAdd } = await import("../ap/vendors.js");
+      const { payablesSink } = await import("../ap/books.js");
+      await executePayeeAdd(db, awx.rail, proposalId, { sink: payablesSink() });
+      return;
+    }
     case "invoice_payment":
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);
       return;
+    case "supplier_payment": {
+      // Payables: a supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
+      if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
+      const { executeSupplierPayment } = await import("./supplierPayment.js");
+      await executeSupplierPayment(db, awx.rail, awx.sim, proposalId);
+      return;
+    }
+    case "payment_batch": {
+      // One Face ID for many payments: each line runs as its own payment, with its own checks and idempotency.
+      const { executePaymentBatch } = await import("./paymentBatch.js");
+      const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id));
+      const unpaid = r.lines.filter((l) => l.outcome !== "paid");
+      if (unpaid.length) throw new Error(`${unpaid.length} of ${r.lines.length} lines not paid: ${unpaid.map((l) => `${l.proposal_id} ${l.detail ?? l.status}`).join("; ").slice(0, 280)}`);
+      return;
+    }
     default:
       throw new Error(`no executor for ${row.kind} yet`);
   }

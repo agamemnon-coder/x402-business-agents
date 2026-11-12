@@ -3,13 +3,16 @@
 // Only money that moved is booked: refused purchases, declined card charges, aborted sales and refused sweeps are not.
 // The coding comes from src/config/gl.ts; `rule` says which mapping chose each account, so a bookkeeper can check it.
 
-import { CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
+import { AP_CHART, bankAccountFor, CHART, COST_CENTRE_NAMES, COST_CENTRES, MCC_GL, VENDOR_GL } from "../config/gl.js";
+import { bookable } from "../ap/books.js";
+import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
+import { apInvoices } from "../ap/store.js";
 import type { DB } from "../db/open.js";
 import { baseUnitsToCents, fromCents, toCents } from "../lib/money.js";
 
 export interface JournalLine {
   date: string;
-  source: "sale" | "upstream" | "refund" | "card" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening" | "receipt";
+  source: "sale" | "upstream" | "refund" | "card" | "airi" | "transfer" | "fx" | "sweep" | "credit" | "clearing" | "opening" | "receipt" | "platform_fee";
   ref: string;
   description: string;
   counterparty: string;
@@ -26,13 +29,23 @@ export interface JournalLine {
   rule: string;
 }
 
+/**
+ * The payment-ledger numbers ("NUM · Supplier") of the payables-inbox invoices the books hold (bookable, not credit
+ * notes): their accrual is posted by the ledger feed (src/ledger/feed.ts), so their payouts settle 2100.
+ */
+export function accruedInboxKeys(db: DB): string[] {
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_invoices'").get()) return [];
+  return apInvoices(db).filter((i) => i.doc_kind !== "credit_note" && bookable(i)).map((i) => ledgerInvoiceNo(i.invoice_no, i.vendor));
+}
+
 const signed = (cents: number) => (cents < 0 ? `-${fromCents(-cents)}` : fromCents(cents));
 
 export function journal(db: DB): JournalLine[] {
   const lines: JournalLine[] = [];
+  const accruedInbox = new Set(accruedInboxKeys(db));
   const add = (l: Omit<JournalLine, "gl_name" | "cost_centre" | "amount"> & { cents: number }) => {
     const { cents, ...rest } = l;
-    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : l.agent.startsWith("task:") ? "CC500" : ""), gl_name: CHART[l.gl_account] ?? "" });
+    lines.push({ ...rest, amount: signed(cents), cost_centre: COST_CENTRES[l.agent] ?? (l.agent.startsWith("ext:") ? "CC400" : l.agent.startsWith("task:") ? "CC500" : ""), gl_name: CHART[l.gl_account] ?? AP_CHART[l.gl_account] ?? "" });
   };
   const proposalOf = (sha: string | null) =>
     sha ? ((db.prepare("SELECT proposal_id FROM proposals WHERE terms_sha256 = ?").get(sha) as { proposal_id: string } | undefined)?.proposal_id ?? "") : "";
@@ -71,28 +84,57 @@ export function journal(db: DB): JournalLine[] {
       rule: c.mcc && MCC_GL[c.mcc] ? `card, merchant category ${c.mcc}` : "card, default",
     });
   }
+  // An agent's Airi purchase (src/airi/purchase.ts), once it is paid: a card charge through Airi, booked like one (the
+  // default expense, 6100) against the Airwallex account of its currency. Released or unfinished purchases moved no money.
+  const hasAiri = !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'airi_purchases'").get();
+  for (const a of hasAiri ? db.prepare("SELECT action_id, agent, proposal_id, terms_json, cents, checkout_ref, mandate_id, updated_at FROM airi_purchases WHERE status = 'SETTLED' ORDER BY updated_at, action_id").all() as
+    { action_id: string; agent: string; proposal_id: string | null; terms_json: string; cents: number; checkout_ref: string | null; mandate_id: string | null; updated_at: string }[] : []) {
+    const terms = JSON.parse(a.terms_json) as { currency?: string; merchant?: { name?: string } };
+    const currency = terms.currency ?? "EUR";
+    add({
+      date: a.updated_at, source: "airi", ref: a.action_id, description: `Airi purchase by the ${a.agent} agent`, counterparty: terms.merchant?.name ?? "", agent: a.agent,
+      gl_account: "6100", bank_account: bankAccountFor(currency), cents: -a.cents, currency, proof: a.checkout_ref ?? a.mandate_id ?? "", approval: a.proposal_id ?? "",
+      rule: "Airi purchase: a card charge through Airi, default expense",
+    });
+  }
   for (const t of db.prepare("SELECT t.request_id, t.transfer_id, t.invoice_no, t.amount, t.currency, t.fee_actual, t.approval_sha256, t.updated_at, i.vendor FROM transfers t JOIN invoices i ON i.invoice_no = t.invoice_no WHERE t.status IN ('SENT', 'PAID') ORDER BY t.updated_at").all() as
     { request_id: string; transfer_id: string | null; invoice_no: string; amount: string; currency: string; fee_actual: string | null; approval_sha256: string; updated_at: string; vendor: string }[]) {
-    const gl = VENDOR_GL[t.vendor] ?? "6900";
+    // A payables-inbox invoice the books hold was accrued on receipt (expense and input VAT against 2100, posted by the
+    // ledger feed): its payout settles that payable, so the expense is never booked twice.
+    const accrued = accruedInbox.has(t.invoice_no);
+    const gl = accrued ? "2100" : VENDOR_GL[t.vendor] ?? "6900";
     const approval = proposalOf(t.approval_sha256);
     add({
       date: t.updated_at, source: "transfer", ref: t.request_id, description: `Invoice ${t.invoice_no}`, counterparty: t.vendor, agent: "treasury",
-      gl_account: gl, bank_account: "1200", cents: -toCents(t.amount), currency: t.currency, proof: t.transfer_id ?? "", approval,
-      rule: VENDOR_GL[t.vendor] ? `supplier invoice, vendor ${t.vendor}` : "supplier invoice, default",
+      gl_account: gl, bank_account: bankAccountFor(t.currency), cents: -toCents(t.amount), currency: t.currency, proof: t.transfer_id ?? "", approval,
+      rule: accrued ? "supplier invoice paid: settles the payable booked on receipt" : VENDOR_GL[t.vendor] ? `supplier invoice, vendor ${t.vendor}` : "supplier invoice, default",
     });
     const fee = /^([A-Z]{3}) (\d+\.\d{2})$/.exec(t.fee_actual ?? "");
     if (fee) {
       add({
         date: t.updated_at, source: "transfer", ref: t.request_id, description: `Transfer fee, invoice ${t.invoice_no}`, counterparty: "Airwallex", agent: "treasury",
-        gl_account: "6800", bank_account: fee[1] === "USD" ? "1201" : "1200", cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval, rule: "transfer fee",
+        gl_account: "6800", bank_account: bankAccountFor(fee[1]!), cents: -toCents(fee[2]!), currency: fee[1]!, proof: t.transfer_id ?? "", approval, rule: "transfer fee",
       });
     }
   }
-  for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id WHERE c.status = 'SETTLED' ORDER BY q.valid_from").all() as
+  // Purser as an Airwallex platform: Purser's fee per paid payout, from the company's account (docs/airwallex-platform.md).
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'platform_fees'").get()) {
+    for (const f of db.prepare("SELECT request_id, amount, currency, fee_transfer_id, approval_sha256, updated_at FROM platform_fees WHERE status = 'SETTLED' ORDER BY updated_at").all() as
+      { request_id: string; amount: string; currency: string; fee_transfer_id: string | null; approval_sha256: string; updated_at: string }[]) {
+      add({
+        date: f.updated_at, source: "platform_fee", ref: f.request_id, description: "Purser platform fee", counterparty: "Purser", agent: "treasury",
+        gl_account: "6800", bank_account: bankAccountFor(f.currency), cents: -toCents(f.amount), currency: f.currency, proof: f.fee_transfer_id ?? "", approval: proposalOf(f.approval_sha256),
+        rule: "Purser's platform fee, in the terms the CFO signed",
+      });
+    }
+  }
+  // Booked once Airwallex has it, SETTLED or still SCHEDULED (red team round 4: one answered SCHEDULED at create was
+  // never booked, while the payout it funded was, so the bought currency's bank went negative); a cancelled one never.
+  for (const f of db.prepare("SELECT c.conversion_id, c.buy_amount, c.sell_amount, c.approval_sha256, q.pair, q.valid_from FROM fx_conversions c JOIN fx_quotes q ON q.quote_id = c.quote_id WHERE c.status NOT IN ('CANCELLED', 'FAILED') ORDER BY q.valid_from").all() as
     { conversion_id: string; buy_amount: string; sell_amount: string | null; approval_sha256: string; pair: string; valid_from: string }[]) {
     const [sell, buy] = f.pair.split("/") as [string, string];
     const approval = proposalOf(f.approval_sha256);
-    const bank = (cur: string) => (cur === "USD" ? "1201" : "1200");
+    const bank = bankAccountFor;
     const common = { date: f.valid_from, source: "fx" as const, ref: f.conversion_id, counterparty: "Airwallex", agent: "treasury", gl_account: "1590", proof: f.conversion_id, approval, rule: "currency conversion: own accounts" };
     if (f.sell_amount) add({ ...common, description: `Convert ${sell} to ${buy}`, bank_account: bank(sell), cents: -toCents(f.sell_amount), currency: sell });
     add({ ...common, description: `Convert ${sell} to ${buy}`, bank_account: bank(buy), cents: toCents(f.buy_amount), currency: buy });

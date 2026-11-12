@@ -7,6 +7,9 @@ import { Airwallex, AirwallexAmbiguous, fromEnv } from "./client.js";
 import { cents } from "./adapter.js";
 import { fromCents } from "../lib/money.js";
 import { controlsUpdateBody, createControlsBody, limitsUpdateBody, type CardControls, type CardLimits } from "./cardBody.js";
+import { checkCardAccount } from "./binding.js";
+import { platformOn } from "./platform.js";
+import type { DB } from "../db/open.js";
 
 export type { CardControls, CardLimits } from "./cardBody.js";
 
@@ -144,8 +147,27 @@ export function toCardTransaction(t: AwxTx): CardTransaction {
   };
 }
 
+/** Run before every card call; throws (nothing reaches Airwallex) when the call may not run for this account. */
+export type CardAccountGuard = () => void;
+
+/**
+ * With Purser as a platform, or a client that acts for a connected account, a card call needs the company's binding
+ * checked (red team 6), which needs the company's database: a rail made without one refuses every call.
+ */
+const unbound = (api: Airwallex): CardAccountGuard => () => {
+  if (platformOn() || api.onBehalfOf) throw new Error("card calls for a connected account need the company's account binding checked, and this card rail has none; nothing is done at Airwallex");
+};
+
 export class IssuingRest implements IssuingRail, IssuingSim {
-  constructor(private readonly api: Airwallex) {}
+  private readonly guard: CardAccountGuard;
+  private readonly api: Pick<Airwallex, "call">;
+
+  constructor(api: Airwallex, guard?: CardAccountGuard) {
+    this.guard = guard ?? unbound(api);
+    // Every card call goes through the guard first: the binding is checked at each call, not once, so a binding that
+    // turns non-active or expires stops the next call.
+    this.api = { call: ((...a: Parameters<Airwallex["call"]>) => { this.guard(); return api.call(...a); }) as Airwallex["call"] };
+  }
 
   async findCardholderByEmail(email: string): Promise<Cardholder | undefined> {
     type H = { cardholder_id: string; email: string; status: string };
@@ -250,10 +272,18 @@ export class IssuingRest implements IssuingRail, IssuingSim {
   }
 }
 
+/**
+ * The card rail for this client, checked against the company's binding before each call (src/airwallex/binding.ts),
+ * the same check the payout executors run. Without the company's database it refuses every call for a connected account.
+ */
+export function issuingFor(api: Airwallex, db?: DB, env: Record<string, string | undefined> = process.env): IssuingRest {
+  return new IssuingRest(api, db ? () => checkCardAccount(db, { payingAccount: api.onBehalfOf }, new Date(), env) : undefined);
+}
+
 /** The Issuing adapter when the sandbox keys are set; null otherwise, so callers stop instead of pretending. */
-export function issuingFromEnv(): { rail: IssuingRail; sim: IssuingSim } | null {
-  const cfg = fromEnv();
+export function issuingFromEnv(db?: DB, env: Record<string, string | undefined> = process.env): { rail: IssuingRail; sim: IssuingSim } | null {
+  const cfg = fromEnv(env);
   if (!cfg) return null;
-  const rest = new IssuingRest(new Airwallex(cfg));
+  const rest = issuingFor(new Airwallex(cfg), db, env);
   return { rail: rest, sim: rest };
 }
