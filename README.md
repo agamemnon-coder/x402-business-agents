@@ -407,7 +407,7 @@ clearing under load (30 October): [docs/runs/](docs/runs/) and [docs/metal-award
 <details><summary>Mandate, x402, terms hash, four eyes</summary>
 
 - **Mandate:** an agent's on-chain spending permission on Metal: a cap per payment, a total budget, one payee, an end date.
-- **x402:** HTTP 402 "Payment Required" as a protocol: each data query is paid on Metal before it is answered.
+- **x402:** HTTP 402 "Payment Required" as a payment protocol (version 2). On the mandate route the seller checks each payment before it does the work and settles it on Metal before it sends the answer. The protocol leaves the payer's budget to the payer; in Purser that is the CFO's signed limit, checked before anything is signed.
 - **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
 - **Four eyes:** above the CFO's threshold, two approvers must each sign with their own passkey (in production two
   different people; in the main run the second was the labelled test passkey above); the proposer never approves.

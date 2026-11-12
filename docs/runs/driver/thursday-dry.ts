@@ -29,10 +29,11 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { openDb } from "../../../src/db/open.js";
 import { redactSecrets } from "../../../src/lib/redact.js";
-import { activePasskey, confirmPasskey, openEnrolment, pendingPasskeys } from "../../../src/passkey/ledger.js";
+import { activePasskey } from "../../../src/passkey/ledger.js";
 import { FOUR_EYES_KEY } from "../../../src/policy/fourEyes.js";
 import { policyValue } from "../../../src/policy/rules.js";
 import { SECOND_APPROVER } from "../../../src/config/brand.js";
+import { virtualPhones, type Page } from "./virtualPhone.js";
 
 const ledger = process.env.KIT11_DB ?? "";
 const keys = process.env.KIT11_KEYS_DIR ?? "";
@@ -141,67 +142,12 @@ const setting = (k: string) => (db().prepare("SELECT value FROM settings WHERE k
 const require = createRequire(join(repo, "package.json"));
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { chromium } = require("playwright") as { chromium: any };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Page = any;
 const browser = await chromium.launch();
 const errors: string[] = [];
-async function phone(name: string): Promise<{ page: Page }> {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  const page = await context.newPage();
-  page.on("pageerror", (e: Error) => errors.push(`${name}: ${e.message}`));
-  const cdp = await context.newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-  return { page };
-}
 const shot = (page: Page, name: string) => page.screenshot({ path: join(out, `${name}.png`) });
-
-async function enrol(p: { page: Page }, person: string | null): Promise<string> {
-  const { code } = openEnrolment(db(), { rpId: "localhost", origin: url, ...(person ? { addPerson: person } : {}) });
-  await sleep(10_000);
-  await p.page.goto(viewer);
-  await p.page.goto(`${url}/enrol`);
-  await p.page.fill("#code", code.toLowerCase());
-  await p.page.click("button.confirm");
-  await p.page.waitForFunction(() => document.querySelector(".verdict-head")?.textContent === "Confirm on the runner", null, { timeout: 60_000 });
-  const shown = /Fingerprint ([0-9A-F]{4}(?:-[0-9A-F]{4}){3})/.exec((await p.page.textContent(".verdict-what")) ?? "")?.[1] ?? "";
-  check(pendingPasskeys(db()).some((x) => x.fingerprint === shown), `enrol ${person ?? "test-cfo"} (virtual test passkey): fingerprint ${shown} waits on the runner`);
-  confirmPasskey(db(), shown);
-  return shown;
-}
-
-/** Opens a proposal on a phone, picks an option (or the one shown) or rejects, and signs with the passkey. */
-async function sign(p: { page: Page }, id: string, o: { option?: "A" | "B"; tag: string; reject?: boolean }): Promise<{ verdict: string; text: string }> {
-  const page = p.page;
-  await page.goto(`${url}/approve/${id}`);
-  try {
-    await page.waitForSelector(o.reject ? "button.reject-btn" : "button.option", { timeout: 120_000 });
-  } catch (e) {
-    await shot(page, `${o.tag}-no-proposal`);
-    say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(0, 300)}`);
-    throw e;
-  }
-  const text = ((await page.textContent("body")) ?? "").replace(/\s+/g, " ");
-  if (o.reject) await page.click("button.reject-btn");
-  else if (o.option) await page.locator("button.option", { hasText: `Option ${o.option}` }).first().tap();
-  else await page.locator("button.option").first().tap();
-  await page.waitForSelector("#sheet:not([hidden]) .sheet-title");
-  await page.waitForFunction(() => !(document.querySelector("#sheet button.confirm") as HTMLButtonElement).disabled, null, { timeout: 5000 });
-  await shot(page, `${o.tag}-confirm`);
-  await page.click("#sheet button.confirm");
-  const FINAL = ["Approved", "Done", "1 of 2 approvals", "Rejected", "Refused", "Too late", "Already decided", "Approved, but execution stopped"];
-  try {
-    await page.waitForFunction((f: string[]) => f.includes(document.querySelector(".verdict-head")?.textContent ?? ""), FINAL, { timeout: 180_000 });
-  } catch (e) {
-    await shot(page, `${o.tag}-no-verdict`);
-    say(`  the phone shows: ${((await page.textContent("body")) ?? "").replace(/\s+/g, " ").slice(-400)}`);
-    throw e;
-  }
-  await shot(page, `${o.tag}-verdict`);
-  const verdict = (await page.textContent(".verdict-head")) ?? "";
-  say(`  ${o.tag}: ${id} → "${verdict}"`);
-  return { verdict, text };
-}
+// The virtual-passkey phones and what they do (enrol, sign) are shared with test-controller.ts: virtualPhone.ts.
+// `sign` follows the approval view as it is now (the buttons #approve and #reject); at 728c560 an option's tap opened a sheet.
+const { phone, enrol, sign } = virtualPhones({ browser, url, viewer: () => viewer, db, say, check, shot, errors, sleep });
 
 async function linksStep(): Promise<void> {
   for (const n of [1, 2]) {
