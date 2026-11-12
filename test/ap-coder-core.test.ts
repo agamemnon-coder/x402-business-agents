@@ -108,6 +108,58 @@ describe("invoiceLines: the lines code reads from the document", () => {
     expect(invoiceLines(parseApFallback(credit), credit)).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "300.00", vat_rate: null }]);
   });
 
+  it("a credit among the lines (a minus, brackets, CR) makes the invoice one whole line, also where the lines would add up without the sign", () => {
+    // 50.00 - 50.00 + 100.00 is the net 100.00. Read without its sign, the credit and the line above it alone add up to the net.
+    for (const credit of ["-50,00", "-€ 50,00", "€ -50,00", "-EUR 50,00", "(50,00)", "(€ 50,00)", "50,00 CR", "50,00-", "− 50,00", "- EUR 50,00", "€ - 50,00"]) {
+      const text = `Dozen                        50,00\nKorting                      ${credit}\nMontage                      100,00\nSubtotaal € 100,00\nTotaal te betalen € 100,00`;
+      expect(invoiceLines({ subtotal: "100.00", tax: "", total: "100.00" }, text), credit).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "100.00", vat_rate: null }]);
+    }
+    // 100.00 + 350.00 - 50.00 is the net 400.00: code does not net lines against each other.
+    const text = "A   100,00\nB   350,00\nKorting   -50,00\nSubtotaal € 400,00\nTotaal te betalen € 400,00";
+    expect(invoiceLines({ subtotal: "400.00", tax: "", total: "400.00" }, text)).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "400.00", vat_rate: null }]);
+  });
+
+  it("a dash that only sets the amount apart is no minus, when the lines add up as written", () => {
+    const text = "Widget A - EUR 100,00\nWidget B - EUR 300,00\nSubtotaal EUR 400,00\nBTW 21% EUR 84,00\nTotaal te betalen EUR 484,00";
+    expect(invoiceLines(parseApFallback(text), text)).toEqual([
+      { line_no: 1, description: "Widget A", net: "100.00", vat_rate: null },
+      { line_no: 2, description: "Widget B", net: "300.00", vat_rate: null },
+    ]);
+    const bare = "Widget A – 100,00\nWidget B – 300,00\nSubtotaal EUR 400,00\nTotaal te betalen EUR 400,00";
+    expect(netOf(caseOf(bare))).toEqual(["100.00", "300.00"]);
+    // The same dash where the lines do not add up as written: it may be a minus, so the invoice is one whole line.
+    const minus = "Widget A   EUR 400,00\nKorting - EUR 100,00\nSubtotaal EUR 300,00\nTotaal te betalen EUR 300,00";
+    expect(invoiceLines(parseApFallback(minus), minus)).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "300.00", vat_rate: null }]);
+  });
+
+  it("a VAT rate in a column of its own after the amount ends the line, and is the rate the line states", () => {
+    const text = "Widget A   100,00  21%\nWidget B   300,00  21 %\nSubtotaal EUR 400,00\nBTW 21% EUR 84,00\nTotaal te betalen EUR 484,00";
+    expect(invoiceLines(parseApFallback(text), text)).toEqual([
+      { line_no: 1, description: "Widget A", net: "100.00", vat_rate: 21 },
+      { line_no: 2, description: "Widget B", net: "300.00", vat_rate: 21 },
+    ]);
+    const two = "Jacket, 80% down   EUR 100,00   21%\nBook   EUR 200,00   9%\nSubtotaal EUR 300,00\nBTW EUR 39,00\nTotaal te betalen EUR 339,00";
+    expect(invoiceLines(parseApFallback(two), two).map((l) => [l.description, l.net, l.vat_rate])).toEqual([["Jacket, 80% down", "100.00", 21], ["Book", "200.00", 9]]);
+  });
+
+  it("takes a percentage as a line's VAT rate only when the rates of all lines give the invoice's VAT to the cent", () => {
+    const totals = "Subtotaal EUR 400,00\nBTW 21% EUR 84,00\nTotaal te betalen EUR 484,00";
+    // A percentage in a description is no VAT rate: 80% of 100.00 is not this invoice's VAT.
+    const down = `Jacket, 80% down, 5% off   100,00\nFreight   300,00\n${totals}`;
+    expect(invoiceLines(parseApFallback(down), down)).toEqual([
+      { line_no: 1, description: "Jacket, 80% down, 5% off", net: "100.00", vat_rate: null },
+      { line_no: 2, description: "Freight", net: "300.00", vat_rate: null },
+    ]);
+    const blend = `Cotton 80%   100,00\nWool 20%   300,00\n${totals}`;
+    expect(invoiceLines(parseApFallback(blend), blend).map((l) => l.vat_rate)).toEqual([null, null]);
+    // One line states a rate and the other none: code cannot check it, so no line carries a rate.
+    const half = `Widget A 21%   100,00\nWidget B   300,00\n${totals}`;
+    expect(invoiceLines(parseApFallback(half), half).map((l) => l.vat_rate)).toEqual([null, null]);
+    // No VAT on the invoice: a stated 21% is not what it charges.
+    const none = "Widget A 21%   100,00\nSubtotaal EUR 100,00\nTotaal te betalen EUR 100,00";
+    expect(invoiceLines(parseApFallback(none), none).map((l) => [l.net, l.vat_rate])).toEqual([["100.00", null]]);
+  });
+
   it("uses the subtotal, else total minus tax, else the total; no lines when the total cannot be read; never throws", () => {
     expect(invoiceLines({ subtotal: "10.00", tax: "2.10", total: "12.10" }, "")).toEqual([{ line_no: 1, description: WHOLE_INVOICE, net: "10.00", vat_rate: null }]);
     expect(invoiceLines({ subtotal: "", tax: "2.10", total: "12.10" }, "")[0]!.net).toBe("10.00");
@@ -383,6 +435,30 @@ describe("enforceCoding: the rules, one by one", () => {
     // A rate code on an invoice that charges no VAT.
     const none = caseOf(SINGLE);
     refused(none, all(none, "6200", "P21"), "vat_mismatch", "VAT code P21 charges 21% and the invoice charges no VAT");
+  });
+
+  it("vat_mismatch: a rate code only on a line that states no other VAT rate", () => {
+    // A German invoice at 19%: 21% of 500.00 and 9% of 100.00 happen to add up to its VAT 114.00, yet each line states 19%.
+    const text = "Bergtex Textil GmbH\nUSt-IdNr.: DE147258369\nRechnungsnummer: BTX-2026-77\nRechnungsdatum: 04.11.2026\nJacken 19%       EUR 500,00\nFracht 19%       EUR 100,00\nNettobetrag 600,00 EUR\nMwSt. 19% 114,00 EUR\nGesamtbetrag 714,00 EUR";
+    const c = caseOf(text);
+    expect(c.invoice.lines.map((l) => [l.net, l.vat_rate])).toEqual([["500.00", 19], ["100.00", 19]]);
+    expect([c.invoice.tax, c.invoice.total, c.regime.reverse_charge]).toEqual(["114.00", "714.00", "none"]);
+    const mix: LineCoding[] = [{ line_no: 1, account: "5000", vat_code: "P21" }, { line_no: 2, account: "5000", vat_code: "P9" }];
+    refused(c, mix, "vat_mismatch", "line 1 itself states 19% VAT, and VAT code P21 charges 21%");
+    expect(fallbackCoding(c)).toMatchObject({ status: "needs_review", lines: [{ vat_code: null }, { vat_code: null }] });
+    // Without a VAT code the agent's accounts stand, and a person codes the VAT.
+    expect(enforceCoding(c, coding(all(c, "5000", null)))).toMatchObject({ status: "needs_review", source: "claude", overridden_by: null });
+    // The same lines stating no rate: code cannot tell, and the codes' own arithmetic decides as before.
+    const silent = { ...c, invoice: { ...c.invoice, lines: c.invoice.lines.map((l) => ({ ...l, vat_rate: null })) } };
+    expect(enforceCoding(silent, coding(mix))).toMatchObject({ status: "coded", source: "claude" });
+    // The last guard knows the rule too.
+    const passed = enforceCoding(silent, coding(mix));
+    expect(codingHolds(silent, passed)).toBe(true);
+    expect(codingHolds(c, passed)).toBe(false);
+    // A line that states the code's own rate is fine, and the tool says the rule.
+    const two = caseOf(TWO_RATES);
+    expect(enforceCoding(two, coding([{ line_no: 1, account: "6200", vat_code: "P21" }, { line_no: 2, account: "6100", vat_code: "P9" }]))).toMatchObject({ status: "coded", source: "claude" });
+    expect(answerCoderTool(c, { name: "vat_codes", input: {} }).text).toContain("A rate code fits a line only when the line itself states no other VAT rate.");
   });
 
   it("zero_rate_mismatch: a 0% code only when the invoice charges no VAT", () => {

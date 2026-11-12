@@ -158,15 +158,23 @@ function invoiceNet(r: { subtotal: string; tax: string; total: string }): number
 }
 
 const MINUS = String.raw`[\p{Pd}−﹣－]`;
-const CREDIT_BEFORE = new RegExp(String.raw`(?:${MINUS}|\()\s*(?:[A-Z]{3}|\p{Sc})?\s*$`, "u");
+const BESIDE = String.raw`(?:(?:[A-Z]{3}|\p{Sc})\s*)?`;
+/** A minus that touches the amount or its currency ("-50,00", "-€ 50,00", "€ -50,00"), or an opening bracket: the line is a credit. */
+const CREDIT_BEFORE = new RegExp(String.raw`(?:${MINUS}|\(\s*)${BESIDE}$`, "u");
+/** A dash with a space after it before the amount or its currency ("Widget A - EUR 100,00", "Korting - 50,00"): it sets the amount apart, or it is a minus. */
+const DASH_APART = new RegExp(String.raw`${MINUS}\s+${BESIDE}$`, "u");
 const CREDIT_AFTER = new RegExp(String.raw`^\s*(?:${MINUS}|CR\b)`, "u");
 /** A currency as a line writes it beside an amount: a symbol, or an ISO code the reading knows ("XXL" and "AWS" are words, not currencies). */
 const isCurrency = (word: string) => /^\p{Sc}$/u.test(word) || KNOWN_CODES.has(word);
 /** Whether nothing but a currency follows the amount: the amount ends the line. */
 const endsLine = (after: string) => after.trim() === "" || isCurrency(after.trim());
 const LINE_RATE = /(?<![\d.,])(\d{1,2}(?:[.,]\d{1,2})?)\s?%/;
+/** A percentage in a column of its own at the end of a line, after the amount ("100,00  21%"). */
+const RATE_COLUMN = /\s+(\d{1,2}(?:[.,]\d{1,2})?)\s?%$/;
 /** The most item lines code reads from one document before it stops trying. */
 const MAX_ITEMS_READ = 500;
+
+const DASH_END = new RegExp(String.raw`\s+${MINUS}\s*$`, "u");
 
 /** A line's description: what is written before its first amount, without the columns that may still stand there (a quantity, a unit price, a currency) or a position number. */
 function describe(before: string): string {
@@ -175,28 +183,38 @@ function describe(before: string): string {
   for (let i = 0; i < 6; i += 1) {
     const shorter = d
       .replace(/\s*([A-Z]{3}|\p{Sc})\s*$/u, (all, word: string) => (isCurrency(word) ? "" : all))
-      .replace(/\s{2,}\d[\d.,]*\s*(?:x|pcs?|st|stk|stuks?)?\.?\s*$/i, "");
+      .replace(/\s{2,}\d[\d.,]*\s*(?:x|pcs?|st|stk|stuks?)?\.?\s*$/i, "")
+      // A dash that set the columns apart ("Widget A - EUR 100,00") is no part of the description.
+      .replace(DASH_END, "");
     if (shorter === d) break;
     d = shorter;
   }
   return cleanText(d.replace(/^\s*\d{1,3}[.)]?\s+/, ""));
 }
 
+/** An item line as code reads it. `apart`: a spaced dash stands before its amount, which may be a minus. `vat_rate`: a percentage the line writes, not yet checked. */
+interface Item { description: string; net: number; vat_rate: number | null; apart: boolean }
+
 /**
  * The item lines a document shows above its first subtotal, VAT or total line: a description, then amounts, the last
- * of which ends the line and is the line's net. Null when code does not trust what it reads: a credit among the lines
- * (a minus, brackets, "CR"), digits split by a mark that is no separator, an amount too large to count, too many lines.
+ * of which ends the line and is the line's net; a VAT rate may stand in a column of its own after it. Null when code
+ * does not trust what it reads: a credit among the lines (a minus, brackets, "CR"), digits split by a mark that is no
+ * separator, an amount too large to count, too many lines.
  */
-function itemLines(text: string): { description: string; net: number; vat_rate: number | null }[] | null {
-  const out: { description: string; net: number; vat_rate: number | null }[] = [];
+function itemLines(text: string): Item[] | null {
+  const out: Item[] = [];
   for (const raw of text.split(/\r?\n/)) {
-    const l = raw.trim();
-    if (!l || l.length > 400) continue;
-    if (labelled(l)) break;
+    const whole = raw.trim();
+    if (!whole || whole.length > 400) continue;
+    if (labelled(whole)) break;
+    // A rate column after the amount is taken off first: the amount then ends the line as it does without one.
+    const column = RATE_COLUMN.exec(whole);
+    const l = column ? whole.slice(0, column.index) : whole;
     const found = amountsOn(l);
     const last = found.at(-1);
     if (!last) continue;
-    if (CREDIT_BEFORE.test(l.slice(0, last.start)) || CREDIT_AFTER.test(l.slice(last.end)) || last.split) return null;
+    const before = l.slice(0, last.start);
+    if (CREDIT_BEFORE.test(before) || CREDIT_AFTER.test(l.slice(last.end)) || last.split) return null;
     if (!endsLine(l.slice(last.end))) continue;
     const description = describe(l.slice(0, found[0]!.start));
     if (!/\p{L}/u.test(description)) continue;
@@ -204,20 +222,35 @@ function itemLines(text: string): { description: string; net: number; vat_rate: 
     if (net === null) return null;
     // A line of 0.00 has nothing to book.
     if (net === 0) continue;
-    const rate = LINE_RATE.exec(l);
-    out.push({ description, net, vat_rate: rate ? Number(rate[1]!.replace(",", ".")) : null });
+    const rate = column ?? LINE_RATE.exec(l);
+    out.push({ description, net, vat_rate: rate ? Number(rate[1]!.replace(",", ".")) : null, apart: DASH_APART.test(before) });
     if (out.length > MAX_ITEMS_READ) return null;
   }
   return out;
 }
 
 /**
+ * Whether the percentages the lines write are their VAT rates: every line writes one, and per rate, that rate on the
+ * sum of its lines' nets gives the invoice's VAT to the cent, all together. A percentage in a description ("80% down")
+ * does not, so it is not passed on as a rate the line states.
+ */
+function ratesHold(items: readonly Item[], tax: number | null): boolean {
+  if (tax === null || items.some((x) => x.vat_rate === null)) return false;
+  const nets = new Map<number, number>();
+  for (const x of items) nets.set(x.vat_rate!, (nets.get(x.vat_rate!) ?? 0) + x.net);
+  return sum([...nets].map(([rate, net]) => vatAt(net, rate))) === tax;
+}
+
+/**
  * The invoice's lines, from its reading and the document's own text: the item lines the text shows when, and only
  * when, their nets add up to the invoice's net to the cent (the subtotal; else the total minus the tax; else the total
  * when no tax is stated); otherwise exactly one line that holds the whole net. A last line that repeats the net itself
- * is the net's own line under a label the reading does not know ("Net total"), not an item. No lines when the net
- * cannot be read. English, Dutch and German number formats, through the reading's own amount parser. Never throws.
- * Whatever it returns adds up to the invoice's net to the cent, and line_no runs 1..n.
+ * is the net's own line under a label the reading does not know ("Net total"), not an item. A dash with a space after
+ * it before an amount is read as setting the amount apart, and only when the lines then add up as they are written;
+ * otherwise it may be a minus, and the invoice is one line. A line carries a VAT rate only when the rates of all lines
+ * give the invoice's VAT to the cent. No lines when the net cannot be read. English, Dutch and German number formats,
+ * through the reading's own amount parser. Never throws. Whatever it returns adds up to the invoice's net to the cent,
+ * and line_no runs 1..n.
  */
 export function invoiceLines(r: Pick<ApReading, "subtotal" | "tax" | "total">, text: string): CodingLine[] {
   let net: number | null;
@@ -232,12 +265,14 @@ export function invoiceLines(r: Pick<ApReading, "subtotal" | "tax" | "total">, t
     let items = typeof text === "string" ? itemLines(text) : null;
     if (!items) return whole;
     if (sum(items.map((x) => x.net)) !== net) {
-      if (items.length < 2 || items.at(-1)!.net !== net) return whole;
+      // Lines that do not add up as written, with a dash that may be a minus among them: code does not try which it is.
+      if (items.some((x) => x.apart) || items.length < 2 || items.at(-1)!.net !== net) return whole;
       items = items.slice(0, -1);
       if (sum(items.map((x) => x.net)) !== net) return whole;
     }
     if (items.length === 0 || items.length > CODER_MAX_LINES) return whole;
-    return items.map((x, i) => ({ line_no: i + 1, description: x.description, net: money(x.net), vat_rate: x.vat_rate }));
+    const rates = ratesHold(items, r.tax === "" || r.tax === undefined || r.tax === null ? 0 : cents(r.tax));
+    return items.map((x, i) => ({ line_no: i + 1, description: x.description, net: money(x.net), vat_rate: rates ? x.vat_rate : null }));
   } catch {
     return whole;
   }
@@ -429,7 +464,7 @@ export const CODER_RULES = [
   "reverse_charge_mismatch",
   /** A 0% code on an invoice that charges VAT. */
   "zero_rate_mismatch",
-  /** The VAT codes do not reproduce the invoice's VAT to the cent. */
+  /** The VAT codes do not reproduce the invoice's VAT to the cent, or a rate code is on a line that itself states another VAT rate. */
   "vat_mismatch",
   /** The reason may not be shown to the CFO (its shape, or a number that is not in the case). */
   "reason_refused",
@@ -480,9 +515,10 @@ function coverage(v: View, lineNos: readonly number[]): string | null {
 /**
  * The rules, on the lines of a coding (the agent's, or one code builds itself): the coded lines with their VAT in
  * cents, or the first rule that refuses them. Per VAT code the rate is applied to the sum of that code's nets and
- * rounded as the ledger rounds; all codes together must give the invoice's VAT exactly. A reverse-charge code and a 0%
- * code charge nothing on the invoice, so they fit only an invoice without VAT; a reverse-charge code also only when
- * the regime shows that kind. Lines without any VAT code carry the invoice's VAT in proportion to their nets.
+ * rounded as the ledger rounds; all codes together must give the invoice's VAT exactly, and a rate code fits a line
+ * only when the line itself states no other VAT rate. A reverse-charge code and a 0% code charge nothing on the
+ * invoice, so they fit only an invoice without VAT; a reverse-charge code also only when the regime shows that kind.
+ * Lines without any VAT code carry the invoice's VAT in proportion to their nets.
  */
 function applyRules(v: View & { amounts: { ok: true; net: number; tax: number; total: number } }, coded: readonly LineCoding[]): { lines: CodedLine[]; uncoded: boolean } | Refused {
   const { c, amounts } = v;
@@ -536,6 +572,11 @@ function applyRules(v: View & { amounts: { ok: true; net: number; tax: number; t
   for (const [name, g] of groups) charged.set(name, g.code.reverse || g.code.rate === 0 ? 0 : vatAt(sum(g.lines.map((l) => l.net)), g.code.rate));
   const gives = sum([...charged.values()]);
   if (gives !== amounts.tax) return { rule: "vat_mismatch", why: `these VAT codes give ${money(gives)} of VAT, and the invoice charges ${money(amounts.tax)}` };
+  // A rate code fits a line only when the line itself states no other VAT rate: two Dutch rates may add up to a foreign one.
+  for (const { code, lines } of groups.values()) {
+    const other = code.reverse || code.rate === 0 ? undefined : lines.find((l) => l.vat_rate !== null && l.vat_rate !== code.rate);
+    if (other) return { rule: "vat_mismatch", why: `line ${other.line_no} itself states ${other.vat_rate}% VAT, and VAT code ${code.code} charges ${code.rate}%` };
+  }
   const vatOfLine = new Map<number, number>();
   for (const [name, g] of groups) share(charged.get(name)!, g.lines.map((l) => l.net)).forEach((vat, i) => vatOfLine.set(g.lines[i]!.line_no, vat));
   return { uncoded: false, lines: picked.map((p) => ({ line_no: p.line.line_no, account: p.coding.account, vat_code: p.coding.vat_code, cost_centre: centre(p.coding), net_cents: p.line.net, vat_cents: vatOfLine.get(p.line.line_no)! })) };
@@ -563,6 +604,7 @@ function holds(v: View, e: EnforcedCoding): boolean {
     const of = r.lines.filter((l) => l.vat_code === name);
     const want = code.reverse || code.rate === 0 ? 0 : vatAt(sum(of.map((l) => l.net_cents)), code.rate);
     if (sum(of.map((l) => l.vat_cents)) !== want) return false;
+    if (!code.reverse && code.rate > 0 && v.lines.some((l, i) => r.lines[i]!.vat_code === name && l.vat_rate !== null && l.vat_rate !== code.rate)) return false;
   }
   return true;
 }
@@ -571,7 +613,8 @@ function holds(v: View, e: EnforcedCoding): boolean {
  * Whether a coding holds to its invoice, the one promise of everything enforceCoding and fallbackCoding return: it has
  * no lines at all (and says why a person must look), or its lines are the invoice's, their nets add up to the
  * invoice's net, their VAT to the invoice's VAT, net plus VAT is the total (all to the cent), every account may take
- * purchase lines, and every VAT code on a line is a purchase code that reproduces the VAT of its lines to the cent.
+ * purchase lines, and every VAT code on a line is a purchase code that reproduces the VAT of its lines to the cent
+ * and stands on no line that itself states another VAT rate.
  */
 export function codingHolds(c: CodingCase, e: EnforcedCoding): boolean {
   try {
@@ -670,11 +713,12 @@ const AnyCoding = z.object({
 /**
  * The agent's coding as code lets it into the books. Every account exists and may take purchase lines; every VAT code
  * exists and is a purchase code; a cost centre, when given, exists (absent: the default one); every line is coded
- * exactly once; the VAT codes reproduce the invoice's VAT to the cent; reverse-charge and 0% codes agree with the
- * invoice; the totals reconcile to the invoice's total to the cent; the reason may be shown to the CFO. Anything else
- * is refused: code's fallback is returned in its place, with `overridden_by` naming the rule and `refused_because` the
- * reason. The agent may leave the VAT code of every line null: its accounts and cost centres stand, and a person codes
- * the VAT (needs_review). Never throws, on any input; whatever it returns holds to the invoice (codingHolds).
+ * exactly once; the VAT codes reproduce the invoice's VAT to the cent, and a rate code stands on no line that itself
+ * states another VAT rate; reverse-charge and 0% codes agree with the invoice; the totals reconcile to the invoice's
+ * total to the cent; the reason may be shown to the CFO. Anything else is refused: code's fallback is returned in its
+ * place, with `overridden_by` naming the rule and `refused_because` the reason. The agent may leave the VAT code of
+ * every line null: its accounts and cost centres stand, and a person codes the VAT (needs_review). Never throws, on
+ * any input; whatever it returns holds to the invoice (codingHolds).
  */
 export function enforceCoding(c: CodingCase, coding: unknown): EnforcedCoding {
   let v: View;
@@ -875,6 +919,7 @@ function vatCodesAnswer(v: View): string {
     "Purchase VAT codes (a sales code is refused):",
     ...rows,
     "Per VAT code, code applies the rate to the sum of that code's lines; all codes together must give the invoice's VAT to the cent.",
+    "A rate code fits a line only when the line itself states no other VAT rate.",
     "If no code fits, give null as the VAT code of every line: a person then codes the VAT.",
   ].join("\n");
 }
