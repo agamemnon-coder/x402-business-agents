@@ -1,4 +1,4 @@
-// /pricing, "Pilot pricing" (12 Nov): pilot prices for design partners, nothing on sale yet. Three cards. Every price
+// /pricing, "Pilot pricing" (12 Nov): pilot prices, nothing on sale yet. Three cards. Every price
 // comes from src/config/pricing.ts; the platform fee's test amounts are read from the run record of the sandbox run
 // (docs/runs/2026-11-10-connected-accounts-sandbox.md) and labelled test values, not prices. No script.
 //
@@ -17,7 +17,7 @@ import { foldHtml, outLink, productPage, repoHref, repoText } from "./productPag
 import { esc, icon } from "./ui.js";
 
 /** The one lead line: what these prices are. */
-export const PRICING_LEAD = "These are pilot prices for design partners. Nothing is on sale yet.";
+export const PRICING_LEAD = "Pilot prices. Nothing is on sale yet.";
 /** The one "Not yet" line. */
 export const PRICING_NOT_YET = "no real-money go-live. Everything so far ran in the sandbox, with test money.";
 export const TEST_VALUES = "Test values, not prices";
@@ -99,10 +99,10 @@ export function pricingPage(): string {
 <p class="notyet"><b>Not yet:</b> ${esc(PRICING_NOT_YET)}</p>`;
   return productPage({
     key: "pricing", title: "Pilot pricing", h1: "Pilot pricing", label: "Sandbox and test money only", lead: PRICING_LEAD, body,
-    description: "Pilot prices for design partners; nothing is on sale yet. Starter, Business and a small platform fee per payout through Airwallex connected accounts.",
+    description: "Pilot prices; nothing is on sale yet. Starter, Business and a small platform fee per payout through Airwallex connected accounts.",
     source: `Source: src/config/pricing.ts (the prices) and ${run.record} (the fee's sandbox run).`,
     real: [
-      "Pilot prices for design partners. Nothing is on sale yet.",
+      "Pilot prices. Nothing is on sale yet.",
       `The platform fee ran in the Airwallex sandbox on ${run.day}, with test money: ${run.fee} on a ${run.payout} payout are test values, not prices.`,
       "No real-money go-live yet: sandbox and test money only.",
     ],

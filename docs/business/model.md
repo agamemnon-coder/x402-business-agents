@@ -35,7 +35,7 @@ not a finding about where demand is.
 ## Pilot pricing (hypothesis)
 
 **Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.**
-These are pilot prices for design partners, set on 12 November 2026. Nothing is on sale yet and no customer has seen a
+These are pilot prices, set on 12 November 2026. Nothing is on sale yet and no customer has seen a
 price. Business adds several companies, four-eyes approval and bookkeeping connectors.
 
 It is one model, said in the same sentence in the [README](../../README.md#why-this-is-a-company) and in

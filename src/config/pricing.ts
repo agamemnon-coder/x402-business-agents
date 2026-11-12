@@ -1,8 +1,8 @@
 // Pilot pricing (12 Nov), in one place. One model, said the same everywhere: a monthly plan by the number of supplier
 // invoices, plus a small fee per payout. /pricing (src/redesign/pricing.ts), the business lines (PRICE_LINE in
 // src/config/brand.ts: the README, /proof, the deck, the form), the unit economics (src/business/unitEconomics.ts) and
-// the tests read every figure from here, so no price is typed into a page or a doc by hand. These are pilot prices for
-// design partners; nothing is on sale yet and no customer has seen a price. Amounts are whole euro cents, never floats.
+// the tests read every figure from here, so no price is typed into a page or a doc by hand. These are pilot prices;
+// nothing is on sale yet and no customer has seen a price. Amounts are whole euro cents, never floats.
 
 import { FEE_BPS_CAP } from "../airwallex/platform.js";
 

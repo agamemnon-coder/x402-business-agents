@@ -79,7 +79,7 @@ Purser ran end to end in the sandbox for three fictional companies, each on its 
   (`payer`, code 048). Next: open such companies as registered sole traders.
 
 **Pilot pricing: Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout.**
-One model, a hypothesis: pilot prices for design partners, nothing is on sale and no customer has seen a price
+One model, a hypothesis: pilot prices, nothing is on sale and no customer has seen a price
 ([docs/business/model.md](business/model.md#pilot-pricing-hypothesis), [/pricing](https://kit11.max-31b.workers.dev/pricing)).
 
 The fee is a percentage of each payout: the CFO signs the rate in the policy, and code keeps it at or under 1.00%, rounds it to the cent and sends it to Airwallex as a fixed amount. The two sandbox runs used test values, not prices: EUR 0.05 on EUR 5.00 (1.00%, a fixed test fee set for that run) and EUR 0.02 on EUR 4.84 (the test policy's 0.50%, rounded to the cent).

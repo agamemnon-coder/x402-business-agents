@@ -49,8 +49,10 @@ describe("/pricing: pilot pricing", () => {
     expect(() => euro(0.5)).toThrow();
   });
 
-  it("says in one lead line that these are pilot prices for design partners and that nothing is on sale yet", () => {
-    expect(PRICING_LEAD).toBe("These are pilot prices for design partners. Nothing is on sale yet.");
+  it("says in one lead line that these are pilot prices and that nothing is on sale yet", () => {
+    expect(PRICING_LEAD).toBe("Pilot prices. Nothing is on sale yet.");
+    // The owner, 12 Nov 15:52: no "design partner" wording on the page.
+    expect(pricingPage()).not.toMatch(/design partner/i);
     expect(html).toContain(`<p class="lead">${PRICING_LEAD}</p>`);
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Pilot pricing</h1>");
@@ -121,7 +123,7 @@ describe("/pricing: pilot pricing", () => {
 
   it("says what is real in its own words, not the main run's", () => {
     const real = decode((/<details class="real"[\s\S]*?<\/details>/.exec(html)?.[0] ?? "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
-    expect(real).toContain("Pilot prices for design partners. Nothing is on sale yet.");
+    expect(real).toContain("Pilot prices. Nothing is on sale yet.");
     expect(real).toContain("are test values, not prices");
     expect(real).toContain("No real-money go-live yet: sandbox and test money only.");
     expect(real).toContain("Source: src/config/pricing.ts (the prices) and docs/runs/2026-11-10-connected-accounts-sandbox.md (the fee's sandbox run).");
@@ -386,7 +388,7 @@ describe("the two pages on the site", () => {
 
   it("are named in llms.txt, one line each, with what they are", () => {
     const lines = read("llms.txt").split("\n");
-    expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/pricing( |$)/.test(l))).toEqual(["- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices for design partners; nothing is on sale yet)"]);
+    expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/pricing( |$)/.test(l))).toEqual(["- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices; nothing is on sale yet)"]);
     expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/security( |$)/.test(l))).toEqual(["- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)"]);
   });
 });

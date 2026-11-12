@@ -62,8 +62,8 @@ describe("one pricing model (the panel's review, 12 Nov)", () => {
     }
     // The page: the same figures in its cards (test/saas-pages.test.ts reads each card), and it says "pilot prices".
     const page = mainText(pricingPage());
-    expect(PRICING_LEAD).toContain("pilot prices");
-    expect(page).toContain("These are pilot prices for design partners. Nothing is on sale yet.");
+    expect(PRICING_LEAD).toMatch(/^Pilot prices\. Nothing is on sale yet\.$/);
+    expect(page).toContain("Pilot prices. Nothing is on sale yet.");
     expect(page).toContain(`${starter.name} ${euro(starter.monthlyCents)} a month ${starter.invoicesIncluded} invoices included ${euro(starter.extraInvoiceCents)} per extra invoice`);
     expect(page).toContain(`${business.name} from ${euro(business.fromMonthlyCents)} a month`);
     expect(page).toContain("A small fee per payout");
