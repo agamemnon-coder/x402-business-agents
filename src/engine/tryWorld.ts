@@ -106,9 +106,12 @@ export function checkCompose(i: ComposeInput, suppliers: SupplierOnFile[], now: 
   const letterhead = SEEDED_SUPPLIERS.find((x) => x.key === i.supplier_key);
   if (!s || !letterhead) return no("supplier_key", "supplier_key is not a supplier on file in this company");
   if (!/^[A-Za-z0-9][A-Za-z0-9/-]{0,31}$/.test(i.invoice_no)) return no("invoice_no", "invoice_no is 1 to 32 letters, digits, dashes or slashes, starting with a letter or digit");
-  if (!/^\d{1,4}\.\d{2}$/.test(i.amount)) return no("amount", "amount is in euros with two decimals, such as 1850.00");
+  if (!/^\d{1,9}\.\d{2}$/.test(i.amount)) return no("amount", "amount is in euros with two decimals, such as 1850.00");
   const cents = Math.round(Number(i.amount) * 100);
-  if (cents < 100 || cents > 500_000) return no("amount", "amount is from 1.00 to 5000.00 euros");
+  // The cap: the simulated bank holds USD 25,000 with a USD floor of 20,000 (src/agents/euroBill.ts), so a larger
+  // payment would escalate at the floor. Said plainly, as the page says it (cloud/src/tryCopy.ts INVOICE.amountCap).
+  if (cents > 500_000) return no("amount", "Demo invoices go up to EUR 5,000.");
+  if (cents < 100) return no("amount", "amount is from 1.00 to 5000.00 euros");
   const today = Date.parse(`${now.toISOString().slice(0, 10)}T00:00:00Z`);
   for (const field of ["issue_date", "due_date"] as const) {
     const t = isoDay(i[field]);

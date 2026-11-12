@@ -18,6 +18,7 @@ import type { EngineApi } from "../engine/api.js";
 import type { EngineCtx, EngineKit, EngineRoute } from "../engine/routes.js";
 import { tallyFiled, tallyPay } from "./counter.js";
 import { noteReader } from "./metrics.js";
+import { normaliseAmount } from "./amount.js";
 import { isTryTenant, TryRefused } from "./start.js";
 
 /** What these routes need of the request's context beyond the engine's: the cloud's database and the request's time. */
@@ -83,10 +84,13 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       return out ? json(200, out) : err(404, "no such sample");
     }) },
     { method: "GET", path: "/v1/engine/suppliers", summary: "The suppliers the company has on file, as the engine's seed recorded them: { items: [{ key, name, iban, bic }] }. Their IBANs are published test IBANs, not anyone's account.", need: "read", run: on(async (_c, e) => json(200, { items: await e.suppliers() })) },
-    { method: "POST", path: "/v1/engine/compose", summary: "Write your own invoice (a test company of the hands-on demo only): { supplier_key, invoice_no, amount (1.00 to 5000.00, two decimals), issue_date, due_date (YYYY-MM-DD, within 60 days of today), iban (mod 97) }. It is written in the sample's layout, rendered to a PDF inside the engine and filed through its inbox: answers as POST /v1/engine/documents; a refused field is 400 { code, message, field }.", need: "admin", run: on(async (c, e) => {
+    { method: "POST", path: "/v1/engine/compose", summary: "Write your own invoice (a test company of the hands-on demo only): { supplier_key, invoice_no, amount (1.00 to 5000.00; written as people write it, such as 1850.00, 1.850,00 or 1k, read as two decimals), issue_date, due_date (YYYY-MM-DD, within 60 days of today), iban (mod 97) }. It is written in the sample's layout, rendered to a PDF inside the engine and filed through its inbox: answers as POST /v1/engine/documents; a refused field is 400 { code, message, field }.", need: "admin", run: on(async (c, e) => {
       if (!isTryTenant(c.caller!.tenantId)) throw new AuthError(403, "only a test company of the hands-on demo writes its own invoice here");
       const b = await kit.body(c, Compose, 4_000);
-      const out = await filed(() => e.compose(b));
+      // The amount as people write it (10k, 1.850,00, € 10.000,00), read as the page reads it (./amount.ts), so a page
+      // cached before the page read it works too; what cannot be read goes on as sent, to the engine's strict check.
+      const amount = normaliseAmount(b.amount);
+      const out = await filed(() => e.compose(amount === null ? b : { ...b, amount }));
       await counted(c, out);
       if ("refused" in out) return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field });
       return json(200, out);

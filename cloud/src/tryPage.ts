@@ -26,6 +26,8 @@
 import { consoleCsp } from "./console.js";
 import { APPROVE, BAND, BOOKS, CHROME, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
+import { AMOUNT_JS } from "./try/amount.js";
+import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
@@ -99,7 +101,7 @@ a { color: var(--accent); }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
-.f { display: grid; gap: 4px; min-width: 0; }
+.f { display: grid; gap: 4px; min-width: 0; align-content: start; }
 .f label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 400 16px/1.2 Inter, system-ui, sans-serif; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
@@ -118,6 +120,7 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .live .t { grid-column: 2; grid-row: 1 / span 2; color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
 .steps { margin-top: 4px; font-size: 14px; }
 .result { margin-top: 20px; }
+.card[hidden]:first-child + .result { margin-top: 0; }
 .result .big { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
 .result .ok { color: var(--ok); }
 .result .bad { color: var(--bad); }
@@ -157,6 +160,20 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes slidein { from { opacity: .01; transform: translateX(-10px); } }
 /* Screen 2: the invoice as the engine's answer has it, its rows lit one by one once the answer is in. */
 .inv { margin: 14px 0 4px; padding: 14px 16px; }
+/* Screen 2 while the request is in flight: who reads (with the open call's running time), and the card's skeleton. */
+.reading { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 15px; }
+.reading .n { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
+.reading .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
+.inv.skel .rows > div { animation: none; }
+.inv.skel .sk { display: inline-block; width: 7.5em; max-width: 100%; height: .9em; border-radius: 6px; vertical-align: middle;
+  background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.inv.skel .rows > div:nth-child(2) .sk { width: 5em; } .inv.skel .rows > div:nth-child(3) .sk { width: 6em; } .inv.skel .rows > div:nth-child(4) .sk { width: 5.5em; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes pulse { 50% { opacity: .35; } }
+/* A calm word under a field or the form: the danger tone, muted, never a red box. */
+/* The supplier and the IBAN while the suppliers load: a shimmering field, nothing in it. */
+.f.loading input, .f.loading select { color: transparent; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.hint.calm { margin: 6px 0 0; color: color-mix(in srgb, var(--bad) 70%, var(--muted)); font-size: 13.5px; }
 .inv .ih { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 6px; font-weight: 650; font-size: 15px; }
 .inv .ih .i { color: var(--accent); }
 .inv .rows { margin: 0; }
@@ -254,7 +271,9 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
  *   the console's credOf, registrationOf and signedOf, the same as src/approve/client.ts serializeRegistration and
  *   serializeAssertion).
  * - hashDiff(a, b): each hash as runs of [text, differs], every character where the two differ marked.
- * - normAmount(raw, like): an amount typed with a comma or a dot, in the format of the terms' own amount (like), or null.
+ * - normAmount(raw, like?): an amount as people write it (10k, 10.000, € 10.000,00, 1850,01 ...), in like's format,
+ *   or null: normaliseAmount, cloud/src/try/amount.ts, embedded by its own source (one implementation for screens 1
+ *   and 4 and the compose route).
  * - payBody(terms, values, credential): the pay route's body: the stored terms with the three fields' values written in,
  *   and the kept credential; nothing else.
  * - changedFields, verdict: what changed, from the signed and the sent values (the route's `changed` is lane C's: an
@@ -272,12 +291,8 @@ const signKit=(()=>{
     const runs=(s,o)=>{const out=[];for(let i=0;i<s.length;i++){const d=s[i]!==o[i];const last=out[out.length-1];if(last&&last[1]===d)last[0]+=s[i];else out.push([s[i],d])}return out};
     a=String(a);b=String(b);return {a:runs(a,b),b:runs(b,a)};
   };
-  const normAmount=(raw,like)=>{
-    const m=/^(\d{1,12})(?:[.,](\d{1,6}))?$/.exec(String(raw).replace(/\s/g,''));if(!m)return null;
-    const d=(/\.(\d+)$/.exec(String(like))||['',''])[1].length;const frac=m[2]||'';
-    if(frac.length>d)return null;
-    const int=m[1].replace(/^0+(?=\d)/,'');return d?int+'.'+frac.padEnd(d,'0'):int;
-  };
+  ${AMOUNT_JS}
+  const normAmount=normaliseAmount;
   const FIELDS=['amount','beneficiary_name','iban_last4'];
   const payBody=(terms,v,credential)=>{const t=Object.assign({},terms);for(const k of FIELDS)t[k]=v[k];return {terms:t,credential:credential}};
   const changedFields=(signed,sent,changed)=>{
@@ -530,7 +545,10 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
     if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
       for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
-      S.after=0;save();armRenewal();show('invoice');return;
+      // Warm the company's engine while screen 1 is read: its status (which loads the engine object) and the samples, in
+      // parallel and not awaited, so the engine is warm when the visitor files an invoice. Only here, after the click:
+      // never on load or on hover, which would start a company for every crawler and spend the start limits.
+      S.after=0;save();armRenewal();WARM.engine=api('GET','/v1/engine');WARM.samples=api('GET','/v1/engine/samples');show('invoice');return;
     }
     b.disabled=false;label(C.start.button,true);
     const said=typeof r.json.message==='string'&&r.json.message?r.json.message:C.start.failed;
@@ -540,19 +558,28 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   });
 }});
 
+// The warm-up's answers, taken once by the screen that needs them (screen 1 takes the samples).
+const WARM={engine:null,samples:null};
+
 // 1 Invoice: a sample, or one written here.
 function today(plus){const d=new Date(Date.now()+(plus||0)*86400000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function field(label,input,id){input.id=id;const l=el('label','',label);l.htmlFor=id;return el('div','f',[l,input])}
 function input(type,value){const i=el('input');i.type=type;if(value!==undefined)i.value=value;return i}
 async function catchUp(){for(let i=0;i<20;i++){const r=await call('GET','/v1/engine/events?after='+encodeURIComponent(S.after||0)+'&limit=200');if(r.status!==200||!Array.isArray(r.json.items))return;if(typeof r.json.next==='number')S.after=r.json.next;save();if(r.json.items.length<200)return}}
-screen('invoice',{heading:C.invoice.heading,draw(box){
+screen('invoice',{heading:C.invoice.heading,draw(box,arg){
+  // arg.draft: the invoice written here, back from a compose the server refused (arg.said: its words, under the form).
+  const draft=arg&&arg.draft&&typeof arg.draft==='object'?arg.draft:null;
   // Two tabs and one main button under both: it files the sample picked, or the invoice written.
   const tabs=el('div','tabs');tabs.setAttribute('role','tablist');
   const pick=el('div','panel'),write=el('div','panel');pick.setAttribute('role','tabpanel');write.setAttribute('role','tabpanel');
   const tA=el('button','',C.invoice.tabSample),tB=el('button','',C.invoice.tabWrite);
   for(const [t,p,id] of [[tA,pick,'tab-pick'],[tB,write,'tab-write']]){t.type='button';t.id=id;t.setAttribute('role','tab');p.setAttribute('aria-labelledby',id)}
   let writing=false;
-  const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w};
+  // Write your own needs the suppliers on file (the supplier and its IBAN): until they are in, the button is off and
+  // both fields are a skeleton, so a quick click cannot meet empty required fields.
+  let ready=false;let gateFields=[];
+  const gate=()=>{send.disabled=writing&&!ready;for(const f of gateFields)f.classList.toggle('loading',!ready)};
+  const choose=(w)=>{writing=w;tA.setAttribute('aria-selected',String(!w));tB.setAttribute('aria-selected',String(w));pick.hidden=w;write.hidden=!w;gate()};
   tA.addEventListener('click',()=>choose(false));tB.addEventListener('click',()=>choose(true));
   const send=btn(C.invoice.send,true);
   tabs.append(tA,tB);box.append(tabs,pick,write,send);choose(false);
@@ -561,7 +588,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
   // Pick a sample: one button per sample, the title only; the first is picked.
   let picked=null;
   pick.append(el('p','muted',C.invoice.loading));
-  api('GET','/v1/engine/samples').then((r)=>{
+  const samples=WARM.samples||api('GET','/v1/engine/samples');WARM.samples=null;
+  samples.then((r)=>{
     if(r.status!==200||!Array.isArray(r.json.items)){pick.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
     const list=el('div','samples');list.setAttribute('role','group');
     for(const s of r.json.items){if(!s||typeof s.key!=='string')continue;
@@ -572,41 +600,67 @@ screen('invoice',{heading:C.invoice.heading,draw(box){
   });
   // Write your own: a supplier on file, the number, the amount, the dates and the IBAN (prefilled, editable).
   const sup=el('select');const no=input('text','INV-'+String(1000+crypto.getRandomValues(new Uint16Array(1))[0]%9000));no.required=true;no.maxLength=40;
-  const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='120.50';
+  const amt=input('text');amt.inputMode='decimal';amt.required=true;amt.autocomplete='off';amt.placeholder='1,850.00';
+  // A calm hint under the amount when it cannot be read (normAmount, shared with screen 4); nothing is sent then.
+  const amtHint=el('p','hint calm',C.invoice.amountBad);amtHint.id='f-amt-hint';amtHint.hidden=true;amtHint.setAttribute('aria-live','polite');
+  amt.setAttribute('aria-describedby','f-amt-hint');
+  // Past the demo's cap (5000.00: the simulated bank's USD floor) or under 1.00: the same hint, the cap's words for the cap.
+  const amtRead=()=>{const v=normAmount(amt.value);if(v!==null)amt.value=v;const out=v!==null&&(Number(v)>5000||Number(v)<1);
+    amtHint.textContent=out&&Number(v)>5000?C.invoice.amountCap:C.invoice.amountBad;
+    const ok=v!==null&&!out;amtHint.hidden=ok;amt.setAttribute('aria-invalid',String(!ok));return ok?v:null};
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
   const msg=el('div','');
-  const form=el('form','',[field(C.invoice.supplier,sup,'f-sup'),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),field(C.invoice.amount,amt,'f-amt')]),
-    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),field(C.invoice.iban,iban,'f-iban'),el('p','hint',C.invoice.ibanHint),msg]);
-  write.append(form);
+  const amtField=field(C.invoice.amount,amt,'f-amt');amtField.append(amtHint);
+  const said=el('p','hint calm');said.setAttribute('role','status');said.hidden=true;
+  const supField=field(C.invoice.supplier,sup,'f-sup'),ibanField=field(C.invoice.iban,iban,'f-iban');gateFields=[supField,ibanField];
+  const form=el('form','',[supField,el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
+    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),ibanField,el('p','hint',C.invoice.ibanHint),said,msg]);
+  write.append(form);gate();
+  if(draft){
+    // Back from a refused compose: the form as it was sent, and the server's words, calmly, under it.
+    for(const [i,k] of [[no,'invoice_no'],[amt,'amount'],[iss,'issue_date'],[dueOn,'due_date'],[iban,'iban']])if(typeof draft[k]==='string')i.value=draft[k];
+    if(typeof arg.said==='string'&&arg.said){said.textContent=arg.said;said.hidden=false}
+    choose(true);
+  }
   let suppliers=[];
   sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s)iban.value=String(s.iban??'')});
-  amt.addEventListener('input',()=>amt.setCustomValidity(''));
-  api('GET','/v1/engine/suppliers').then((r)=>{
-    if(r.status!==200||!Array.isArray(r.json.items)){msg.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.invoice.failed));return}
+  amt.addEventListener('input',()=>{amtHint.hidden=true;amt.removeAttribute('aria-invalid')});
+  amt.addEventListener('blur',()=>{if(amt.value.trim())amtRead()});
+  const loadSuppliers=()=>api('GET','/v1/engine/suppliers').then((r)=>{
+    if(S.screen!=='invoice')return;
+    if(r.status!==200||!Array.isArray(r.json.items)){
+      // Calmly, with a retry that reads them again; the button stays off.
+      const again=el('button','link',C.invoice.retry);again.type='button';
+      again.addEventListener('click',()=>{msg.replaceChildren();loadSuppliers()});
+      msg.replaceChildren(el('p','hint calm',[C.invoice.suppliersFailed,' ',again]));return}
     suppliers=r.json.items.filter((s)=>s&&typeof s.key==='string');
+    ready=suppliers.length>0;gate();
     sup.replaceChildren(...suppliers.map((s)=>{const o=el('option','',String(s.name??s.key));o.value=s.key;return o}));
-    if(suppliers[0])iban.value=String(suppliers[0].iban??'');
+    if(draft&&suppliers.some((s)=>s.key===draft.supplier_key))sup.value=draft.supplier_key;
+    else if(suppliers[0])iban.value=String(suppliers[0].iban??'');
   });
+  loadSuppliers();
   function file(){
     if(!writing){if(picked)show('work',{kind:'sample',key:picked.key,title:String(picked.title??'')});return}
-    const raw=amt.value.replace(/\s/g,'');
-    if(raw&&!/^\d{1,9}([.,]\d{1,2})?$/.test(raw)){amt.setCustomValidity(C.invoice.amountBad);amt.reportValidity();return}
+    const v=amtRead();
+    if(v===null){amt.focus();return}
     if(!form.reportValidity())return;
-    show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:raw.replace(',','.'),issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
+    show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:v,issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
   }
   send.addEventListener('click',file);
   form.addEventListener('submit',(ev)=>{ev.preventDefault();file()});
 }});
 
 // 2 At work: the live panel while the request is in flight, then the invoice's status from the answer.
+// A reader's key (its agent, or the reader), and whether a row is a reader's (it closes that reader's open call).
+const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
+const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
 function livePanel(){
   const list=el('ol','live');list.setAttribute('aria-live','off');
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
   more.addEventListener('click',()=>{const open=!list.classList.contains('open');list.classList.toggle('open',open);more.setAttribute('aria-expanded',String(open))});
   const node=el('div','card',[list,more]);node.hidden=true;
-  const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
-  const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
   function add(items,t0){
     for(const e of items){
       if(agentRow(e))askClose(keyOf(e));
@@ -627,6 +681,19 @@ function invoiceCard(inv){
   for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,[inv.currency,inv.total].filter(Boolean).join(' ')],[C.fields.due,inv.due_date],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('div','',[el('dt','',k),el('dd','',String(v))]))}
   const chip=el('span','slot');
   return {node:el('section','card inv',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold),chip]),d]),chip};
+}
+// While the request is in flight: the invoice card's skeleton (the five row labels, shimmering placeholders, no value:
+// nothing of the outcome before its answer) under a line that says who reads, by the band's mode. Claude's line
+// carries the open call's running time (askOpen on an asking row, askClose on the reader's next row, the same count
+// as the live panel's).
+function skeleton(){
+  const live=!!(S.mode&&S.mode.claude==='live');
+  const n=el('span','n');const line=el('p','reading',[el('span','dot'),el('span','',live?C.work.reading:C.work.readingCode),live?n:null]);
+  const d=el('dl','rows');
+  for(const k of [C.fields.vendor,C.fields.number,C.fields.total,C.fields.due,C.fields.status])d.append(el('div','',[el('dt','',k),el('dd','',[el('span','sk')])]));
+  const card=el('section','card inv skel',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold)]),d]);card.setAttribute('aria-busy','true');
+  const see=(items)=>{if(!live)return;for(const e of items){if(agentRow(e))askClose('skeleton');if(lineOf(e).asking)askOpen('skeleton',n)}};
+  return {node:el('div','',[line,card]),see};
 }
 // Whether this request's events say Claude read the invoice, and that call's request id.
 const CLAUDE={on:false,req:null,slot:null};
@@ -667,14 +734,16 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     drawResult(result,{status:200,json:{invoice:arg.invoice}},null);
     return;
   }
-  result.append(el('p','muted',C.work.working));
+  const sk=skeleton();result.append(sk.node);
   const t0=performance.now();
-  pollStart((items)=>{live.add(items,t0);claudeSeen(items)});
+  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items)});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
-    pollDone();
+    pollDone();askClose('skeleton');
     if(S.screen!=='work')return;
+    // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
+    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
     result.replaceChildren();drawResult(result,r,ms);
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
@@ -918,7 +987,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     box.append(said,el('div','acts',[main.node,next]));
     return;
   }
-  main.set(B.next,toCompany);
+  main.set(B.next,()=>show('did'));
   const slot=()=>el('div','slot');
   const paid=slot(),booked=slot(),filed=slot();
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
@@ -1000,6 +1069,9 @@ screen('company',{heading:C.company.heading,draw(box){
   }
 }});
 
+// 5b What Purser did with it (cloud/src/try/books.ts): filed, booked, matched, then what next.
+__DID__
+
 // The visit is over: the company is gone, or the session could not be renewed.
 for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{heading:words.heading,band:false,draw(box){
   const b=btn(words.button,true);b.addEventListener('click',()=>{forget();show('start')});box.append(b);
@@ -1017,6 +1089,7 @@ async function boot(){
   const last=items[items.length-1];
   // Signing and paying return where they were: the proposal and the kept signature are in this tab's state.
   if(S.screen==='company'){show('company');return}
+  if(S.screen==='did'){show('did');return}
   if(S.screen==='books'&&S.settled){show('books',{settled:S.settled});return}
   if(S.screen==='pay'&&S.proposal){show('pay');return}
   if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
@@ -1043,13 +1116,14 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
+    .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}</style></head><body>
+<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}</style></head><body>
 <header class="top"><span class="brand"><span class="mk"></span><span class="nm">${CHROME.brand}</span></span></header>
 <div class="hero">${sceneSvg()}</div>
 <main id="main"></main>

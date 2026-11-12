@@ -86,6 +86,16 @@ a78858859d27df0fdfdc11020a34ded76175d8f7:src/cli/twoLocks.ts:generic-api-key:85
 # dummy admin-token hash next to the literal "not-a-real-secret"); the whole-history scan reads every remote branch.
 9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/fixtures/passkey.json:generic-api-key:45
 9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/run.mjs:generic-api-key:33
+# The ICC stream (icc-ready, 12 Nov 2026): a made-up 32-character instrument identifier ("A1B2C3D4E5F6…", the documented
+# length of a TMS token ID; not a card number, not a real ID) held in a test constant named TOKEN, and two test marker
+# strings ("body-marker-value", "value-that-must-not-be-repeated") that prove nothing is echoed. Later commits build
+# them from parts, so only these first commits carry them.
+2106c769ea3511462688ef68f3a447d5d5ca7fab:test/icc-instruction.test.ts:generic-api-key:11
+d28cc7c28e097ff9c6ffae697e7027df74fe430a:test/icc-config.test.ts:generic-api-key:13
+d28cc7c28e097ff9c6ffae697e7027df74fe430a:test/icc-config.test.ts:generic-api-key:81
+114155167214b5a44d89f1faacffc27da59a1683:test/icc-purchase.test.ts:generic-api-key:24
+45d6b4e36ed38a73950979441de197982c6d39b0:test/icc-rail-off.test.ts:generic-api-key:26
+08e62fcccd4b5aef51ce7b838ff0e3f35b4affce:test/icc-client.test.ts:generic-api-key:302
 # 12 Nov: the sample receipt for the home page widget on branch home-story-1112: public WebAuthn authenticatorData of a
 # labelled test key, not a secret (the whole-history scan reads every remote branch).
 a97ac3b46eb9484771bc153d2ace5f2e1425758e:docs/demo/hero-receipt.json:generic-api-key:56

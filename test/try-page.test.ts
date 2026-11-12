@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp } from "../cloud/src/console.js";
 import * as COPY from "../cloud/src/tryCopy.js";
 import { BOOKS_JS, PROOF_URL, RUNS_URL, SIGN_JS, tryPage } from "../cloud/src/tryPage.js";
+import { AMOUNT_JS, normaliseAmount } from "../cloud/src/try/amount.js";
 import { liveRuns } from "../src/redesign/runs.js";
 import { ICONS } from "../src/ui/icons.js";
 import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
@@ -92,6 +93,56 @@ describe("the page", () => {
     expect(script).not.toMatch(/requestAnimationFrame/);
   });
 
+  it("warms the company's engine right after the start answers, and starts a company only on the start button's click", () => {
+    // One start request in the whole script, inside the start button's click handler: never on load or on hover.
+    expect(script.match(/\/v1\/try\/start/g)).toHaveLength(1);
+    expect(script).not.toMatch(/mouseover|mouseenter|pointerenter|pointerover|focusin/);
+    const click = script.indexOf("b.addEventListener('click',async()=>{\n    b.disabled=true;label(C.start.starting,false);");
+    expect(click).toBeGreaterThan(-1);
+    expect(script.indexOf("'/v1/try/start'")).toBeGreaterThan(click);
+    // Then, not awaited, before screen 1: the engine's status and the samples, in parallel; screen 1 takes the samples' answer.
+    expect(script).toMatch(/WARM\.engine=api\('GET','\/v1\/engine'\);WARM\.samples=api\('GET','\/v1\/engine\/samples'\);show\('invoice'\)/);
+    expect(script).toMatch(/const samples=WARM\.samples\|\|api\('GET','\/v1\/engine\/samples'\);WARM\.samples=null;/);
+  });
+
+  it("shows the invoice card's skeleton and who is reading while the request is in flight, with no value of the outcome", () => {
+    expect(script).toMatch(/function skeleton\(/);
+    const sk = script.slice(script.indexOf("function skeleton("), script.indexOf("\n}", script.indexOf("function skeleton(")));
+    // The five row labels and empty placeholders only.
+    for (const k of ["vendor", "number", "total", "due", "status"]) expect(sk).toContain(`C.fields.${k}`);
+    expect(sk).not.toMatch(/\binv\.|r\.json|invoice_no|status_words/);
+    expect(sk).toContain("C.work.reading");
+    expect(sk).toContain("C.work.readingCode");
+    // The count is the open-call timer's: askOpen on an asking row, askClose on the reader's next row.
+    expect(sk).toMatch(/askOpen\(/);
+    expect(sk).toMatch(/askClose\(/);
+  });
+
+  it("reads the amount with the one shared helper on screen 1, says a calm hint under the field, and sends only the normalised value", () => {
+    const inv = script.slice(script.indexOf("screen('invoice'"), script.indexOf("// 2 At work"));
+    expect(inv).toMatch(/normAmount\(amt\.value\)/);
+    expect(inv).toMatch(/amt\.addEventListener\('blur'/);
+    expect(inv).toMatch(/amount:v,/);
+    expect(inv).not.toMatch(/amt\.setCustomValidity\(|amt\.reportValidity\(/);
+    expect(inv).toContain("C.invoice.amountBad");
+    // Past the demo's cap (5000.00, the simulated bank's USD floor) or under 1.00: the same calm hint, with the cap's
+    // words above it, and nothing sent (amtRead answers null).
+    expect(inv).toMatch(/Number\(v\)>5000\|\|Number\(v\)<1/);
+    expect(inv).toContain("C.invoice.amountCap");
+  });
+
+  it("keeps the main button off on write your own until the suppliers are in, the supplier and IBAN as a skeleton meanwhile", () => {
+    const inv = script.slice(script.indexOf("screen('invoice'"), script.indexOf("// 2 At work"));
+    // The one place that sets the button: off while writing and the suppliers are not in.
+    expect(inv).toMatch(/const gate=\(\)=>\{send\.disabled=writing&&!ready;/);
+    expect(inv).toMatch(/const choose=\(w\)=>\{[^}]*gate\(\)\}/);
+    expect(inv).toContain("classList.toggle('loading',!ready)");
+    // A failed read: calm words with a retry, never the red box.
+    expect(inv).toContain("C.invoice.suppliersFailed");
+    expect(inv).toContain("C.invoice.retry");
+    expect(inv).not.toMatch(/msg\.replaceChildren\(el\('p','note'/);
+  });
+
   it("reads the token from the fragment, takes it out of the address bar, and sends it only in the start request's body", () => {
     const read = script.indexOf("location.hash");
     const drop = script.indexOf("history.replaceState(");
@@ -142,6 +193,16 @@ describe("screen 6's proof link", () => {
 });
 
 describe("the copy", () => {
+  it("says who reads on screen 2 while the request is in flight, and how to write an amount on screen 1", () => {
+    expect(COPY.WORK.reading).toBe("Claude is reading…");
+    expect(COPY.WORK.readingCode).toBe("Purser's code is reading…");
+    expect(COPY.INVOICE.amountBad).toBe("Write an amount such as 1,850.00 or 10k.");
+    expect(COPY.INVOICE.amountCap).toBe("Demo invoices go up to EUR 5,000.");
+    expect(COPY.INVOICE.suppliersFailed).toBe("Suppliers not loaded.");
+    expect(COPY.INVOICE.retry).toBe("Retry");
+  });
+
+
   it("keeps every screen at 45 visible words or fewer outside the live panel and the invoice, in each of its states", () => {
     for (const [screen, states] of Object.entries(COPY.VISIBLE)) {
       for (const [i, state] of states.entries()) {
@@ -165,7 +226,7 @@ describe("the copy", () => {
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 4", "invoice 5"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
@@ -387,7 +448,7 @@ interface Kit {
   registrationOf(c: unknown): unknown;
   signedOf(c: unknown): unknown;
   hashDiff(a: string, b: string): { a: [string, boolean][]; b: [string, boolean][] };
-  normAmount(raw: string, like: string): string | null;
+  normAmount(raw: string, like?: string): string | null;
   payBody(terms: Record<string, unknown>, v: { amount: string; beneficiary_name: string; iban_last4: string }, credential: unknown): unknown;
   changedFields(signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string[];
   verdict(W: typeof COPY.PAY, signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string;
@@ -426,10 +487,41 @@ describe("signing and paying, in the page's own script", () => {
     expect(kit.normAmount(" 1850.1 ", "1850.00")).toBe("1850.10");
     expect(kit.normAmount("1850", "1850.00")).toBe("1850.00");
     expect(kit.normAmount("01850.00", "1850.00")).toBe("1850.00");
-    expect(kit.normAmount("1.850,00", "1850.00")).toBeNull();
+    expect(kit.normAmount("1.850,00", "1850.00")).toBe("1850.00");
     expect(kit.normAmount("1850.001", "1850.00")).toBeNull();
+    expect(kit.normAmount("1850.00", "1850.00")).toBe("1850.00");
     expect(kit.normAmount("-5", "1850.00")).toBeNull();
     expect(kit.normAmount("", "1850.00")).toBeNull();
+  });
+
+  it("reads the lead's amounts: one separator before exactly three digits is thousands, before one or two it is decimals", () => {
+    for (const [raw, want] of [["1850", "1850.00"], ["1850,5", "1850.50"], ["1850,00", "1850.00"], ["1.850,00", "1850.00"], ["1,850.00", "1850.00"],
+      ["10k", "10000.00"], ["10.000", "10000.00"], ["10,000", "10000.00"], ["€ 10.000,00", "10000.00"]] as const) {
+      expect(kit.normAmount(raw), raw).toBe(want);
+      expect(normaliseAmount(raw), raw).toBe(want);
+    }
+  });
+
+  it("is one implementation: the page carries normaliseAmount's own source (cloud/src/try/amount.ts), with no helper of a bundler", () => {
+    expect(SIGN_JS).toContain(AMOUNT_JS);
+    expect(script).toContain(AMOUNT_JS);
+    expect(AMOUNT_JS).not.toMatch(/__name|__defProp|cov_|\?\?|\?\./);
+    for (const raw of ["10k", "1,5k", "€ 10.000,00", "EUR 10,000.00", "1850.5", "abc", "-5", "0", "1850.001"]) {
+      expect(kit.normAmount(raw), raw).toBe(normaliseAmount(raw));
+      expect(kit.normAmount(raw, "1850.00"), raw).toBe(normaliseAmount(raw, "1850.00"));
+    }
+  });
+
+  it("reads the amounts people write (screen 1's write your own): two decimals with a dot, or null", () => {
+    const cases: [string, string][] = [
+      ["10k", "10000.00"], ["10K", "10000.00"], ["1.5k", "1500.00"], ["1,5k", "1500.00"], ["10.000", "10000.00"], ["10,000", "10000.00"],
+      ["10000", "10000.00"], ["€ 10.000,00", "10000.00"], ["€10000", "10000.00"], ["EUR 10,000.00", "10000.00"], ["eur 10.000", "10000.00"],
+      ["1.850,01", "1850.01"], ["1850,01", "1850.01"], ["1850.5", "1850.50"], ["1,850.00", "1850.00"], ["1.234.567,89", "1234567.89"],
+      ["0,5", "0.50"], ["120.50", "120.50"], [" 1 850,01 ", "1850.01"], ["10000 €", "10000.00"], ["1850 EUR", "1850.00"],
+    ];
+    for (const [raw, want] of cases) expect(kit.normAmount(raw), raw).toBe(want);
+    for (const raw of ["", " ", "-5", "-10k", "0", "0.00", "0k", "abc", "12a", "10kk", "k", "1850.001", "1.85.0", "1,234.567,89", "1.5,2", "10.", ".5", "€", "1e3", "10m", "$10"])
+      expect(kit.normAmount(raw), raw).toBeNull();
   });
 
   it("sends the pay route exactly the stored terms with the three fields' values written in, and the kept credential: nothing else", () => {
