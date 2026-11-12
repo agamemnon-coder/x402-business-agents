@@ -14,6 +14,7 @@ import { proposeInvoicePayment, type InvoiceOutcome } from "../agents/euroBill.j
 import type { DB } from "../db/open.js";
 import type { InboxDeps } from "./inbox.js";
 import { accrualEntries, accrualPushed, paymentEntries, pushOnce, reversalEntries, type BookkeepingSink } from "./books.js";
+import { ensureCoded } from "./coderAgent.js";
 import { expireDue } from "../policy/approvals.js";
 import { PAY_LATER, payerGate } from "./payerAgent.js";
 import { pdfText } from "./pdfText.js";
@@ -141,7 +142,9 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
       const next = setStatus(db, inv.id, "paid", "awx-executor", { paid_at: now.toISOString(), reason: `paid under ${inv.proposal_id}` }, now);
       clearStaleNote(db, inv.id);
       // The accrual first if the sink never got it (a supplier added by the executor, a sink that was down), then the payment.
-      await pushOnce(db, opts.sink, "accrual", accrualEntries(next), next, now);
+      // With KIT11_AP_AGENTS=on an accrual nothing has booked yet is coded by the Coder agent first (src/ap/coderAgent.ts).
+      const coded = await ensureCoded(db, next, { now: () => now });
+      await pushOnce(db, opts.sink, "accrual", accrualEntries(coded), coded, now);
       await pushOnce(db, opts.sink, "payment", paymentEntries(db, next), next, now);
       changed.push(next);
     }

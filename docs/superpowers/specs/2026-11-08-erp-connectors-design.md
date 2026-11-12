@@ -1,5 +1,9 @@
 # ERP connectors (design)
 
+> **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
+> "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
+> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+
 8 November 2026: "An ERP link is important; we must be able to connect." Purser keeps its own books
 and also syncs with the company's ERP in both directions, so no CSV is needed. Built on a branch; nothing is deployed.
 

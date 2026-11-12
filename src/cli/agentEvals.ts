@@ -9,19 +9,27 @@ import { claudeClient } from "../claude/reader.js";
 import { PRICES } from "../claude/pricing.js";
 import { budgetStatus, recordSpend } from "../claude/budget.js";
 import { AGENT_CASES, type AgentName } from "../evals/agentEvals.js";
-import { agentEvalsMarkdown, apSectionOf, withApSection, type AgentEvalsRecord } from "../evals/agentEvalsDoc.js";
+import { agentEvalsDoc, apSectionOf, type AgentEvalsRecord } from "../evals/agentEvalsDoc.js";
 import { evalCommit } from "../evals/commit.js";
+import type { CoderEvalRecord } from "../evals/coderReport.js";
 
 const args = process.argv.slice(2);
 const runs = Number(args[args.indexOf("--runs") + 1] ?? 1) || 1;
 const ALL = { haiku: "claude-haiku-5-5", sonnet: "claude-sonnet-5-5", opus: "claude-opus-5-5" } as const;
 const pick = args.includes("--models") ? args[args.indexOf("--models") + 1]!.split(",") as (keyof typeof ALL)[] : (["haiku", "sonnet", "opus"] as const);
+// docs/agent-evals.md from the three agents' record; the payables section (npm run ap-agent-evals) is kept as it is, and
+// the Coder evals' section (npm run coder-evals) is rendered again from its own run record.
+const mdPath = resolve(import.meta.dirname, "../../docs/agent-evals.md");
+const coderPath = resolve(import.meta.dirname, "../../docs/evals/coder.json");
+const writeDoc = (record: AgentEvalsRecord) => writeFileSync(mdPath, agentEvalsDoc(
+  record,
+  existsSync(mdPath) ? apSectionOf(readFileSync(mdPath, "utf8")) : "",
+  existsSync(coderPath) ? JSON.parse(readFileSync(coderPath, "utf8")) as CoderEvalRecord : null,
+));
 // --render: docs/agent-evals.md written again from the records, without calling Claude.
 if (args.includes("--render")) {
-  const mdPath = resolve(import.meta.dirname, "../../docs/agent-evals.md");
-  const record = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../docs/evals/agents.json"), "utf8")) as AgentEvalsRecord;
-  writeFileSync(mdPath, withApSection(agentEvalsMarkdown(record), existsSync(mdPath) ? apSectionOf(readFileSync(mdPath, "utf8")) : ""));
-  console.log("docs/agent-evals.md written from docs/evals/agents.json");
+  writeDoc(JSON.parse(readFileSync(resolve(import.meta.dirname, "../../docs/evals/agents.json"), "utf8")) as AgentEvalsRecord);
+  console.log("docs/agent-evals.md written from docs/evals/agents.json, docs/evals/ap-agents.json and docs/evals/coder.json");
   process.exit(0);
 }
 const client = claudeClient();
@@ -30,7 +38,7 @@ const SPEND = resolve(import.meta.dirname, "../../docs/runs/api-budget.jsonl");
 if (budgetStatus(SPEND).blocks.evals.over) { console.error("the evals block of the API budget is spent (npm run budget)"); process.exit(2); }
 
 // The code each row ran: the commit, and whether the checkout had changes outside this report's own files.
-const { commit: COMMIT, dirty: DIRTY } = evalCommit(["docs/evals/agents.json", "docs/agent-evals.md", "docs/runs/api-budget.jsonl"]);
+const { commit: COMMIT, dirty: DIRTY } = evalCommit(["docs/evals/agents.json", "docs/evals/coder.json", "docs/agent-evals.md", "docs/runs/api-budget.jsonl"]);
 
 interface Row { case: string; agent: AgentName; kind: string; model: string; passed: number; runs: number; cost_usd_micros: number; median_ms: number; details: string[]; commit?: string; dirty?: boolean; words?: string[][] }
 const rows: Row[] = [];
@@ -92,8 +100,5 @@ const out = { ran_at: stamp, runs, models: [...new Set(rows.map((r) => r.model))
 mkdirSync(resolve(import.meta.dirname, "../../docs/evals"), { recursive: true });
 writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
 
-// The payables agents' section (npm run ap-agent-evals) is kept as it is.
-const mdPath = resolve(import.meta.dirname, "../../docs/agent-evals.md");
-const md = withApSection(agentEvalsMarkdown(out), existsSync(mdPath) ? apSectionOf(readFileSync(mdPath, "utf8")) : "");
-writeFileSync(mdPath, md);
+writeDoc(out);
 console.log(`\ncheapest passing: ${agents.map((a) => `${a} ${cheapest[a] ?? "none"}`).join(", ")}`);

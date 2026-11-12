@@ -1,11 +1,19 @@
 // What the ERP sync sends from Purser's own ledger today, mapped to the canonical model: the payees on the allowlist as
 // vendors, the invoices, the PAID payouts as payments, and the GL journal's other money movements as journal entries.
-// The payables inbox and the bookkeeping core (other branches) will feed richer objects through the same model.
+// The payables inbox (src/ap) feeds its invoices through the same model (below); the bookkeeping core (src/ledger) does
+// not feed it yet.
+//
+// An inbox invoice takes its PDF along (the file the inbox stored, by its sha256), so the ERP holds the document with
+// the booking. An invoice whose stored file is not on this machine (a ledger moved or copied without its files), or
+// whose file is no longer the document that was read, is not sent without it: its item says why (`blocked`) and the
+// sync runner fails it with that reason. One already sent stays as it is: the file is not part of what is compared.
 //
 // Honest limits of this feed: the Treasury flow's own invoices carry no issue date (the due date stands in) and no VAT split (the
 // amount is booked as one line with VAT treatment NONE); movements in Metal's test token (USDZ) are not ISO currencies,
 // so no ERP can hold them and they are left out; opening balances are the accountant's, not sent.
 
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { journal as glJournal } from "../accounting/gl.js";
 import { bankAccountFor, bookable } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
@@ -34,6 +42,20 @@ function apVat(a: ApInvoiceRow): { code: "NL21" | "NL9" | "NONE"; netCents: numb
   return { code: "NONE", netCents: total, vatCents: 0 };
 }
 
+/**
+ * The PDF the inbox stored for a document: the file, checked against the hash the invoice was read from. Nothing when
+ * the inbox holds no document under that hash; a reason (`blocked`) when it does but the file is gone or differs.
+ */
+function storedPdf(db: DB, sha256: string): { pdf: NonNullable<PurchaseInvoice["pdf"]> } | { blocked: string } | null {
+  const doc = db.prepare("SELECT filename, path FROM ap_documents WHERE sha256 = ?").get(sha256) as { filename: string; path: string } | undefined;
+  if (!doc) return null;
+  const fileName = doc.filename || `${sha256.slice(0, 12)}.pdf`;
+  if (!existsSync(doc.path)) return { blocked: `the PDF the inbox stored for this invoice (${fileName}) is not on this machine; the invoice is not sent without it: sync from where the inbox keeps its files` };
+  const bytes = new Uint8Array(readFileSync(doc.path));
+  if (createHash("sha256").update(bytes).digest("hex") !== sha256) return { blocked: `the stored PDF (${fileName}) is no longer the document this invoice was read from (its SHA-256 differs); the invoice is not sent with another file` };
+  return { pdf: { fileName, bytes } };
+}
+
 export function ledgerItems(db: DB): SyncItem[] {
   const items: SyncItem[] = [];
   for (const b of db.prepare("SELECT beneficiary_id, name, iban_last4, iban_sha256, bic, currency FROM beneficiaries WHERE status = 'ACTIVE' ORDER BY beneficiary_id").all() as
@@ -54,11 +76,13 @@ export function ledgerItems(db: DB): SyncItem[] {
     if (a) {
       if (a.status === "rejected" || !bookable(a)) continue;
       const vat = apVat(a);
+      const stored = storedPdf(db, a.doc_sha256);
       items.push({ kind: "invoice", object: {
         id: r.invoice_no, vendorId: r.beneficiary_id, number: a.invoice_no, issueDate: a.issue_date || r.due_date, dueDate: a.due_date || r.due_date, currency: a.currency,
         lines: [{ description: `Invoice ${a.invoice_no}, ${a.vendor}`, glAccount: a.gl_account || VENDOR_GL[r.vendor] || "6900", vatCode: vat.code, netCents: vat.netCents, vatCents: vat.vatCents, ...(a.cost_centre ? { costCentre: a.cost_centre } : {}) }],
         totals: { netCents: vat.netCents, vatCents: vat.vatCents, grossCents: vat.netCents + vat.vatCents }, documentSha256: a.doc_sha256,
-      } satisfies PurchaseInvoice });
+        ...(stored && "pdf" in stored ? { pdf: stored.pdf } : {}),
+      } satisfies PurchaseInvoice, ...(stored && "blocked" in stored ? { blocked: stored.blocked } : {}) });
       continue;
     }
     const inv: PurchaseInvoice = {

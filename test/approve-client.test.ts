@@ -7,7 +7,7 @@ import { fingerprintOf, spkiSha256OfCose } from "../src/passkey/ledger.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { jcs, type Json } from "@metalntwx/metal-pay/mandates";
-import { agentOf, badBatchLines, batchRemovalHash, firstScreenFacts, isTestMoney, reasonWords, whyYou, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, type PhoneProposal } from "../src/approve/client.js";
+import { agentOf, whyYou, needsWords, cosignedLead, amountProblem, b64urlToBytes, buildPolicyTerms, normalizeAmount, bytesToB64url, canonicalize, checkOption, describeTerms, hexToBytes, money, notList, freshEnough, passkeyFingerprint, policyLoosens, rejectionHash, takeRunnerKey, takeViewKey, badBatchLines, batchRemovalHash, firstScreenFacts, isPayablesPayment, isTestMoney, reasonWords, type PhoneProposal } from "../src/approve/client.js";
 import { rejectionSha256, sha256Hex } from "../src/lib/terms.js";
 import { batchRemovalSha256 } from "../src/policy/batch.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
@@ -273,6 +273,99 @@ describe("the approval view's first screen: the agent, and why it needs the CFO"
   });
 });
 
+// Block 1 on the phone: what the owner reads before Face ID signs an account call on chain. A bind, a revoke and a
+// replace each say what they do in their own words; a change the page does not know is never shown as a bind.
+describe("an owners_execute on the phone: bind, revoke and replace", () => {
+  const B = JSON.parse(readFileSync(new URL("./fixtures/owners-execute-terms.json", import.meta.url), "utf8")) as Record<string, Json> & { action: Record<string, string>; calls: Record<string, string>[]; account: string; onchain_digest: string };
+  const OLD = `0x${"5e".repeat(32)}`;
+  const withCall = (selector: string, action: Record<string, string>) => ({ ...B, calls: [{ ...B.calls[0]!, call_data: `${selector}${B.calls[0]!.call_data!.slice(10)}` }], action }) as unknown as Record<string, Json>;
+  const revoke = withCall("0xb75c7dc6", { ...B.action, what: "revoke" });
+  const replace = withCall("0x2f2c2052", { ...B.action, what: "replace", cap: "0.10", mandate: `0x${"7a".repeat(32)}`, replaces: OLD, was_cap: "0.05", was_budget: "0.50" });
+  const LEAD = "Your Face ID signs this on chain: the business account 0x1062…04ea is owned by two passkeys, yours and the second owner's, and runs this only with both.";
+  const keys = (t: Record<string, Json>) => describeTerms(t, {}).rows.map((r) => r[0]);
+  const row = (t: Record<string, Json>, k: string) => describeTerms(t, {}).rows.find((r) => r[0] === k)?.[1];
+
+  it("the selectors are the account's own bind, replace and revoke", async () => {
+    const { toFunctionSelector } = await import("viem");
+    const { mandateBindingAbi } = await import("@metalntwx/metal-pay/mandates");
+    const { OWNER_SELECTORS } = await import("../src/approve/client.js");
+    const fn = (name: string) => toFunctionSelector(mandateBindingAbi.find((x) => x.type === "function" && x.name === name) as never);
+    expect(OWNER_SELECTORS).toEqual({ bind: fn("bind"), replace: fn("replace"), revoke: fn("revoke") });
+  });
+
+  it("a bind: the account, the mandate, the cap, the budget, the payee, the digest and the deadline", () => {
+    const f = describeTerms(B, {});
+    expect(f).toMatchObject({ approvable: true, title: "Bind the sourcing mandate, signed on chain", amount: "0.50 USDZ in total", recipient: "Stockline 0x82e5…4b9A", warnings: [] });
+    expect(f.sentence).toBe(`${LEAD} Up to 0.05 per payment, 0.50 in total, to Stockline only.`);
+    expect(keys(B)).toEqual(["Account", "Mandate", "Per payment", "Budget", "May pay", "Signed on chain", "Digest", "Valid until"]);
+    expect([row(B, "Account"), row(B, "Per payment"), row(B, "Budget"), row(B, "Digest")]).toEqual([B.account, "0.05 USDZ", "0.50 USDZ", B.onchain_digest]);
+    expect(row(B, "Valid until")).toMatch(/^\d+ [A-Z][a-z]{2} \d{4}, \d\d:\d\d UTC$/);
+  });
+
+  it("a revoke says the mandate ends: its limits are what stops, not what is granted", () => {
+    const f = describeTerms(revoke, {});
+    expect(f).toMatchObject({ approvable: true, title: "Revoke the sourcing mandate, signed on chain", warnings: [] });
+    expect(f.sentence).toBe(`${LEAD} It ends the mandate that allowed up to 0.05 per payment, 0.50 in total, to Stockline only.`);
+    expect(keys(revoke)).toEqual(keys(B));
+    // The first screen's big number is not money being approved: it is the budget that ends.
+    expect([f.amountLabel, f.amount]).toEqual(["Ends a budget of", "0.50 USDZ"]);
+    expect(describeTerms(B, {}).amountLabel).toBeUndefined();
+  });
+
+  it("says the second owner, never a second person: the second owner's passkey may be a labelled virtual one", () => {
+    const why = "The business account on chain runs this only with both owners' passkeys.";
+    expect(whyYou(B)).toBe(why);
+    expect(whyYou(B, [], { approved_by: [] })).toBe(why);
+    expect(whyYou(B, [], { approved_by: ["max"] })).toBe(`${why} Approved so far: max.`);
+    expect(needsWords(B, { approved_by: [] })).toBe("Needs your approval, and the second owner's");
+    expect(cosignedLead(B)).toBe("Your Face ID counts. The account runs this only once the second owner's passkey has signed it too.");
+    for (const t of [B, revoke, replace]) {
+      expect([describeTerms(t, {}).sentence, whyYou(t, [], { approved_by: ["max"] }), needsWords(t, { approved_by: [] }), cosignedLead(t)].join(" ")).not.toMatch(/two people|person|controller|four eyes|someone else/i);
+    }
+    // Every other kind keeps its words.
+    const other = { kind: "invoice_payment" };
+    expect(needsWords(other, { approved_by: [] })).toBe("Needs your approval, and a second person's");
+    expect(needsWords(other)).toBe("Needs your approval");
+    expect(needsWords(B)).toBe("Needs your approval");
+    expect(cosignedLead(other)).toBeUndefined();
+  });
+
+  it("a replace shows each new limit with the earlier one beside it, and the mandate it replaces", () => {
+    const f = describeTerms(replace, {});
+    expect(f).toMatchObject({ approvable: true, title: "Replace the sourcing mandate, signed on chain", amountLabel: "Per payment", amount: "0.10 USDZ (0.05 before)", big: "0.10", unit: "USDZ per payment", recipient: "Stockline 0x82e5…4b9A", warnings: [] });
+    expect(f.sentence).toBe(`${LEAD} It replaces the mandate in one step: up to 0.10 per payment (0.05 before), 0.50 in total (0.50 before), to Stockline only.`);
+    expect(keys(replace)).toEqual(["Account", "Mandate", "Replaces", "Per payment", "Budget", "May pay", "Signed on chain", "Digest", "Valid until"]);
+    expect([row(replace, "Mandate"), row(replace, "Replaces"), row(replace, "Per payment"), row(replace, "Budget")]).toEqual([`0x${"7a".repeat(32)}`, OLD, "0.10 USDZ (0.05 before)", "0.50 USDZ (0.50 before)"]);
+    expect(agentOf("treasury", replace)).toBe("Sourcing agent");
+  });
+
+  it("a replace that does not name what it replaces, or whose words and call differ, cannot be signed", () => {
+    const a = replace.action as Record<string, string>;
+    for (const drop of ["replaces", "was_cap", "was_budget"]) {
+      const f = describeTerms({ ...replace, action: { ...a, [drop]: undefined } as never }, {});
+      expect(f.approvable).toBe(false);
+      expect(f.warnings.join(" ")).toMatch(/does not name the mandate it replaces and its earlier limits; this cannot be signed/);
+    }
+    expect(describeTerms({ ...replace, action: { ...a, was_cap: "a lot" } }, {}).approvable).toBe(false);
+    // A replace's words on a bind call, and a bind's or a revoke's words on a replace call.
+    expect(describeTerms({ ...B, action: a }, {}).approvable).toBe(false);
+    expect(describeTerms({ ...replace, action: { ...a, what: "bind" } }, {}).approvable).toBe(false);
+    expect(describeTerms({ ...replace, action: { ...a, what: "revoke" } }, {}).approvable).toBe(false);
+  });
+
+  it("a change the page does not know is not approvable and is never shown as a bind", () => {
+    for (const what of ["transfer", "addSigner", "", "constructor", "toString"]) {
+      const f = describeTerms({ ...B, action: { ...B.action, what } }, {});
+      expect(f.approvable).toBe(false);
+      expect(f.title).not.toMatch(/Bind|Replace|Revoke/);
+      expect(f.sentence).not.toMatch(/Up to|per payment/);
+      // One alarm says it (the page shows the sentence of what cannot be approved), and no amount is shown as if it were approved.
+      expect(f.sentence).toBe("This is not a bind, a replace or a revoke of a mandate. It cannot be signed on this page.");
+      expect([f.warnings, f.amount, f.big]).toEqual([[], "", ""]);
+    }
+  });
+});
+
 describe("the first screen of an inbox payment (S6)", () => {
   const terms = {
     kind: "supplier_payment", invoice_no: "PC-7781 · Pinecrest Outdoor Supply LLC", vendor: "Pinecrest Outdoor Supply LLC", amount: "7480.00", currency: "USD",
@@ -294,6 +387,39 @@ describe("the first screen of an inbox payment (S6)", () => {
   it("adds nothing for a payment without the inbox's fields", () => {
     expect(firstScreenFacts({ kind: "invoice_payment", vendor: "Stockline" })).toEqual([]);
     expect(firstScreenFacts({ kind: "policy_change" })).toEqual([]);
+  });
+  it("adds nothing for a Kit 11 invoice payment: its real terms carry a payout reason, and none of the inbox's fields", () => {
+    // P-0004 of the rehearsal, as src/agents/euroBill.ts writes every Kit 11 invoice payment: a reason, no total line,
+    // no source. Its first screen stays payee, agent and why, as on main before the product came into this repository
+    // (review of 12 November: a "Reason" row had appeared on the CFO's Kit 11 approval).
+    const kit11 = byId("P-0004").terms;
+    expect(kit11).toMatchObject({ kind: "invoice_payment", reason: "professional_business_services" });
+    expect([kit11.document_total_line, kit11.source, kit11.test_money]).toEqual([undefined, undefined, undefined]);
+    expect(isPayablesPayment(kit11)).toBe(false);
+    expect(firstScreenFacts(kit11)).toEqual([]);
+    expect(isTestMoney(kit11)).toBe(false);
+    for (const f of F.proposals) expect({ id: f.proposal_id, rows: firstScreenFacts(f.terms) }).toEqual({ id: f.proposal_id, rows: [] });
+    // The same payment as the inbox files it does get its two rows.
+    expect(firstScreenFacts({ ...kit11, document_total_line: "Total due EUR 1,850.00", source: "payables_inbox" })).toEqual([
+      ["On the invoice", "\u201cTotal due EUR 1,850.00\u201d"],
+      ["Reason", "Professional or business services"],
+    ]);
+  });
+});
+
+describe("the first screen's label column", () => {
+  const css = readFileSync(new URL("../src/approve/style.css", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../src/approve/client.ts", import.meta.url), "utf8");
+  it("stays 64px on every Kit 11 approval; only the payables and batch views take the wider one", () => {
+    // The stylesheet: one base rule, one modifier, nothing else sets the list's columns.
+    const rules = [...css.matchAll(/^(\.key-facts[^{\n]*) \{([^}]*)\}/gm)].filter((m) => m[2]!.includes("grid-template-columns")).map((m) => [m[1], /grid-template-columns: ([^;]+);/.exec(m[2]!)![1]]);
+    expect(rules).toEqual([[".key-facts", "64px minmax(0, 1fr)"], [".key-facts.wide", "92px minmax(0, 1fr)"]]);
+    // The script: the Kit 11 view (approvePage) builds the plain list; payablesView and batchView ask for "wide".
+    const at = (needle: string) => { const i = client.indexOf(needle); expect({ needle, found: i >= 0 }).toEqual({ needle, found: true }); return i; };
+    const lists = [...client.matchAll(/el\("dl", "(key-facts[^"]*)"/g)].map((m) => ({ cls: m[1], at: m.index }));
+    expect(lists.map((l) => l.cls)).toEqual(["key-facts", "key-facts wide", "key-facts wide"]);
+    const [kit11, payables, batch] = [at("async function approvePage("), at("function payablesView("), at("async function batchView(")];
+    expect(kit11 < lists[0]!.at && lists[0]!.at < payables && payables < lists[1]!.at && lists[1]!.at < batch && batch < lists[2]!.at).toBe(true);
   });
 });
 

@@ -11,7 +11,7 @@
 // same key with a version suffix. The ledger never loses or doubles a movement, and never changes a posted entry.
 
 import { journal } from "../accounting/gl.js";
-import { accrualEntries, bookable } from "../ap/books.js";
+import { accrualEntries, bookable, codedAccrual, dutchVat } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoices } from "../ap/store.js";
 import { openingLines } from "../accounting/books.js";
@@ -36,16 +36,21 @@ function identityOf(db: DB, l: { source: string; ref: string; gl_account: string
 const shape = (lines: { account: string; debit: number; credit: number; currency: string }[]) =>
   JSON.stringify(lines.map((l) => [l.account, l.debit, l.credit, l.currency]).sort());
 
-interface Active { entry_id: number; base: string; version: number; shape: string }
+/** A posting's lines with what the Coder's coding adds to them: the cost centre, the VAT code and its VAT. */
+const detail = (lines: { account: string; debit: number; credit: number; currency: string; cost_centre?: string | null | undefined; vat_code?: string | null | undefined; vat_cents?: number | null | undefined }[]) =>
+  JSON.stringify(lines.map((l) => [l.account, l.debit, l.credit, l.currency, l.cost_centre ?? null, l.vat_code ?? null, l.vat_code ? l.vat_cents ?? 0 : null]).sort());
+
+interface Active { entry_id: number; base: string; version: number; shape: string; detail: string }
 
 /** The feed's postings still standing: posted by the feed, not a reversal, and not reversed since. */
 function activeFeed(db: DB): Active[] {
   const rows = db.prepare(`SELECT e.entry_id, e.source_key FROM ledger_entries e WHERE e.created_by = ? AND e.reverses IS NULL AND e.source_key IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM ledger_entries r WHERE r.reverses = e.entry_id) ORDER BY e.entry_id`).all(FEED_ACTOR) as { entry_id: number; source_key: string }[];
-  const lines = db.prepare("SELECT account, debit_cents AS debit, credit_cents AS credit, currency FROM ledger_lines WHERE entry_id = ?");
+  const lines = db.prepare("SELECT account, debit_cents AS debit, credit_cents AS credit, currency, cost_centre, vat_code, vat_cents FROM ledger_lines WHERE entry_id = ?");
   return rows.map((r) => {
     const m = VERSION.exec(r.source_key);
-    return { entry_id: r.entry_id, base: m ? r.source_key.slice(0, m.index) : r.source_key, version: m ? Number(m[1]) : 1, shape: shape(lines.all(r.entry_id) as { account: string; debit: number; credit: number; currency: string }[]) };
+    const posted = lines.all(r.entry_id) as { account: string; debit: number; credit: number; currency: string; cost_centre: string | null; vat_code: string | null; vat_cents: number | null }[];
+    return { entry_id: r.entry_id, base: m ? r.source_key.slice(0, m.index) : r.source_key, version: m ? Number(m[1]) : 1, shape: shape(posted), detail: detail(posted) };
   });
 }
 
@@ -62,17 +67,10 @@ function lastVersion(db: DB, base: string): number {
  */
 const hasAp = (db: DB) => !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'ap_invoices'").get();
 
-/** The Dutch purchase VAT code an invoice's own tax amounts to (21% or 9% of its net, within a cent), or null. */
-function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | null {
-  if (Math.abs(Math.round((netCents * 21) / 100) - vatCents) <= 1) return "P21";
-  if (Math.abs(Math.round((netCents * 9) / 100) - vatCents) <= 1) return "P9";
-  return null;
-}
-
 export function syncLedger(db: DB, now = new Date()): { posted: number; already: number; reversed: number } {
   const moved = journal(db);
   const lines = [...openingLines(db, moved), ...moved];
-  const want = new Map<string, { date: string; description: string; doc_ref: string; pair: LineInput[] }>();
+  const want = new Map<string, { date: string; description: string; doc_ref: string; pair: LineInput[]; coded?: boolean }>();
   const seen = new Map<string, number>();
   const invoiceOf = db.prepare("SELECT invoice_no FROM transfers WHERE request_id = ?");
   for (const l of lines) {
@@ -90,22 +88,26 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
   // The payables inbox's invoices the books hold, on receipt: the expense (with its Dutch VAT code when the invoice's
   // tax is 21% or 9% of its net, so it counts in 5b) and input VAT against what is owed (2100), the same entries as the
   // inbox's CSV sink (src/ap/books.ts accrualEntries). One posting per invoice; one that leaves the books (rejected) is
-  // reversed like any other source that is gone.
+  // reversed like any other source that is gone. An invoice the Coder coded (src/ap/coderAgent.ts) posts its entries line
+  // for line: each net line with its own cost centre, VAT code and VAT (for a reverse-charge code the VAT the company
+  // owes itself, so the VAT overview counts it in its rubric and in 5b); a line without a VAT code carries none.
   for (const inv of hasAp(db) ? apInvoices(db).filter((i) => i.doc_kind !== "credit_note" && bookable(i)) : []) {
     const key = ledgerInvoiceNo(inv.invoice_no, inv.vendor);
     const es = accrualEntries(inv);
+    const coded = codedAccrual(inv);
     const vat = es.find((e) => e.account === "1510");
     const net = es[0]!;
-    const code = vat ? dutchVat(toCents(net.debit), toCents(vat.debit)) : null;
+    const code = vat && !coded ? dutchVat(toCents(net.debit), toCents(vat.debit)) : null;
     const pair: LineInput[] = es.map((e) => {
       const debit = e.debit ? toCents(e.debit) : 0;
       const credit = e.credit ? toCents(e.credit) : 0;
       const base: LineInput = { account: e.account, currency: e.currency, ...(debit ? { debit } : { credit }), party: inv.vendor, memo: e.memo };
-      if (e === net) return { ...base, ...(inv.cost_centre ? { cost_centre: inv.cost_centre } : {}), ...(code ? { vat_code: code, vat_cents: toCents(vat!.debit) } : {}) };
+      if (coded && e.account !== "2100") return { ...base, ...(e.cost_centre ? { cost_centre: e.cost_centre } : {}), ...(e.vat_code ? { vat_code: e.vat_code, vat_cents: e.vat_cents ?? 0 } : {}) };
+      if (!coded && e === net) return { ...base, ...(inv.cost_centre ? { cost_centre: inv.cost_centre } : {}), ...(code ? { vat_code: code, vat_cents: toCents(vat!.debit) } : {}) };
       if (e.account === "2100") return { ...base, doc_ref: key, ...(inv.due_date ? { due_date: inv.due_date } : {}) };
       return base;
     });
-    want.set(`ap-accrual|${inv.id}`, { date: net.date, description: `${inv.vendor} invoice ${inv.invoice_no} (received)`, doc_ref: key, pair });
+    want.set(`ap-accrual|${inv.id}`, { date: net.date, description: `${inv.vendor} invoice ${inv.invoice_no} (received)`, doc_ref: key, pair, ...(coded ? { coded } : {}) });
   }
 
   const standing = new Map<string, Active>();
@@ -118,10 +120,13 @@ export function syncLedger(db: DB, now = new Date()): { posted: number; already:
   let posted = 0;
   let already = 0;
   let reversed = 0;
-  for (const [key, { date, description, doc_ref, pair }] of want) {
+  for (const [key, { date, description, doc_ref, pair, coded }] of want) {
     const a = standing.get(key);
     standing.delete(key);
-    if (a && a.shape === shape(pair.map((p) => ({ account: p.account, debit: p.debit ?? 0, credit: p.credit ?? 0, currency: p.currency })))) { already += 1; continue; }
+    const lines = pair.map((p) => ({ ...p, debit: p.debit ?? 0, credit: p.credit ?? 0 }));
+    // A coded accrual is also the same only when its cost centres and VAT codes are: one posted before the coding was
+    // stored is reversed and posted again with them.
+    if (a && a.shape === shape(lines) && (!coded || a.detail === detail(lines))) { already += 1; continue; }
     if (a) { reverseEntry(db, a.entry_id, "its source changed", FEED_ACTOR, now); reversed += 1; }
     const v = lastVersion(db, key) + 1;
     const r = postEntry(db, { date, description, created_by: FEED_ACTOR, source_key: v === 1 ? key : `${key}@v${v}`, doc_ref, lines: pair }, now);

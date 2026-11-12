@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 ## Description
 
-Characters: **3,970** (the text between the markers, as pasted; 3,996 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,826** (the text between the markers, as pasted; 3,852 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -47,6 +47,13 @@ README, on /airwallex and in the long text). The text stays under 4,000 characte
 On 10 November that paragraph became one line: the two-locks run (Airwallex's approval workflow held a
 passkey-signed payout `IN_APPROVAL`; nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md))
 and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-kit.md); the console is not public).
+On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated, so the
+line now says so in the same number of characters ([record](../runs/2026-11-12-airwallex-two-locks-paid.md)).
+The same day the owner decided that no quotes appear anywhere, so the CFO's quote left the business paragraph (the
+text went from 3,971 to 3,826 characters).
+On 12 November the owner decided to merge the product's code into `main` now ([decisions.md](../decisions.md), D29), so
+the line's last sentence, "Payables inbox: not public.", became "Payables: in repo, not live.": the code is in this
+repository, the hosted preview stays private, and nothing is said to be live.
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.
@@ -69,9 +76,9 @@ and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-ki
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
 - Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
 
-**After the kit.** Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables inbox: not public.
+**After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Payables: in repo, not live.
 
-**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+**The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis.
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 

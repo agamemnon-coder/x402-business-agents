@@ -1,5 +1,9 @@
 # Purser's own bookkeeping: the ledger core (design)
 
+> **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
+> "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
+> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+
 Max, 8 November 2026: no outside bookkeeping package; Purser keeps the books itself. This is phase 2, part A. The
 payables inbox (phase 1, `src/ap/`) posts into this ledger once both are merged. Built on a branch; nothing is
 deployed until after 15 November.

@@ -2,8 +2,10 @@
 // payables agents' section from docs/evals/ap-agents.json): every number in it comes from a record. `npm run
 // agent-evals` writes it after a live run, and `npm run agent-evals -- --render` writes it again from the records
 // without calling Claude. The payables section sits between two markers and is kept when the rest is written again.
+// The Coder section (npm run coder-evals, rendered from docs/evals/coder.json) stays last.
 
 import { AGENT_CASES } from "./agentEvals.js";
+import { CODER_SECTION_MARK, withCoderSection, type CoderEvalRecord } from "./coderReport.js";
 
 export interface AgentEvalDocRow {
   case: string;
@@ -72,10 +74,20 @@ export function apSectionOf(md: string): string {
   return a >= 0 && b > a ? md.slice(a, b + AP_SECTION_END.length) : "";
 }
 
-/** The doc with its payables section replaced by `section` (markers included), or with `section` added at the end. */
+/**
+ * The doc with its payables section replaced by `section` (markers included), or with `section` added at the end; when
+ * the doc has a Coder section, before it, since that one is always last.
+ */
 export function withApSection(md: string, section: string): string {
   const old = apSectionOf(md);
   if (!section) return md;
   if (old) return md.replace(old, section);
+  const coder = md.indexOf(CODER_SECTION_MARK);
+  if (coder >= 0) return `${md.slice(0, coder).replace(/\n*$/, "\n")}\n${section}\n\n${md.slice(coder)}`;
   return `${md.replace(/\n*$/, "\n")}\n${section}\n`;
+}
+
+/** The whole doc: the three agents' table from their record, then the payables section as given, then the Coder section. */
+export function agentEvalsDoc(record: AgentEvalsRecord, apSection: string, coder: CoderEvalRecord | null): string {
+  return withCoderSection(withApSection(agentEvalsMarkdown(record), apSection), coder);
 }

@@ -1,0 +1,750 @@
+{
+ "_what": "What Moneybird's API answered to step 2 of the sandbox run of 12 November 2026 (docs/runs/2026-11-12-moneybird-sandbox.md): the sync, the correction and the read-back. Administration 503585935808530148, a sandbox administration with test data only.",
+ "_kept": "Per request: its time, method, path, status and the fields of the answer that Purser reads, as Moneybird wrote them. The rest of each answer is left out: a contact's answer holds a customer-portal link and several answers hold the user id of the token's owner. No request header or body is here.",
+ "answers": [
+  {
+   "at": "2026-11-12T11:58:59.951Z",
+   "method": "POST",
+   "path": "503585935808530148/contacts.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "149",
+   "answer": {
+    "id": "503594057045378916",
+    "company_name": "Zeeland Verpakkingen B.V. (test)",
+    "customer_id": "PURSER-ben_1",
+    "email": "",
+    "send_invoices_to_email": "",
+    "delivery_method": "Email",
+    "bank_account": "",
+    "tax_number": ""
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:00.315Z",
+   "method": "POST",
+   "path": "503585935808530148/contacts.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "148",
+   "answer": {
+    "id": "503594057381971864",
+    "company_name": "Meelhandel Molenaar B.V. (test)",
+    "customer_id": "PURSER-ben_2",
+    "email": "",
+    "send_invoices_to_email": "",
+    "delivery_method": "Email",
+    "bank_account": "",
+    "tax_number": ""
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:00.606Z",
+   "method": "POST",
+   "path": "503585935808530148/contacts.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "147",
+   "answer": {
+    "id": "503594057744779194",
+    "company_name": "Verpakking Express B.V. (test)",
+    "customer_id": "PURSER-ben_3",
+    "email": "",
+    "send_invoices_to_email": "",
+    "delivery_method": "Email",
+    "bank_account": "",
+    "tax_number": ""
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:00.855Z",
+   "method": "POST",
+   "path": "503585935808530148/contacts.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "146",
+   "answer": {
+    "id": "503594058012166094",
+    "company_name": "Onderdelen Direct B.V. (test)",
+    "customer_id": "PURSER-ben_4",
+    "email": "",
+    "send_invoices_to_email": "",
+    "delivery_method": "Email",
+    "bank_account": "",
+    "tax_number": ""
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:01.079Z",
+   "method": "GET",
+   "path": "503585935808530148/tax_rates.json?per_page=100&page=1",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "145",
+   "same_as_step_1": true,
+   "rows": 5
+  },
+  {
+   "at": "2026-11-12T11:59:01.344Z",
+   "method": "GET",
+   "path": "503585935808530148/ledger_accounts.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "144",
+   "same_as_step_1": true,
+   "rows": 27
+  },
+  {
+   "at": "2026-11-12T11:59:01.708Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "143",
+   "answer": {
+    "id": "503594058847880244",
+    "contact_id": "503594057381971864",
+    "reference": "MM-2026-114",
+    "date": "2026-11-04",
+    "due_date": "2026-11-18",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "3.0",
+    "total_price_incl_tax": "3.27",
+    "details": [
+     {
+      "id": "503594058854171701",
+      "description": "Invoice MM-2026-114, Meelhandel Molenaar B.V. (test)",
+      "price": "3.0",
+      "amount": "1",
+      "tax_rate_id": "503585937204184080",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "3.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:02.629Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594058847880244/attachments.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "142",
+   "answer": "200"
+  },
+  {
+   "at": "2026-11-12T11:59:25.223Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices.json?filter=contact_id%3A503594058012166094&per_page=100&page=1",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "149",
+   "answer": []
+  },
+  {
+   "at": "2026-11-12T11:59:25.470Z",
+   "method": "GET",
+   "path": "503585935808530148/tax_rates.json?per_page=100&page=1",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "148",
+   "same_as_step_1": true,
+   "rows": 5
+  },
+  {
+   "at": "2026-11-12T11:59:25.700Z",
+   "method": "GET",
+   "path": "503585935808530148/ledger_accounts.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "147",
+   "same_as_step_1": true,
+   "rows": 27
+  },
+  {
+   "at": "2026-11-12T11:59:27.112Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "146",
+   "answer": {
+    "id": "503594084810622802",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "5.0",
+    "total_price_incl_tax": "6.05",
+    "details": [
+     {
+      "id": "503594084821108563",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:27.904Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594084810622802/attachments.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "145",
+   "answer": "200"
+  },
+  {
+   "at": "2026-11-12T11:59:28.263Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "144",
+   "answer": {
+    "id": "503594086720079846",
+    "contact_id": "503594057744779194",
+    "reference": "VE-889",
+    "date": "2026-11-06",
+    "due_date": "2026-11-20",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "2.0",
+    "total_price_incl_tax": "2.42",
+    "details": [
+     {
+      "id": "503594086724274151",
+      "description": "Invoice VE-889, Verpakking Express B.V. (test)",
+      "price": "2.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "2.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:29.069Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594086720079846/attachments.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "143",
+   "answer": "200"
+  },
+  {
+   "at": "2026-11-12T11:59:29.397Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "142",
+   "answer": {
+    "id": "503594087902872689",
+    "contact_id": "503594057045378916",
+    "reference": "ZV-5001",
+    "date": "2026-11-05",
+    "due_date": "2026-11-19",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "4.0",
+    "total_price_incl_tax": "4.84",
+    "details": [
+     {
+      "id": "503594087904969843",
+      "description": "Invoice ZV-5001, Zeeland Verpakkingen B.V. (test)",
+      "price": "4.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "4.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:30.103Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594087902872689/attachments.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "141",
+   "answer": "200"
+  },
+  {
+   "at": "2026-11-12T11:59:30.446Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594086720079846/payments.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "140",
+   "answer": {
+    "id": "503594088956691668",
+    "invoice_type": "Document",
+    "invoice_id": "503594086720079846",
+    "financial_account_id": null,
+    "transaction_identifier": "tr_5",
+    "price": "2.42",
+    "price_base": "2.42",
+    "payment_date": "2026-11-12",
+    "financial_mutation_id": null,
+    "ledger_account_id": "503585936023488298",
+    "manual_payment_action": null
+   }
+  },
+  {
+   "at": "2026-11-12T11:59:30.758Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/general_journal_documents.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "139",
+   "answer": {
+    "id": "503594089333130481",
+    "reference": "Purser card:tx_3",
+    "date": "2026-11-12",
+    "journal_type": null,
+    "general_journal_document_entries": [
+     {
+      "id": "503594089336276210",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "contact_id": null,
+      "debit": "19.99",
+      "credit": "0.0",
+      "description": "Packwise: Starter plan, monthly"
+     },
+     {
+      "id": "503594089339421939",
+      "ledger_account_id": "503585935945893653",
+      "project_id": null,
+      "contact_id": null,
+      "debit": "0.0",
+      "credit": "19.99",
+      "description": "Packwise: Starter plan, monthly"
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:04.879Z",
+   "method": "GET",
+   "path": "503585935808530148/tax_rates.json?per_page=100&page=1",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "149",
+   "same_as_step_1": true,
+   "rows": 5
+  },
+  {
+   "at": "2026-11-12T12:00:05.185Z",
+   "method": "GET",
+   "path": "503585935808530148/ledger_accounts.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "148",
+   "same_as_step_1": true,
+   "rows": 27
+  },
+  {
+   "at": "2026-11-12T12:00:06.383Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "147",
+   "answer": {
+    "id": "503594126226229000",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77 (credit note)",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "-5.0",
+    "total_price_incl_tax": "-6.05",
+    "details": [
+     {
+      "id": "503594126247200524",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "-5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "-5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:06.748Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices.json",
+   "status": 201,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "146",
+   "answer": {
+    "id": "503594127086061457",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "5.0",
+    "total_price_incl_tax": "6.05",
+    "details": [
+     {
+      "id": "503594127089207187",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935952185120",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:07.508Z",
+   "method": "POST",
+   "path": "503585935808530148/documents/purchase_invoices/503594127086061457/attachments.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "145",
+   "answer": "200"
+  },
+  {
+   "at": "2026-11-12T12:00:19.176Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594058847880244.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "144",
+   "answer": {
+    "id": "503594058847880244",
+    "contact_id": "503594057381971864",
+    "reference": "MM-2026-114",
+    "date": "2026-11-04",
+    "due_date": "2026-11-18",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "3.0",
+    "total_price_incl_tax": "3.27",
+    "details": [
+     {
+      "id": "503594058854171701",
+      "description": "Invoice MM-2026-114, Meelhandel Molenaar B.V. (test)",
+      "price": "3.0",
+      "amount": "1",
+      "tax_rate_id": "503585937204184080",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "3.0"
+     }
+    ],
+    "payments": [],
+    "attachments": [
+     {
+      "id": "503594059333370982",
+      "attachable_id": "503594058847880244",
+      "attachable_type": "Document",
+      "filename": "MM-2026-114.pdf",
+      "content_type": "application/pdf",
+      "size": 1665
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:19.410Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594127086061457.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "143",
+   "answer": {
+    "id": "503594127086061457",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "5.0",
+    "total_price_incl_tax": "6.05",
+    "details": [
+     {
+      "id": "503594127089207187",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935952185120",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": [
+     {
+      "id": "503594127532754898",
+      "attachable_id": "503594127086061457",
+      "attachable_type": "Document",
+      "filename": "OD-77.pdf",
+      "content_type": "application/pdf",
+      "size": 1657
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:19.645Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594084810622802.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "142",
+   "answer": {
+    "id": "503594084810622802",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "5.0",
+    "total_price_incl_tax": "6.05",
+    "details": [
+     {
+      "id": "503594084821108563",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": [
+     {
+      "id": "503594086025922474",
+      "attachable_id": "503594084810622802",
+      "attachable_type": "Document",
+      "filename": "OD-77.pdf",
+      "content_type": "application/pdf",
+      "size": 1657
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:20.846Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594126226229000.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "141",
+   "answer": {
+    "id": "503594126226229000",
+    "contact_id": "503594058012166094",
+    "reference": "OD-77 (credit note)",
+    "date": "2026-11-07",
+    "due_date": "2026-11-21",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "-5.0",
+    "total_price_incl_tax": "-6.05",
+    "details": [
+     {
+      "id": "503594126247200524",
+      "description": "Invoice OD-77, Onderdelen Direct B.V. (test)",
+      "price": "-5.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "-5.0"
+     }
+    ],
+    "payments": [],
+    "attachments": []
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:21.423Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594086720079846.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "140",
+   "answer": {
+    "id": "503594086720079846",
+    "contact_id": "503594057744779194",
+    "reference": "VE-889",
+    "date": "2026-11-06",
+    "due_date": "2026-11-20",
+    "currency": "EUR",
+    "state": "paid",
+    "paid_at": "2026-11-12",
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "2.0",
+    "total_price_incl_tax": "2.42",
+    "details": [
+     {
+      "id": "503594086724274151",
+      "description": "Invoice VE-889, Verpakking Express B.V. (test)",
+      "price": "2.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "2.0"
+     }
+    ],
+    "payments": [
+     {
+      "id": "503594088956691668",
+      "invoice_type": "Document",
+      "invoice_id": "503594086720079846",
+      "financial_account_id": null,
+      "transaction_identifier": "tr_5",
+      "price": "2.42",
+      "price_base": "2.42",
+      "payment_date": "2026-11-12",
+      "financial_mutation_id": null,
+      "ledger_account_id": "503585936023488298",
+      "manual_payment_action": null
+     }
+    ],
+    "attachments": [
+     {
+      "id": "503594087161529377",
+      "attachable_id": "503594086720079846",
+      "attachable_type": "Document",
+      "filename": "VE-889.pdf",
+      "content_type": "application/pdf",
+      "size": 1660
+     }
+    ]
+   }
+  },
+  {
+   "at": "2026-11-12T12:00:22.259Z",
+   "method": "GET",
+   "path": "503585935808530148/documents/purchase_invoices/503594087902872689.json",
+   "status": 200,
+   "ratelimit_limit": "150",
+   "ratelimit_requests_remaining": "139",
+   "answer": {
+    "id": "503594087902872689",
+    "contact_id": "503594057045378916",
+    "reference": "ZV-5001",
+    "date": "2026-11-05",
+    "due_date": "2026-11-19",
+    "currency": "EUR",
+    "state": "open",
+    "paid_at": null,
+    "prices_are_incl_tax": false,
+    "revenue_invoice": false,
+    "origin": "api",
+    "total_price_excl_tax": "4.0",
+    "total_price_incl_tax": "4.84",
+    "details": [
+     {
+      "id": "503594087904969843",
+      "description": "Invoice ZV-5001, Zeeland Verpakkingen B.V. (test)",
+      "price": "4.0",
+      "amount": "1",
+      "tax_rate_id": "503585937199989775",
+      "ledger_account_id": "503585935947990807",
+      "project_id": null,
+      "total_price_excl_tax_with_discount": "4.0"
+     }
+    ],
+    "payments": [],
+    "attachments": [
+     {
+      "id": "503594088325448875",
+      "attachable_id": "503594087902872689",
+      "attachable_type": "Document",
+      "filename": "ZV-5001.pdf",
+      "content_type": "application/pdf",
+      "size": 1668
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -5,7 +5,7 @@
 // tool call it can on every turn through the runner's own agent loop, and the verdict is read back from each world's
 // audit ledger. Breaks if any case ends unsafe, if the case set loses a kind, a language or a currency, if a label
 // disagrees with what code requires, or if the committed hostile record (shown on /claude) no longer matches a fresh run.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECKER_MODEL, codeFindings, codeRequires, enforce, fallbackDecision, type CheckerDecision } from "../src/ap/checkerCore.js";
 import { enforceProposal, fallbackProposal, PAY_RAILS, PAYER_MODEL } from "../src/ap/payerCore.js";
@@ -13,7 +13,8 @@ import { AP_AGENT_CASES, AP_BOUNDARY_CASES, AP_CASE_KINDS, AP_PAYER_CASES, BELOW
 import { apSection, buildRecord, chooseDefault, hostileLine, latencyPercentile, summarise, withinBudget, type ApEvalRecord, type EvalRow } from "../src/evals/apAgentEvals.js";
 import { CHECKER_RUNNER_MODEL } from "../src/ap/checkerAgent.js";
 import { PAYER_RUNNER_MODEL } from "../src/ap/payerAgent.js";
-import { AP_SECTION_END, AP_SECTION_START, agentEvalsMarkdown, apSectionOf, withApSection, type AgentEvalsRecord } from "../src/evals/agentEvalsDoc.js";
+import { AP_SECTION_END, AP_SECTION_START, agentEvalsDoc, apSectionOf, withApSection, type AgentEvalsRecord } from "../src/evals/agentEvalsDoc.js";
+import { CODER_SECTION_MARK, type CoderEvalRecord } from "../src/evals/coderReport.js";
 import { hostileEval, HOSTILE_RECORD } from "../src/evals/apHostile.js";
 import { claudePage } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
@@ -186,7 +187,20 @@ describe("docs/agent-evals.md is written from the eval records alone", () => {
     if (record.rows.some((r) => r.commit_source)) expect(record.commit_backfill).toMatchObject({ agreed: record.commit_backfill!.checked_on_recorded_rows });
     const md = read("docs/agent-evals.md");
     expect(md).not.toContain("not recorded");
-    expect(md).toBe(withApSection(agentEvalsMarkdown(record), apSectionOf(md)));
+    // The Coder evals' section (npm run coder-evals) stays last, rendered from its own record.
+    const coder = existsSync(new URL("../docs/evals/coder.json", import.meta.url)) ? JSON.parse(read("docs/evals/coder.json")) as CoderEvalRecord : null;
+    expect(md).toBe(agentEvalsDoc(record, apSectionOf(md), coder));
+  });
+  it("puts a new payables section before the Coder section, so writing either section keeps the other", () => {
+    const top = "# Agent evals\n\nrows\n";
+    const coder = `${CODER_SECTION_MARK}\n## The Coder agent\n`;
+    const ap = `${AP_SECTION_START}\n## Payables\n${AP_SECTION_END}`;
+    const md = withApSection(`${top}\n${coder}`, ap);
+    expect(md.indexOf(ap)).toBeGreaterThan(md.indexOf("rows"));
+    expect(md.indexOf(ap)).toBeLessThan(md.indexOf(CODER_SECTION_MARK));
+    expect(md.endsWith(coder)).toBe(true);
+    expect(withApSection(md, ap)).toBe(md);
+    expect(withApSection(top, ap)).toBe(`${top}\n${ap}\n`);
   });
 });
 

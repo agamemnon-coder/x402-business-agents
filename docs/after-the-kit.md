@@ -4,19 +4,28 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 and the CFO signs the exact terms with Face ID. The payables inbox is built to do the same for every supplier invoice of
 a small company: the same control, the CFO's Face ID over the exact terms, applied to accounts payable.
 
-Why small companies: a CFO we spoke to put it this way (2 finance conversations so far; more in progress):
+Why small companies is a hypothesis, not validated with customers yet: 2 finance conversations so far (a CFO and a
+finance professional at a bank, both anonymous); more in progress.
 
-> "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
+Where it stands: work in progress, built and tested against **stand-ins** for Airwallex and Claude and on Cloudflare's
+local database. Its connected-account payout path ran once in Airwallex's sandbox on 10 November, and later that day
+the inbox ran end to end for three test companies: 1 payout PAID, 3 refused by Airwallex (below;
+[run record](runs/2026-11-10-platform-e2e.md)). A hosted preview exists but is **private** (behind an access key); no
+customer uses it, and it is **not ready for real money** ([what is missing](go-live.md)). None of it is part of the
+Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox
+pays suppliers through Airwallex payouts.
 
-And a finance professional at a large Dutch bank, on how invoices are handled there:
+Where the code is: in this repository. The owner decided on 12 November to merge it now, so the jury can read it
+([decisions.md](decisions.md), D29).
 
-> "At the front it's automated, at the back it's a human check." — finance professional at a large Dutch bank (anonymous)
-
-Where it stands: work in progress on a separate branch, built and tested against **stand-ins** for Airwallex and Claude
-and on Cloudflare's local database. It is **not public** (a private preview only, behind an access key) and no customer uses it. Its connected-account payout path ran once in Airwallex's
-sandbox on 10 November, and later that day the inbox ran end to end for three test companies: 1 payout PAID, 3 refused
-by Airwallex (below). None of it is part of the Kit 11 runs described in the README. The Kit 11 build keeps Metal and x402 for
-the agents' own payments; the inbox pays suppliers through Airwallex payouts.
+| Part | Code | Its page |
+|---|---|---|
+| The inbox: reading, checks, paying | `src/ap` | [payables.md](payables.md) |
+| The books | `src/ledger` | [ledger.md](ledger.md) |
+| The documents | `src/vault` | [vault.md](vault.md) |
+| The accounting links | `src/erp` | [erp.md](erp.md) |
+| Payments in other currencies | `src/payouts` | [payables.md](payables.md#paying-suppliers-abroad) |
+| Purser Cloud: the console and its API | `cloud/` | [cloud.md](cloud.md) |
 
 ## What exists
 
@@ -27,8 +36,8 @@ the agents' own payments; the inbox pays suppliers through Airwallex payouts.
 | One Face ID for a batch | The CFO signs one list of exact payment terms. One changed line refuses the whole batch; each payment then runs and is checked on its own, so a failed line never pays another twice. | Built, tested against a stand-in Airwallex |
 | Payments in any currency | Through Airwallex payouts, with FX only for the shortfall and fees booked. | Built, tested against a stand-in Airwallex |
 | Bookkeeping | Hash-chained ledger, period closing, Dutch VAT overview, a register of every money movement with its approval, booking and proof. | Built, tested |
-| Cloud console | Passkey sign-in (no passwords), onboarding, invoices, transactions, books, people and API keys, GDPR export. It never pays: payments are approved on the phone. Dutch and English. | Built, tested locally on Cloudflare's local D1; a private preview, not public |
-| Security | Five red-team rounds on the payables and cloud code; every confirmed finding fixed and covered by a test. | Ongoing |
+| Cloud console | Passkey sign-in (no passwords), onboarding, invoices, transactions, books, people and API keys, GDPR export. It never pays: payments are approved on the phone. Dutch and English. | Built, tested locally on Cloudflare's local D1; the hosted preview is private (behind an access key) |
+| Security | Six red-team rounds on the payables and cloud code. Every confirmed finding is fixed and covered by a test, except one point from round 6 that is still open: in this build the runner still holds the platform key ([go-live.md](go-live.md), "Platform on-behalf-of through a Purser-held service"). | Ongoing |
 
 ## Airwallex connected accounts: run in the sandbox on 10 November
 

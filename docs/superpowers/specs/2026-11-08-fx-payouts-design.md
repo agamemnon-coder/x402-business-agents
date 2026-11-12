@@ -1,5 +1,9 @@
 # Payables: suppliers in any country, paid in their own currency (design)
 
+> **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
+> "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
+> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+
 Max, 8 November 2026: the first customers are Dutch SMEs (e-commerce, wholesale) that buy from suppliers in China,
 Turkey, the US and the UK. The inbox (#107) pays EUR only, and a new supplier can only have a German IBAN, because the
 Airwallex beneficiary code was written for the Kit 11 manufacturer. This change pays a supplier in the invoice's own
