@@ -23,8 +23,9 @@ describe("what Purser Cloud does with money", () => {
 });
 
 describe("the hands-on link", () => {
+  // The README's first lines are pinned by their own tests: its line is added when the link goes live (after G5).
   it("says coming, and names no address, until it is switched live", () => {
-    for (const f of ["README.md", "llms.txt"]) {
+    for (const f of ["llms.txt"]) {
       const line = readFileSync(f, "utf8").split("\n").find((l) => l.includes("Hands-on on Purser's real engine"));
       expect(line, f).toBeDefined();
       if (!HANDS_ON_LIVE) {

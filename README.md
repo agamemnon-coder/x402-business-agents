@@ -10,8 +10,6 @@ For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice ov
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 3939 passing](https://img.shields.io/badge/tests-3939%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: /try/sign](https://img.shields.io/badge/live%20demo-%2Ftry%2Fsign-7c6cff)](https://kit11.max-31b.workers.dev/try/sign) ![Metal testnet · Airwallex sandbox](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox-test%20money%20only-555)
 
-<!-- hands-on -->Hands-on on Purser's real engine, a test company of your own on test money: coming.<!-- /hands-on -->
-
 **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)**
 
 The Kit 11 scenario, run live on 3 November, and a demo you sign yourself: **[kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)**.
