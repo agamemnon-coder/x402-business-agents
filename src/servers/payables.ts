@@ -26,6 +26,10 @@ import { filterRows, registerCsv, transactionRegister, type RegisterFilter } fro
 import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
 import { transactionsPage } from "./transactionsPage.js";
 import { isLang, pickLang, type Lang } from "../ui/i18n.js";
+import { COMPANY } from "../config/brand.js";
+import { accountantCsv, accountantExport, accountantJson } from "../ledger/accountantExport.js";
+import { monthPack } from "../ledger/pack.js";
+import { monthPackPdf } from "../vault/pdf.js";
 
 export interface PayablesOptions {
   inbox: InboxDeps;
@@ -227,6 +231,31 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
     try { const r = filtered(req); res.setHeader("Content-Disposition", 'attachment; filename="transactions.json"'); res.json(r); } catch (e) { res.status(400).json({ error: (e as Error).message }); }
   });
   app.get("/api/payables/export/journal.csv", (_req, res) => { res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="payables-journal.csv"'); res.send(journalCsv(apJournal(db))); });
+  // A month's pack and the accountant's export of its journal (closing a month; src/ledger/pack.ts), read-only.
+  const monthOf = (req: Request): string => {
+    const m = String(req.params.month ?? "");
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(m)) throw new Error("write the month as 2026-11");
+    return m;
+  };
+  app.get("/api/payables/reports/:month/pack.pdf", async (req, res) => {
+    let m: string;
+    try { m = monthOf(req); } catch (e) { res.status(400).json({ error: (e as Error).message }); return; }
+    const pdf = await monthPackPdf(process.env.KIT11_COMPANY ?? COMPANY, monthPack(db, m), langOf(req, res));
+    res.type("application/pdf").setHeader("Content-Disposition", `attachment; filename="month-pack-${m}.pdf"`);
+    res.send(pdf);
+  });
+  app.get("/api/payables/reports/:month/journal.csv", (req, res) => {
+    let m: string;
+    try { m = monthOf(req); } catch (e) { res.status(400).json({ error: (e as Error).message }); return; }
+    res.type("text/csv").setHeader("Content-Disposition", `attachment; filename="journal-${m}.csv"`);
+    res.send(accountantCsv(accountantExport(db, m)));
+  });
+  app.get("/api/payables/reports/:month/journal.json", (req, res) => {
+    let m: string;
+    try { m = monthOf(req); } catch (e) { res.status(400).json({ error: (e as Error).message }); return; }
+    res.type("application/json").setHeader("Content-Disposition", `attachment; filename="journal-${m}.json"`);
+    res.send(accountantJson(accountantExport(db, m), (opts.inbox.now ?? (() => new Date()))()));
+  });
   app.get("/api/payables/export/invoices.csv", (_req, res) => { res.type("text/csv").setHeader("Content-Disposition", 'attachment; filename="payables-invoices.csv"'); res.send(invoicesCsv(apInvoices(db))); });
 
   app.post("/api/payables/documents", express.raw({ type: () => true, limit: "16mb" }), async (req: Request, res: Response) => {
