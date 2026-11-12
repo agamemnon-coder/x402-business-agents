@@ -86,3 +86,6 @@ a78858859d27df0fdfdc11020a34ded76175d8f7:src/cli/twoLocks.ts:generic-api-key:85
 # dummy admin-token hash next to the literal "not-a-real-secret"); the whole-history scan reads every remote branch.
 9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/fixtures/passkey.json:generic-api-key:45
 9047e7dd3d417d2be9f2618ef0b565888711e2e7:spike/do-runtime/run.mjs:generic-api-key:33
+# 12 Nov: the sample receipt for the home page widget on branch home-story-1112: public WebAuthn authenticatorData of a
+# labelled test key, not a secret (the whole-history scan reads every remote branch).
+a97ac3b46eb9484771bc153d2ace5f2e1425758e:docs/demo/hero-receipt.json:generic-api-key:56
