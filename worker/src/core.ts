@@ -39,6 +39,10 @@ export interface Pages {
   visa: string;
   /** /llms.txt: the submission in plain text for tools that read it (the repository's llms.txt); absent in older bundles. */
   llms?: string;
+  /** /proof.json: the runs, guarantees and agents' limits as data (src/redesign/agentData.ts); absent in older bundles. */
+  proofJson?: string;
+  /** /receipt-sample.json: one signed receipt, byte for byte, to verify offline; absent in older bundles. */
+  receiptSample?: string;
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
@@ -173,6 +177,8 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/enrol") return page(pages.enrol, pages.csp.enrol);
   if (path === "/policy") return page(pages.policy, pages.csp.policy);
   if (path === "/llms.txt" && pages.llms) return new Response(pages.llms, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
+  if (path === "/proof.json" && pages.proofJson) return new Response(pages.proofJson, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+  if (path === "/receipt-sample.json" && pages.receiptSample) return new Response(pages.receiptSample, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/inter.woff2") {
     return new Response(Uint8Array.from(atob(pages.font), (c) => c.charCodeAt(0)), {
