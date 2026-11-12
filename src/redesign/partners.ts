@@ -40,7 +40,7 @@ import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, hold
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
 import { BOOKS_CSS, CODER_EVAL, MONEYBIRD_RECORD, STATEMENT_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
-import { OPEN_TARGET_JS, esc, icon, page, TRY_URL } from "./ui.js";
+import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
@@ -242,7 +242,7 @@ const TAP_WORDS = /\bTAP\b|Trusted Agent Protocol/;
  */
 export function assertVicFirst(html: string): void {
   const fail = (why: string): never => { throw new Error(`/visa must be one Visa Intelligent Commerce story, with TAP in one closed fold at the end: ${why}`); };
-  if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(VISA_TITLE)) fail("the title does not name Visa Intelligent Commerce via Airi");
+  if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(pageTitle(VISA_TITLE))) fail("the title does not name Visa Intelligent Commerce via Airi");
   const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? fail("no <main>");
   if (/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/.exec(main)?.[0] !== `<h1>${esc(VISA_H1)}</h1>`) fail("the page's first heading is not the VIC heading");
   const tapOpen = `<details class="fold" id="${VISA_TAP_ID}">`;
@@ -338,6 +338,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
   const html = page({
+    // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
+    builtOn: builtOnHtml(run, false),
     title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }`, body, js: COUNT_JS, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
@@ -415,10 +417,13 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
     { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests` },
   ];
 }
-export const ICC_LINE = "ICC: access requested, not used in this entry";
-export function builtOnHtml(run: AgentRun = agentRun()): string {
-  return `<p class="builton"><b>Built on</b> ${builtOnItems(run).map((i) => `<a class="flink" href="${esc(i.href)}"${/^https?:/.test(i.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(`${i.name}: ${i.proof}`)}</a>`).join(" · ")} · ${esc(ICC_LINE)}</p>`;
+export const ICC_LINE = "Visa Intelligent Commerce Connect (access requested)";
+export function builtOnHtml(run: AgentRun = agentRun(), icc = true): string {
+  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li><a class="flink" href="${esc(i.href)}"${/^https?:/.test(i.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(`${i.name}: ${i.proof}`)}</a></li>`).join("")}${icc ? `<li>${esc(ICC_LINE)}</li>` : ""}</ul>`;
 }
+// Every page's footer carries it (review, 12 Nov), computed once per process from the same records.
+let builtOnCache = "";
+setBuiltOn(() => (builtOnCache ||= builtOnHtml()));
 
 const T0_LOGO = '<span class="logo txt">T:0</span>';
 /** What is real on /t0: its own lines (the main run's would name rails the page does not show). */

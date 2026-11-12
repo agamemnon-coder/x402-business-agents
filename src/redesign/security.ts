@@ -93,7 +93,7 @@ export const CHAIN_LINES: readonly DocLine[] = [
   { doc: "docs/metal-award.md", anchor: "", quote: "the customer is simulated and Purser holds no personal data on chain" },
 ];
 /** The "Not yet" card's one sentence, and the docs' own sentences behind each part of it. */
-export const NOT_YET_LINE = "No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; the SME product's independent security review is pending.";
+export const NOT_YET_LINE = "No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; Purser's independent security review is pending.";
 export const NOT_YET_SOURCES: readonly DocLine[] = [
   { doc: "docs/security.md", anchor: "#checks", quote: "No third-party penetration test has been run" },
   { doc: "docs/controls.md", anchor: "", quote: "This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only." },

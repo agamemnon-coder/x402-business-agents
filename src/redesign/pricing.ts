@@ -100,7 +100,7 @@ export function pricingPage(): string {
   return productPage({
     key: "pricing", title: "Pilot pricing", h1: "Pilot pricing", label: "Sandbox and test money only", lead: PRICING_LEAD, body,
     description: "Pilot prices; nothing is on sale yet. Starter, Business and a small platform fee per payout through Airwallex connected accounts.",
-    source: `Source: src/config/pricing.ts (the prices) and ${run.record} (the fee's sandbox run).`,
+    source: `Source: Purser's price list in its code and ${run.record} (the fee's sandbox run).`,
     real: [
       "Pilot prices. Nothing is on sale yet.",
       `The platform fee ran in the Airwallex sandbox on ${run.day}, with test money: ${run.fee} on a ${run.payout} payout are test values, not prices.`,
