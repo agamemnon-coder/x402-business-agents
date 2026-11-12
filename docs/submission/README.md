@@ -47,6 +47,8 @@ README, on /airwallex and in the long text). The text stays under 4,000 characte
 On 10 November that paragraph became one line: the two-locks run (Airwallex's approval workflow held a
 passkey-signed payout `IN_APPROVAL`; nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md))
 and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-kit.md); the console is not public).
+On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated, so the
+line now says so in the same number of characters ([record](../runs/2026-11-12-airwallex-two-locks-paid.md)).
 On 12 November the owner decided to merge the product's code into `main` now ([decisions.md](../decisions.md), D29), so
 the line's last sentence, "Payables inbox: not public.", became "Payables: in repo, not live.": the code is in this
 repository, the hosted preview stays private, and nothing is said to be live.
@@ -72,7 +74,7 @@ repository, the hosted preview stays private, and nothing is said to be live.
 - Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
 - Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
 
-**After the kit.** Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables: in repo, not live.
+**After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Payables: in repo, not live.
 
 **The business (not validated with customers yet).** Buyer: a CFO on Airwallex. €49 per company a month, including 5 agents and 1,500 Claude decisions; €10 per extra agent; €3 per extra 100 decisions. A hypothesis. "At our company invoices go through a full approval process in our ERP. I think Purser is something for SMEs." — CFO at a US company (anonymous)
 
