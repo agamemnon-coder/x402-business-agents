@@ -11,11 +11,14 @@
 //     as a lookup, never answered by sending blind; an object found only in part goes to a person (needs_review);
 //   - the ERP holding an object in a state a person must look at (a draft whose total differs): needs_review, which
 //     only a person clears (`npm run erp -- resolve`); a payment against such an invoice waits;
-//   - retryable errors (rate limit, server, network) are retried with back-off, honouring Retry-After up to two minutes.
+//   - retryable errors (rate limit, server, network) are retried with back-off, honouring Retry-After up to two minutes;
+//   - the approved call budget of a live run reached (src/erp/callBudget.ts): the run stops there. The request was not
+//     sent, so nothing is looked up, retried or left for a person because of it; what follows is not tried.
 // Every result goes into the audit log. A dry run writes nothing.
 
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
+import { ErpBudgetSpent } from "./callBudget.js";
 import { ErpError, scoped, step, type ErpConnector, type PushProgress, type RefResolver } from "./connector.js";
 import { contentHash, validate, type CanonicalObject, type JournalEntry, type ObjectKind, type Payment, type PurchaseInvoice, type Vendor } from "./model.js";
 
@@ -184,6 +187,16 @@ async function sendOnce(c: ErpConnector, item: SyncItem, refs: RefResolver, look
   o: Required<Pick<SyncOptions, "maxAttempts" | "baseDelayMs" | "sleep">>): Promise<Sent> {
   let attempts = 0;
   let look = lookFirst;
+  // What an object found in the ERP still misses, or null. A check the call budget refused is not an answer: it stops the run.
+  const missingOf = async (found: string): Promise<string | null> => {
+    if (!c.incomplete) return null;
+    try {
+      return await c.incomplete(item.kind, item.object, found, refs);
+    } catch (e) {
+      if (e instanceof ErpBudgetSpent) throw e;
+      return `could not check it is complete: ${message(e)}`;
+    }
+  };
   const wait = async (err: ErpError): Promise<string | null> => {
     if (err.retryAfterMs !== undefined && err.retryAfterMs > MAX_RETRY_AFTER_MS) {
       return `${err.kind}: ${err.message}; the ERP asks to wait ${Math.round(err.retryAfterMs / 1000)} s, more than the ${MAX_RETRY_AFTER_MS / 1000} s this run waits: try again later`;
@@ -197,6 +210,7 @@ async function sendOnce(c: ErpConnector, item: SyncItem, refs: RefResolver, look
       try {
         found = await c.findExisting(item.kind, item.object, refs);
       } catch (e) {
+        if (e instanceof ErpBudgetSpent) throw e;
         // The ERP could not be asked: never send blind (it may hold the object); ask again, or give up.
         const err = asErp(e);
         attempts++;
@@ -206,7 +220,7 @@ async function sendOnce(c: ErpConnector, item: SyncItem, refs: RefResolver, look
         continue;
       }
       if (found) {
-        const missing = c.incomplete ? await c.incomplete(item.kind, item.object, found, refs).catch((e: unknown) => `could not check it is complete: ${message(e)}`) : null;
+        const missing = await missingOf(found);
         if (missing) return { ok: false, review: true, externalId: found, error: `${c.name} holds ${found} but not all of it: ${missing}; a person completes or removes it`, attempts };
         return { ok: true, externalId: found, found: true, attempts };
       }
@@ -215,6 +229,7 @@ async function sendOnce(c: ErpConnector, item: SyncItem, refs: RefResolver, look
     try {
       return { ok: true, externalId: await push(c, item.kind, item.object, refs, progress), found: false, attempts };
     } catch (e) {
+      if (e instanceof ErpBudgetSpent) throw e;
       const err = asErp(e);
       if (err.kind === "needs_review" && err.externalId) return { ok: false, review: true, externalId: err.externalId, error: err.message, attempts };
       if (!err.retryable || attempts >= o.maxAttempts) {
@@ -222,7 +237,7 @@ async function sendOnce(c: ErpConnector, item: SyncItem, refs: RefResolver, look
         if (err.ambiguous && progress.empty()) {
           const found = await c.findExisting(item.kind, item.object, refs).catch(() => null);
           if (found) {
-            const missing = c.incomplete ? await c.incomplete(item.kind, item.object, found, refs).catch((x: unknown) => `could not check it is complete: ${message(x)}`) : null;
+            const missing = await missingOf(found);
             if (missing) return { ok: false, review: true, externalId: found, error: `${c.name} holds ${found} but not all of it: ${missing}; a person completes or removes it`, attempts };
             return { ok: true, externalId: found, found: true, attempts };
           }
@@ -244,6 +259,7 @@ export async function syncAll(db: DB, c: ErpConnector, items: SyncItem[], opts: 
   const refs = resolver(store);
   const sorted = [...items].sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
   const results: SyncResult[] = [];
+  let stopped = false;
   for (const item of sorted) {
     const id = item.object.id;
     const subject = `${c.name}:${item.kind}:${id}`;
@@ -280,12 +296,28 @@ export async function syncAll(db: DB, c: ErpConnector, items: SyncItem[], opts: 
       results.push({ kind: item.kind, id, outcome: "waiting", detail: waits });
       continue;
     }
+    if (stopped) {
+      results.push({ kind: item.kind, id, outcome: "waiting", detail: "not tried: the approved call budget of this run is spent" });
+      continue;
+    }
     // Recorded as pending before anything is sent: a crash after sending leaves a trace the next run looks up.
     // Any row an earlier run left (pending or failed) may mean the ERP already holds the object: look first.
     const lookFirst = !!row;
     store.put({ ...base, status: "pending", updated_at: now().toISOString() });
     const progress = progressOf(store, item.kind, id);
-    const r = await sendOnce(c, item, refs, lookFirst, progress, o);
+    let r: Sent;
+    try {
+      r = await sendOnce(c, item, refs, lookFirst, progress, o);
+    } catch (e) {
+      if (!(e instanceof ErpBudgetSpent)) throw e;
+      // The run's approved number of requests is reached: this request was not sent. The steps already done stay
+      // recorded, so the next run goes on from there; nothing after this object is tried.
+      store.put({ ...base, status: "failed", last_error: e.message, updated_at: now().toISOString(), progress_json: store.get(item.kind, id)?.progress_json ?? null });
+      store.log("erp.push_failed", subject, { error: e.message, attempts: base.attempts });
+      results.push({ kind: item.kind, id, outcome: "failed", detail: e.message });
+      stopped = true;
+      continue;
+    }
     const attempts = base.attempts + r.attempts;
     const latest = store.get(item.kind, id)?.progress_json ?? null;
     if (r.ok) {
