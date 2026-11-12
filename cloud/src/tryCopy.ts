@@ -117,7 +117,12 @@ export const APPROVE = {
   saves: "This saves a test passkey for {host} on this device; you can delete it afterwards.",
   create: "Create your approval passkey",
   approve: "Approve {amount} with {method}",
+  /** On the button, each only while its step runs: the browser's passkey prompt is open, finish runs, approve runs. */
   waiting: "Waiting for your passkey…",
+  saving: "Saving your passkey…",
+  approving: "Approving…",
+  /** Under the button when a request is still out after 30 s (screens 3 and 4). */
+  slow: "This is taking longer than usual.",
   approved: "Approved. Nothing is paid yet.",
   next: "Pay it with your signature",
   cancelled: "Nothing was signed. Try again when you are ready.",
@@ -146,7 +151,8 @@ export const PAY = {
   /** The deadline, from the terms' expires_at ({time}: the browser's local time). */
   until: "Pay before {time}.",
   button: "Pay with my signature",
-  sending: "Sending…",
+  /** On the button while the pay request runs (with the ring). */
+  paying: "Paying…",
   amountBad: "Digits only: 120.50",
   /** Refused: the stamp, then one row per layer that refused. */
   stamp: "Refused by Purser",
@@ -294,6 +300,9 @@ export const VISIBLE = {
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
@@ -303,7 +312,7 @@ export const VISIBLE = {
     [PAY.heading, PAY.loading],
     [PAY.heading, PAY.line, PAY.until, PAY.button],
     [PAY.heading, PAY.line, PAY.until, PAY.amountBad, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.sending],
+    [PAY.heading, PAY.line, PAY.until, PAY.paying, APPROVE.slow],
     [PAY.heading, PAY.paidOnce, PAY.button],
     [PAY.heading, PAY.fileAgain],
     [PAY.heading, PAY.failed, PAY.retry],
@@ -361,6 +370,15 @@ export const LIVE = {
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
   noVat: "none (a person books it)",
+  /** An agent's decision on the page: its lead (with a reason, then without), its reason marked as its own words, and
+   *  what Purser's code enforced, on a muted line under it. */
+  lead: {
+    "ap.checker_decided": "Decided: {action}, because", "ap.checker_decided_plain": "Decided: {action}.",
+    "ap.coded": "{account} expense, VAT {vat}:", "ap.coded_plain": "{account} expense, VAT {vat}.",
+    "ap.payer_proposed": "Proposed: pay on {pay_on} via {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} via {rail} from {currency}.",
+  } as Record<string, string>,
+  ownWords: "its own words",
+  enforced: "Purser's code enforced: {enforced}",
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
     blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
@@ -400,8 +418,8 @@ export const LIVE = {
     "agent.run": "Finished its work on this step.",
     "ap.checker_decided_why": "Decided: {action}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.checker_decided": "The check is decided. Purser's code compared it with its own rules.",
-    "ap.coded_why": "{account}, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
-    "ap.coded": "{account}, VAT {vat}: {reason}. Purser's code checked it and booked it.",
+    "ap.coded_why": "{account} expense, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
+    "ap.coded": "{account} expense, VAT {vat}: {reason}. Purser's code checked it and booked it.",
     "ap.coded_plain": "The invoice was coded. Purser's code checked it.",
     "ap.payer_proposed_why": "Proposed: pay on {pay_on} via {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",

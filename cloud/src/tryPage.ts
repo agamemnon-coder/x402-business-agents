@@ -14,7 +14,8 @@
 //   more 1 s after it returned; never while the page is hidden; it stops at its first 401 and renews once; a 429
 //   slow_down waits retry_ms.
 // - Timers exist for three things only (a test holds this): pollTimer, renewTimer (two minutes before the session
-//   ends) and askTimer (the running time of an open Claude call).
+//   ends) and askTimer (the running time of an open Claude call). A request still out after 30 s is seen by the poller's
+//   own tick (pollStart's onSlow), which adds one calm line; no other timer.
 // - Screens 3 (approve) and 4 (pay) sign and pay: the pure helpers are SIGN_JS (below, tested in Node). S also keeps
 //   the proposal ({id, challenge, terms_sha256, invoice}) and the approval's credential (cred) for screen 4, and the
 //   pay route's settled answer for screen 5.
@@ -107,12 +108,16 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .live { list-style: none; margin: 0; padding: 0; }
 .live li { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.4; }
 .live li:first-child { border-top: 0; }
-.live:not(.open) li:nth-last-child(n+4) { display: none; }
+.live:not(.open) li.fold, .live:not(.open) li.past { display: none; }
 .live .who { font-weight: 650; }
 .live .claude .who { color: var(--claude); }
 .live .money .who { color: var(--ok); }
 .live .sign .who { color: var(--accent); }
 .live .what { grid-column: 1; color: var(--muted); overflow-wrap: anywhere; }
+.live .agent .what { color: var(--text); }
+.live .own { color: var(--muted); font-style: italic; }
+.live .ownw, .live .enf { color: var(--faint); font-size: 12.5px; }
+.live .enf { grid-column: 1; }
 .live .t { grid-column: 2; grid-row: 1 / span 2; color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
 .steps { margin-top: 4px; font-size: 14px; }
 .result { margin-top: 20px; }
@@ -179,8 +184,8 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .inv .rows > div:nth-child(2) { animation-delay: .18s; } .inv .rows > div:nth-child(3) { animation-delay: .36s; } .inv .rows > div:nth-child(4) { animation-delay: .54s; } .inv .rows > div:nth-child(5) { animation-delay: .72s; }
 .chip { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 650; background: var(--claude-soft); color: var(--claude); animation: rise .3s ease-out both; }
 .chip .mono { font-weight: 500; opacity: .85; }
-/* Screen 3: the terms as a receipt, the hash in a mono pill; a ring round the button while the passkey prompt is open,
-   a tick once the approval is back. */
+/* Screen 3: the terms as a receipt, the hash in a mono pill; a ring round the button while a step runs (the passkey
+   prompt, saving it, the approval; screen 4's pay too), a tick as soon as the approval is back. */
 .receipt { margin: 4px 0 12px; padding: 16px; border-radius: 14px; background: var(--bg); border: 1px solid var(--border); }
 .receipt .amount { margin: 0 0 8px; }
 .receipt dl.read { gap: 0; margin: 0; }
@@ -196,7 +201,9 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .proof.xfer { margin: 6px 0 4px; font-size: 26px; line-height: 1.2; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
 /* Screen 5: a calm stamp, the terms' hash, the books' lines sliding in. */
 .paidstamp { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 6px; }
-.paidstamp .ring { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok-soft); color: var(--ok); animation: stampin .6s ease-out both; }
+.paidstamp .ring { display: inline-grid; place-items: center; width: 60px; height: 60px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok-soft); color: var(--ok); animation: stampin .45s cubic-bezier(.2,.9,.3,1.15) both; }
+/* The stamp is the first thing screen 5 shows once the pay answer is in: the screen does not slide, the stamp lands. */
+.screen:has(> .paidstamp) { animation: none; }
 .paidstamp .hashpill { margin: 0; }
 table.lines tbody tr { animation: slidein .4s ease-out both; }
 table.lines tbody tr:nth-child(2) { animation-delay: .08s; } table.lines tbody tr:nth-child(3) { animation-delay: .16s; } table.lines tbody tr:nth-child(4) { animation-delay: .24s; }
@@ -459,9 +466,11 @@ function ended(name){pollStop();clearTimeout(renewTimer);renewTimer=null;forget(
 
 // The live panel's polling: every second while a request is in flight, once more a second after it returned.
 let pollTimer=null;
-const P={on:false,inflight:false,final:false,busy:false,waiting:false,renewed:false,onEvents:null};
+const P={on:false,inflight:false,final:false,busy:false,waiting:false,renewed:false,onEvents:null,onSlow:null,t0:0};
+const SLOW_MS=30000;
 function pollLater(ms){clearTimeout(pollTimer);pollTimer=setTimeout(pollTick,ms)}
-function pollStart(onEvents){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;pollLater(1000)}
+// onSlow (optional): called once, from a poll's tick, when the request is still out after SLOW_MS.
+function pollStart(onEvents,onSlow){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;P.onSlow=onSlow||null;P.t0=performance.now();pollLater(1000)}
 function pollDone(){P.inflight=false;P.final=true;if(P.on&&!P.busy&&!P.waiting)pollLater(1000)}
 function pollStop(){P.on=false;P.waiting=false;clearTimeout(pollTimer);pollTimer=null}
 async function pollTick(){
@@ -469,6 +478,7 @@ async function pollTick(){
   if(!P.on)return;
   if(document.hidden){P.waiting=true;return}
   P.waiting=false;
+  if(P.inflight&&P.onSlow&&performance.now()-P.t0>=SLOW_MS){const f=P.onSlow;P.onSlow=null;f()}
   const last=!P.inflight;if(last)P.final=false;
   P.busy=true;
   const r=await call('GET','/v1/engine/events?after='+encodeURIComponent(S.after||0)+'&limit=200');
@@ -671,6 +681,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
 // A reader's key (its agent, or the reader), and whether a row is a reader's (it closes that reader's open call).
 const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
 const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
+// Shown at once: the last three rows that are not an agent's working steps; the rest, and every working step (a tool
+// call, its words, its run), in the "All steps" fold. An agent's decision: its lead, its reason marked as its own words,
+// and what Purser's code enforced on a muted line under it.
 function livePanel(){
   const list=el('ol','live');list.setAttribute('aria-live','off');
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
@@ -681,11 +694,15 @@ function livePanel(){
       if(agentRow(e))askClose(keyOf(e));
       const l=lineOf(e);
       const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
-      list.append(el('li',l.tag||'',[el('span','who',l.who),el('span','what',l.text),t]));
+      const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
+      list.append(el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]));
       if(l.asking)askOpen(keyOf(e),t);
-      say(l.who+' · '+l.text);
+      if(!l.fold)say(l.who+' · '+l.text);
     }
-    node.hidden=!list.children.length;more.hidden=list.children.length<=3;
+    // The last three rows outside the fold stay in view; every other row waits behind "All steps".
+    let seen=0;
+    for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>3)}
+    node.hidden=!list.children.length;more.hidden=!list.querySelector('.fold,.past');
   }
   return {node,add};
 }
@@ -809,14 +826,21 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   box.append(top,said,main.node,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
-  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0));return req.then((r)=>{pollDone();return r})};
+  // A request still out after 30 s: one calm line under the button (from the poller's tick), gone when it returns.
+  const slow=el('p','hint',A.slow);
+  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)said.append(slow)});return req.then((r)=>{pollDone();slow.remove();return r})};
+  // The button while a step runs: its own label, and the ring.
+  const busy=(label)=>{main.node.textContent=label;main.node.classList.add('asking')};
+  const idle=()=>main.node.classList.remove('asking');
   async function file(){
     said.replaceChildren();main.off(A.filing);
     const ready=inv&&inv.proposal&&inv.proposal.status==='PENDING_APPROVAL'&&!arg.again?inv.proposal:null;
+    // The engine's status (is there a passkey?) is read beside the proposal, not after it.
+    const stq=api('GET','/v1/engine');
     const r=ready?{status:200,json:{proposal:ready}}
       :inv&&inv.id?await track(api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'))
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
-    const st=await api('GET','/v1/engine');
+    const st=await stq;
     if(S.screen!=='approve')return;
     if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
@@ -832,28 +856,43 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(!eng||!eng.passkey){main.set(A.create,createPasskey);return}
     main.set(fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
   }
+  // Two taps, each opening its own prompt: create (it uses up the tap's user activation, so Safari would refuse a
+  // second prompt in the same tap), then approve. Labels say what runs: the start request keeps the button's own label
+  // (off), "Waiting for your passkey…" only while the browser's prompt is open, "Saving your passkey…" while finish runs.
   async function createPasskey(){
-    said.replaceChildren();main.node.textContent=A.waiting;
+    said.replaceChildren();
     const s=await api('POST','/v1/engine/passkey/start');
     if(s.status!==200||!s.json.user){said.replaceChildren(note(words(s.json,A.failed)));stage();return}
-    let made;main.node.classList.add('asking');
+    let made;busy(A.waiting);
     try{made=await navigator.credentials.create({publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
       challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
       authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}})}
-    catch(e){main.node.classList.remove('asking');said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
-    main.node.classList.remove('asking');
-    const f=await api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)});
+    catch(e){idle();said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+    busy(A.saving);saves.hidden=true;
+    const f=await track(api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)}));
+    idle();
+    if(S.screen!=='approve')return;
     if(f.status!==200){said.replaceChildren(note(words(f.json,A.failed)));stage();return}
+    if(typeof f.json.credential_id==='string'&&f.json.credential_id){
+      // The answer names the passkey: drawn at once. The status is read again in the background, and a later answer
+      // never takes the passkey away.
+      const pk={credential_id:f.json.credential_id};
+      eng=Object.assign({},eng,{passkey:pk});stage();
+      api('GET','/v1/engine').then((st)=>{if(st.status===200&&st.json&&typeof st.json==='object')eng=Object.assign({},st.json,{passkey:st.json.passkey||(eng&&eng.passkey)||pk})});
+      return;
+    }
     const st=await api('GET','/v1/engine');if(st.status===200)eng=st.json;
     stage();
   }
+  // The passkey's prompt opens on the tap itself: nothing is asked of the server before navigator.credentials.get.
   async function approve(){
-    said.replaceChildren();main.node.textContent=A.waiting;
+    said.replaceChildren();busy(A.waiting);
     let signed;
-    main.node.classList.add('asking');
-    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){main.node.classList.remove('asking');said.replaceChildren(note(A.cancelled));stage();return}
-    main.node.classList.remove('asking');
+    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){idle();said.replaceChildren(note(A.cancelled));stage();return}
+    // The ring stays while the approval is sent; the tick shows as soon as its answer is in.
+    busy(A.approving);
     const r=await track(api('POST','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{terms_sha256:p.terms_sha256,credential:signed}));
+    idle();
     if(S.screen!=='approve')return;
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
       // Held: the approval is stored and nothing is paid; the signature is kept for screen 4.
@@ -904,16 +943,19 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(!cred){
       // After a reload without the kept signature: the passkey again, for the same terms (the challenge is their hash).
       const st=await api('GET','/v1/engine');
-      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){out.replaceChildren(note(C.approve.cancelled));return}
+      main.node.textContent=C.approve.waiting;
+      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){main.set(Y.button,()=>send(intro));out.replaceChildren(note(C.approve.cancelled));return}
       S.cred=cred;save();
     }
-    main.node.textContent=Y.sending;out.replaceChildren();
+    // While the request runs: "Paying…" with the ring; the answer is drawn the moment it is in (paid: screen 5's stamp).
+    main.node.textContent=Y.paying;main.node.classList.add('asking');out.replaceChildren();
+    const slow=el('p','hint',C.approve.slow);
     const body=payBody(T.terms,v,cred);
     const t0=performance.now();
-    pollStart((items)=>live.add(items,t0));
+    pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)out.append(slow)});
     const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/pay',body);
     const ms=performance.now()-t0;
-    pollDone();
+    pollDone();main.node.classList.remove('asking');slow.remove();
     if(S.screen!=='pay')return;
     main.set(Y.button,()=>send(intro));
     outcome(r,ms,body.terms,intro);
