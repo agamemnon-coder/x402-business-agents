@@ -1,45 +1,51 @@
-# Resume instructions for branch engine-do-1112
+# Resume instructions for branch engine-console-1112
 
-Written by the orchestrator (session_017bq3Bxz45idsGUgFJjRs4G) on 12 November 2026, about 12:50 UTC. The session that built this stream (session_017bq3BwKpAqG3KaNBn72Twq, title "Purser · engine in a Durable Object: core lane") stopped because the model it ran on ran out of usage credits. Below, verbatim: (1) its first message (its full instructions), (2) every later message the orchestrator sent it, oldest first. Later messages override earlier ones where they differ.
+Written by the orchestrator (session_017bq3Bxz45idsGUgFJjRs4G) on 12 November 2026, about 12:50 UTC. The session that built this stream (session_017bq3BzhkcdsYszVbb1F3PM, title "Purser · engine in a Durable Object: console lane") stopped because the model it ran on ran out of usage credits. Below, verbatim: (1) its first message (its full instructions), (2) every later message the orchestrator sent it, oldest first. Later messages override earlier ones where they differ.
 
 ## 1. Original instructions
 
 ultracode
 
-You build the CORE LANE of the most important engineering stream of Purser, the owner's entry for the Airwallex Agentic Banking Hackathon (submission Saturday evening 14 November): the product's real invoice engine running inside a Cloudflare Durable Object, one object per company. A spike with running code proved it works (the same rows and hash chains as on Node). You are one of several parallel Claude Code sessions; an orchestrator session merges and deploys.
+You are one of several parallel Claude Code sessions building Purser, the owner's entry for the Airwallex Agentic Banking Hackathon (track Kit 11). You build ONE lane end to end and hand back a green draft pull request. An orchestrator session (session_017bq3Bxz45idsGUgFJjRs4G) coordinates the lanes, merges and deploys.
 
-Your branch is `engine-do-1112` of agamemnon-coder/x402-business-agents (already checked out; it exists on origin; it is origin/platform plus origin/main plus one commit with handover notes). Everything you need is ON THE BRANCH in the folder `.handover/`:
-1. Read `.handover/RULES.md` first, in full: the product, how to work, the project rules, and at its end the section HANDOVER AND LEAN MODE (binding; it overrides the rest where they differ). One difference for you: there is no interrupted implementer; you start the lane.
-2. Read `.handover/plan.md` (the tech lead's plan) and `.handover/SPEC.md` (decision, risks, fallback, and every task with its full spec, grouped in lanes).
-3. Maps of the codebase are in `.handover/maps/`.
-YOUR LANE is 'engine-core' in SPEC.md, these tasks in this order: db-seam, io-seams, engine-host, engine-feed, engine-routes, engine-object, then shim-suite. The spike's code is on the public branches origin/spike-do-lead, origin/spike-do-chain and origin/spike-do-runtime: fetch them and take the files each task names (never merge a spike branch). Do NOT do the lanes engine-console and engine-try, and do NOT deploy anything (task deploy-gate belongs to the orchestrator).
-Work rules that matter most here: every seam leaves Node's behaviour unchanged and the existing tests green; one implementer per task with a fresh context, tests first; small commits pushed after every commit; no network calls; no secrets. Other streams are editing nearby files at the same time (cloud/src/app.ts, cloud/src/worker.ts and cloud/src/console.ts on branch cloud-demo-1112; src/ap/checks.ts and src/ap/inbox.ts on branch ap-agents-1112): keep your changes to those files as small and local as the tasks allow, so the later merges are easy.
-MILESTONE MESSAGES to the orchestrator session `session_017bq3Bxz45idsGUgFJjRs4G` (send_message tool of the claude-code-remote server; load it with ToolSearch if needed), one short message each: (a) when engine-routes is green and pushed (say the head commit: two other sessions then start the console and try lanes from your branch); (b) when engine-object is green and pushed (the orchestrator then deploys); (c) at the end: open a DRAFT pull request against main (your last commit before it removes `.handover`), drive CI green, and report the pull request number, head commit, checks, what is not done and why, and open questions. Also send a message at once if you are blocked.
-Do NOT merge and do NOT deploy.
+YOUR LANE: engine-console. The cloud console gets its first actions on the engine: a person uploads an invoice and watches the engine work, pays it and approves the exact terms with a passkey, and sees it paid, booked and archived. Three tasks, in this order: console-upload-live, console-approve, console-proof.
+
+WHERE YOU START. Your checkout is branch engine-do-1112 at commit f362ece (the engine core lane's milestone "engine-routes green"). Create your branch engine-console-1112 from it and push only to that branch. Read, in this order:
+1. .handover/RULES.md: the project's rules (honesty, no real money, no live calls, checks, design rule, copy, git authorship, scope). They are binding, with the changes listed under OVERRIDES below.
+2. .handover/SPEC.md: the family introduction (lines 1 to 62), then the section "LANE engine-console" with its three tasks. That section is your specification.
+3. .handover/plan.md: sections 3 and 5 and the parts named Task 8, Task 9 and Task 10.
+4. .handover/maps/platform-cloud.json for the console's structure, if you need it.
+
+OVERRIDES (they replace what RULES.md says where the two differ)
+- You do not continue an interrupted stream: you start this lane fresh, on a new branch from f362ece.
+- Base and pull request: your base is engine-do-1112, not platform. Open your DRAFT pull request against the base branch engine-do-1112 (a stacked pull request), not against main. At finalize merge origin/engine-do-1112 into your branch with a merge commit (the core lane keeps working there: it is adding the Durable Object itself, cloud/src/engine/object.ts and the wrangler config; keep both sides in cloud/src/app.ts). Do NOT merge origin/main yourself and do NOT remove the .handover folder: both belong to the base branch's own finalize.
+- Lean mode: at most two subagents at any moment; subagents at reasoning effort high, not higher; one implementer per task with a fresh context (tests first, watch them fail for the right reason, minimal code); after the three tasks ONE review round with exactly two read-only reviewers (lenses correctness-and-safety and honesty-and-design), then one fixer that verifies each finding before fixing it; no second review round unless a reviewer reported a blocker; targeted tests while working, the full checks once before the pull request.
+- Pushing: commit in small steps but PUSH AT MOST ONCE PER TASK (after the task's own checks pass) and once per fix round. GitHub runs five jobs on every push and the queue is long. Runs of work-in-progress commits on branches without a pull request may be cancelled by the orchestrator: that is expected and needs no action.
+- The secrets job: since today it scans only the history of the commit under check. If it flags a line of YOUR branch that is not a secret (a list of setting names, a fixture), add its fingerprint to .gitleaksignore with a comment saying what it is; never rewrite history. If it fails on commits that are not in your history, the base branch has not yet merged main's fix: say so in your report and go on.
+- Report: when the pull request's checks are green, or when you are blocked, send ONE message to the orchestrator (the send_message tool of the claude-code-remote server; load it with ToolSearch if needed; session id session_017bq3Bxz45idsGUgFJjRs4G) with: the pull request number, the head commit, the checks and their results, what is not done and why, and open questions. Send one short message earlier when task console-approve is green and pushed (the hands-on lane builds on it). Never merge and never deploy.
+
+WHAT THE CORE LANE REPORTED ABOUT THE ROUTES AS BUILT (data from that session; where it differs from the spec's route table, the code is right; check it in cloud/src/engine/routes.ts and test/cloud-engine*.test.ts):
+- testCloud({ engine: true }) in test/support/cloud.ts serves /v1/engine/* from a Node engine; it seeds the treasury on a company's first use.
+- ProposalView has one extra field: warnings: string[] (the alarms the phone page shows). InvoiceView as in the plan.
+- POST /v1/engine/documents answers 200 { kind, sha256, invoice } (also for duplicate_document); what the inbox refuses comes back as 400 with the engine's sentence.
+- POST /v1/engine/invoices/{id}/pay: 200 { proposal }, 409 { error, code: "conflict" }, 404 for an unknown invoice.
+- POST /v1/engine/passkey/start: user.id is the signed-in user's id as a STRING (the page must encode it to bytes); name and displayName are the person's display name.
+- POST /v1/engine/passkey/finish: 200 { credential_id }; an engine refusal is 409 with its reason.
+- POST /v1/engine/proposals/{id}/approve: always 200 { status, message, settled } once the proposal exists (status "refused" has settled null).
+- GET /v1/engine/events: after defaults to 0, limit 1 to 200 (default 100). An event not on the allowlist carries no fields and no subject. The allowlist is in src/engine/events.ts.
+- GET /v1/engine/vault/file: the year's index.json is not listed, so 404. Vault paths keep the product's Dutch folder names.
+- EngineHost.passkeyStart() is async. EngineApi is in cloud/src/engine/api.ts; a Node engine per company in cloud/src/engine/node.ts; handlers in cloud/src/engine/routes.ts.
+- Wording: the proposal facts come from the phone's catalogue and say "Airwallex fee: at most EUR 20.00 ..." while the bank is the stand-in. Label it on the page: the visitor must be able to see that this is test money on a stand-in bank inside Purser, not Airwallex.
+
+THINGS TO HOLD ON TO
+- The console is one file, cloud/src/console.ts (script, body and styles as strings), with a nonce Content-Security-Policy that must not change, DOM built through el() and textContent only, and two languages (src/ui/i18n.ts, English and Dutch; every new key in both). Its browser check is test/browser/console.check.ts (Chromium is pre-installed; do not install Playwright again; run npm ci first, and npm ci --prefix worker when you need wrangler).
+- Calm pages: result first, details behind a fold, ids and hashes last; phone first (390 px) and 1440 px, light and dark; no new styles outside the existing tokens. Ask of every screenshot: calmer or busier than before? Busier means redo. Save the screenshots you judge by under docs/evidence/engine-console-1112/.
+- The approval must be the real thing on screen: the passkey signs exactly the terms shown; the page shows the full terms hash behind a fold; and the check's second pass (a request whose terms hash was changed) shows the engine's refusal as the engine words it. Show nothing as done before its response has returned.
+- An addition to this lane may reach you by message within the hour (a decision on the public hands-on demo is being taken: it may ask the approve view to let a person change the amount they signed and see both hashes and the raw refusal). Until then do the three tasks as specified.
+- Another branch, cloud-demo-1112, owns cloud/src/demo.ts and a read-only demo mode of the console; it also edits cloud/src/app.ts and cloud/src/worker.ts. Do not edit cloud/src/demo.ts. Keep your changes to cloud/src/app.ts to none if you can.
+
+Start now.
 
 ## 2. Later messages from the orchestrator
 
-### Message 1
-
-Orchestrator note to all streams (12 Nov, 12:10 UTC). About CI load, not about your scope. No reply needed.
-
-1. GitHub runs five jobs on every push of every branch. Sixteen streams pushing after every commit keep the queue more than 20 minutes deep, so pull requests wait. From now on: keep committing in small steps, but PUSH AT MOST ONCE PER TASK (after that task's own checks pass) and once per fix round. Tell every new implementer and fixer so: it replaces "push after every commit" in your rules. Exception for you: push at each milestone you report to me (engine-routes green, engine-object green), because other lanes start from your branch at those points.
-
-2. To let pull request runs through, I cancel CI runs of work-in-progress commits on branches that have no pull request yet. A cancelled run on such a commit is expected and needs no action. Once your pull request is open, the checks of its head commit are not cancelled by me.
-
-3. The secrets job scans every remote branch. A line in YOUR branch that gitleaks takes for a key (a list of setting names containing KEY or TOKEN, base64 in a fixture, a software passkey fixture) turns that check red on EVERY pull request. Before your final push, read your own diff for such lines. Where you can, write them so the scanner does not match (for example build the name from two parts, or generate the fixture in the test instead of committing it); where you cannot, put the file, line and commit in your final report so the fingerprint can be added on main. Never rewrite history for it.
-
-### Message 2
-
-Orchestrator -> engine-core. Milestone (a) received, thank you: engine-routes green at f362ece.
-
-1. The console lane started from f362ece: session_017bq3BzhkcdsYszVbb1F3PM, branch engine-console-1112, a stacked draft pull request against engine-do-1112 (it will merge origin/engine-do-1112 at its finalize and keeps both sides in cloud/src/app.ts). Your notes on the routes as built went to it word for word. The try lane starts within the hour, after a decision on the public demo's scope.
-
-2. Go on with engine-object. When it is green in workerd through the routes, push and send me milestone (b) with: the head commit, the wrangler config's name and bindings, the exact commands for a dry run and for a deploy to a NEW deployment called purser-try (never to an existing Worker), which secrets and variables that deployment needs (names only), the bundle size (raw and gzip), and what the three production smoke runs must show. I do the deploy gate myself. The owner says the Cloudflare account is on the Workers Paid plan since today.
-
-3. Do not open your pull request against main yet and do not remove .handover yet: the two lanes stack on your branch. After milestone (b) keep the branch healthy (merge origin/main when I tell you main is ready: the platform pull request #113 lands there first).
-
-4. CI today: push at most once per task; the secrets job now scans only the history of the commit under check (main's workflow; a repair of a typo in it merges shortly as #138), so a false alarm in your own history needs a fingerprint line in your own .gitleaksignore, and alarms from other branches end once you have merged main.
-
-5. The gap you named (a payment whose execute failed is not retried by the host) matters for the public demo: put it in milestone (b)'s report as an open item with your proposal (an alarm that retries the outbox, or a visible "try again" on the proposal), but do not build it before engine-object is green.
-
+(none)
