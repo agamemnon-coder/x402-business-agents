@@ -14,7 +14,7 @@ import { staticToken } from "../src/erp/auth.js";
 import { liveTransport } from "../src/erp/callBudget.js";
 import { runErpCli } from "../src/erp/cli.js";
 import type { JournalEntry, Payment, PurchaseInvoice, Vendor } from "../src/erp/model.js";
-import { validate } from "../src/erp/model.js";
+import { contentHash, contentHashBefore, validate } from "../src/erp/model.js";
 import { RecordingTransport } from "../src/erp/connector.js";
 import { MONEYBIRD_BASE_URL, moneybirdCallName, MoneybirdConnector, type MoneybirdConfig } from "../src/erp/moneybird.js";
 import { cents, reconcile, type Reconciliation } from "../src/erp/readback.js";
@@ -46,6 +46,13 @@ let db: DB;
 let world: SandboxWorldSummary;
 let fake: FakeMoneybird;
 const connector = () => new MoneybirdConnector({ baseUrl: "https://moneybird.com/api/v2", administrationId: fake.admin, baseCurrency: "EUR", projects: {}, ignoreCostCentres: true, ...mapsFromNotes() }, fake.transport, staticToken(fake.token));
+
+/** A copy of the test world's ledger as it is now, in a file of its own: a test may change it freely. */
+function copyOf(name: string): DB {
+  const file = join(dir, `copy-${name}.db`);
+  writeFileSync(file, db.serialize());
+  return openDb(file);
+}
 
 beforeAll(async () => {
   dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "erp-sandbox-world-"));
@@ -91,16 +98,34 @@ describe("the sandbox run's test world", () => {
     expect(j.lines.map((l) => [l.glAccount, l.debitCents, l.creditCents])).toEqual([["6100", 1999, 0], ["1200", 0, 1999]]);
   });
 
-  it("an inbox invoice whose stored file is gone goes to the ERP without a PDF, not with a broken one", () => {
-    const copy = openDb(":memory:");
-    for (const t of ["beneficiaries", "invoices", "ap_documents", "ap_invoices"]) {
-      const rows = db.prepare(`SELECT * FROM ${t}`).all() as Record<string, unknown>[];
-      for (const r of rows) copy.prepare(`INSERT INTO ${t} (${Object.keys(r).join(", ")}) VALUES (${Object.keys(r).map(() => "?").join(", ")})`).run(...Object.values(r));
-    }
-    copy.prepare("UPDATE ap_documents SET path = path || '.gone'").run();
-    const invoices = ledgerItems(copy).filter((i) => i.kind === "invoice").map((i) => i.object as PurchaseInvoice);
-    expect(invoices).toHaveLength(4);
-    expect(invoices.every((i) => i.pdf === undefined)).toBe(true);
+  it("an inbox invoice whose stored file is gone, or is another file now, is not sent: it fails with that reason", async () => {
+    const copy = copyOf("unsent");
+    const [first, second] = copy.prepare("SELECT sha256, path FROM ap_documents ORDER BY sha256").all() as { sha256: string; path: string }[];
+    copy.prepare("UPDATE ap_documents SET path = path || '.gone' WHERE sha256 = ?").run(first!.sha256);
+    const other = join(dir, "other.pdf");
+    writeFileSync(other, "%PDF-1.4 another document");
+    copy.prepare("UPDATE ap_documents SET path = ? WHERE sha256 = ?").run(other, second!.sha256);
+    const invoices = ledgerItems(copy).filter((i) => i.kind === "invoice");
+    const blocked = invoices.filter((i) => i.blocked);
+    expect(blocked).toHaveLength(2);
+    expect(blocked.every((i) => (i.object as PurchaseInvoice).pdf === undefined)).toBe(true);
+    const reasons = blocked.map((i) => i.blocked).join("\n");
+    expect(reasons).toMatch(/is not on this machine; the invoice is not sent without it/);
+    expect(reasons).toMatch(/is no longer the document this invoice was read from/);
+    // Sent to a stand-in: the suppliers and the two others go, these two fail with the reason and nothing of them is sent.
+    const stand = new FakeMoneybird({ ledger: realLedger, tax: realTax });
+    const c = new MoneybirdConnector({ baseUrl: "https://moneybird.com/api/v2", administrationId: stand.admin, baseCurrency: "EUR", projects: {}, ignoreCostCentres: true, ...mapsFromNotes() }, stand.transport, staticToken(stand.token));
+    const res = await syncAll(copy, c, ledgerItems(copy), { sleep: noSleep });
+    const ids = new Set(blocked.map((i) => i.object.id));
+    expect(res.filter((r) => ids.has(r.id)).map((r) => [r.outcome, r.detail])).toEqual(blocked.map((i) => ["failed", i.blocked]));
+    expect(stand.posts("/documents/purchase_invoices.json")).toHaveLength(2);
+    expect([...stand.invoices.values()].map((i) => i.reference).sort()).toEqual(invoices.filter((i) => !i.blocked).map((i) => (i.object as PurchaseInvoice).number).sort());
+    // The file back where it was: the next run sends them, with their PDF.
+    copy.prepare("UPDATE ap_documents SET path = ? WHERE sha256 = ?").run(first!.path, first!.sha256);
+    copy.prepare("UPDATE ap_documents SET path = ? WHERE sha256 = ?").run(second!.path, second!.sha256);
+    const again = await syncAll(copy, c, ledgerItems(copy), { sleep: noSleep });
+    expect(again.filter((r) => ids.has(r.id)).map((r) => r.outcome)).toEqual(["pushed", "pushed"]);
+    expect([...stand.invoices.values()].every((i) => i.attachments.length === 1)).toBe(true);
     copy.close();
   });
 });
@@ -131,6 +156,36 @@ describe("the sandbox run, rehearsed on the administration's real chart and tax 
     expect(invoices.map((i) => i.details.map((d) => d.tax_rate_id).join())).toEqual([rate("9% btw"), rate("21% btw"), rate("21% btw"), rate("21% btw")]);
     expect(new Set(invoices.flatMap((i) => i.details.map((d) => d.ledger_account_id)))).toEqual(new Set([account("Algemene kosten")]));
     expect([...fake.journals.values()][0]!.entries.map((e) => [e.ledger_account_id, e.debit, e.credit])).toEqual([[account("Algemene kosten"), "19.99", "0.00"], [account("Financiële rekeningen"), "0.00", "19.99"]]);
+  });
+
+  it("files moved after the sync change nothing: the invoices are unchanged, nothing is sent, nothing asks for a correction", async () => {
+    const copy = copyOf("moved");
+    copy.prepare("UPDATE ap_documents SET path = path || '.gone'").run();
+    expect(ledgerItems(copy).filter((i) => i.kind === "invoice").every((i) => i.blocked && !(i.object as PurchaseInvoice).pdf)).toBe(true);
+    const before = fake.transport.sent.length;
+    const res = await syncAll(copy, connector(), ledgerItems(copy), { sleep: noSleep });
+    expect(res.map((r) => r.outcome)).toEqual(Array.from({ length: 10 }, () => "unchanged"));
+    expect(fake.transport.sent.length).toBe(before);
+    expect(syncStatus(copy, "moneybird").every((r) => r.status === "synced")).toBe(true);
+    copy.close();
+  });
+
+  it("a ledger sent under the earlier hash (it held the PDF's file name) is unchanged with or without the files, and keeps today's hash from then on", async () => {
+    const copy = copyOf("earlier");
+    const invoices = ledgerItems(copy).filter((i) => i.kind === "invoice");
+    // As the run's own ledger was written, and a ledger whose files were gone when it was sent; one flipped by that hash.
+    for (const [n, i] of invoices.entries()) {
+      const earlier = contentHashBefore("invoice", i.object, n === 3 ? null : { fileName: `${(i.object as PurchaseInvoice).number}.pdf` });
+      copy.prepare("UPDATE erp_sync SET pushed_hash = ?, status = ?, pending_hash = ? WHERE kind = 'invoice' AND object_id = ?").run(earlier, n === 0 ? "needs_correction" : "synced", n === 0 ? "x" : null, i.object.id);
+    }
+    copy.prepare("UPDATE ap_documents SET path = path || '.gone' WHERE rowid = (SELECT MIN(rowid) FROM ap_documents)").run();
+    const before = fake.transport.sent.length;
+    const res = await syncAll(copy, connector(), ledgerItems(copy), { sleep: noSleep });
+    expect(res.map((r) => r.outcome)).toEqual(Array.from({ length: 10 }, () => "unchanged"));
+    expect(fake.transport.sent.length).toBe(before);
+    const rows = syncStatus(copy, "moneybird").filter((r) => r.kind === "invoice");
+    expect(rows.map((r) => [r.status, r.pushed_hash])).toEqual(rows.map((r) => ["synced", contentHash("invoice", invoices.find((i) => i.object.id === r.object_id)!.object)]));
+    copy.close();
   });
 
   it("a person moves an invoice to another account: the sync sends nothing and asks for a correction; the correction sends a credit note and the new version", async () => {
@@ -242,11 +297,29 @@ describe("the sandbox run, rehearsed on the administration's real chart and tax 
 
   it("the world command builds only in a new ledger and says which step it wants", async () => {
     const lines: string[] = [];
-    await expect(runErpCli(["world"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/--step build --dir <folder> or --step recode/);
-    await expect(runErpCli(["world", "--step", "build"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/--dir/);
-    await expect(runErpCli(["world", "--step", "build", "--dir", join(dir, "again")], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/already holds invoices/);
+    const env = { KIT11_DB: join(dir, "ledger.db") };
+    await expect(runErpCli(["world"], { db, env, out: (l) => lines.push(l) })).rejects.toThrow(/--step build --dir <folder> or --step recode/);
+    await expect(runErpCli(["world", "--step", "build"], { db, env, out: (l) => lines.push(l) })).rejects.toThrow(/--dir/);
+    await expect(runErpCli(["world", "--step", "build", "--dir", join(dir, "again")], { db, env, out: (l) => lines.push(l) })).rejects.toThrow(/already holds invoices/);
     // Step 2 was done above: a second time there is nothing to move.
-    await expect(runErpCli(["world", "--step", "recode"], { db, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/already on 6300/);
+    await expect(runErpCli(["world", "--step", "recode"], { db, env, out: (l) => lines.push(l) })).rejects.toThrow(/already on 6300/);
+    expect(lines).toEqual([]);
+  });
+
+  it("the world command never writes to the default ledger, nor to one that holds other data", async () => {
+    const lines: string[] = [];
+    const other = openDb(":memory:");
+    for (const env of [{}, { KIT11_DB: "data/kit11.sqlite" }, { KIT11_DB: resolve("data/kit11.sqlite") }]) {
+      for (const step of [["--step", "build", "--dir", join(dir, "never")], ["--step", "recode"]]) {
+        await expect(runErpCli(["world", ...step], { db: other, env, out: (l) => lines.push(l) })).rejects.toThrow(/a ledger of its own: set KIT11_DB/);
+      }
+    }
+    // A company's ledger with a supplier and no inbox invoice yet: refused, nothing written.
+    other.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('b-1', 'A supplier', '0001', 'x', 'TESTNL2A', 'EUR', 'LOCAL')").run();
+    await expect(buildSandboxWorld(other, join(dir, "never"))).rejects.toThrow(/already holds data \(beneficiaries\)/);
+    expect(other.prepare("SELECT COUNT(*) AS n FROM beneficiaries").get()).toEqual({ n: 1 });
+    expect(() => recodeSandboxInvoice(other)).toThrow(/not the test world's ledger/);
+    other.close();
     expect(lines).toEqual([]);
   });
 
@@ -273,6 +346,53 @@ describe("the sandbox run, rehearsed on the administration's real chart and tax 
     expect(shown).toContain(`"tax_rate_id":"${mapsFromNotes().taxRates.NL9}"`);
     expect(shown).not.toContain("placeholder");
     expect(readFileSync(log, "utf8")).toBe("");
+  });
+});
+
+describe("a correction whose answer never came, rehearsed on the stand-in with the sandbox's chart", () => {
+  // Moneybird took a second invoice with the same number in the live run, so a lookup cannot tell the new version of
+  // OD-77 from the first: a lost answer during a correction goes to a person, never to a second post.
+  it("is not posted again: it waits for a person, who says what Moneybird holds; then the correction finishes without a duplicate", async () => {
+    const ledger = openDb(join(dir, "ledger-lost.db"));
+    await buildSandboxWorld(ledger, join(dir, "world-lost"));
+    const stand = new FakeMoneybird({ ledger: realLedger, tax: realTax });
+    const c = () => new MoneybirdConnector({ baseUrl: "https://moneybird.com/api/v2", administrationId: stand.admin, baseCurrency: "EUR", projects: {}, ignoreCostCentres: true, ...mapsFromNotes() }, stand.transport, staticToken(stand.token));
+    await syncAll(ledger, c(), ledgerItems(ledger), { sleep: noSleep });
+    const moved = recodeSandboxInvoice(ledger);
+    await syncAll(ledger, c(), ledgerItems(ledger), { sleep: noSleep });
+    const item = () => ledgerItems(ledger).find((i) => i.kind === "invoice" && i.object.id === moved.ledgerId)!;
+    const versions = () => [...stand.invoices.values()].filter((i) => i.reference === RECODED_INVOICE);
+    // Moneybird makes the new version, and the answer is lost on the way back.
+    stand.plan((r) => r.method === "POST" && stand.path(r) === "/documents/purchase_invoices.json" && String(r.body).includes(`"reference":"${RECODED_INVOICE}"`), "drop-after-doing");
+    const lost = await correct(ledger, c(), item());
+    expect(lost).toMatchObject({ outcome: "needs_review", detail: expect.stringMatching(/no answer came to the new version of invoice OD-77/) as string });
+    expect(versions()).toHaveLength(2);
+    const sent = stand.transport.sent.length;
+    // Run again, or synced: nothing goes out, nothing is looked up; it waits for the person.
+    await expect(correct(ledger, c(), item())).rejects.toThrow(/may or may not hold it/);
+    const res = await syncAll(ledger, c(), ledgerItems(ledger), { sleep: noSleep });
+    expect(res.find((r) => r.id === moved.ledgerId)).toMatchObject({ outcome: "needs_review" });
+    expect(stand.transport.sent.length).toBe(sent);
+    // The person finds it in Moneybird and gives its id; the next correct finishes there.
+    const found = versions().at(-1)!.id;
+    const lines: string[] = [];
+    const object = ["--connector", "moneybird", "--object", `invoice:${moved.ledgerId}`, "--by", "the bookkeeper"];
+    await expect(runErpCli(["resolve", ...object, "--as", "synced"], { db: ledger, env: {}, out: (l) => lines.push(l) })).rejects.toThrow(/--external-id/);
+    expect(await runErpCli(["resolve", ...object, "--as", "synced", "--external-id", found], { db: ledger, env: {}, out: (l) => lines.push(l) })).toBe(0);
+    expect(lines).toEqual([`invoice ${moved.ledgerId}: synced by the bookkeeper; run correct again to finish the correction`]);
+    const done = await correct(ledger, c(), item());
+    expect(done).toMatchObject({ outcome: "corrected", externalId: found });
+    expect(stand.transport.sent.length).toBe(sent);
+    expect(versions()).toHaveLength(2);
+    expect([...stand.invoices.values()].filter((i) => i.reference.startsWith(RECODED_INVOICE)).map((i) => i.total_price_incl_tax)).toEqual(["6.05", "-6.05", "6.05"]);
+    expect((await syncAll(ledger, c(), ledgerItems(ledger), { sleep: noSleep })).every((r) => r.outcome === "unchanged")).toBe(true);
+    // The answer was lost before the PDF went: the read-back names it, until the person attaches it in Moneybird.
+    const read = c();
+    const rec = await reconcile(ledger, "moneybird", (id) => read.readPurchaseInvoice(id));
+    expect(rec.rows.filter((r) => r.differences.length).map((r) => [r.external_id, r.differences])).toEqual([[found, ["the PDF is not attached in the ERP"]]]);
+    versions().at(-1)!.attachments.push(versions()[0]!.attachments[0]!);
+    expect(await reconcile(ledger, "moneybird", (id) => read.readPurchaseInvoice(id))).toMatchObject({ documents: 6, differences: 0 });
+    ledger.close();
   });
 });
 

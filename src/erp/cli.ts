@@ -3,8 +3,9 @@
 // npm run erp -- sync --connector exact --dry-run       the requests a sync would send, redacted; nothing is sent
 // npm run erp -- sync --connector exact --live          send what changed (needs the connector's settings)
 // npm run erp -- pull --connector exact --live          read the ERP's chart of accounts and suppliers
-// npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>
-//                                                       a person settles an object left for them (needs_review)
+// npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who> [--external-id <id>]
+//                                                       a person settles an object left for them (needs_review);
+//                                                       --external-id: the ERP's id of a correction part found there
 // npm run erp -- correct --connector exact --object invoice:<id> --live
 //                                                       a credit note (or reversal) and the new version
 // npm run erp -- calls                                  the run's call log by endpoint, against the approved number
@@ -12,15 +13,17 @@
 //                                                       read every purchase invoice back and reconcile it with the ledger
 // npm run erp -- record --connector moneybird [--readback <file>] [--steps <file>] [--idempotency-step <name>] [--markdown]
 //                                                       the run's record as data, from the call log, the audit log and the read-back
-// npm run erp -- world --step build --dir <folder> | --step recode
-//                                                       the sandbox run's test world (src/erp/sandboxWorld.ts); calls nothing
+// KIT11_DB=<new file> npm run erp -- world --step build --dir <folder> | --step recode
+//                                                       the sandbox run's test world (src/erp/sandboxWorld.ts); calls
+//                                                       nothing. Only in a ledger of its own, named with KIT11_DB:
+//                                                       never the default ledger, never one that holds other data
 // The dry run needs no account and no settings: without them it uses example settings and says so.
 // Every --live command needs the owner's go and a call budget (src/erp/callBudget.ts): ERP_LIVE_GO=yes,
 // ERP_CALL_BUDGET and ERP_CALL_LOG. Each request is counted in the log before it is sent; the one over is not sent.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import type { DB } from "../db/open.js";
+import { DEFAULT_LEDGER, type DB } from "../db/open.js";
 import { callsByEndpoint, liveRefusals, readCallLog } from "./callBudget.js";
 import { CONNECTOR_NAMES, redactRequest, type ConnectorName, type ErpConnector, type HttpRequest, type Transport } from "./connector.js";
 import type { MoneybirdConnector } from "./moneybird.js";
@@ -118,8 +121,12 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     return 0;
   }
   if (cmd === "world") {
-    // The Moneybird sandbox run's test world, in this ledger: stand-in rails, test data, no network.
+    // The Moneybird sandbox run's test world: stand-in rails, test data, no network. It writes test suppliers,
+    // approvals and a stand-in payout, so it only works in a ledger named for it, never in the default one.
     const stepName = flag(args, "step");
+    if (stepName !== "build" && stepName !== "recode") throw new Error("say --step build --dir <folder> or --step recode");
+    const ledger = d.env.KIT11_DB;
+    if (!ledger || resolvePath(ledger) === resolvePath(DEFAULT_LEDGER)) throw new Error(`the test world is built in a ledger of its own: set KIT11_DB to a new file outside the repository (the default ledger, ${DEFAULT_LEDGER}, is never used for it)`);
     if (stepName === "build") {
       const dir = flag(args, "dir");
       if (!dir) throw new Error("say where the test world keeps its PDFs: --dir <folder outside the repository>");
@@ -130,12 +137,9 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
       d.out(`card    ${w.card.merchant}: ${w.card.amount}, stand-in card transaction ${w.card.transaction}, account ${w.card.account}`);
       return 0;
     }
-    if (stepName === "recode") {
-      const r = recodeSandboxInvoice(d.db);
-      d.out(`invoice:${r.ledgerId} moved from account ${r.from} to ${r.to}`);
-      return 0;
-    }
-    throw new Error("say --step build --dir <folder> or --step recode");
+    const r = recodeSandboxInvoice(d.db);
+    d.out(`invoice:${r.ledgerId} moved from account ${r.from} to ${r.to}`);
+    return 0;
   }
   if (cmd === "resolve") {
     // A person's call on an object the ERP holds in a state they had to look at; nothing is sent to the ERP.
@@ -147,8 +151,8 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
     if (!kind || !id || !["vendor", "invoice", "payment", "journal"].includes(kind)) throw new Error("say which object: --object invoice:<id>");
     if (as !== "synced" && as !== "retry") throw new Error("say --as synced (finished in the ERP) or --as retry (send it again from where it stopped)");
     if (!by) throw new Error("say who resolves it: --by <name or role>");
-    resolve(d.db, name, kind as SyncItem["kind"], id, as, by);
-    d.out(`${kind} ${id}: ${as} by ${by}`);
+    const next = resolve(d.db, name, kind as SyncItem["kind"], id, as, by, undefined, flag(args, "external-id"));
+    d.out(`${kind} ${id}: ${as} by ${by}${next.status === "needs_correction" ? "; run correct again to finish the correction" : ""}`);
     return 0;
   }
   if (cmd === "sync" || cmd === "pull" || cmd === "correct" || cmd === "readback") {
@@ -202,6 +206,7 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
         const item = items(d.db).find((i) => i.kind === kind && i.object.id === id);
         if (!item) throw new Error(`no ${kind || "object"} ${id || "(none given)"} in the ledger; give --object invoice:<id> or journal:<id>`);
         const r = await correct(d.db, c, item);
+        if (r.outcome !== "corrected") { d.out(`${r.kind} ${r.id}: ${r.outcome}: ${r.detail ?? ""}`); return 1; }
         d.out(`${r.kind} ${r.id}: corrected, now ${r.externalId}`);
         return 0;
       }
@@ -213,6 +218,6 @@ export async function runErpCli(args: string[], d: CliDeps): Promise<number> {
       d.out(`${readCallLog(resolvePath(d.env.ERP_CALL_LOG!)).length} of ${Number(d.env.ERP_CALL_BUDGET)} approved requests used`);
     }
   }
-  d.out("npm run erp -- list | status | calls | readback --connector moneybird --live | record --connector … | world --step build|recode | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who>");
+  d.out("npm run erp -- list | status | calls | readback --connector moneybird --live | record --connector … | world --step build|recode | sync --connector exact|bc|odoo|moneybird --dry-run|--live | pull --connector … --live | correct --connector … --object invoice:<id> --live | resolve --connector … --object invoice:<id> --as synced|retry --by <who> [--external-id <id>]");
   return cmd ? 2 : 0;
 }

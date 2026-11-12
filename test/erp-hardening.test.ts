@@ -191,6 +191,61 @@ describe("4. a correction", () => {
   });
 });
 
+describe("4b. a correction whose answer never came", () => {
+  const changedInvoice = () => {
+    const changed = sampleInvoice();
+    changed.lines[0]!.netCents += 1000;
+    changed.lines[0]!.vatCents += 210;
+    changed.totals = { netCents: changed.totals.netCents + 1000, vatCents: changed.totals.vatCents + 210, grossCents: changed.totals.grossCents + 1210 };
+    return changed;
+  };
+
+  it("a lost credit note goes to a person, is not sent again until they say it is not in the ERP, then the correction finishes", async () => {
+    const db = openDb(":memory:");
+    const sent: string[] = [];
+    let n = 0;
+    let dropCredit = true;
+    const c = minimalConnector({
+      find: async () => null,
+      push: async () => `ext-${++n}`,
+      invoice: async () => { sent.push("invoice"); return `ext-i-${++n}`; },
+      credit: async () => { sent.push("credit"); if (dropCredit) { dropCredit = false; throw new ErpError("network", "the connection dropped", { retryable: true }); } return `ext-c-${++n}`; },
+    });
+    await syncAll(db, c, [{ kind: "vendor", object: sampleVendor() }, { kind: "invoice", object: sampleInvoice() }], { sleep: noSleep });
+    const changed = changedInvoice();
+    await syncAll(db, c, [{ kind: "invoice", object: changed }], { sleep: noSleep });
+    const parked = await correct(db, c, { kind: "invoice", object: changed });
+    expect(parked).toMatchObject({ outcome: "needs_review", detail: expect.stringMatching(/no answer came to the credit note/) as string });
+    expect(syncStatus(db, "exact").find((r) => r.kind === "invoice")).toMatchObject({ status: "needs_review", external_id: expect.stringMatching(/^ext-i-/) as string });
+    await expect(correct(db, c, { kind: "invoice", object: changed })).rejects.toThrow(/may or may not hold it/);
+    expect(sent).toEqual(["invoice", "credit"]);
+    // "synced" needs the id the person found; "retry" says it is not there.
+    expect(() => resolve(db, "exact", "invoice", changed.id, "synced", "accountant")).toThrow(/--external-id/);
+    expect(resolve(db, "exact", "invoice", changed.id, "retry", "accountant").status).toBe("needs_correction");
+    const fixed = await correct(db, c, { kind: "invoice", object: changed });
+    expect(fixed.outcome).toBe("corrected");
+    expect(sent).toEqual(["invoice", "credit", "credit", "invoice"]);
+  });
+
+  it("a lost reversal the person finds in the ERP is never posted again: the correction goes on with the new entry", async () => {
+    const db = openDb(":memory:");
+    const sent: string[] = [];
+    let n = 0;
+    const c = minimalConnector({ find: async () => null, push: async () => { sent.push("journal"); if (sent.length === 2) throw new ErpError("server", "502 from the gateway", { status: 502, retryable: true }); return `ext-j-${++n}`; } });
+    await syncAll(db, c, [{ kind: "journal", object: sampleJournal() }], { sleep: noSleep });
+    const changed = sampleJournal();
+    changed.memo = `${changed.memo} (moved)`;
+    await syncAll(db, c, [{ kind: "journal", object: changed }], { sleep: noSleep });
+    expect(await correct(db, c, { kind: "journal", object: changed })).toMatchObject({ outcome: "needs_review" });
+    resolve(db, "exact", "journal", changed.id, "synced", "accountant", undefined, "ext-j-found");
+    const fixed = await correct(db, c, { kind: "journal", object: changed });
+    expect(fixed).toMatchObject({ outcome: "corrected" });
+    expect(sent).toHaveLength(3);
+    const ev = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'erp.corrected'").get() as { payload_json: string }).payload_json) as Record<string, unknown>;
+    expect(ev).toMatchObject({ credit_note: "ext-j-found", external_id: fixed.externalId });
+  });
+});
+
 describe("5. Odoo 17 and 18 payments", () => {
   const odooConfig: OdooConfig = {
     url: "https://acme.odoo.com", db: "acme", login: "purser@example.com", apiKey: "k", companyCurrency: "EUR",

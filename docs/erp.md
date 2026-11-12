@@ -43,8 +43,14 @@ Moneybird, for small companies, has its own page: [docs/moneybird.md](moneybird.
   synced --by <who>` once they finished it in the ERP, or `--as retry` to let the next sync try again.
 - Never overwritten: something that changed after it was sent is marked `needs_correction`. An invoice is corrected with
   a credit note plus the new version (`npm run erp -- correct ...`), a journal entry with a reversal plus the new one.
-  Each part is recorded as soon as it succeeds, so a correction run again after a failure never posts its credit note
-  or reversal twice. A changed supplier or payment goes to a person.
+  Each part is recorded as soon as it succeeds, so a correction run again after a failure goes on from there. If the
+  answer to a part never came, the ERP may hold it, and a lookup cannot tell two versions of one invoice apart. So
+  that part is not sent again: it goes to a person (`needs_review`), who looks in the ERP and says `--as retry` (not
+  there) or `--as synced --external-id <its id>` (there, complete). The next `correct` goes on from there. A changed
+  supplier or payment goes to a person.
+- The PDF: an invoice from the inbox takes the PDF the inbox stored, checked against its SHA-256. If that file is not on
+  this machine, or is another file now, the invoice is not sent: it fails with that reason. Whether the file is here is
+  not a change to an invoice already sent: the hash holds the document's own hash, not the file.
 - Retries: rate limits, server and network errors, with back-off and the ERP's Retry-After up to two minutes; an ERP
   that asks to wait longer fails the push, naming the wait. Everything else fails with the ERP's own message. Every
   result is in the audit log.
@@ -72,7 +78,7 @@ npm run erp -- sync --connector exact --live         # send what changed
 npm run erp -- pull --connector exact --live         # read the ERP's chart of accounts and suppliers
 npm run erp -- status                                # what was sent, what failed, what needs a correction
 npm run erp -- correct --connector exact --object invoice:<id> --live
-npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who>   # a person settles needs_review
+npm run erp -- resolve --connector bc --object invoice:<id> --as synced|retry --by <who> [--external-id <id>]   # a person settles needs_review
 npm run erp -- calls                                 # the run's call log by endpoint, against the approved number
 ```
 

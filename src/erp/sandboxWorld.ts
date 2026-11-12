@@ -57,6 +57,9 @@ export function sandboxInvoices(): { filename: string; text: string; changed: st
   });
 }
 
+/** What the test world writes to; all of it must be empty before it is built. */
+const WORLD_TABLES = ["beneficiaries", "invoices", "proposals", "transfers", "ap_documents", "cards", "card_transactions"] as const;
+
 export interface SandboxWorldSummary {
   company: string;
   invoices: { id: string; ledgerId: string; supplier: string; number: string; net: string; vat: string; total: string; status: string; account: string; changed: string | null }[];
@@ -70,6 +73,9 @@ export interface SandboxWorldSummary {
  */
 export async function buildSandboxWorld(db: DB, dir: string, now = new Date()): Promise<SandboxWorldSummary> {
   if (apInvoices(db).length) throw new Error("this ledger already holds invoices: the test world is built in a new one");
+  // Test suppliers, approvals and a stand-in payout never go into a ledger that holds anything else.
+  const held = WORLD_TABLES.filter((t) => (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n > 0);
+  if (held.length) throw new Error(`this ledger already holds data (${held.join(", ")}): the test world is built in a new one`);
   mkdirSync(dir, { recursive: true });
   const awx = new FakeAirwallex();
   // Stand-in test money on the stand-in bank account: enough for the one payout and its stand-in fee.
@@ -137,6 +143,9 @@ export async function buildSandboxWorld(db: DB, dir: string, now = new Date()): 
  */
 export function recodeSandboxInvoice(db: DB, number = RECODED_INVOICE, account = RECODED_TO, now = new Date()): { ledgerId: string; from: string; to: string } {
   if (!CHART[account]) throw new Error(`${account} is not an account on Purser's chart`);
+  // Only in the test world's own ledger: its inbox holds the four fixture invoices and nothing else.
+  const fixture = sandboxInvoices().map((i) => i.filename.replace(/\.pdf$/, "")).sort();
+  if (JSON.stringify(apInvoices(db).map((x) => x.invoice_no).sort()) !== JSON.stringify(fixture)) throw new Error("this is not the test world's ledger (its inbox does not hold exactly the four fixture invoices): nothing was changed");
   const a = apInvoices(db).find((x) => x.invoice_no === number);
   if (!a) throw new Error(`no invoice ${number} in this ledger`);
   if (a.gl_account === account) throw new Error(`invoice ${number} is already on ${account}`);
