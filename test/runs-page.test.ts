@@ -31,7 +31,7 @@ describe("/runs", () => {
   const rows = liveRuns();
 
   it("lists the live runs newest first, the last one on top", () => {
-    expect(rows.map((r) => r.key)).toEqual(["two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
+    expect(rows.map((r) => r.key)).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "friday-1"]);
     // The connected-accounts row, held to its run log: every id and amount on it is in the log.
     const cx = rows.find((r) => r.key === "connected-1")!;
     const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");
@@ -122,8 +122,9 @@ describe("/runs", () => {
     for (const f of tl.files) expect(existsSync(f.href.replace("../../", ""))).toBe(true);
     // The page dates the last live run by it and shows it as the newest entry, under its plain name.
     expect(text(pages.runs!)).toContain("Last live run: 12 Nov 2026.");
-    const first = entriesOf(liveList(pages.runs!))[0]!;
-    expect(first.key).toBe("two-locks-1");
+    // The newest entry is vic-3 since 12 Nov, 14:3x (test/vic3-visa.test.ts); two-locks is the next.
+    expect(entriesOf(liveList(pages.runs!))[0]!.key).toBe("vic-3");
+    const first = entriesOf(liveList(pages.runs!)).find((x) => x.key === "two-locks-1")!;
     expect(inSight(first.html)).toContain(`<h2>${escAttr(tl.name!)}</h2>`);
     expect(inSight(first.html)).toContain('<time datetime="2026-11-12T09:43:58.000Z" title="12 Nov 2026">12 Nov</time>');
   });
@@ -219,11 +220,11 @@ describe("/runs as a timeline", () => {
   // The kind of each run listed on 12 Nov. A row added later (in the old shape or the new) is held by the tests that
   // go over every row; the ones that name runs go over these.
   const KINDS: Record<string, RunKind> = {
-    "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "nothing", "vic-1": "sandbox",
+    "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "nothing", "vic-1": "sandbox",
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
   };
   const known = (keys: string[]) => keys.filter((k) => k in KINDS);
-  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1)\b|\brun 1\b|\bsecond run\b/i;
+  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|vic-3|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1)\b|\brun 1\b|\bsecond run\b/i;
   // Two rows a later session could add: a series of payouts reported as one entry, and a row in the old shape.
   const series: RunRow = {
     key: "series-x", iso: "2026-11-13T10:00:00.000Z", date: "13 Nov 2026", title: "A series of payouts", name: "Twenty supplier payouts in a row",
@@ -393,7 +394,7 @@ describe("/runs as a timeline", () => {
     expect(existsSync("docs/runs")).toBe(true);
     // Rehearsals do not count as live runs.
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
-    expect(known(live.map((e) => e.key))).toHaveLength(9);
+    expect(known(live.map((e) => e.key))).toHaveLength(10);
   });
 
   it("marks exactly one run as the product: the main run", () => {
@@ -420,20 +421,20 @@ describe("/runs as a timeline", () => {
     const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
     expect(carrying("metal")).toEqual(["main-1"]);
     expect(carrying("testnet")).toEqual(["main-1"]);
-    expect(carrying("claude")).toEqual(["platform-e2e-1", "main-1"]);
+    expect(carrying("claude")).toEqual(["vic-3", "platform-e2e-1", "main-1"]);
     // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
     // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
-    expect(carrying("visa")).toEqual(["vic-1", "tap-1"]);
-    expect(carrying("airwallex")).toEqual(["two-locks-1", "platform-e2e-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("visa")).toEqual(["vic-3", "vic-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
     const v2e = live.find((e) => e.key === "vic-2")!;
     expect(v2e.cls.filter((c) => /^f-(airwallex|visa|metal|claude)$/.test(c))).toEqual([]);
     expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
     expect(row("vic-2").partners).toEqual([]);
-    expect(links.find((l) => l.id === "visa")!.n).toBe(2);
-    expect(links.find((l) => l.id === "airwallex")!.n).toBe(7);
-    expect(carrying("sandbox")).toEqual(["two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(links.find((l) => l.id === "visa")!.n).toBe(3);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(8);
+    expect(carrying("sandbox")).toEqual(["vic-3", "two-locks-1", "platform-e2e-1", "t0-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
     for (const l of links) {
@@ -460,9 +461,10 @@ describe("/runs as a timeline", () => {
     expect(css).not.toMatch(/#all:target[^{]*\{[^}]*display:\s*none/);
     // The first row is the newest: it carries the class and a small mark, and it is a PAID run.
     expect(live.filter((e) => e.cls.includes("newest")).map((e) => e.key)).toEqual([live[0]!.key]);
-    expect(known(live.map((e) => e.key))[0]).toBe("two-locks-1");
+    // Since 12 Nov, 14:35 UTC the newest is vic-3: one purchase paid after the CFO's Face ID, said as its rate.
+    expect(known(live.map((e) => e.key))[0]).toBe("vic-3");
     expect(inSight(live[0]!.html)).toContain('<span class="mk new">Newest</span>');
-    expect(inSight(live[0]!.html)).toMatch(/PAID/);
+    expect(inSight(live[0]!.html)).toMatch(/\d+ of \d+ purchases paid/);
     // Nothing in the filtering depends on the script: it only names the active link and copies ids.
     const js = scriptBody(scriptBlocks(html)[0]!);
     expect(js).toContain("aria-current");
@@ -484,7 +486,7 @@ describe("/runs as a timeline", () => {
     const pe = raw("docs/runs/2026-11-10-platform-e2e.md");
     expect(row("platform-e2e-1").rate).toEqual({ done: (pe.match(/\| \*\*PAID\*\* /g) ?? []).length, of: (pe.match(/\| \*\*PAID\*\* |\| \*\*refused at create\*\* /g) ?? []).length, what: "payouts paid" });
     expect(row("platform-e2e-1").rate).toEqual({ done: 1, of: 4, what: "payouts paid" });
-    expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
+    expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["vic-3", "platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
     for (const r of rows.filter((x) => x.rate)) {
       const e = entriesOf(html).find((x) => x.key === r.key)!;
       const words = `${r.rate!.done} of ${r.rate!.of} ${r.rate!.what}`;
@@ -524,7 +526,7 @@ describe("/runs as a timeline", () => {
     expect(seen).not.toContain('class="rt');
     // The partners come from its rails; it sits in date order; its big numbers are listed quietly in its fold.
     expect(e.cls).toEqual(expect.arrayContaining(["k-sandbox", "f-airwallex", "f-claude", "f-sandbox"]));
-    expect(entriesOf(liveList(page)).map((x) => x.key).slice(0, 3)).toEqual(["two-locks-1", "old-x", "platform-e2e-1"]);
+    expect(entriesOf(liveList(page)).map((x) => x.key).slice(0, 3)).toEqual(["vic-3", "two-locks-1", "old-x"]);
     const fold = e.html.slice(seen.length);
     expect(fold).toContain("pay-bbbb-2222");
     expect(fold).toContain("Five payouts of EUR 1.50 were created. Each went PAID.");

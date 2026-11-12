@@ -613,8 +613,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
-        const top = await page.evaluate(() => Math.round((document.getElementById("vic-flow")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
-        if (!(top < h)) fail(`/visa ${tag}: the drawing starts at ${top} px, below the first screen (${h} px)`);
+        // Since 12 Nov the first proof is the latest live run's card (vic-3, with its ids), above the 7 Nov drawing.
+        const top = await page.evaluate(() => Math.round(((document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
@@ -638,7 +639,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 195 since the jury panel of 12 Nov (measured, not asserted: four figures with their records).
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
-      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 625 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 374 : path === "/visa" ? 710 : path === "/metal" ? (tokenizeRun() ? 325 : 275) : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
