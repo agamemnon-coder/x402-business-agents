@@ -46,7 +46,8 @@ export function transferReason(glAccount: string): string {
 export { MAX_REFERENCE };
 
 /** The Payer agent's Claude client (KIT11_AP_AGENTS=on); null: no key, so code's plan stands. Default: the runner's own. */
-export interface PayAgents { claude?: Anthropic | null }
+/** The Payer agent's client, and whether it runs (the cloud engine says so, task A6; absent: KIT11_AP_AGENTS decides). */
+export interface PayAgents { claude?: Anthropic | null; on?: boolean }
 
 export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<PayOutcome> {
   const inv = apInvoice(db, id);
@@ -75,7 +76,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   // KIT11_AP_AGENTS=on: the engine plans as always, then the Payer agent proposes the rail, the day and the currency on
   // that plan, and code enforces it (src/ap/payerAgent.ts). The plan is filed only when the enforced proposal pays today
   // on the plan's own terms; the CFO signs those exact terms as before. Off: no gate, and nothing here changes.
-  const payer = apAgentsOn() ? payerGate(db, { invoiceId: id, invoiceNo: r.invoice_no, now, ...(agents.claude !== undefined ? { claude: agents.claude } : {}) }) : null;
+  const payer = (agents.on ?? apAgentsOn()) ? payerGate(db, { invoiceId: id, invoiceNo: r.invoice_no, now, ...(agents.claude !== undefined ? { claude: agents.claude } : {}) }) : null;
   // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
   const out: PayOutcome = payoutBeneficiary(db, r.vendor) || r.currency !== "EUR"
     ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, payer?.gate)

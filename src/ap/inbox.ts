@@ -47,7 +47,15 @@ export interface InboxDeps {
   claude?: Anthropic | null;
   /** The Claude client the Coder agent uses with KIT11_AP_AGENTS=on (src/ap/coderAgent.ts); absent: claudeClient(). */
   coder?: CoderDeps["client"];
+  /**
+   * Whether the payables agents run, said by the caller (the cloud engine, task A6: a Worker has no KIT11_AP_AGENTS);
+   * absent: KIT11_AP_AGENTS decides, as on the runner.
+   */
+  agents?: boolean;
 }
+
+/** Whether the payables agents run for this call: the caller's word, else KIT11_AP_AGENTS. */
+const agentsFor = (deps: Pick<InboxDeps, "agents">): boolean => deps.agents ?? apAgentsOn();
 
 /** The Checker agent's run for a document, by its hash (the invoice has no number yet when it is first checked). */
 const checkTask = (docSha: string) => `ap.check.${docSha.slice(0, 16)}`;
@@ -212,7 +220,7 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   };
   // KIT11_AP_AGENTS=on: the Checker agent decides on the case first. Code's checks then run as always, right before the
   // invoice is filed, and the agent's decision is enforced against them: it can make the outcome stricter, never looser.
-  const ran = apAgentsOn() ? await askChecker(db, deps, sha, codeChecks()) : null;
+  const ran = agentsFor(deps) ? await askChecker(db, deps, sha, codeChecks()) : null;
   const checked = codeChecks();
   const agent = ran ? enforced(ran, checked) : null;
   const findings = agent ? agent.findings : checked.findings;
@@ -269,9 +277,9 @@ export async function ingestEmail(db: DB, deps: InboxDeps, raw: Buffer, meta: Re
  * Books an invoice's accrual once it is checked clean (sinks see each invoice once: on its first bookable status).
  * With KIT11_AP_AGENTS=on the Coder agent codes the invoice first, and the accrual is booked from that coding.
  */
-async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder">, inv: ApInvoiceRow, text?: string): Promise<void> {
+async function book(db: DB, deps: Pick<InboxDeps, "sink" | "now" | "coder" | "agents">, inv: ApInvoiceRow, text?: string): Promise<void> {
   if (!bookable(inv)) return;
-  const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now });
+  const coded = await ensureCoded(db, inv, { text, client: deps.coder, now: deps.now, ...(deps.agents !== undefined ? { env: { KIT11_AP_AGENTS: deps.agents ? "on" : "off" } } : {}) });
   await checkpoint("ap.book:coded");
   await pushOnce(db, deps.sink, "accrual", accrualEntries(coded), coded, (deps.now ?? (() => new Date()))());
   await checkpoint("ap.book:booked");
@@ -284,7 +292,7 @@ export const bookAccrual = book;
  * Checks again the invoices waiting for a supplier (after one was added) and any the caller names. An invoice already
  * on its way to payment, paid or rejected is never re-checked.
  */
-export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "claude" | "coder"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
+export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "claude" | "coder" | "agents"> & { reader?: Asker }, ids?: string[]): Promise<ApInvoiceRow[]> {
   const now = (deps.now ?? (() => new Date()))();
   const targets = ids ? ids.map((id) => apInvoice(db, id)).filter((x): x is ApInvoiceRow => x !== null) : apInvoices(db, { status: "needs_vendor" });
   const out: ApInvoiceRow[] = [];
@@ -311,7 +319,7 @@ export async function recheck(db: DB, deps: Pick<InboxDeps, "now" | "sink" | "cl
       return { c, findings };
     };
     // KIT11_AP_AGENTS=on: the Checker agent decides again on the case as it stands now; code enforces it as on arrival.
-    const ran = apAgentsOn() ? await askChecker(db, deps, inv.doc_sha256, codeChecks()) : null;
+    const ran = agentsFor(deps) ? await askChecker(db, deps, inv.doc_sha256, codeChecks()) : null;
     // While the agent worked the invoice may have been filed for payment, paid or rejected: then it is left as it is.
     if (ran && apInvoice(db, inv.id)?.status !== inv.status) { out.push(apInvoice(db, inv.id) ?? inv); continue; }
     const checked = codeChecks();

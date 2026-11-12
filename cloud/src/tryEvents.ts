@@ -45,11 +45,18 @@ const eventLineOf=(W)=>{
     if(!/^[a-z_]+\.[a-z_]+$/.test(name)||!own(W.ev,name))return {who:W.who.purser,text:W.step,tag:null,asking:false};
     const asking=name==='claude.asking';
     let who=W.who.code,tag='code';
-    if(name.indexOf('claude.')===0||name.indexOf('agent.')===0||name==='ap.checker_decided'||name==='ap.payer_proposed'){const src=code(f.source);if(asking||src==='claude'||(!src&&code(f.model))){who=modelName(f.model);tag='claude'}}
+    // Task A6: an agent's decision is the agent's line when a model answered; agent_model names the model whose answer code overrode.
+    const DECIDED=own(W.agents,name);
+    if(name.indexOf('claude.')===0||name.indexOf('agent.')===0||DECIDED){const src=code(f.source);if(asking||src==='claude'||(!src&&code(f.model))){who=modelName(f.model);tag='claude'}else if(DECIDED&&code(f.agent_model)){who=modelName(f.agent_model);tag='claude'}}
     if(asking){const a=code(f.agent);who=(a?cap(words(a)):W.reader)+' · '+who}
+    if(DECIDED&&tag==='claude')who=W.agents[name]+' · '+who;
     if(PERSON.test(name)){who=W.who.you;tag=null}
     if(SIGN.test(name))tag='sign';else if(MONEY.test(name))tag='money';
-    const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of)};
+    // An agent's own sentence and code's, as the server masked and cut them (text nodes only, never markup).
+    const said=(v)=>typeof v==='string'&&v.length<=200?v.replace(/[.\s]+$/,''):'';
+    const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
+      action:code(f.action)?words(f.action):'',outcome:code(f.outcome)?words(f.outcome):'',reason:said(f.reason),enforced:said(f.enforced)||said(f.refused),
+      account:code(f.account),vat:code(f.vat_code)||W.noVat,rail:code(f.rail)?words(f.rail):'',pay_on:code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;
