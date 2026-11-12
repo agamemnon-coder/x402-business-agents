@@ -40,7 +40,7 @@ function receiptFor(change: Record<string, unknown> = {}, o: { note?: string; br
   const a = key.sign({ challenge: Buffer.from(hash, "hex").toString("base64url"), origin: "https://other.purser.test", rpId: "other.purser.test", counter: 1 });
   // A broken signature: one bit of r flipped (DER: 30 len 02 len r…, so byte 8 is inside r). Not the last base64url
   // character, whose low bits can be padding: changing it may leave the bytes, and the signature, as they were.
-  const broken = (s: string) => { const b = Buffer.from(s, "base64url"); b[8] ^= 0x01; return b.toString("base64url"); };
+  const broken = (s: string) => { const b = Buffer.from(s, "base64url"); b.writeUInt8(b.readUInt8(8) ^ 0x01, 8); return b.toString("base64url"); };
   const sig = o.breakSignature ? broken(a.response.signature) : a.response.signature;
   return {
     receipt: RECEIPT_FORMAT, note: o.note ?? "Another sample, made in a test: signed with a test key.", terms, terms_sha256: hash, algorithm: "ES256", public_key: key.publicJwk, credential_id: key.credentialId,
