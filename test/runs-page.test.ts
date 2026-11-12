@@ -588,11 +588,19 @@ describe("/runs as a timeline", () => {
     for (const n of named) expect(docs, n).toMatch(new RegExp(`\\b${n}\\b`));
   });
 
-  it("reads in fewer words than before the timeline (501)", () => {
-    // 12 Nov: 479 words in sight as built (501 before the timeline); the pin leaves room for 10 more. A run added later
-    // raises it by its own words, no more: each entry stays at 60 words in sight or fewer.
-    expect(visibleWords(html)).toBeLessThanOrEqual(489);
-    for (const e of entriesOf(liveList(html))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
+  it("keeps each entry short and the frame around the entries short, so that a truthful row added later stays green", () => {
+    // 12 Nov: 479 words in sight as built (501 before the timeline). Review 12 Nov (DC-5): one pin on the whole page went
+    // red at the next row added; the pins are now per entry (60 words in sight at most) and on the frame around the
+    // entries: the heading, the line, the filters, the closed groups and the last links (68 words as of the review fix;
+    // the pin leaves room for one more filter, such as "Simulated 1").
+    const frame = (h: string) => visibleWords(h.replace(liveList(h), ""));
+    for (const page of [html, runsPage([...rows, oldShape]), runsPage([...rows, oldShape, series])]) {
+      expect(frame(page)).toBeLessThanOrEqual(72);
+      for (const e of entriesOf(liveList(page))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
+    }
+    // The frame is what is not an entry: the page is the frame plus its entries.
+    const entryWords = entriesOf(liveList(html)).reduce((n, e) => n + visibleWords(`<main>${e.html}</main>`), 0);
+    expect(frame(html) + entryWords).toBe(visibleWords(html));
   });
 });
 

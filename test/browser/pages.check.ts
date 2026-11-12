@@ -345,8 +345,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (live.some((r) => !r.shown)) fail(`/runs ${tag}: not every live run shows on load`);
         if (await page.evaluate(`document.querySelector("details.rehs").open`)) fail(`/runs ${tag}: the rehearsals group is open on load`);
         if (w === 390) {
-          const height = await page.evaluate(() => document.documentElement.scrollHeight);
-          if (height > 2700) fail(`/runs ${tag}: ${height}px tall with every fold closed (at most 2,700; 5,386 before the timeline)`);
+          // Per entry and for the frame around the entries, not for the whole page (review 12 Nov, DC-5: a page pin of 2,700 px
+          // went red at the next row added). As built after the review: entries 193 to 263 px, the frame 418 px (the page
+          // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
+          const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
+          for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
+          if (m.frame > 470) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 470)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
