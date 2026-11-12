@@ -189,7 +189,7 @@ describe("bodies and origins", () => {
 
   it("refuses a cross-site Origin on every POST of the demo, and a missing one on the start, the renewal and a test company's writes", async () => {
     const v = await visitor();
-    const posts = ROUTES.filter((r) => r.method === "POST" && TRY_ROUTES.includes(`POST ${r.path}`)).map((r) => r.path.replace("{id}", v.proposal.id).replace("{key}", "clean"));
+    const posts = ROUTES.filter((r) => r.method === "POST" && TRY_ROUTES.includes(`POST ${r.path}`)).map((r) => r.path.replace("{id}", v.proposal.id).replace("{key}", "clean").replace("{seed}", "1"));
     for (const p of [...posts, "/v1/try/start", "/v1/try/session", "/v1/try/admin"]) {
       const cross = await c.req("POST", p, { key: p === "/v1/try/admin" ? ADMIN_TOKEN : v.s, body: {}, headers: CROSS });
       expect(cross.status, p).toBe(403);

@@ -16,6 +16,10 @@ const FULL_PAYLOAD: Record<string, unknown> = {
   status: "ready", read_by: "claude:claude-haiku-4-5", total: "1850.00", currency: "EUR", findings: [{ code: "possible_duplicate" }], to: "ready", from: "received",
   proposal_id: "P-0001", invoice_id: "AP-0001", amount: "EUR 13.40", model: "claude-haiku-4-5", pages: 2, readings: 1, kind: "payment", method: "passkey",
   buy: "EUR 13.40", fee: "EUR 0.50", request_id: "req_1", paid: 1, of: 2, files: 3, corrections: 0, cost_usd_micros: 1200,
+  // The agents' events (lane A, 12 Nov): what their allowlist lets through.
+  agent: "checker", tool: "read_invoice", turn: 1, ms: 12, result: "Read the invoice.", text: "The bank details match.", reason: "switch_off",
+  turns: 2, latency_ms: 900, source: "claude", action: "pay", outcome: "pay", overridden: false, overridden_by: null, code_requires: "pay",
+  rail: "swift", pay_on: "2026-11-16", pay_currency: "EUR",
 };
 const allowed = (event: string) => publicEvent({ seq: 1, ts: "2026-11-12T12:00:00Z", actor: "system", event, subject: "S-1", payload_json: JSON.stringify(FULL_PAYLOAD) }).fields;
 const ev = (event: string, fields: EngineEvent["fields"] = {}, actor = "system"): EngineEvent => ({ seq: 1, ts: "2026-11-12T12:00:00Z", actor, event, subject: "S-1", fields });
@@ -73,8 +77,17 @@ describe("eventLine", () => {
     expect(`${fb.who} ${fb.text}`).not.toMatch(/Claude/);
     // A model's answer that was refused: Claude answered, Purser's check said no.
     expect(eventLine(ev("claude.rejected", { model: "claude-sonnet-4-5" })).who).toBe("Claude Sonnet 4.5");
-    // An event that is not Claude's never says Claude, whatever its fields hold.
-    for (const e of LISTED.filter((x) => !x.startsWith("claude."))) {
+    // An agent's own step (lane A, 12 Nov) is Claude's: the agent and its model. A nudge is code's, and so is a decision
+    // code overrode or one made without Claude.
+    expect(eventLine(ev("agent.tool", { agent: "checker", tool: "read_invoice", model: "claude-haiku-4-5" })).who).toBe("Checker · Claude Haiku 4.5");
+    expect(eventLine(ev("agent.nudged", { agent: "checker", reason: "no decision yet" })).who).toBe(LIVE.who.code);
+    expect(eventLine(ev("ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", outcome: "hold", overridden: true })).who).toBe(LIVE.who.code);
+    expect(eventLine(ev("ap.checker_decided", { source: "fallback", model: null, outcome: "pay", overridden: false })).who).toBe(LIVE.who.code);
+    expect(eventLine(ev("ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", outcome: "pay", overridden: false })).who).toBe("Checker · Claude Haiku 4.5");
+    expect(`${eventLine(ev("claude.capped", { reason: "company_cap" })).who}`).not.toMatch(/Claude/);
+    // Any other event that is not Claude's never says Claude, whatever its fields hold.
+    const AGENTS = ["agent.tool", "agent.said", "agent.run", "ap.checker_decided", "ap.payer_proposed"];
+    for (const e of LISTED.filter((x) => !x.startsWith("claude.") && !AGENTS.includes(x))) {
       const l = eventLine(ev(e, allowed(e)));
       expect(l.who, e).not.toMatch(/Claude/);
       expect(l.tag, e).not.toBe("claude");
@@ -108,7 +121,8 @@ describe("eventLine", () => {
     expect(a.tag).toBe("claude");
     expect(`${a.who} · ${a.text}`).toBe("Checker · Claude Haiku 4.5 · asking…");
     expect(`${eventLine(ev("claude.asking", { model: "claude-haiku-4-5" })).who}`).toBe("Reader · Claude Haiku 4.5");
-    for (const e of LISTED) expect(eventLine(ev(e, allowed(e))).asking, e).toBe(false);
+    // Every other event is not an open call (claude.asking is on the allowlist since lane A's events, 12 Nov).
+    for (const e of LISTED.filter((x) => x !== "claude.asking")) expect(eventLine(ev(e, allowed(e))).asking, e).toBe(false);
   });
 
   it("is plain script with no DOM, clock or network, so the page carries the same text", () => {
