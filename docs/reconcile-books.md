@@ -20,8 +20,10 @@ verdict is `agree` (exit code 0), `differ` (1) or `partly compared` (2).
 ## Which outside books
 
 **A bookkeeping package** (`exact`, `bc`, `odoo`, `moneybird`). Each invoice is found by the id the ERP sync recorded,
-or else looked up (`findExisting`). A connector that can read an invoice back (`readPurchaseInvoice`) gives all five
-figures. Without that, only whether the invoice is paid is compared, and the result says so. A connector cannot list
+or else looked up (`findExisting`). A connector that can read an invoice back (`readPurchaseInvoice`; the Moneybird
+connector can) gives all five figures. Without that, only whether the invoice is paid is compared, and the result says
+so. A corrected invoice is compared as it stands now; the version a correction replaced and its credit note are set
+against each other by `npm run erp -- readback` (`src/erp/readback.ts`). A connector cannot list
 everything it holds, so a document that is only in the package is not found this way.
 
 **T:0**. T:0 holds journal entries, not invoices, so only the amount paid is compared per document: each of Purser's

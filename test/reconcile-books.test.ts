@@ -23,6 +23,7 @@ import { CHART } from "../src/config/gl.js";
 import { openDb, type DB } from "../src/db/open.js";
 import type { ErpConnector } from "../src/erp/connector.js";
 import type { PurchaseInvoice } from "../src/erp/model.js";
+import type { MoneybirdConnector } from "../src/erp/moneybird.js";
 import { ledgerItems } from "../src/erp/source.js";
 import { ensureErpSchema } from "../src/erp/sync.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -150,6 +151,9 @@ beforeEach(async () => {
   await paidInvoice();
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+/** The Moneybird connector's read-back fits the port the reconciliation reads with (checked by the type checker). */
+export const moneybirdReadsBack: (c: MoneybirdConnector) => ReadsBack = (c) => c;
 
 /** A stand-in bookkeeping package: it holds documents by id and reads them back (when told it can). */
 function standIn(o: { readBack: boolean; held?: Map<string, ReadBackDocument>; status?: "paid" | "unpaid" | "partial" | "unknown"; fail?: string }): ErpConnector & ReadsBack {
