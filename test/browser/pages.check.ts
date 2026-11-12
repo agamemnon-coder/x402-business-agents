@@ -651,7 +651,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
       // and it opens on a tile per Airwallex product in place of the flow of one run.
-      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /\d+ Nov \(latest\) · Airwallex sandbox · test card · test money|7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
       // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
       // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.

@@ -27,6 +27,7 @@ export function statsHtml(stats: Stat[]): string {
 
 export const STATS_CSS = `
 ul.stats { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+@media (max-width: 420px) { ul.stats { grid-template-columns: 1fr; } }
 ul.stats li { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
 ul.stats .st-ic { grid-row: 1 / span 2; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
 ul.stats li.ok .st-ic { background: var(--ok-soft); color: var(--ok); } ul.stats li.bad .st-ic { background: var(--bad-soft); color: var(--bad); }

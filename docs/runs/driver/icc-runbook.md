@@ -1,4 +1,4 @@
-Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.
+We have requested Visa Intelligent Commerce Connect access; it is not used here.
 
 # ICC: the first sandbox hour, runbook
 
