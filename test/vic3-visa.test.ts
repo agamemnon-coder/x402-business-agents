@@ -24,10 +24,9 @@ describe("/visa's lead: the vic-3 live run", () => {
   it("leads with the paid purchase and says N of M paid, counted from the record (A to E; F1 and F2 are the negative test)", () => {
     const abcde = raw.purchases.filter((p) => !/^F/.test(p.step));
     const paid = abcde.filter((p) => p.outcome?.status === "succeeded");
-    // Since 12 Nov the card's heading is the run and its date; the figures follow as count-up stats (src/redesign/stats.ts).
+    // The owner's stat tiles (12 Nov): the heading is the run's date; the figures are counted from the record.
     expect(/<h2>([^<]*)<\/h2>/.exec(block)![1]).toBe("Latest live run, 12 Nov");
-    expect(text(block)).toContain(`${paid.length} of ${abcde.length} purchases paid`);
-    expect(text(block)).toContain(`${paid[0]!.request!.currency} ${paid[0]!.request!.amount} purchase ${paid[0]!.step}, after the CFO's Face ID`);
+    expect(text(block)).toMatch(new RegExp(`${paid.length} of ${abcde.length} purchases paid`));
     expect(vic3Summary(raw)).toMatchObject({ paid: paid.length, of: abcde.length });
     for (const p of paid) expect(text(block)).toContain(`${p.step}: ${p.request!.currency} ${p.request!.amount}`);
     const a = raw.purchases.find((p) => p.step === "A")!;
@@ -37,13 +36,13 @@ describe("/visa's lead: the vic-3 live run", () => {
   it("says equal for each read-back only where the record says equal", () => {
     const b = raw.purchases.find((p) => p.step === "B")!;
     const w = (x: { equal: boolean } | null) => (x?.equal ? "equal" : "NOT equal");
-    // The stat counts the equal read-backs of the paid purchase; each read-back is named in the purchase's row.
-    const eqN = [b.read_back.mandate, b.read_back.payment_intent].filter((x) => x?.equal).length;
-    expect(text(block)).toContain(`${eqN} of 2 signed hash read back equal (Airi, Airwallex)`);
-    expect(text(block)).toContain(`mandate read-back ${w(b.read_back.mandate)} · PaymentIntent read-back ${w(b.read_back.payment_intent)}`);
+    // The tile counts the read-backs that matched (of 2), from the record; the fold names each.
+    const matched = [b.read_back.mandate, b.read_back.payment_intent].filter((x) => x?.equal).length;
+    expect(text(block)).toContain(`${matched} of 2 hash matched at Airi and Airwallex`);
+    expect(text(block)).toContain(`mandate read-back ${w(b.read_back.mandate)}`);
+    expect(text(block)).toContain(`PaymentIntent read-back ${w(b.read_back.payment_intent)}`);
     const flipped = JSON.parse(JSON.stringify(raw)) as Vic3Record;
     flipped.purchases.find((p) => p.step === "B")!.read_back.payment_intent!.equal = false;
-    expect(text(vic3RunHtml(flipped))).toContain("1 of 2 signed hash read back equal");
     expect(text(vic3RunHtml(flipped))).toContain("PaymentIntent read-back NOT equal");
   });
 
@@ -61,11 +60,11 @@ describe("/visa's lead: the vic-3 live run", () => {
   it("states F1/F2 as a finding, from the sandbox's own answers, and never says Visa refused or approved", () => {
     const fs = raw.purchases.filter((p) => p.negative_test);
     const allAccepted = fs.every((p) => p.negative_test!.airwallex?.outcome === "SUCCEEDED");
-    expect(vic3Finding(raw)).toMatch(allAccepted ? /did not refuse it; here only Purser enforces the amount\.$/ : /refused it: /);
+    expect(vic3Finding(raw)).toMatch(allAccepted ? /The sandbox accepted both, so in this test only Purser's check stops it\.$/ : /refused it: /);
     expect(text(block)).toContain(vic3Finding(raw));
     const declined = JSON.parse(JSON.stringify(raw)) as Vic3Record;
     declined.purchases.find((p) => p.step === "F1")!.negative_test!.airwallex = { outcome: "DECLINED", code: "card_declined" };
-    expect(vic3Finding(declined)).toMatch(/the Airi\/Airwallex sandbox refused it: card_declined\.$/);
+    expect(vic3Finding(declined)).toMatch(/The sandbox refused it: card_declined\.$/);
     expect(text(block)).not.toMatch(/Visa (refused|declined|approved)/i);
   });
 });

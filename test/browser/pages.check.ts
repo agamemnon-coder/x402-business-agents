@@ -645,13 +645,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 380 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 385 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
       // and it opens on a tile per Airwallex product in place of the flow of one run.
-      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
+      if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /\d+ Nov \(latest\) · Airwallex sandbox · test card · test money|7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
       // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
       // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.

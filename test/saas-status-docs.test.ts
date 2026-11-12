@@ -75,7 +75,7 @@ describe("/docs: docs and API", () => {
   it("is one page for a developer or integrator, with one heading and an honest label", () => {
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Docs and API</h1>");
-    expect(html).toContain("<title>Docs and API</title>");
+    expect(html).toContain("<title>Purser · Docs and API</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
     expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "offline"]);
   });
@@ -154,7 +154,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(200);
+    expect(visibleWords(set)).toBeLessThanOrEqual(210);
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -184,8 +184,9 @@ describe("/docs: docs and API", () => {
     expect(plain(off)).toContain("no keys");
   });
 
-  it("stays within 200 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(200);
+  // 210 since the review of 12 Nov: "(KIT is Purser's internal project name)" next to the variable names (6 words).
+  it("stays within 210 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(210);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });
@@ -296,7 +297,7 @@ describe("/status: what the page says before anything is read, and without JavaS
   it("is one calm page with one heading and an honest label", () => {
     expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
     expect(html).toContain("<h1>Status</h1>");
-    expect(html).toContain("<title>Status</title>");
+    expect(html).toContain("<title>Purser · Status</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
     expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["now", "runs"]);
     expect(visibleWords(html)).toBeLessThanOrEqual(90);

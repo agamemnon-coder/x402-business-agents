@@ -128,7 +128,10 @@ const EVENTS: Record<string, Pick> = {
   },
   "ap.payer_proposed": (p) => ({
     ...copy("source", "model", "rail", "pay_on", "pay_currency", "outcome", "overridden", "overridden_by")(p),
-    reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
+    reason: firstSentence(p.reason, 160), request_id: lastRequest(p.request_ids),
+    // In the cloud engine the agent proposes within code's plan: when it is held or off the plan, code's plan stands.
+    plan_stands: p.plan_stands === true ? true : undefined,
+    enforced: p.plan_stands === true ? masked(`${firstSentence(p.plan_stands_why, 110) ?? "off the plan"}; code's own plan goes to the CFO's Face ID`, 200) : firstSentence(p.why, 160),
   }),
   // The passkey (src/passkey).
   "passkey.enrolment_opened": NONE,

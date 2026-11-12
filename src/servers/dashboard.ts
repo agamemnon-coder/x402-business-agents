@@ -105,6 +105,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   // The vault's folder tree on /proof (docs/media, computed from src/vault/layout.ts by npm run vault:tree).
   "vault-tree-light.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-light.svg", import.meta.url)) },
   "vault-tree-dark.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-dark.svg", import.meta.url)) },
+  // /books' "Download PDF": the test company's balance sheet and P&L, the vault's own year report (npm run books:statement).
+  "books-balance-sheet-2026-11-12.pdf": { type: "application/pdf", body: readFileSync(new URL("../../docs/assets/books/books-balance-sheet-2026-11-12.pdf", import.meta.url)) },
 };
 /** /watch's stills (src/film/stills/: the poster and the chapter thumbnails, real frames of the film's shots), as /assets/film-<name>. */
 export const FILM_STILLS = filmStills();

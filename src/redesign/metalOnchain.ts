@@ -141,7 +141,7 @@ export function tokenFlowSection(run: TokenRun | null = tokenRun()): string {
   const nodes = tokenFlow(rec);
   return `<section class="moc" id="invoice-token-flow" aria-labelledby="moc-token"><h2 id="moc-token">${esc(TOKEN_TITLE)}</h2>
 <ol class="moc-flow">${nodes.map((n) => `<li class="${n.href || n.key === "invoice" ? "on" : "off"}"><b>${esc(n.label)}</b><span>${esc(n.note)}</span>${n.href && n.hash ? `<a class="pf" href="${esc(n.href)}" target="_blank" rel="noopener" aria-label="${esc(`${n.label}: transaction ${n.hash} on Metal's explorer`)}">${esc(shortHash(n.hash))} ↗</a>` : ""}</li>`).join("")}</ol>
-<p class="moc-src">${esc(`Prototype · ${rec.labels.network} · test money · financier simulated · face value divided by ${rec.labels.face_value_scaled_by} · ${dayOf(rec.date)}`)} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></section>`;
+<p class="moc-src">${esc(`Prototype · ${rec.labels.network} · test money · financier simulated · amounts scaled down ${rec.labels.face_value_scaled_by}× for testnet · ${dayOf(rec.date)}`)} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></section>`;
 }
 
 function notYet(title: string, runbook: string): string {

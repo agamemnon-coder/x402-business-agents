@@ -117,9 +117,14 @@ export const APPROVE = {
   saves: "This saves a test passkey for {host} on this device; you can delete it afterwards.",
   create: "Create your approval passkey",
   approve: "Approve {amount} with {method}",
+  /** On the button, each only while its step runs: the browser's passkey prompt is open, finish runs, approve runs. */
   waiting: "Waiting for your passkey…",
+  saving: "Saving your passkey…",
+  approving: "Approving…",
+  /** Under the button when a request is still out after 30 s (screens 3 and 4). */
+  slow: "This is taking longer than usual.",
+  /** The approval's held answer: shown as it comes back, while the pay call (in the same tap) runs. */
   approved: "Approved. Nothing is paid yet.",
-  next: "Pay it with your signature",
   cancelled: "Nothing was signed. Try again when you are ready.",
   noPasskey: "This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.",
   fileAgain: "File it again",
@@ -136,17 +141,22 @@ export const PROPOSAL_FIELDS = { account: "Account ending", due: "Due", amount: 
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
 
 /**
- * Screen 4. The fields hold the terms the passkey signed; the visitor may change one and try to pay with the same
- * signature. Everything of the outcome is drawn from the pay route's answer, after it returned.
+ * The pay call. Screen 3 sends it in the approval's tap with the terms as signed ("Paying…" on its button; its other
+ * outcomes in these words). Screen 4, reached after paid from screen 5's link, holds the terms the passkey signed in
+ * fields; the visitor may change one and try to pay with the same signature. Everything of the outcome is drawn from
+ * the pay route's answer, after it returned.
  */
 export const PAY = {
   heading: "Pay it with your signature.",
   loading: "Loading the terms you signed…",
   line: "Your signature covers exactly these terms. Change one and try to pay, or pay them as signed.",
-  /** The deadline, from the terms' expires_at ({time}: the browser's local time). */
-  until: "Pay before {time}.",
+  /** Screen 4 comes after paid. */
+  already: "Already paid.",
+  /** Screen 4's quiet link back to screen 5. */
+  back: "Back",
   button: "Pay with my signature",
-  sending: "Sending…",
+  /** On the button while the pay request runs (with the ring). */
+  paying: "Paying…",
   amountBad: "Digits only: 120.50",
   /** Refused: the stamp, then one row per layer that refused. */
   stamp: "Refused by Purser",
@@ -210,6 +220,8 @@ export const BOOKS = {
   failed: "Purser could not read this.",
   retry: "Try the payment again",
   next: "See your company",
+  /** A quiet link under the main button, to screen 4's fields. */
+  cheat: "Try changing what you signed",
 };
 
 /**
@@ -294,32 +306,39 @@ export const VISIBLE = {
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
-    [APPROVE.heading, APPROVE.terms, APPROVE.approved, APPROVE.next],
+    // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
   ],
   pay: [
     [PAY.heading, PAY.loading],
-    [PAY.heading, PAY.line, PAY.until, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.amountBad, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.sending],
-    [PAY.heading, PAY.paidOnce, PAY.button],
-    [PAY.heading, PAY.fileAgain],
-    [PAY.heading, PAY.failed, PAY.retry],
+    [PAY.heading, PAY.line, PAY.already, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.amountBad, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.paying, APPROVE.slow, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.paidOnce, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.fileAgain, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.failed, PAY.retry, PAY.back],
     // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
     [PAY.heading, PAY.button, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
-      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack],
+      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack, PAY.back],
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
-    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next, BOOKS.cheat],
     // A block whose part is not there yet says so in one sentence, without its heading (it claims nothing).
-    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next],
-    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next],
+    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next, BOOKS.cheat],
     // The read model was not fed: one sentence for the books, the archive as the engine has it.
-    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
+    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
     // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
     // until a payment that went through is drawn again from the retry's answer.
     [BOOKS.headingError, BOOKS.retry, BOOKS.next],
@@ -342,7 +361,10 @@ export const VISIBLE = {
  * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide; with the cap's words
  * ("Demo invoices go up to EUR 5,000.") in its place it is 48.
  */
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 80, "invoice 4": 49, "invoice 5": 48 };
+// 12 Nov (one-tap pay): screen 4 now comes after paid, so its states carry "Already paid." and a link back ("pay 4"
+// paid once, "pay 6" failed with retry, "pay 7" refused); screen 5 carries the link to it ("books 0", "books 1").
+// Each is pinned at its exact count.
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 48, "pay 4": 52, "pay 6": 51, "books 0": 50, "books 1": 50 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -361,6 +383,15 @@ export const LIVE = {
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
   noVat: "none (a person books it)",
+  /** An agent's decision on the page: its lead (with a reason, then without), its reason marked as its own words, and
+   *  what Purser's code enforced, on a muted line under it. */
+  lead: {
+    "ap.checker_decided": "Decided: {action}, because", "ap.checker_decided_plain": "Decided: {action}.",
+    "ap.coded": "{account} expense, VAT {vat}:", "ap.coded_plain": "{account} expense, VAT {vat}.",
+    "ap.payer_proposed": "Proposed: pay on {pay_on} via {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} via {rail} from {currency}.",
+  } as Record<string, string>,
+  ownWords: "its own words",
+  enforced: "Purser's code enforced: {enforced}",
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
     blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
@@ -400,8 +431,8 @@ export const LIVE = {
     "agent.run": "Finished its work on this step.",
     "ap.checker_decided_why": "Decided: {action}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.checker_decided": "The check is decided. Purser's code compared it with its own rules.",
-    "ap.coded_why": "{account}, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
-    "ap.coded": "{account}, VAT {vat}: {reason}. Purser's code checked it and booked it.",
+    "ap.coded_why": "{account} expense, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
+    "ap.coded": "{account} expense, VAT {vat}: {reason}. Purser's code checked it and booked it.",
     "ap.coded_plain": "The invoice was coded. Purser's code checked it.",
     "ap.payer_proposed_why": "Proposed: pay on {pay_on} via {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",

@@ -32,6 +32,8 @@ const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", 
 const numbers = (t: string) => (t.match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => Number(n.replace(/,(?=\d{3}\b)/g, "")));
 const idsOut = (t: string) => t.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, " ").replace(/\b[0-9a-f]{8}…/g, " ").replace(/\b(int|mdt|acct|tr)_[A-Za-z0-9_-]+/g, " ").replace(/\bP-\d{4}\b/g, " ").replace(/docs\/[\w./-]+/g, " ");
 
+const eur = (v: string) => `EUR ${Number(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 describe("/airwallex: one tile per Airwallex product, each from its run's record", () => {
   it("shows the seven products in order, each with one number, an id and a date, with every fold removed", () => {
     expect(tiles.map((t) => t.key)).toEqual([...PRODUCT_ORDER]);
@@ -58,7 +60,8 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
       expect(open).toContain(t.name);
     }
     // The heading counts the tiles; the page is no longer the replay of one run.
-    expect(awx).toContain("<h1>Purser uses seven Airwallex products</h1>");
+    // Review 12 Nov: the seven products, then the three tested live behind flags.
+    expect(awx).toContain("<h1>Seven Airwallex products in the product, three more tested live on 12 Nov</h1>");
     expect(text(main(awx))).not.toMatch(/Replay of the main run/);
     expect(awx).toMatch(/<span class="pill run">[\s\S]*?Airwallex sandbox · test money · each run dated<\/span>/);
   });
@@ -78,8 +81,9 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     }
   });
 
-  it("keeps each tile short: at most 22 words, the three-state tile 24", () => {
-    for (const t of tiles) expect({ key: t.key, over: tileWords(tileHtml(t.key)) > (t.states ? 24 : 22) ? tileWords(tileHtml(t.key)) : 0 }).toEqual({ key: t.key, over: 0 });
+  it("keeps each tile short: at most 24 words, the three-state tile 24", () => {
+    // 24 since 12 Nov (review): "EUR 45.00" is two words where "€45" was one (and on Airi's line, two amounts).
+    for (const t of tiles) expect({ key: t.key, over: tileWords(tileHtml(t.key)) > (t.states ? 24 : 24) ? tileWords(tileHtml(t.key)) : 0 }).toEqual({ key: t.key, over: 0 });
   });
 
   it("holds every block that names its own record (data-rec) to that record's figures", () => {
@@ -102,7 +106,7 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     expect(yes).toBeTruthy();
     expect(rec.declines_met.find((m) => m.transaction_id === no.id)!.proposal_id).toMatch(/^P-\d+$/);
     expect(t.id).toBe(no.id);
-    expect(t.value).toBe("€45");
+    expect(t.value).toBe("EUR 45.00"); // "EUR 45.00", the site's one style (review 12 Nov)
     expect(no.amount).toBe("45.00");
     // Three states in a row, each as the record has it: the decline code is Airwallex's own.
     expect(t.states!.map((x) => x.text)).toEqual([`Declined: ${no.decline_code}`, "The agent asked the CFO", "Approved after Face ID"]);
@@ -339,9 +343,9 @@ describe("/airwallex: connected accounts, the PAID payout first and the refusals
   it("heads the tile with the PAID payout, its transfer id and Purser's fee, and keeps the refusals out of sight", () => {
     const t = tiles.find((x) => x.key === "connected")!;
     expect(t.id).toBe(p.paid.transferId);
-    expect(t.value).toBe(`€${p.paid.amount}`);
+    expect(t.value).toBe(eur(p.paid.amount));
     expect(t.what).toContain("PAID");
-    expect(t.what).toContain(`€${p.paid.purserFee} fee`);
+    expect(t.what).toContain(`${eur(p.paid.purserFee)} fee`);
     // The fee's status is Purser's own row: SETTLED means Airwallex accepted exactly the signed fee with the payout.
     // Where the fee lands at Airwallex is unconfirmed in the run logs, so the tile does not say Airwallex settled it.
     expect(t.why).toBe(p.paid.purserFeeStatus === "SETTLED" ? "Airwallex accepted the fee." : "Airwallex carries the application fee.");
@@ -407,7 +411,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     expect(md).toContain(`EUR ${a.amount}`);
     expect(md).toMatch(/Booked the receipt only from the status it read back/);
     const t = tiles.find((x) => x.key === "acceptance")!;
-    expect(t).toMatchObject({ id: a.intentId, value: `€${a.amount}` });
+    expect(t).toMatchObject({ id: a.intentId, value: eur(a.amount) });
     expect(t.what).toContain("SUCCEEDED");
     // The card and the customer are the sandbox's: labelled on the tile and in the fold of what is simulated.
     expect(md).toMatch(/success test card/);

@@ -97,18 +97,26 @@ describe("the Built on strip", () => {
       `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions`, `${t0Data().journal!.posted} journal entries`, `${st.payments.sales} paid requests`,
     ]);
     expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "3 purchases paid in 2 live runs", "24 decisions", "95 journal entries", "41 paid requests"]);
-    expect(ICC_LINE).toBe("ICC: access requested, not used in this entry");
+    // #216 (12 Nov): ICC spelled out in the footer.
+    expect(ICC_LINE).toBe("Visa Intelligent Commerce Connect (access requested)");
   });
 
-  it("is in the footer of /metal, /airwallex, /claude and /t0, text only; not on Home, /visa, Watch or Proof", () => {
+  // #216 (12 Nov): one footer everywhere. The Built on list is in every page's footer (registered with ui.ts), never in
+  // <main>; /visa, which says ICC in its body, leaves that item out.
+  it("is in the footer of every page, a list, text only; never in <main>; /visa without the ICC item", () => {
     const strip = builtOnHtml(run);
     expect(strip).not.toMatch(/<img|<svg/);
-    expect(text(strip).trim()).toBe(`Built on ${items.map((i) => `${i.name}: ${i.proof}`).join(" · ")} · ${ICC_LINE}`);
+    const lis = (h: string) => [...h.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => text(m[1]!).trim());
+    expect(lis(strip)).toEqual(["Built on", ...items.map((i) => `${i.name}: ${i.proof}`), ICC_LINE]);
+    expect(lis(builtOnHtml(run, false))).toEqual(["Built on", ...items.map((i) => `${i.name}: ${i.proof}`)]);
     for (const [name, html] of Object.entries({ metal: METAL_PAGE, airwallex: AIRWALLEX_PAGE, claude: CLAUDE_PAGE, t0: T0_PAGE })) {
       const foot = /<footer[\s\S]*<\/footer>/.exec(html)![0];
       expect({ name, strip: foot.includes(strip) }).toEqual({ name, strip: true });
       expect({ name, inMain: /<main[\s\S]*<\/main>/.exec(html)![0].includes('class="builton"') }).toEqual({ name, inMain: false });
     }
-    for (const [name, html] of Object.entries({ home: HOME_PAGE, visa: VISA_PAGE, watch: WATCH_PAGE, proof: PROOF_PAGE })) expect({ name, strip: html.includes('class="builton"') }).toEqual({ name, strip: false });
+    for (const [name, html] of Object.entries({ home: HOME_PAGE, visa: VISA_PAGE, watch: WATCH_PAGE, proof: PROOF_PAGE })) {
+      expect({ name, inFooter: /<footer[\s\S]*<\/footer>/.exec(html)![0].includes('class="builton"'), inMain: /<main[\s\S]*<\/main>/.exec(html)![0].includes('class="builton"') }).toEqual({ name, inFooter: true, inMain: false });
+    }
+    expect(VISA_PAGE).toContain(builtOnHtml(run, false));
   });
 });

@@ -423,7 +423,7 @@ describe("docs/runs", () => {
 
   it("the runbook opens with the one status sentence, labels its output as the stand-in's, and matches what the code prints", async () => {
     const book = readFileSync(new URL("../docs/runs/driver/icc-runbook.md", import.meta.url), "utf8");
-    expect(book.split("\n")[0]).toBe("Intelligent Commerce Connect: access requested, not granted yet; not used in this entry.");
+    expect(book.split("\n")[0]).toBe("We have requested Visa Intelligent Commerce Connect access; it is not used here.");
     expect(book).toContain("**Expected shape, from the test stand-in; not a sandbox run.**");
     expect(book).not.toMatch(/\b(he|she|his|her|him)\b/i);
     expect(book).not.toMatch(/(Visa|Cybersource) (approved|certified|endorsed)|ICC ran|was paid/i);

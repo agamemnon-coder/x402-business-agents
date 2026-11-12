@@ -74,6 +74,11 @@ export interface EngineDeps {
    * it, and settles to what it cost; refused, the parser reads and a claude.capped row says why. Absent: `reader` reads.
    */
   claude?: ClaudeAccess;
+  /**
+   * Whether Pay asks Claude for the advisory review note beside the proposal (default true). The hands-on demo says no
+   * (speed, 12 Nov): code writes the note, and the Payer agent's own reason is already on the screen.
+   */
+  reviewNoteOnPay?: boolean;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -284,7 +289,7 @@ export class EngineHost {
     this.roomFor(sha256(bytes));
     const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader, agents) =>
       // Task A6: the Checker decides on the invoice as it is read, and the Coder codes it before its accrual is booked.
-      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
+      ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client, readInParallel: true }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
@@ -315,8 +320,9 @@ export class EngineHost {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try {
-        // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay.
-        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), reader, { on: agents.on, claude: agents.client }));
+        // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay. It may
+        // only propose within that plan: held or off the plan, code's plan stands and is filed for Face ID, labelled.
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), this.deps.reviewNoteOnPay === false ? undefined : reader, { on: agents.on, claude: agents.client, planStands: true }));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };

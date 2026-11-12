@@ -192,7 +192,7 @@ export const WORKS_WITH = "Works with";
 function aboutHtml(): string {
   return `<p class="eyebrow">${esc(ABOUT_HEAD)}</p>
   <h2 class="e-h reveal" id="about">${esc(FLOW_HEAD)}</h2>
-  <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` <a href="${esc(f.evals)}" target="_blank" rel="noopener">evals</a>` : ""}</span></li>`).join("")}</ol>
+  <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` (<a href="${esc(f.evals)}" target="_blank" rel="noopener">see evals</a>)` : ""}</span></li>`).join("")}</ol>
 `;
 }
 
@@ -296,7 +296,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
-    "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on this repository's engine, captured by test/browser/try.check.ts on 12 Nov with no API key set, so Purser's code read that invoice; /try's reader is Claude when it runs live (cloud/src/engine/tryClaude.ts). The ready-to-pay check is Purser's code. Test money, a simulated bank, a test passkey.",
+    "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on Purser's own engine, 12 November, with no API key set, so Purser's code read that invoice; when /try runs live, its reader is Claude. Test money, a simulated bank, a test passkey.",
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Metal figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,
@@ -306,13 +306,12 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
     real,
-    source: `Source: a /try run of its sample invoice (src/redesign/heroFlow.ts), ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
+    source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });
 }
 
-/** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the T:0 record. */
+/** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the statement. */
 export function booksCardHtml(): string {
-  const j = booksData().journal;
-  if (!j) return "";
+  if (!booksData().statement) return "";
   return `<a class="btn big ghost" href="books">${icon("database", 18)}${esc("Books")}</a>`;
 }

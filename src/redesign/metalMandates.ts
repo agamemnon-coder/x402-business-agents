@@ -167,8 +167,6 @@ export const METAL_INSPECT_JS = `(function () {
       });
       label.textContent = "Spent: read live from Metal testnet at " + a.read_at.slice(11, 16) + " UTC, block " + a.block + ".";
       if (why) why.textContent = "";
-    } else if (why && a.reason) {
-      why.textContent = "Live read now: " + a.reason + ".";
     }
   }).catch(function () {});
 })();`;

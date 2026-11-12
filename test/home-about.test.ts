@@ -22,8 +22,8 @@ describe("About Purser on Home", () => {
       expect(main.indexOf('<section class="e-flow"')).toBeLessThan(main.indexOf('<section class="e-stats"'));
       const a = about(html);
       expect(a).toContain(`id="about">${FLOW_HEAD}</h2>`);
-      // The eval link reads "evals" or "(see evals)"; either way the eval-only steps say so.
-      expect(text(a).replace(/\(see evals\)/g, "evals")).toBe(`${ABOUT_HEAD} ${FLOW_HEAD} ${AGENT_FLOW.map((f) => `${f.verb} ${f.who}${f.evals ? " evals" : ""}`).join(" ")}`);
+      // The eval-only steps end with "(see evals)", a link to the evals (the review of 12 Nov).
+      expect(text(a)).toBe(`${ABOUT_HEAD} ${FLOW_HEAD} ${AGENT_FLOW.map((f) => `${f.verb} ${f.who}${f.evals ? " ( see evals )" : ""}`).join(" ")}`);
       expect(AGENT_FLOW.filter((f) => f.evals).map((f) => f.verb)).toEqual(["Check", "Pay"]);
       expect(a).not.toMatch(/ style="/);
     }
