@@ -378,7 +378,8 @@ const FILTER_CSS = `${FILTERS.map((f) => `#${f.id}:target ~ ol.tl > li.run:not(.
 
 const CSS = `.runsp h1 { margin: 24px 0 6px; }
 .runsp .last { color: var(--muted); margin: 0 0 12px; font-size: 16px; line-height: 1.5; max-width: 64ch; }
-.runsp .fa { position: absolute; top: 0; }
+/* The filters' anchors sit at the filter row: without the script a tap lands there, under the header. */
+.runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }
 .runsp nav.flt { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 6px; }
 .runsp nav.flt a { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font: 650 13.5px/1 Inter, system-ui, sans-serif; text-decoration: none; white-space: nowrap; }
 .runsp nav.flt a b { font-weight: 650; opacity: .75; font-variant-numeric: tabular-nums; }
@@ -445,9 +446,24 @@ const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
 });`;
 
-/** Names the active filter for a screen reader (aria-current). The filtering itself is CSS and needs no script. */
+/**
+ * Names the active filter for a screen reader (aria-current), and keeps the reader's place on a filter tap: the page does
+ * not move and the focus stays on the link, so the next Tab goes on after it (review 12 Nov). The filtering itself is CSS
+ * on the anchor the link sets and needs no script.
+ */
 const FILTER_JS = `(function () {
   var links = document.querySelectorAll("nav.flt a");
+  // With the script on, the anchors take no box: going to one keeps the page where it is (the filtering is unchanged).
+  document.querySelector("main.runsp").classList.add("js");
+  // The focus stays on the activated filter, so the next Tab goes on after it, not back to the first filter.
+  links.forEach(function (a) {
+    a.addEventListener("click", function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      location.hash = a.getAttribute("href");
+      a.focus({ preventScroll: true });
+    });
+  });
   function mark() {
     var on = links[0];
     links.forEach(function (a) { if (a.getAttribute("href") === location.hash) on = a; });

@@ -443,6 +443,15 @@ describe("/runs as a timeline", () => {
     }
     // The hiding is CSS only, on :target, one rule per filter; every rule that hides a run excludes the newest one.
     const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
+    // Review 12 Nov (DC-6): a filter tap does not jump to the top. The anchors sit directly before the filter row, in the
+    // flow, with no height and a margin for the sticky header (without the script a tap lands at the filter row); with
+    // the script on they take no box, so going to one does not scroll, and the focus stays on the tapped link.
+    expect(html).toMatch(/<span class="fa" id="all"><\/span>(?:<span class="fa" id="[a-z]+"><\/span>)+\n<nav class="flt"/);
+    expect(css).toContain(".runsp .fa { display: block; height: 0; scroll-margin-top: 72px; } .runsp.js .fa { display: none; }");
+    expect(css).not.toMatch(/\.fa \{[^}]*position: absolute/);
+    const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1]!;
+    expect(script).toContain('document.querySelector("main.runsp").classList.add("js");');
+    expect(script).toContain("a.focus({ preventScroll: true });");
     const hiding = css.split("}").filter((rule) => /li\.run/.test(rule.split("{")[0]!) && /display:\s*none/.test(rule));
     expect(hiding.length).toBeGreaterThanOrEqual(links.length - 1);
     for (const rule of hiding) for (const selector of rule.split("{")[0]!.split(",")) expect(selector).toMatch(/:target[^,]*:not\(\.newest\)/);

@@ -372,6 +372,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         }
         await page.click('nav.flt a[href="#all"]');
         if ((await rowsNow()).some((r) => !r.shown)) fail(`/runs#all ${tag}: "All" does not show every live run again`);
+        // A filter tap keeps the reader's place: the filter row stays where it was on screen (review 12 Nov, DC-6).
+        await page.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
+        const before = await page.evaluate(`[scrollY, document.querySelector("nav.flt").getBoundingClientRect().top]`) as number[];
+        await page.click(`nav.flt a[href="#${filters[filters.length - 1]}"]`);
+        await page.waitForTimeout(150);
+        const after = await page.evaluate(`[scrollY, document.querySelector("nav.flt").getBoundingClientRect().top, document.documentElement.scrollHeight - innerHeight]`) as number[];
+        // (Unless the filtered page is too short to stay scrolled that far: then it rests at its end.)
+        if (Math.abs(after[1]! - before[1]!) > 2 && after[0]! < after[2]! - 1) fail(`/runs ${tag}: a filter tap moves the filter row from ${Math.round(before[1]!)} to ${Math.round(after[1]!)} px on screen (scroll ${before[0]} to ${after[0]})`);
+        await page.click('nav.flt a[href="#all"]');
         // By keyboard: Tab reaches a filter, Enter applies it.
         await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
         let tabs = 0;
@@ -382,6 +391,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           await page.waitForTimeout(100);
           const seen = await rowsNow();
           if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== (r.cls.includes("f-metal") || r.cls.includes("newest")))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
+          // The next Tab goes on after the activated filter, not back to "All" (review 12 Nov, DC-6).
+          await page.keyboard.press("Tab");
+          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#metal"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
+          if (!next.after) fail(`/runs ${tag}: after Enter on the Metal filter, Tab goes to "${next.what}", not on after it`);
         }
         // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
         await page.goto(`${base}/runs`, { waitUntil: "load" });
@@ -403,6 +416,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
             const wrong = live.filter((r, i) => shown[i] !== (id === "all" || r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
             if (wrong.length) fail(`/runs#${id} ${tag}, JavaScript off: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
           }
+          // Without the script a tap lands on the filter row (its anchors sit at it), in view under the header, not at the top.
+          await p2.goto(`${base}/runs`, { waitUntil: "load" });
+          await p2.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
+          await p2.click('nav.flt a[href="#metal"]');
+          await p2.waitForTimeout(150);
+          const at2 = await p2.evaluate(`[document.querySelector("nav.flt").getBoundingClientRect().top, document.querySelector("header.top") ? document.querySelector("header.top").getBoundingClientRect().bottom : 0, innerHeight]`) as number[];
+          if (at2[0]! < at2[1]! || at2[0]! > at2[2]! / 3) fail(`/runs ${tag}, JavaScript off: a filter tap puts the filter row at ${Math.round(at2[0]!)} px (the header ends at ${Math.round(at2[1]!)} px), not in view near where it was`);
           await off.close();
         }
         await page.goto(`${base}/runs`, { waitUntil: "load" });
