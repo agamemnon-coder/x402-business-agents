@@ -158,7 +158,7 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
   const body = metalBody(run.record, { logo: LOGO.metal, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
-  return page({ title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -183,7 +183,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**
