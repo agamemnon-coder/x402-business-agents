@@ -96,8 +96,22 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     const index = readFileSync(join(root, "worker/src/index.ts"), "utf8");
     expect(index.match(/AIRWALLEX_(CLIENT_ID|API_KEY)/g)?.length).toBeGreaterThanOrEqual(2);
     expect(index).toMatch(/new SandboxQuotes\(\{ clientId: id, apiKey: key \}\)/);
-    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
+    // 12 Nov: the generated, git-ignored worker/src/pages.gen.ts is page text, not Worker code: /docs names the two
+    // variables an integrator sets. So the scan leaves it out, and the next test holds it to naming only.
+    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$|pages\.gen\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
     expect(others.map((f) => f.slice(root.length))).toEqual([]);
+  });
+
+  it("the generated page bundle, when present, reads nothing: only the /docs page's text names the variables", () => {
+    const gen = join(root, "worker/src/pages.gen.ts");
+    let src: string;
+    try { src = readFileSync(gen, "utf8"); } catch { return; } // not built: nothing to check
+    const [head, ...rest] = src.split("\n").filter((l) => l.trim() !== "");
+    const code = [head, ...rest.map((l) => l.replace(/^export const PAGES: Pages = .*;$/, "export const PAGES: Pages = <data>;"))].join("\n");
+    expect(code).not.toMatch(/AIRWALLEX_|apiKey|\benv\b/); // the code around the data reads no env and no secret
+    const pages = JSON.parse(src.slice(src.indexOf("= {") + 2, src.lastIndexOf("};") + 1)) as Record<string, unknown>;
+    expect(Object.keys(pages).filter((k) => /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(JSON.stringify(pages[k])))).toEqual(["docs"]);
+    expect(JSON.stringify(pages.docs)).not.toMatch(/env\s*[.[]\s*"?AIRWALLEX_|apiKey\s*:/);
   });
 });
 
