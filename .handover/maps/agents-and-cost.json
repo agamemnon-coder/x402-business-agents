@@ -1,0 +1,253 @@
+{
+ "summary": "Map of the agents and Claude cost tracking, from read-only snapshots of main and platform. On main the Claude agents fall into two families. (1) Tool-use agents run through `runAgent` in src/agents/loop.ts: Sourcing (Haiku), Support (Sonnet), Treasury (Opus), decline (Haiku) and rail choice (Haiku), plus the autonomous wake runtime in src/autonomy/runtime.ts. (2) Structured-output readers go through `ClaudeReader.ask` in src/claude/reader.ts with MODELS {classify: Haiku, act: Sonnet, review: Opus}. Every Claude path has a deterministic code fallback, and each decision is labelled \"claude\" or \"fallback\" in the SQLite `audit_log`. That table holds `agent.run`, `agent.tool`, `agent.decision`, `claude.read`, `claude.fallback` and `claude.rejected` rows, with request ids, tokens, cost in micro-USD and Claude's last text. On platform the payables chain in src/ap/ uses three steps: Haiku classifies, Sonnet reads (twice for scans), Opus writes an advisory note. Everything that decides is plain code (src/ap/checks.ts `evaluate`, src/ap/reading.ts `readingCheck`, src/policy/fraudCore.ts `assessAgainst`). Cost is priced in src/claude/pricing.ts `callCostMicros`. Caps on the runner: per agent per hour and $8 per world, only inside `runAgent`. Caps in the Worker: per UTC day, in Durable Object SQL tables (/api/try $3/day in `try_spend`; /try/sign $10/day in `ts_spend`), plus per-IP and global call-rate limits. There is no per-visitor dollar cap, no all-time cap, and no Turnstile. Recorded spend so far: $29.33 in docs/runs/api-budget.jsonl, plus $0.38 in the one private ledger that has an audit_log. Worker spend can only be read inside its Durable Objects.",
+ "key_files": [
+  {
+   "path": "/home/user/ro/main/src/agents/loop.ts",
+   "role": "`runAgent`: the Claude tool-use loop (strict tools, a zod check on every input, one retry on transient errors, cost caps `AGENT_HOURLY_CAP_MICROS` and `RUN_CAP_MICROS`, `agent.run` and `agent.tool` audit rows, an origin per tool call)"
+  },
+  {
+   "path": "/home/user/ro/main/src/claude/reader.ts",
+   "role": "`MODELS`, `claudeClient` (env `KIT11_ANTHROPIC_API_KEY`), `ClaudeReader.ask` (structured output, falls back to code on any failure, writes `claude.read` or `claude.fallback`); platform adds `askPdf`"
+  },
+  {
+   "path": "/home/user/ro/main/src/claude/tools.ts",
+   "role": "`Tools` and `CLAUDE_JOBS`: every reader call with its role and actor; `checked()` swaps in the fallback and writes `claude.rejected` when a code check fails"
+  },
+  {
+   "path": "/home/user/ro/main/src/claude/pricing.ts",
+   "role": "`PRICES` and `callCostMicros` (assumed list prices)"
+  },
+  {
+   "path": "/home/user/ro/main/src/claude/budget.ts",
+   "role": "`BUDGET_BLOCKS`, `recordSpend`, `budgetStatus` (D26 spend counters in a JSONL file)"
+  },
+  {
+   "path": "/home/user/ro/main/src/cli/budget.ts",
+   "role": "`npm run budget`: prints the counters per block from docs/runs/api-budget.jsonl"
+  },
+  {
+   "path": "/home/user/ro/main/src/autonomy/runtime.ts",
+   "role": "Autonomous wake: `runAgent` plus the common tools `send_message` and `finish`, the profile's `fallback`, and one `agent.decision` row per wake"
+  },
+  {
+   "path": "/home/user/ro/main/src/autonomy/sourcingProfile.ts",
+   "role": "Autonomous Sourcing profile (Haiku): `buy_software`, `ask_card_raise`, `buy_report`, `market`, `set_buy_policy`"
+  },
+  {
+   "path": "/home/user/ro/main/src/autonomy/teamProfiles.ts",
+   "role": "Autonomous Treasury profile (Opus): `position`, `design_rebalance`, `sweep_earnings`, `plan_invoice`. Support profile (Sonnet): `settle_dispute`"
+  },
+  {
+   "path": "/home/user/ro/main/src/dashboard/agentStats.ts",
+   "role": "`agentStats`: decisions, by_claude, fallback, `fallback_pct`, calls, tokens and cost per agent (`DECISION_EVENTS`)"
+  },
+  {
+   "path": "/home/user/ro/main/src/dashboard/trace.ts",
+   "role": "`agentTraces`: one timeline per `agent.run` built from audit rows (served as `/api/trace/:seq` on the runner dashboard)"
+  },
+  {
+   "path": "/home/user/ro/main/src/redesign/trace.ts",
+   "role": "The static `/trace` page: any payment of the main run, built from docs/demo/main-run.json and docs/demo/main-run-trace.json"
+  },
+  {
+   "path": "/home/user/ro/main/src/provenance/origin.ts",
+   "role": "The `Origin` union (agent/cfo/code/cfo-command/external), `withOrigin`, `MONEY_EVENTS` (uses node:async_hooks)"
+  },
+  {
+   "path": "/home/user/ro/main/worker/src/try.ts",
+   "role": "`TryDesk` for /api/try: per-IP and global limits plus `TRY_DAILY_BUDGET_USD` = 3 in the `try_spend` table"
+  },
+  {
+   "path": "/home/user/ro/main/worker/src/trySign.ts",
+   "role": "`TrySignDesk` for /try/sign: test worlds, `liveCall` (reserve the cost, then settle it, against `ts_spend`), world, request and FX limits"
+  },
+  {
+   "path": "/home/user/ro/main/worker/src/agentLine.ts",
+   "role": "`AGENT_LINE_DAILY_USD` = 10, an 8 s timeout, the labels, and the `TRY_SIGN_AGENTS`=off emergency switch; `invoiceReaderSource` and `treasuryAdvisorSource`"
+  },
+  {
+   "path": "/home/user/ro/main/src/try/claude.ts",
+   "role": "Fetch-only Claude client for the Worker: `claudeModels` (Haiku sorts, Sonnet reads), `claudeAgentAsk` (tool use), `claudeReadInvoice`"
+  },
+  {
+   "path": "/home/user/ro/main/src/agents/timingCore.ts",
+   "role": "Pure Treasury timing agent (prompt, tools `read_position`, `read_quote`, `submit_advice`), shared by the runner and the Worker"
+  },
+  {
+   "path": "/home/user/ro/main/src/platform/mcpServer.ts",
+   "role": "`agentApiServer`: the MCP agent API (5 tools)"
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/inbox.ts",
+   "role": "`ingestDocument` and `ingestEmail`: the order of steps (scan or classify, read, evaluate, review, book)"
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/checks.ts",
+   "role": "`evaluate` and `statusOf`: all payables checks in plain code"
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/reading.ts",
+   "role": "`parseApFallback`, `readingCheck`, `ibanValid`, `totalAmbiguity`, `totalIsNegative` (pure)"
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/scan.ts",
+   "role": "Scans read by Sonnet twice and compared (`SCAN_DAILY_DOCS` = 200, `SCAN_MAX_PAGES` = 3, `scanRefusal`)"
+  },
+  {
+   "path": "/home/user/ro/platform/src/policy/fraudCore.ts",
+   "role": "`assessAgainst`: the invoice-fraud (BEC) signals, pure and shared with the Worker"
+  },
+  {
+   "path": "/home/user/ro/main/docs/runs/api-budget.jsonl",
+   "role": "Spend log: one JSON line per spend {block, usd_micros, what, at}"
+  },
+  {
+   "path": "/home/user/ro/main/docs/demo/try-agents-recorded.json",
+   "role": "Recorded real agent outputs shown when a live call is unavailable (`npm run record-try-agents`)"
+  }
+ ],
+ "how_it_works": "There are two Claude paths on the runner (Node). (1) `runAgent(db, spec)` in src/agents/loop.ts. Before each turn, `overCap` sums `agent.run` cost from `audit_log`. The call is `client.beta.messages.create` with strict tools, a cached system prompt and `output_config.effort`; Sonnet and Opus also use the `server-side-fallback-2026-07-01` beta. Every tool_use input is checked with zod and run inside `withOrigin({actor:'agent',agent,model,request_id,run_id})`, and an `agent.tool` row is written. At the end, `finish()` writes one `agent.run` row. If the status is not \"done\", the caller's deterministic code decides and the decision row is labelled `source:'fallback'`. (2) `ClaudeReader.ask` makes one structured-output call; any failure runs `fallback()` and writes `claude.fallback`, and `Tools.checked` swaps in the fallback when a code check rejects the answer. Agents run only when `KIT11_AGENTS=on`, and the autonomous loops only when `KIT11_AUTONOMY=on` as well.\n\nIn the Worker, src/try/claude.ts calls api.anthropic.com over fetch and prices each answer with `callCostMicros`. The desks keep spend per UTC day in Durable Object SQLite. /api/try lives in instance \"try\" (`try_spend`); /try/sign lives in instance \"try-sign\" (`ts_spend`). Past a limit, the page shows a code reading, a recorded output or fixed text, always labelled.\n\nOn platform, payables run `classifyDocument` (Haiku), then `readDocument` (Sonnet, or `readScan` with Sonnet twice for scans), then `evaluate` (code), then the review note (Opus, advisory only), then booking.",
+ "answers": [
+  {
+   "question": "1) Which agents exist on main and platform: file, model, tools, what each decides",
+   "answer": "MAIN (`MODELS` in src/claude/reader.ts: classify=claude-haiku-5-5, act=claude-sonnet-5-5, review=claude-opus-5-5).\n\nTool-use agents (all through `runAgent`, all gated by `KIT11_AGENTS=on`):\n- Sourcing, price rise: src/agents/sourcingAgent.ts `meetPriceRise`, Haiku. Tools `check_offer`, `try_purchase`, `notify_treasury`. Meets a supplier price rise and writes the message to Treasury. Decision row `price_rise.met`.\n- Sourcing, rail choice: src/agents/railChoice.ts `chooseRails`, Haiku. Tools `supplier_terms`, `pay`. Picks the rail per purchase; code refuses a rail the supplier does not take. Row `purchase.rails_chosen`.\n- Card decline: src/agents/declineAgent.ts `meetDecline`, Haiku. Tools `read_decline`, `propose_raise`, `no_raise`. Proposes a card-limit raise (at most 1.25x the purchase) or none. Row `card.decline_met`.\n- Support: src/agents/supportAgent.ts `settleDispute`, Sonnet. Tools `verify_order`, `check_data`, `refund`, `escalate_to_cfo`. Settles a dispute: refunds within its mandate, escalates the rest. Row `dispute.settled_by_agent`. Decided once via src/agents/disputeDecision.ts.\n- Treasury, price plan: src/agents/treasuryAgent.ts `designPriceRise`, Opus. Tool `submit_plan`, checked by `checkPricePlan`, at most 3 tries. Designs the mandate rebalance, the new cap and sell prices. Row `price_rise.plan`.\n- Treasury, timing: src/agents/timingAgent.ts `adviseTiming` with core src/agents/timingCore.ts (`TIMING_MODEL` = Opus). Tools `read_position`, `read_quote`, `submit_advice`. Advises pay_now or wait_until; advisory only. Row `licence.timing_advised`.\n- Autonomous wake: src/autonomy/runtime.ts. Profiles: Sourcing (src/autonomy/sourcingProfile.ts, Haiku): `buy_software`, `ask_card_raise`, `buy_report`, `market`, `set_buy_policy`. Treasury (src/autonomy/teamProfiles.ts, Opus): `position`, `design_rebalance`, `sweep_earnings`, `plan_invoice`. Support (same file, Sonnet): `settle_dispute`. All three also get `send_message` and `finish`. Row `agent.decision`. Needs `KIT11_AUTONOMY=on`.\n\nReader jobs (`CLAUDE_JOBS` in src/claude/tools.ts):\n- `classify_document` (Haiku).\n- Sonnet: `extract_price_notice`, `extract_dispute`, `map_corrections`, `read_task` (Ask Purser, src/agents/askPurser.ts), `extract_invoice`, `draft_customer_reply`.\n- Opus: `explain_invoice_fraud`, `draft_policy`, `explain_dispute`.\n\nOther Claude users:\n- `attachReview`: an Opus advisory review of proposals.\n- src/cli/outside-agent.ts: Sonnet as an outside MCP client.\n- Red team: src/cli/redteam.ts and src/cli/redteamNight.ts (Opus attacker); src/evals/autonomyRedteam.ts (Haiku).\n\nWorker:\n- /api/try: src/try/engine.ts (Haiku sorts, Sonnet reads) and src/try/world.ts (Sourcing wake over `claudeAgentAsk`, at most 5 calls).\n- /try/sign: Sonnet invoice reader `claudeReadInvoice`; Opus advice `adviseTry` in src/try/treasuryAdvice.ts (up to 5 calls).\n\nCode only, no Claude: src/agents/receivables.ts, treasury.ts, euroBill.ts, sweep.ts, disputes.ts, spendReview.ts, customer.ts.\n\nPLATFORM: the same agents (src/agents and src/claude are identical except `askPdf` in reader.ts and a change to euroBill.ts). Payables, all with actor \"treasury\" through `Asker`:\n- `classifyDocument` in src/ap/classify.ts: Haiku (role classify), task `ap.classify:<sha16>`. Accepts one of `DOC_KINDS`, else keyword rules.\n- `readDocument` in src/ap/read.ts: Sonnet (role act), task `ap.read:<sha16>`. Its output is used only if `readingCheck` passes.\n- `readScan` in src/ap/scan.ts: Sonnet via `askPdf`, read twice in different field orders. Must agree on the fields in `AGREE` (iban, total, currency, invoice_no, vendor, reference).\n- src/ap/review.ts: Opus (role review), task `ap.review:<id>`. A note of 1 to 600 characters; never changes a status.\n- cloud/ (the hosted Worker) makes no Claude calls."
+  },
+  {
+   "question": "2) Where the Claude tool-use loop lives; how fallbacks work, are labelled and counted",
+   "answer": "The loop is `runAgent` in src/agents/loop.ts (runner, Node SDK). The Worker has its own fetch version: `claudeAgentAsk` in src/try/claude.ts, driven by src/try/world.ts and src/try/treasuryAdvice.ts.\n\n`AgentRun.status` is one of:\n- done;\n- unavailable: no key (\"no KIT11_ANTHROPIC_API_KEY\"), a cost cap hit, an API failure after one retry, or a refusal (\"refused (<category>)\");\n- incomplete: max_tokens hit, or more than `maxTurns` turns (default 8).\nThe reason goes in `note`.\n\nThe caller then runs its deterministic code and writes the decision row with `source: \"claude\" | \"fallback\"`. The autonomy runtime uses `profile.fallback`, labelled \"fallback (code)\". The `unfinished` hook nudges Claude once and writes `agent.nudged`.\n\nReaders: `ClaudeReader.ask` returns `{source:'fallback', note}` and writes a `claude.fallback` row with input_sha256 and the output. `Tools.checked` writes `claude.rejected` when a code check fails the answer.\n\nCounting:\n- `agentStats` (src/dashboard/agentStats.ts) counts rows in `DECISION_EVENTS`: decisions, by_claude, fallback, `fallback_pct`, `calls_without_request_id`.\n- Printed by `npm run agent-summary` (src/cli/agentSummary.ts); shown on the dashboard and in src/dashboard/health.ts and src/ops/reliability.ts.\n\nWorker labels (src/worker/agentLine.ts): `READER_LIVE_LABEL`, `ADVICE_LIVE_LABEL`, `RECORDED_LABEL` (\"recorded: the live agent was unavailable\"), `READ_BY_CODE`, `FIXED_TEXT`, `STAND_IN_LABEL`. Each world keeps `Source` = \"live\" | \"recorded\" | \"code\" in `ts_agent_runs` (the per-world `state.calls`). The Worker has no aggregate fallback counter: unknown/none found."
+  },
+  {
+   "question": "3) Decision provenance: origin records, request ids, /trace; what data per decision; reasoning text or only tool calls?",
+   "answer": "Data per agent run, all in `audit_log` (hash-chained, src/audit/log.ts):\n- `agent.run` row: agent, model, status, turns, tools[], blocked[], `said` (Claude's last text, redacted, at most 1200 characters), cost_usd_micros, latency_ms, note, from_seq, run_id (`run-<agent>-<seq>-<hex>`), tokens, claude_ms[], claude_calls[{request_id, model, tokens, ms, cost_usd_micros, retried}], request_ids[].\n- `agent.tool` row per call: request_id, tool, input (redacted), result (at most 600 characters), blocked_by, ms, turn.\n- Decision row (`agent.decision` or the per-flow event): source, model, summary (the agent's own text passed to the `finish` tool), events, messages, tools, note.\n- `claude.read`: model, request_id, input_sha256, output, usage, latency_ms, cost_usd_micros.\n\nOrigin: src/provenance/origin.ts defines `AgentOrigin` {actor:'agent', agent, model, request_id, run_id, tap?}. It travels via AsyncLocalStorage (and `KIT11_ORIGIN` into subprocesses) onto every `MONEY_EVENTS` row. src/provenance/check.ts counts null origins.\n\nTraces:\n- `agentTraces` (src/dashboard/trace.ts) builds one timeline per run from those rows, served as `/api/trace/:seq` on the runner dashboard (src/servers/dashboard.ts).\n- `/trace` (src/redesign/trace.ts `tracePage`, also served by the Worker from the bundle) is a static, script-free page of the 3 Nov main run, built from docs/demo/main-run.json and docs/demo/main-run-trace.json.\n\nReasoning: a short text IS stored (`said` and the decision `summary`), not only tool calls. Extended thinking is not requested or stored. In the Worker, each world keeps `ts_chain` (a hash chain per world) and `ts_agent_runs.json`; the reading carries model, request_id and ms."
+  },
+  {
+   "question": "4) Platform invoice chain: which steps call Claude, which checks are plain code",
+   "answer": "Order in `ingestDocument` (src/ap/inbox.ts):\n1. Size and type checks; dedupe by document sha256 (`ap.duplicate_document`).\n2. PDF text through src/ap/pdfText.ts (unpdf). A scan or photo goes to `readScan` (Sonnet x2, within `scanRefusal`).\n3. `classifyDocument`: Haiku.\n4. `readDocument`: Sonnet, kept only if `readingCheck` passes, else the parser (`parseApFallback`). `readBy` is 'parser' or 'claude:<model>'.\n5. `evaluate` (src/ap/checks.ts): code.\n6. Review note: Opus, advisory only.\n7. `book` (src/ap/books.ts, accrual entries): code.\n\nPlain-code checks in `evaluate`, by finding code:\n- Fields: `no_text`, `missing_fields`.\n- Totals: `sum_mismatch` (subtotal + tax must equal total), `ambiguous_total` (`totalAmbiguity`), `credit_note` (`totalIsNegative`).\n- Bank details: `no_bank_details`, `iban_invalid` (`ibanValid` checksum), `bank_details_invalid` (`validateDetails`).\n- Duplicates: `duplicate` (same supplier and number via `invoiceKey`/`sameInvoiceNo`, or `handledInLedger`), `possible_duplicate` (loose number, or same total within `TWIN_DAYS`), `rejected_before`.\n- Fraud/BEC: `possible_fraud` from `assessAgainst(suppliersOnFile, ...)` with signals `bank_details_changed` (IBAN sha against the supplier on file), `lookalike_vendor`, `mixed_scripts`, `account_name_mismatch`, `unknown_vendor`, `bank_change_language`, `pressure_language`.\n- Supplier: `new_supplier` (wait, then the payee_add flow in src/ap/vendors.ts), `payee_blocked` (`counterpartyAllowed`), `account_currency`, `currency_not_paid`.\n- Warnings: `unusual_amount`, `overdue`.\n\n`statusOf` sets the precedence: block, then needs_review, then needs_vendor, then ready. `readingCheck` requires the vendor, invoice number, total and IBAN or account to appear in the document text, and to match the parser's own total, invoice number and currency."
+  },
+  {
+   "question": "5) Which modules can run in a Cloudflare Worker and which are Node-bound (node: imports)",
+   "answer": "Context: the main Worker (worker/wrangler.jsonc) has NO `nodejs_compat` flag. The platform cloud Worker (cloud/wrangler.jsonc) has `nodejs_compat`.\n\nWorker-safe today (no node:, transitive check):\n- src/claude/pricing.ts, src/claude/invoiceReading.ts, src/agents/toolSchema.ts, src/agents/timingCore.ts, src/autonomy/sourcingCore.ts\n- src/try/claude.ts (fetch), src/try/engine.ts, src/try/world.ts, src/try/treasuryAdvice.ts, src/try/recorded.ts\n- src/policy/fraudCore.ts\n- platform: src/ap/reading.ts, src/ap/eml.ts, src/ap/bank.ts\n- src/dashboard/agentStats.ts has no node: imports, but uses a better-sqlite3-style `prepare().all()` handle, not the Durable Object `sql.exec` API.\n\nNode-bound (transitive):\n- src/agents/loop.ts and src/claude/reader.ts: @anthropic-ai/sdk, node:crypto, node:async_hooks (via provenance/origin.ts and audit/log.ts).\n- src/autonomy/runtime.ts: SDK, node:async_hooks, node:crypto.\n- src/claude/tools.ts and src/platform/mcpServer.ts: plus node:fs.\n- src/claude/budget.ts: node:fs.\n- src/dashboard/trace.ts: plus node:child_process, node:path.\n- src/provenance/origin.ts: node:async_hooks.\n- src/lib/terms.ts: node:crypto. src/db/open.ts: node:fs, node:path, better-sqlite3.\n- Platform src/ap:\n  - classify, read, review, store, credits, public: node:async_hooks, node:crypto.\n  - scan: the same plus pdfkit.\n  - pdfText: node:module, node:url, node:worker_threads, node:zlib.\n  - checks, books, insights, ledgerKey: node:async_hooks, node:child_process, node:crypto, node:fs, node:path.\n  - detail: node:async_hooks, node:crypto, node:fs, node:module, node:url, node:worker_threads, node:zlib.\n  - inbox, pay, batchPay, vendors, watch: all of the above (plus pdfkit for inbox, vendors and watch).\n\nThe binding layers are the synchronous better-sqlite3 `DB` and `audit()`."
+  },
+  {
+   "question": "6) Evals in CI, datasets, thresholds; red-team harness; chaos tests",
+   "answer": "CI (.github/workflows/ci.yml): `npm run typecheck`, `npm run lint`, `npm run test:coverage` (vitest plus test/coverage-areas.ts, a 90% line floor per area: money, policy, passkey, executors, ...), worker tsc and `npm audit`, `npm run judge -- --check`, Playwright checks (test/browser/pages.check.ts, trace.check.ts, trysign.check.ts, WebKit), gitleaks, Semgrep (.semgrep/purser.yml), SBOM.\n\nEvals in CI run with no key and no network (deterministic parsers or stand-in clients), and every case must pass (100%):\n- test/evals.test.ts: `CASES` in src/evals/cases.ts (normal, too-expensive, fraud, injection, double-payment, price notice).\n- test/evals-hard.test.ts (src/evals/hard.ts, fixtures/hard/), test/evals-adversarial.test.ts (src/evals/adversarial.ts).\n- test/adversarial.test.ts, test/holdouts.test.ts (src/evals/holdouts.ts), test/blind-holdouts.test.ts (src/evals/blindHoldouts.ts).\n- test/agent-facts-eval.test.ts, test/agent-card-raise-eval.test.ts, test/model-bench.test.ts, test/claude-cost.test.ts, test/api-budget.test.ts.\n\nLive (never in CI, real Claude, spend recorded to api-budget.jsonl):\n- `npm run evals` (docs/evals/report.json)\n- `npm run agent-evals -- --runs N --models haiku,sonnet,opus` (src/evals/agentEvals.ts; docs/evals/agents.json, docs/agent-evals.md)\n- `npm run model-bench`\n- `npm run autonomy-redteam`\n- variation and holdout runners (src/evals/variationRunner.ts: stops once the evals block reaches its cap)\n\nRed team:\n- src/redteam/attacks.ts and moreAttacks.ts (test/redteam.test.ts).\n- `npm run redteam` (src/cli/redteam.ts: Opus attacker; every attempt must be blocked, judged from the ledger).\n- `npm run redteam-night` (src/redteam/night.ts).\n- Platform adds test/ap-redteam2.test.ts, test/rt6-scan.test.ts, test/payouts-redteam.test.ts and src/redteam/t0.ts.\n\nChaos: test/chaos.test.ts (Anthropic, relay, Metal RPC, Airwallex failures: nothing moves by accident, nothing recorded twice) and test/chaos-kill.test.ts."
+  },
+  {
+   "question": "7) Agent API / MCP server: what it exposes",
+   "answer": "src/platform/mcpServer.ts `agentApiServer(db, id, sim)` runs over stdio via src/cli/mcp.ts: `KIT11_AGENT=<name> KIT11_AGENT_KEY=<key> npm run -s mcp` (plus `KIT11_DB` and the Airwallex sandbox env). The key comes from `npm run principals -- rotate`.\n\nTools:\n- `request_company_card` (asks the CFO for a virtual EUR card; Face ID)\n- `company_card` (state, last 4, limits, spend, frozen, charges)\n- `pay_with_card` (Airwallex approves or declines against the card's limits)\n- `request_limit_raise`\n- `ask_for_task_card` (plain words, via `askPurser`, which uses Sonnet `read_task`)\n\nNo tool approves, sets a limit or touches another agent's card. Auth goes through `authorize` and `keyMatches` in src/policy/principals.ts. The logic lives in src/platform/externalAgents.ts.\n\nPlatform's cloud/src/app.ts exposes a REST /v1 read and admin API (`/v1/openapi.json`), not an agent API. The runner's src/servers/payables.ts exposes local `/api/payables/*` routes."
+  },
+  {
+   "question": "8) How Claude usage is metered and capped in the runner and the Worker; prices assumed",
+   "answer": "Metering: every call is priced by `callCostMicros(model, usage)` in src/claude/pricing.ts. Assumed list prices, USD per million tokens (input / cache write / cache read / output), \"read 30 October 2026\":\n- `claude-opus-5-5`: 4 / 5 / 0.2 / 20\n- `claude-sonnet-5-5`: 2 / 2.5 / 0.1 / 10\n- `claude-haiku-5-5`: 0.1 / 0.125 / 0.01 / 0.5; above 100k prompt tokens: 0.5 / 0.625 / 0.05 / 2.5\nAn unknown model returns null (counted as 0 in the loop).\n\nRunner (env `KIT11_ANTHROPIC_API_KEY`; flags `KIT11_AGENTS`, `KIT11_AUTONOMY`):\n- `overCap` in loop.ts, from `audit_log` `agent.run` rows: `AGENT_HOURLY_CAP_MICROS` = {sourcing 0.30, support 0.60, treasury 1.50} USD per hour (default 0.50), and `RUN_CAP_MICROS` = 8 USD per ledger/world. An `agent.cost_warning` row is written at 80%.\n- `ClaudeReader.ask` and `askPdf` have NO dollar cap. Only scans are capped, by `SCAN_DAILY_DOCS` = 200 per day.\n- Offline budget: `BUDGET_BLOCKS` {evals 80, redteam 60, soak 50, reviews 30, try 30} = $250, plus `BUDGET_RESERVE_USD` 30, in docs/runs/api-budget.jsonl, with a warning at 80%. Enforced only by the scripts that call `budgetStatus` (variation and holdout runners).\n\nWorker (secret `ANTHROPIC_API_KEY`; switch `TRY_SIGN_AGENTS`/`TRY_SIGN_HAIKU`=off), in Durable Object SQLite:\n- Instance \"try\": table `try_spend(day, usd, tries)`, plus `try_hits` and `try_model`.\n- Instance \"try-sign\": table `ts_spend(day, usd)` and `ts_hits(ip, kind, at)`.\n- Timeouts: 15 s (/api/try reads), 20 s (agent ask), 8 s (`AGENT_LINE_TIMEOUT_MS`)."
+  },
+  {
+   "question": "9) /try and /try/sign budgets: mechanism and current numbers",
+   "answer": "/api/try (`TryDesk`, worker/src/try.ts):\n- Per IP (IPv6 by /64 via `rateKey`): `TRY_PER_MINUTE` 6 and `TRY_PER_DAY` 40.\n- Global: `TRY_MODEL_PER_MINUTE` 60 weighted calls a minute (`TRY_CALLS` text 2, world 5).\n- `TRY_DAILY_BUDGET_USD` = 3 per UTC day. `TRY_MAX_CHARS` 280. A world wake ends after `TRY_WORLD_DEADLINE_MS` 30 s.\n- Requests must come from the same origin.\n- Mechanism: check the spend, then run. A world wake re-checks before each call but reserves nothing, so it can overshoot by one call. Over a limit, code alone answers, with the reason shown.\n\n/try/sign (`TrySignDesk.liveCall`, worker/src/trySign.ts):\n- `AGENT_LINE_DAILY_USD` = 10 per UTC day for all live calls together. A reserve is booked before each call (`TRICK_RESERVE_USD` 0.03 for each Sonnet read, `ADVICE_RESERVE_USD` 0.15 for Opus advice) and settled to the real cost after.\n- Live calls: `LIVE_PER_HOUR` 20 per IP, `LIVE_ALL_PER_MINUTE` 30 global.\n- Worlds: `TRY_SIGN_WORLDS_PER_HOUR` 6 per IP, `TRY_SIGN_WORLDS_PER_NETWORK_HOUR` 20, `TRY_SIGN_MAX_WORLDS` 2000, `TRY_SIGN_TTL_MS` 1 h, `TRY_SIGN_UNCLAIMED_MS` 10 min.\n- Requests: `TRY_SIGN_PER_MINUTE` 30 per IP, `TRY_SIGN_NET_PER_MINUTE` 60, `TRY_SIGN_ALL_PER_MINUTE` 600; `TRY_SIGN_FAILS_PER_HOUR` 30.\n- FX quotes: `TRY_SIGN_FX_PER_HOUR` 12, `TRY_SIGN_FX_ALL_PER_MINUTE` 20, `TRY_SIGN_FX_ALL_PER_HOUR` 300.\n- Kept per world: asking again costs nothing.\n- Fallback: the recorded output (PAGES.tryAgentsRecorded from docs/demo/try-agents-recorded.json), else a code reading or fixed text.\n\nThere is no per-visitor dollar cap and no all-time cap. The two desks' daily budgets are separate pools ($3 + $10)."
+  },
+  {
+   "question": "10) Where spend is recorded; how to compute the Claude API spend so far (totals only)",
+   "answer": "Where spend is recorded:\n- (a) docs/runs/api-budget.jsonl (in the repo, written by `recordSpend` from evals and red-team scripts). Command: `cd /home/user/ro/main && npm run budget` (needs `npm ci`; not installed in the snapshot). Without node_modules:\n  `python3 -I -c \"import json,collections as c;t=c.Counter();[t.update({d['block']:d['usd_micros']}) for d in map(json.loads,filter(str.strip,open('docs/runs/api-budget.jsonl')))];print({k:v/1e6 for k,v in t.items()},sum(t.values())/1e6)\"`\n  Result now: evals $24.77, reviews $2.09, redteam $2.46, total $29.33 (394 lines; last entry 2026-11-07; the try block shows 0).\n- (b) Runner ledgers: `audit_log` rows `agent.run` and `claude.read` with `$.cost_usd_micros`, e.g. `SELECT SUM(json_extract(payload_json,'$.cost_usd_micros')) FROM audit_log WHERE event IN ('agent.run','claude.read')`. My script /tmp/claude-0/-home-user/688ec361-72ad-554b-b31d-67a034944a81/scratchpad/spend.py sums every *.sqlite under the keys repo, totals only. Only one ledger there has an `audit_log` (main-1/ledger/main-1.sqlite): agent.run $0.32 + claude.read $0.06 = $0.38. The dry-N folders hold no ledgers with audit_log, so this is incomplete. Per world, `npm run agent-summary` with `KIT11_DB` set.\n- (c) Worker: Durable Object tables `try_spend` (instance \"try\") and `ts_spend` (instance \"try-sign\"). Not readable locally, and wrangler has no command that reads Durable Object SQLite: unknown without a new endpoint. `/health` has `live_agents_today`, but it reads `ts_spend` from the \"relay\" instance, so in production it likely returns null (see risks).\n- Authoritative total: the Anthropic Console usage page (not checked; unknown)."
+  },
+  {
+   "question": "11) Worker rate limiting and bot protection in place",
+   "answer": "What is in place:\n- Rate limits are home-made, in Durable Object SQLite:\n  - Relay (worker/src/core.ts `underRateLimit`): `RATE_MAX` 10 per `RATE_WINDOW_MS` 10 min per IP bucket, sign-in sessions in their own bucket; `failedTooOften`: `FAILS_MAX` 20; `ENROL_ATTEMPTS` 5.\n  - TryDesk and TrySignDesk limits as in Q9.\n- IP keys: IPv6 is grouped by /64 (`rateKey`); network keys are IPv4 /24 and IPv6 /48 (`networkKey` in trySign.ts).\n- Same-origin checks: the `origin` must equal the URL's origin, and `sec-fetch-site` cross-site is refused (403).\n- Size caps: `readCapped` with `MAX_BODY` 16 KiB, `MAX_TERMS` 4096, /api/try 2000 bytes.\n- `COMMON_HEADERS` (HSTS, nosniff, no-store, no-referrer), CSP per page, `PERMISSIONS_POLICY`.\n- WebAuthn origin and rpId checks (worker/src/webauthn.ts).\n- Each desk runs in its own Durable Object instance.\n\nWhat is missing:\n- No Cloudflare Turnstile or captcha.\n- No Workers Rate Limiting binding.\n- No WAF rules in the repo config (worker/wrangler.jsonc has only the DO binding).\n- Bot protection beyond the per-IP and global counters: unknown/none."
+  },
+  {
+   "question": "12) Recommendation: per-visitor, per-day and global hard dollar caps with auto-switch to a recorded fallback",
+   "answer": "Build on `TrySignDesk.liveCall`, which already reserves a cost, settles it and returns `{unavailable: reason}`, after which the recorded fallback is shown with `RECORDED_LABEL`:\n\n1. Route every live Claude call of the jury demo, including any /api/try-style calls, through ONE Durable Object instance (e.g. the \"try-sign\" desk), so a single ledger sees all spend. Today \"try\" and \"try-sign\" are separate pools.\n2. Turn the daily `ts_spend(day, usd)` into a ledger keyed by scope: rows ('day:YYYY-MM-DD'), ('all'), ('world:<id>'), ('ip:<rateKey>:<day>'). Add them in the same synchronous block that reserves the cost (Durable Object SQL is single-threaded per instance; no await between check and reserve, as the world-creation code already does).\n3. In `liveCall`, check before reserving: world spend + reserve <= `TRY_VISITOR_USD` (e.g. 0.50), IP/day <= e.g. 2.00 (stops world-hopping, together with `TRY_SIGN_WORLDS_PER_HOUR`), day <= `AGENT_LINE_DAILY_USD` (make it an env var), and all-time <= `TRY_TOTAL_USD` (hard cap). Make each limit a Worker var read in index.ts the way `TRY_SIGN_AGENTS` is.\n4. Size the reserves from worst case with `PRICES`: max_tokens × output price plus prompt (Opus advice up to 5 calls × 4000 output tokens × $20 per million is about $0.40, more than today's 0.15). Settle with `callCostMicros`.\n5. On any cap: return `unavailable`. The existing fallback then shows docs/demo/try-agents-recorded.json (refresh it with `npm run record-try-agents` for every scenario the random-scenario world can produce; otherwise code's reading plus fixed text, labelled).\n6. Show a global \"live/recorded\" state on the page and fix `/health` `live_agents_today` so it reads from the try-sign instance (e.g. a desk-internal endpoint).\n7. Backstops: the `TRY_SIGN_AGENTS=off` emergency switch, plus a spend limit on a separate Anthropic workspace or key used only for the demo (external; not verified).\n8. If runner agents (`runAgent`) serve the demo, `RUN_CAP_MICROS` and `AGENT_HOURLY_CAP_MICROS` already exist. Add a matching cap to `ClaudeReader.ask`/`askPdf`, which have none."
+  }
+ ],
+ "extension_points": [
+  {
+   "what": "Global and per-visitor dollar caps",
+   "where": "worker/src/trySign.ts `liveCall` and table `ts_spend`; worker/src/index.ts `Env`",
+   "how": "Add scoped spend rows and env vars for the limits; return `{unavailable}` so the existing recorded and code fallbacks apply"
+  },
+  {
+   "what": "A real Claude invoice reader and checker for the jury demo",
+   "where": "src/try/claude.ts `claudeReadInvoice` plus src/claude/invoiceReading.ts; checks in src/policy/fraudCore.ts and src/ap/reading.ts `readingCheck` (both pure)",
+   "how": "Reuse in the Worker. Avoid the src/ap modules that import DB, audit or provenance"
+  },
+  {
+   "what": "Showing the agents' reasoning",
+   "where": "`agent.run.said` and `agent.decision.summary` (runner); `AgentReply.content` text blocks in src/try/claude.ts `claudeAgentAsk` (Worker)",
+   "how": "Keep the text blocks per call in `ts_agent_runs` state and in the `ts_chain` rows"
+  },
+  {
+   "what": "Fallback rate for the Worker",
+   "where": "worker/src/trySign.ts `Source` live/recorded/code",
+   "how": "Count by source per day in `ts_hits` (a new kind) or a new table; expose it in /health"
+  },
+  {
+   "what": "Reader cost cap",
+   "where": "src/claude/reader.ts `ask`/`askPdf`",
+   "how": "Mirror `overCap` from loop.ts, summing `claude.read` `cost_usd_micros`"
+  },
+  {
+   "what": "New agent",
+   "where": "src/agents/loop.ts `AgentSpec`/`AgentTool`; add the decision event to `DECISION_EVENTS` in src/dashboard/agentStats.ts; add a cap entry in `AGENT_HOURLY_CAP_MICROS`",
+   "how": "Write a decision row with `source` claude or fallback"
+  }
+ ],
+ "pinned_by_tests": [
+  {
+   "check": "test/api-budget.test.ts",
+   "pins": "`BUDGET_BLOCKS` equals {evals 80, redteam 60, soak 50, reviews 30, try 30}, summing to 250; the reserve is not counted as spendable"
+  },
+  {
+   "check": "test/claude-cost.test.ts",
+   "pins": "`callCostMicros` pricing (details unknown; not read)"
+  },
+  {
+   "check": "test/evals.test.ts",
+   "pins": "Every `CASES` id passes on the deterministic path with no problems; escalations carry a `why`"
+  },
+  {
+   "check": "test/try-trick.test.ts",
+   "pins": "/health `live_agents_today` equals {usd, budget_usd: AGENT_LINE_DAILY_USD}, tested with ONE shared SQL handle for Relay and TrySignDesk"
+  },
+  {
+   "check": "test/try-agent-line.test.ts, test/try-desk.test.ts, test/try-sign.test.ts, test/try-fx.test.ts",
+   "pins": "Worker labels, switch, limits, budget behaviour; that no script sets `ANTHROPIC_API_KEY` or the Airwallex secrets"
+  },
+  {
+   "check": "test/agent-loop.test.ts, test/agent-proof.test.ts, test/agent-stats.test.ts, test/agent-trace.test.ts",
+   "pins": "Loop statuses, request ids per call, cost caps, fallback_pct, trace shape"
+  },
+  {
+   "check": "test/coverage-areas.ts",
+   "pins": "90% line floor per area (money, policy, passkey, executors, ...)"
+  },
+  {
+   "check": "test/chaos.test.ts, test/chaos-kill.test.ts",
+   "pins": "Outside-service failures move nothing by accident and record nothing twice"
+  },
+  {
+   "check": "test/mcp-server.test.ts, test/property-mcp.test.ts",
+   "pins": "MCP tool surface and input fuzzing"
+  }
+ ],
+ "runtime_constraints": [
+  "The main Worker has no `nodejs_compat`. Only fetch-based, pure modules can be imported there (src/try/*, timingCore, sourcingCore, fraudCore, pricing, toolSchema, invoiceReading).",
+  "The cloud Worker (platform/cloud) has `nodejs_compat`, but the src/ap modules depend on a synchronous better-sqlite3 `DB` plus `audit()`, so they cannot run there as they are.",
+  "Durable Object SQL is single-threaded per instance. Caps are race-free only when check and reserve happen with no await between them.",
+  "Agents decide only with `KIT11_AGENTS=on`; the autonomous loops also need `KIT11_AUTONOMY=on`. The runner key is `KIT11_ANTHROPIC_API_KEY` (not `ANTHROPIC_API_KEY`); the Worker key is the `ANTHROPIC_API_KEY` secret.",
+  "Haiku has no server-side fallback beta; Sonnet and Opus use `server-side-fallback-2026-07-01`."
+ ],
+ "risks": [
+  "Likely bug: `Relay.liveAgentsToday` (worker/src/core.ts ~l.435) reads `ts_spend` from the \"relay\" Durable Object instance, but the try-sign desk writes it in the \"try-sign\" instance. In production, /health `live_agents_today` is probably always null; the test shares one database, so it passes. (PLAUSIBLE: inferred from index.ts routing, not checked in production.)",
+  "`TryDesk` world wakes check spend before each call but reserve nothing, so concurrent wakes can overshoot the $3 daily budget by in-flight calls.",
+  "`ADVICE_RESERVE_USD` 0.15 may be below the worst case for up to 5 Opus calls (4000 max_tokens each, about $0.08 output per call), so the daily cap can be overshot by the difference.",
+  "No per-visitor dollar cap, no all-time cap, no Turnstile or bot checks: a botnet spread across many /24 networks can use up each day's $10 + $3.",
+  "`ClaudeReader.ask`/`askPdf` (payables classify, read and review; the Tools jobs) have no dollar cap.",
+  "The spend record is incomplete: api-budget.jsonl covers only eval, red-team and review scripts. Dry-run and live-run ledgers are mostly absent from the keys repo, and Worker spend is only in Durable Object SQL.",
+  "Prices in `PRICES` are the repo's assumptions as of 30 Oct 2026 and were not verified."
+ ],
+ "open_questions": [
+  "Actual Anthropic spend to date (Console): unknown.",
+  "Current Worker `try_spend`/`ts_spend` values in production: unknown (no read endpoint; /health is likely null).",
+  "Is /api/try (`TryDesk`) still linked from the live site, or replaced by /try/sign? unknown.",
+  "Is a separate Anthropic workspace or key with its own spend limit used for the Worker? unknown.",
+  "What does test/claude-cost.test.ts pin exactly? Not read."
+ ]
+}

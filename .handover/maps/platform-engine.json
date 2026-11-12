@@ -1,0 +1,234 @@
+{
+ "summary": "The SME invoice-to-books engine lives on the platform snapshot (/home/user/ro/platform/src). It is a synchronous engine on better-sqlite3 (`DB = Database.Database` in src/db/open.ts). One ledger file holds the AP tables (schema.sql) and an append-only, hash-chained double-entry ledger (ledger.sql). An invoice moves through these steps: `ingestDocument` (src/ap/inbox.ts) stores the PDF by its sha256, reads it with Claude (Haiku classifies, Sonnet reads, Opus writes the review note) or with a parser, and runs the checks (`evaluate`). The accrual is booked to a sink and the invoice gets a status. Then `payApInvoice` (src/ap/pay.ts) files a proposal for a passkey approval. `execute` (src/executors/index.ts) pays through Airwallex. `syncPayments` marks the invoice paid and pushes the payment entries. `syncLedger` (src/ledger/feed.ts) posts the accrual, payment, fee and FX entries into `ledger_entries`/`ledger_lines`. `syncVault` (src/vault/build.ts) files the original PDF, a pdfkit payment receipt, and the month, VAT and year reports into a fixed Dutch folder tree with a per-year index.json. Report math is already pure: the `*From(lines)` functions in src/ledger/reports.ts, which cloud/src/read.ts reuses on D1. Most other code needs a synchronous better-sqlite3-style handle. The blockers for Workers are better-sqlite3 itself, `pdfText` (node:worker_threads + node:zlib + unpdf), node:fs document storage and pdfkit. The ERP connectors (Exact, Business Central, Odoo, Moneybird) are built and tested against the vendors' documented request shapes only; nothing has been sent to a live ERP. T:0 is live in its sandbox: 95 entries were posted on 10 Nov. The e2e world is three fictional Dutch companies with four invoices in total; the live run on 10 Nov paid 1 of 4 invoices to PAID.",
+ "key_files": [
+  {
+   "path": "/home/user/ro/platform/src/db/open.ts",
+   "role": "`openDb(path)`: opens a better-sqlite3 file (WAL, busy_timeout, foreign_keys), runs schema.sql + ledger.sql + `migrate`. Exports `type DB = Database.Database`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/db/schema.sql",
+   "role": "AP tables: `ap_documents`, `ap_scan_readings`, `ap_invoices`, `ap_duplicate_clearances`, `payee_adds`, `ap_sink_events`, plus `beneficiaries`, `proposals`, `approvals`, `transfers`, `fx_quotes`, `fx_conversions`, `platform_fees`, `audit_log`, `settings`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/db/ledger.sql",
+   "role": "`ledger_entries` (hash chain: prev_hash/entry_hash, source_key UNIQUE, reverses), `ledger_lines` (cents, currency, cost_centre, vat_code, party, due_date, doc_ref), `ledger_locks`, `stock_items`, `stock_moves`. Triggers make all of them append-only."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/inbox.ts",
+   "role": "`ingestDocument`, `ingestEmail`, `recheck`, `clearPossibleDuplicate`, private `book` and `glFor`. This is the single entry point for upload, folder, e-mail and API."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/checks.ts",
+   "role": "`evaluate(db, reading, text, ctx)` returns findings; `statusOf`. Finding codes: missing_fields, no_text, iban_invalid, no_bank_details, bank_details_invalid, sum_mismatch, credit_note, ambiguous_total, duplicate, possible_duplicate, rejected_before, possible_fraud, new_supplier, payee_blocked, account_currency, currency_not_paid, unusual_amount, overdue."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/pay.ts",
+   "role": "`payApInvoice` (passes to `proposeSupplierPayment` or `proposeInvoicePayment`), `syncPayments` (waiting_cfo to paid/rejected/ready, then pushes accrual and payment), `rejectApInvoice`, `transferReason`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ap/books.ts",
+   "role": "`accrualEntries`, `paymentEntries` (includes FX through 1590, fee 6800, platform fee), `reversalEntries`, `bookable`, `apJournal`, `BookkeepingSink`, `CsvFileSink`, `payablesSink` (KIT11_AP_DIR/journal.csv), `pushOnce` (deduplicated via `ap_sink_events`)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ledger/core.ts",
+   "role": "`postEntry`, `postClosingEntry`, `reverseEntry`, `lockMonth`, `closedThrough`, `postingDay`, `ledgerRows`, `verifyLedger`, `verifyLedgerRows`, `LedgerRefused`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ledger/feed.ts",
+   "role": "`syncLedger(db, now)`: reconciles `journal()` (accounting/gl.ts) plus AP accruals into the stored ledger. Each event posts once by source_key; when its source changes it is reversed and reposted under @vN."
+  },
+  {
+   "path": "/home/user/ro/platform/src/accounting/gl.ts",
+   "role": "`journal(db)`: derives money movements from sales, cards, airi_purchases, transfers (pays off 2100 when accrued), platform_fees, fx_conversions (1590), sweeps, clearing. `accruedInboxKeys`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ledger/reports.ts",
+   "role": "`postedLines`, `trialBalance`/`trialFrom`, `profitAndLoss`/`profitAndLossFrom`, `balanceSheet`/`balanceSheetFrom`, `cashByCurrency`, `ageing`/`ageingFrom`, `vatOverview`/`vatOverviewFrom`, `quarterRange`. The *From variants are pure."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ledger/close.ts",
+   "role": "`closeMonth`, `closeYear` (closing entry to 3100, locks 12 months)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ledger/documents.ts",
+   "role": "Generic `purchaseInvoice`, `salesInvoice`, `settleOpenItem`, `openAmount`. Only stock.ts calls them; the AP flow does not."
+  },
+  {
+   "path": "/home/user/ro/platform/src/vault/build.ts",
+   "role": "`syncVault(db, sink, opts)` (plan, then create-only plus a per-year index.json), `verifyVault`, `fileIntoLocalVault` (KIT11_VAULT, KIT11_VAULT_DIR)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/vault/layout.ts",
+   "role": "Folder tree: `invoicePath`, `paymentPath`, `monthReportPath`, `vatPath`, `yearReportPath`, `suppliersPath`, `yearIndexPath`, `correctionName`, `withId`, `safeSegment`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/vault/pdf.ts",
+   "role": "pdfkit renderers: `receiptPdf`, `monthReportPdf`, `vatPdf`, `yearReportPdf`, `suppliersPdf`. `type Lang = \"nl\" | \"en\"`; uses the standard Helvetica fonts."
+  },
+  {
+   "path": "/home/user/ro/platform/src/vault/sink.ts",
+   "role": "`VaultSink` interface (stat/create/readIndex/writeIndex/read?), `LocalSink` (node:fs). Other sinks: gdrive.ts `GoogleDriveSink`, onedrive.ts `OneDriveSink` (fetch-based)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/payouts/plan.ts",
+   "role": "`proposeSupplierPayment` (pays in the invoice currency; buys the shortfall on a locked quote from `fundingCurrency`), `payoutBeneficiary`, `freeCents`, `floorCents`, `feeReserveFor`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/payouts/routes.ts",
+   "role": "Pure route table: `chooseRoute`, `validateDetails`, `routeLimitReason`, `payableCurrency`, `SWIFT_CURRENCIES`, `PAYOUT_COUNTRIES` (US, GB, CN, TR, NL, DE), `referenceProblem`, `MAX_REFERENCE`=140."
+  },
+  {
+   "path": "/home/user/ro/platform/src/executors/index.ts",
+   "role": "`execute(db, proposalId)` dispatches by kind: payee_add (`executePayeeAdd`), invoice_payment (`executeInvoicePayment`), supplier_payment (`executeSupplierPayment`), payment_batch (`executePaymentBatch`)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/erp/sync.ts",
+   "role": "`syncAll`, `correct`, `resolve`, `syncStatus`, `ensureErpSchema` (`erp_sync` table). Sends in order vendors, invoices, payments, journals, resuming step by step."
+  },
+  {
+   "path": "/home/user/ro/platform/src/erp/source.ts",
+   "role": "`ledgerItems(db)`: maps beneficiaries, AP invoices, PAID transfers and GL journal lines to the canonical model (src/erp/model.ts)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/e2e/platformRun.ts",
+   "role": "`runPlatformE2E`, `runCompany`, `toPostings`, `pushToT0`, `withPayer`, `WaitingForAirwallexApproval`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/e2e/world.ts",
+   "role": "`WORLD`: 3 test companies and 4 Dutch invoices (`nlInvoice` template)."
+  },
+  {
+   "path": "/home/user/ro/platform/test/fakes/vaultWorld.ts",
+   "role": "`vaultWorld({close})`: the shortest full in-process chain (ingest, pay, decide, execute, syncPayments, syncLedger, closeMonth) with FakeAirwallex and the parser. Best template for a demo world."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/read.ts",
+   "role": "Proof that the reports run in a Worker: it imports the pure `*From` functions from ../../src/ledger/reports.js over D1 rows."
+  }
+ ],
+ "how_it_works": "Chain (platform snapshot):\n1. Intake: `ingestDocument(db, deps: InboxDeps{dir, reader: Asker, now?, sink?}, doc)` in src/ap/inbox.ts. A .eml file goes to `ingestEmail`, which calls `parseEml` (src/ap/eml.ts) and handles up to 20 PDF attachments. A JPEG/PNG is converted with `imageInfo` and then `imageToPdf` (pdfkit, src/ap/scan.ts). The sha256 is computed. A sha already in `ap_documents` returns duplicate_document. Otherwise the file is written read-only to `<dir>/docs/<sha>.pdf`.\n2. Text: `pdfText` (src/ap/pdfText.ts: unpdf inside a node:worker_threads Worker, with a decode budget via node:zlib). If the PDF has no text layer, `scanRefusal` decides whether a scan reading is allowed, and `readScan` reads it twice through `reader.askPdf`, which writes `ap_scan_readings`.\n3. Insert into `ap_documents`. `classifyDocument` (Haiku; src/ap/classify.ts) labels the document. For an invoice, credit note or reminder, `readDocument` (Sonnet; src/ap/read.ts) reads it and `readingCheck` verifies that reading; otherwise `parseApFallback` (src/ap/reading.ts) parses it.\n4. `evaluate` (src/ap/checks.ts). This includes the duplicate check through `handledInLedger` (src/ap/ledgerKey.ts) and the fraud check through `assessAgainst` (src/policy/fraudCore.ts) against `suppliersOnFile`. `statusOf` gives blocked, needs_review, needs_vendor or ready. `glFor` picks the expense account. Insert into `ap_invoices`, with `audit(...'ap.received')` into `audit_log`. When needed, `writeReviewNote` (Opus; src/ap/review.ts) runs. Then `book`, which calls `pushOnce(sink,'accrual', accrualEntries(inv))`; this pushes to the sink and writes `ap_sink_events`.\n5. New supplier: `requestPayeeAddForInvoice`, then `recordPayeeAddVerification` (a person), then `proposePayeeAdd` (the CFO passkey), then `executePayeeAdd` (Airwallex beneficiary, then `recheck`), all in src/ap/vendors.ts. Tables: `payee_adds`, `beneficiaries`, `proposals`.\n6. Pay: `payApInvoice` (or `payApInvoices` for a batch, src/ap/batchPay.ts). EUR to a Kit 11 payee goes through `proposeInvoicePayment` (src/agents/euroBill.ts); anything else goes through `proposeSupplierPayment` (src/payouts/plan.ts). Status becomes waiting_cfo; the proposal's explanation is the Opus note.\n7. Approval: the passkey is checked in src/passkey/process.ts, then `decide` (src/policy/approvals.ts) writes `approvals`.\n8. Execute: `execute` (src/executors/index.ts) calls `executeInvoicePayment` or `executeSupplierPayment` (`fx_quotes`, `fx_conversions`, `transfers`, `platform_fees`, holds, money_steps).\n9. `syncPayments` (src/ap/pay.ts) calls `followPayouts` (src/payouts/follow.ts), then `expireDue`. A PAID transfer sets the invoice to paid, then `pushOnce` accrual and `pushOnce` payment with `paymentEntries`. On REJECTED, `reversalEntries` is pushed.\n10. Stored ledger: `syncLedger(db)` (src/ledger/feed.ts) takes `journal(db)` plus `openingLines` plus the AP accruals and posts them with `postEntry`, or `reverseEntry` when a source changed. Callers: `npm run ledger -- sync` and `src/cloudsync/client.ts`.\n11. Vault: `syncVault(db, sink)`, or `fileIntoLocalVault` after the payables and ledger CLIs. It files the original PDF, `receiptPdf` for each paid invoice, the month report for each closed month, VAT for closed quarters and the year report.\n\nDB driver: better-sqlite3 13.0.3, fully synchronous. It uses `db.prepare().get/all/run`, `db.transaction(fn).immediate()` and `db.pragma`.\n\nThere are two booking paths: (a) the `BookkeepingSink` CSV journal (ApEntry) and (b) the stored ledger (`ledger_entries`). Both are built from the same `accrualEntries`. The payment side of (b) comes from gl.ts `journal()`, not from `paymentEntries`.",
+ "answers": [
+  {
+   "question": "1) Full chain invoice file to paid, booked, archived; DB driver; tables",
+   "answer": "Order: `ingestDocument` or `ingestEmail` (src/ap/inbox.ts, which uses `parseEml`, `imageInfo`/`imageToPdf`, `pdfText`, `scanRefusal`/`readScan`, `classifyDocument`, `readDocument` or `parseApFallback`, `evaluate`, `statusOf`, `glFor`, `writeReviewNote`, `book` → `pushOnce('accrual')`). If the supplier is new: `requestPayeeAddForInvoice`, then `recordPayeeAddVerification`, then `proposePayeeAdd`, then (after the passkey) `executePayeeAdd`, which calls `recheck` (src/ap/vendors.ts). Then `payApInvoice` (src/ap/pay.ts) or `payApInvoices` (src/ap/batchPay.ts), which go to `proposeSupplierPayment` (src/payouts/plan.ts) or `proposeInvoicePayment` (src/agents/euroBill.ts) and create a proposal. After the passkey (`processAssertion` in src/passkey/process.ts, then `decide` in src/policy/approvals.ts), `execute` (src/executors/index.ts) runs `executeSupplierPayment`, `executeInvoicePayment` or `executePaymentBatch`. Next comes `syncPayments` (`followPayouts`, `expireDue`, `setStatus('paid')`, `pushOnce` accrual and payment), then `syncLedger` (src/ledger/feed.ts: `postEntry`/`reverseEntry`), then `syncVault` (src/vault/build.ts). HTTP surface: `payablesApp(db, opts)` in src/servers/payables.ts. It serves POST /api/payables/documents, /invoices/:id/pay, /batch, /invoices/:id/reject, /accept-credit, /supplier-request, /suppliers/:addId/verify(-code), /suppliers/:addId/propose, /not-duplicate(-code), /sync, plus the GET exports journal.csv and invoices.csv. It listens on 127.0.0.1:4400 via `npm run payables`. Driver: better-sqlite3 (sync), opened through `openDb`. Tables: ap_documents, ap_scan_readings, ap_invoices, ap_duplicate_clearances, payee_adds, ap_sink_events, beneficiaries, proposals, approvals, batch_lines, transfers, fx_quotes, fx_conversions, platform_fees, payout_reservations/holds/money_steps (executors), audit_log, settings, ledger_entries, ledger_lines, ledger_locks. Files: <KIT11_AP_DIR>/docs/<sha>.pdf, journal.csv, and data/vault/**."
+  },
+  {
+   "question": "2) Ledger: tables, posting per event, reports, month lock, purity",
+   "answer": "Tables are `ledger_entries`, `ledger_lines`, `ledger_locks`, `stock_items` and `stock_moves`, all append-only by trigger and hash-chained (`LEDGER_GENESIS`, `hashOf` = sha256(prev_hash + jcs(body))). Every entry must balance per currency (`checkLines`). Postings per event:\n- Invoice received: `accrualEntries` (src/ap/books.ts) debits the expense (gl_account, net) and 1510 input VAT, and credits 2100 for the total. `syncLedger` posts this under source_key `ap-accrual|<id>` and sets vat_code P21/P9 when the tax matches 21% or 9% of net (`dutchVat`).\n- Paid: gl.ts `journal()` source 'transfer' debits 2100 (when `accruedInboxKeys` contains the invoice) and credits the bank `bankAccountFor(currency)` (1200 EUR, 1201 USD, 1202 GBP, 1203 other). The fee goes to 6800 and the Purser platform fee to 6800.\n- FX: source 'fx' moves sell bank → 1590 transit and 1590 → buy bank, one balanced entry per currency. There is no FX revaluation and no FX gain/loss account; reports stay per currency ('no revaluation into one reporting currency yet').\n- Rejected: the CSV sink gets `reversalEntries`; the stored ledger reverses on its next `syncLedger`.\n- Generic postings: `purchaseInvoice`, `salesInvoice` and `settleOpenItem` in src/ledger/documents.ts (only stock.ts uses them); `buyGoods` and `sellGoods` in stock.ts.\nReports (src/ledger/reports.ts): `trialBalance`, `profitAndLoss`, `balanceSheet`, `vatOverview` (Dutch rubrics 1a–5b; 'An overview, not a filing'), `ageing` (receivables/payables), `cashByCurrency`. `stockOnHand` is in stock.ts. The HTML page is `ledgerPage` (src/ledger/page.ts), served by `ledgerApp` (express, src/ledger/serve.ts).\nMonth lock: `lockMonth` / `closeMonth` / `closeYear` (src/ledger/close.ts). `postingDay` moves an entry dated in a closed month to the first day after `closedThrough`.\nPurity: every posting function takes a better-sqlite3 handle and runs synchronous IMMEDIATE transactions, so none of them is pure. Reports come in two forms: `trialBalance(db)` etc. are thin wrappers over `postedLines(db)`, and `trialFrom(lines)`, `profitAndLossFrom`, `balanceSheetFrom`, `ageingFrom` and `vatOverviewFrom` are pure functions over `PostedLine[]` (already reused by cloud/src/read.ts). `verifyLedgerRows(rows)` is pure as well. CLI: `npm run ledger -- sync|trial|pnl|balance|vat --quarter 2026Q4|ageing payables|close --month 2026-11|export --csv|verify|serve`."
+  },
+  {
+   "question": "3) Vault: folder tree, document types, PDF library, Workers, sinks",
+   "answer": "Tree (src/vault/layout.ts), fixed and in Dutch whatever the language:\n- `<Company>/<YYYY>/<YYYY-Qn>/Inkoopfacturen/<Vendor>/<date> <invoice_no> <CUR> <total>.pdf`, with blocked invoices under `Inkoopfacturen/_Geblokkeerd/<Vendor>/`\n- `<Company>/<YYYY>/<YYYY-Qn>/Betalingen/<date> <Vendor> <invoice_no>.pdf`\n- `<Company>/<YYYY>/<YYYY-Qn>/Rapporten/<YYYY-MM> Maandrapport.pdf` and `.../Rapporten/<YYYY-Qn> Btw-overzicht.pdf`\n- `<Company>/<YYYY>/<YYYY> Jaarrapport.pdf`, `<Company>/<YYYY>/Leveranciers <date>.pdf`, `<Company>/<YYYY>/index.json`\nCorrections are added beside the original as ' (correctie N)'; nothing is overwritten.\nVaultKind values: invoice (the original PDF bytes, re-hashed against doc_sha256), receipt, month, vat, year, suppliers.\nPDF library: pdfkit 0.20.2 (`render` in src/vault/pdf.ts, standard Helvetica fonts, `PDF_STRINGS` nl/en). Whether it runs in Workers is unknown and untested. pdfkit's Node build loads its AFM font data from disk via fs, so it would likely need pdfkit's standalone/browser build or another library (e.g. pdf-lib). No Worker in the repo generates PDFs; cloud/ only ships pdf.js for viewing (`npm run cloud:pdfjs`) and an Inter font.\nSinks: `LocalSink` (node:fs, files mode 444, src/vault/sink.ts), `GoogleDriveSink` (fetch, KIT11_GDRIVE_TOKEN, KIT11_GDRIVE_FOLDER_ID), `OneDriveSink` (Graph, KIT11_GRAPH_TOKEN, KIT11_GRAPH_DRIVE_ID). The interface is async, so an R2 sink would be a small adapter. CLI: `npm run vault -- build [--dry-run] [--lang en]`, `sync --to local|gdrive|onedrive`, `verify`, `serve --port 4600`."
+  },
+  {
+   "question": "4) ERP connectors and T0 sync",
+   "answer": "All four implement `ErpConnector` (src/erp/connector.ts): pullChartOfAccounts, pullVendors, findExisting, incomplete?, pushVendor, pushPurchaseInvoice, pushCreditNote, pushPayment, pushJournalEntry, pullPaymentStatus.\n- `ExactConnector` (src/erp/exact.ts, OData v2, OAuth with a rotating refresh token in data/erp/exact.token.json via `exactTokens`/`fileTokenStore`): crm/Accounts + BankAccounts, purchaseentry/PurchaseEntries (type 30; credit note type 31), documents/Documents, financialtransaction/BankEntries, GeneralJournalEntries, cashflow/Payments.\n- `BusinessCentralConnector` (API v2.0, Entra client credentials via `entraTokens`): vendors (bank account added by a person), purchaseInvoices + lines (posted only when the total matches), attachments, purchaseCreditMemos, vendorPayments (a person posts the journal), journals/journalLines.\n- `OdooConnector` (XML-RPC through its own src/erp/xmlrpc.ts, Odoo 18): res.partner/res.partner.bank, account.move in_invoice/in_refund/entry, ir.attachment, account.payment. A person reconciles.\n- `MoneybirdConnector` (REST v2, bearer token, `documents` scope, checked against the OpenAPI subset in test/fixtures/moneybird/openapi-subset.json).\nStatus (docs/erp.md, docs/moneybird.md): 'built and tested against the vendors' documented request and answer shapes only. Nothing has been sent to a live ERP yet.'\nRunner: `syncAll` in src/erp/sync.ts writes the `erp_sync` table, records step progress, never posts twice, and handles needs_correction through `correct` (credit note plus the new version). Feed: `ledgerItems(db)` in src/erp/source.ts. CLI: `npm run erp -- list|status|sync --connector exact|bc|odoo|moneybird --dry-run|--live|pull|resolve|correct`. Registry: `liveConnector` and `dryRunConnector` (RecordingTransport plus EXAMPLE settings) in src/erp/registry.ts.\nT:0: `T0_SANDBOX_MAP` (version 2, `T0_MAP_VERSION`) in src/config/t0Map.ts maps Purser account codes to T:0's shared sandbox chart. Client and logic live in src/accounting/t0.ts: `T0Client`, `buildEntries`, `pushBooks`, `compareReports`, `resolveAccounts`, `functionalCurrency`, `t0Posted`/`recordT0Posting` (table t0_postings). src/accounting/t0Sink.ts has `t0SinkOnce` and `t0SinkFor` (hooked into executors/index.ts). CLI: `npm run t0 -- accounts|push --rate USD=0.92 [--dry-run]|compare`. Status: 95 entries posted to the T:0 sandbox on 10 Nov and matched line by line (docs/t0.md, docs/runs/2026-11-10-t0-journal-sandbox.md). T:0 works from the books in src/accounting/books.ts (`books`, `doubleEntry`), not from ledger_entries."
+  },
+  {
+   "question": "5) Multi-currency payouts",
+   "answer": "`proposeSupplierPayment` (src/payouts/plan.ts) pays in the invoice's own currency to the beneficiary that `payee_add` created. It uses `freeCents` (balance minus in-flight minus held minus batch reserve), `feeReserveFor(method)` and `floorCents` (per-currency floor setting). When the invoice currency is short, it buys only the shortfall from `fundingCurrency(db)` (from the CFO policy) on a locked quote. The quote is checked against the market rate and `FX_QUOTE_MAX_MARKUP_BPS`; `QUOTE_SAFETY_MS` applies. The conversion and quote become part of the signed `SupplierPaymentTerms`, and the Purser platform fee is included (`platformPlan`). Executor: `executeSupplierPayment` (src/executors/supplierPayment.ts). Routes come from the pure `chooseRoute`/`validateDetails`/`routeLimitReason` in src/payouts/routes.ts:\n- US: USD ACH LOCAL\n- GB: GBP Faster Payments, plus a local EUR route\n- CN: SWIFT only\n- TR: TRY LOCAL\n- NL and DE: EUR LOCAL by IBAN\n- otherwise SWIFT for the 22 `SWIFT_CURRENCIES` (not JPY: `payableCurrency` requires two decimals).\nBatch: `payApInvoices` with `withBatchPlanning`/`reserveForBatch` (src/payouts/planContext.ts, which uses node:async_hooks AsyncLocalStorage). Booking: `paymentEntries` books the conversion through 1590, per currency. Test invoices: test/fakes/fxInvoices.ts (US, CN, UK, TR)."
+  },
+  {
+   "question": "6) e2e world and how it runs",
+   "answer": "`WORLD` in src/e2e/world.ts: three fictional Dutch SMEs, each with its own ledger file (`<dir>/<key>/ledger.db`), its own Airwallex connected account, its own signed account binding and its own software test passkey (`FakeAuthenticator`, labelled `TEST_PASSKEY`, not Face ID):\n- SANDBOXTEST, 'Purser Sandbox Test (fake sole trader)', acct_SC-QD89fOneAeqaRFgOymw: ZV-5001 from Zeeland Verpakkingen B.V. (test), EUR 4.84, upload.\n- BAKKERIJ, 'Bakkerij De Test (fake)', new account: MM-2026-114 from Meelhandel Molenaar, EUR 3.63, by e-mail; VE-889 from Verpakking Express, EUR 2.42, upload. These two are paid as a batch.\n- FIETSLAB, 'Fietslab Test (fake)', new account: OD-77 from Onderdelen Direct, EUR 6.05, by e-mail.\nAll invoices are Dutch text (the `nlInvoice` template: Factuurnummer, BTW 21%, IBAN, BIC), rendered to PDF by `pdfOf` and wrapped by `emlWith` (src/e2e/documents.ts).\nFlow (`runPlatformE2E` → `runCompany`): open or activate the account, fund it, store the binding plus a 50 bps fee, enrol the passkey, ingest, verify the supplier and approve it with the passkey, approve the payment or batch, pay x-on-behalf-of with application_fee_options, follow to PAID, `apJournal` → `toPostings` → `pushToT0`, then write a hash-chained receipt (`chainSteps`) and summary.json. It does NOT call `syncLedger` or `syncVault`.\nCommands:\n- `npm run e2e:live`: a dry run with `FakeAirwallex` (src/redteam/airwallex.ts), `FakeT0`, `FakePlatformOps` and the parser instead of Claude; nothing leaves the machine.\n- `E2E_LIVE=yes npm run e2e:live -- --live [--dir ...]`: live, with the call budget `E2E_BUDGET` (default `PHASE2_BUDGET` airwallex=26, t0=12, claude=8) and `T0_RATES`.\nResume: `retryCompany` (src/e2e/retry.ts) and `finishRun` (src/e2e/finish.ts). Live result on 10 Nov (docs/runs/2026-11-10-platform-e2e.md): 1 payout PAID, booked, in T:0 with a verifying receipt; 3 refused by Airwallex for a missing business registration number.\nIn-process alternative without the network: test/fakes/vaultWorld.ts `vaultWorld()`."
+  },
+  {
+   "question": "7) Portability: node:* and Node-only deps per module; what runs in a Worker or a DO",
+   "answer": "Engine-wide: everything takes `DB` = better-sqlite3 (a native addon), so nothing runs unchanged on D1, whose API is async. A Durable Object's `ctx.storage.sql` is synchronous, so a shim implementing `prepare().get/all/run`, `transaction(fn)` plus `.immediate` (via `transactionSync`) and `run().changes` could carry most of the code. `openDb` itself must be replaced: it uses `pragma journal_mode=WAL`, `Atomics.wait` and node:fs to read the .sql files. Whether DO SQLite accepts the triggers and `PRAGMA table_info` is unverified.\nPer module:\n- db/open.ts: better-sqlite3, node:fs, node:path.\n- ap/inbox.ts: node:crypto (createHash), node:fs (writes docs/<sha>.pdf, readFileSync in `recheck`), node:path.\n- ap/pdfText.ts: node:module, node:url, node:worker_threads, node:zlib, unpdf. Hard blocker; it needs a different isolation design in Workers.\n- ap/scan.ts: pdfkit (`imageToPdf`).\n- ap/books.ts: node:fs and node:path (`CsvFileSink`); `process.env` in `payablesSink`.\n- ap/pay.ts and ap/detail.ts: node:fs readFileSync of the stored PDF, then `pdfText`.\n- ap/watch.ts: node:fs.\n- ap/eml.ts: Buffer only.\n- ap/checks.ts, reading.ts, classify.ts, read.ts, review.ts, credits.ts, insights.ts, store.ts, vendors.ts, bank.ts, public.ts: no node imports (zod; `ibanSha` from agents/invoice.ts uses node:crypto).\n- batchPay.ts → payouts/planContext.ts: node:async_hooks.\n- payouts/plan.ts: node:crypto randomUUID.\n- payouts/routes.ts: pure.\n- executors: no direct node imports (they depend on airwallex/adapter.ts with node:crypto and on `process.env`).\n- ledger/core.ts, documents.ts, close.ts, feed.ts, reports.ts, vat.ts, accounts.ts: no node imports. core.ts uses `jcs` from @metalntwx/metal-pay and `sha256Hex` (lib/terms.ts, node:crypto).\n- ledger/page.ts: node:crypto. ledger/serve.ts: express.\n- accounting/gl.ts and books.ts: none. accounting/t0.ts: node:crypto.\n- vault/layout.ts: pure. vault/data.ts: node:crypto. vault/build.ts: node:fs readFileSync of the original PDF. vault/pdf.ts: pdfkit. vault/sink.ts: node:fs, node:path, node:crypto. gdrive.ts/onedrive.ts: fetch (+ node:crypto randomBytes). vault/page.ts: express, node:fs.\n- erp/*: fetch-based. auth.ts uses node:fs/node:path for the Exact token file (`memoryTokenStore` exists); businessCentral.ts uses node:crypto; rest.ts uses Buffer.\n- servers/payables.ts: express, express-rate-limit, node:crypto, node:fs.\n- claude/reader.ts: @anthropic-ai/sdk (fetch-based).\nnode:crypto and Buffer are available in Workers with `nodejs_compat`, which cloud/wrangler.jsonc already sets.\nCould run unchanged in a Worker: payouts/routes.ts, vault/layout.ts, ledger/reports.ts `*From` functions, `verifyLedgerRows`, ledger/vat.ts, ledger/accounts.ts, erp/model.ts, erp/xmlrpc.ts, reading.ts parsers (`parseApFallback`, `ibanValid`, `readingCheck`, `totalLine`), policy/fraudCore.ts `assessAgainst`/`skeleton`, ap/books.ts `accrualEntries`/`reversalEntries`.\nCould run in a DO with an SQLite shim, but with file storage swapped for R2/blobs, pdfText replaced, and PDFs made by a Workers-capable library: inbox, checks, pay, ledger core and feed, vault build."
+  },
+  {
+   "question": "8) Fixtures: sample invoices and fraud cases",
+   "answer": "Text-only invoices (.txt) are in /home/user/ro/platform/fixtures. These are the Kit 11 / Northwind world, with supplier Bergtex Textil GmbH (IBAN on file DE89 3704 0044 0532 0130 00, EUR 1,850.00) and Stockline Data GmbH. English unless noted:\n- `bergtex-invoice-BTX-2026-11.txt` and `-2026-12.txt`: clean.\n- `bergtex-invoice-BTX-2027-01-BANKCHANGE.txt`: forged IBAN LT12… plus 'our bank details have changed… urgent' (BEC). Expected codes: possible_fraud (bank_details_changed), bank_change_language, pressure_language.\n- `bergtex-invoice-BTX-2027-02-LOOKALIKE.txt`: 'Bergtex Texitl GmbH' (lookalike_vendor).\n- `bergtex-invoice-BTX-2027-03-INJECTION.txt`: prompt injection.\n- `bergtex-invoice-BTX-2027-ANNUAL.txt`: EUR 7,500 annual prepayment (unusual_amount, price-rise insight).\n- `stockline-licence-SLL-2026-11.txt` and `-11B.txt`: second payout, two-locks test.\n- `stockline-price-notice.txt`: price-change e-mail.\n- `stockline-corrections.txt` and `summit-dispute-email.txt`: e-mails.\nfixtures/hard/: `bergtex-invoice-subtle-iban.txt` (IBAN …0130 08, one digit off), `bergtex-invoice-subtle-beneficiary.txt` (IBAN DE54…, another account), `bergtex-invoice-renumbered.txt` (BTX-2026-17, same total: a duplicate under another number, possible_duplicate), `bergtex-invoice-hidden-injection.txt`, `bergtex-invoice-messy.txt` (EN/DE layout), `bergtex-rechnung-de.txt` (German), `stockline-price-notice-de.txt` (German), `summit-dispute-mixed.txt` (Dutch/English).\nTest-only invoice texts:\n- test/fakes/apInvoices.ts: `EN` (Bergtex), `NL` (Zeeland Verpakkingen B.V.), `DE` (Lagerhaus Nord GmbH).\n- test/fakes/fxInvoices.ts: `US` (Pinecrest, ACH), `CN` (Ningbo, SWIFT), `UK` (Harbour Rope, Faster Payments), `TR` (Bursa Tekstil, TRY IBAN).\n- src/e2e/world.ts: the four Dutch invoices.\nPDF and e-mail are generated at runtime by `pdfOf`/`scanPdf`/`emlWith` (test/fakes/pdf.ts) or `pdfOf`/`emlWith` (src/e2e/documents.ts). No real .pdf or .eml invoice fixtures are committed.\nFraud coverage in tests: test/ap-inbox.test.ts covers duplicate copy, unknown supplier, changed bank details, sum mismatch, bad IBAN checksum, scan, currency, unusual amount, overdue, planted IBAN. Also test/ap-redteam2.test.ts and test/fraud.test.ts. Price change appears as `unusual_amount` (`UNUSUAL_FACTOR`=2× the median) and as the insight `PRICE_RISE_MIN_PCT`=5 in src/ap/insights.ts."
+  }
+ ],
+ "extension_points": [
+  {
+   "what": "Fresh demo world per visitor (jury demo, Purser Cloud read-only demo)",
+   "where": "test/fakes/vaultWorld.ts; src/e2e/world.ts; src/e2e/setup.ts dryRunDeps",
+   "how": "Copy the `vaultWorld` sequence (ingestDocument → payApInvoice → decide → executeInvoicePayment → syncPayments → syncLedger → closeMonth → syncVault) using `FakeAirwallex` (src/redteam/airwallex.ts) and `FakeAuthenticator` (src/redteam/authenticator.ts) on `openDb(':memory:')`. Draw random scenarios from the fixtures/ texts rendered by `pdfOf`."
+  },
+  {
+   "what": "Real Claude reasoning shown in the demo",
+   "where": "src/ap/read.ts `Asker`, src/claude/reader.ts `MODELS` (classify haiku, act sonnet, review opus)",
+   "how": "Pass a ClaudeReader as `InboxDeps.reader`. Readings and audit rows (`ap.received`, review_note, review_by) carry the model; budget it with `budgetedReader` (src/e2e/setup.ts)."
+  },
+  {
+   "what": "R2 / Worker vault sink",
+   "where": "src/vault/sink.ts `VaultSink`",
+   "how": "Implement stat/create/readIndex/writeIndex/read over R2. `syncVault` is async and does not depend on the sink."
+  },
+  {
+   "what": "Portable reports",
+   "where": "src/ledger/reports.ts *From functions",
+   "how": "Feed `PostedLine[]` from any store (cloud/src/read.ts already does this on D1)."
+  },
+  {
+   "what": "Bookkeeping sink per event",
+   "where": "src/ap/books.ts `BookkeepingSink`",
+   "how": "Implement push(entries, inv) (e.g. to an ERP or the cloud). `pushOnce` deduplicates per (invoice, event, sink.name) in `ap_sink_events`."
+  },
+  {
+   "what": "New ERP",
+   "where": "src/erp/connector.ts `ErpConnector`, src/erp/registry.ts `SETTINGS`/`liveConnector`/`dryRunConnector`, `CONNECTOR_NAMES`",
+   "how": "Implement the interface and register it; `syncAll` handles order, idempotency and corrections."
+  },
+  {
+   "what": "New payout country/route",
+   "where": "src/payouts/routes.ts `COUNTRIES`",
+   "how": "Add a country entry with local/swift routes; the module is pure."
+  },
+  {
+   "what": "English vault for demo (b)",
+   "where": "src/vault/pdf.ts `PDF_STRINGS`, `Lang`; src/vault/layout.ts",
+   "how": "Pass `lang: 'en'` to `syncVault`. The folder names in layout.ts are hard-coded Dutch (Inkoopfacturen, Betalingen, Rapporten, Maandrapport, Btw-overzicht, Jaarrapport, Leveranciers), so an English tree needs a code change."
+  }
+ ],
+ "pinned_by_tests": [
+  {
+   "check": "test/ap-inbox.test.ts",
+   "pins": "Ingest via upload/e-mail/.eml, dedupe by sha, finding codes (duplicate, new_supplier, possible_fraud, sum_mismatch, iban_invalid, no_text, currency, unusual_amount, overdue), Claude reading accepted only when it checks out"
+  },
+  {
+   "check": "test/ap-books.test.ts, test/ap-pay.test.ts, test/ap-credit-netting.test.ts, test/ap-redteam2.test.ts, test/ap-review-fixes.test.ts, test/ap-scan.test.ts, test/ap-server.test.ts, test/ap-detail.test.ts, test/ap-watch.test.ts, test/ap-reference-cap.test.ts, test/ap-migration.test.ts, test/ap-models.test.ts",
+   "pins": "Accrual/payment/reversal entries, sink once-only, pay and sync state machine, credit notes, scans, HTTP API"
+  },
+  {
+   "check": "test/fakes/moneybird/openapi-subset.json + Moneybird tests; test/fakes/erp.ts",
+   "pins": "ERP request shapes (Moneybird against its OpenAPI file)"
+  },
+  {
+   "check": "vitest.d1.config.ts (`npm run test:d1`) and test/cloud-*.test.ts",
+   "pins": "The cloud mirror on D1 semantics, including report reuse"
+  },
+  {
+   "check": "npm test (vitest run); npm run test:coverage",
+   "pins": "Whole suite. Exact ledger/vault test filenames were not enumerated (unknown); vaultWorld is their shared fixture."
+  }
+ ],
+ "runtime_constraints": [
+  "Node ^22.13.0 || >=23.4.0 (package.json engines); better-sqlite3 13.0.3 is a native addon.",
+  "pdfText runs unpdf in a node:worker_threads Worker with PDF_MAX_MS=10s, PDF_MAX_PAGES=200, PDF_WORKER_HEAP_MB=256 and a 64 MB decode budget; MAX_DOCUMENT_BYTES=15 MB; MAX_EMAIL_ATTACHMENTS=20; scans: SCAN_MAX_PAGES=3, SCAN_DAILY_DOCS=200.",
+  "Env names (values not printed): KIT11_DB, KIT11_AP_DIR, KIT11_VAULT, KIT11_VAULT_DIR, KIT11_COMPANY, KIT11_GDRIVE_TOKEN, KIT11_GDRIVE_FOLDER_ID, KIT11_GRAPH_TOKEN, KIT11_GRAPH_DRIVE_ID, PURSER_INBOX_ADDRESS, PURSER_LANGUAGE, T0_API_KEY, T0_ENTITY, T0_BASE_URL, T0_RATES, E2E_LIVE, E2E_BUDGET, ERP_EXACT_REFRESH_TOKEN plus per-connector SETTINGS in src/erp/registry.ts.",
+  "Paying and adding a supplier need the Airwallex sandbox keys (`airwallexFromEnv`); without them the payables API answers 503 and the executors throw.",
+  "The local payables, ledger and vault pages bind to 127.0.0.1 only (ports 4400, 4500, 4600).",
+  "cloud/wrangler.jsonc: D1 binding DB, R2 binding DOCS (eu), nodejs_compat, cron '17 3 * * *'. database_id is still the placeholder 'SET-AFTER-wrangler-d1-create'."
+ ],
+ "risks": [
+  "Two booking paths can drift: the CSV `BookkeepingSink` gets payment entries from `paymentEntries`, while the stored ledger gets them from accounting/gl.ts `journal()` via `syncLedger`. T:0 in e2e uses `apJournal`; `npm run t0` uses accounting/books.ts.",
+  "The e2e does not exercise `syncLedger` or the vault; only test/fakes/vaultWorld.ts covers the full chain to the archive.",
+  "pdfkit in Workers is unverified; vault PDFs and photo-to-PDF (`imageToPdf`) may need a different library for a Worker demo.",
+  "`pdfText` (worker_threads isolation against PDF bombs) has no Worker equivalent; dropping it removes a red-team mitigation.",
+  "No FX revaluation: P&L and balance sheet are per currency only.",
+  "Vault folder names are hard-coded Dutch, which conflicts with an English-only public demo.",
+  "pay.ts error text says 'pays EUR only…' while `payableCurrency` accepts every two-decimal SWIFT currency; the wording is stale.",
+  "`nextApId` uses COUNT(*)+1 and relies on single-writer transactions; with multiple DO writers that needs care.",
+  "No ERP connector has talked to a live ERP; T:0 sandbox only.",
+  "Live e2e: Airwallex refused 3 of 4 payouts from newly opened sole-trader accounts (business registration number required)."
+ ],
+ "open_questions": [
+  "Does DO SQLite (ctx.storage.sql) accept the CREATE TRIGGER statements in db/ledger.sql and `PRAGMA table_info` used by `migrate`? Unknown, not tested.",
+  "Does pdfkit 0.20.2's standalone build run under workerd with nodejs_compat? Unknown (node_modules not installed in the snapshot).",
+  "Exact list of ledger/vault/erp test files and current CI status on the platform branch: not enumerated.",
+  "Whether `src/cloudsync/client.ts` is the intended path for Purser Cloud demo data (it calls `syncLedger` before pushing): not investigated in depth."
+ ]
+}

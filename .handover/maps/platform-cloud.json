@@ -1,0 +1,231 @@
+{
+ "summary": "Purser Cloud (/home/user/ro/platform/cloud) is one multi-tenant Cloudflare Worker, `purser-cloud`. It serves a JSON API under /v1, a single-page console at /, inbound e-mail and a daily cron, and stores data in D1 (one shared database with tenant_id on every row) and R2. It is a system of record and a display layer only. It never pays and never reads or checks invoices. All data comes from the company's local runner (`npm run cloud -- push`) or from inbound e-mail that the runner pulls and processes. Reports (trial, pnl, balance, vat, payables, receivables), insights and the transactions summary are computed in the Worker from the ledger lines the runner pushed. Sign-in is by passkey only: 15-minute HMAC session tokens (`pcs.`), API keys (`pck_`) with scopes read/sync/admin, roles owner/cfo/accountant/viewer, and a platform admin token for creating tenants. The console is already bilingual: about 1,700 lines in src/ui/i18n.ts hold matching EN and NL catalogues, with a company language and a per-person override. Dutch is the default, and switching the default to English is a small change. Not found anywhere: the access-key gate of the private preview at purser-preview.max-31b.workers.dev, its wrangler config, and any `?k=` handling. I searched the snapshots, every local branch, /home/user/cloudflare, /home/user/purser-friday and the agent worktrees. The only `k` parameter is the invite secret in `#/enrol?e=…&k=…`. There is no public or demo mode, no unauthenticated read path and no cloud seed script. The cloud cannot run the invoice chain itself today: the AP and booking code is Node-only (better-sqlite3 plus node:fs). The Worker can, however, take a batch it builds itself through `applySync`, the same path a runner push uses.",
+ "key_files": [
+  {
+   "path": "/home/user/ro/platform/cloud/src/worker.ts",
+   "role": "Worker entry: `fetch` -> `handle`, `email` -> `receiveEmail`, `scheduled` -> `purgeExpired` + `sweepExports`. `Bindings` lists DB, DOCS, SESSION_SECRET, ADMIN_TOKEN_SHA256, RP_ID, ORIGIN, MAIL_DOMAIN?, VERSION?, ASSETS?; `envOf` turns them into a CloudEnv (no awxPlatform wired, so /v1/airwallex/* answer 404 when deployed)."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/app.ts",
+   "role": "`ROUTES` table (also the source of /v1/openapi.json), `handle`, `route` (Origin check, `ensureSchema`, the auth gate by `need`: public/platform/read/sync/admin, rate limits, starter/recovery key restrictions, TenantDb per caller), `CloudEnv` interface, `POST /v1/admin/tenants`, `RESERVED_SLUGS`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/auth.ts",
+   "role": "`callerOf` (pck_ API keys, pcs. sessions), `passkeyLogin`, `newChallenge`, `startEnrolment`, `enrolPasskey`, `inviteInfo`, `newApiKey`, `firstApiKey`, `isPlatformAdmin`, `withinRate`, `failedAuthBlocked`, `need`; constants SESSION_TTL_MS = 15 min, STARTER_KEY_DAYS = 7, KEY_DEFAULT_DAYS = 90; `Caller` interface."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/tenant.ts",
+   "role": "`TenantDb`: every query is scoped by tenant_id; `COLUMNS` lists the tenant tables; write guards (`pushGuard`, `callerGuard`, `noOwnerPasskeyGuard`, etc.); `WriteConflict`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/sync.ts",
+   "role": "`SyncBatch` (zod) and `applySync(db, blobs, batch, now, who)`: an idempotent push of vendors, invoices, payments, transactions, documents (R2 `t/<tenant>/docs/<sha>`), ledger_entries (hash chain and balance checked) and audit_rows."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/read.ts",
+   "role": "Read models computed in the Worker: `listInvoices`, `oneInvoice`, `invoiceDocument`, `listVendors`, `listPayments`, `ledgerEntries`, `report` (trial/pnl/balance/vat/payables/receivables), `insights`, `listTransactions`, `transactionSummary`, `allTransactions`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/console.ts",
+   "role": "The whole console: CSS (`EXTRA_CSS` + `PAYABLES_CSS`), `BODY` (header tabs and the 'Test money' chip), `SCRIPT` (vanilla JS SPA with a hash router), `consolePage`, `pdfViewPage` (sandboxed pdf.js frame), `consoleCsp`, `consoleResponse` (/, /pdfview, /assets/inter.woff2, /assets/pdfjs.mjs)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/ui/i18n.ts",
+   "role": "All UI strings: `EN` and `NL` catalogues (`MESSAGES`), `DEFAULT_LANG = \"nl\"`, `DATA_NL` (translates runner-produced data text into Dutch), `I18N_JS`, `consoleKeys`, `keysUsedIn`, `pickLang`. Console keys use the prefix `cs.`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/migrations/0001_init.sql",
+   "role": "The only D1 migration (343 lines). `cloud/src/schema.ts` is a generated string copy of it (`SCHEMA`, applied by `ensureSchema`; test/cloud-schema.test.ts keeps the two equal)."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/wrangler.jsonc",
+   "role": "Worker `purser-cloud`, main src/worker.ts, nodejs_compat, workers_dev:false, preview_urls:false, D1 `DB` (database_id placeholder), R2 `DOCS` (purser-cloud-docs, EU jurisdiction), vars RP_ID/ORIGIN (placeholders), assets ./public as ASSETS (run_worker_first), cron `17 3 * * *`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/mail.ts",
+   "role": "`receiveEmail`: Email Routing to `<slug>@MAIL_DOMAIN`, stored in inbound_mail and R2 `t/<tenant>/mail/<sha>.eml`, with quotas (`MAIL_QUOTA`)."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/privacy.ts",
+   "role": "`exportTenant`, `eraseUser`, `closeTenant`, `purgeExpired` (7-year retention)."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/exports.ts",
+   "role": "Staged exports into R2 (`partKey`), signed download links, `sweepExports`."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/restore.ts",
+   "role": "`importTenant(sql, blobs, data, docs, {tenantId, now})`: imports an export into an empty tenant after `verifyChains`. Usable for seeding."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/node.ts",
+   "role": "`sqliteSql` (better-sqlite3) and `dirBlobs`: the same API on Node, for tests and running the cloud locally."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/platformView.ts",
+   "role": "`platformCompanies` for GET /v1/admin/companies (platform admin only)."
+  },
+  {
+   "path": "/home/user/ro/platform/cloud/src/awxPlatform.ts",
+   "role": "Purser as an Airwallex platform: connected accounts, signed account binding (`signBinding`), webhook. Off unless `CloudEnv.awxPlatform` is set."
+  },
+  {
+   "path": "/home/user/ro/platform/src/cloudsync/client.ts",
+   "role": "Runner-side sync: `pushToCloud(db, {url,key})`, `batchesFor`, `pullMail`, `refreshBinding`."
+  },
+  {
+   "path": "/home/user/ro/platform/src/cli/cloud.ts",
+   "role": "`npm run cloud -- push | mail`; reads env PURSER_CLOUD_URL, PURSER_CLOUD_KEY (a key with the sync scope)."
+  },
+  {
+   "path": "/home/user/ro/platform/test/browser/console.check.ts",
+   "role": "The de facto demo seeder plus browser check: builds a runner world (`world()` from test/support/rt4World.ts with the EN/DE/NL fake invoices), runs the cloud `handle` over SQLite on localhost, creates tenant `northwind`, sets language en, completes first run with a virtual passkey, pushes with the sync key, then screenshots every page."
+  },
+  {
+   "path": "/home/user/ro/platform/test/support/cloud.ts",
+   "role": "`testCloud()` harness for the vitest cloud tests (ADMIN_TOKEN, RP `cloud.test`, ORIGIN `https://cloud.test`)."
+  },
+  {
+   "path": "/home/user/ro/platform/test/support/d1.ts",
+   "role": "With CLOUD_DB=d1: 160 fresh local D1 databases plus an R2 binding through wrangler `getPlatformProxy` (the wrangler pinned in worker/)."
+  },
+  {
+   "path": "/home/user/ro/platform/src/e2e/world.ts",
+   "role": "`WORLD`: three fake SMEs for the platform end-to-end (SANDBOXTEST `t_e2e_sandboxtest`, BAKKERIJ `t_e2e_bakkerij`, FIETSLAB `t_e2e_fietslab`) with Dutch PDF/e-mail invoices. Runner-side only; never pushed to the cloud."
+  },
+  {
+   "path": "/home/user/ro/platform/docs/cloud.md",
+   "role": "Cloud docs: API, console, D1 tests, privacy, the go-live steps (D1/R2 create, secrets, address, Email Routing, deploy), limits, before-real-data list, monitoring, backups."
+  }
+ ],
+ "how_it_works": "Request flow: in `worker.ts`, `fetch` calls `handle(req, envOf(bindings))`, which calls `route`. Anything outside /v1/ goes to `consoleResponse`: GET / returns the SPA with a nonce CSP, plus /pdfview, the font and pdf.js. For /v1, `route` rejects a non-GET whose Origin is not ORIGIN, runs `ensureSchema(sql)`, matches `ROUTES`, then gates on `need`. 'public' routes get a sign-in rate limit on /v1/auth/*. 'platform' routes need a Bearer token whose SHA-256 equals ADMIN_TOKEN_SHA256. Every other route goes through `failedAuthBlocked`, then `callerOf`, then `need(caller, scope)`, then the starter/recovery key restrictions, then `withinRate` (600 per minute per principal by default), and finally `ctx.db = new TenantDb(sql, caller.tenantId)`. Typed errors map to 4xx; anything else becomes 500 with a reference id. Every request logs one line through `logEvent`.\n\nData: the runner (Node, better-sqlite3 ledger) does all reading (Claude), checks, CFO passkey approval, payment (Airwallex/Metal) and bookkeeping. It then calls POST /v1/sync with a sync-scope key. `applySync` versions vendors, invoices, payments and transactions (earlier versions go to object_history), appends ledger_entries, ledger_lines and audit_rows with recomputed hash chains, and stores documents in R2 by SHA-256. Inbound e-mail lands in inbound_mail and R2; the runner pulls it with GET /v1/mail, files it, and posts /v1/mail/{id}/done. The Worker computes reports and insights from the pushed rows.\n\nConsole: `SCRIPT` is plain JS inside a String.raw. `route()` reads `location.hash`. Open views are #/sign-in, #/start, #/platform and #/enrol?e=&k=. Everything else needs a session in sessionStorage 'purser.cloud.session'. Pages: '/overview' `overviewView`, '/invoices' `invoicesView`, '/invoices/<id>' `invoiceView` (PDF drawn via `drawPdf` in a sandboxed /pdfview frame), '/transactions' `transactionsView`, '/books' `booksView` (VAT per quarter plus journal), '/settings' `settingsView` (company, language, Moneybird 'Koppelingen' card from /v1/integrations, people/invites with QR, API keys, export, Airwallex account). DOM is built with the `el()` helper and textContent only. Strings come from `t()` over catalogues embedded as JSON (`__CATALOGUES__`), chosen by localStorage 'purser.cloud.lang' and otherwise 'nl'.",
+ "answers": [
+  {
+   "question": "1) Worker entry, routes/API, D1 schema and migrations, R2 usage",
+   "answer": "Entry: cloud/src/worker.ts, `export default { fetch, email, scheduled }`, which calls `handle()` in cloud/src/app.ts.\n\nRoutes come from the `ROUTES` array in app.ts (also served as GET /v1/openapi.json).\n- Public: GET /v1/health, GET /v1/openapi.json, POST /v1/auth/challenge|login|enrol|invite, POST /v1/airwallex/webhook, GET /v1/export/download/{id}/{part}.\n- Platform (admin token): GET /v1/admin/companies, POST /v1/admin/tenants, POST /v1/admin/tenants/{id}/recovery.\n- read: GET /v1/me, /v1/invoices, /v1/invoices/{id}, /v1/invoices/{id}/document, /v1/vendors, /v1/payments, /v1/transactions, /v1/transactions/summary, /v1/transactions/export.csv, /v1/transactions/{id}, /v1/ledger/entries, /v1/reports/{name} (trial|pnl|balance|vat?quarter=YYYYQn|payables|receivables), /v1/insights, /v1/documents/{sha256}, /v1/integrations; POST /v1/auth/logout and /v1/me/language.\n- sync: POST /v1/sync, GET /v1/sync/state, GET /v1/mail, GET /v1/mail/{id}/raw, POST /v1/mail/{id}/done, POST /v1/health/report, GET /v1/airwallex/binding.\n- admin: /v1/status, /v1/webhook (GET/POST/DELETE), /v1/airwallex/account|onboarding-link, POST /v1/company, /v1/keys (GET/POST/DELETE), /v1/users (GET/POST), /v1/users/{id}/enrolment|passkeys|erase, /v1/security/events, /v1/export, /v1/export/staged(/{id}), /v1/close.\n\nD1: one migration, cloud/migrations/0001_init.sql, mirrored as a string in cloud/src/schema.ts and applied at runtime by `ensureSchema` (CREATE … IF NOT EXISTS). Tables: tenants, users, credentials, challenges, api_keys, enrolments, rate_hits, vendors, invoices, payments, transactions, object_history, documents, ledger_entries, ledger_lines, audit_rows, inbound_mail, erasures, push_log, runner_health, webhooks, security_events, exports, awx_accounts. Every tenant table carries tenant_id. tenants.language defaults to 'nl'; users.language is nullable.\n\nR2 (binding DOCS, bucket purser-cloud-docs, EU):\n- documents at `t/<tenantId>/docs/<sha256>` (`docBlobKey`, sync.ts)\n- inbound mail at `t/<tenantId>/mail/<sha>.eml` (`mailBlobKey`, mail.ts)\n- staged export parts and manifest under the `prefix(tenantId,id)` paths built by `partKey` (exports.ts)\n\nStatic assets: ASSETS binding (cloud/public; pdf.js filled by `npm run cloud:pdfjs`)."
+  },
+  {
+   "question": "2) Auth: passkey sign-in, sessions, sync keys; access-key gate of the private preview (?k=)",
+   "answer": "Passkey sign-in: POST /v1/auth/challenge (`newChallenge`, 5-minute challenge per tenant), then WebAuthn get in the browser, then POST /v1/auth/login (`passkeyLogin`). It returns a session token `pcs.…`, an HMAC over SESSION_SECRET, with a 15-minute TTL (`SESSION_TTL_MS`). The console keeps it in sessionStorage 'purser.cloud.session' and sends it as a Bearer token; there are no cookies. Sessions carry role and gen (`session_gen`, so `endSessions` revokes them). Role to scope: owner gets read+admin, every other role gets read (`scopesOf`).\n\nAPI keys are `pck_…` with scopes read/sync/admin, stored as SHA-256 in api_keys, 90 days by default (max 365). A key cannot mint a key with more scope than itself. The starter key from POST /v1/admin/tenants (purpose 'first-owner', 7 days) may only call GET /v1/me, POST /v1/company and POST /v1/users/{own id}/enrolment. A recovery key ('recovery', 1 day) may only call /v1/me and its owner's enrolment.\n\nThe sync key is made by the signed-in owner in the console first run (#/start) or Settings with POST /v1/keys scopes [\"sync\"]. The console shows the one command `PURSER_CLOUD_URL=… PURSER_CLOUD_KEY=pck_… npm run cloud -- push`.\n\nEnrolment and invites: POST /v1/users/{id}/enrolment returns an enrolment id and a single-use token (30 minutes) plus an invite link `#/enrol?e=<id>&k=<token>` with a QR code. That `k` is the only `k` parameter in the code: it sits in the URL fragment, is stripped by `history.replaceState`, and is checked through POST /v1/auth/invite and /v1/auth/enrol.\n\nThe preview's access-key gate on purser-preview.max-31b.workers.dev is unknown. No code, config or wrangler file for it exists in /home/user/ro/platform, in any local branch (git grep across all refs), in /home/user/cloudflare, /home/user/purser-friday or the agent worktrees. The repo's cloud/wrangler.jsonc names the Worker 'purser-cloud' with workers_dev:false, so the preview was presumably deployed from uncommitted or out-of-repo code. Reading the private plans in x402-business-agents-keys was denied by the permission classifier, so I could not check them. Ask whoever deployed it."
+  },
+  {
+   "question": "3) Tenancy model; how companies are created; how data arrives",
+   "answer": "Tenancy: one D1 database and one R2 bucket for all companies. Every row carries tenant_id, and all route data access goes through `TenantDb` (cloud/src/tenant.ts), built from `caller.tenantId`; a route never names a tenant. The slug is the company address and also its inbox `<slug>@MAIL_DOMAIN`. `RESERVED_SLUGS` blocks admin, api, console, purser and similar.\n\nCreation: only the platform operator, with POST /v1/admin/tenants and `Authorization: Bearer <admin token>` (SHA-256 checked against ADMIN_TOKEN_SHA256), body `{slug, name, owner:{display_name, email?}}`. It inserts the tenant and an owner user, and returns a starter key once. The owner then opens #/start, enters slug and starter key, makes a passkey, gets the inbox address and makes the runner's sync key. There is no self-signup.\n\nData arrives in two ways:\n- The runner pushes with `npm run cloud -- push`, which calls `pushToCloud` (src/cloudsync/client.ts) and then POST /v1/sync. `applySync` is idempotent and versioned, with chains verified.\n- E-mail arrives via Cloudflare Email Routing to the `email()` handler (`receiveEmail`). The runner pulls it with `npm run cloud -- mail` (`pullMail`): GET /v1/mail, reading with ClaudeReader, then POST /v1/mail/{id}/done.\n\nComputed in the Worker: only views over pushed rows. These are `report()` (trial, pnl, balance, vat, payables, receivables from ledger_lines), `insights()`, `transactionSummary()`, `platformCompanies()`, `companyStatus()` and `integrations()`. Reading, checks, approval, payment and booking never happen in the cloud."
+  },
+  {
+   "question": "4) Console UI: files, screens, rendering, language",
+   "answer": "File: cloud/src/console.ts, one file. Shared CSS and icons come from src/ui/payablesKit.ts (`PAYABLES_CSS`, `ICON_SET`, `svg`) and strings from src/ui/i18n.ts. It is a single HTML page from `consolePage(nonce, cfg)`, served at / with a strict nonce CSP. The client is a vanilla JS hash-router SPA (`SCRIPT`) that builds the DOM with `el()` and textContent and fetches /v1 with `api()`.\n\nScreens (hash routes):\n- #/sign-in `signInView`\n- #/start `startView` (first run: starter key, passkey, inbox address, sync key command)\n- #/enrol `enrolView`\n- #/platform `platformView` (operator, admin token)\n- #/overview `overviewView` (tiles open/due/overdue/waiting/blocked, waiting for the CFO, spend per supplier)\n- #/invoices `invoicesView` (filters) and #/invoices/<id> `invoiceView` (reading, checks/findings, timeline, PDF via the sandboxed /pdfview frame plus download)\n- #/transactions `transactionsView` (rail and reconciliation filters, summary, CSV)\n- #/books `booksView` (VAT per quarter, the last 6 quarters, plus the journal)\n- #/settings `settingsView` (company and language, Koppelingen/Moneybird card, people and invites with QR, API keys, export, Airwallex account)\n\nThere is no vault screen in the cloud console. The vault is runner-local (src/vault/page.ts, `npm run vault -- serve`), as are the books page (src/ledger/serve.ts) and the payables page.\n\nLanguage: the Dutch and English strings both live in src/ui/i18n.ts (`EN` and `NL` objects; console keys mostly `cs.*`). `DATA_NL` rewrites runner data text into Dutch. The console embeds both catalogues. Selection order: localStorage 'purser.cloud.lang', else 'nl'; after /v1/me, the person's language, else the company's (`useLanguage` reloads the page). Owners set the company language with POST /v1/company {language}; a person sets their own with POST /v1/me/language. So an EN/NL toggle already exists in Settings for signed-in users.\n\nEffort to make English the default, small (about half a day with tests):\n1. In console.ts `SCRIPT`, change `LS[PREF==='en'?'en':'nl']` to default 'en'.\n2. In `BODY`, change `tr(\"nl\", …)` to \"en\", and `<html lang=\"nl\">`.\n3. In settings, change `langSel(langNames, m.tenant.language||'nl')`.\n4. tenants.language DEFAULT 'nl' in the migration: either add a new migration, or set language explicitly in the POST /v1/admin/tenants insert. SQLite cannot alter a column default without a table rebuild.\n5. Possibly `DEFAULT_LANG` in i18n.ts, but that also changes the runner pages.\n6. Add a visible header toggle that calls `useLanguage` for signed-out and demo visitors.\n7. Update test/cloud-console.test.ts and console.check.ts, which assume Dutch by default ('The console is Dutch by default')."
+  },
+  {
+   "question": "5) Seeding a demo: scripts and the seeded test world",
+   "answer": "No cloud seed script exists.\n\nThe nearest thing is test/browser/console.check.ts, run with `npx tsx test/browser/console.check.ts [screenshot dir]`. It:\n- builds a runner world with `world()` from test/support/rt4World.ts (parser-only reader, no Claude) from test/fakes/apInvoices.ts EN/DE/NL. That gives Bergtex Textil GmbH 'bergtex-21.pdf' paid, a second Bergtex invoice BTX-2026-24 (EUR 1,309.00) proposed and waiting for the CFO, Lagerhaus Nord GmbH and Zeeland Verpakkingen B.V. waiting for new-supplier checks, and an injected 'Evil Supplies' HTML-name invoice AP-9001.\n- runs the cloud `handle` over `sqliteSql(':memory:')` and `dirBlobs` on localhost:879x.\n- creates tenant 'northwind' ('Northwind Outdoor (test company)') with POST /v1/admin/tenants, sets language en, enrols a virtual passkey in Chromium, makes the sync key and calls `pushToCloud`.\nIt is a throwaway in-memory world for screenshots, not a persistent seed.\n\nsrc/e2e/* (`npm run e2e:live`, dry run by default; `--live` needs E2E_LIVE=yes and E2E_BUDGET) is the platform end-to-end:\n- `WORLD` in src/e2e/world.ts has three fake SMEs. 'Purser Sandbox Test (fake sole trader)' (t_e2e_sandboxtest, ZV-5001 from Zeeland Verpakkingen B.V. (test), EUR 4.00 + 0.84 VAT). 'Bakkerij De Test (fake)' (t_e2e_bakkerij: MM-2026-114 from Meelhandel Molenaar by e-mail, VE-889 from Verpakking Express by upload). 'Fietslab Test (fake)' (t_e2e_fietslab: OD-77 from Onderdelen Direct by e-mail).\n- The invoices are Dutch-language (`nlInvoice`), with tiny amounts and checksum-only IBANs. They go through each company's own runner ledger (Airwallex connected accounts, CFO test passkey, T:0 books) with stand-ins in the dry run.\n- They are never pushed to the cloud: platformRun.ts only uses `signBinding` from cloud/src/awxPlatform.ts. They are a ready source for three demo companies but need a push step.\n\nOther building blocks: `importTenant` (cloud/src/restore.ts) imports a full export into an empty tenant. test/support/cloud.ts `testCloud()` is the vitest harness."
+  },
+  {
+   "question": "6) Deploy: wrangler config, worker names, bindings, secrets",
+   "answer": "cloud/wrangler.jsonc:\n- name 'purser-cloud', main src/worker.ts, compatibility_date 2026-10-01, flags nodejs_compat, workers_dev:false, preview_urls:false.\n- d1_databases: binding DB, database_name purser-cloud, database_id 'SET-AFTER-wrangler-d1-create', migrations_dir migrations.\n- r2_buckets: binding DOCS, bucket purser-cloud-docs, jurisdiction eu.\n- vars: RP_ID, ORIGIN (placeholders cloud.example.invalid; passkeys are bound to them); MAIL_DOMAIN optional; VERSION optional (shown by /v1/health).\n- assets: ./public as ASSETS, run_worker_first.\n- crons: '17 3 * * *'.\n\nSecrets (names only): SESSION_SECRET (at least 32 characters, or `envOf` throws; the docs say 48+) and ADMIN_TOKEN_SHA256 (hex SHA-256 of the platform admin token; empty means no tenant can be created).\n\nDeploy steps (docs/cloud.md 'Going live'):\n1. `npx wrangler d1 create purser-cloud --location weur`\n2. `npx wrangler r2 bucket create purser-cloud-docs --jurisdiction eu`\n3. Paste database_id, then `npx wrangler d1 migrations apply purser-cloud --remote -c cloud/wrangler.jsonc`\n4. `npx wrangler secret put SESSION_SECRET -c cloud/wrangler.jsonc` and `npx wrangler secret put ADMIN_TOKEN_SHA256 -c cloud/wrangler.jsonc`\n5. Set RP_ID/ORIGIN to the host; Email Routing catch-all to the Worker plus MAIL_DOMAIN.\n6. `npm run cloud:pdfjs`, then `npx wrangler deploy -c cloud/wrangler.jsonc`. Wrangler is pinned in worker/.\n\nThe preview Worker name 'purser-preview' and its workers.dev config are not in the repo (unknown). For any workers.dev deploy, RP_ID must be 'purser-preview.max-31b.workers.dev' and ORIGIN 'https://purser-preview.max-31b.workers.dev'.\n\nThe Airwallex platform config (`CloudEnv.awxPlatform`) is not wired in worker.ts `envOf`, so those routes answer 404 when deployed. The main site Worker is separate: worker/wrangler.jsonc name 'kit11'."
+  },
+  {
+   "question": "7) Checks: console.check, test:d1",
+   "answer": "`npm run test:d1` runs `CLOUD_DB=d1 vitest run --config vitest.d1.config.ts`. It covers test/cloud-*.test.ts, test/rt4-cloud-*.test.ts and test/ap-credit-netting.test.ts on local workerd D1/R2 via test/support/d1.ts (160 throwaway databases through wrangler `getPlatformProxy`). It needs `npm ci --prefix worker` first and no network; CI runs it in the test job (.github/workflows/ci.yml, 'Cloud tests on local D1').\n\nThe same cloud tests run on better-sqlite3 in plain `npm test` (`vitest run`). Relevant files include cloud-core, cloud-auth, cloud-tenancy (every route tried against another company's objects), cloud-console, cloud-console-invites, cloud-sync, cloud-golive (log scan for secrets), cloud-security, cloud-rt6, rt4-cloud-data, rt5-cloud and cloud-schema (SCHEMA equals the .sql).\n\n`npx tsx test/browser/console.check.ts test-results/console` is the Chromium end-to-end with a virtual WebAuthn authenticator. It covers first run, sign-in, the pushed world, every page at 1440 and 390 px, the HTML-as-text check, no console or CSP errors, no overflow, and session expiry. It needs Playwright 1.63.0 Chromium (CHROMIUM_PATH optional) and runs in the CI judge job.\n\nAlso run `npm run lint` (covers cloud/src) and `npm run typecheck`."
+  },
+  {
+   "question": "8) What is needed for a PUBLIC read-only demo tenant set (3 test companies, no access key, no writes, rate-limited, 'test world' banner)?",
+   "answer": "None of this exists yet. Needed:\n\n(1) Server-side demo caller. Add a config such as a var DEMO_SLUGS='a,b,c' (new). In app.ts `route()`, for requests marked as demo (for example a path prefix /v1/demo/{slug}/… or a header x-purser-demo), build a synthetic `Caller` {tenantId from slug, kind 'key', principal 'demo:'+ip, scopes new Set(['read']), role 'viewer', user null}. Allow only GET routes with need 'read'. Refuse any non-GET, every admin/sync/platform route, and /v1/auth/* for those tenants. Also block real sign-in and key use on demo tenants so nobody can take one over. Rate-limit with `withinRate(env.sql, 'demo:'+ip, …)`, which writes to D1 rate_hits on every request, and add Cloudflare WAF rate rules (docs list WAF as a pre-real-data item). /v1/me must answer for the synthetic caller; the console calls `me()` and shows the user, company and Airwallex chip. /v1/invoices/{id}/document and /v1/documents/{sha} must work so PDFs render.\n\n(2) Console demo mode. In `route()` the console sends a visitor to #/sign-in when there is no session (`if(!S)return go('#/sign-in')`). Add #/demo or #/demo/<slug> that sets an in-memory demo state, a company switcher for the 3 slugs, and an `api()` that sends the demo marker instead of a Bearer token. Hide the Settings tab and sign-out (all writes are in settings, start, enrol and auth: POST /v1/company, /v1/keys, /v1/users, /v1/me/language, /v1/airwallex/*). Overview, invoices, transactions and books are already read-only. Add a banner 'Test world: fictional companies, test money, read-only'. A 'test.label' chip and 'cs.foot' already exist; add a new key to both EN and NL in src/ui/i18n.ts.\n\n(3) English. Make English the default (see Q4) and set the demo tenants' language 'en'. Runner data text (status_words, findings) is English and DATA_NL only translates to Dutch, so it is fine. The e2e WORLD invoices are Dutch-language PDFs, so for English demo companies use the rt4World EN invoices or write English variants.\n\n(4) Seed. A new script modelled on console.check.ts: build 3 runner worlds (parser-only, no Claude, or recorded readings), create 3 tenants and push. Pushing needs a sync key, but the starter key cannot mint one (only a passkey session can). Options: (a) a new platform-only route to mint a sync key or import data for a tenant; (b) build locally on SQLite with `sqliteSql(path)` plus `applySync`, then load into remote D1 via `wrangler d1 execute --remote --file` and R2 objects via `wrangler r2 object put` (keys `t/<tenantId>/docs/<sha>`); (c) export locally and `importTenant` (cloud/src/restore.ts) through a new platform route. Make it re-runnable (fixed tenant ids and slugs).\n\n(5) Deploy as a separate Worker or environment (for example a new wrangler env) with its own D1/R2, RP_ID/ORIGIN, SESSION_SECRET and ADMIN_TOKEN_SHA256, and no MAIL_DOMAIN, so no inbound mail. Keep `workers_dev` true only for that environment.\n\n(6) Tests: a tenancy test proving demo callers cannot write or read non-demo tenants; a console.check variant for demo mode; update the language tests."
+  },
+  {
+   "question": "9) Can the cloud Worker run the invoice chain (read, check, approve, pay via stand-in, book, archive) for a per-visitor demo tenant, or does it only display synced data? What is missing?",
+   "answer": "Today it only displays synced data. docs/cloud.md says so: 'The cloud never moves money and holds no payment keys'. The console header comment says 'it never pays'. There is no Claude call, no invoice checking and no booking logic in cloud/src.\n\nWhat exists that helps:\n- `applySync(db, blobs, batch, now)` accepts any well-formed `SyncBatch`, so a Worker-side engine could write its results through the same validated path a runner push uses, and every console screen would just work.\n- WebAuthn assertion verification already exists in cloud/src/auth.ts (`passkeyLogin`, `enrolPasskey`).\n- `env.outbound` (fetch) exists for calling Claude.\n- R2 document storage plus the `/pdfview` renderer cover the PDF archive view.\n- Reports and VAT are computed in-Worker from ledger lines.\n- The main site Worker (worker/src/try.ts, trySign.ts, webauthn.ts with src/try/engine.ts, claude.ts, invoiceDoc.ts, receipt.ts) already runs real Claude reading, passkey signing over exact terms and the tamper refusal inside a Worker. That code is the best base for the per-visitor chain.\n\nWhat is missing:\n(a) Per-visitor tenant creation without the admin token: a public, rate-limited route that creates an ephemeral demo tenant with a TTL, plus cleanup in `scheduled()`. `purgeExpired` only handles closed tenants past 7-year retention.\n(b) Reading: src/ap/read.ts, classify.ts and inbox.ts depend on the runner `DB` (better-sqlite3) and node:fs; src/try/claude.ts is Worker-friendly. An ANTHROPIC key secret and a per-visitor cost budget are needed.\n(c) Checks: `evaluate(db: DB, …)` in src/ap/checks.ts takes the synchronous better-sqlite3 DB (suppliers on file, duplicates, ledger), so it needs an async/D1 port or an in-memory adapter.\n(d) Approval: the CFO passkey approval over exact terms lives in the runner (src/policy/approvals.ts, relay) and the try Worker. The cloud has passkeys for sign-in only; it needs an approve-terms endpoint and a terms hash.\n(e) Pay via stand-in: a fake rail in a Worker. src/ap/pay.ts imports node:fs and the runner rails.\n(f) Booking: src/ap/books.ts `accrualEntries(inv)` is pure but the module imports node:fs and appendFileSync at top level; it needs a split, then hash-chained ledger_entries built to `chains.ts` rules (`ledgerEntryHash`, GENESIS).\n(g) Archive: src/vault (PDF filing with pdfkit and fs) is runner-only; R2 storage of the invoice plus a generated receipt PDF would need new code.\n(h) The agent-overspend refusal: policy enforcement (src/policy/*) is runner-side; src/try/policy.ts has a Worker version.\n\nConclusion: the cheapest path is a demo engine on the kit11 /try Worker code that emits a `SyncBatch` into a demo tenant of the cloud, or that calls `applySync` in-process if merged into the cloud Worker."
+  }
+ ],
+ "extension_points": [
+  {
+   "what": "Public read-only demo caller",
+   "where": "cloud/src/app.ts `route()` (auth gate by `hit.r.need`), cloud/src/auth.ts `Caller` / `callerOf`",
+   "how": "Add a DEMO_SLUGS var to `Bindings` and `CloudEnv` (worker.ts `envOf`). Map a demo marker to a synthetic read-only viewer Caller; allow GET routes with need 'read' only; rate-limit by `demo:`+cf-connecting-ip with `withinRate`."
+  },
+  {
+   "what": "Console demo mode, banner, language toggle",
+   "where": "cloud/src/console.ts `route()`, `api()`, `shell()`, `BODY` header, `settingsView`; strings in src/ui/i18n.ts EN/NL",
+   "how": "Add a #/demo route and a demo state in place of S; hide #tabs settings and #out; add a banner key and a header language button calling `useLanguage`; default to 'en' in `const L=LS[...]`."
+  },
+  {
+   "what": "Demo seed",
+   "where": "new script modelled on test/browser/console.check.ts; building blocks `world()` (test/support/rt4World.ts), `WORLD` (src/e2e/world.ts), `batchesFor`/`pushToCloud` (src/cloudsync/client.ts), `applySync` (cloud/src/sync.ts), `importTenant` (cloud/src/restore.ts), `sqliteSql`/`dirBlobs` (cloud/src/node.ts)",
+   "how": "Build the worlds locally, then either add a platform-only import or sync-key route, or generate SQL and R2 objects for `wrangler d1 execute --remote --file` and `wrangler r2 object put`."
+  },
+  {
+   "what": "Per-visitor tenant lifecycle",
+   "where": "app.ts (new public route modelled on POST /v1/admin/tenants), worker.ts `scheduled`, cloud/src/privacy.ts",
+   "how": "Create ephemeral tenants with an expiry column (new migration 0002 plus regenerate schema.ts) and purge them on the cron."
+  },
+  {
+   "what": "In-Worker invoice chain",
+   "where": "worker/src/try*.ts plus src/try/* (Worker-ready reading, signing, tamper); cloud/src/sync.ts `SyncBatch`/`applySync`; cloud/src/chains.ts `ledgerEntryHash`/`auditRowHash`",
+   "how": "Produce vendors, invoices, payments, transactions, ledger_entries and audit_rows plus document bytes from a Worker engine and land them through `applySync` into the visitor's tenant."
+  },
+  {
+   "what": "English as default language",
+   "where": "src/ui/i18n.ts `DEFAULT_LANG`; console.ts `SCRIPT` (`PREF==='en'?'en':'nl'`), `BODY` `tr(\"nl\",…)`, `<html lang=\"nl\">`, settings `m.tenant.language||'nl'`; migrations tenants.language DEFAULT 'nl'; app.ts tenant insert",
+   "how": "Flip the defaults; set language explicitly at tenant creation; update test/cloud-console.test.ts, test/i18n*.test.ts and console.check.ts."
+  },
+  {
+   "what": "Separate preview/demo deployment",
+   "where": "cloud/wrangler.jsonc",
+   "how": "Add a wrangler `env` (for example demo) with its own name, workers_dev:true, its own D1 database_id and R2 bucket, and RP_ID/ORIGIN set to its workers.dev host."
+  }
+ ],
+ "pinned_by_tests": [
+  {
+   "check": "test/cloud-schema.test.ts",
+   "pins": "cloud/src/schema.ts SCHEMA equals cloud/migrations/0001_init.sql word for word; regenerate after any .sql change."
+  },
+  {
+   "check": "test/cloud-tenancy.test.ts",
+   "pins": "Every route tried against another company's objects; a demo caller must not break tenant isolation."
+  },
+  {
+   "check": "test/cloud-console.test.ts and test/browser/console.check.ts",
+   "pins": "Console page, CSP and nonce, text-only rendering, flows; both assume Dutch is the default and English is opt-in."
+  },
+  {
+   "check": "test/i18n-keys-used.test.ts, test/i18n.test.ts",
+   "pins": "Every key used in the console exists in both EN and NL catalogues; a new banner or demo string must be added to both."
+  },
+  {
+   "check": "test/cloud-golive.test.ts",
+   "pins": "No keys, tokens, invite secrets, account numbers or e-mails in logs."
+  },
+  {
+   "check": "test/cloud-console-invites.test.ts",
+   "pins": "The invite link `#/enrol?e=&k=` is single-use, 30 minutes, same company only."
+  },
+  {
+   "check": "npm run test:d1 (vitest.d1.config.ts)",
+   "pins": "Cloud concurrency guards on real D1 batch semantics."
+  }
+ ],
+ "risks": [
+  "The preview Worker purser-preview.max-31b.workers.dev and its access-key gate are not in any snapshot or local branch: what is deployed there may differ from origin/platform. Find its source before building on it.",
+  "The demo route must not let visitors sign in or mint keys on demo tenants. The starter-key, recovery and enrolment routes are public, and the slug is the only thing a sign-in needs.",
+  "Rate limiting writes to D1 (rate_hits) on every request. A public demo will drive D1 write volume; add Cloudflare WAF rate rules.",
+  "Inbound mail: if MAIL_DOMAIN is set on a demo deployment, anyone can mail `<slug>@domain` (the quota is 500 a day). Leave MAIL_DOMAIN unset for the demo.",
+  "Seeding is awkward: the starter key cannot make a sync key, so a seed needs a passkey session (as console.check uses a virtual authenticator), a new platform route, or direct D1/R2 loading.",
+  "AP checks, pay, books and vault code is Node-only (better-sqlite3 sync DB, node:fs), so porting to the Worker is real work, not a re-import.",
+  "Changing the default language to English touches runner pages too if `DEFAULT_LANG` is changed. Changing only the console is safer.",
+  "Passkeys are bound to RP_ID/ORIGIN: a hostname change invalidates every enrolled passkey on that deployment."
+ ],
+ "runtime_constraints": [
+  "The Worker needs secrets SESSION_SECRET (at least 32 characters, or `envOf` throws) and ADMIN_TOKEN_SHA256; vars RP_ID and ORIGIN must match the served host.",
+  "The console CSP is strict (nonce, no inline handlers, connect-src 'self'); new UI must use `el()` and textContent and the nonce'd script.",
+  "Sessions last 15 minutes and live in sessionStorage; the console polls every 30 s and sends an expired session to #/sign-in.",
+  "D1 and R2 are EU (weur, jurisdiction eu) per the docs; the D1 database_id in the repo is a placeholder.",
+  "test:d1 needs `npm ci --prefix worker` (pinned wrangler); console.check needs Playwright 1.63.0 Chromium.",
+  "Push limits: 50 MB, 200 documents of 16 MB, 5,000 entries, 20,000 audit rows per push."
+ ],
+ "open_questions": [
+  "Where is the source and config of purser-preview.max-31b.workers.dev, and how does its `?k=` access-key gate work? It is not in the repo snapshots or local branches.",
+  "Should the public demo be a separate Worker or environment with its own D1/R2, or demo tenants inside the preview database?",
+  "For per-visitor demo worlds: extend the kit11 Worker (/try code) and push into the cloud, or merge an engine into the cloud Worker?",
+  "Which three companies for the read-only demo: the e2e WORLD (Dutch invoices, tiny amounts) or new English test companies built from the rt4World EN/DE/NL fakes?"
+ ]
+}
