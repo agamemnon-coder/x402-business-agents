@@ -24,6 +24,10 @@ export const DEMO_MAX_COMPANIES = 12;
 export const DEMO_RATE = { perMinute: 300, uncachedPerMinute: 600 };
 /** How long an answer is remembered, in this isolate and in the edge cache: the data is static after seeding. */
 export const DEMO_TTL_SEC = 300;
+/** How long a visitor's browser may keep an answer; a document by its hash (it never changes); the health check, everywhere. */
+export const DEMO_BROWSER_SEC = 60;
+export const DEMO_DOCUMENT_BROWSER_SEC = 86_400;
+export const DEMO_HEALTH_SEC = 30;
 /** The largest document the demo serves. */
 export const DEMO_MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 
@@ -58,7 +62,10 @@ export interface DemoEnv {
   /** This isolate's own state: its counters and the answers it remembers. Nothing of it is in the database. */
   readonly limiter: MemoryLimiter;
   readonly memo: ResponseMemo;
-  /** The edge cache, where the deployment has one that works (it does nothing on a workers.dev address). */
+  /**
+   * Cloudflare's edge cache, shared by the isolates of one data centre. Used when the runtime has one; it is a saving,
+   * never needed (as far as we know it stores nothing on a workers.dev address: the isolate's memory works everywhere).
+   */
   readonly cache?: DemoCache;
 }
 

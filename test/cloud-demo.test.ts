@@ -5,9 +5,10 @@
 // walked in demo mode: only the intended reads answer, only for the demo companies; the other company does not exist;
 // nothing is written; no answer carries a secret. With the variable unset the same world answers as it always did.
 import { createHash } from "node:crypto";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
-import { DEMO_DOCUMENT_ROUTES, DEMO_MAX_DOCUMENT_BYTES, DEMO_OPEN, DEMO_READS, demoEnv, type DemoCache } from "../cloud/src/demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_MAX_DOCUMENT_BYTES, DEMO_OPEN, DEMO_RATE, DEMO_READS, DEMO_TTL_SEC, demoEnv, type DemoCache } from "../cloud/src/demo.js";
 import type { Sql, SqlValue } from "../cloud/src/store.js";
 import { pushToCloud } from "../src/cloudsync/client.js";
 import { EN, NL } from "./fakes/apInvoices.js";
@@ -386,6 +387,55 @@ describe("demo mode, what a visitor gets", () => {
       const r = await get(p);
       expect([r.status, r.json.code], p).toEqual([404, "not_found"]);
     }
+  });
+});
+
+describe("demo mode, in docs/cloud.md", () => {
+  it("is described as the code has it: the reads, the limits and the times are the code's own", () => {
+    const doc = readFileSync("docs/cloud.md", "utf8");
+    const section = doc.slice(doc.indexOf("## Public demo mode"), doc.indexOf("## Tested on D1 itself"));
+    expect(section.length).toBeGreaterThan(500);
+    // Every read the demo serves is named in the table, and no route that is off.
+    const row = section.split("\n").find((l) => l.startsWith("| `GET /v1/demo/{company}/…`"))!;
+    const named = new Set([...row.matchAll(/`([a-z][a-z/{}.0-9]*)`/g)].map((m) => `GET /v1/${m[1]!}`).filter((k) => k in DEMO));
+    expect([...named].sort()).toEqual([...DEMO_READS].sort());
+    for (const k of DEMO_OPEN) expect(section).toContain(`\`${k}\``);
+    expect(section).toContain("`GET /v1/demo/companies`");
+    expect(section).toContain("`demo_read_only`");
+    // The numbers.
+    expect(section).toContain(`Each address gets ${DEMO_RATE.perMinute} requests a minute`);
+    expect(section).toContain(`at most ${DEMO_RATE.uncachedPerMinute} uncached reads`);
+    expect(section).toContain(`remembered for ${DEMO_TTL_SEC} seconds`);
+    expect(section).toContain(`browsers may keep it for ${DEMO_BROWSER_SEC} seconds`);
+    expect(section).toContain(`a document by its hash for ${DEMO_DOCUMENT_BROWSER_SEC} seconds`);
+    expect(section).toContain(`the health check for ${DEMO_HEALTH_SEC} seconds`);
+    expect(section).toContain(`never\n  larger than ${DEMO_MAX_DOCUMENT_BYTES / 1024 / 1024} MB`);
+    // It is not deployed, and says so.
+    expect(section).toContain("**Not deployed yet.**");
+  });
+});
+
+describe("demo mode, the log", () => {
+  it("names each request by its route: never the company's address, an object's id or a key that came with it", async () => {
+    const out: string[] = [];
+    const sink = (line: unknown) => { out.push(String(line)); };
+    vi.spyOn(console, "log").mockImplementation(sink);
+    vi.spyOn(console, "warn").mockImplementation(sink);
+    vi.spyOn(console, "error").mockImplementation(sink);
+    try {
+      demoOn();
+      await get("/v1/demo/companies");
+      await get(`/v1/demo/alder/invoices/${alder.invoice}`);
+      await get(`/v1/demo/${hidden.slug}/invoices`);
+      await c.req("POST", "/v1/keys", { key: alder.t.key, body: {} });
+      await get("/v1/demo/alder/nothing");
+      await get("/v1/health");
+    } finally { vi.restoreAllMocks(); }
+    const lines = out.filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as { event: string; method: string; route: string; status: number });
+    expect(lines.filter((l) => l.event === "request").map((l) => `${l.method} ${l.route} ${l.status}`)).toEqual([
+      "GET /v1/demo/companies 200", "GET /v1/demo/{company}/invoices/{id} 200", "GET /v1/demo/{company}/invoices 404", "POST /v1/keys 403", "GET /v1/demo/{company}/unknown 404", "GET /v1/health 200"]);
+    const log = out.join("\n");
+    for (const s of ["alder", hidden.slug, alder.invoice, alder.t.key]) expect(log).not.toContain(s);
   });
 });
 

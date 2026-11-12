@@ -192,6 +192,47 @@ network but pdf.js, and cannot reach the console page; the console page parses n
 5: a PDF bomb froze the tab that held the session). The download stays. `test/cloud-console.test.ts` checks the page and the routes; `test/browser/console.check.ts` runs the whole thing
 in Chromium with a virtual passkey (CI, judge job).
 
+## Public demo mode
+
+For showing the product without an account: a deployment of its own, with its own D1 database and R2 bucket that hold
+seeded test companies and nothing else. Two variables switch it on: `DEMO_PUBLIC` set to `on`, and `DEMO_SLUGS`, the demo
+companies' addresses separated by commas. With `DEMO_PUBLIC` unset (every other deployment) no demo route exists and
+nothing on this page changes. **Not deployed yet.** The code is `cloud/src/demo.ts`; the gate is `demoRoute` in
+`cloud/src/app.ts`.
+
+In demo mode there is one caller, an anonymous read-only visitor, and only this answers:
+
+| Endpoint | What it does |
+|---|---|
+| `GET /v1/demo/companies` | The demo companies in the configured order: `slug`, `name`, `language` and counts from their rows (invoices, paid invoices, suppliers, payments, transactions, documents, ledger entries). Says `test_world` and `read_only`. |
+| `GET /v1/demo/{company}/…` | A demo company's reads, with the same answers as the routes above: `me`, `invoices`, `invoices/{id}`, `invoices/{id}/document`, `vendors`, `payments`, `transactions`, `transactions/summary`, `transactions/export.csv`, `transactions/{id}`, `ledger/entries`, `reports/{name}`, `insights`, `documents/{sha256}`. `me` answers `kind: "demo"`. |
+| `GET /v1/health`, `GET /v1/openapi.json` | As above; the OpenAPI document lists the demo's own routes only. |
+
+- **Everything else is off.** Every other method, and every route that signs in, enrols a passkey, recovers an owner,
+  makes a key, pushes, administers, exports or takes mail answers `403` with the code `demo_read_only`. The platform
+  admin routes are off too. Keys, sessions and the platform token are never looked at, so nothing in a request changes
+  who is asking. The e-mail handler refuses every message and the scheduled job does nothing.
+- **A company that is not on the list does not exist.** It answers `404` exactly like an address nobody has, whatever
+  is asked of it.
+- **Nothing is written.** No schema script, no rate counters, no last-used stamps: the database must hold the schema
+  and the seed before the demo is switched on. A demo deployment needs no secret (`SESSION_SECRET`,
+  `ADMIN_TOKEN_SHA256`); `MAIL_DOMAIN` is ignored.
+- **Cost and abuse.** Each address gets 300 requests a minute and each isolate makes at most 600 uncached reads a
+  minute, both counted in memory (`429`, with `retry-after`). A good answer is remembered for 300 seconds in the
+  isolate's memory and, where the deployment has one, in Cloudflare's edge cache; browsers may keep it for 60 seconds
+  (`cache-control: public`), a document by its hash for 86400 seconds (a day), the health check for 30 seconds. The
+  limits are per isolate: a rate rule at Cloudflare in front of the Worker is still the real bound. Not checked against
+  Cloudflare's documentation in this session (no external calls): whether the edge cache stores anything on a
+  `workers.dev` address. The header `x-purser-cache` (`miss`, `hit`, `edge`) shows where an answer came from.
+- **Documents** go out with the content type of their stored type when it is PDF, PNG, JPEG, plain text, CSV or JSON,
+  and as plain bytes otherwise; never sniffed, always as a download, under a policy that runs no script, and never
+  larger than 5 MB.
+
+`test/cloud-demo.test.ts` builds a real pushed world with one company that is not a demo company, then walks every
+route in the route table in demo mode: only the reads above answer, only for the demo companies, nothing is written and
+no answer carries a secret, a key hash, a session or a person's name. `test/cloud-demo-worker.test.ts` covers the
+Worker's entry (variables, e-mail, the scheduled job). Both also run on local D1.
+
 ## Tested on D1 itself
 
 `npm run test:d1` runs the cloud's tests (`test/cloud-*.test.ts`, `test/rt4-cloud-*.test.ts`, the credit-netting test) on

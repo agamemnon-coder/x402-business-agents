@@ -36,7 +36,7 @@ let demoOnce: { vars: string; demo: DemoEnv | undefined } | null = null;
 function demoOf(b: Bindings): DemoEnv | undefined {
   const vars = `${b.DEMO_PUBLIC ?? ""}\n${b.DEMO_SLUGS ?? ""}`;
   if (!demoOnce || demoOnce.vars !== vars) {
-    // Cloudflare's edge cache, where the runtime has one (it stores nothing on a workers.dev address).
+    // Cloudflare's edge cache, where the runtime has one (cloud/src/demo.ts: a saving on top of the isolate's own memory).
     const cache = (globalThis as { caches?: { default?: DemoCache } }).caches?.default;
     demoOnce = { vars, demo: demoFromVars(b, cache ? { cache } : {}) };
   }

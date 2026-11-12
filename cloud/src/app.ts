@@ -21,7 +21,7 @@ import { integrations } from "./integrations.js";
 import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, type AwxPlatformEnv } from "./awxPlatform.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
-import { DEMO_DOCUMENT_ROUTES, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoKey, demoNoCompany, demoRefused, remembered, type DemoEnv } from "./demo.js";
+import { DEMO_BROWSER_SEC, DEMO_DOCUMENT_BROWSER_SEC, DEMO_DOCUMENT_ROUTES, DEMO_HEALTH_SEC, DEMO_LABEL, DEMO_NOTE, DEMO_OPEN, DEMO_READS, demoBusy, demoCompanies, demoDocument, demoKey, demoNoCompany, demoRefused, remembered, type DemoEnv } from "./demo.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -578,7 +578,7 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
   if (!demo.limiter.take(`ip:${ip}`, now.getTime(), demo.rate.perMinute)) return demoBusy(demo, now);
   if (req.method !== "GET") return demoRefused();
   const at = (path: string) => ROUTES.map((r) => ({ r, p: match(path, r.path) })).filter((x) => x.p);
-  const data = { ttlSec: demo.ttlSec, browser: `public, max-age=${Math.min(60, demo.ttlSec)}` };
+  const data = { ttlSec: demo.ttlSec, browser: `public, max-age=${Math.min(DEMO_BROWSER_SEC, demo.ttlSec)}` };
   const seg = url.pathname.split("/"); // "", "v1", "demo", the company, the rest
   if (seg[2] !== "demo" || seg.length < 4) {
     // A route at its own path, for no company: the health check and the API's description; nothing else.
@@ -588,7 +588,7 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
     if (!hit) return demoRefused();
     // Neither takes a filter: whatever comes after the "?" is dropped, so it cannot be used to ask for a fresh answer each time.
     const plain = new URL(`${url.origin}${url.pathname}`);
-    const keep = hit.r.path === "/v1/health" ? { ttlSec: Math.min(30, demo.ttlSec), browser: "public, max-age=30" } : data;
+    const keep = hit.r.path === "/v1/health" ? { ttlSec: Math.min(DEMO_HEALTH_SEC, demo.ttlSec), browser: `public, max-age=${DEMO_HEALTH_SEC}` } : data;
     return remembered(demo, plain.toString(), now, keep, () => hit.r.run({ env, req, url: plain, now, params: hit.p!, caller: null, db: null, demo: true }));
   }
   if (seg.length === 4 && seg[3] === "companies") return remembered(demo, `${url.origin}/v1/demo/companies`, now, data, async () => json(200, await demoCompanies(env.sql, demo.slugs)));
@@ -602,7 +602,7 @@ async function demoRoute(req: Request, env: CloudEnv, demo: DemoEnv, url: URL, n
   if (!hit) return demoRefused();
   const { key, query } = demoKey(url.origin, url.pathname, url.searchParams);
   // A document by its hash never changes, so a browser may keep it for a day.
-  const keep = hit.r.path === "/v1/documents/{sha256}" ? { ttlSec: demo.ttlSec, browser: "public, max-age=86400, immutable" } : data;
+  const keep = hit.r.path === "/v1/documents/{sha256}" ? { ttlSec: demo.ttlSec, browser: `public, max-age=${DEMO_DOCUMENT_BROWSER_SEC}, immutable` } : data;
   return remembered(demo, key, now, keep, async () => {
     const t = await env.sql.first<{ id: string }>("SELECT id FROM tenants WHERE slug = ? AND closed_at IS NULL", [slug]);
     if (!t) return demoNoCompany();
