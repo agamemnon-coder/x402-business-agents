@@ -104,7 +104,7 @@ export async function liveSuppliers(db: DB): Promise<SupplierView[]> {
 /** The live world: the suppliers on localhost, the mandate from the chain, the price from the ledger. */
 export function liveSourcingWorld(db: DB, o: { issuing?: ReturnType<typeof issuingFromEnv> } = {}): SourcingWorld {
   // Airwallex Issuing from the sandbox keys; a test passes its fake (the live wiring is otherwise the same).
-  const iss = o.issuing === undefined ? issuingFromEnv() : o.issuing;
+  const iss = o.issuing === undefined ? issuingFromEnv(db) : o.issuing;
   return {
     suppliers: async () => liveSuppliers(db),
     mandate: async () => { const m = (await mandatesNow(db)).get("sourcing")!.now; return { capCents: m.capCents, budgetLeftCents: m.budgetCents - m.spentCents }; },

@@ -1,0 +1,30 @@
+// Purser Cloud: the multi-tenant API (docs/cloud.md). The database_id, RP_ID and ORIGIN below are placeholders: before
+// a deploy from this file, create the stores (EU) and set the secrets; see docs/cloud.md. Never put a secret in this file.
+{
+  "$schema": "../worker/node_modules/wrangler/config-schema.json",
+  "name": "purser-cloud",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "d1_databases": [
+    // wrangler d1 create purser-cloud --location weur  → paste its database_id here.
+    { "binding": "DB", "database_name": "purser-cloud", "database_id": "SET-AFTER-wrangler-d1-create", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    // wrangler r2 bucket create purser-cloud-docs --jurisdiction eu
+    { "binding": "DOCS", "bucket_name": "purser-cloud-docs", "jurisdiction": "eu" }
+  ],
+  "vars": {
+    // The cloud's own address: passkeys are bound to it.
+    "RP_ID": "cloud.example.invalid",
+    "ORIGIN": "https://cloud.example.invalid"
+    // MAIL_DOMAIN: set once a domain's Email Routing sends <slug>@<domain> to this Worker.
+  },
+  // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
+  // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
+  "triggers": { "crons": ["17 3 * * *"] }
+}

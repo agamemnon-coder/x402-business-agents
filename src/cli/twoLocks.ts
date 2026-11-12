@@ -109,7 +109,7 @@ if (cmd === "stand-in") {
   const { airwallexFromEnv } = await import("../airwallex/adapter.js");
   const a = await airwallexFromEnv();
   if (!a) { console.error("no Airwallex sandbox keys; nothing was called"); process.exit(2); }
-  const awx = a.rail as Rail;
+  const awx = a.rail as unknown as Rail;
   const db = openDb();
   const transferId = () => (db.prepare("SELECT transfer_id FROM transfers WHERE invoice_no = 'SLL-2026-11B' AND transfer_id IS NOT NULL").get() as { transfer_id: string } | undefined)?.transfer_id;
   if (cmd === "create") {

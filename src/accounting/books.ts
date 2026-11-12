@@ -5,7 +5,7 @@
 // Metal account, and Airwallex's balances as first read (less what Purser booked before that read). Anything paid
 // outside Purser is not here.
 
-import { CHART, COST_CENTRE_NAMES } from "../config/gl.js";
+import { bankAccountFor, CHART, COST_CENTRE_NAMES } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { journal, type JournalLine } from "./gl.js";
@@ -70,7 +70,6 @@ export interface Books {
 }
 
 const EQUITY = "3000";
-const AIRWALLEX_BANK: Record<string, string> = { EUR: "1200", USD: "1201" };
 
 /**
  * The money that was there before Purser moved any: one line per bank account and currency, money in against owner's
@@ -91,7 +90,9 @@ export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
   const first = db.prepare("SELECT taken_at, label, json FROM balance_snapshots ORDER BY id LIMIT 1").get() as { taken_at: string; label: string; json: string } | undefined;
   if (first) {
     const bal = JSON.parse(first.json) as Record<string, { availableCents?: number } | undefined>;
-    for (const [cur, bank] of Object.entries(AIRWALLEX_BANK)) {
+    // Every currency Airwallex holds, each on its own bank account (EUR 1200, USD 1201, GBP 1202, others 1203).
+    for (const cur of Object.keys(bal).filter((c) => /^[A-Z]{3}$/.test(c)).sort()) {
+      const bank = bankAccountFor(cur);
       const available = bal[cur]?.availableCents;
       if (typeof available !== "number") continue;
       const before = moved.filter((m) => m.bank_account === bank && m.currency === cur && Date.parse(m.date) < Date.parse(first.taken_at)).reduce((s, m) => s + cents(m.amount), 0);

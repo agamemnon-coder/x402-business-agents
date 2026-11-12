@@ -142,7 +142,7 @@ process.on("SIGTERM", stop);
 
 // The agents' cards (K2): every few seconds, a limit the CFO changed goes to Airwallex, and new authorisations come
 // in (the webhook, once set up, brings them sooner). A failure here is logged and tried again; it never stops the relay.
-const issuing = issuingFromEnv();
+const issuing = issuingFromEnv(db);
 // awx-1: KIT11_CARD_POLL_MS=off leaves the transactions to the webhooks (each poll is a counted call); limits still sync.
 const pollEvery = cardPollMs();
 if (issuing) console.log(`cards    ${pollEvery === null ? "poll off: card transactions come from the webhooks" : `polled every ${pollEvery / 1000} s`}`);
@@ -187,7 +187,7 @@ async function reconcileTick(): Promise<void> {
   if (Date.now() - reconcileAt < RECONCILE_EVERY_MS) return;
   reconcileAt = Date.now();
   try {
-    const r = await reconcile(db, reconcileSourcesFromEnv());
+    const r = await reconcile(db, reconcileSourcesFromEnv(db));
     console.log(`${stamp()} reconcile ${r.checked} flows checked, ${r.differences.length} difference(s)${r.skipped.length ? `; not checked: ${r.skipped.join(", ")}` : ""}`);
   } catch (e) {
     console.error(`${stamp()} reconcile ${redactSecrets((e as Error).message)}`);
@@ -201,7 +201,7 @@ async function settlementsTick(): Promise<void> {
   if (Date.now() - settlementsAt < 5 * 60_000) return;
   settlementsAt = Date.now();
   try {
-    const r = await resolveSettlements(db, reconcileSourcesFromEnv());
+    const r = await resolveSettlements(db, reconcileSourcesFromEnv(db));
     for (const x of r.resolved) console.log(`${stamp()} settle   ${x.key.slice(0, 10)}… ${x.outcome}${x.outcome === "CHARGED" ? ": charged with no delivery recorded, owed back unless a person finds it was delivered" : ""}`);
   } catch (e) {
     console.error(`${stamp()} settle   ${redactSecrets((e as Error).message)}`);

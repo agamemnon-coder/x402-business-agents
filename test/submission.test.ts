@@ -160,8 +160,10 @@ describe("the short Description (Max, 5 Nov)", () => {
   });
 
   it("says what was built after the kit without claiming it ran live (jury review, 9 Nov)", () => {
-    expect(flat).toContain("After the kit. Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables inbox: not public.");
-    expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox/);
+    // 12 Nov (docs/decisions.md, D29): the product's code is in this repository now, so "Payables inbox: not public."
+    // became "Payables: in repo, not live." (the hosted preview stays private; nothing is said to be live).
+    expect(flat).toContain("After the kit. Airwallex's own approval held a passkey-signed payout IN_APPROVAL, unpaid. Payables: in repo, not live.");
+    expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox|not public/);
     expect(flat).toContain("The CFO signed option A, a higher cap for Sourcing (P-0002).");
     expect(flat).toContain("The business (not validated with customers yet). Buyer: a CFO on Airwallex.");
   });

@@ -6,7 +6,7 @@
 import { existsSync } from "node:fs";
 import { AirwallexRest } from "../airwallex/adapter.js";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
-import { IssuingRest } from "../airwallex/issuing.js";
+import { issuingFor } from "../airwallex/issuing.js";
 import { WEBHOOK_SECRET_FILE } from "../airwallex/webhooks.js";
 import { audit } from "../audit/log.js";
 import { approvalHint } from "../cli/hint.js";
@@ -41,7 +41,7 @@ export function liveDeps(db: DB, log: (line: string) => void): Awx1Deps {
   const cfg = fromEnv();
   if (!cfg) throw new Error("no Airwallex sandbox keys; nothing was called");
   const api = new Airwallex(cfg);
-  const issuing = new IssuingRest(api);
+  const issuing = issuingFor(api, db);
   const awx = new AirwallexRest(api);
   const waitFor = async <T>(what: string, check: () => T | undefined, timeoutMs: number): Promise<T> => {
     const until = Date.now() + timeoutMs;

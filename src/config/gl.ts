@@ -25,6 +25,34 @@ export const CHART: Record<string, string> = {
   "6900": "Other supplier invoices",
 };
 
+/**
+ * The payables accounts (src/ap/books.ts): input VAT and what we owe suppliers, for the accrual entries. Kept out of
+ * CHART on purpose: CHART is the chart the cash journal and the T:0 sink mirror, and T:0 has no such accounts yet.
+ */
+/** The Airwallex bank account a currency's balance is booked on: EUR 1200, USD 1201, GBP 1202, any other 1203. */
+export function bankAccountFor(currency: string): string {
+  return currency === "EUR" ? "1200" : currency === "USD" ? "1201" : currency === "GBP" ? "1202" : "1203";
+}
+
+export const AP_CHART: Record<string, string> = {
+  "1510": "Input VAT receivable (supplier invoices)",
+  "2100": "Accounts payable (supplier invoices)",
+  "1203": "Bank: Airwallex, other currencies (one balance per currency)",
+};
+
+/**
+ * The rest of the stored ledger's accounts (src/ledger/): receivables, stock, VAT owed, retained earnings and cost of
+ * goods sold. Kept out of CHART for the same reason as AP_CHART; the ledger accepts CHART, AP_CHART and these.
+ */
+export const LEDGER_CHART: Record<string, string> = {
+  "1300": "Accounts receivable (customer invoices)",
+  "1700": "Stock (goods, at average cost)",
+  "2200": "VAT payable (to the tax authority)",
+  "2210": "Output VAT (charged to customers)",
+  "3100": "Retained earnings (closed years)",
+  "8000": "Cost of goods sold (stock at average cost)",
+};
+
 export const COST_CENTRES: Record<Agent, string> & Record<string, string> = {
   sourcing: "CC100",
   support: "CC200",

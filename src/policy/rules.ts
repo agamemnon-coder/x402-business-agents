@@ -2,7 +2,7 @@
 // anything is signed. The mandates stay the hard outer wall; the policy can only be stricter. Values live in the
 // settings table and change only through an approved policy_change proposal (src/executors/policyChange.ts).
 
-import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, TASK_CARD_EUR_FALLBACK, type Agent } from "../config/policy.js";
+import { AGENTS, CARDS, REFUND_AUTO_EACH_CENTS, REFUND_AUTO_PER_DISPUTE_CENTS, SWIFT_FEE_MAX_EUR_CENTS, TASK_CARD_EUR_FALLBACK, type Agent } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
@@ -10,13 +10,17 @@ import { stopped } from "./velocity.js";
 import { agentsOn } from "../config/agents.js";
 import { cardLimitsFrom } from "./cardRules.js";
 import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
+import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
+import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 
-export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`;
+export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
+  | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps";
 
 export interface Rule {
   key: PolicyKey;
   label: string;
-  unit: "USDZ" | "EUR" | "USD" | "";
+  /** USDZ, a currency code, or "" for a choice. */
+  unit: string;
   /** money: a decimal amount; optional_money: an amount or "" (no extra limit); choice: one of `choices`. */
   kind: "money" | "optional_money" | "choice";
   min?: number;
@@ -59,6 +63,65 @@ const STATIC: Rule[] = [
   ]),
 ];
 
+/**
+ * Supplier payouts in any currency (src/payouts/plan.ts): the currency a shortfall is bought with, each currency's
+ * reserve floor (EUR and USD keep eur_floor and usd_floor) and the fee held back per method and currency. CFO policy
+ * like the rest: changed only through an approved policy_change (Face ID), within these bounds.
+ */
+const PAYABLE: string[] = SWIFT_CURRENCIES.filter(payableCurrency);
+/** The fee reserve's default: SWIFT as the Kit 11 EUR ceiling and an equivalent elsewhere, LOCAL none (safety margins, not Airwallex's prices). */
+const SWIFT_RESERVE_DEFAULT: Record<string, number> = { EUR: SWIFT_FEE_MAX_EUR_CENTS, USD: 2500, GBP: 2000, CHF: 2500, CNY: 20_000, TRY: 100_000 };
+export function feeReserveDefaultCents(method: "LOCAL" | "SWIFT", currency: string): number {
+  return method === "SWIFT" ? SWIFT_RESERVE_DEFAULT[currency] ?? 2500 : 0;
+}
+/** At most ten times the SWIFT default in that currency: a reserve is a margin, not a second payment. */
+const feeReserveMaxCents = (currency: string) => 10 * (SWIFT_RESERVE_DEFAULT[currency] ?? 2500);
+
+/** The payout rule for a key, for any payable currency; null for any other key. */
+export function payoutRule(key: string): Rule | null {
+  if (key === "payout.funding_currency") {
+    return { key, label: "Supplier payouts: currency a shortfall is bought with", unit: "", kind: "choice", choices: PAYABLE, fallback: "EUR", agent: "treasury" };
+  }
+  const floor = /^floor\.([A-Z]{3})$/.exec(key);
+  if (floor && PAYABLE.includes(floor[1]!) && floor[1] !== "EUR" && floor[1] !== "USD") {
+    return { key: key as PolicyKey, label: `${floor[1]} reserve floor`, unit: floor[1]!, kind: "money", min: 0, max: MAX_FLOOR, fallback: "0.00", agent: "treasury" };
+  }
+  const fee = /^fee_reserve\.(LOCAL|SWIFT)\.([A-Z]{3})$/.exec(key);
+  if (fee && PAYABLE.includes(fee[2]!)) {
+    const [method, cur] = [fee[1] as "LOCAL" | "SWIFT", fee[2]!];
+    return { key: key as PolicyKey, label: `Fee held back per ${method} payout in ${cur}`, unit: cur, kind: "money", min: 0, max: feeReserveMaxCents(cur), fallback: fromCents(feeReserveDefaultCents(method, cur)), agent: "treasury" };
+  }
+  return null;
+}
+
+/** The payout rules shown with the policy: the funding currency, and the floors and fee reserves of currencies in use. */
+function payoutRules(db: DB): Rule[] {
+  const keys = new Set<string>(["payout.funding_currency"]);
+  const funding = (db.prepare("SELECT value FROM settings WHERE key = 'payout.funding_currency'").get() as { value: string } | undefined)?.value ?? "EUR";
+  keys.add(`floor.${funding}`);
+  for (const b of db.prepare("SELECT DISTINCT currency, method FROM beneficiaries WHERE details_json IS NOT NULL AND status = 'ACTIVE'").all() as { currency: string; method: string | null }[]) {
+    keys.add(`floor.${b.currency}`);
+    if (b.method === "LOCAL" || b.method === "SWIFT") keys.add(`fee_reserve.${b.method}.${b.currency}`);
+  }
+  for (const r of db.prepare("SELECT key FROM settings WHERE key LIKE 'floor.%' OR key LIKE 'fee_reserve.%'").all() as { key: string }[]) keys.add(r.key);
+  return [...keys].sort().map(payoutRule).filter((r): r is Rule => r !== null);
+}
+
+/**
+ * Purser as an Airwallex platform (docs/airwallex-platform.md): Purser's fee per payout in basis points, CFO policy
+ * like the rest (changed only through an approved policy_change, with Face ID) and never above FEE_BPS_CAP (red team 6).
+ */
+export const PLATFORM_FEE_RULE: Rule = {
+  key: "platform.fee_bps", label: "Purser's fee per supplier payout (basis points; 100 = 1.00%)", unit: "", kind: "choice",
+  choices: ["0", "5", "10", "15", "20", "25", "30", "40", "50", "60", "75", "90", String(FEE_BPS_CAP)], fallback: "0", agent: "treasury",
+};
+
+/** The rule for a key: a payout rule for any payable currency (shown or not yet), else one from the policy. */
+export function ruleFor(db: DB, key: string): Rule | undefined {
+  if (key === "platform.fee_bps") return PLATFORM_FEE_RULE;
+  return payoutRule(key) ?? rules(db).find((r) => r.key === key);
+}
+
 /** Every rule, the allowed counterparties (Airwallex beneficiaries) and outside agents' cards (P1) included. */
 export function rules(db: DB): Rule[] {
   // An outside agent's card, once the CFO approved it: the same limits as our own agents', starting from what was approved.
@@ -80,7 +143,9 @@ export function rules(db: DB): Rule[] {
   }));
   // The Airi rail's keys (src/airi/policy.ts): only with KIT11_AIRI_RAIL=on, or once the CFO has set one of them.
   const airi = airiRailOn() || db.prepare("SELECT 1 FROM settings WHERE key LIKE 'approval.airi_%' OR key LIKE 'airi.merchant.%'").get() ? airiRuleDefs() as Rule[] : [];
-  return [...STATIC, ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi];
+  // Purser's fee (platform.fee_bps): only with AIRWALLEX_PLATFORM_FEE=on, or once the CFO has set it.
+  const platform = platformFeeOn() || db.prepare("SELECT 1 FROM settings WHERE key = 'platform.fee_bps'").get() ? [PLATFORM_FEE_RULE] : [];
+  return [...STATIC, ...payoutRules(db), ...pauseRules(db), ...outside, ...tasks, ...payees, ...airi, ...platform];
 }
 
 /**
@@ -99,7 +164,7 @@ export function paused(db: DB, agent: string): boolean {
 }
 
 export function policyValue(db: DB, key: string): string {
-  const rule = rules(db).find((r) => r.key === key);
+  const rule = ruleFor(db, key);
   const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
   return row?.value ?? rule?.fallback ?? "";
 }
@@ -120,7 +185,7 @@ export function currentPolicy(db: DB): PolicyEntry[] {
 
 /** Null if the change is acceptable now; otherwise why not. `from` must be the value it replaces. */
 export function validateChange(db: DB, c: { key: string; from: string; to: string }): string | null {
-  const r = rules(db).find((x) => x.key === c.key);
+  const r = ruleFor(db, c.key);
   if (!r) return `unknown policy setting ${c.key}`;
   const now = policyValue(db, c.key);
   if (c.from !== now) return `${r.label} is now ${now || "not set"}, not ${c.from || "not set"}`;

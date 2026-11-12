@@ -32,12 +32,28 @@ interface Approvals {
   passkey: { rp_id: string; credentials: { id: string; label: string; enrolled_at: string }[] };
   relay: { synced_at: string; age_ms: number };
   enrolment_open: boolean;
+  /** The company's language for the payables pages ("nl" or "en"): it only picks words, so the runner does not sign it. */
+  language?: string;
 }
 
 type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown): string => (v === null || v === undefined ? "" : String(v));
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+// ── The phone's words for payables payments (src/ui/i18n.ts, ph.*), shipped by the relay as PURSER_PHRASES ──
+
+export type PhoneLang = "nl" | "en";
+/** The company's language as the runner sends it beside the approvals: it only picks words, so it is not signed. */
+export function phoneLang(a: { language?: unknown }): PhoneLang {
+  return a.language === "en" ? "en" : "nl";
+}
+function ph(lang: PhoneLang, key: string, vars: Record<string, string | number> = {}): string {
+  const all = (globalThis as { PURSER_PHRASES?: Record<string, Record<string, string>> }).PURSER_PHRASES;
+  let s = all?.[lang]?.[key] ?? all?.en?.[key] ?? key;
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
 
 // ── Canonical JSON and hashing (RFC 8785 for JSON without numbers, which the terms never contain) ──
 
@@ -64,6 +80,20 @@ export async function sha256Hex(text: string): Promise<string> {
  */
 export async function rejectionHash(termsSha256: string): Promise<string> {
   return sha256Hex(`kit11 reject v1 ${termsSha256}`);
+}
+
+/** What the passkey signs to take one line out of a batch (the runner's batchRemovalSha256). */
+export async function batchRemovalHash(batchSha256: string, line: string): Promise<string> {
+  return sha256Hex(`kit11 batch-remove v1 ${batchSha256} ${line}`);
+}
+
+/** The lines of a batch whose embedded terms do not hash to the hash the batch lists for them (none on a sound batch). */
+export async function badBatchLines(t: Obj): Promise<string[]> {
+  const bad: string[] = [];
+  for (const l of arr(t.lines).filter(isObj)) {
+    if (!isObj(l.terms) || (await sha256Hex(canonicalize(l.terms))) !== str(l.terms_sha256)) bad.push(str(l.proposal_id));
+  }
+  return bad;
 }
 
 export interface OptionCheck {
@@ -102,6 +132,49 @@ export function money(s: unknown): string {
   const m = /^(-?)(\d+)(\.\d+)?$/.exec(str(s));
   if (!m) return str(s);
   return `${m[1] ? "−" : ""}${m[2]!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${m[3] ?? ""}`;
+}
+
+/** A decimal amount in cents, or null; never through a float. */
+function centsOf(s: unknown): number | null {
+  const m = /^(\d+)\.(\d{2})$/.exec(str(s));
+  return m ? Number(m[1]) * 100 + Number(m[2]) : null;
+}
+const fromCentsStr = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
+/** Purser's cap on its own fee (src/airwallex/platform.ts FEE_BPS_CAP): above it the phone warns and nothing is signable. */
+const FEE_CAP_BPS = 100;
+
+/** What one payment takes from its currency's balance as signed: the amount and Purser's fee (red team 6). */
+export function outflowOf(t: Obj): { currency: string; cents: number } | null {
+  const amount = centsOf(t.amount);
+  if (amount === null || !str(t.currency)) return null;
+  const fee = isObj(t.platform_fee) ? centsOf(t.platform_fee.amount) : 0;
+  if (fee === null) return null;
+  return { currency: str(t.currency), cents: amount + fee };
+}
+
+/** The paying account's company name: terms signed before 9 November carried the "(Airwallex, through Purser)" too. */
+const payingName = (a: Obj) => str(a.name).replace(/ \(Airwallex, through Purser\)$/, "");
+
+/** Purser as a platform, in words: which account pays and where Purser's fee goes (never hidden, red team 6). */
+function platformRows(t: Obj, cur: string): [string, string][] {
+  const rows: [string, string][] = [];
+  if (isObj(t.paying_account)) rows.push(["Paid from", `${payingName(t.paying_account)} (Airwallex, through Purser), ${str(t.paying_account.id)}`]);
+  if (isObj(t.platform_fee)) {
+    const f = t.platform_fee;
+    rows.push(["Purser fee", `${str(f.currency)} ${money(f.amount)} (${(Number(str(f.bps)) / 100).toFixed(2)}%) to Purser's account ${str(f.to_account)}, taken from the paying account after the payment is paid`]);
+    const out = outflowOf(t);
+    // A supplier payment holds back fee_reserve; an invoice payment (SWIFT) fee_max.
+    const held = t.fee_reserve !== undefined ? t.fee_reserve : t.fee_max;
+    const reserve = centsOf(held);
+    if (out) rows.push(["Total out", `${cur} ${money(fromCentsStr(out.cents))} (the amount and Purser's fee; ${reserve ? `Airwallex's own fee comes on top, at most ${cur} ${money(held)}` : "no Airwallex fee is expected on this route"})`]);
+  }
+  return rows;
+}
+
+function platformWarnings(t: Obj): string[] {
+  if (!isObj(t.platform_fee)) return [];
+  const bps = Number(str(t.platform_fee.bps));
+  return !Number.isInteger(bps) || bps > FEE_CAP_BPS ? [`Purser's fee here is ${str(t.platform_fee.bps)} basis points, above its cap of ${FEE_CAP_BPS} (1.00%); do not approve`] : [];
 }
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -154,6 +227,18 @@ function utcMinute(iso: string): string {
 
 /** The account calls an owners_execute may carry (src/metal/ownersExecute.ts OWNER_CALL_SELECTORS; a test keeps them equal). */
 export const OWNER_SELECTORS = { bind: "0x240c29bb", revoke: "0xb75c7dc6" } as const;
+
+/**
+ * A warning when the amount to sign is not written in the invoice's own total line as shown (red team round 3: the line
+ * said USD 2,400.00 while USD 24,000.00 was to be paid). Any notation counts ("2,400.00", "2.400,00", "2 400,00",
+ * "2'400.00"): the digits of a number in the line, separators aside, are the amount's.
+ */
+function amountNotInLine(t: Obj, cur: string): string[] {
+  if (t.document_total_line === undefined) return [];
+  const want = str(t.amount).replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  const numbers = (str(t.document_total_line).match(/\d[\d.,'\u2019\u02bc \u00a0\u202f]*\d/g) ?? []).map((n) => n.replace(/\D/g, "").replace(/^0+(?=\d)/, ""));
+  return want && numbers.includes(want) ? [] : [`The amount ${cur} ${money(t.amount)} is not written in the invoice's own total line shown above; check the document before you approve`];
+}
 
 export function describeTerms(t: Obj, names: Record<string, string>): Facts {
   const nameOf = (a: string) => names[a.toLowerCase()] ?? null;
@@ -233,14 +318,23 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const rows: [string, string][] = [
       ["Amount", `${cur} ${money(t.amount)}`],
       ["Bank fee", fee],
+      // Purser as a platform: the account it pays from (red team 6), in the signed terms like a supplier payment's.
+      ...platformRows(t, cur),
       ["Pays", recipient],
       ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
       ["Method", str(t.method)],
       ["Conversion", fx ? `${fx} at rate ${str(c!.client_rate)}, quote valid until ${str(c!.valid_to)}` : "none: paid from free EUR"],
       ["After payment", `EUR free above the floor ${money(after.eur_free)}, USD ${money(after.usd_available)}`],
+      // The supplier's own words beside the amount (payables inbox): a mismatch with the amount or currency above is visible.
+      ...(t.document_total_line !== undefined ? [["On the invoice", `"${str(t.document_total_line).slice(0, 120)}" (currency read from that line: ${str(t.document_currency) || "none code knows"})`] as [string, string]] : []),
+    ];
+    const docWarn = [
+      ...(t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : []),
+      ...amountNotInLine(t, cur),
     ];
     return {
-      approvable: true,
+      // Purser's fee rides on this route too (screenshot pass, 9 November): above its cap nothing is signable here.
+      approvable: platformWarnings(t).length === 0,
       title: `Pay invoice ${str(t.invoice_no)}`,
       sentence: `Pay ${str(t.vendor)} ${cur} ${money(t.amount)} for invoice ${str(t.invoice_no)} by ${str(t.method) || "SWIFT"}${fx ? `, after converting ${fx}` : ", from free EUR"}.`,
       amount: `${cur} ${money(t.amount)}`,
@@ -248,7 +342,49 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       recipient,
       rows,
       short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
-      warnings: str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : [],
+      warnings: [...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []), ...docWarn, ...platformWarnings(t)],
+      label: `Invoice ${str(t.invoice_no)}`,
+      big: money(t.amount),
+      unit: cur,
+    };
+  }
+
+  if (kind === "supplier_payment") {
+    // A supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
+    const cur = str(t.currency);
+    const overCap = platformWarnings(t).length > 0;
+    const c = isObj(t.conversion) ? t.conversion : null;
+    const fx = c ? `${str(c.sell_currency)} ${money(c.sell_amount)} into ${str(c.buy_currency)} ${money(c.buy_amount)}` : null;
+    const recipient = `${str(t.beneficiary_name)}, ${str(t.account)}`;
+    const how = `${str(t.method)}${str(t.clearing) ? ` (${str(t.clearing)})` : ""}`;
+    return {
+      approvable: !overCap,
+      title: `Pay invoice ${str(t.invoice_no)}`,
+      sentence: `Pay ${str(t.vendor)} ${cur} ${money(t.amount)} for invoice ${str(t.invoice_no)} by ${how}${fx ? `, after converting ${fx}` : `, from the ${cur} balance`}.`,
+      amount: `${cur} ${money(t.amount)}`,
+      margin: null,
+      recipient,
+      rows: [
+        ["Amount", `${cur} ${money(t.amount)}`],
+        // A route with no fee to hold back says so, rather than "at most USD 0.00 held back" (red team 6).
+        ["Fee reserve", centsOf(t.fee_reserve) ? `at most ${cur} ${money(t.fee_reserve)} held back for Airwallex's fee (the real fee is recorded)` : "none: no Airwallex fee is expected on this route (the real fee is recorded)"],
+        // Purser as an Airwallex platform (docs/airwallex-platform.md): which account pays, Purser's own fee and where it
+        // goes, and the total, never hidden.
+        ...platformRows(t, cur),
+        ["Pays", recipient],
+        ["Invoice", `${str(t.invoice_no)} from ${str(t.vendor)}, reference ${str(t.reference)}`],
+        ["Method", how],
+        ["Conversion", fx ? `${fx} at rate ${str(c!.client_rate)}, quote valid until ${str(c!.valid_to)}` : `none: paid from the ${cur} balance`],
+        // The supplier's own words beside the amount (payables inbox): a mismatch with the amount or currency above is visible.
+        ...(t.document_total_line !== undefined ? [["On the invoice", `"${str(t.document_total_line).slice(0, 120)}" (currency read from that line: ${str(t.document_currency) || "none code knows"})`] as [string, string]] : []),
+      ],
+      short: `pay ${cur} ${money(t.amount)} to ${str(t.beneficiary_name)}`,
+      warnings: [
+        ...(str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name) ? [`The account holder (${str(t.beneficiary_name)}) is not the vendor on the invoice (${str(t.vendor)})`] : []),
+        ...(t.document_total_line !== undefined && str(t.document_currency) !== cur ? [`The invoice's own total line reads ${str(t.document_currency) || "no currency code knows"}, not ${cur}`] : []),
+        ...amountNotInLine(t, cur),
+        ...platformWarnings(t),
+      ],
       label: `Invoice ${str(t.invoice_no)}`,
       big: money(t.amount),
       unit: cur,
@@ -287,6 +423,44 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
       short: "this bank-detail change",
       warnings: ["Changed bank details are how invoice fraud works. Approve only if the new IBAN matches what the supplier told you on a number you already had."],
       amountLabel: "Moves now", label: "Bank details", big: `…${iban.slice(-4)}`, unit: "new account",
+    };
+  }
+
+  if (kind === "payee_add" && isObj(t.bank) && !str(t.bank.iban)) {
+    // A supplier without an IBAN (US, China, UK): the full account number and routing code the CFO approves.
+    const v = (isObj(t.verification) ? t.verification : {}) as Obj;
+    const a = (isObj(t.address) ? t.address : {}) as Obj;
+    const b = t.bank;
+    const number = str(b.accountNumber);
+    const routing = str(b.routingType) === "aba" ? `ABA ${str(b.routingValue)}` : str(b.routingType) === "sort_code" ? `sort code ${str(b.routingValue).replace(/^(\d\d)(\d\d)(\d\d)$/, "$1-$2-$3")}` : str(b.routingType) ? `${str(b.routingType)} ${str(b.routingValue)}` : "";
+    const where = [routing, str(b.swiftCode) ? `BIC ${str(b.swiftCode)}` : ""].filter(Boolean).join(", ");
+    return {
+      approvable: true, title: "New supplier",
+      sentence: `Add ${str(t.vendor)} as a supplier, paid in ${str(b.currency)} by ${str(b.method)} to account ${number} (${where}, ${str(b.country)}). ${str(v.by)} recorded that the supplier confirmed it: ${str(v.how)}.`,
+      amount: "0.00 (nothing moves now)", margin: null, recipient: `${str(t.vendor)}, account ending ${number.slice(-4)}`,
+      rows: [["Supplier", str(t.vendor)], ["Account number", number], ["Routing", where], ["Bank country", str(b.country)], ["Paid in", `${str(b.currency)} by ${str(b.method)}${str(b.clearing) ? ` (${str(b.clearing)})` : ""}`],
+        ["Address", `${str(a.street)}, ${str(a.postcode)} ${str(a.city)}`], ["Verified by", str(v.by)], ["How", str(v.how)]],
+      short: "this new supplier",
+      warnings: ["A supplier's own invoice is how invoice fraud works. Approve only if the account matches what the supplier told you on a number you already had."],
+      amountLabel: "Moves now", label: "New supplier", big: `…${number.slice(-4)}`, unit: "new supplier",
+    };
+  }
+
+  if (kind === "payee_add") {
+    const v = (isObj(t.verification) ? t.verification : {}) as Obj;
+    const a = (isObj(t.address) ? t.address : {}) as Obj;
+    const iban = str(t.iban);
+    // Terms from the payout routes carry the currency and method the supplier is paid in; older ones only the IBAN.
+    const b = (isObj(t.bank) ? t.bank : null) as Obj | null;
+    const paidIn = b ? `${str(b.currency)} by ${str(b.method)}${str(b.clearing) ? ` (${str(b.clearing)})` : ""}` : "";
+    return {
+      approvable: true, title: "New supplier",
+      sentence: `Add ${str(t.vendor)} as a supplier, paid${paidIn ? ` in ${paidIn}` : ""} to IBAN ${iban.replace(/(.{4})/g, "$1 ").trim()} (BIC ${str(t.bic) || "none"}). ${str(v.by)} recorded that the supplier confirmed it: ${str(v.how)}.`,
+      amount: "0.00 (nothing moves now)", margin: null, recipient: `${str(t.vendor)}, account ending ${iban.slice(-4)}`,
+      rows: [["Supplier", str(t.vendor)], ["IBAN", iban], ["BIC", str(t.bic)], ...(paidIn ? [["Paid in", paidIn] as [string, string]] : []), ["Address", `${str(a.street)}, ${str(a.postcode)} ${str(a.city)}`], ["Verified by", str(v.by)], ["How", str(v.how)]],
+      short: "this new supplier",
+      warnings: ["A supplier's own invoice is how invoice fraud works. Approve only if the IBAN matches what the supplier told you on a number you already had."],
+      amountLabel: "Moves now", label: "New supplier", big: `…${iban.slice(-4)}`, unit: "new supplier",
     };
   }
 
@@ -387,6 +561,45 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     };
   }
 
+  if (kind === "payment_batch") {
+    // One Face ID for many payments (src/policy/batch.ts): every line is shown, with each line's own warnings, which
+    // account pays it and Purser's fee and where it goes (red team 6: the batch view hid both).
+    const lines = arr(t.lines).filter(isObj).map((l) => ({ id: str(l.proposal_id), terms: isObj(l.terms) ? l.terms : {} as Obj }));
+    const signedTotals = isObj(t.totals) ? Object.fromEntries(Object.entries(t.totals).map(([c, v]) => [c, str(v)])) : {};
+    // The totals the lines add up to, Purser's fees included; any other total in the batch makes it unsignable here.
+    const sums: Record<string, number> = {};
+    let unreadable = false;
+    for (const l of lines) {
+      const o = outflowOf(l.terms);
+      if (!o) { unreadable = true; continue; }
+      sums[o.currency] = (sums[o.currency] ?? 0) + o.cents;
+    }
+    const computed = Object.fromEntries(Object.keys(sums).sort().map((c) => [c, fromCentsStr(sums[c]!)]));
+    const totalsAgree = !unreadable && JSON.stringify(computed) === JSON.stringify(Object.fromEntries(Object.keys(signedTotals).sort().map((c) => [c, signedTotals[c]])));
+    const totals = Object.entries(computed).map(([c, v]) => `${c} ${money(v)}`);
+    const each = lines.map((l) => ({ ...l, f: describeTerms(l.terms, names) }));
+    const n = lines.length;
+    const lineWords = (lt: Obj, f: Facts) => {
+      const fee = isObj(lt.platform_fee) ? ` + Purser-vergoeding ${str(lt.platform_fee.currency)} ${money(lt.platform_fee.amount)} (${(Number(str(lt.platform_fee.bps)) / 100).toFixed(2)}%) naar ${str(lt.platform_fee.to_account)}` : "";
+      const from = isObj(lt.paying_account) ? `; betaald van ${payingName(lt.paying_account)} (Airwallex, via Purser), ${str(lt.paying_account.id)}` : "";
+      return `${f.amount}${fee} aan ${str(lt.vendor) || str(lt.beneficiary_name)} (factuur ${ownInvoiceNo(lt)})${from}`;
+    };
+    return {
+      approvable: n > 0 && totalsAgree && each.every((e) => e.f.approvable),
+      title: `Betaal ${n} factu${n === 1 ? "ur" : "ren"} in één keer`,
+      sentence: `Eén Face ID keurt deze ${n} betaling${n === 1 ? "" : "en"} goed, elk precies zoals hieronder; elke betaling wordt los uitgevoerd en los gecontroleerd.`,
+      amount: totals.join(" · "), margin: null,
+      recipient: [...new Set(each.map((e) => str(e.terms.beneficiary_name) || str(e.terms.vendor)))].join("; "),
+      rows: each.map((e) => [e.id, lineWords(e.terms, e.f)] as [string, string]),
+      short: `${n} betalingen`,
+      warnings: [
+        ...(totalsAgree ? [] : [`Het totaal in deze batch (${Object.entries(signedTotals).map(([c, v]) => `${c} ${money(v)}`).join(" · ")}) is niet de som van de regels met Purser-vergoedingen (${totals.join(" · ")}); niet goedkeuren`]),
+        ...each.flatMap((e) => e.f.warnings.map((w) => `${ownInvoiceNo(e.terms) || e.id}: ${w}`)),
+      ],
+      amountLabel: "Totaal", label: `Batch van ${n}`, big: totals[0] ?? "", unit: "",
+    };
+  }
+
   if (kind === "dev_test") {
     return {
       approvable: true, title: str(t.label), sentence: `${str(t.purpose)}. Approving it records the approval and moves no money.`,
@@ -419,6 +632,8 @@ export function agentOf(createdBy: string, t: Obj): string {
   if (kind === "agent_onboard") return `${str(t.display_name)} (outside agent ${str(t.agent_id)})`;
   if (kind === "airi_purchase" && str(t.agent)) return `${cap1(str(t.agent))} agent`;
   if (kind === "owners_execute" && isObj(t.action) && str(t.action.agent)) return `${cap1(str(t.action.agent))} agent`;
+  // A payment the payables inbox filed (its terms carry the invoice's own total line): named as the inbox (S6).
+  if ((kind === "invoice_payment" || kind === "supplier_payment") && (str(t.source) === "payables_inbox" || t.document_total_line !== undefined)) return "Payables inbox";
   if (createdBy === "human") return "None: a change made by a person";
   if (createdBy === "system" || createdBy === "") return "Purser";
   if (createdBy.startsWith("ext:")) return `Outside agent ${createdBy.slice(4)}`;
@@ -435,9 +650,10 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
   const [each, perDispute, cardEur] = [val("approval.refund_each"), val("approval.refund_per_dispute"), val("approval.task_card_eur")];
   const why = kind === "mandate_replace" ? "It changes what agents may pay on chain, and a mandate changes only with your Face ID."
     : kind === "refund_batch" ? (each && perDispute ? `Your policy sends refunds above ${each} USDZ each, or ${perDispute} per dispute, to you.` : "Your policy sends refunds above its limits to you.")
-    : kind === "invoice_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
+    : kind === "invoice_payment" || kind === "supplier_payment" ? "A supplier is paid from the Airwallex account only with your Face ID."
     : kind === "policy_change" ? "The CFO policy changes only with your Face ID."
     : kind === "payee_change" ? "A supplier's bank details change only with your Face ID."
+    : kind === "payee_add" ? "A new supplier is paid only after your Face ID."
     : kind === "quarantine_release" ? "Money Metal held in quarantine moves only with your Face ID."
     : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
     : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
@@ -448,6 +664,82 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
   if (!fourEyes) return why;
   const so = fourEyes.approved_by.length ? ` Approved so far: ${fourEyes.approved_by.join(", ")}.` : "";
   return `${why} It needs two people (four eyes).${so}`;
+}
+
+const REASON_WORDS: Record<string, string> = { goods_purchased: "Goods purchased", professional_business_services: "Professional or business services" };
+/** An Airwallex payout reason code in words ("goods_purchased" reads "Goods purchased"). */
+export function reasonWords(code: string): string {
+  const w = REASON_WORDS[code] ?? code.replace(/_/g, " ");
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
+/** Whether the signed terms themselves say this is test money (the payables inbox's payments: S6). */
+export function isTestMoney(t: Obj): boolean {
+  return t.test_money === true;
+}
+
+/**
+ * What the first screen adds for a payment the payables inbox filed, from the signed terms: the supplier's own total
+ * line as the invoice wrote it, and the payout reason in words. Nothing for anything else: a Kit 11 invoice payment
+ * carries a reason too (src/agents/euroBill.ts), and its first screen stays payee, agent and why (docs/phone-approval.md).
+ */
+export function firstScreenFacts(t: Obj): [string, string][] {
+  if (!isPayablesPayment(t)) return [];
+  return [
+    ...(t.document_total_line !== undefined ? [["On the invoice", `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`] as [string, string]] : []),
+    ...(str(t.reason) ? [["Reason", reasonWords(str(t.reason))] as [string, string]] : []),
+  ];
+}
+
+/** A payment the payables inbox filed (its signed terms say so, or carry the invoice's own total line). */
+export function isPayablesPayment(t: Obj): boolean {
+  const kind = str(t.kind);
+  return (kind === "invoice_payment" || kind === "supplier_payment") && (str(t.source) === "payables_inbox" || t.document_total_line !== undefined);
+}
+
+export interface PayablesFacts {
+  title: string;
+  amount: string;
+  /** What the first screen shows, before Face ID: who is paid, from which account, Purser's fee, the total out. */
+  first: [string, string][];
+  details: [string, string][];
+  warnings: string[];
+}
+
+/**
+ * A payables payment in the company's language, from its signed terms only (screenshot pass, 9 November: a single
+ * payment was all English on a Dutch phone, and the paying account and Purser's fee were only under Details).
+ */
+export function payablesFacts(t: Obj, lang: PhoneLang): PayablesFacts {
+  const cur = str(t.currency) || "EUR";
+  const mon = (c: string, v: unknown) => (lang === "nl" ? nlMoney(`${c} ${money(v)}`) : `${c} ${money(v)}`);
+  const pct = (bps: unknown) => { const p = (Number(str(bps)) / 100).toFixed(2); return lang === "nl" ? p.replace(".", ",") : p; };
+  const supplier = str(t.kind) === "supplier_payment";
+  const payee = supplier ? `${str(t.beneficiary_name)}, ${str(t.account)}` : `${str(t.beneficiary_name)}, IBAN …${str(t.iban_last4)}`;
+  const first: [string, string][] = [[ph(lang, "ph.payee"), payee]];
+  if (t.document_total_line !== undefined) first.push([ph(lang, "ph.on_invoice"), `\u201c${str(t.document_total_line).slice(0, 120)}\u201d`]);
+  if (isObj(t.paying_account)) first.push([ph(lang, "ph.paid_from"), ph(lang, "ph.paid_from_value", { name: payingName(t.paying_account), id: str(t.paying_account.id) })]);
+  if (isObj(t.platform_fee)) {
+    const f = t.platform_fee;
+    first.push([ph(lang, "ph.fee"), ph(lang, "ph.fee_value", { amount: mon(str(f.currency), f.amount), pct: pct(f.bps), to: str(f.to_account) })]);
+    const out = outflowOf(t);
+    if (out) first.push([ph(lang, "ph.total_out"), ph(lang, "ph.total_out_value", { amount: mon(cur, fromCentsStr(out.cents)) })]);
+  }
+  if (str(t.reason)) first.push([ph(lang, "ph.reason"), ph(lang, `ph.reason.${str(t.reason)}`) === `ph.reason.${str(t.reason)}` ? reasonWords(str(t.reason)) : ph(lang, `ph.reason.${str(t.reason)}`)]);
+  const c = isObj(t.conversion) ? t.conversion : null;
+  const reserve = supplier ? t.fee_reserve : t.fee_max;
+  const details: [string, string][] = [
+    [ph(lang, "ph.invoice"), ph(lang, "ph.invoice_value", { no: str(t.invoice_no), ref: str(t.reference) })],
+    [ph(lang, "ph.method"), `${str(t.method)}${str(t.clearing) ? ` (${str(t.clearing)})` : ""}${!supplier && str(t.bic) ? `, BIC ${str(t.bic)}` : ""}`],
+    [ph(lang, "ph.bank_fee"), centsOf(reserve) ? ph(lang, "ph.bank_fee_value", { amount: mon(cur, reserve) }) : ph(lang, "ph.bank_fee_none")],
+    [ph(lang, "ph.conversion"), c ? ph(lang, "ph.conversion_value", { sell: mon(str(c.sell_currency), c.sell_amount), buy: mon(str(c.buy_currency), c.buy_amount), rate: str(c.client_rate) }) : ph(lang, "ph.conversion_none", { cur })],
+  ];
+  const warnings: string[] = [];
+  if (str(t.vendor) && str(t.vendor) !== str(t.beneficiary_name)) warnings.push(ph(lang, "ph.w_holder", { holder: str(t.beneficiary_name), vendor: str(t.vendor) }));
+  if (t.document_total_line !== undefined && str(t.document_currency) !== cur) warnings.push(ph(lang, "ph.w_line_currency", { found: str(t.document_currency) || ph(lang, "ph.w_no_currency"), cur }));
+  if (amountNotInLine(t, cur).length) warnings.push(ph(lang, "ph.w_amount_not_in_line", { amount: mon(cur, t.amount) }));
+  if (platformWarnings(t).length) warnings.push(ph(lang, "ph.w_fee_cap", { bps: str(isObj(t.platform_fee) ? t.platform_fee.bps : "") }));
+  return { title: ph(lang, "ph.pay_invoice", { no: str(t.invoice_no) }), amount: mon(cur, t.amount), first, details, warnings };
 }
 
 /** "0,03" (a decimal comma, as many phones type it) reads as 0.03; nothing else is guessed. */
@@ -516,20 +808,28 @@ function el(tag: string, cls?: string, kids: (Node | string | null | false | und
 }
 const txt = (tag: string, cls: string, s: unknown) => el(tag, cls, [str(s)]);
 
-function countdown(iso: string): { text: string; soon: boolean; over: boolean } {
+export function countdown(iso: string, lang = "en"): { text: string; soon: boolean; over: boolean } {
   const ms = Date.parse(iso) - Date.now();
+  const nl = lang === "nl";
   if (Number.isNaN(ms)) return { text: "", soon: false, over: false };
-  if (ms <= 0) return { text: "expired", soon: true, over: true };
+  if (ms <= 0) return { text: nl ? "verlopen" : "expired", soon: true, over: true };
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return { text: `expires in ${h ? `${h}h ` : ""}${m}m ${String(s % 60).padStart(2, "0")}s`, soon: ms < 120_000, over: false };
+  const left = `${h ? `${h}h ` : ""}${m}m ${String(s % 60).padStart(2, "0")}s`;
+  return { text: nl ? `verloopt over ${left}` : `expires in ${left}`, soon: ms < 120_000, over: false };
+}
+
+/** Amounts as the Dutch pages write them: "EUR 4,617.20" becomes "€ 4.617,20" (other currencies keep their code). */
+export function nlMoney(text: string): string {
+  return text.replace(/\b([A-Z]{3}) (-?)(\d{1,3}(?:,\d{3})*)\.(\d{2})\b/g, (_m, cur: string, sign: string, int: string, dec: string) =>
+    `${cur === "EUR" ? "€" : cur} ${sign}${int.replace(/,/g, ".")},${dec}`);
 }
 
 /** Keeps every [data-expires] countdown on the page current. */
 function tickCountdowns(): void {
   document.querySelectorAll<HTMLElement>("[data-expires]").forEach((n) => {
-    const c = countdown(n.dataset.expires!);
+    const c = countdown(n.dataset.expires!, n.dataset.lang);
     n.textContent = c.text;
     n.classList.toggle("soon", c.soon);
   });
@@ -837,9 +1137,9 @@ function serializeRegistration(c: PublicKeyCredential): Obj {
   };
 }
 
-function passkeyError(e: unknown): string {
+function passkeyError(e: unknown, lang?: PhoneLang): string {
   const name = e instanceof Error ? e.name : "";
-  if (name === "NotAllowedError" || name === "AbortError") return "Cancelled. Nothing was signed.";
+  if (name === "NotAllowedError" || name === "AbortError") return lang ? ph(lang, "ph.cancelled") : "Cancelled. Nothing was signed.";
   if (name === "InvalidStateError") return "This phone already has a passkey for this site.";
   if (name === "SecurityError") return "The passkey cannot be used on this address.";
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
@@ -926,18 +1226,20 @@ export function againstAdvice(decision: "APPROVED" | "REJECTED", review: { recom
  * owners_execute signs the account's Execute digest from the hashed terms), a rejection the rejection hash. Says on
  * `status` why not, with `retry` true when the same button may be pressed again.
  */
-async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "REJECTED", credentials: { id: string }[], status: HTMLElement):
+async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "REJECTED", credentials: { id: string }[], status: HTMLElement, lang?: PhoneLang):
   Promise<{ assertion: Obj; retry?: undefined } | { assertion: null; retry: boolean }> {
   const rejecting = decision === "REJECTED";
-  status.textContent = rejecting ? "Waiting for Face ID to reject…" : "Waiting for Face ID…";
+  // The payables pages pass their language; the Kit 11 pages stay English.
+  const say = (key: string, english: string, vars: Record<string, string> = {}) => (lang ? ph(lang, key, vars) : english);
+  status.textContent = rejecting ? say("ph.waiting_reject", "Waiting for Face ID to reject…") : say("ph.waiting_face_id", "Waiting for Face ID…");
   // Rejecting is always safe, so it does not need the terms to check out; approving does.
   const again = rejecting ? { ok: true, problem: "" } : await checkOption(o);
   if (!again.ok) {
-    status.textContent = `Not signed: ${again.problem}.`;
+    status.textContent = say("ph.not_signed", `Not signed: ${again.problem}.`, { problem: str(again.problem) });
     return { assertion: null, retry: false };
   }
   if (Date.parse(o.expires_at) - Date.now() < 3000) {
-    status.textContent = "This proposal has expired. Nothing was signed.";
+    status.textContent = say("ph.expired", "This proposal has expired. Nothing was signed.");
     return { assertion: null, retry: false };
   }
   let cred: PublicKeyCredential | null;
@@ -952,11 +1254,11 @@ async function askPasskey(o: PhoneProposal, terms: Obj, decision: "APPROVED" | "
       },
     })) as PublicKeyCredential | null;
   } catch (e) {
-    status.textContent = passkeyError(e);
+    status.textContent = passkeyError(e, lang);
     return { assertion: null, retry: true };
   }
   if (!cred) {
-    status.textContent = "Cancelled. Nothing was signed.";
+    status.textContent = say("ph.cancelled", "Cancelled. Nothing was signed.");
     return { assertion: null, retry: true };
   }
   return { assertion: serializeAssertion(cred) };
@@ -1002,7 +1304,7 @@ function openSheet(o: PhoneProposal, terms: Obj, x: SheetContext): void {
     ]),
     nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
     o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
-    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+    o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
     el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]),
   ]);
   const status = el("div", "sheet-status");
@@ -1139,6 +1441,10 @@ async function approvePage(attempt = 0): Promise<void> {
     const check = chosen.check;
     const f = check.terms ? describeTerms(check.terms, a.names) : null;
     const terms = check.terms ?? parsedOrEmpty(o.canonical);
+    // One Face ID for many payments: its own view, every line listed, each line can be taken out first.
+    if (str(terms.kind) === "payment_batch") { void batchView(app, view, o, terms, f, check, enrolled, a.passkey.credentials, phoneLang(a)); return; }
+    // A payment the payables inbox filed: in the company's language, with the paying account and Purser's fee first.
+    if (isPayablesPayment(terms)) { payablesView(app, view, o, terms, f, check, enrolled, a.passkey.credentials, phoneLang(a)); return; }
     const approvable = check.ok && !!f && f.approvable;
     // When Opus advises against it, saying no comes first, and approving is the slow, second choice (twice in live
     // runs a CFO who meant to reject approved by tapping the proposal).
@@ -1147,10 +1453,14 @@ async function approvePage(attempt = 0): Promise<void> {
     cd.dataset.expires = o.expires_at;
     const essentials = el("section", "essentials", [
       el("p", "eyebrow need", [o.four_eyes ? "Needs your approval, and a second person's" : "Needs your approval", " · ", cd]),
+      isTestMoney(terms) ? txt("p", "testmoney", "Test money · Airwallex sandbox") : null,
       txt("h1", "what-title", f ? f.title : o.proposal_id),
       f ? el("p", "hero", [txt("span", "hero-label", f.amountLabel ?? "Amount"), txt("span", "hero-amount num", f.amount)]) : null,
       f ? el("dl", "key-facts", [
         txt("dt", "", "Payee"), el("dd", "lines", f.recipient.split("; ").map((r) => txt("span", "", r))),
+        // Rows only for a payment the payables inbox filed, should one ever be drawn here (it has its own view,
+        // above): a Kit 11 approval gets none, so its first screen stays payee, agent and why.
+        ...firstScreenFacts(terms).flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === "On the invoice" ? "invoice-line" : "", v)]),
         txt("dt", "", "Agent"), txt("dd", "", agentOf(o.created_by, terms)),
         txt("dt", "", "Why you"), txt("dd", "why", whyYou(terms, a.policy ?? [], o.four_eyes)),
       ]) : null,
@@ -1198,7 +1508,7 @@ async function approvePage(attempt = 0): Promise<void> {
       ]),
       nots.length ? el("div", "nots", [txt("p", "eyebrow", "This is not"), el("ul", "", nots.map((n) => txt("li", "", n)))]) : null,
       o.agent_advice ? el("div", "review", [txt("p", "eyebrow", `${o.agent_advice.agent}${o.agent_advice.model ? ` (${modelWord(o.agent_advice.model)})` : ""}, advisory: ${o.agent_advice.verdict ?? (o.agent_advice.recommends ? "recommends this option" : "recommends the other option")}`), txt("p", "", o.agent_advice.text)]) : null,
-      o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : `Opus review, advisory: ${o.review.recommendation.replace(/_/g, " ")}`), txt("p", "", o.review.text)]) : null,
+      o.review ? el("div", "review", [txt("p", "eyebrow", o.review.recommendation === "drafted" ? "Drafted by Opus from your words, each rule checked by code" : reviewLabel(o.review)), txt("p", "", o.review.text)]) : null,
       f ? el("details", "all", [txt("summary", "", "All terms (exactly what is hashed)"), el("dl", "rows", f.rows.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)])), termsTable(terms)]) : null,
       txt("p", "fineprint", "Your passkey signs the SHA-256 of these exact terms. This page computes that hash itself, and the runner signed what the relay sent; any change to the terms makes the signature worthless."),
     ]);
@@ -1236,6 +1546,228 @@ async function approvePage(attempt = 0): Promise<void> {
     reject.addEventListener("click", () => void go("REJECTED"));
   }
   render();
+}
+
+/** A line's account, as the signed terms show it: the masked account, or the IBAN's last four. */
+function lineAccount(t: Obj): string {
+  return str(t.account) || (str(t.iban_last4) ? `IBAN …${str(t.iban_last4)}` : "");
+}
+
+/** The supplier's own invoice number: the payment ledger files it as "number · supplier" (src/ap/ledgerKey.ts). */
+export function ownInvoiceNo(t: Obj): string {
+  const no = str(t.invoice_no);
+  const suffix = ` · ${str(t.vendor)}`;
+  return str(t.vendor) && no.endsWith(suffix) ? no.slice(0, -suffix.length) : no;
+}
+
+/** A payables page's frame in its language: the header, the page's language and the way back (Kit 11 pages stay English). */
+function payablesFrame(app: HTMLElement, lang: PhoneLang): void {
+  const sub = document.querySelector<HTMLElement>("header .sub");
+  if (sub) sub.textContent = sub.textContent!.replace(/^Approvals\b/, ph(lang, "ph.header"));
+  document.documentElement.lang = lang;
+  for (const a of app.querySelectorAll<HTMLAnchorElement>("a.back")) a.textContent = ph(lang, "ph.back_payables");
+}
+
+/**
+ * One payment the payables inbox filed, in the company's language (screenshot pass, 9 November): who is paid, the
+ * invoice's own total line, the account it is paid from, Purser's fee and the total out are all on the first screen,
+ * before Face ID; the method, conversion and every hashed field are under Details. Approve signs the terms hash.
+ */
+function payablesView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[], lang: PhoneLang): void {
+  const p = payablesFacts(terms, lang);
+  const approvable = check.ok && !!f && f.approvable;
+  const against = o.review?.recommendation === "reject";
+  payablesFrame(app, lang);
+  const cd = el("span", "countdown");
+  cd.dataset.expires = o.expires_at;
+  cd.dataset.lang = lang;
+  const why = `${ph(lang, "ph.why_single")}${o.four_eyes ? ` ${ph(lang, "ph.four_eyes")}${o.four_eyes.approved_by.length ? ` (${o.four_eyes.approved_by.join(", ")})` : ""}` : ""}`;
+  const essentials = el("section", "essentials", [
+    el("p", "eyebrow need", [ph(lang, o.four_eyes ? "ph.need_four" : "ph.need"), " · ", cd]),
+    isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
+    txt("h1", "what-title", p.title),
+    el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.amount")), txt("span", "hero-amount num", p.amount)]),
+    // "wide": the payables labels are longer ("Betaald van", "Purser-vergoeding"); Kit 11 approvals keep their column.
+    el("dl", "key-facts wide", [
+      ...p.first.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", k === ph(lang, "ph.on_invoice") ? "invoice-line" : "", v)]),
+      txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
+      txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", why),
+    ]),
+  ]);
+  const warnings = [...p.warnings, ...(o.warnings ?? [])];
+  const alarms = [
+    check.ok ? null : txt("p", "alarm big", ph(lang, "ph.do_not", { problem: str(check.problem) })),
+    ...againstAdvice("APPROVED", o.review).map((w) => txt("p", "alarm big", w)),
+    warnings.length ? el("div", "alarm list", [el("ul", "", warnings.map((w) => txt("li", "", w)))]) : null,
+  ];
+  const approve = el("button", against ? "confirm against" : "confirm", [ph(lang, "ph.approve")]) as HTMLButtonElement;
+  approve.id = "approve";
+  const reject = el("button", against ? "confirm reject" : "reject-btn", [ph(lang, "ph.reject")]) as HTMLButtonElement;
+  reject.id = "reject";
+  for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
+  approve.setAttribute("aria-label", `${ph(lang, "ph.approve")}: ${p.title}`);
+  reject.setAttribute("aria-label", `${ph(lang, "ph.reject")}: ${p.title}`);
+  // A double tap must not land on a button: they arm after a moment (later still when the advice is to reject).
+  const armApprove = () => { approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over; };
+  const armReject = () => { reject.disabled = !enrolled; };
+  setTimeout(armApprove, against ? 3000 : 800);
+  setTimeout(armReject, 800);
+  const status = el("p", "sheet-status");
+  status.id = "sign-status";
+  status.setAttribute("role", "status");
+  const cd2 = el("span", "countdown big");
+  cd2.dataset.expires = o.expires_at;
+  cd2.dataset.lang = lang;
+  const review = o.review ? el("div", "review", [txt("p", "eyebrow", o.review.model ? ph(lang, "ph.review_model", { model: modelWord(o.review.model) }) : ph(lang, "ph.review_code")), txt("p", "", o.review.text)]) : null;
+  view.replaceChildren(...[essentials, ...alarms, el("div", against ? "actions against" : "actions", against ? [reject, approve, status] : [approve, reject, status]),
+    el("details", "more", [
+      txt("summary", "", ph(lang, "ph.details")),
+      el("dl", "facts", [
+        ...p.details.flatMap(([k, v]) => [txt("dt", "", k), txt("dd", "", v)]),
+        txt("dt", "", ph(lang, "ph.expires")), el("dd", "", [cd2]),
+        txt("dt", "", ph(lang, "ph.hash")), hashCell(o.terms_sha256),
+        txt("dt", "", ph(lang, "ph.proposal")), txt("dd", "mono", o.proposal_id),
+      ]),
+      review,
+      el("details", "all", [txt("summary", "", ph(lang, "ph.all_terms")), termsTable(terms)]),
+      txt("p", "fineprint", ph(lang, "ph.fineprint")),
+    ]),
+  ].filter((n): n is HTMLElement => n !== null));
+  tickCountdowns();
+  const go = async (decision: "APPROVED" | "REJECTED") => {
+    approve.disabled = true;
+    reject.disabled = true;
+    const got = await askPasskey(o, terms, decision, credentials, status, lang);
+    if (!got.assertion) { armReject(); if (got.retry) armApprove(); return; }
+    status.textContent = ph(lang, "ph.sending");
+    const sent = await api("/api/assertions", { proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion })
+      .catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+    if (sent.status !== 202) {
+      status.textContent = ph(lang, "ph.not_accepted", { error: str(sent.data.error) || `${sent.status}` });
+      armReject(); armApprove();
+      return;
+    }
+    const home = el("a", "back", [ph(lang, "ph.back_payables")]) as HTMLAnchorElement;
+    home.href = "/";
+    await follow(str(sent.data.ticket), app, home, p.title);
+  };
+  approve.addEventListener("click", () => void go("APPROVED"));
+  reject.addEventListener("click", () => void go("REJECTED"));
+}
+
+/**
+ * A payment batch on the phone (src/policy/batch.ts), in the company's language: the count, the total per currency, and every line (who,
+ * how much, which account, the invoice's own total line). Goedkeuren signs the batch hash once; Afwijzen rejects the
+ * whole batch; Haal eruit signs the removal of that one line (a new batch of the rest then comes to this page). The page
+ * recomputes each line's hash from its terms; a line that does not match makes the batch unsignable here.
+ */
+async function batchView(app: HTMLElement, view: HTMLElement, o: PhoneProposal, terms: Obj, f: Facts | null, check: OptionCheck, enrolled: boolean, credentials: { id: string }[], lang: PhoneLang): Promise<void> {
+  const lines = arr(terms.lines).filter(isObj);
+  const bad = await badBatchLines(terms);
+  const approvable = check.ok && !!f && f.approvable && bad.length === 0;
+  const cd = el("span", "countdown");
+  cd.dataset.expires = o.expires_at;
+  cd.dataset.lang = lang;
+  payablesFrame(app, lang);
+  const mon = (text: string) => (lang === "nl" ? nlMoney(text) : text);
+  const pct = (bps: unknown) => { const p = (Number(str(bps)) / 100).toFixed(2); return lang === "nl" ? p.replace(".", ",") : p; };
+  const status = el("p", "sheet-status");
+  status.setAttribute("role", "status");
+  const list = el("ol", "batch-lines");
+  const removers: HTMLButtonElement[] = [];
+  for (const l of lines) {
+    const t = isObj(l.terms) ? l.terms : {} as Obj;
+    const lf = describeTerms(t, {});
+    const out = el("button", "secondary small", [ph(lang, "ph.take_out")]) as HTMLButtonElement;
+    out.type = "button";
+    out.disabled = true;
+    out.setAttribute("aria-label", ph(lang, "ph.take_out_label", { no: ownInvoiceNo(t) }));
+    out.addEventListener("click", () => void removeLine(str(l.proposal_id), ownInvoiceNo(t)));
+    removers.push(out);
+    list.append(el("li", "batch-line", [
+      el("div", "bl-head", [txt("span", "bl-who", str(t.vendor) || str(t.beneficiary_name)), txt("span", "bl-amount num", mon(lf.amount))]),
+      txt("p", "bl-meta", [ph(lang, "ph.line_invoice", { no: ownInvoiceNo(t) }), lineAccount(t)].filter(Boolean).join(" · ")),
+      // Purser as a platform (red team 6): which account pays this line, and Purser's fee and where it goes.
+      isObj(t.paying_account) ? txt("p", "bl-meta bl-from", `${ph(lang, "ph.paid_from")} ${ph(lang, "ph.paid_from_value", { name: payingName(t.paying_account), id: str(t.paying_account.id) })}`) : null,
+      isObj(t.platform_fee) ? txt("p", "bl-meta bl-fee", `${ph(lang, "ph.fee")} ${ph(lang, "ph.fee_value", { amount: mon(`${str(t.platform_fee.currency)} ${money(t.platform_fee.amount)}`), pct: pct(t.platform_fee.bps), to: str(t.platform_fee.to_account) })}`) : null,
+      t.document_total_line !== undefined ? txt("p", "bl-line invoice-line", `${ph(lang, "ph.on_invoice")}: \u201c${str(t.document_total_line).slice(0, 120)}\u201d`) : null,
+      ...(isPayablesPayment(t) ? payablesFacts(t, lang).warnings : lf.warnings).map((w) => txt("p", "alarm", w)),
+      out,
+    ]));
+  }
+  const approve = el("button", "confirm", [ph(lang, lines.length === 1 ? "ph.approve_n_one" : "ph.approve_n_other", { n: lines.length })]) as HTMLButtonElement;
+  const reject = el("button", "reject-btn", [ph(lang, "ph.reject_batch")]) as HTMLButtonElement;
+  for (const b of [approve, reject]) { b.type = "button"; b.disabled = true; }
+  approve.id = "approve";
+  reject.id = "reject";
+  setTimeout(() => {
+    approve.disabled = !enrolled || !approvable || countdown(o.expires_at).over;
+    reject.disabled = !enrolled;
+    for (const r of removers) r.disabled = !enrolled || lines.length < 1;
+  }, 800);
+  view.replaceChildren(...[
+    el("section", "essentials", [
+      el("p", "eyebrow need", [ph(lang, o.four_eyes ? "ph.need_four" : "ph.need"), " · ", cd]),
+      isTestMoney(terms) ? txt("p", "testmoney", ph(lang, "ph.test_money")) : null,
+      txt("h1", "what-title", ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length })),
+      f ? el("p", "hero", [txt("span", "hero-label", ph(lang, "ph.total")), txt("span", "hero-amount num", mon(f.amount))]) : null,
+      el("dl", "key-facts wide", [
+        txt("dt", "", ph(lang, "ph.payments")), txt("dd", "", String(lines.length)),
+        txt("dt", "", ph(lang, "ph.agent")), txt("dd", "", ph(lang, "ph.agent_inbox")),
+        txt("dt", "", ph(lang, "ph.why")), txt("dd", "why", `${ph(lang, "ph.why_batch")}${o.four_eyes ? ` ${ph(lang, "ph.four_eyes")}` : ""}`),
+      ]),
+    ]),
+    check.ok ? null : txt("p", "alarm big", ph(lang, "ph.do_not", { problem: str(check.problem) })),
+    bad.length ? txt("p", "alarm big", ph(lang, "ph.do_not_lines", { list: bad.join(", ") })) : null,
+    el("section", "batch", [txt("h2", "", ph(lang, "ph.what_you_approve")), list]),
+    el("div", "actions", [approve, reject, status]),
+    el("details", "more", [
+      txt("summary", "", ph(lang, "ph.details")),
+      el("dl", "facts", [txt("dt", "", ph(lang, "ph.hash")), hashCell(o.terms_sha256), txt("dt", "", ph(lang, "ph.batch")), txt("dd", "mono", o.proposal_id)]),
+      termsTable(terms),
+      txt("p", "fineprint", ph(lang, "ph.fineprint_batch")),
+    ]),
+  ].filter((n): n is HTMLElement => n !== null));
+  tickCountdowns();
+  const lock = () => { approve.disabled = true; reject.disabled = true; for (const r of removers) r.disabled = true; };
+  const unlock = () => { approve.disabled = !enrolled || !approvable; reject.disabled = !enrolled; for (const r of removers) r.disabled = !enrolled; };
+  const send = async (body: Obj, what: string) => {
+    status.textContent = ph(lang, "ph.sending");
+    const sent = await api("/api/assertions", body).catch(() => ({ status: 0, data: { error: "the relay cannot be reached" } as Obj }));
+    if (sent.status !== 202) {
+      status.textContent = ph(lang, "ph.not_accepted", { error: str(sent.data.error) || `${sent.status}` });
+      unlock();
+      return;
+    }
+    const home = el("a", "back", [ph(lang, "ph.back_payables")]) as HTMLAnchorElement;
+    home.href = "/";
+    await follow(str(sent.data.ticket), app, home, what);
+  };
+  const go = async (decision: "APPROVED" | "REJECTED") => {
+    lock();
+    const got = await askPasskey(o, terms, decision, credentials, status, lang);
+    if (!got.assertion) { unlock(); return; }
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision, credential: got.assertion }, ph(lang, lines.length === 1 ? "ph.batch_title_one" : "ph.batch_title_other", { n: lines.length }));
+  };
+  async function removeLine(line: string, invoiceNo: string): Promise<void> {
+    lock();
+    status.textContent = ph(lang, "ph.taking_out", { no: invoiceNo });
+    let cred: PublicKeyCredential | null;
+    try {
+      cred = (await navigator.credentials.get({ publicKey: {
+        challenge: hexToBytes(await batchRemovalHash(o.terms_sha256, line)), rpId: location.hostname,
+        allowCredentials: credentials.map((c) => ({ type: "public-key" as const, id: b64urlToBytes(c.id) })), userVerification: "required", timeout: 60_000,
+      } })) as PublicKeyCredential | null;
+    } catch (e) {
+      status.textContent = passkeyError(e, lang);
+      unlock();
+      return;
+    }
+    if (!cred) { status.textContent = ph(lang, "ph.cancelled"); unlock(); return; }
+    await send({ proposal_id: o.proposal_id, terms_sha256: o.terms_sha256, decision: "REMOVE_LINE", line, credential: serializeAssertion(cred) }, ph(lang, "ph.taken_out", { no: invoiceNo }));
+  }
+  approve.addEventListener("click", () => void go("APPROVED"));
+  reject.addEventListener("click", () => void go("REJECTED"));
 }
 
 function enrolPage(): void {
@@ -1558,6 +2090,15 @@ export function boot(): void {
 if (typeof document !== "undefined") boot();
 
 /** "claude-opus-5-5" → "Opus": the model's family name for a person. */
+/**
+ * Who wrote an advisory note, by its real source (screenshot pass S3): a model's review names the model; a note
+ * Purser's code wrote (no model ran, or its answer was not used) says so.
+ */
+export function reviewLabel(r: { model: string | null; recommendation: string }): string {
+  const rec = r.recommendation === "note" ? "" : `: ${r.recommendation.replace(/_/g, " ")}`;
+  return r.model ? `${modelWord(r.model)} review, advisory${rec}` : `Purser's code (no model), advisory${rec}`;
+}
+
 function modelWord(model: string): string {
   return /opus/i.test(model) ? "Opus" : /sonnet/i.test(model) ? "Sonnet" : /haiku/i.test(model) ? "Haiku" : model;
 }
