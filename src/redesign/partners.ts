@@ -257,12 +257,16 @@ export function visaPage(run: AgentRun = agentRun()): string {
 /** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */
 export const HOSTILE_RECORD_FILE = "docs/evals/ap-hostile.json";
 
-/** /claude's line from that record, as a visitor reads it; "" when there is no record. */
+/**
+ * /claude's line from that record, as a visitor reads it; "" when there is no record. It names its scope (review round
+ * 1, 12 Nov: the page shows the three Kit 11 agents, and the eval is of the payables agents): the agents and the number
+ * of test invoices, counted from the record's cases.
+ */
 export function hostileClaimText(file = HOSTILE_RECORD_FILE): string {
   const url = new URL(`../../${file}`, import.meta.url);
   if (!existsSync(url)) return "";
-  const { line } = JSON.parse(readFileSync(url, "utf8")) as { line?: string };
-  return line ? `In CI, a script in Claude's place: ${line}.` : "";
+  const { line, cases } = JSON.parse(readFileSync(url, "utf8")) as { line?: string; cases?: unknown[] };
+  return line ? `In CI, a script in place of the payables agents, on ${cases?.length ?? 0} test invoices: ${line}.` : "";
 }
 
 /** That line with its link to the record; "" when there is no record. */

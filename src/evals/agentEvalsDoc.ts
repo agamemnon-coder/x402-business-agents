@@ -19,7 +19,8 @@ export interface AgentEvalDocRow {
   dirty?: boolean;
   /**
    * Set on rows from before the CLI recorded a commit (31 October to 1 November): the commit was read afterwards from
-   * git history, the checkout's latest commit at the row's run time; whether the checkout had uncommitted changes then
+   * git history, the checkout's latest commit at the row's run time (its last run: a row that adds up runs from more
+   * than one session may have earlier runs on an earlier commit); whether the checkout had uncommitted changes then
    * is not known.
    */
   commit_source?: "git history at run time";
@@ -52,7 +53,7 @@ export function agentEvalsMarkdown(out: AgentEvalsRecord): string {
     "|---|---|---|---|---|---|---|---|---|",
     ...out.rows.map((r) => `| ${r.case} | ${r.kind} | ${r.model} | ${r.passed}/${r.runs} | ${(r.cost_usd_micros / 1e6).toFixed(4)} | ${(r.median_ms / 1000).toFixed(1)} s | ${at(r.ran_at)} | ${commitCell(r)} | ${r.details.at(-1)!.replace(/\|/g, "/")} |`),
     "",
-    ...(fromHistory ? [`\\* ${fromHistory} rows ran before the eval recorded its commit. Their commit is the checkout's latest at the row's run time, read from git history afterwards (\`${b?.method ?? "git history"}\`${b ? `, ${b.at.slice(0, 10)}` : ""})${b ? `; read the same way, ${b.agreed} of the ${b.checked_on_recorded_rows} rows that did record a commit give the commit they recorded` : ""}. Whether those checkouts had uncommitted changes is not known.`, ""] : []),
+    ...(fromHistory ? [`\\* ${fromHistory} rows ran before the eval recorded its commit. Their commit is the checkout's latest at the row's last run, read from git history afterwards (\`${b?.method ?? "git history"}\`${b ? `, ${b.at.slice(0, 10)}` : ""})${b ? `; read the same way, ${b.agreed} of the ${b.checked_on_recorded_rows} rows that did record a commit give the commit they recorded` : ""}. Where a row adds up runs from more than one session, its earlier runs may have run on an earlier commit. Whether those checkouts had uncommitted changes is not known.`, ""] : []),
     "## Cheapest model that passed every run",
     "",
     ...agents.map((a) => `- ${a}: ${out.cheapest_passing[a] ?? "none of the models tried"}`),
