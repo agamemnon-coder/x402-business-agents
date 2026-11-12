@@ -30,10 +30,15 @@ export function usdzBalance(address: Address): Promise<bigint> {
   return publicClient().readContract({ address: USDZ, abi: erc20Abi, functionName: "balanceOf", args: [address] });
 }
 
+/** A key file as the pinned metal-agent CLI writes it. An error names the file's path only, never anything the file holds. */
 export function readKeyFile(path: string): { address: Address; privateKey: Hex } {
-  const k = JSON.parse(readFileSync(path, "utf8")) as { address: Address; privateKey: Hex };
-  if (!k.address || !k.privateKey) throw new Error(`not a metal-agent key file: ${path}`);
-  return k;
+  let text: string;
+  try { text = readFileSync(path, "utf8"); } catch (e) { throw new Error(`the key file ${path} cannot be read (${(e as NodeJS.ErrnoException).code ?? "error"})`, { cause: e }); }
+  // JSON.parse's own message quotes the start of the text it could not read, and in a key file that is the key.
+  const parsed = ((): unknown => { try { return JSON.parse(text); } catch { return null; } })();
+  const k = (parsed && typeof parsed === "object" ? parsed : {}) as { address?: unknown; privateKey?: unknown };
+  if (typeof k.address !== "string" || !k.address || typeof k.privateKey !== "string" || !k.privateKey) throw new Error(`not a metal-agent key file: ${path}`);
+  return k as { address: Address; privateKey: Hex };
 }
 
 /** Plain *USDZ transfer from a key file, waited to a successful receipt. */
