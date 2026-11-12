@@ -1,0 +1,12 @@
+{
+  // SPIKE, variant: as wrangler.jsonc but with the real node:crypto (no counted randomness): the chain as a deployed
+  // worker would run it, driven by live.ts with the real clock and a passkey that signs what this run produced.
+  "name": "purser-do-spike-live",
+  "main": "./engineWorker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": { "bindings": [{ "name": "COMPANY", "class_name": "CompanyEngine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
+  "define": { "import.meta.dirname": "\"/bundle\"", "import.meta.url": "\"file:///bundle/engineWorker.js\"" },
+  "alias": { "./pdfText.js": "./pdfTextStub.ts", "playwright": "./stubPlaywright.ts" }
+}
