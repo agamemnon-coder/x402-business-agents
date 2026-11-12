@@ -520,9 +520,14 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await screenChecks(page, `${tag} screen 3 (approve)`, width, 1, false);
   await shot2("3-approve");
   // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
-  stand.approveDelay = 800;
+  // 12 Nov (one tap): the held approval's answer is drawn, and the pay call starts by itself with the terms as signed and
+  // the kept signature ("Paying…" with the ring, the rail on Pay); its answer held 800 ms, nothing of the outcome before it.
+  stand.approveDelay = 800; stand.payDelay = 800;
+  const answered = stand.payAnswers;
   const approveReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/approve`));
   const approveRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/approve`));
+  const paidReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const paidRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
   await page.click(`.btn.primary:has-text("Approve EUR 1,850.00")`);
   const ab = JSON.parse((await approveReq).postData() ?? "{}") as { terms_sha256?: string; credential?: { response?: { signature?: string } } };
   ok(ab.terms_sha256 === L0.terms_sha256 && typeof ab.credential?.response?.signature === "string" && Object.keys(ab).sort().join() === "credential,terms_sha256", `${tag}: approve carries the terms' hash and the passkey's signature, nothing else`);
@@ -531,95 +536,27 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await approveRes;
   const tAp = Date.now();
   await page.waitForSelector(`text=${APPROVE.approved}`);
-  ok(Date.now() - tAp < 500 && await page.locator(".tick svg").count() === 1 && await page.locator(".btn.asking").count() === 0, `${tag}: the approval's tick as soon as its answer is back (${Date.now() - tAp} ms), the ring gone`);
+  ok(Date.now() - tAp < 500 && await page.locator(".tick svg").count() === 1, `${tag}: the approval's tick as soon as its answer is back (${Date.now() - tAp} ms)`);
   stand.approveDelay = 0;
-  const signedLabels = await labels();
-  ok(inOrder(signedLabels, [`${APPROVE.waiting} [ring]`, `${APPROVE.approving} [ring]`, APPROVE.next]), `${tag}: the labels per step: the prompt, approving, then next (${signedLabels.join(" > ")})`);
-  await design("3-approve", { full: true });
-  ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: approved and held: no transfer`);
-  const cred1 = (await keptState(page)).cred as { response: { signature: string } } | null;
-  ok(cred1?.response.signature === ab.credential?.response?.signature, `${tag}: the approval's signature is kept in this tab for screen 4`);
-  await screenChecks(page, `${tag} screen 3 (approved)`, width);
-
-  // Screen 4: the signed terms in three fields; one cent more is refused, with nothing drawn before the answer.
-  await page.click(`.btn.primary:has-text("${APPROVE.next}")`);
-  await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
-  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
-  await screenChecks(page, `${tag} screen 4`, width);
-  ok(await page.inputValue("#p-payee") === L0.terms.beneficiary_name && await page.inputValue("#p-acct") === L0.terms.iban_last4, `${tag}: the fields hold the signed payee and account ending`);
-  ok(await page.getAttribute("#p-amt", "inputmode") === "decimal", `${tag}: the amount field asks for a decimal keyboard`);
-  await page.fill("#p-amt", "1850,01");
-  stand.payDelay = 800;
-  const answered = stand.payAnswers;
-  const payReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
-  const payRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
-  const t0 = Date.now();
-  await page.click(`.btn.primary:has-text("${PAY.button}")`);
-  const pb = JSON.parse((await payReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } };
-  ok(Object.keys(pb).join() === "terms,credential" && JSON.stringify(pb.terms) === JSON.stringify({ ...L0.terms, amount: "1850.01" }) && pb.credential.response.signature === cred1?.response.signature,
-    `${tag}: pay carries exactly the stored terms with the amount written in (1850.01) and the kept signature`);
-  const outcomeShown = () => page.evaluate(() => document.querySelectorAll(".stamp, .layer, .hash, .verdict, .proof, .outcome .card").length);
-  await page.waitForTimeout(150);
-  const early = await outcomeShown();
-  await page.waitForTimeout(450);
-  ok(early === 0 && await outcomeShown() === 0 && stand.payAnswers === answered, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held`);
-  const res = await payRes;
-  const rawText = await res.text();
-  await page.waitForSelector(".stamp");
-  stand.payDelay = 0;
-  ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
-  ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
-  const layers = await page.locator(".layer").allTextContents();
-  ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
-  const hashes = await page.locator(".hash").allTextContents();
-  const raw = JSON.parse(rawText) as { signed_sha256: string; sent_sha256: string };
-  ok(hashes.length === 2 && hashes[0] === `${PAY.signed}${raw.signed_sha256}` && hashes[1] === `${PAY.sent}${raw.sent_sha256}` && raw.signed_sha256 === L0.terms_sha256 && raw.sent_sha256 !== raw.signed_sha256, `${tag}: refused: the signed and the sent hash`);
-  const marks = await page.locator(".hash").nth(1).locator("mark").allTextContents();
-  const diffs = [...raw.sent_sha256].filter((c, i) => c !== raw.signed_sha256[i]).length;
-  ok(marks.join("").length === diffs && diffs > 0, `${tag}: refused: every differing character marked (${diffs})`);
-  ok((await page.textContent(".verdict")) === `${PAY.vAmountCent} ${PAY.vCover}`, `${tag}: refused: the verdict, from the two values`);
-  const proofs = await page.locator(".proof").allTextContents();
-  const ms = Number(/^Round trip (\d+) ms, measured in your browser$/.exec(proofs[0] ?? "")?.[1]);
-  ok(ms >= 800 && proofs[1] === PAY.transfers.replace("{n}", "0") && proofs.length === 2, `${tag}: refused: the round trip measured in the browser (${proofs[0]}), Transfers made: 0, no sandbox line with the rail off`);
-  ok((await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: refused: the stand-in bank made no transfer`);
-  ok(await page.locator("pre.raw").evaluate((e) => e.textContent) === rawText, `${tag}: refused: the raw answer exactly as received`);
-  ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
-  await screenChecks(page, `${tag} screen 4 (refused)`, width, 1, false);
-  await shot2("4-refused");
-  ok(await page.locator(".refusal.shake").count() === 1 && await page.locator(".proof.xfer").count() === 1, `${tag}: refused: the card shakes once and says the transfers in big type`);
-  ok(await page.locator(".f.changed #p-amt").count() === 1 && await page.locator(".f.changed").count() === 1, `${tag}: the edited field, and only it, glows while it differs from the signed value`);
-  await design("4-refused", { full: true });
-  if (shots && width === 390) { await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(400); await page.screenshot({ path: join(shots, "try-4-refused-390-dark.png") }); await page.emulateMedia({ colorScheme: "light" }); }
-  await page.click(`button.link:has-text("${PAY.putBack}")`);
-  ok(await page.inputValue("#p-amt") === "1850.00", `${tag}: put back what you signed`);
-
-  if (width === 390) {
-    // A reload that lost the kept signature: the passkey is asked again for the same terms before anything is sent.
-    await page.evaluate(() => { const o = JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>; o.cred = null; sessionStorage.setItem("purser.try", JSON.stringify(o)); });
-    await page.reload();
-    await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
-    await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
-    ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
-  }
-  // Pay as signed, the answer held 800 ms: "Paying…" with the ring, then screen 5's stamp the moment it is in.
-  stand.payDelay = 800;
-  const paidReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
-  const paidRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
-  await page.click(`.btn.primary:has-text("${PAY.button}")`);
-  const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string; clientDataJSON: string } } | null };
+  const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } | null };
+  const outcomeShown = () => page.evaluate(() => document.querySelectorAll(".stamp, .layer, .hash, .verdict, .proof, .outcome .card, .paidstamp").length);
   await page.waitForTimeout(300);
-  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1, `${tag}: pay as signed: "${PAY.paying}" with the ring while the answer is held`);
+  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1 && (await page.textContent(".stepname")) === STEPS.names.pay && await page.locator(`text=${APPROVE.approved}`).count() === 1,
+    `${tag}: one tap: "${PAY.paying}" with the ring, the rail on Pay, the approval's "${APPROVE.approved}" still shown`);
+  ok(await outcomeShown() === 0 && stand.payAnswers === answered && (await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held, no transfer`);
+  ok(Object.keys(pp).join() === "terms,credential" && JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && pp.credential?.response.signature === ab.credential?.response?.signature, `${tag}: pay as signed: the signed terms unchanged and the approval's own signature`);
+  await screenChecks(page, `${tag} screen 3 (paying)`, width, 1, false);
   await paidRes;
   const tPaid = Date.now();
   await page.waitForSelector(".paidstamp .ring");
   const stamp = await page.evaluate(() => [getComputedStyle(document.querySelector(".paidstamp .ring")!).animationName, getComputedStyle(document.querySelector(".screen")!).animationName]);
   ok(Date.now() - tPaid < 500 && stamp[0] === "stampin" && stamp[1] === "none", `${tag}: paid: the stamp lands as soon as the answer is in (${Date.now() - tPaid} ms; ${stamp.join(", ")})`);
   stand.payDelay = 0;
-  ok(JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && !!pp.credential, `${tag}: pay as signed: the signed terms and a signature`);
-  if (width === 390) {
-    const cd = JSON.parse(Buffer.from(pp.credential!.response.clientDataJSON, "base64url").toString()) as { challenge: string };
-    ok(pp.credential!.response.signature !== cred1?.response.signature && cd.challenge === (st.proposal as { challenge: string }).challenge, `${tag}: after the reload the passkey signed again, over the same challenge`);
-  }
+  const signedLabels = await labels();
+  ok(inOrder(signedLabels, [`${APPROVE.waiting} [ring]`, `${APPROVE.approving} [ring]`, `${PAY.paying} [ring]`]), `${tag}: the labels per step: the prompt, approving, then paying (${signedLabels.join(" > ")})`);
+  await design("3-approve", { full: true });
+  const cred1 = (await keptState(page)).cred as { response: { signature: string } } | null;
+  ok(cred1?.response.signature === ab.credential?.response?.signature, `${tag}: the approval's signature is kept in this tab for screen 4`);
   await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`, { timeout: 20_000 });
   const L1 = (await ledgerOf(visitor.session, pid))!;
   ok(L1.transfers() === transfers0 + 1 && L1.status === "EXECUTED", `${tag}: paid: one transfer on the stand-in bank, by the engine's own approve (${L1.status})`);
@@ -662,6 +599,80 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await pop.close();
   if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `b3-5-books-${width}-${scheme}.png`), fullPage: true }); }
   await design("5-paid", { full: true, wide: true });
+
+  // Screen 4, after paid (12 Nov, one tap): screen 5's quiet link opens the signed terms in three fields; one cent more is
+  // refused with both layers, nothing drawn before the answer, and no transfer.
+  ok(await page.locator(`button.link.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: the quiet link "${BOOKS.cheat}", not a main button`);
+  await page.click(`button.link:has-text("${BOOKS.cheat}")`);
+  await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
+  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+  await screenChecks(page, `${tag} screen 4`, width);
+  ok(await page.inputValue("#p-payee") === L0.terms.beneficiary_name && await page.inputValue("#p-acct") === L0.terms.iban_last4, `${tag}: the fields hold the signed payee and account ending`);
+  ok(await page.getAttribute("#p-amt", "inputmode") === "decimal", `${tag}: the amount field asks for a decimal keyboard`);
+  const transfersPaid = (await ledgerOf(visitor.session, pid))!.transfers();
+  await page.fill("#p-amt", "1850,01");
+  stand.payDelay = 800;
+  const answered4 = stand.payAnswers;
+  const payReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const payRes = page.waitForResponse((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  const t0 = Date.now();
+  await page.click(`.btn.primary:has-text("${PAY.button}")`);
+  const pb = JSON.parse((await payReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } };
+  ok(Object.keys(pb).join() === "terms,credential" && JSON.stringify(pb.terms) === JSON.stringify({ ...L0.terms, amount: "1850.01" }) && pb.credential.response.signature === cred1?.response.signature,
+    `${tag}: pay carries exactly the stored terms with the amount written in (1850.01) and the kept signature`);
+  await page.waitForTimeout(150);
+  const early = await outcomeShown();
+  await page.waitForTimeout(450);
+  ok(early === 0 && await outcomeShown() === 0 && stand.payAnswers === answered4, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held`);
+  const res = await payRes;
+  const rawText = await res.text();
+  await page.waitForSelector(".stamp");
+  stand.payDelay = 0;
+  ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
+  ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
+  const layers = await page.locator(".layer").allTextContents();
+  ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
+  const hashes = await page.locator(".hash").allTextContents();
+  const raw = JSON.parse(rawText) as { signed_sha256: string; sent_sha256: string };
+  ok(hashes.length === 2 && hashes[0] === `${PAY.signed}${raw.signed_sha256}` && hashes[1] === `${PAY.sent}${raw.sent_sha256}` && raw.signed_sha256 === L0.terms_sha256 && raw.sent_sha256 !== raw.signed_sha256, `${tag}: refused: the signed and the sent hash`);
+  const marks = await page.locator(".hash").nth(1).locator("mark").allTextContents();
+  const diffs = [...raw.sent_sha256].filter((c, i) => c !== raw.signed_sha256[i]).length;
+  ok(marks.join("").length === diffs && diffs > 0, `${tag}: refused: every differing character marked (${diffs})`);
+  ok((await page.textContent(".verdict")) === `${PAY.vAmountCent} ${PAY.vCover}`, `${tag}: refused: the verdict, from the two values`);
+  const proofs = await page.locator(".proof").allTextContents();
+  const ms = Number(/^Round trip (\d+) ms, measured in your browser$/.exec(proofs[0] ?? "")?.[1]);
+  ok(ms >= 800 && proofs[1] === PAY.transfers.replace("{n}", "0") && proofs.length === 2, `${tag}: refused: the round trip measured in the browser (${proofs[0]}), Transfers made: 0, no sandbox line with the rail off`);
+  ok((await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid, `${tag}: refused: the stand-in bank made no transfer`);
+  ok(await page.locator("pre.raw").evaluate((e) => e.textContent) === rawText, `${tag}: refused: the raw answer exactly as received`);
+  ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
+  await screenChecks(page, `${tag} screen 4 (refused)`, width, 1, false);
+  await shot2("4-refused");
+  ok(await page.locator(".refusal.shake").count() === 1 && await page.locator(".proof.xfer").count() === 1, `${tag}: refused: the card shakes once and says the transfers in big type`);
+  ok(await page.locator(".f.changed #p-amt").count() === 1 && await page.locator(".f.changed").count() === 1, `${tag}: the edited field, and only it, glows while it differs from the signed value`);
+  await design("4-refused", { full: true });
+  if (shots && width === 390) { await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(400); await page.screenshot({ path: join(shots, "try-4-refused-390-dark.png") }); await page.emulateMedia({ colorScheme: "light" }); }
+  await page.click(`button.link:has-text("${PAY.putBack}")`);
+  ok(await page.inputValue("#p-amt") === "1850.00", `${tag}: put back what you signed`);
+  if (width === 390) {
+    // A reload that lost the kept signature: the passkey is asked again for the same terms before anything is sent.
+    await page.evaluate(() => { const o = JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>; o.cred = null; sessionStorage.setItem("purser.try", JSON.stringify(o)); });
+    await page.reload();
+    await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
+    await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+    ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
+  }
+  // The signed terms sent again: paid once, in the route's words; no second transfer.
+  const againReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  await page.click(`.btn.primary:has-text("${PAY.button}")`);
+  const pa = JSON.parse((await againReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string; clientDataJSON: string } } | null };
+  await page.waitForSelector(`text=${PAY.paidOnce}`);
+  ok(JSON.stringify(pa.terms) === JSON.stringify(L0.terms) && (await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid, `${tag}: the signed terms again: "${PAY.paidOnce}", no second transfer`);
+  if (width === 390) {
+    const cd = JSON.parse(Buffer.from(pa.credential!.response.clientDataJSON, "base64url").toString()) as { challenge: string };
+    ok(pa.credential!.response.signature !== cred1?.response.signature && cd.challenge === (st.proposal as { challenge: string }).challenge, `${tag}: after the reload the passkey signed again, over the same challenge`);
+  }
+  await page.click(`button.link:has-text("${PAY.back}")`);
+  await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`);
 
   // 5b What Purser did with it: filed, booked, matched, from this company's own answers; then the three links.
   await page.click(`.btn.primary:has-text("${BOOKS.next}")`);

@@ -244,7 +244,6 @@ describe("the copy", () => {
     expect(COPY.APPROVE.create).toBe("Create your approval passkey");
     expect(COPY.APPROVE.approve).toBe("Approve {amount} with {method}");
     expect(COPY.APPROVE.approved).toBe("Approved. Nothing is paid yet.");
-    expect(COPY.APPROVE.next).toBe("Pay it with your signature");
     expect(COPY.APPROVE.cancelled).toBe("Nothing was signed. Try again when you are ready.");
     expect(COPY.APPROVE.noPasskey).toBe("This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.");
     expect(COPY.APPROVE.fileAgain).toBe("File it again");

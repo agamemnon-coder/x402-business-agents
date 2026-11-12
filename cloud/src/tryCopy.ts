@@ -123,8 +123,8 @@ export const APPROVE = {
   approving: "Approving…",
   /** Under the button when a request is still out after 30 s (screens 3 and 4). */
   slow: "This is taking longer than usual.",
+  /** The approval's held answer: shown as it comes back, while the pay call (in the same tap) runs. */
   approved: "Approved. Nothing is paid yet.",
-  next: "Pay it with your signature",
   cancelled: "Nothing was signed. Try again when you are ready.",
   noPasskey: "This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.",
   fileAgain: "File it again",
@@ -141,15 +141,19 @@ export const PROPOSAL_FIELDS = { account: "Account ending", due: "Due", amount: 
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
 
 /**
- * Screen 4. The fields hold the terms the passkey signed; the visitor may change one and try to pay with the same
- * signature. Everything of the outcome is drawn from the pay route's answer, after it returned.
+ * The pay call. Screen 3 sends it in the approval's tap with the terms as signed ("Paying…" on its button; its other
+ * outcomes in these words). Screen 4, reached after paid from screen 5's link, holds the terms the passkey signed in
+ * fields; the visitor may change one and try to pay with the same signature. Everything of the outcome is drawn from
+ * the pay route's answer, after it returned.
  */
 export const PAY = {
   heading: "Pay it with your signature.",
   loading: "Loading the terms you signed…",
   line: "Your signature covers exactly these terms. Change one and try to pay, or pay them as signed.",
-  /** The deadline, from the terms' expires_at ({time}: the browser's local time). */
-  until: "Pay before {time}.",
+  /** Screen 4 comes after paid. */
+  already: "Already paid.",
+  /** Screen 4's quiet link back to screen 5. */
+  back: "Back to the payment",
   button: "Pay with my signature",
   /** On the button while the pay request runs (with the ring). */
   paying: "Paying…",
@@ -216,6 +220,8 @@ export const BOOKS = {
   failed: "Purser could not read this.",
   retry: "Try the payment again",
   next: "See your company",
+  /** A quiet link under the main button, to screen 4's fields. */
+  cheat: "Try changing what you signed",
 };
 
 /**
@@ -306,29 +312,33 @@ export const VISIBLE = {
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
-    [APPROVE.heading, APPROVE.terms, APPROVE.approved, APPROVE.next],
+    // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
   ],
   pay: [
     [PAY.heading, PAY.loading],
-    [PAY.heading, PAY.line, PAY.until, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.amountBad, PAY.button],
-    [PAY.heading, PAY.line, PAY.until, PAY.paying, APPROVE.slow],
-    [PAY.heading, PAY.paidOnce, PAY.button],
-    [PAY.heading, PAY.fileAgain],
-    [PAY.heading, PAY.failed, PAY.retry],
+    [PAY.heading, PAY.line, PAY.already, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.amountBad, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.paying, APPROVE.slow, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.paidOnce, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.fileAgain, PAY.back],
+    [PAY.heading, PAY.line, PAY.already, PAY.failed, PAY.retry, PAY.back],
     // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
     [PAY.heading, PAY.button, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
-      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack],
+      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack, PAY.back],
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
-    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next, BOOKS.cheat],
     // A block whose part is not there yet says so in one sentence, without its heading (it claims nothing).
-    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next],
-    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next],
+    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next, BOOKS.cheat],
     // The read model was not fed: one sentence for the books, the archive as the engine has it.
-    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next],
+    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
     // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
     // until a payment that went through is drawn again from the retry's answer.
     [BOOKS.headingError, BOOKS.retry, BOOKS.next],
