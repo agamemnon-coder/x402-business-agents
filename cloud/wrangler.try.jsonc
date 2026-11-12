@@ -43,15 +43,15 @@
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
   // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows; then the
   // nightly autopilot (cloud/src/edge/autopilot.ts: each company's engine synced, its digest written; never a payment).
-  "triggers": { "crons": ["17 3 * * *"] },
-  // Cloudflare's Rate Limiting bindings (cloud/src/edge/limits.ts): approximate, per Cloudflare location, counted at the
-  // edge without a database write. Nothing to create: a namespace_id is a number chosen here, unique in the account.
-  // Keys carry the deployment's RP_ID, so two deployments never share counts. Remove a binding to switch it off.
-  "ratelimits": [
-    // Per company: its writes to /v1/engine (upload, pay, approve, retry, sync, passkey), 20 a minute.
-    { "name": "ENGINE_LIMITER", "namespace_id": "41101", "simple": { "limit": 20, "period": 60 } },
-    // Per address: the routes anyone may call (health, stats, sign-in, OpenAPI, webhooks), 120 a minute.
-    { "name": "PUBLIC_LIMITER", "namespace_id": "41102", "simple": { "limit": 120, "period": 60 } }
-  ]
+  "triggers": { "crons": ["17 3 * * *"] }
   // AUTOPILOT=off or STATS=off (a var) switches the nightly autopilot or the daily counters off; both are on unset.
+  //
+  // Inbound e-mail filed into the company's engine through a Cloudflare Queue (cloud/src/edge/inbox.ts). Off until a
+  // mail domain routes here (MAIL_DOMAIN) and the queues exist: a deploy that binds a queue that was not created fails.
+  // To switch it on: npx wrangler queues create purser-try-inbox && npx wrangler queues create purser-try-inbox-dlq, then
+  // put this block in the configuration (as a key of the object above):
+  //   "queues": {
+  //     "producers": [{ "queue": "purser-try-inbox", "binding": "INBOX_QUEUE" }],
+  //     "consumers": [{ "queue": "purser-try-inbox", "max_batch_size": 5, "max_batch_timeout": 5, "max_retries": 8, "dead_letter_queue": "purser-try-inbox-dlq" }]
+  //   }
 }

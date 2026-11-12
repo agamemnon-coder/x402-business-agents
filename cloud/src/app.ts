@@ -23,8 +23,7 @@ import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, rec
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
-import { edgeRefusal, isEngineWrite, type EdgeLimits } from "./edge/limits.js";
-import { noteEngineCompany } from "./edge/autopilot.js";
+import { isEngineWrite, noteEngineCompany } from "./edge/autopilot.js";
 import { edgeRoutes } from "./edge/routes.js";
 
 export interface CloudEnv {
@@ -66,11 +65,8 @@ export interface CloudEnv {
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
   engine?: (tenantId: string) => EngineApi;
-  /**
-   * Cloudflare's platform beyond D1 (cloud/src/edge/): the Rate Limiting bindings in front of what costs, and whether
-   * the daily counters behind GET /v1/stats are on. Absent (the default): no edge limit, and /v1/stats answers 404.
-   */
-  edge?: { limits?: EdgeLimits; stats?: boolean };
+  /** Whether the daily counters behind GET /v1/stats are on (cloud/src/edge/stats.ts). Absent: /v1/stats answers 404. */
+  edge?: { stats?: boolean };
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -549,10 +545,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }
-    // Cloudflare's Rate Limiting bindings in front of what costs (cloud/src/edge/limits.ts); off unless bound. A company
-    // that writes to its engine is in tonight's autopilot (cloud/src/edge/autopilot.ts).
-    const over = await edgeRefusal(env.edge?.limits, { method: req.method, route: hit.r.path, need: hit.r.need, tenantId: ctx.caller?.tenantId ?? null, ip });
-    if (over) return err(429, over);
+    // A company that writes to its engine is in tonight's autopilot (cloud/src/edge/autopilot.ts).
     if (env.engine && ctx.caller && isEngineWrite(req.method, hit.r.path)) await noteEngineCompany(env.sql, ctx.caller.tenantId, now);
     return await hit.r.run(ctx);
   } catch (e) {

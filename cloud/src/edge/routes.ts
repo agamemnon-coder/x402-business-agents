@@ -32,7 +32,7 @@ export function edgeRoutes<C extends EdgeCtx>(kit: { json(status: number, body: 
       if (!c.env.engine) return err(404, "the engine is not switched on for this cloud");
       return json(200, { items: await autopilotRuns(c.env.sql, c.caller!.tenantId, whole(c, "limit", 1, 90, 14)) });
     } },
-    { method: "GET", path: "/v1/stats", summary: "The cloud's own counters per day (UTC), across every company and about none of them: requests, refused (401, 403), rate_limited (429), errors (5xx), uploads, payments_filed, approvals, engine_refusals. ?days=<1 to 90> (default 14); { metrics, days }, newest first. 404 when the counters are off.", need: "public", run: async (c) => {
+    { method: "GET", path: "/v1/stats", summary: "The cloud's own counters per day (UTC), across every company, with no company's id or amount: requests, refused (401, 403), rate_limited (429), errors (5xx), uploads, payments_filed, approvals, engine_refusals. ?days=<1 to 90> (default 14); { metrics, days }, newest first. 404 when the counters are off.", need: "public", run: async (c) => {
       if (!c.env.edge?.stats) return err(404, "the counters are not switched on for this cloud");
       const days = await dailyCounts(c.env.sql, c.now, whole(c, "days", 1, 90, 14));
       return new Response(JSON.stringify({ metrics: METRICS, days }), { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60", "x-content-type-options": "nosniff" } });

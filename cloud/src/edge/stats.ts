@@ -5,12 +5,14 @@
 // No database write per request: an isolate adds its counts up in memory and writes them in one batch at most every
 // ten seconds, or at once when an upload, a payment, an approval or an engine refusal is among them (rare, and the
 // numbers a person looks for). A page polling the engine's events every second costs no write of its own. What an
-// isolate counted in its last ten seconds before Cloudflare ends it is lost: the counts can be a little low, never high.
+// isolate counted in its last ten seconds before Cloudflare ends it is lost, and a write that D1 kept but answered with
+// an error is written again: the counts are close, not exact.
 //
 // What is counted is what the cloud itself answered: requests; refused (401, 403: no key, a wrong key, not allowed);
-// rate_limited (429); errors (5xx); uploads (an invoice the engine took); payments_filed (a payment filed for
-// approval); approvals (a passkey approval the engine accepted, which pays on the stand-in bank, test money); and
-// engine_refusals (the engine would not file a payment, 409, or did not accept an approval).
+// rate_limited (429); errors (5xx); uploads (a document the engine took; the same file again, answered
+// duplicate_document, is not one); payments_filed (a payment filed for approval); approvals (a passkey approval the
+// engine accepted, which pays on the stand-in bank, test money); and engine_refusals (the engine would not file a
+// payment, 409, or did not accept an approval).
 import type { Sql } from "../store.js";
 import { edgeSql } from "./schema.js";
 
@@ -33,13 +35,15 @@ export function countsOf(req: Request, res: Response): Promise<Metric[]> {
   else if (s === 429) out.push("rate_limited");
   else if (s >= 500) out.push("errors");
   if (req.method !== "POST") return Promise.resolve(out);
-  if (path === "/v1/engine/documents" && s === 200) out.push("uploads");
   if (PAY.test(path) && s === 200) out.push("payments_filed");
   if (PAY.test(path) && s === 409) out.push("engine_refusals");
-  if (!(APPROVE.test(path) && s === 200)) return Promise.resolve(out);
-  const copy = res.clone();
-  return copy.json().then((b: unknown) => {
-    out.push((b as { status?: unknown } | null)?.status === "approved" ? "approvals" : "engine_refusals");
+  const upload = path === "/v1/engine/documents" && s === 200, approve = APPROVE.test(path) && s === 200;
+  if (!upload && !approve) return Promise.resolve(out);
+  // The answer's body says what happened: a copy is read, so the caller's stays whole.
+  return res.clone().json().then((b: unknown) => {
+    const body = (b ?? {}) as { kind?: unknown; status?: unknown };
+    if (upload && body.kind !== "duplicate_document") out.push("uploads");
+    if (approve) out.push(body.status === "approved" ? "approvals" : "engine_refusals");
     return out;
   }, () => out);
 }

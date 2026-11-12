@@ -1,38 +1,22 @@
-// Purser Cloud on Cloudflare's own platform (cloud/src/edge/): the Rate Limiting bindings in front of what costs, the
-// nightly autopilot on the Cron Trigger, and the daily counters behind GET /v1/stats. Here the bindings are fakes with
-// the binding's one method and the engine is the Node one (cloud/src/engine/node.ts, test money on the stand-in bank);
-// test/cloud-edge-workerd.test.ts runs the same in local workerd with the bindings of cloud/wrangler.jsonc. No network.
+// Purser Cloud on Cloudflare's own platform (cloud/src/edge/): the nightly autopilot on the Cron Trigger and the daily
+// counters behind GET /v1/stats. Here the engine is the Node one (cloud/src/engine/node.ts, test money on the stand-in
+// bank); test/cloud-edge-workerd.test.ts runs the same in local workerd with cloud/wrangler.jsonc. No network.
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
-import { digestOf, noteEngineCompany, runAutopilot, type AutopilotRun } from "../cloud/src/edge/autopilot.js";
-import { addressOf, edgeRefusal, type RateLimiter } from "../cloud/src/edge/limits.js";
+import { digestOf, noteEngineCompany, pruneAutopilot, runAutopilot, type AutopilotRun } from "../cloud/src/edge/autopilot.js";
 import { EDGE_SCHEMA, edgeSql } from "../cloud/src/edge/schema.js";
+import { consumeMail, enqueueMail, fileMail, MAIL_ATTEMPTS, requeueWaitingMail, type MailJob } from "../cloud/src/edge/inbox.js";
+import { receiveEmail } from "../cloud/src/mail.js";
 import { countsOf, countUp, dailyCounts, pruneCounts, writeCounts } from "../cloud/src/edge/stats.js";
 import { sqliteSql } from "../cloud/src/node.js";
 import type { Sql } from "../cloud/src/store.js";
 import type { EngineApi, EngineStatus, InvoiceView, Settled } from "../cloud/src/engine/api.js";
 import { EN } from "./fakes/apInvoices.js";
-import { pdfOf } from "./fakes/pdf.js";
+import { emlWith, pdfOf } from "./fakes/pdf.js";
 import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
-import { cloudWranglerConfig } from "./support/wranglerConfig.js";
 
 const b64 = (b: Uint8Array) => Buffer.from(b).toString("base64");
-
-/** The Rate Limiting binding's one method, exact: `max` calls per key, then refused (the real one is approximate). */
-function fakeLimiter(max: number): RateLimiter & { keys: string[] } {
-  const n = new Map<string, number>();
-  const keys: string[] = [];
-  return {
-    keys,
-    limit: ({ key }) => {
-      keys.push(key);
-      const seen = (n.get(key) ?? 0) + 1;
-      n.set(key, seen);
-      return Promise.resolve({ success: seen <= max });
-    },
-  };
-}
 
 describe("the edge's tables", () => {
   it("are made on demand where the migration did not run, and an error that is not theirs is left alone", async () => {
@@ -52,86 +36,6 @@ describe("the edge's tables", () => {
   it("are in the route table as two routes, after the engine's, each with what it needs", () => {
     const edge = ROUTES.filter((r) => r.path === "/v1/autopilot" || r.path === "/v1/stats");
     expect(edge.map((r) => `${r.method} ${r.path} ${r.need}`)).toEqual(["GET /v1/autopilot read", "GET /v1/stats public"]);
-  });
-});
-
-describe("the Rate Limiting bindings in front of what costs", () => {
-  it("counts a company's writes to its engine per company, and anyone's public calls per address; nothing else", async () => {
-    const engineWrites = fakeLimiter(2), publicCalls = fakeLimiter(1);
-    const limits = { engineWrites, publicCalls, prefix: "cloud.test" };
-    const write = (tenantId: string) => edgeRefusal(limits, { method: "POST", route: "/v1/engine/documents", need: "admin", tenantId, ip: "198.51.100.1" });
-    expect(await write("t_a")).toBeNull();
-    expect(await write("t_a")).toBeNull();
-    expect(await write("t_a")).toMatch(/too many uploads, payments or approvals for this company/);
-    expect(await write("t_b")).toBeNull();
-    // A read of the engine, or a write elsewhere, is not counted.
-    expect(await edgeRefusal(limits, { method: "GET", route: "/v1/engine/invoices", need: "read", tenantId: "t_a", ip: "x" })).toBeNull();
-    expect(await edgeRefusal(limits, { method: "POST", route: "/v1/keys", need: "admin", tenantId: "t_a", ip: "x" })).toBeNull();
-    const pub = (ip: string) => edgeRefusal(limits, { method: "GET", route: "/v1/health", need: "public", tenantId: null, ip });
-    expect(await pub("198.51.100.7")).toBeNull();
-    expect(await pub("198.51.100.7")).toMatch(/too many requests from this address/);
-    expect(await pub("198.51.100.8")).toBeNull();
-    expect(engineWrites.keys).toEqual(["cloud.test|engine:t_a", "cloud.test|engine:t_a", "cloud.test|engine:t_a", "cloud.test|engine:t_b"]);
-    // An address is never handed over as it is: a SHA-256 of it with the deployment's prefix.
-    expect(publicCalls.keys).toHaveLength(3);
-    for (const k of publicCalls.keys) expect(k).toMatch(/^cloud\.test\|public:[0-9a-f]{64}$/);
-    expect(publicCalls.keys[0]).toBe(publicCalls.keys[1]);
-    expect(publicCalls.keys[0]).not.toBe(publicCalls.keys[2]);
-  });
-
-  it("takes an IPv6 address by its /64 (one host may change its last 64 bits), an IPv4 address whole", async () => {
-    expect(addressOf("198.51.100.7")).toBe("198.51.100.7");
-    expect(addressOf("2001:db8:aa:bb:1:2:3:4")).toBe("2001:db8:aa:bb::/64");
-    expect(addressOf("2001:0DB8:00aa:00bb::9")).toBe("2001:db8:aa:bb::/64");
-    expect(addressOf("2001:db8::1")).toBe("2001:db8:0:0::/64");
-    expect(addressOf("::1")).toBe("0:0:0:0::/64");
-    expect(addressOf("::ffff:192.0.2.1")).toBe("192.0.2.1");
-    const publicCalls = fakeLimiter(1);
-    const pub = (ip: string) => edgeRefusal({ publicCalls }, { method: "GET", route: "/v1/stats", need: "public", tenantId: null, ip });
-    expect(await pub("2001:db8:aa:bb::1")).toBeNull();
-    expect(await pub("2001:db8:aa:bb:ffff:ffff:ffff:ffff")).toMatch(/too many requests from this address/);
-    expect(await pub("2001:db8:aa:bc::1")).toBeNull();
-  });
-
-  it("refuses nothing when unbound, and lets a request through when the binding itself fails", async () => {
-    expect(await edgeRefusal(undefined, { method: "POST", route: "/v1/engine/sync", need: "admin", tenantId: "t_a", ip: "x" })).toBeNull();
-    const broken: RateLimiter = { limit: () => Promise.reject(new Error("binding away")) };
-    expect(await edgeRefusal({ engineWrites: broken, publicCalls: broken }, { method: "POST", route: "/v1/engine/sync", need: "admin", tenantId: "t_a", ip: "x" })).toBeNull();
-  });
-
-  describe("behind the cloud's own gates", () => {
-    let c: TestCloud;
-    let A: TestTenant;
-    let B: TestTenant;
-    beforeAll(async () => {
-      c = testCloud({ engine: true });
-      A = await c.tenant("northwind");
-      B = await c.tenant("bravo");
-      c.env.edge = { limits: { engineWrites: fakeLimiter(2), publicCalls: fakeLimiter(3), prefix: "cloud.test" } };
-    });
-    afterAll(() => c.close());
-
-    it("answers 429 in the cloud's one error shape past the company's limit; the other company and the reads go on", async () => {
-      expect((await c.req("POST", "/v1/engine/sync", { key: A.key })).status).toBe(200);
-      expect((await c.req("POST", "/v1/engine/sync", { key: A.key })).status).toBe(200);
-      const third = await c.req("POST", "/v1/engine/sync", { key: A.key });
-      expect(third.status).toBe(429);
-      expect(third.json).toEqual({ error: expect.stringMatching(/too many uploads, payments or approvals/), code: "rate_limited" });
-      expect((await c.req("POST", "/v1/engine/sync", { key: B.key })).status).toBe(200);
-      expect((await c.req("GET", "/v1/engine/invoices", { key: A.key })).status).toBe(200);
-    });
-
-    it("counts a write only once the caller is known: a request without a key is 401 and costs the company nothing", async () => {
-      for (let i = 0; i < 3; i++) expect((await c.req("POST", "/v1/engine/sync", { key: null })).status).toBe(401);
-      expect((await c.req("POST", "/v1/engine/sync", { key: B.key })).status).toBe(200);
-    });
-
-    it("turns the public routes away per address", async () => {
-      const at = (ip: string) => c.req("GET", "/v1/health", { headers: { "cf-connecting-ip": ip } });
-      for (let i = 0; i < 3; i++) expect((await at("203.0.113.5")).status).toBe(200);
-      expect((await at("203.0.113.5")).status).toBe(429);
-      expect((await at("203.0.113.6")).status).toBe(200);
-    });
   });
 });
 
@@ -187,7 +91,7 @@ describe("the nightly autopilot (the Cron Trigger's daily job)", () => {
 
   it("runs for a company that wrote to its engine, and writes its digest: the invoice due on the 16th is four days overdue", async () => {
     const r = await runAutopilot(c.env.sql, c.env.engine!, { now: NIGHT });
-    expect(r).toEqual({ day: "2026-11-20", done: [A.id], failed: [], skipped: 0 });
+    expect(r).toEqual({ day: "2026-11-20", done: [A.id], failed: [], skipped: 0, left: 0 });
     const [run] = await runs(A);
     expect(run).toMatchObject({ day: "2026-11-20", status: "done", error: null });
     expect(run!.digest!.invoices).toMatchObject({ total: 1, overdue_count: 1, by_status: { ready: 1 }, awaiting_approval: 0 });
@@ -197,7 +101,7 @@ describe("the nightly autopilot (the Cron Trigger's daily job)", () => {
   }, 60_000);
 
   it("runs once a day: a second firing that day finds nothing to do; the next day runs again", async () => {
-    expect(await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-20T03:18:00Z") })).toEqual({ day: "2026-11-20", done: [], failed: [], skipped: 0 });
+    expect(await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-20T03:18:00Z") })).toEqual({ day: "2026-11-20", done: [], failed: [], skipped: 0, left: 0 });
     expect((await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-21T03:17:00Z") })).done).toEqual([A.id]);
     expect((await runs(A)).map((r) => r.day)).toEqual(["2026-11-21", "2026-11-20"]);
   }, 60_000);
@@ -251,15 +155,36 @@ describe("the nightly autopilot (the Cron Trigger's daily job)", () => {
     expect((await c.req("POST", "/v1/close", { key: C.key })).status).toBe(200);
     expect((await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-25T03:17:00Z") })).done.sort()).toEqual([A.id, B.id].sort());
     await c.env.sql.run("UPDATE tenants SET name = '[purged]' WHERE id = ?", [C.id]);
+    // The daily job's clean-up runs whether the autopilot does or not.
     await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-26T03:17:00Z") });
+    expect((await c.env.sql.all("SELECT day FROM autopilot_runs WHERE tenant_id = ?", [C.id])).length).toBeGreaterThan(0);
+    await pruneAutopilot(c.env.sql, new Date("2026-11-26T03:17:00Z"));
     expect(await c.env.sql.all("SELECT day FROM autopilot_runs WHERE tenant_id = ?", [C.id])).toEqual([]);
     expect(await c.env.sql.all("SELECT tenant_id FROM engine_companies WHERE tenant_id = ?", [C.id])).toEqual([]);
   }, 60_000);
 
+  it("takes the company whose last finished run is oldest first, and starts none past the firing's budget", async () => {
+    // One company per firing: A and B ran on the 26th; A runs on the 27th, so B is first on the 28th.
+    const first = await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-27T03:17:00Z"), maxCompanies: 1 });
+    const second = await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-28T03:17:00Z"), maxCompanies: 1 });
+    expect([first.done, second.done].flat().sort()).toEqual([A.id, B.id].sort());
+    const none = await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2026-11-29T03:17:00Z"), budgetMs: 0 });
+    expect(none).toMatchObject({ done: [], failed: [], left: 2 });
+  }, 60_000);
+
+  it("never notes a hands-on visitor's company (t_try_): it lives a day and has its own sweep", async () => {
+    await noteEngineCompany(c.env.sql, "t_try_abcdefgh", NIGHT);
+    expect(await c.env.sql.all("SELECT tenant_id FROM engine_companies WHERE tenant_id LIKE 't_try_%'")).toEqual([]);
+  });
+
   it("keeps ninety days of runs", async () => {
     await runAutopilot(c.env.sql, c.env.engine!, { now: new Date("2027-02-25T03:17:00Z") });
-    // 90 days before 25 February 2027 is 27 November 2026: the run of the 26th goes, a run on the 27th would stay.
-    expect((await runs(A)).map((r) => r.day)).toEqual(["2027-02-25"]);
+    await pruneAutopilot(c.env.sql, new Date("2027-02-25T03:17:00Z"));
+    // 90 days before 25 February 2027 is 27 November 2026: the runs before it go, the ones from it on stay.
+    const days = (await runs(A)).map((r) => r.day);
+    expect(days[0]).toBe("2027-02-25");
+    expect(days.length).toBeGreaterThan(1);
+    expect(days.every((d) => d >= "2026-11-27")).toBe(true);
   }, 60_000);
 
   it("answers 404 on a cloud that runs no engine", async () => {
@@ -281,7 +206,8 @@ describe("the daily counters (GET /v1/stats)", () => {
     expect(await countsOf(new Request("https://cloud.test/v1/invoices"), answer(403))).toEqual(["requests", "refused"]);
     expect(await countsOf(post("/v1/engine/sync"), answer(429))).toEqual(["requests", "rate_limited"]);
     expect(await countsOf(new Request("https://cloud.test/v1/health"), answer(503))).toEqual(["requests", "errors"]);
-    expect(await countsOf(post("/v1/engine/documents"), answer(200))).toEqual(["requests", "uploads"]);
+    expect(await countsOf(post("/v1/engine/documents"), answer(200, { kind: "invoice" }))).toEqual(["requests", "uploads"]);
+    expect(await countsOf(post("/v1/engine/documents"), answer(200, { kind: "duplicate_document" }))).toEqual(["requests"]);
     expect(await countsOf(post("/v1/engine/documents"), answer(400))).toEqual(["requests"]);
     expect(await countsOf(post("/v1/engine/invoices/AP-0001/pay"), answer(200))).toEqual(["requests", "payments_filed"]);
     expect(await countsOf(post("/v1/engine/invoices/AP-0001/pay"), answer(409))).toEqual(["requests", "engine_refusals"]);
@@ -355,14 +281,97 @@ describe("the daily counters (GET /v1/stats)", () => {
   });
 });
 
-describe("cloud/wrangler.jsonc", () => {
-  it("binds the two rate limiters, each a namespace of its own, a whole minute, and has a Cron Trigger for the autopilot", () => {
-    const w = cloudWranglerConfig() as unknown as { ratelimits: { name: string; namespace_id: string; simple: { limit: number; period: number } }[]; triggers: { crons: string[] } };
-    expect(w.ratelimits).toEqual([
-      { name: "ENGINE_LIMITER", namespace_id: "41101", simple: { limit: 20, period: 60 } },
-      { name: "PUBLIC_LIMITER", namespace_id: "41102", simple: { limit: 120, period: 60 } },
-    ]);
-    // Daily or hourly: the autopilot runs on the first firing of each UTC day either way.
-    expect(w.triggers.crons.length).toBeGreaterThan(0);
+describe("inbound e-mail through the queue, into the company's engine (cloud/src/edge/inbox.ts)", () => {
+  const DOMAIN = "in.cloud.test";
+  let c: TestCloud;
+  let A: TestTenant;
+  const sent: MailJob[] = [];
+  const queue = { send: (b: MailJob) => { sent.push(b); return Promise.resolve(); } };
+  const message = (to: string, raw: Buffer) => ({ from: "billing@bergtex.example", to, raw: new Uint8Array(raw), rawSize: raw.length, setReject: () => undefined });
+  /** A queued message as the queue hands it over, with what the handler did to it. */
+  const delivered = (body: unknown, attempts = 1) => {
+    const m = { body, attempts, acked: false, retried: null as number | null, ack() { m.acked = true; }, retry(o?: { delaySeconds?: number }) { m.retried = o?.delaySeconds ?? 0; } };
+    return m;
+  };
+  const mailRow = async (id: string) => c.env.sql.first<{ status: string; note: string | null }>("SELECT status, note FROM inbound_mail WHERE tenant_id = ? AND id = ?", [A.id, id]);
+  let mailId: string;
+
+  beforeAll(async () => {
+    c = testCloud({ engine: true });
+    A = await c.tenant("northwind");
+    expect((await c.req("POST", "/v1/company", { key: A.session, body: { language: "en" } })).status).toBe(200);
+  }, 60_000);
+  afterAll(() => c.close());
+
+  it("puts a stored e-mail on the queue for the company it was sent to, and nothing for an unknown address", async () => {
+    const raw = emlWith(await pdfOf(EN), "bergtex-BTX-2026-21.pdf");
+    const got = await receiveEmail(c.env.sql, c.env.blobs, message(`northwind@${DOMAIN}`, raw), { domain: DOMAIN, now: c.clock.now });
+    expect(got).toMatchObject({ queued: true });
+    mailId = got.id!;
+    expect(await enqueueMail(c.env.sql, queue, { to: `northwind@${DOMAIN}`, domain: DOMAIN, mailId })).toBe(true);
+    expect(await enqueueMail(c.env.sql, queue, { to: `nobody@${DOMAIN}`, domain: DOMAIN, mailId })).toBe(false);
+    expect(sent).toEqual([{ tenant_id: A.id, mail_id: mailId }]);
   });
+
+  it("files it through the engine's inbox and marks it done; the same message again does nothing more", async () => {
+    const m = delivered(sent[0]);
+    await consumeMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, [m]);
+    expect(m.acked).toBe(true);
+    expect(await mailRow(mailId)).toEqual({ status: "done", note: "filed by the cloud's engine (email)" });
+    const invoices = (await c.req("GET", "/v1/engine/invoices", { key: A.key })).json.items as InvoiceView[];
+    expect(invoices.map((i) => `${i.id} ${i.invoice_no} ${i.status}`)).toEqual(["AP-0001 BTX-2026-21 ready"]);
+    // At-least-once delivery: the message again is acknowledged and files nothing.
+    const again = delivered(sent[0], 2);
+    expect(await fileMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, sent[0], 2)).toEqual({ outcome: "skipped", note: "already done" });
+    await consumeMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, [again]);
+    expect(again.acked).toBe(true);
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: A.key })).json.items as InvoiceView[])).toHaveLength(1);
+  }, 60_000);
+
+  it("files nothing twice when a message comes back after the engine took it but before the row was marked", async () => {
+    await c.env.sql.run("UPDATE inbound_mail SET status = 'queued', note = NULL WHERE tenant_id = ? AND id = ?", [A.id, mailId]);
+    expect(await fileMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, sent[0], 3)).toMatchObject({ outcome: "filed" });
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: A.key })).json.items as InvoiceView[])).toHaveLength(1);
+  }, 60_000);
+
+  it("retries what failed on the way, later each time, then marks it refused with the reason: the dead-letter state", async () => {
+    const raw = emlWith(await pdfOf(EN.replace(/BTX-2026-21/g, "BTX-2026-30")), "bergtex-BTX-2026-30.pdf");
+    const got = await receiveEmail(c.env.sql, c.env.blobs, message(`northwind@${DOMAIN}`, raw), { domain: DOMAIN, now: c.clock.now });
+    const job = { tenant_id: A.id, mail_id: got.id! };
+    const away = () => ({ upload: () => Promise.reject(new Error("the engine did not answer (DE89370400440532013000)")) }) as unknown as EngineApi;
+    const first = delivered(job, 1);
+    await consumeMail({ sql: c.env.sql, blobs: c.env.blobs, engine: away }, [first]);
+    expect(first).toMatchObject({ acked: false, retried: 30 });
+    const third = delivered(job, 3);
+    await consumeMail({ sql: c.env.sql, blobs: c.env.blobs, engine: away }, [third]);
+    expect(third).toMatchObject({ acked: false, retried: 90 });
+    expect((await mailRow(got.id!))!.status).toBe("queued");
+    const last = delivered(job, MAIL_ATTEMPTS);
+    await consumeMail({ sql: c.env.sql, blobs: c.env.blobs, engine: away }, [last]);
+    expect(last.acked).toBe(true);
+    const row = await mailRow(got.id!);
+    expect(row!.status).toBe("refused");
+    expect(row!.note).toMatch(/^not filed after 5 attempts: the engine did not answer/);
+    expect(row!.note).not.toMatch(/DE89370400440532013000/);
+  }, 60_000);
+
+  it("marks what the inbox refuses at once (it would refuse it again), and skips what is not its message", async () => {
+    const raw = Buffer.from("From: a@b.example\r\nTo: northwind@in.cloud.test\r\nSubject: hello\r\n\r\njust words, no invoice\r\n");
+    const got = await receiveEmail(c.env.sql, c.env.blobs, message(`northwind@${DOMAIN}`, raw), { domain: DOMAIN, now: c.clock.now });
+    const out = await fileMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, { tenant_id: A.id, mail_id: got.id! }, 1);
+    // An e-mail without a PDF is taken in by the inbox and files nothing: done, with what the inbox said.
+    expect(out.outcome).toBe("filed");
+    for (const body of [null, "x", { tenant_id: "t_x'; DROP", mail_id: "m" }, { tenant_id: A.id }, { tenant_id: "t_try_abcdefgh", mail_id: got.id }]) {
+      expect((await fileMail({ sql: c.env.sql, blobs: c.env.blobs, engine: c.env.engine! }, body, 1)).outcome).toBe("skipped");
+    }
+  }, 60_000);
+
+  it("puts e-mail still waiting an hour later on the queue again (the daily job)", async () => {
+    const raw = emlWith(await pdfOf(EN.replace(/BTX-2026-21/g, "BTX-2026-31")), "bergtex-BTX-2026-31.pdf");
+    const got = await receiveEmail(c.env.sql, c.env.blobs, message(`northwind@${DOMAIN}`, raw), { domain: DOMAIN, now: c.clock.now });
+    sent.length = 0;
+    expect(await requeueWaitingMail(c.env.sql, queue, new Date(c.clock.now.getTime() + 30 * 60_000))).toBe(0);
+    expect(await requeueWaitingMail(c.env.sql, queue, new Date(c.clock.now.getTime() + 61 * 60_000))).toBe(1);
+    expect(sent).toEqual([{ tenant_id: A.id, mail_id: got.id }]);
+  }, 60_000);
 });

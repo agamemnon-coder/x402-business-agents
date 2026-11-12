@@ -11,7 +11,11 @@
 //
 // Once per company per day: the day's row is claimed before the run (an INSERT that only a first, failed or stale
 // run can take), so a Cron Trigger that fires twice, or two isolates at once, run it once. A run that failed or
-// never finished (stale after 30 minutes) is taken again by the next firing that day.
+// never finished (stale after 30 minutes) is taken again by a later firing that day: with an hourly trigger, the next
+// hour; with a daily one, not before the next day (that day then has no digest, and its row says why).
+//
+// A firing starts no company after 10 minutes (Cloudflare stops a Cron run at 15), and takes the companies whose last
+// finished run is oldest first, so with more companies than one firing can take, none is left out for good.
 //
 // Its tables (cloud/src/edge/schema.ts) are scoped by the caller's company in every read here, as the tenant layer
 // does: the route takes the company from the caller only.
@@ -74,46 +78,62 @@ export function digestOf(day: string, invoices: InvoiceView[], settled: Settled,
   };
 }
 
-/** A company used its engine (a write to /v1/engine): the autopilot runs for it from tonight. Safe to repeat. */
+/** A write to the company's engine: every POST under /v1/engine/. */
+export const isEngineWrite = (method: string, route: string): boolean => method === "POST" && route.startsWith("/v1/engine/");
+
+/**
+ * A company used its engine (a write to /v1/engine): the autopilot runs for it from tonight. Safe to repeat. A
+ * hands-on visitor's company (t_try_) is not: it lives a day and is swept by its own job, and its sync is not allowed.
+ */
 export async function noteEngineCompany(sql: Sql, tenantId: string, now: Date): Promise<void> {
-  sql = edgeSql(sql);
-  await sql.run("INSERT OR IGNORE INTO engine_companies (tenant_id, first_at) VALUES (?, ?)", [tenantId, now.toISOString()]);
+  if (tenantId.startsWith("t_try_")) return;
+  // Never at the cost of the write it follows: a database that does not answer here is logged, and the next write notes it.
+  try {
+    await edgeSql(sql).run("INSERT OR IGNORE INTO engine_companies (tenant_id, first_at) VALUES (?, ?)", [tenantId, now.toISOString()]);
+  } catch (e) {
+    logEvent("warn", "autopilot_not_noted", { error: e instanceof Error ? e.message.slice(0, 200) : "unknown" }, now);
+  }
 }
 
 export interface AutopilotOptions {
   now: Date;
-  /** Companies per firing (default 100); the rest are first in line the next firing. */
+  /** Companies per firing (default 100); those left are first in line the next firing. */
   maxCompanies?: number;
+  /** No company is started after this long into the firing (default 10 minutes; Cloudflare stops a Cron run at 15). */
+  budgetMs?: number;
   /** One company's run is given up after this long (default 60 s) and marked failed; the next firing takes it again. */
   timeoutMs?: number;
   /** A run still marked running after this long is taken again (default 30 minutes). */
   staleAfterMs?: number;
-  /** Digests older than this many days are removed (default 90). */
-  keepDays?: number;
 }
 
-export interface AutopilotReport { day: string; done: string[]; failed: string[]; skipped: number }
+export interface AutopilotReport { day: string; done: string[]; failed: string[]; skipped: number; left: number }
+
+/** The daily job's clean-up, whether the autopilot runs or not: a purged company's rows, and runs older than `keepDays`. */
+export async function pruneAutopilot(sql: Sql, now: Date, keepDays = 90): Promise<void> {
+  await edgeSql(sql).batch([
+    { sql: "DELETE FROM autopilot_runs WHERE tenant_id IN (SELECT id FROM tenants WHERE name = '[purged]')" },
+    { sql: "DELETE FROM engine_companies WHERE tenant_id IN (SELECT id FROM tenants WHERE name = '[purged]')" },
+    { sql: "DELETE FROM autopilot_runs WHERE day < ?", params: [dayOf(new Date(now.getTime() - keepDays * DAY_MS))] },
+  ]);
+}
 
 /** Tonight's runs: every open company that used its engine and has no finished run today. */
 export async function runAutopilot(sql: Sql, engine: (tenantId: string) => EngineApi, o: AutopilotOptions): Promise<AutopilotReport> {
   sql = edgeSql(sql);
   const day = dayOf(o.now);
   const staleBefore = new Date(o.now.getTime() - (o.staleAfterMs ?? 30 * 60_000)).toISOString();
-  // A purged company keeps nothing here either; old digests go.
-  await sql.batch([
-    { sql: "DELETE FROM autopilot_runs WHERE tenant_id IN (SELECT id FROM tenants WHERE name = '[purged]')" },
-    { sql: "DELETE FROM engine_companies WHERE tenant_id IN (SELECT id FROM tenants WHERE name = '[purged]')" },
-    { sql: "DELETE FROM autopilot_runs WHERE day < ?", params: [dayOf(new Date(o.now.getTime() - (o.keepDays ?? 90) * DAY_MS))] },
-  ]);
+  // The companies whose last finished run is oldest (never: first), then the oldest users of the engine.
   const due = await sql.all<{ tenant_id: string }>(
     `SELECT e.tenant_id FROM engine_companies e JOIN tenants t ON t.id = e.tenant_id
      WHERE t.closed_at IS NULL AND NOT EXISTS (SELECT 1 FROM autopilot_runs r WHERE r.tenant_id = e.tenant_id AND r.day = ? AND r.status = 'done')
-     ORDER BY e.first_at, e.tenant_id LIMIT ?`, [day, o.maxCompanies ?? 100]);
-  const report: AutopilotReport = { day, done: [], failed: [], skipped: 0 };
+     ORDER BY COALESCE((SELECT MAX(r.day) FROM autopilot_runs r WHERE r.tenant_id = e.tenant_id AND r.status = 'done'), '') , e.first_at, e.tenant_id LIMIT ?`, [day, o.maxCompanies ?? 100]);
+  const report: AutopilotReport = { day, done: [], failed: [], skipped: 0, left: 0 };
   // The firing's time, moved on by the time this run has taken (so a test's clock and the Worker's agree).
   const t0 = Date.now();
   const clock = () => new Date(o.now.getTime() + (Date.now() - t0)).toISOString();
   for (const { tenant_id } of due) {
+    if (Date.now() - t0 >= (o.budgetMs ?? 10 * 60_000)) { report.left++; continue; }
     const startedAt = clock();
     const claim = await sql.run(
       `INSERT INTO autopilot_runs (tenant_id, day, status, started_at) VALUES (?, ?, 'running', ?)
@@ -133,11 +153,12 @@ export async function runAutopilot(sql: Sql, engine: (tenantId: string) => Engin
       await finish("done", digest, null);
       report.done.push(tenant_id);
     } catch (x) {
-      await finish("failed", null, redact(x instanceof Error ? x.message : String(x)).slice(0, 500));
       report.failed.push(tenant_id);
+      // A row that cannot be marked stays running and is taken again once stale; the other companies go on.
+      await finish("failed", null, redact(x instanceof Error ? x.message : String(x)).slice(0, 500)).catch(() => undefined);
     }
   }
-  logEvent(report.failed.length ? "warn" : "info", "autopilot", { day, done: report.done.length, failed: report.failed, skipped: report.skipped }, o.now);
+  logEvent(report.failed.length ? "warn" : "info", "autopilot", { day, done: report.done.length, failed: report.failed, skipped: report.skipped, left: report.left }, o.now);
   return report;
 }
 

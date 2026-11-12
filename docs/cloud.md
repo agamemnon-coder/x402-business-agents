@@ -124,7 +124,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
 | `GET /v1/engine/vault/file` | read | One file of the archive, `?path=` as the list gives it; 404 for a path the index does not list. |
 | `GET /v1/autopilot` | read | The company's nightly autopilot runs, newest first (`?limit=` 1 to 90, default 14): each night the engine is synced and a digest written (invoices by status, the overdue ones, payments waiting for an approval, both hash chains). It never pays. 404 when the cloud runs no engine. See [Cloudflare's platform](#cloudflares-platform-cloudsrcedge). |
-| `GET /v1/stats` | anyone | The cloud's own counters per day, UTC, across every company and about none of them (`?days=` 1 to 90, default 14): requests, refused, rate_limited, errors, uploads, payments_filed, approvals, engine_refusals. 404 when the counters are off. |
+| `GET /v1/stats` | anyone | The cloud's own counters per day, UTC, across every company, with no company's id or amount (`?days=` 1 to 90, default 14): requests, refused, rate_limited, errors, uploads, payments_filed, approvals, engine_refusals. 404 when the counters are off. |
 
 The `/v1/engine` routes are the company's engine behind the API (`cloud/src/engine/routes.ts`): the same inbox, checks,
 approval and executor a runner has, on **test money only** (a stand-in bank; no payment reaches a real bank). The
@@ -328,34 +328,39 @@ What the code does not do yet, and must be in place before a company's real data
 ## Cloudflare's platform (`cloud/src/edge`)
 
 Three parts of Cloudflare's platform beyond D1 and the engine's Durable Objects, each in its own file and each off by
-configuration. Tested with fakes (`test/cloud-edge.test.ts`) and in local workerd with the bindings of
-`cloud/wrangler.jsonc` (`test/cloud-edge-workerd.test.ts`, in `npm run test:d1`); none has run on a deployed Worker yet.
+configuration. Tested with fakes (`test/cloud-edge.test.ts`) and in local workerd with `cloud/wrangler.jsonc`
+(`test/cloud-edge-workerd.test.ts`, in `npm run test:d1`); none has run on a deployed Worker yet. Limits on who may
+start or call what (the hands-on companies' pools, per-address and per-company limits) are not here: they are the
+hands-on lane's.
 
 | What | Cloudflare feature | Binding or setting | Off |
 |---|---|---|---|
-| A company's writes to its engine (upload, pay, approve, retry, sync, passkey) are limited to 20 a minute per company; anyone's calls to the public routes to 120 a minute per address. Past it: 429 `rate_limited`. Counted at the edge without a database write, before the route runs; the cloud's own per-key limit in D1 stays behind it. | [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/) | `ratelimits`: `ENGINE_LIMITER` (namespace 41101), `PUBLIC_LIMITER` (41102) | remove the binding |
-| The nightly autopilot: on the first firing of the Cron Trigger each UTC day (today `17 3 * * *`; an hourly trigger changes nothing), every open company that wrote to its engine has its engine synced (payments followed, booked, archived, read model fed) and a digest written: invoices by status, the overdue ones, those due within a week, payments waiting for an approval, whether both hash chains verify. `GET /v1/autopilot`. It never makes or uses an approval. | [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | the existing `triggers.crons` `17 3 * * *`, tables `engine_companies` and `autopilot_runs` (`cloud/migrations/0002_edge.sql`) | var `AUTOPILOT=off` |
-| The cloud's daily counters, counted after each answer is sent (`ctx.waitUntil`), read by the public `GET /v1/stats`: no company's id, route parameter or amount. No D1 write per request: an isolate keeps its counts in memory and writes them in one batch at most every 10 seconds, at once for an upload, a payment, an approval or an engine refusal. What an isolate counted in its last seconds before Cloudflare ends it is lost: the numbers can be a little low, never high. | Workers `waitUntil` and D1 | table `daily_counts` | var `STATS=off` |
+| The nightly autopilot: on the Cron Trigger's first firing each UTC day (today `17 3 * * *`; an hourly trigger changes nothing), every open company that wrote to its engine has its engine synced (payments followed, booked, archived, read model fed) and a digest written: invoices by status, the overdue ones, those due within a week, payments waiting for an approval, whether both hash chains verify. `GET /v1/autopilot`. It never makes or uses an approval. A hands-on company (`t_try_`) is never in it. | [Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/) | the existing `triggers.crons`, tables `engine_companies` and `autopilot_runs` (`cloud/migrations/0002_edge.sql`) | var `AUTOPILOT=off` |
+| Inbound invoices by e-mail into the engine: the Worker's email handler stores the message as before and puts `{ tenant_id, mail_id }` on a queue; the queue's consumer files the stored e-mail through the engine's own inbox (each PDF attached is filed, read and checked) and marks the `inbound_mail` row done or refused, with a note. The sender's delivery never waits on the engine. Retried later each time (30 s, 60 s, ...), 5 attempts, then marked refused with the reason (the dead-letter state a person sees); what the inbox itself refuses is marked at once. The daily job puts e-mail still waiting after an hour on the queue again. | [Queues](https://developers.cloudflare.com/queues/) | `INBOX_QUEUE` (producer and consumer), dead-letter queue `<name>-inbox-dlq`: in `cloud/wrangler.jsonc` as a comment, to put in once the queues exist | leave the block out (mail then waits for the company's runner, as before) |
+| The cloud's daily counters, counted after each answer is sent (`ctx.waitUntil`), read by the public `GET /v1/stats`: requests, refused, rate_limited, errors, uploads (a duplicate is not one), payments_filed, approvals, engine_refusals. No D1 write per request: an isolate keeps its counts in memory and writes them in one batch at most every 10 seconds, at once for an upload, a payment, an approval or an engine refusal. | Workers `waitUntil` and D1 | table `daily_counts` | var `STATS=off` |
 
-- **The address** behind a public call is never handed over as it is: an IPv6 address is cut to its /64, an IPv4
-  address taken whole, and the limiter's key is a SHA-256 of that.
-- **The rate limits are approximate.** Cloudflare counts per location and lets a burst exceed the limit while counts
-  sync; a binding that fails lets the request through (logged as `edge_rate_limit_unavailable`). They are a guard
-  against a script or a crowd, not a quota; WAF rules in front of the Worker are still on the list below. The keys
-  carry the deployment's `RP_ID`, so `purser-cloud` and `purser-try` never share counts.
 - **The autopilot runs once per company per day.** The day's row is claimed before the run, so a Cron Trigger that
-  fires twice runs it once; a run that failed, or never finished (30 minutes), is taken again by a later firing that
-  day. One company's engine gets 60 seconds; at most 100 companies per firing, the oldest first. A run's error is
-  stored in the engine's words with account numbers cut (`cloud/src/log.ts` redact). Runs are kept 90 days; a purged
-  company's runs go with it.
-- **Deploy steps**, after the steps under "Going live" (nothing to create for the rate limiters: a namespace id is a
-  number chosen in the config):
+  fires twice runs it once. A run that failed, or never finished (30 minutes), is taken again by a later firing that
+  day: with an hourly trigger the next hour, with a daily one not before the next day (that day then has no digest,
+  and its row says why). One company's engine gets 60 seconds; a firing starts no company after 10 minutes
+  (Cloudflare stops a Cron run at 15) and takes at most 100, those whose last finished run is oldest first. A run's
+  error is stored in the engine's words with account numbers cut (`cloud/src/log.ts` redact). Runs are kept 90 days;
+  a purged company's runs go with it, whether the autopilot is on or not.
+- **Never twice, by e-mail:** only a row still `queued` is filed and it is marked once; a message that comes again
+  after the engine took the e-mail finds each PDF already held (by its SHA-256) and files nothing more.
+- **The counters are close, not exact:** what an isolate counted in its last seconds before Cloudflare ends it is
+  lost, and a write D1 kept but answered with an error is written again. They hold no company's id, route parameter or
+  amount, but on a deployment with one or two companies the day's uploads and approvals are in effect that company's
+  activity.
+- **Deploy steps**, after the steps under "Going live":
   ```bash
   npx wrangler d1 migrations apply purser-try --remote -c cloud/wrangler.try.jsonc
   ```
   applies `0002_edge.sql` (the Worker also creates the three tables on first use if the migration was not run). Then
   deploy as before. To check: `GET /v1/stats` answers today's counters, and a company's first digest is at
-  `GET /v1/autopilot` after the Cron Trigger's next firing.
+  `GET /v1/autopilot` after the Cron Trigger's next firing. The inbox queue only once a mail domain routes to the
+  Worker: `npx wrangler queues create <name>-inbox`, `npx wrangler queues create <name>-inbox-dlq`, put the commented
+  `queues` block of the config in, deploy.
 
 ## Backups and restore
 
