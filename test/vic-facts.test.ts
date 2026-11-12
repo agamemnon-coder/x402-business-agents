@@ -38,7 +38,7 @@ describe("the five facts under the drawing", () => {
     for (const p of paid) expect(p.tap).toMatch(/^the CFO, once, with a passkey in Airi/);
     // 3. Four attempts that day, the fourth passed.
     expect(airi.attempts.map((a: { outcome: string }) => a.outcome)).toEqual(["stopped", "failed", "failed", "passed"]);
-    expect(vicAttemptCount(rec)).toMatchObject({ all: 4, passedAt: 4 });
+    expect(vicAttemptCount(rec)).toMatchObject({ all: 4, paid: 1, passedAt: 4, failedFirst: true });
     // 4. The hosted page with a headless browser, because the sandbox refused the direct confirm (the second attempt).
     expect(airi.checkout.kind).toBe("airwallex-sandbox-hosted");
     expect(airi.attempts[1].cause).toMatch(/our Airwallex sandbox refused the API confirm, validation_error \("This account is not enabled for native API access"\)/);
@@ -73,6 +73,26 @@ describe("the five facts under the drawing", () => {
     first.attempts = [first.attempts[1]!, first.attempts[3]!].map((a, i) => ({ ...a, outcome: i === 1 ? "passed" : "failed" }));
     expect(vicFacts(first)[2]).toBe("It passed on the second attempt that day.");
   });
+
+  it("count the series, wherever a failure falls: 2 of 5 paid, with a failure after a pass, builds the page's lines", () => {
+    // The day's five attempts: the record's own (vic-1c #2) passed third; vic-1d #1 passed fourth, then vic-1d #2 failed.
+    const series = structuredClone(rec);
+    const day = series.started_at.slice(0, 10);
+    series.attempts = [
+      series.attempts[0]!, series.attempts[1]!, series.attempts[3]!,
+      { world: "vic-1d", attempt: 1, at: `${day}T15:00:00.000Z`, outcome: "passed", cause: null },
+      { world: "vic-1d", attempt: 2, at: `${day}T15:30:00.000Z`, outcome: "failed", cause: "B: PURSER_NO_TAP. Nothing charged." },
+    ];
+    const n = vicAttemptCount(series);
+    expect(n).toMatchObject({ all: 5, paid: 2, passedAt: 3, failedFirst: false });
+    expect(n.failed.map((a) => a.world)).toEqual(["vic-1", "vic-1b", "vic-1d"]);
+    expect(vicFacts(series)[2]).toBe("It passed on the third attempt that day.");
+    expect(vicAttemptLines(series).at(-1)).toBe("15:30 UTC, failed: the cardholder did not confirm in time (PURSER_NO_TAP). Nothing charged.");
+    expect(/<summary>([^<]*)<\/summary>/.exec(vicAttemptsHtml(series))![1]).toBe("The 3 attempts that failed");
+    // An attempt of another day is not part of the series; the record's own attempt must be among the day's.
+    expect(vicAttemptCount({ ...series, attempts: [...series.attempts, { world: "vic-1e", at: "2026-11-08T09:00:00.000Z", outcome: "failed", cause: null }] }).all).toBe(5);
+    expect(() => vicAttemptCount({ ...series, attempt: 9 })).toThrow(/own attempt/);
+  });
 });
 
 describe("purchase B: signed, sent, charged", () => {
@@ -85,9 +105,10 @@ describe("purchase B: signed, sent, charged", () => {
     expect(VIC_COMPARE_COLUMNS).toEqual(["Signed by the CFO", "Sent to Airi", "Charged"]);
     expect(c.heading).toBe("Purchase B: signed, sent, charged");
     const amount = c.rows.find((r) => r.name === "Amount")!;
+    // The middle cell is the signed amount, said so (the record of 7 Nov holds no amount read back from Airi), and the
+    // mark compares only what was compared: the signed and the charged amount.
     expect(amount.values).toEqual(["EUR 45.00", "EUR 45.00", "EUR 45.00"]);
-    expect(new Set(amount.values).size).toBe(1);
-    expect(amount.equal).toBe(true);
+    expect(amount).toMatchObject({ sub: [null, "from the signed terms", null], equal: true, mark: "signed = charged" });
     // Signed and sent: purchase B's terms in the Airi run's record. Charged: Airwallex's own answer, a separate record.
     expect(`${b.currency} ${b.amount}`).toBe(amount.values[0]);
     expect(intent.id).toBe(b.payment_intent_id);
@@ -101,7 +122,7 @@ describe("purchase B: signed, sent, charged", () => {
 
   it("stands on /visa outside any fold, each value under its column's name, marked equal", () => {
     const section = /<section class="card vc"[\s\S]*?<\/section>/.exec(unfolded)![0];
-    expect(text(section)).toMatch(/^Purchase B: signed, sent, charged Signed by the CFO Sent to Airi Charged Amount ✓ equal Signed by the CFO EUR 45\.00 Sent to Airi EUR 45\.00 Charged EUR 45\.00 Record/);
+    expect(text(section)).toMatch(/^Purchase B: signed, sent, charged Signed by the CFO Sent to Airi Charged Amount ✓ signed = charged Signed by the CFO EUR 45\.00 Sent to Airi EUR 45\.00 from the signed terms Charged EUR 45\.00 Record/);
     expect(section).toContain(net.file);
     expect(vicCompareHtml(null)).toBe("");
   });
@@ -111,7 +132,7 @@ describe("purchase B: signed, sent, charged", () => {
     (other.rec.payment_intents.find((p) => p.purchase === "B")!.intent as { amount: number }).amount = 54;
     const d = vicCompare(rec, other)!;
     expect(d.rows[0]).toMatchObject({ values: ["EUR 45.00", "EUR 45.00", "EUR 54.00"], equal: false });
-    expect(vicCompareHtml(d)).toContain("✕ differs");
+    expect(vicCompareHtml(d)).toContain("✕ signed ≠ charged");
     expect(vicCompare(rec, null)).toBeNull();
     expect(vicCompare({ ...rec, purchases: rec.purchases.filter((p) => p.step !== "B") }, net)).toBeNull();
   });
@@ -136,16 +157,16 @@ describe("the attempts that failed first", () => {
   it("are listed in a fold, one line each from the record: time, outcome, the codes of its cause; no person is named", () => {
     const lines = vicAttemptLines(rec);
     expect(lines).toEqual([
-      "12:51 UTC, stopped: AIRI_OUTPUT_UNRECOGNISED. Nothing charged.",
-      "12:56 UTC, failed: validation_error, PURSER_NO_TAP. Nothing charged.",
-      "13:30 UTC, failed: PURSER_NO_TAP, duplicate_request. Nothing charged.",
+      "12:51 UTC, stopped: Airi's answer came in another spelling (AIRI_OUTPUT_UNRECOGNISED). Nothing charged.",
+      "12:56 UTC, failed: the sandbox refused a direct confirm (validation_error); the cardholder did not confirm in time (PURSER_NO_TAP). Nothing charged.",
+      "13:30 UTC, failed: the cardholder did not confirm in time (PURSER_NO_TAP); an order reference was reused (duplicate_request). Nothing charged.",
     ]);
     const failed = (airi.attempts as { at: string; outcome: string; cause: string }[]).filter((a) => a.outcome !== "passed");
     expect(lines).toHaveLength(failed.length);
     failed.forEach((a, i) => {
       expect(lines[i]!.startsWith(`${a.at.slice(11, 16)} UTC, ${a.outcome}`)).toBe(true);
       expect(a.cause).toMatch(/nothing charged/i);
-      for (const code of lines[i]!.split(": ")[1]!.split(".")[0]!.split(", ")) expect({ code, inCause: a.cause.includes(code), inLog: LOG.includes(code) }).toEqual({ code, inCause: true, inLog: true });
+      for (const code of [...lines[i]!.matchAll(/\(([A-Za-z_]+)\)/g)].map((m) => m[1]!)) expect({ code, inCause: a.cause.includes(code), inLog: LOG.includes(code) }).toEqual({ code, inCause: true, inLog: true });
     });
     const fold = new RegExp(`<details class="fold" id="${VIC_ATTEMPTS_ID}">[\\s\\S]*?</details>`).exec(main)![0];
     expect(/<summary>([^<]*)<\/summary>/.exec(fold)![1]).toBe("The 3 attempts that failed first");

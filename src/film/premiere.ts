@@ -12,6 +12,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, TEST_WORLD, canonical, checkPayment, proposalTerms, rateOfRecord } from "../../worker/src/trySign.js";
 import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
+import { airiSummaryLine, type AiriRunRecord } from "../redesign/airiRun.js";
 import { loadRecord } from "../redesign/run.js";
 import { AGENT_DISPLAY } from "../config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../config/policy.js";
@@ -716,7 +717,9 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
     // The Airi run (7 November): Visa Intelligent Commerce through Airwallex's Airi (Max's words, 7 November).
     "13c-airi": {
       head: `Visa Intelligent Commerce via Airwallex's Airi: a live run (${v("airi.day")})`,
-      line: "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.",
+      // 12 Nov (jury panel): the site's own summary line, read from the record: "A scripted run, no Claude call: …" (it
+      // read "Agents paid with … without the CFO"). The voice-over of the film recorded before 12 Nov is unchanged.
+      line: airiSummaryLine(runs.airi as unknown as AiriRunRecord),
       rows: [
         { ok: true, label: "✓ Within the limit", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
         { ok: true, label: "✓ Paid after Face ID", amount: `${v("airi.cfo")} · ${v("airi.proposal")}`, detail: "the CFO's Face ID in Purser, then one tap in Airi" },

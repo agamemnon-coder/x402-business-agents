@@ -110,6 +110,10 @@ export function assertRecordSafe(rec: unknown): void {
   walk(rec, "", null);
 }
 
+/** A call logged before 12 Nov, when the call log folded the path segment payment_intents as if it were an id. */
+const FOLDED_PATH = /^\/pa\/\{id\}\/\{id\}$/;
+const FOLDED_NOTE = " The call log of this read-back wrote each GET as /pa/{id}/{id}: it folded the path segment payment_intents as if it were an id (fixed on 12 Nov in src/airwallex/callBudget.ts).";
+
 /**
  * The record: how it was read, each PaymentIntent's answer (redacted, with the list of redactions) and the calls made.
  * Throws when an answer is for another PaymentIntent, when the call log holds more calls than the budget, or when it
@@ -127,7 +131,7 @@ export function intentsRecord(o: { readAt: Date; run: string; purchases: { step:
   });
   const rec: IntentsRecord = {
     read_at: o.readAt.toISOString(),
-    method: "GET only, Airwallex sandbox: GET /api/v1/pa/payment_intents/{id}, once per PaymentIntent. Nothing was created, updated or cancelled.",
+    method: `GET only, Airwallex sandbox: GET /api/v1/pa/payment_intents/{id}, once per PaymentIntent. Nothing was created, updated or cancelled.${o.calls.some((c) => FOLDED_PATH.test(c.endpoint)) ? FOLDED_NOTE : ""}`,
     why: `The PaymentIntents of the Airi run (${o.run}) as the Airwallex sandbox reports them at the time of reading: Airwallex's own record of each payment.`,
     run: o.run,
     test_money: true,

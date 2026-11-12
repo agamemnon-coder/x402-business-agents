@@ -1,8 +1,8 @@
 // How a VIC purchase runs: /visa's drawing, right under the page's heading and its entry line since 12 Nov (it sat
 // under the Airi run's block before): seven steps, left to right at desktop and top to bottom at phone width, each
-// marked with whose step it is (the agent; Purser at 2 and 7; Airi at 3 and 4; Airi · VIC at 5 only, the one step where
+// marked with whose step it is (the agent, or "Script" while purchase B was not asked for inside a Claude call; Purser at 2 and 7; Airi at 3 and 4; Airi · VIC at 5 only, the one step where
 // the Visa credential appears (jury panel, 12 Nov); Airwallex at 6), in neutral badge colours, with purchase
-// B's own id or value under it, and purchase C's branch off step 2 (refused by Purser before any Airi call). The CFO's
+// B's own id or value under it (step 5's credential type as Airi's receipt names it), and purchase C's branch off step 2 (refused by Purser before any Airi call). The CFO's
 // limit, the Airi mandate, the cardholder's passkey, the single-use credential and the Airwallex PaymentIntent are
 // steps 2 to 6. /proof's Airi block links here ("How it works").
 //
@@ -11,7 +11,7 @@
 // when the record is a live run's but a fact a step needs is missing, vicFlow throws, so the page build fails instead
 // of drawing a step without its value. Without a live record there is nothing to draw (as the block).
 
-import { AIRI_RUN_FILE, VIC_FLOW_ANCHOR, airiRun, type AiriPurchase, type AiriRunRecord } from "./airiRun.js";
+import { AIRI_NO_CLAUDE, AIRI_RUN_FILE, VIC_FLOW_ANCHOR, airiRun, type AiriPurchase, type AiriRunRecord } from "./airiRun.js";
 import { esc } from "./ui.js";
 
 /** The flow's anchor on /visa: /proof's "How it works" links here. */
@@ -64,16 +64,21 @@ export function vicFlow(rec: AiriRunRecord): VicFlow {
   if (need(b, "reported_to_airi") !== outcome) missing("purchase B's result reported to Airi as read back");
   if (c.route !== "refused" || c.by !== "purser" || c.airi_calls === undefined) missing("purchase C refused by Purser, with its count of Airi calls");
   const limit = rec.policy?.alone_max_eur ?? missing("the policy's limit");
+  const agentName = `${need(b, "agent").charAt(0).toUpperCase()}${b.agent.slice(1)} agent`;
   if (!rec.policy.merchants_allowed?.length) missing("the policy's allowed merchants");
   return {
     follows: `Purchase ${b.step}`,
     label: rec.label.split(", ").join(" · "),
     steps: [
-      { owner: "agent", title: "Agent asks to buy", what: `${need(b, "agent").charAt(0).toUpperCase()}${b.agent.slice(1)} agent`, value: `${need(b, "currency")} ${need(b, "amount")}` },
+      // Who asked for B, where the story starts (review, 12 Nov): the 7 November run was scripted, so step 1 says so; a
+      // purchase asked for inside the agent's Claude call (rail_choice.by "claude") reads as the agent's step.
+      b.rail_choice?.by === "claude"
+        ? { owner: "agent", title: "Agent asks to buy", what: `${agentName}, in a Claude call`, value: `${need(b, "currency")} ${need(b, "amount")}` }
+        : { owner: "agent", who: "Script", title: "Asks to buy", what: `Purser's script as the ${agentName}; ${AIRI_NO_CLAUDE}`, value: `${need(b, "currency")} ${need(b, "amount")}` },
       { owner: "purser", title: "Purser's policy", what: `Limit ${b.currency} ${limit}, allowed merchants; above it, the CFO's Face ID on the exact terms`, value: `${need(b, "proposal_id")} · terms ${short(need(b, "terms_sha256"))}` },
       { owner: "airi", title: "Airi mandate", what: "Amount, merchant and items, for this one purchase", value: need(b, "mandate_id") },
       { owner: "airi", title: "Cardholder confirms", what: "Passkey in Airi", value: "Once" },
-      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: "Single-use Visa credential (VIC)", what: "From Airwallex's Airi wallet", value: `${need(b, "credential_type")} · test card` },
+      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: "Single-use Visa credential (VIC)", what: "From Airwallex's Airi wallet", value: `Airi's receipt: ${need(b, "credential_type")} · test card` },
       { owner: "airwallex", title: "Airwallex hosted checkout", what: "Our own sandbox merchant", value: need(b, "payment_intent_id") },
       { owner: "purser", title: "Result read back", what: "Reported to Airi", value: outcome, ...(outcome === "SUCCEEDED" ? { tone: "ok" as const } : {}) },
     ],

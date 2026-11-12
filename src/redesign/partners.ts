@@ -20,7 +20,7 @@ import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family,
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory, refusalNote, separateRuns, type MetalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
-import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, AIRI_SCRIPTED, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
+import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRun, awxRunBlock } from "./awxRun.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
@@ -351,6 +351,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // side (signed, sent, charged). Then the one summary of the paid run, the run in full (its ids folded) and the control
   // test. Folded, one line each: the attempts that failed first, what Airwallex's own record reports for the two
   // payments, the CFO's policy next to Visa's published VIC rules, and how the card data is handled. Last: TAP, folded.
+  const asker = airiAsker(rec);
   const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
@@ -368,9 +369,10 @@ export function visaPage(run: AgentRun = agentRun()): string {
 </div></main>`;
   const html = page({
     title: VISA_TITLE, tab: "proof", css: CSS, body,
-    description: "Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. A scripted run, no Claude call.",
+    // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
+    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
-    real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${AIRI_SCRIPTED}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
+    real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${asker.short}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
     source: `Source: ${AIRI_RUN_FILE} (the Airi run) and ${VIC2_RUN_FILE} (the control test).`,
   });
   assertVicFirst(html);

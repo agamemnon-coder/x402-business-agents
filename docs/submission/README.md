@@ -114,9 +114,9 @@ and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-ki
 - Visa Intelligent Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money):
   <https://kit11.max-31b.workers.dev/airwallex#airi-run>
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
-- Extra, not an award entry: Visa TAP, on <https://kit11.max-31b.workers.dev/visa>. The Sourcing agent signs its card
-  checkout with Visa's Trusted Agent Protocol (TAP); Visa TAP: built and verified against Visa's public reference
-  verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi run above (Visa
+- Outside the entry: Visa TAP, in the closed fold at the foot of <https://kit11.max-31b.workers.dev/visa>. The
+  Sourcing agent signed its card checkout with Visa's Trusted Agent Protocol (TAP) in its own run; Visa TAP: built and
+  verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi run above (Visa
   Intelligent Commerce).
 
 ## Screenshots

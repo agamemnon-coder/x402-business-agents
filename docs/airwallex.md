@@ -44,7 +44,7 @@ our own sandbox merchant with their checkout page is fine.
 
 | Purchase | What happened | Ids |
 |---|---|---|
-| A, EUR 12.00 | within the CFO's limit for this rail (EUR 20.00 alone): the agent alone. Purser opened the order (`POST /pa/payment_intents/create`, no card), Airi created the mandate, the CFO confirmed it once in Airi with a passkey, and the agent typed the card from Airi's credential into Airwallex's Hosted Payment Page and pressed Pay; `GET /pa/payment_intents/{id}` read SUCCEEDED, reported to Airi | PaymentIntent `int_sgpvzc9hjhnxvpblt2r`, mandate `mdt_nlpdgv8gqhnxvpbv09m` |
+| A, EUR 12.00 | within the CFO's limit for this rail (EUR 20.00 alone): no Purser approval (a scripted run, no Claude call). Purser opened the order (`POST /pa/payment_intents/create`, no card), Airi created the mandate, the CFO confirmed it once in Airi with a passkey, and the agent typed the card from Airi's credential into Airwallex's Hosted Payment Page and pressed Pay; `GET /pa/payment_intents/{id}` read SUCCEEDED, reported to Airi | PaymentIntent `int_sgpvzc9hjhnxvpblt2r`, mandate `mdt_nlpdgv8gqhnxvpbv09m` |
 | B, EUR 45.00 | above the limit: P-0002 waited for Max's Face ID on its exact terms (14:05:02 UTC); then the runner opened the order and the mandate, the CFO confirmed it in Airi, and the hosted page paid it: SUCCEEDED, P-0002 EXECUTED | PaymentIntent `int_sgpvzc9hjhnxvxc26ie`, mandate `mdt_nlpdgv8gqhnxvxcjxbv`, terms `8bbfffc9…` |
 | C, EUR 5.00 | a merchant the CFO does not allow: refused by Purser, `PURSER_MERCHANT_NOT_ALLOWED`, before any call to Airi or Airwallex | — |
 

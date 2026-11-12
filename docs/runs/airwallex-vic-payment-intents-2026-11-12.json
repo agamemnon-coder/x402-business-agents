@@ -1,6 +1,6 @@
 {
   "read_at": "2026-11-12T10:02:09.636Z",
-  "method": "GET only, Airwallex sandbox: GET /api/v1/pa/payment_intents/{id}, once per PaymentIntent. Nothing was created, updated or cancelled.",
+  "method": "GET only, Airwallex sandbox: GET /api/v1/pa/payment_intents/{id}, once per PaymentIntent. Nothing was created, updated or cancelled. The call log of this read-back wrote each GET as /pa/{id}/{id}: it folded the path segment payment_intents as if it were an id (fixed on 12 Nov in src/airwallex/callBudget.ts).",
   "why": "The PaymentIntents of the Airi run (docs/demo/airi-run.json) as the Airwallex sandbox reports them at the time of reading: Airwallex's own record of each payment.",
   "run": "docs/demo/airi-run.json",
   "test_money": true,

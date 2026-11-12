@@ -100,6 +100,11 @@ describe("the record of the read-back", () => {
     expect(rec).toMatchObject({ read_at: "2026-11-12T10:00:03.000Z", run: "docs/demo/airi-run.json", test_money: true, budget: 4 });
     expect(rec.method).toMatch(/^GET only, Airwallex sandbox: GET \/api\/v1\/pa\/payment_intents\/\{id\}/);
     expect(rec.method).toMatch(/Nothing was created, updated or cancelled/);
+    // These calls were logged as /pa/{id}/{id} (the old fold of payment_intents): the record says so; a log written
+    // since 12 Nov holds the real path, and the note is not added.
+    expect(rec.method).toMatch(/folded the path segment payment_intents as if it were an id/);
+    const fixed = calls.map((c) => ({ ...c, endpoint: c.endpoint.replace("/pa/{id}/{id}", "/pa/payment_intents/{id}") }));
+    expect(build({ calls: fixed }).method).not.toMatch(/folded/);
     expect(rec.calls).toEqual([{ at: "2026-11-12T10:00:00.000Z", method: "POST", endpoint: "/authentication/login" }, { at: "2026-11-12T10:00:01.000Z", method: "GET", endpoint: "/pa/{id}/{id}" }, { at: "2026-11-12T10:00:02.000Z", method: "GET", endpoint: "/pa/{id}/{id}" }]);
     expect(rec.payment_intents.map((p) => [p.purchase, p.id, p.intent.amount])).toEqual([["A", "int_madeup0001", 12], ["B", "int_madeup0002", 45]]);
     expect(rec.payment_intents[0]!.redacted.map((r) => r.path)).toContain("client_secret");

@@ -470,7 +470,7 @@ describe("the two live runs of 7 November (v6): each figure its own record's", (
   it("the Airi run (13c): Max's heading and line, three outcomes and the second run's refusal after the Face ID, the checks of both, the run's own label", () => {
     expect(screen("13c-airi")).toEqual({
       head: "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)",
-      line: "Agents paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit without the CFO, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.",
+      line: "A scripted run, no Claude call: paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.",
       rows: [
         { ok: true, label: "✓ Within the limit", amount: "EUR 12.00", detail: "within the EUR 20.00 limit · one passkey tap in Airi" },
         { ok: true, label: "✓ Paid after Face ID", amount: "EUR 45.00 · P-0002", detail: "the CFO's Face ID in Purser, then one tap in Airi" },

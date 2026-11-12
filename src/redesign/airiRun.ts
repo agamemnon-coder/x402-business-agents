@@ -9,8 +9,9 @@
 //
 // Who paid (jury panel, 12 Nov): the run of 7 Nov was scripted. Purser's code asked for each purchase and no Claude call
 // chose the rail, so every sentence about it says "scripted, no Claude call" (airiSummaryLine), counted from the record:
-// a purchase whose rail the Sourcing agent's Claude call chose carries rail_choice with that call's request id
-// (src/airi/purchase.ts), and only then is Claude named. It read "Agents paid with a single-use Visa (VIC) credential".
+// a purchase asked for inside the Sourcing agent's Claude call carries rail_choice with that call's request id
+// (src/airi/purchase.ts), and only that purchase names Claude (airiAsker). It read "Agents paid with a single-use Visa
+// (VIC) credential".
 //
 // Wording: the owner's copy of 7 Nov (AIRI_HEADING, AIRI_SUMMARY from "each purchase" on, AIRI_A_SENTENCE, AIRI_BADGES): the
 // programme is named, Visa Intelligent Commerce via Airwallex's Airi (until then the plan, docs/runs/vic-1-plan.md, kept
@@ -39,17 +40,40 @@ export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-c
 export const airiHeading = (day: string) => `Visa Intelligent Commerce via Airwallex's Airi: a live run (${day})`;
 /** The 7 November run in three words, wherever it is named: Purser's code asked for each purchase; no Claude call chose the rail. */
 export const AIRI_SCRIPTED = "scripted, no Claude call";
+/** Its second half, where "scripted" is already said (the drawing's step 1). */
+export const AIRI_NO_CLAUDE = AIRI_SCRIPTED.replace(/^scripted, /, "");
 /**
  * What was paid and how, after who asked (airiSummaryLine). Within the limit "with no Purser approval" (12 Nov; it read
  * "without the CFO", but the person who was the CFO still confirmed it in Airi, as the cardholder).
  */
 export const AIRI_SUMMARY = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
-/** The Claude request ids of the rail choices in a record: one per purchase whose rail an agent's Claude call chose. */
+/** The Claude request ids of the rail choices in a record: one per purchase asked for inside an agent's Claude call that returned an id. */
 export const airiClaudeChoices = (rec: AiriRunRecord): string[] => rec.purchases.flatMap((p) => (p.rail_choice?.by === "claude" && p.rail_choice.request_id ? [p.rail_choice.request_id] : []));
-/** The one summary sentence: who asked (scripted, or the Sourcing agent's Claude call with its request id), then AIRI_SUMMARY. */
+
+/**
+ * Who asked for the run's purchases, per purchase, from rail_choice.by (12 Nov): a purchase asked for inside an agent's
+ * Claude call says so, with the call's request id or "no request id returned"; every other purchase is scripted. The
+ * words are what the record proves: the purchase was asked for inside that Claude call. The Sourcing agent's prompt
+ * names the Airi rail for the Airi merchant (src/agents/railChoice.ts), so nothing here says Claude "chose" it. Every
+ * place that says who asked (the summary line, the card's tag, /visa's description and its "What's real?" line) reads
+ * this one function.
+ */
+export interface AiriAsker { scripted: boolean; short: string; sentence: string }
+export function airiAsker(rec: AiriRunRecord): AiriAsker {
+  const claude = rec.purchases.filter((p) => p.rail_choice?.by === "claude");
+  if (claude.length === 0) return { scripted: true, short: AIRI_SCRIPTED, sentence: "A scripted run, no Claude call" };
+  const rest = rec.purchases.filter((p) => p.rail_choice?.by !== "claude").map((p) => p.step);
+  const each = claude.map((p) => `purchase ${p.step} was asked for inside the ${capital(p.agent)} agent's Claude call (${p.rail_choice!.request_id ? `request ${p.rail_choice!.request_id}` : "no request id returned"})`);
+  const scripted = rest.length ? [`purchase${rest.length > 1 ? "s" : ""} ${rest.join(" and ")} scripted, no Claude call`] : [];
+  return {
+    scripted: false,
+    short: rest.length ? `${claude.length} of ${rec.purchases.length} purchases asked for in a Claude call` : "asked for in a Claude call",
+    sentence: capital([...each, ...scripted].join("; ")),
+  };
+}
+/** The one summary sentence: who asked (airiAsker), then AIRI_SUMMARY. */
 export function airiSummaryLine(rec: AiriRunRecord): string {
-  const ids = airiClaudeChoices(rec);
-  return `${ids.length ? `The Sourcing agent (Claude) chose this rail (request ${ids.join(", ")})` : `A scripted run, no Claude call`}: ${AIRI_SUMMARY}`;
+  return `${airiAsker(rec).sentence}: ${AIRI_SUMMARY}`;
 }
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
