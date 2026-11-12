@@ -1142,7 +1142,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         var ab = st.map(function (x) {
           var tr = el("tr", "", [
             el("td", "", [txt("b", "", capFirst(x.agent))]), el("td", "", [x.models.map(modelWord).join(", ") || "—"]), el("td", "num", [String(x.decisions)]),
-            el("td", "num", [x.by_claude + (x.overridden ? " (" + x.overridden + " overridden by code)" : "")]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
+            el("td", "num", [x.by_claude + (x.overridden ? " (" + x.overridden + " overridden)" : "")]), el("td", "num", [x.fallback + " (" + x.fallback_pct + "%)"]), el("td", "num", [usdMicros(x.cost_last_hour_usd_micros || 0)]),
           ]);
           Array.prototype.forEach.call(tr.children, function (td, i) { td.setAttribute("data-label", al[i]); });
           return tr;
