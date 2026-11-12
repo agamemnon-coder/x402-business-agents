@@ -412,24 +412,61 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Proof carries the read-back briefly (section B): the hash pair and the cards' match, with each card in a fold.
     await page.goto(`${base}/proof`, { waitUntil: "load" });
     await look(page, `/proof ${tag}`, w);
+    // The jury's order (12 Nov): Proof starts with the guarantees and is half as long on a phone. Measured at 390 px
+    // with every fold closed: "What Purser guarantees" starts on the first screen, the first closed line (details.deep)
+    // starts at 2,249 px or less (4,062 before). And every link, button and fold header in <main> is at least 44 px high
+    // to tap, with the folds closed and again with every fold open; no width overflows with every fold open.
     {
+      const targets = async () => (await page.evaluate(`(() => {
+        const shown = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ visibilityProperty: true }); };
+        return [...document.querySelectorAll("main a, main button, main summary")].filter(shown).map((e) => ({ h: e.getBoundingClientRect().height, t: (e.textContent || "").trim().replace(/\\s+/g, " ").slice(0, 40) }));
+      })()`)) as { h: number; t: string }[];
+      const first = (await page.evaluate(`(() => {
+        const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
+        return { guarantees: top(document.getElementById("guarantees")), fold: top(document.querySelector("main details.deep")), next: h1 && h1.nextElementSibling ? h1.nextElementSibling.id : "", open: document.querySelectorAll("main details[open]").length };
+      })()`)) as { guarantees: number; fold: number; next: string; open: number };
+      if (first.next !== "guarantees" || first.open) fail(`/proof ${tag}: "What Purser guarantees" is not directly under the heading (${first.next || "something else"} is), or a fold is open on load (${first.open})`);
+      if (w === 390) {
+        if (first.guarantees < 0 || first.guarantees >= 780) fail(`/proof ${tag}: the guarantees start at ${first.guarantees} px, not on the first screen (under 780 px)`);
+        if (first.fold < 0 || first.fold > 2249) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,249 px (half of the 4,499 px before)`);
+        const closed = await targets();
+        for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
+        if (closed.length < 30) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
+      }
+      await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
+      const over = (await page.evaluate(() => document.documentElement.scrollWidth)) - w;
+      if (over > 1) fail(`/proof ${tag}: ${over}px wider than the screen with every fold open`);
+      if (w === 390) {
+        const all = await targets();
+        for (const x of all.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with every fold open: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
+        if (all.length < 80) fail(`/proof ${tag}: only ${all.length} links and fold headers with every fold open, the check is not looking at the page`);
+      }
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+    }
+    {
+      // The Airi run (7 Nov): behind the first closed line since 12 Nov (in sight under the partners before). Closed on
+      // load; opened as a reader does, by its summary: the owner's copy, the badges, the checks, a link to its ids.
+      if (await page.locator("#airi-run").isVisible()) fail(`/proof ${tag}: the Airi run is in sight before its line is opened`);
+      await page.locator("main details.deep > summary", { hasText: "Visa Intelligent Commerce via Airwallex's Airi" }).click();
+      const airi = await page.locator("#airi-run").innerText().catch(() => "");
+      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
+        || !(await page.locator("#airi-run").isVisible()) || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run not shown when its line is opened, or no link to its steps`);
       await page.evaluate(() => document.querySelectorAll("details.deep").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
       if (!/awx-1: a separate run · Airwallex sandbox, test money/.test(await page.locator("#awx-1").innerText().catch(() => ""))) fail(`/proof ${tag}: awx-1 missing under Airwallex read back`);
-      // The Airi run (7 Nov), in sight under the partners: the owner's copy, the badges, the checks, a link to its ids.
-      const airi = await page.locator("#airi-run").innerText().catch(() => "");
-      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
-        || !(await page.locator("#airi-run").isVisible()) || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run not in sight under the partners, or no link to its steps`);
       if (!/The hash the CFO signed travels with the payment\./.test(rb) || (rb.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(rb) || !/3 of 3 cards match the CFO policy/.test(rb)) fail(`/proof ${tag}: Airwallex read back missing or not matching`);
     }
-    // The strongest proof first (Max's last round, item 2): each partner card opens with its claims, each a link, right
-    // under the card's header; no TAP remark under the figures (TAP is the footer link to /visa).
+    // The strongest proof first (Max's last round, item 2; the jury, 12 Nov): each partner card shows its strongest
+    // claim as its one link, right under its name; no TAP remark anywhere (TAP is on /visa; no footer link on Proof).
     {
-      // Max, 7 Nov: each card shows its name, then 2–3 facts with a bold number; its claims, each a link, in its fold.
+      // Each card: its name, then its first claim, a link in sight; in its closed fold 2–3 facts with a bold number,
+      // then its other claims, each a link.
       const leads = (await page.evaluate(`[...document.querySelectorAll("article.pcard")].map((c) => {
-        const first = c.querySelector(".ph").nextElementSibling, ul = c.querySelector("details.fold > ul.lead");
-        const facts = first && first.matches(".facts") ? first.querySelectorAll(".fact > b").length : 0;
-        return { id: c.id, lead: facts >= 2 && facts <= 3 && !c.querySelector("img") && !!ul, claims: ul ? [...ul.querySelectorAll("a.c")].map((a) => a.textContent.trim()) : [] };
+        const first = c.querySelector(".ph").nextElementSibling, fold = c.querySelector(":scope > details.fold"), ul = fold && fold.querySelector(":scope > ul.lead");
+        const main = first && first.matches("ul.lead") ? [...first.querySelectorAll("a.c")] : [];
+        const facts = fold ? fold.querySelectorAll(":scope > .facts .fact > b").length : 0;
+        const inSight = main.length === 1 && main[0].getBoundingClientRect().height >= 20 && main[0].checkVisibility();
+        return { id: c.id, lead: inSight && facts >= 2 && facts <= 3 && !c.querySelector("img") && !!ul && !fold.open, claims: [...main, ...(ul ? ul.querySelectorAll("a.c") : [])].map((a) => a.textContent.trim()) };
       })`)) as { id: string; lead: boolean; claims: string[] }[];
       const want: Record<string, RegExp[]> = {
         airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
@@ -438,21 +475,30 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       };
       for (const [id, res] of Object.entries(want)) {
         const c = leads.find((x) => x.id === id);
-        if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show 2–3 facts, then its claims in the fold (${JSON.stringify(c?.claims)})`);
+        if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show its first claim in sight, then 2–3 facts and its other claims in the fold (${JSON.stringify(c?.claims)})`);
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
-      if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
+      if (/\bTAP\b/.test((await page.locator("body").innerText()))) fail(`/proof ${tag}: TAP on the page`);
+      if (await page.locator("footer a.flink").count()) fail(`/proof ${tag}: a footer link (the Visa TAP extra left Proof on 12 Nov)`);
+      // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure.
+      const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
+      const stop = tiles.find((t) => / stop$/.test(t.cls));
+      if (tiles.length !== 4 || !tiles.some((t) => / awx$/.test(t.cls) && /^\d+ of \d+$/.test(t.v)) || !stop || stop.parts.length < 2 || stop.parts.reduce((k, x) => k + x, 0) !== Number(/^\d+/.exec(stop.v)?.[0])) fail(`/proof ${tag}: not four tiles with Airwallex's figure, or the stops' parts do not sum to their figure (${JSON.stringify(tiles)})`);
+      if (!(await page.locator(".runline .pill.run", { hasText: "Replay of the main run" }).isVisible())) fail(`/proof ${tag}: the run's label is not shown with its numbers`);
       await page.locator(".partners").screenshot({ path: join(shots, `proof-partners-${tag}.png`) });
     }
-    // "See the CFO's view" in Proof's head (Max's last round, item 4), to the main run's dashboard replay, which opens
-    // on its one line. Followed at 390 and 1440 px.
+    // "See the CFO's view" (Max's last round, item 4), to the main run's dashboard replay, which opens on its one line:
+    // in the row of utility links at the end of Proof since 12 Nov (in its head before). Followed at 390 and 1440 px.
     {
-      const cfo = page.locator(".phead a", { hasText: "See the CFO's view" });
+      const cfo = page.locator(".util a", { hasText: "See the CFO's view" });
       // And beside it, "Trace any payment" and "Download the month-end pack" (Max's last round, 1.2 and 1.3).
-      if (!(await page.locator('.phead a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
-      if (!(await page.locator(".phead a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
-      if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy in its head`);
-      await page.locator(".phead").screenshot({ path: join(shots, `proof-head-${tag}.png`) });
+      if (!(await page.locator('.util a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
+      if (!(await page.locator(".util a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
+      if (!(await page.locator(".util a", { hasText: "Watch the film (4 min)" }).isVisible())) fail(`/proof ${tag}: no visible "Watch the film (4 min)"`);
+      if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy among the utility links`);
+      // The utility links end the page: nothing of <main> comes after them.
+      if (!(await page.evaluate(`(() => { const u = document.querySelector("main .util"); return !!u && !u.nextElementSibling && !u.parentElement.nextElementSibling; })()`))) fail(`/proof ${tag}: the utility links are not the last thing on the page`);
+      await page.locator(".util").screenshot({ path: join(shots, `proof-head-${tag}.png`) });
       if (w === 390 || w === 1440) {
         await cfo.click();
         await page.waitForURL(/\/\?autonomy$/);
@@ -463,9 +509,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     }
     // Each Airwallex claim lands on its anchor on /airwallex, in view (the cards' fold opened). At 390 and 1440 px.
     if (w === 390 || w === 1440) {
-      for (const [claim, id, open] of [["The hash the CFO signed is in", "awx-hash", false], ["3 of 3 cards carry", "controls", true], ["Treasury ····", "card-treasury", true]] as const) {
+      // The first claim is the card's link in sight (12 Nov): followed without opening anything; the others in its fold.
+      for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["3 of 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
-        await page.locator("#airwallex details.fold > summary").click();
+        if (inFold) await page.locator("#airwallex details.fold > summary").click();
         await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
         await page.waitForURL(new RegExp(`/airwallex#${id}$`));
         await page.waitForTimeout(300);
@@ -476,6 +523,37 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         })()`)) as { inView: boolean; open: boolean };
         if (!r.inView || (open && !r.open)) fail(`/proof ${tag}: "${claim}" does not land on /airwallex#${id} in view (in view ${r.inView}, fold open ${r.open})`);
       }
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+    }
+    // Links into Proof (other pages, the README, /judge) land on their target with every fold around it open, also a
+    // fold inside a fold, and the target in view under the header: #faceid and #stops sit in "Every check", #airi-run
+    // in the first closed line, since 12 Nov. Then a tile's own link (#stops) on the page itself. At 390 and 1440 px.
+    if (w === 390 || w === 1440) {
+      const landed = async (id: string) => (await page.evaluate(`(() => {
+        const t = document.getElementById(${JSON.stringify(id)});
+        if (!t) return { found: false, closed: 0, inView: false, top: 0, inner: 0 };
+        let closed = 0;
+        for (let d = t; d; d = d.parentElement) if (d.tagName === "DETAILS" && !d.open) closed++;
+        const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
+        return { found: true, closed, inView: r.height > 0 && r.top >= head - 2 && r.top < innerHeight / 2, top: Math.round(r.top), inner: t.querySelectorAll("details[open]").length };
+      })()`)) as { found: boolean; closed: number; inView: boolean; top: number; inner: number };
+      for (const id of ["guarantees", "faceid", "stops", "airi-run", "claude", "metal", "airwallex"]) {
+        await page.goto(`${base}/proof#${id}`, { waitUntil: "load" });
+        await page.waitForTimeout(250);
+        const r = await landed(id);
+        if (!r.found || r.closed || !r.inView) fail(`/proof#${id} ${tag}: does not land on its target, open and in view (found ${r.found}, ${r.closed} closed folds around it, top ${r.top} px)`);
+        // The guarantees keep their seven "How" closed; a card opens its own folds.
+        if (id === "guarantees" ? r.inner !== 0 : id === "stops" && r.inner < 1) fail(`/proof#${id} ${tag}: ${r.inner} folds open inside the target`);
+      }
+      // The archive is the last closed line: opened by its link, even where the page cannot scroll it to the top.
+      await page.goto(`${base}/proof#archive`, { waitUntil: "load" });
+      await page.waitForTimeout(250);
+      if ((await landed("archive")).closed || !(await page.locator('#archive a[href="watch"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
+      await page.goto(`${base}/proof`, { waitUntil: "load" });
+      await page.locator(".nums a.num.stop").click();
+      await page.waitForTimeout(250);
+      const s = await landed("stops");
+      if (!/#stops$/.test(page.url()) || s.closed || !s.inView || s.inner < 1) fail(`/proof ${tag}: the stops tile does not open "Every check" at the stops (${s.closed} closed folds, top ${s.top} px, ${s.inner} folds open inside)`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
     }
     // Proof's "Policy and card side by side" lands on /airwallex#controls with the cards' fold open, scrolled to it
