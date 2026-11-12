@@ -176,3 +176,19 @@ describe("the README's own words elsewhere: the package, the business pages, the
     expect(index).not.toMatch(/\]\(internal\//);
   });
 });
+
+describe("the archive is history, not evidence (review of 12 Nov)", () => {
+  it("cites no archived document as the open status of a row of the requirements matrix (a dated finding may cite it)", () => {
+    const rows = read("docs/requirements-matrix.md").split("\n").filter((l) => /^\| [A-Z]\d/.test(l));
+    expect(rows.length).toBeGreaterThan(80);
+    for (const row of rows) expect({ row: row.slice(0, 12), open: /docs\/archive\/[^|]*\(open\)/.test(row) }).toEqual({ row: row.slice(0, 12), open: false });
+  });
+
+  it("the archived quality plan names no other product for agent payments (this repository names no competitors)", () => {
+    expect(read("docs/archive/quality-plan.md")).not.toMatch(/\b(Ramp|Brex|Payman|Skyfire|Crossmint|AgentKit|Agent Pay)\b/);
+  });
+
+  it("the pitch's spoken lines take their sources from current documents, or say that an archived one is kept for history", () => {
+    for (const l of read("docs/submission/pitch.md").split("\n").filter((x) => x.includes("docs/archive/"))) expect(l).toMatch(/kept for history/);
+  });
+});

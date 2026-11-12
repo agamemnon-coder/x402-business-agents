@@ -215,11 +215,11 @@ own signature and "One cent. Worthless." stay last.
 |---|---|
 | Today this runs on the Airwallex sandbox and Metal testnet. | README; deck slide 12 |
 | One company per ledger, with test money only. | Deck slide 12, "Now" |
-| Next: keys in a KMS, Postgres, and a pager on the health check. | `docs/archive/roadmap.md`; deck slide 12, "Next" |
+| Next: keys in a KMS, Postgres, and a pager on the health check. | Deck slide 12, "Next" (`src/submission/deck.ts`) |
 | Then Metal mainnet, with four eyes as the default. | Deck slide 12, "Then" |
-| Airwallex already offers what comes next: global accounts, local payouts, refunds. | `docs/archive/roadmap.md`, "Airwallex products that fit next" |
-| Airwallex's own AgentOS says to require manual approval for agents. | `docs/archive/roadmap.md` (`developer-tools/ai/agentos`) |
-| Purser is that approval, on the exact terms, with limits in the rails. | `docs/archive/roadmap.md`, same paragraph |
+| Airwallex already offers what comes next: global accounts, local payouts, refunds. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md`, "Airwallex products that fit next" |
+| Airwallex's own AgentOS says to require manual approval for agents. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md` (`developer-tools/ai/agentos`); `docs/business/model.md`, "Risks and what we do not know" |
+| Purser is that approval, on the exact terms, with limits in the rails. | `docs/business/model.md`, "Risks and what we do not know" (what Purser adds on top) |
 
 ### 3e. The business case (after the road; 20 s; deck slide 11)
 
@@ -231,7 +231,7 @@ own signature and "One cent. Worthless." stay last.
 | €49 a company a month, five agents included; a hypothesis. | `PRICE_LINE` in `src/config/brand.ts` (the form's Description, "The business"); [model.md](../business/model.md), "Intended pricing (hypothesis)" |
 | Why now? | [docs/business/problem.md](../business/problem.md), "Why now (sourced)" |
 | Airwallex wrote it on 5 October: limits belong in infrastructure, not prompts. | [problem.md](../business/problem.md) [S1] (Airwallex, "Agentic banking starts with governance") |
-| Agents can pay now; the sign-off still has to stay with a person. | Core message; `docs/archive/roadmap.md`, "The CFO signs off" |
+| Agents can pay now; the sign-off still has to stay with a person. | Core message (the README's title: "AI agents spend. You sign off.") |
 
 About 640 words in all: 4:30 of speech, plus the demo.
 

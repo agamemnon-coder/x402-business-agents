@@ -28,7 +28,7 @@ These six QA findings were fixed and deployed on 29 October. Run log:
 | 1 | Product name | **poor**: only the kit name; "Northwind Outdoor" heads every page, as if it were the product | Max picks one of five names. Then use it everywhere: README, page titles (today three different ones), headers, phone, demo, PDF, package description. Northwind becomes "example company". |
 | 2 | One core sentence | **mediocre**: on the pages, but not first everywhere, and the tab titles differ | Every page and the README open with "Give every AI agent its own company card, with limits the CFO sets." A test checks each page. |
 | 3 | One customer | **poor**: a juror cannot tell whether the buyer is a CFO or a data reseller | Name the customer: the CFO or controller of an SMB that runs AI agents. Say it in the README, on the landing and in the deck. Northwind is the example. |
-| 4 | Landscape | **poor**: missing | `docs/landscape.md` covers Ramp, Brex, Stripe (Agent Toolkit, Issuing for agents), Payman, Skyfire, Crossmint, Coinbase AgentKit / x402, Visa Intelligent Commerce and Mastercard Agent Pay. Only sourced facts. One table: one policy over card and chain, hash-bound Face ID, mandates on chain, a prompt is not a control. |
+| 4 | Landscape | **poor**: missing | `docs/landscape.md` compares Purser with other products for agent payments (their names were removed on 12 November: this repository names no competitors). Only sourced facts. One table: one policy over card and chain, hash-bound Face ID, mandates on chain, a prompt is not a control. |
 
 ## B. The first 30 seconds
 

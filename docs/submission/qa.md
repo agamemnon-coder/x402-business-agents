@@ -118,11 +118,12 @@ platform that does it.
 Each agent is one mandate, one card and its own limits, so a new agent adds bounded risk, and Claude costs come per
 exception, not per payment. But we ran 3 agents, not 1000: today it is one company per ledger (SQLite) on test rails,
 and a separate load run pushed 2,000 clearing payments from 16 wallets through Metal. At 1000
-agents we would need Postgres, keys in a KMS and connected accounts for many companies, none of which is built or
-measured.
+agents we would need Postgres and keys in a KMS, neither of which is built or measured; connected accounts for many
+companies are built and ran in the sandbox on 10 November for three test companies, not at that scale.
 
-**Evidence:** [docs/runs/2026-10-30-clearing-load.md](../runs/2026-10-30-clearing-load.md); [docs/archive/roadmap.md](../archive/roadmap.md),
-"Phases"; [docs/unit-economics.md](../unit-economics.md).
+**Evidence:** [docs/runs/2026-10-30-clearing-load.md](../runs/2026-10-30-clearing-load.md); the deck's slide 12, "Next"
+(`src/submission/deck.ts`); [docs/runs/2026-11-10-platform-e2e.md](../runs/2026-11-10-platform-e2e.md);
+[docs/unit-economics.md](../unit-economics.md).
 
 ### 12. Worst-case loss per day inside the limits, and how fast does the CFO know?
 
