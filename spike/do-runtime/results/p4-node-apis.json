@@ -1,0 +1,210 @@
+{
+ "probe": "p4-node-apis",
+ "http": 200,
+ "start_ms": 54,
+ "total_ms": 1772,
+ "als_origin_across_awaits": {
+  "ok": true,
+  "value": {
+   "a_kept": true,
+   "b_kept": true,
+   "outside": null,
+   "nested_inner": "cfo",
+   "nested_outer_after": "agent"
+  },
+  "ms": 10
+ },
+ "planContext_als_loads": {
+  "ok": true,
+  "value": [
+   "batchReservedCents",
+   "reserveForBatch",
+   "withBatchPlanning"
+  ],
+  "ms": 0
+ },
+ "sql_as_bundled_text": {
+  "ok": true,
+  "value": {
+   "schema_chars": 35887,
+   "schema_sha256": "7a52fd234cdad8c56d87316f9c6080681580d0f365cbff711e083590db4ba011",
+   "ledger_chars": 3337,
+   "ledger_sha256": "c16b471e627c850d472064dc2c5b54e50dcec3ed154d7fbc10bb75c0a9cd9d5b"
+  },
+  "ms": 0
+ },
+ "import_meta_url": {
+  "ok": true,
+  "value": {
+   "value": "file:///purser-cloud/worker.js"
+  },
+  "ms": 0
+ },
+ "fs_what_exists": {
+  "ok": true,
+  "value": {
+   "root": [
+    "bundle",
+    "tmp",
+    "dev"
+   ],
+   "bundle": [
+    "__mf_do_wrapper_entry.js",
+    "__mf_do_wrapper.js",
+    "p4-node-apis.js",
+    "efa39a7555272775a5f1330ef801c56e3942ef70-schema.sql",
+    "53b8aba45c16fa9bfbfd068b810488a2e28752e3-ledger.sql"
+   ],
+   "tmp": []
+  },
+  "ms": 1
+ },
+ "fs_read_bundled_sql_by_path": {
+  "ok": true,
+  "value": [
+   {
+    "f": "efa39a7555272775a5f1330ef801c56e3942ef70-schema.sql",
+    "chars": 35887
+   },
+   {
+    "f": "53b8aba45c16fa9bfbfd068b810488a2e28752e3-ledger.sql",
+    "chars": 3337
+   }
+  ],
+  "ms": 2
+ },
+ "fs_write_tmp_then_read": {
+  "ok": true,
+  "value": {
+   "back": [
+    37,
+    80,
+    68,
+    70
+   ],
+   "exists": true
+  },
+  "ms": 1
+ },
+ "fs_tmp_from_an_earlier_request": {
+  "ok": true,
+  "value": {
+   "marker_exists": false
+  },
+  "ms": 0
+ },
+ "fs_leave_marker": {
+  "ok": true,
+  "value": "written",
+  "ms": 0
+ },
+ "fs_write_outside_tmp": {
+  "ok": true,
+  "value": "refused: no such file or directory, writeAll '/data/ledger.db'",
+  "ms": 0
+ },
+ "fs_append_call_log": {
+  "ok": true,
+  "value": 2,
+  "ms": 0
+ },
+ "path": {
+  "ok": true,
+  "value": {
+   "join": "/data/ap/docs/x.pdf",
+   "resolve": "/data/vault",
+   "dirname": "/a/b",
+   "basename": "c.pdf",
+   "sep": "/"
+  },
+  "ms": 0
+ },
+ "url": {
+  "ok": true,
+  "value": {
+   "fileURLToPath": "/purser-cloud/worker.js",
+   "pathToFileURL": "file:///a/b.mjs"
+  },
+  "ms": 1
+ },
+ "module_createRequire_resolve": {
+  "ok": true,
+  "value": "refused: r.resolve is not a function",
+  "ms": 0
+ },
+ "os": {
+  "ok": true,
+  "value": {
+   "tmpdir": "/tmp/",
+   "platform": "linux",
+   "hostname": "localhost"
+  },
+  "ms": 0
+ },
+ "zlib_budgeted_inflate": {
+  "ok": true,
+  "value": {
+   "all": 100000,
+   "over_budget": "RangeError"
+  },
+  "ms": 0
+ },
+ "process": {
+  "ok": true,
+  "value": {
+   "env_var_from_wrangler_vars": "cloud.example.invalid",
+   "pid": 1,
+   "cwd": "/bundle",
+   "platform": "linux",
+   "version": "v22.19.0",
+   "argv": 1
+  },
+  "ms": 1
+ },
+ "child_process_import_and_use": {
+  "ok": true,
+  "value": {
+   "exports": [
+    "ChildProcess",
+    "_forkChild",
+    "default",
+    "exec",
+    "execFile",
+    "execFileSync",
+    "execSync",
+    "fork"
+   ],
+   "spawnSync": "spawnSync: The child_process.spawnSync method is not implemented",
+   "execFileSync": "execFileSync: The child_process.execFileSync method is not implemented",
+   "spawn": "spawn: The child_process.spawn method is not implemented"
+  },
+  "ms": 6
+ },
+ "worker_threads_import_and_use": {
+  "ok": true,
+  "value": {
+   "isMainThread": true,
+   "worker": "refused: The Worker method is not implemented"
+  },
+  "ms": 0
+ },
+ "engine_metal_agentCli_loads": {
+  "ok": false,
+  "error": "TypeError: The \"paths[0]\" argument must be of type string. Received undefined |     at validateString (node-internal:validators:116:15) |     at resolve (node-internal:internal_path:945:13) |     at ../../../home/user/wt/spike-do-runtime/src/metal/agentCli.ts (file:///dev/shm/spike-do-runtime-mbmRPt/.wrangler/tmp/dev-NCiS7n/p4-node-apis.js:21404:11)",
+  "ms": 3
+ },
+ "engine_ops_processes_loads": {
+  "ok": true,
+  "value": [
+   "osProcesses",
+   "ownPgid",
+   "procOf"
+  ],
+  "ms": 0
+ },
+ "engine_world_options_loads": {
+  "ok": false,
+  "error": "TypeError: The \"paths[0]\" argument must be of type string. Received undefined |     at validateString (node-internal:validators:116:15) |     at resolve (node-internal:internal_path:945:13) |     at ../../../home/user/wt/spike-do-runtime/src/metal/agentCli.ts (file:///dev/shm/spike-do-runtime-mbmRPt/.wrangler/tmp/dev-NCiS7n/p4-node-apis.js:21404:11)",
+  "ms": 0
+ }
+}

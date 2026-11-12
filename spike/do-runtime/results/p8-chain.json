@@ -1,0 +1,204 @@
+{
+ "probe": "p8-chain",
+ "http": 200,
+ "start_ms": 114,
+ "total_ms": 2553,
+ "loaded": 37,
+ "failed": [
+  "src/db/open (better-sqlite3 stubbed)"
+ ],
+ "src/lib/terms": {
+  "ok": true,
+  "value": "7 exports",
+  "ms": 50
+ },
+ "src/provenance/origin": {
+  "ok": true,
+  "value": "10 exports",
+  "ms": 4
+ },
+ "src/audit/log": {
+  "ok": true,
+  "value": "6 exports",
+  "ms": 0
+ },
+ "src/metal/agentCli": {
+  "ok": true,
+  "value": "8 exports",
+  "ms": 0
+ },
+ "src/world/options": {
+  "ok": true,
+  "value": "4 exports",
+  "ms": 0
+ },
+ "src/policy/approvals": {
+  "ok": true,
+  "value": "10 exports",
+  "ms": 20
+ },
+ "src/agents/euroBill": {
+  "ok": true,
+  "value": "16 exports",
+  "ms": 1
+ },
+ "src/ap/ledgerKey": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 0
+ },
+ "src/ap/checks": {
+  "ok": true,
+  "value": "5 exports",
+  "ms": 0
+ },
+ "src/ap/books": {
+  "ok": true,
+  "value": "16 exports",
+  "ms": 0
+ },
+ "src/ap/eml": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 0
+ },
+ "src/ap/scan": {
+  "ok": true,
+  "value": "14 exports",
+  "ms": 85
+ },
+ "src/ap/pdfText": {
+  "ok": true,
+  "value": "8 exports",
+  "ms": 0
+ },
+ "src/ap/inbox": {
+  "ok": true,
+  "value": "7 exports",
+  "ms": 0
+ },
+ "src/ap/vendors": {
+  "ok": true,
+  "value": "8 exports",
+  "ms": 0
+ },
+ "src/payouts/plan": {
+  "ok": true,
+  "value": "9 exports",
+  "ms": 0
+ },
+ "src/ap/pay": {
+  "ok": true,
+  "value": "5 exports",
+  "ms": 0
+ },
+ "src/ap/batchPay": {
+  "ok": true,
+  "value": "1 exports",
+  "ms": 0
+ },
+ "src/passkey/process": {
+  "ok": true,
+  "value": "3 exports",
+  "ms": 2
+ },
+ "src/executors/invoicePayment": {
+  "ok": true,
+  "value": "6 exports",
+  "ms": 0
+ },
+ "src/executors/supplierPayment": {
+  "ok": true,
+  "value": "5 exports",
+  "ms": 0
+ },
+ "src/executors/index": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 1
+ },
+ "src/ledger/core": {
+  "ok": true,
+  "value": "12 exports",
+  "ms": 0
+ },
+ "src/ledger/feed": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 0
+ },
+ "src/ledger/close": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 0
+ },
+ "src/ledger/reports": {
+  "ok": true,
+  "value": "15 exports",
+  "ms": 0
+ },
+ "src/vault/data": {
+  "ok": true,
+  "value": "12 exports",
+  "ms": 0
+ },
+ "src/vault/pdf": {
+  "ok": true,
+  "value": "12 exports",
+  "ms": 1
+ },
+ "src/vault/build": {
+  "ok": true,
+  "value": "3 exports",
+  "ms": 0
+ },
+ "src/money/register": {
+  "ok": true,
+  "value": "6 exports",
+  "ms": 0
+ },
+ "src/ops/health": {
+  "ok": true,
+  "value": "6 exports",
+  "ms": 0
+ },
+ "src/cloudsync/client": {
+  "ok": true,
+  "value": "4 exports",
+  "ms": 0
+ },
+ "src/claude/reader": {
+  "ok": true,
+  "value": "3 exports",
+  "ms": 6
+ },
+ "src/agents/loop": {
+  "ok": true,
+  "value": "5 exports",
+  "ms": 0
+ },
+ "src/airwallex/adapter": {
+  "ok": true,
+  "value": "7 exports",
+  "ms": 0
+ },
+ "src/redteam/airwallex (the stand-in sandbox)": {
+  "ok": true,
+  "value": "2 exports",
+  "ms": 0
+ },
+ "src/redteam/authenticator (the software passkey)": {
+  "ok": true,
+  "value": "1 exports",
+  "ms": 0
+ },
+ "src/db/open (better-sqlite3 stubbed)": {
+  "ok": false,
+  "error": "Error: no such file or directory, readAll '/purser-cloud/schema.sql' |     at node-internal:internal_fs_sync:369:21 |     at readFileSync (node-internal:internal_fs_sync:370:7) |     at ../../../home/user/wt/spike-do-runtime/src/db/open.ts (file:///dev/shm/spike-do-runtime-ncK9ZG/.wrangler/tmp/dev-VYjXRl/p8-chain.js:143978:14)",
+  "ms": 10
+ },
+ "second_request": {
+  "loaded": 0,
+  "failed": []
+ }
+}

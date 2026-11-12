@@ -35,7 +35,8 @@ export const configFor = (name) => ({
   },
   // A wrangler bundle has no import.meta.url (measured: undefined in workerd), and pdfkit's browser build reads it when
   // it loads ("Invalid URL string" at start, the whole Worker fails). NO_DEFINE=1 leaves it out, to see that failure.
-  ...(process.env.NO_DEFINE ? {} : { define: { "import.meta.url": JSON.stringify("file:///purser-cloud/worker.js") } }),
+  // The engine also builds paths from import.meta.dirname when modules load (src/metal/agentCli.ts, 75 uses in src/).
+  ...(process.env.NO_DEFINE ? {} : { define: { "import.meta.url": JSON.stringify("file:///purser-cloud/worker.js"), "import.meta.dirname": JSON.stringify("/purser-cloud"), "import.meta.filename": JSON.stringify("/purser-cloud/worker.js") } }),
   // Packages no Worker can carry, swapped for a stub that throws when used (wrangler's own alias setting).
   alias: { playwright: resolve(here, "probes/_stub.ts"), "better-sqlite3": resolve(here, "probes/_stub.ts") },
 });
@@ -59,6 +60,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       ]);
       const text = await res.text();
       let body; try { body = JSON.parse(text); } catch { body = { raw: text.slice(0, 4000) }; }
+      // A second request to the same Worker: what the first one left behind (the per-request /tmp, isolate memory).
+      const again = await worker.fetch("http://probe.local/?only=second_request").then((r) => r.json()).catch(() => ({}));
+      if (Object.keys(again).length) body.second_request = again;
       const out = { probe: name, http: res.status, start_ms: builtMs, total_ms: Date.now() - started, ...body };
       writeFileSync(join(here, "results", `${name}.json`), `${JSON.stringify(out, null, 1)}\n`);
       console.log(`\n=== ${name}: HTTP ${res.status}, ${out.total_ms} ms`);
