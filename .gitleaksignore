@@ -95,6 +95,5 @@ a711ca69f258de95b640a2e7815522611a9eb828:test/owners-runbook.test.ts:generic-api
 # test/tokenize-cli.test.ts in ae1e2dd: a made-up address path for a JSON-RPC server on the test machine itself, written
 # as one literal; the test now builds it at run time.
 ae1e2ddc37804a70b4ddafb581f10e8968742d68:test/tokenize-cli.test.ts:generic-api-key:24
-# 12 Nov: the engine's host names the Worker secret that holds the demo's Claude key (env.KIT11_ANTHROPIC_API_KEY ??
-# process.env.KIT11_ANTHROPIC_API_KEY): a variable's name, no value.
+# 12 Nov: reads the key name from env (env.X ?? process.env.X), no secret value
 a0a455444a30a936bb6c5f3b100b41d71cb94fd7:cloud/src/engine/hostWorker.ts:generic-api-key:115
