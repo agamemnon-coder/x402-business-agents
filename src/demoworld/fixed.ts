@@ -17,11 +17,14 @@ export interface FixedClock {
 }
 
 const RealDate = Date;
+let running = false;
 
-/** Runs `fn` with the clock fixed at `start` and all randomness derived from `seed`. Not re-entrant. */
+/** Runs `fn` with the clock fixed at `start` and all randomness derived from `seed`. One at a time: a second call while one runs throws. */
 export async function fixed<T>(seed: string, start: string, fn: (clock: FixedClock) => Promise<T>): Promise<T> {
+  if (running) throw new Error("a fixed world is already being built in this process: one at a time");
   let ms = RealDate.parse(start);
   if (Number.isNaN(ms)) throw new Error(`not a time: ${start}`);
+  running = true;
   let counter = 0;
   const bytes = (n: number): Buffer => {
     const parts: Buffer[] = [];
@@ -71,6 +74,7 @@ export async function fixed<T>(seed: string, start: string, fn: (clock: FixedClo
   try {
     return await fn(clock);
   } finally {
+    running = false;
     globalThis.Date = RealDate;
     Math.random = kept.mathRandom;
     delete web.getRandomValues;

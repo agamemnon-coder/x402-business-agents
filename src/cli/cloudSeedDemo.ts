@@ -7,10 +7,8 @@
 //
 // The same world, same bytes, on every run: the clock and all randomness are fixed.
 
-import { existsSync, realpathSync } from "node:fs";
-import { basename, dirname, join, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import { writeBundle } from "../demoworld/bundle.js";
+import { resolve } from "node:path";
+import { bundleFolder, writeBundle } from "../demoworld/bundle.js";
 
 const args = process.argv.slice(2);
 const at = args.indexOf("--out");
@@ -21,17 +19,11 @@ if (!out || args.length !== 2) {
 }
 
 // The bundle holds generated data: it never goes into the repository (so it can never be committed by accident).
-const repo = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), "..", ".."));
-/** The path with every link resolved, also when its last parts do not exist yet. */
-function real(p: string): string {
-  let head = resolve(p);
-  const tail: string[] = [];
-  while (!existsSync(head)) { tail.unshift(basename(head)); head = dirname(head); }
-  return join(realpathSync(head), ...tail);
-}
-const target = real(out);
-if (target === repo || target.startsWith(repo + sep)) {
-  console.error(`${target} is inside the repository: choose a folder outside it (the bundle is generated data, never committed)`);
+let target: string;
+try {
+  target = bundleFolder(out);
+} catch (e) {
+  console.error((e as Error).message);
   process.exit(1);
 }
 

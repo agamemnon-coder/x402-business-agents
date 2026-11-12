@@ -1563,6 +1563,7 @@ export const DATA_NL: { readonly [field: string]: readonly (readonly [string, st
     ["^Purser platform fee$", "Platformvergoeding Purser"],
     ["^Convert (\\S+) to (\\S+)$", "Omwisseling $1 naar $2"],
     ["^Airwallex (\\S+) balance before the run \\(sandbox test money\\)$", "Saldo Airwallex $1 vóór de run (testgeld in de sandbox)"],
+    ["^Airwallex (\\S+) balance before the run \\(stand-in test money, no real account\\)$", "Saldo Airwallex $1 vóór de run (testgeld op een stand-in, geen echte rekening)"],
     ["^Owner funds the business account on Metal$", "De eigenaar stort op de bedrijfsrekening bij Metal"],
     ["^Year close (\\d{4}): result to retained earnings$", "Jaarafsluiting $1: resultaat naar de overige reserves"],
     ["^Reversal of entry (\\d+): its source changed$", "Tegenboeking van post $1: de bron is gewijzigd"],

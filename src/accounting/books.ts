@@ -8,6 +8,7 @@
 import { bankAccountFor, CHART, COST_CENTRE_NAMES } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { getSetting } from "../world/settings.js";
 import { journal, type JournalLine } from "./gl.js";
 
 export interface Posting {
@@ -89,6 +90,8 @@ export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
   }
   const first = db.prepare("SELECT taken_at, label, json FROM balance_snapshots ORDER BY id LIMIT 1").get() as { taken_at: string; label: string; json: string } | undefined;
   if (first) {
+    // A world on stand-in rails (the cloud's demo world, src/demoworld) says so in its own books: no sandbox was called.
+    const money = getSetting(db, "world.stand_in_rails", "off") === "on" ? "stand-in test money, no real account" : "sandbox test money";
     const bal = JSON.parse(first.json) as Record<string, { availableCents?: number } | undefined>;
     // Every currency Airwallex holds, each on its own bank account (EUR 1200, USD 1201, GBP 1202, others 1203).
     for (const cur of Object.keys(bal).filter((c) => /^[A-Z]{3}$/.test(c)).sort()) {
@@ -98,7 +101,7 @@ export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
       const before = moved.filter((m) => m.bank_account === bank && m.currency === cur && Date.parse(m.date) < Date.parse(first.taken_at)).reduce((s, m) => s + cents(m.amount), 0);
       const opening = available - before;
       if (opening <= 0) continue;
-      out.push(line({ date: first.taken_at, ref: `balance:${first.label}`, description: `Airwallex ${cur} balance before the run (sandbox test money)`, bank_account: bank, currency: cur, cents: opening, proof: `Airwallex balance read ${first.taken_at}`, rule: "opening balance" }));
+      out.push(line({ date: first.taken_at, ref: `balance:${first.label}`, description: `Airwallex ${cur} balance before the run (${money})`, bank_account: bank, currency: cur, cents: opening, proof: `Airwallex balance read ${first.taken_at}`, rule: "opening balance" }));
     }
   }
   return out;

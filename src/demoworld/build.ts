@@ -78,6 +78,8 @@ export async function buildCompany(spec: CompanySpec, dir: string): Promise<Buil
     const awx = new FakeAirwallex();
     awx.bal.EUR.availableCents = spec.openingEurCents;
     setSetting(db, "human", "eur_obligations", "0.00");
+    // The world says in its own books that its rails are stand-ins (src/accounting/books.ts openingLines).
+    setSetting(db, "human", "world.stand_in_rails", "on");
 
     // The CFO's test passkey, enrolled the way a phone enrols: registration, then the fingerprint confirmed.
     const cfo = testPasskey(spec.slug);

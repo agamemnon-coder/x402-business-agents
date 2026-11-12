@@ -6,12 +6,13 @@
 // Also the local mode: the same world in the cloud's own request handler on this machine, for tests and browser checks.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { CloudEnv } from "../../cloud/src/app.js";
 import { demoEnv } from "../../cloud/src/demo.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { CLOSED_MONTH, DEMO_ORIGIN, DEMO_RP_ID, WORLD_AS_OF, WORLD_VERSION } from "./build.js";
+import { CLOSED_MONTH, DEMO_ORIGIN, DEMO_RP_ID, WORLD_AS_OF, WORLD_VERSION, type BuiltCompany } from "./build.js";
 import { PROVENANCE, seedWorld, worldObjects, worldSql, type LoadedCompany } from "./cloud.js";
 import { DEMO_COMPANIES, type CompanySpec } from "./companies.js";
 import { TEST_PASSKEY_LABEL } from "./passkey.js";
@@ -22,6 +23,8 @@ export interface LocalDemo {
   /** The cloud's environment in demo mode, over the seeded world: pass it to `handle`. */
   env: CloudEnv & { sql: ReturnType<typeof sqliteSql> };
   companies: LoadedCompany[];
+  /** Each company's own runner ledger and vault, as the engine left them (for checks against the cloud's copy). */
+  built: BuiltCompany[];
   close(): void;
 }
 
@@ -33,11 +36,11 @@ export async function localDemo(dir: string, o: { origin?: string; specs?: Compa
   const specs = o.specs ?? DEMO_COMPANIES;
   const sql = sqliteSql(":memory:");
   const blobs = dirBlobs(join(dir, "blobs"));
-  const { loaded } = await seedWorld(sql, blobs, join(dir, "build"), specs);
+  const { built, loaded } = await seedWorld(sql, blobs, join(dir, "build"), specs);
   const origin = o.origin ?? DEMO_ORIGIN;
   // Demo mode needs no secret: nothing signs in. The two values below are never used for anything.
   const env = { sql, blobs, sessionSecret: "", adminTokenSha256: "", rpId: new URL(origin).hostname || DEMO_RP_ID, origin, demo: demoEnv(specs.map((s) => s.slug), o.rate ?? {}) };
-  return { env, companies: loaded, close: () => sql.close() };
+  return { env, companies: loaded, built, close: () => { for (const c of built) c.db.close(); sql.close(); } };
 }
 
 export interface BundleManifest {
@@ -54,6 +57,25 @@ export interface BundleManifest {
   companies: LoadedCompany[];
 }
 
+/** The path with every link resolved, also when its last parts do not exist yet. */
+function real(p: string): string {
+  let head = resolve(p);
+  const tail: string[] = [];
+  while (!existsSync(head)) { tail.unshift(basename(head)); head = dirname(head); }
+  return join(realpathSync(head), ...tail);
+}
+
+/**
+ * Where a bundle may be written: anywhere but inside this repository. The bundle is generated data; outside the
+ * repository it can never be committed by accident. Returns the resolved folder, or throws.
+ */
+export function bundleFolder(out: string): string {
+  const repo = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), "..", ".."));
+  const target = real(out);
+  if (target === repo || target.startsWith(repo + sep)) throw new Error(`${target} is inside the repository: choose a folder outside it (the bundle is generated data, never committed)`);
+  return target;
+}
+
 /** Safe inside single quotes in a POSIX shell. */
 const quoted = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
@@ -65,7 +87,8 @@ const quoted = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
  *   manifest.json   what is in the bundle, with every hash
  * The build's working files (the suppliers' PDFs, the vault tree) are removed again; no ledger file is ever written.
  */
-export async function writeBundle(out: string, specs: CompanySpec[] = DEMO_COMPANIES): Promise<BundleManifest> {
+export async function writeBundle(folder: string, specs: CompanySpec[] = DEMO_COMPANIES): Promise<BundleManifest> {
+  const out = bundleFolder(folder);
   mkdirSync(out, { recursive: true });
   for (const name of ["seed.sql", "r2", "r2-put.sh", "manifest.json", "work"]) rmSync(join(out, name), { recursive: true, force: true });
   const work = join(out, "work");

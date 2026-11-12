@@ -236,6 +236,57 @@ Worker's entry (variables, e-mail, the scheduled job). Both also run on local D1
 `test/cloud-demo-workerd.test.ts` bundles the Worker and starts it locally in workerd, Cloudflare's own runtime: the
 demo's reads answer from local D1 and R2 and nothing is written. None of this ran on Cloudflare's network.
 
+### The demo world: three seeded test companies
+
+`npm run cloud:seed-demo -- --out <a folder outside the repository>` builds the world a demo deployment shows and
+writes it as files. The command loads nothing anywhere, uses no network and reads no key.
+
+| Address | Company | Its own policy |
+|---|---|---|
+| `northwind-outdoor` | Northwind Outdoor (test company), an outdoor shop | keeps EUR 2000.00 in reserve; buys in USD |
+| `bakery-de-test` | Bakery De Test (test company), a bakery | keeps EUR 1500.00 in reserve; buys in TRY |
+| `fietslab-bike-workshop` | Fietslab Bike Workshop (test company), a bike workshop | keeps EUR 1000.00 in reserve; buys in GBP |
+
+- **Built by the real engine, offline.** Each company's invoices go through the real inbox (PDF, parser, checks). New
+  suppliers are verified and approved. Payments are approved over their exact terms with the company's own test
+  passkey (a software authenticator, not Face ID), and the engine verifies each signature. The ledger is fed, October
+  2026 is closed and the vault is filed with its PDFs. Then the runner's own push batches go through the cloud's own
+  `applySync`. No row is written by hand.
+- **What a visitor finds in each company:** invoices paid in the closed month and after it, one paid in a foreign
+  currency with its FX, one waiting for the CFO's signature, one held as possible fraud (changed bank details), one
+  refused as a duplicate, one from a new supplier waiting to be verified, and one credit note.
+- **Stand-in, and labelled so.** No rail and no model is called: payments run on the in-memory stand-in for Airwallex
+  and the parser reads the invoices. Every supplier, invoice and payment says `provenance: "stand-in"`, every
+  transaction's rail name ends in `(stand-in)`, and the opening entry in the books says "stand-in test money, no real
+  account". Nothing in this world comes from a sandbox run. The suppliers and their bank details are the invented
+  ones of the repository's test fixtures; the cloud's rows hold no full account number.
+- **The same bytes every time.** The clock and all randomness are fixed (the world's last moment is 10 November 2026,
+  09:30 UTC), so two builds give the same SQL and the same objects.
+- **Nobody can sign in to these companies.** They hold no passkey credential, no key and no invite.
+- **The vault.** Its PDFs are stored as documents under their SHA-256, like any other. The vault's own index (the
+  runner's `index.json`: each file's folder path, kind and hash) is stored at `t/<tenant>/vault/2026/index.json`. No
+  route serves the index yet, and the folder names in it are the runner's Dutch ones.
+
+The bundle holds `seed.sql` (the rows), `r2/` (every object under its key), `r2-put.sh` (one `wrangler r2 object put`
+per object) and `manifest.json` (what is in it, with every hash). To load it, into the demo deployment's own database
+and bucket and no other:
+
+```sh
+npm run cloud:seed-demo -- --out ../purser-demo-bundle
+npx wrangler d1 migrations apply <demo database> --remote -c cloud/wrangler.jsonc
+npx wrangler d1 execute <demo database> --remote --file ../purser-demo-bundle/seed.sql -c cloud/wrangler.jsonc
+(cd ../purser-demo-bundle && sh r2-put.sh <demo bucket>)
+```
+
+Then set `DEMO_PUBLIC=on` and `DEMO_SLUGS=northwind-outdoor,bakery-de-test,fietslab-bike-workshop` on that deployment.
+Seeding again replaces these three companies and touches no other row. `r2-put.sh` hands any further flags to
+wrangler (for example `--jurisdiction eu`). The three wrangler commands were not run in this session (no external
+calls). What is tested: `test/demo-world.test.ts` checks the world itself (the chains, the books to the cent, the
+vault's hashes, every state, the labels, two builds giving the same bytes) and the bundle; `test/cloud-demo-world.test.ts`
+runs every statement of `seed.sql` on an empty database, with `npm run test:d1` on local D1, and reads the world back
+through the demo's routes. For a look on this machine, `localDemo` in `src/demoworld/bundle.ts` gives the cloud's own
+request handler in demo mode over the same world.
+
 ## Tested on D1 itself
 
 `npm run test:d1` runs the cloud's tests (`test/cloud-*.test.ts`, `test/rt4-cloud-*.test.ts`, the credit-netting test) on
