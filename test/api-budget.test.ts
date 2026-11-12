@@ -10,9 +10,9 @@ import { BUDGET_BLOCKS, budgetStatus, recordSpend } from "../src/claude/budget.j
 const file = () => join(mkdtempSync(join(tmpdir(), "budget-")), "spend.jsonl");
 
 describe("the API budget per block (D26)", () => {
-  it("splits about $250 over the blocks and keeps $30 back; the Coder evals have $4 of their own", () => {
-    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30, coder: 4 });
-    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(254);
+  it("splits about $250 over the blocks and keeps $30 back; the Coder evals have $4 and the ledger agents $10 of their own", () => {
+    expect(BUDGET_BLOCKS).toEqual({ evals: 80, redteam: 60, soak: 50, reviews: 30, try: 30, coder: 4, "ledger-agents": 10 });
+    expect(Object.values(BUDGET_BLOCKS).reduce((a, b) => a + b, 0)).toBe(264);
   });
   it("counts the Coder evals' spend in its own block, and says when it is over its $4", () => {
     const f = file();

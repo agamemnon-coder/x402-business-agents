@@ -70,6 +70,17 @@ export interface AgentSpec {
   unfinished?: () => string | null;
   /** Tests set 0; the one retry after a transient API failure waits this long (default 2 s). */
   retryDelayMs?: number;
+  /**
+   * A hard dollar cap for this one run, in micro-USD (12 Nov, the ledger agents). Before every turn the loop adds what
+   * the run has spent to the most the next turn can cost (its prompt so far, half again, plus maxTokens of output at the
+   * model's list price); a turn that could cross the cap is not asked, and the run ends unavailable. Absent: no run cap
+   * beyond the agent's hourly one.
+   */
+  runCapMicros?: number;
+  /** Wall-clock limit for the whole run, in ms: each request gets the time left as its timeout, and no turn starts after it. */
+  timeoutMs?: number;
+  /** max_tokens per turn (default 16000). */
+  maxTokens?: number;
 }
 
 /** A failure worth one retry: rate limit, server error, timeout or a dropped connection. */
@@ -127,22 +138,32 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
   // The prompt carries ledger text (a refusal reason, another agent's message): redacted like everything else.
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: redactSecrets(spec.prompt) }];
   const maxTurns = spec.maxTurns ?? 8;
+  const maxTokens = spec.maxTokens ?? 16000;
   let nudged = false;
+  // Before the first answer, the prompt's size is estimated from its characters (about three to a token, rounded up).
+  let lastPrompt = Math.ceil((spec.system.length + spec.prompt.length + JSON.stringify(tools).length) / 3);
 
   while (turns < maxTurns) {
     turns++;
     // Cost cap (D19): an agent over its hourly or the run's budget makes no call; the caller's fallback decides, labelled.
     const cap = overCap(db, String(spec.agent), clock());
     if (cap) return finish("unavailable", cap);
+    if (spec.runCapMicros !== undefined) {
+      // The most the next turn can cost: the prompt so far and half again (the tool results it adds), plus a full answer.
+      const ceiling = callCostMicros(spec.model, { input: Math.ceil(lastPrompt * 1.5) + 4000, output: maxTokens, cache_read: 0, cache_write: 0 }) ?? Number.POSITIVE_INFINITY;
+      if (costMicros + ceiling > spec.runCapMicros) return finish("unavailable", `run cap: ${(costMicros / 1e6).toFixed(4)} USD spent, the next turn could cost up to ${(ceiling / 1e6).toFixed(4)}, over this run's cap of ${(spec.runCapMicros / 1e6).toFixed(4)}`);
+    }
+    const left = spec.timeoutMs === undefined ? undefined : spec.timeoutMs - (clock() - started);
+    if (left !== undefined && left <= 0) return finish("unavailable", `timeout: the run's ${spec.timeoutMs} ms are used up`);
     let res!: Anthropic.Beta.BetaMessage;
     const asked = clock();
     let retried = false;
     // One retry with backoff on a transient failure (429, 5xx, timeout, connection); then the labelled fallback.
     for (let attempt = 0; ; attempt++) {
       try {
-        res = await (client.withOptions ? client.withOptions({ maxRetries: 0 }) : client).beta.messages.create({
+        res = await (client.withOptions ? client.withOptions({ maxRetries: 0, ...(left !== undefined ? { timeout: left } : {}) }) : client).beta.messages.create({
         model: spec.model,
-        max_tokens: 16000,
+        max_tokens: maxTokens,
         system: [{ type: "text", text: spec.system, cache_control: { type: "ephemeral" } }],
         tools,
         messages,
@@ -165,6 +186,7 @@ export async function runAgent(db: DB, spec: AgentSpec, client: Anthropic | null
     model = res.model;
     const u = res.usage;
     const usage: Usage = { input: u.input_tokens, output: u.output_tokens, cache_read: u.cache_read_input_tokens ?? 0, cache_write: u.cache_creation_input_tokens ?? 0 };
+    lastPrompt = usage.input + usage.cache_read + usage.cache_write;
     tokens.input += usage.input; tokens.output += usage.output; tokens.cache_read += usage.cache_read; tokens.cache_write += usage.cache_write;
     const callCost = callCostMicros(res.model, usage) ?? 0;
     costMicros += callCost;

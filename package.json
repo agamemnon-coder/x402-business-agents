@@ -61,6 +61,8 @@
     "video": "tsx src/cli/video.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "coder-evals": "tsx src/cli/coderEvals.ts",
+    "ledger-evals": "tsx src/cli/ledgerEvals.ts",
+    "controller": "tsx src/cli/controller.ts",
     "budget": "tsx src/cli/budget.ts",
     "payables": "tsx src/cli/payables.ts",
     "vault": "tsx src/cli/vault.ts",
