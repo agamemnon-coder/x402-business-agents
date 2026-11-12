@@ -1,0 +1,46 @@
+// purser-try: a deployment of its own for the company engine on test money (a stand-in bank; no payment reaches a real
+// bank). It is cloud/wrangler.jsonc with only these changed: the name, the workers.dev address (RP_ID, ORIGIN), its own
+// D1 database and R2 bucket, and ENGINE_MODE "test_money" (test/cloud-try-config.test.ts holds the two files to that).
+// Deploy it only as purser-try, never pointed at an existing Worker: a Durable Object class and its migration cannot be
+// rolled back past their first deploy. No secret goes in this file: SESSION_SECRET and ADMIN_TOKEN_SHA256 are set with
+// wrangler secret put. No mail domain, no real data.
+{
+  "$schema": "../worker/node_modules/wrangler/config-schema.json",
+  "name": "purser-try",
+  // The Worker and the class of the company engines' Durable Object.
+  "main": "src/entry.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    // wrangler d1 create purser-try --location weur  → paste its database_id here.
+    { "binding": "DB", "database_name": "purser-try", "database_id": "SET-AFTER-wrangler-d1-create", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    // wrangler r2 bucket create purser-try-docs --jurisdiction eu
+    { "binding": "DOCS", "bucket_name": "purser-try-docs", "jurisdiction": "eu" }
+  ],
+  "vars": {
+    // The deployment's own address: passkeys are bound to it.
+    "RP_ID": "purser-try.max-31b.workers.dev",
+    "ORIGIN": "https://purser-try.max-31b.workers.dev",
+    // The /v1/engine routes on: the engine pays on a stand-in bank, test money only.
+    "ENGINE_MODE": "test_money"
+  },
+  // The engine: one Durable Object per company (cloud/src/engine/object.ts), on its own SQLite. A class is SQLite-backed
+  // only from its first deploy, and a deploy with a migration cannot be rolled back past it.
+  "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "CompanyEngine" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
+  // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
+  "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
+  // Packages the engine's import graph names and no Worker can carry: swapped for a file that throws when used.
+  "alias": { "playwright": "./src/engine/stub.ts", "better-sqlite3": "./src/engine/stub.ts" },
+  // The engine's schema (src/db/schema.sql, src/db/ledger.sql) as text modules.
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  // pdf.js for the console's invoice view, served through the Worker (run_worker_first: every request meets the Worker's
+  // own headers and only /assets/pdfjs.mjs is ever read from here). npm run cloud:pdfjs fills cloud/public before a deploy.
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
+  // Daily: purge closed companies past their 7-year retention; clear spent challenges and old rate windows.
+  "triggers": { "crons": ["17 3 * * *"] }
+}
