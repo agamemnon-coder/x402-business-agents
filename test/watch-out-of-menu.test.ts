@@ -9,7 +9,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { NAV_MAIN, navHtml } from "../src/ui/nav.js";
 import { header, STAGE_JS } from "../src/redesign/ui.js";
-import { JUDGE_STEPS, judgePage } from "../src/redesign/judge.js";
+import { TOUR_STEPS, tourPage } from "../src/redesign/tour.js";
 import { agentRun, loadRecord } from "../src/redesign/run.js";
 import { inSight, replayHead, watchPage } from "../src/redesign/watch.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
@@ -72,15 +72,13 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
     }
   });
 
-  it("the judge tour has no replay step and no link to /watch; it starts on Home and still adds up to three minutes", () => {
-    expect(JSON.stringify(JUDGE_STEPS)).not.toMatch(/watch|replay/i);
-    expect(JUDGE_STEPS[0]!.links.map((l) => l.href)).toEqual(["/home"]);
-    expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
-    for (const html of [judgePage(), ON.judge!]) {
-      expect(html).not.toMatch(/href="\/?(watch|live|demo)\b/);
-      expect(html).toContain("<h1 class=\"h-hero\">Judge it in 3 minutes</h1>");
-      // The one "Watch" left on /judge is the film's link, not a tab or a step.
-      expect(text(/<ol class="steps">[\s\S]*?<\/ol>/.exec(html)![0])).not.toMatch(/\bwatch|replay/i);
+  it("the product tour has no replay step and no link to /watch; it starts with Try and adds up to three minutes", () => {
+    expect(JSON.stringify(TOUR_STEPS)).not.toMatch(/watch|replay/i);
+    expect(TOUR_STEPS[0]!.link.href).toBe("/try");
+    expect(TOUR_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
+    for (const html of [tourPage(), ON.tour!]) {
+      expect(html).not.toMatch(/href="\/?(watch|live|demo|replay)\b/);
+      expect(html).toContain("<h1 class=\"h-hero\">Product tour · 3 minutes</h1>");
     }
   });
 
@@ -201,7 +199,7 @@ describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
     dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", pricing: "/pricing", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", judge: "/judge",
+    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", pricing: "/pricing", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */

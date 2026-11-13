@@ -5,7 +5,7 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, JUDGE_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TOUR_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -41,7 +41,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
     // Since 12 Nov (one Try everywhere): Try opens the hands-on demo; the /try/sign story is the last link, "The 60-second story".
-    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect any AI](#connect-any-ai) · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](${TRY_SIGN_URL})`;
+    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect any AI](#connect-any-ai) · **[3-minute product tour](https://kit11.max-31b.workers.dev/tour)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](${TRY_SIGN_URL})`;
     expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", links, ""]);
     // The first screen ends with the reviewers' block, and "Why this is a company" starts within the first 60 lines.
     expect(lines.slice(badges + 1, badges + 5)).toEqual(["", "</div>", "", "## For reviewers in 30 seconds"]);
@@ -63,12 +63,12 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
     expect(words(hero(homePage()))).toContain(`${START} ${PROOF_BUTTON} ${REASSURE.world}`);
-    // The judge's tour: one footer link, only where /judge exists; never a third call to action in the page.
-    expect(HOME).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
-    expect(hero(HOME)).not.toContain('href="judge"');
-    // The menu's Judge tab (jury, 13 Nov) is the one link to /judge without /try/sign; the footer line only with it.
-    expect(homePage().match(/href="judge"/g)).toEqual(['href="judge"']);
-    expect(homePage()).toContain('<a href="judge">Judge</a>');
+    // The product tour (13 Nov): one footer link in either bundle; never a call to action in the page, never a tab.
+    expect(HOME).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
+    expect(hero(HOME)).not.toContain('href="tour"');
+    expect(homePage().match(/href="tour"/g)).toEqual(['href="tour"']);
+    expect(homePage()).not.toMatch(/href="\/?judge"/);
+    expect(homePage()).not.toContain('>Judge</a>');
   });
 
   it("is the form's synopsis, word for word, within 500 characters", () => {

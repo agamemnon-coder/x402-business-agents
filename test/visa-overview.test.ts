@@ -19,7 +19,6 @@ import { VISA_BUILT_ON, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS, VISA_VIC_BUI
 import { buildPages } from "../src/relay/assets.js";
 import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiAsker, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
 import { homePage } from "../src/redesign/home.js";
-import { judgePage, judgeSteps } from "../src/redesign/judge.js";
 import { ICC_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaLatestLabel, visaPage, visaRunLabel } from "../src/redesign/partners.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { loadRecord, ownTap, tapRun } from "../src/redesign/run.js";
@@ -293,12 +292,6 @@ describe("the Visa entry on the rest of the site", () => {
     // jury check, 12 Nov; the jury, 13 Nov: the two read as a clash without the run named).
     expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ paid in the \d{1,2} [A-Z][a-z]{2} run \(\d+ across \d+ runs\)<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
-  });
-
-  it("links the Visa run from /judge", () => {
-    const step = judgeSteps().find((s) => s.id === "proof")!;
-    expect(step.links).toContainEqual({ label: "The Visa run (VIC via Airi)", href: "/visa" });
-    expect(judgePage()).toMatch(/<a class="btn" href="\/visa">The Visa run \(VIC via Airi\)/);
   });
 
   it("calls the 7 November run scripted wherever it appears: /visa, /airwallex, /proof and the README; nowhere \"Agents paid with a single-use Visa\"", () => {

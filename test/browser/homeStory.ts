@@ -47,7 +47,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   if (ctas[0]?.text !== START || ctas[1]?.text !== PROOF_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${PROOF_BUTTON}"`);
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");
-  if (await page.locator('main a[href="watch"], [data-stage], main a[href="judge"], main a[href="visa"]').count()) fail("a Watch link, a replay stage, or a third way out is back in Home's main part");
+  if (await page.locator('main a[href="watch"], [data-stage], main a[href="tour"], main a[href="visa"]').count()) fail("a Watch link, a replay stage, or a third way out is back in Home's main part");
 
   // The card: once, named by its record, its five steps, and every value the record holds.
   const card = page.locator("main figure.hf");

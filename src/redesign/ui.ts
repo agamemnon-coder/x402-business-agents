@@ -43,11 +43,10 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
  */
 export const TRY_URL = "/try";
 
-export type Tab = "home" | "watch" | "try" | "proof" | "judge";
+export type Tab = "home" | "watch" | "try" | "proof";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
-// Jury, 13 Nov: "Judge" in the top menu, after Proof. A bundle without /judge (TRY_SIGN_ENABLED off) drops the tab where
-// it is built (src/relay/assets.ts flowLinks), so no page links to a 404.
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"], ["judge", "Judge", "judge"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+// 13 Nov (owner): "Judge" is out of the top menu again; the 3-minute product tour (/tour) is linked from Home and the docs.
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }

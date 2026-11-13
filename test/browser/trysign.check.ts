@@ -307,16 +307,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const { page, errors, mobile, height } = v;
 
   // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL): Home's first button and Watch's "Now try it
-  // yourself" lead there; /try/sign is "The 60-second story", linked from /judge. The visit opens it from /judge's link.
+  // yourself" lead there; /try/sign is "The 60-second story", linked from the README (the product tour, /tour, which
+  // replaced /judge on 13 Nov, links current pages only). The visit opens it by its address.
   await page.goto(`${local.url}/home`);
   check(await page.locator(`main .e-hero a.btn.primary[href="${TRY_URL}"]`).count() === 1, `${tag}: Home's button leads to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/watch`);
   check(await page.locator(`a.nextstep[href="${TRY_URL}"]`).count() >= 1, `${tag}: Watch ends in "Now try it yourself", to the hands-on demo (${TRY_URL})`);
-  await page.goto(`${local.url}/judge`);
-  const button = page.locator('main a[href="/try/sign"]', { hasText: "The 60-second story" });
-  check(await button.count() === 1, `${tag}: /judge links "The 60-second story" to /try/sign`);
-  await button.click();
-  await page.waitForURL(`${local.url}/try/sign`);
+  await page.goto(`${local.url}/try/sign`);
   const t0 = Date.now();
   check((await page.locator(".testband .tl").innerText()).trim() === TRY_SIGN_LABEL, `${tag}: the label at the top reads "${TRY_SIGN_LABEL}"`);
   const band = await page.locator(".testband").boundingBox();

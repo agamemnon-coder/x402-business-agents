@@ -133,8 +133,8 @@ describe("the site after v4", () => {
       // Five items, in this order: the four tabs as links, then "More", a <details> that needs no script.
       const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details>$/.exec(nav);
       const tabs = [...nav.slice(0, more ? more.index : nav.length).matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]);
-      // Jury, 13 Nov: "Judge" after Proof (/judge in either bundle since then).
-      expect({ name, items: [...tabs, more?.[1]] }).toEqual({ name, items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), "Judge", MORE_LABEL] });
+      // 13 Nov (owner): Judge is out of the menu again (it was after Proof that morning).
+      expect({ name, items: [...tabs, more?.[1]] }).toEqual({ name, items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL] });
       expect(MORE_LABEL).toBe("More");
       expect({ name, more: [...(more?.[2] ?? "").matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]) }).toEqual({ name, more: served });
       // The partner pages follow the product pages after one divider; nothing else is in the dropdown.
@@ -178,14 +178,14 @@ describe("the site after v4", () => {
   it("sends a path pasted with the sentence's full stop or comma to the same path without it (jury review, 7 Nov, #18)", () => {
     const p = pages as Pages;
     const go = (path: string) => pageResponse(new Request(`https://x.test${path}`), p);
-    for (const [from, to] of [["/judge.", "/judge"], ["/try/sign,", "/try/sign"], ["/proof.", "/proof"], ["/watch.,", "/watch"], ["/,", "/"], ["/airwallex.?x=1", "/airwallex?x=1"]] as const) {
+    for (const [from, to] of [["/tour.", "/tour"], ["/try/sign,", "/try/sign"], ["/proof.", "/proof"], ["/watch.,", "/watch"], ["/,", "/"], ["/airwallex.?x=1", "/airwallex?x=1"]] as const) {
       const r = go(from);
       expect({ from, status: r?.status, to: r?.headers.get("location") }).toEqual({ from, status: 302, to });
     }
     // Only a trailing "." or ","; anything else is answered as before, and a POST is not redirected.
     expect(go("/proof")?.status).toBe(200);
     expect(go("/no/such/page")).toBeNull();
-    expect(pageResponse(new Request("https://x.test/judge.", { method: "POST" }), p)).toBeNull();
+    expect(pageResponse(new Request("https://x.test/tour.", { method: "POST" }), p)).toBeNull();
   });
 
   it("reaches the archive (/lab, /film, /month, /metal/report) only through Proof's folded, labelled Archive", () => {
