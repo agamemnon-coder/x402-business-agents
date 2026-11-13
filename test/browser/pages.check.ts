@@ -792,6 +792,24 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // 12 Nov (jury check): then three tiles behind flags, each live on 12 Nov, under their own line.
         if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi|Payee check|Batch transfer|Ledger reconciliation" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
         if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
+        // "When each product ran live" on a phone (owner, 13 Nov, iPhone at 390 px): each name on its dot's line (centres
+        // under 6 px apart), the names clear of every gridline, a full date beside each dot, and a legend item only for a
+        // mark a dot uses.
+        if (w <= 390) {
+          const tl = (await page.evaluate(`(() => { const s = document.querySelector("svg.awtl.narrow"); if (!s) return null; const mid = (r) => r.top + r.height / 2;
+            const rows = [...s.querySelectorAll("g")].map((g) => { const n = g.querySelector("text.rl"), c = g.querySelector("circle"), d = g.querySelector("text.dt"); return { name: n ? n.textContent : "", dy: n && c ? Math.abs(mid(n.getBoundingClientRect()) - mid(c.getBoundingClientRect())) : 99, nameRight: n ? n.getBoundingClientRect().right : 0, date: d ? d.textContent : "" }; });
+            const gridLeft = Math.min(...[...s.querySelectorAll("line.g")].map((l) => l.getBoundingClientRect().left));
+            const card = s.closest(".awv"), keys = card ? [...card.querySelectorAll(".awkey li")].map((l) => l.textContent.trim()) : [];
+            return { rows, gridLeft, keys, rings: s.querySelectorAll("circle.off").length, shown: s.getBoundingClientRect().height > 0 }; })()`)) as { rows: { name: string; dy: number; nameRight: number; date: string }[]; gridLeft: number; keys: string[]; rings: number; shown: boolean } | null;
+          if (!tl || !tl.shown || tl.rows.length < 2) fail(`/airwallex ${tag}: the phone's time axis is not shown`);
+          else {
+            const off = tl.rows.filter((r) => r.dy >= 6);
+            if (off.length) fail(`/airwallex ${tag}: a name is not on its dot's line (${JSON.stringify(off.map((r) => [r.name, Math.round(r.dy * 10) / 10]))})`);
+            if (tl.rows.some((r) => r.nameRight > tl.gridLeft)) fail(`/airwallex ${tag}: a gridline runs through the names`);
+            if (tl.rows.some((r) => !/^\d{1,2} [A-Z][a-z]{2}$/.test(r.date))) fail(`/airwallex ${tag}: a dot without its full date (${JSON.stringify(tl.rows.map((r) => r.date))})`);
+            if (tl.keys.includes("Built, not yet switched on") !== tl.rings > 0) fail(`/airwallex ${tag}: the legend shows a mark no dot uses, or misses one (${JSON.stringify(tl.keys)}, ${tl.rings} ring(s))`);
+          }
+        }
         // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
         const first = await firstScreen(page);
         if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
