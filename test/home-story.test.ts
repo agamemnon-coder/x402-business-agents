@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
-import { scaleStats } from "../src/redesign/scale.js";
+import { homeScaleStats, scaleStats } from "../src/redesign/scale.js";
 import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
@@ -154,7 +154,11 @@ describe("Home, the enterprise pass", () => {
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
     expect(band).not.toBe("");
     expect(mainOf(ON).indexOf('<article class="e-statrec"')).toBeLessThan(mainOf(ON).indexOf('<ul class="scale"'));
-    expect([...band.matchAll(/data-count="(\d+)"/g)].map((m) => Number(m[1]))).toEqual(scaleStats().map((x) => x.n));
+    // Judge panel, 13 Nov: six figures read as number soup; Home keeps three, each with its link (/proof keeps them all).
+    expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals on record"]);
+    expect([...band.matchAll(/data-count="(\d+)"/g)].map((m) => Number(m[1]))).toEqual(homeScaleStats().map((x) => x.n));
+    expect([...band.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(homeScaleStats().map((x) => x.href));
+    for (const s of homeScaleStats()) expect(scaleStats()).toContainEqual(s);
     for (const html of [ON, OFF]) expect(mainOf(html)).toContain(`<article class="e-statrec" data-rec="${STAT_RECORDS}">`);
     expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Metal"]);
     expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(ON)![0])).toBe(LOCKS_HEAD);

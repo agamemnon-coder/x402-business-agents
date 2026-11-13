@@ -36,9 +36,10 @@ describe("README badges", () => {
   // The buttons above the badges (13 Nov, judge run): sign in 60 seconds on /try/sign, run the payables inbox on /try
   // (one Try URL everywhere), the film; then the rails and "test money only" as plain text.
   // 13 Nov, evening (owner): the product tour is gone, and its button with it.
-  it("puts three buttons above the badges: /try/sign, the payables inbox on /try, the film; and says test money only", () => {
+  // Judge panel, 13 Nov: the live site has no /try/sign (it answers 301 to /try), so "Sign in 60 seconds" opens the hands-on demo, where you sign.
+  it("puts three buttons above the badges: sign in 60 seconds and the payables inbox on /try, the film; and says test money only", () => {
     const buttons = readme.split("\n").find((l) => l.includes("Watch_the_film")) ?? "";
-    expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/try", "https://youtu.be/kCUsFHrxE-o"]);
+    expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/try", "https://youtu.be/kCUsFHrxE-o"]);
     expect([...buttons.matchAll(/alt="([^"]+)"/g)].map((m) => m[1])).toEqual(["Sign in 60 seconds", "Run the payables inbox, 2 minutes", "Watch the film, 3:58"]);
     expect(buttons).not.toContain("purser-try");
     expect(readme.indexOf(buttons)).toBeLessThan(readme.indexOf(badgeLine));
