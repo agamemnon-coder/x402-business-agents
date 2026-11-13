@@ -8,7 +8,7 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
 import { REASSURE } from "../../src/redesign/home.js";
-import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
+import { pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
@@ -135,6 +135,39 @@ async function look(page: Page, name: string, width: number): Promise<void> {
  * "More" from the keyboard, with no script on the page's side: Tab reaches it after the four tabs, Enter opens it, the
  * next Tab lands on its first link, and Enter on "More" again closes it.
  */
+/**
+ * Judges, 13 Nov (#12): at phone width nothing in the hero and the cards overlaps or is cut off. In each group (a
+ * container), no two visible children (in the flow, not absolute) overlap; none reaches past the screen's edges; and no
+ * child that clips its overflow hides content (scrollWidth over clientWidth). Run at 360 and 390 px.
+ */
+async function noOverlap(page: Page, name: string, groups: string[]): Promise<void> {
+  // Run in the page as plain text: tsx would wrap named functions in a helper the page does not have.
+  const bad = await page.evaluate(`(${OVERLAP_SCRIPT})(${JSON.stringify(groups)})`) as string[];
+  for (const b of bad) fail(`${name}: ${b}`);
+}
+const OVERLAP_SCRIPT = `function (groups) {
+  var out = [], seen = 0;
+  function desc(e) { var c = typeof e.className === "string" && e.className ? "." + e.className.trim().split(/\\s+/).join(".") : ""; return e.tagName.toLowerCase() + (e.id ? "#" + e.id : "") + c; }
+  groups.forEach(function (g) {
+    document.querySelectorAll(g).forEach(function (parent) {
+      seen++;
+      var kids = Array.prototype.filter.call(parent.children, function (k) { var r = k.getBoundingClientRect(), cs = getComputedStyle(k); return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && cs.position !== "absolute" && cs.position !== "fixed"; });
+      var rects = kids.map(function (k) { return k.getBoundingClientRect(); });
+      for (var i = 0; i < kids.length; i++) {
+        var a = rects[i];
+        if (a.left < -0.5 || a.right > innerWidth + 0.5) out.push(g + ": " + desc(kids[i]) + " reaches past the screen (" + Math.round(a.left) + " to " + Math.round(a.right) + " of " + innerWidth + ")");
+        if (getComputedStyle(kids[i]).overflowX !== "visible" && kids[i].scrollWidth > kids[i].clientWidth + 1) out.push(g + ": " + desc(kids[i]) + " cuts its content off (" + kids[i].scrollWidth + " in " + kids[i].clientWidth + " px)");
+        for (var j = i + 1; j < kids.length; j++) {
+          var b = rects[j], w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (w > 1 && h > 1) out.push(g + ": " + desc(kids[i]) + " overlaps " + desc(kids[j]) + " (" + Math.round(w) + " x " + Math.round(h) + " px)");
+        }
+      }
+    });
+  });
+  if (!seen) out.push("none of " + groups.join(", ") + " is on the page");
+  return out;
+}`;
+
 async function moreByKeyboard(page: Page, name: string): Promise<void> {
   const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
   const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
@@ -246,6 +279,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main figure.hf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12), and the card shows its final
+    // state, with no empty block waiting for the animation (review, 13 Nov).
+    if (w <= 430) {
+      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .hf", "main .hf-card", "main .hf-side", "main .hf-inv dl"]);
+      const still = await page.evaluate(() => [...document.querySelectorAll(".hf-card *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
+      if (still) fail(`/ (Home) ${tag}: ${still} parts of the product card still animate below 600 px`);
+    }
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
     // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
@@ -1173,19 +1213,21 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge, which answers 301 to it): four cards, each
     // with its screenshot (loaded, not broken) and one link; no script, so the page asks nothing but its font, its icon
-    // and its four images. Home's one quiet footer link opens it; "Judge" is in no menu. On a phone every target is 44 px.
+    // and its four images. Home's primary button opens it (owner, 13 Nov); "Judge" is in no menu. On a phone every target is 44 px.
     if (judgeBase) {
       const asked: string[] = [];
-      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
+      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/assets/apple-touch-icon.png", "/favicon.ico", "/assets/tour-sign.webp", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !own.includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
-      const top = page.locator('footer a.flink[href="tour"]');
+      // Owner, 13 Nov: the hero's one primary button is the 3-minute tour; "Try it" (TRY_URL, with /try/sign in the bundle
+      // too) is the second.
+      const top = page.locator("main .e-hero a.btn.primary");
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || (await top.innerText()).trim() !== "Take the 3-minute product tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: not one "Take the 3-minute product tour" link in the footer, inside the page's gutter, and none to /judge`);
+      if ((await top.getAttribute("href")) !== "tour" || (await page.locator('main a[href="tour"]').count()) !== 1 || (await page.locator('header nav .pmenu a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || !(await top.innerText()).trim().startsWith("Take the 3-minute tour") || !box || box.y + box.height > h) fail(`/ (Home, with /try/sign) ${tag}: the one primary button is not "Take the 3-minute tour" to /tour in the first screen, or a link to /judge is back`);
+      // Judges, 13 Nov (#7): "Try it" opens the one hero demo, "Sign in 60 seconds" (/try/sign), where the bundle serves it.
+      if ((await page.locator('main .e-hero a.btn.ghost[href="/try/sign"]').count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: no "Try it" to /try/sign beside it`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
-      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try/sign", fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
@@ -1194,17 +1236,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForURL(/\/tour$/);
       page.on("request", onRequest);
       await page.reload({ waitUntil: "load" });
-      for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
-      await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
+      const shown = w >= 600;
+      if (shown) for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
+      if (shown) await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
       await look(page, `/tour ${tag}`, w);
       const steps = await page.locator("ol.tour > li").evaluateAll((lis) => lis.map((li) => ({
         img: (li.querySelector("img") as HTMLImageElement | null)?.naturalWidth ?? 0, alt: li.querySelector("img")?.getAttribute("alt") ?? "", links: li.querySelectorAll(".go a").length, title: li.querySelector("h2")?.textContent ?? "",
       })));
-      if (steps.length !== 4 || steps.some((s) => s.img !== 1200 || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not four cards, each with a loaded screenshot, its alt text, a title and one link (${JSON.stringify(steps)})`);
+      if (steps.length !== 5 || steps.some((s) => (shown && s.img !== 1200) || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not five cards, each with ${shown ? "a loaded screenshot, " : ""}its alt text, a title and one link (${JSON.stringify(steps)})`);
+      // Judges, 13 Nov (#7): step 1 is the one hero demo, step 2 the payables inbox.
+      if (JSON.stringify(steps.slice(0, 2).map((s) => s.title)) !== JSON.stringify(["Sign in 60 seconds", "Run the payables inbox"]) || (await page.locator("ol.tour > li").first().locator('.go a[href="/try/sign"]').count()) !== 1) fail(`/tour ${tag}: steps 1 and 2 are not "Sign in 60 seconds" (/try/sign) and "Run the payables inbox"`);
       if ((await page.locator("h1").innerText()).trim() !== "Product tour · 3 minutes") fail(`/tour ${tag}: the title is not "Product tour · 3 minutes"`);
-      if (await page.locator('header nav a[aria-current="page"], header nav a[href*="judge"]').count()) fail(`/tour ${tag}: the menu marks a tab, or has Judge`);
-      if (await page.locator('main a[href*="judge"], main a[href*="watch"], main a[href*="try/sign"]').count()) fail(`/tour ${tag}: links to an old page`);
-      if (w <= 430) await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
+      // Max, 13 Nov: "Product tour" is the first item under More; on /tour, More is marked and so is that item.
+      if ((await page.locator("header nav .pmore > summary.on").count()) !== 1 || ((await page.locator('header nav .pmenu a').first().textContent()) ?? "").trim() !== "Product tour" || (await page.locator('header nav .pmenu a[aria-current="page"]').getAttribute("href")) !== "tour" || (await page.locator('header nav a[href*="judge"]').count())) fail(`/tour ${tag}: More does not open with "Product tour", marked, or the menu has Judge`);
+      if (await page.locator('main a[href*="judge"], main a[href*="watch"]').count()) fail(`/tour ${tag}: links to an old page`);
+      if (w <= 430) {
+        await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
+        await noOverlap(page, `/tour ${tag}`, ["ol.tour", "ol.tour .stop .body", "ol.tour .stop .go"]);
+        // Below 600 px the screenshots, unreadable at that size, are not shown (review, 13 Nov).
+        if (await page.locator("ol.tour .shot:visible").count()) fail(`/tour ${tag}: the screenshots are shown at phone width`);
+      }
       await page.screenshot({ path: join(shots, `tour-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
       if (asked.length) fail(`/tour ${tag}: asked a server for ${asked.join(", ")}`);

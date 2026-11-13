@@ -154,10 +154,12 @@ describe("polish (13 Nov): Purser's icon, ready-made prompts, results a phone ca
     expect([...png.slice(1, 4)].map((b) => String.fromCharCode(b)).join("")).toBe("PNG");
     expect(new DataView(png.buffer).getUint32(16)).toBe(180);
     const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
-    expect((init.json.result!.serverInfo as { icons: { src: string }[] }).icons.map((i) => i.src)).toEqual([`${ORIGIN}/icon.png`, `${ORIGIN}/favicon.svg`]);
-    expect((await c.req("GET", "/.well-known/oauth-authorization-server")).json.logo_uri).toBe(`${ORIGIN}/icon.png`);
-    // Every page of the cloud links it.
-    expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg"');
+    expect((init.json.result!.serverInfo as { icons: { src: string }[] }).icons.map((i) => i.src)).toEqual([`${ORIGIN}/icon.png?v=1113b`, `${ORIGIN}/favicon.svg?v=1113b`]);
+    expect((await c.req("GET", "/.well-known/oauth-authorization-server")).json.logo_uri).toBe(`${ORIGIN}/icon.png?v=1113b`);
+    // Every page of the cloud links it, with the query that makes a browser fetch the new mark (13 Nov).
+    expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg?v=1113b"');
+    // The query is not part of the path: the icon answers with it.
+    expect((await c.fetch(`${ORIGIN}/favicon.svg?v=1113b`)).status).toBe(200);
   });
 
   it("offers five ready-made prompts, each asking for the tools that answer it", async () => {
@@ -244,7 +246,7 @@ describe("OAuth for claude.ai", () => {
     const html = await page.text();
     expect(html).toMatch(/Connect your AI to Purser/);
     expect(html).toMatch(/Use the demo company/);
-    expect(html).toContain('href="/favicon.svg"');
+    expect(html).toContain('href="/favicon.svg?v=1113b"');
     expect(html).toMatch(/never approve or pay/);
     expect(page.headers.get("content-security-policy")).toMatch(/form-action 'self' https:\/\/claude\.ai; .*frame-ancestors 'none'/);
     expect((await c.fetch(`${ORIGIN}${authorizeUrl({ redirect_uri: "https://evil.example/cb" })}`)).status).toBe(400);

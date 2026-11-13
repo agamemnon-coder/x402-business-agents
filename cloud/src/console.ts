@@ -133,6 +133,9 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 .pft td .pill + .sub { margin-top: 5px; }
 @media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
 @media (max-width: 640px) { .co { max-width: 50vw; padding-left: 10px; } .co .av { display: none; } .tiles.pf .tile:last-child { grid-column: auto; } }
+/* Below 420 px the chip drops the name's bracketed part ("Northwind Outdoor (demo company)" → "Northwind Outdoor"; the
+   ribbon under it says it is the demo), so the company's own name is read whole (review, 13 Nov). */
+@media (max-width: 419px) { .co .cn .cx { display: none; } .co { max-width: 62vw; } }
 /* A rail's name wraps rather than end in an ellipsis. */
 .trow > .rail { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 /* The platform's companies as cards on a phone: name and payouts, account and fees, last sync. */
@@ -225,9 +228,10 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .appbar .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
-  /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
-  .appbar nav.apptabs { display: flex; flex-wrap: wrap; gap: 2px; }
-  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; }
+  /* Five pages do not fit one row on a phone: the row scrolls sideways (review, 13 Nov: "Settings" wrapped onto a line of
+     its own), the current page scrolled into view. */
+  .appbar nav.apptabs { display: flex; flex-wrap: nowrap; gap: 2px; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px; margin-right: calc(-1 * var(--gut, 16px)); padding-right: 16px; }
+  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; flex: none; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -341,7 +345,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
-${siteHeader("cloud")}
+${siteHeader(null)}
 <div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
@@ -413,7 +417,7 @@ function shell(){
     // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
     w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
     // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
-    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
+    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){const cx=/^(.+?)(\s+\([^)]*\))$/.exec(c);co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',cx?[cx[1],el('span','cx',cx[2])]:c));
       // The demo company has no account of its own: its chip says what its rows are (jury, 13 Nov: "No Airwallex account
       // yet" read against rows paid on Airwallex rails).
       co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
@@ -421,7 +425,7 @@ function shell(){
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
-  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
 }
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).
@@ -646,8 +650,10 @@ function dashBlock(D){
     dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,weekW)]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))]);
   const g3=dcard('feedc',t('cs.dash.feed_title'),t('cs.dash.feed_sub'),feedList(D));
   const box=el('div','dash',[k,g1,g2,g3]);
-  // Rise in once in view (in order); bars grow and the line draws itself. Reduced motion: all shown at once.
-  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))whenSeen(n,()=>n.classList.add('in'))});
+  // Every card rises in on the next frame (bars grow, the line draws itself), whether or not it is on the screen yet
+  // (review, 13 Nov: cards waiting to be scrolled to left an empty band of about 850 px between the charts and "Next" at
+  // 1440 px, in a page read whole). Reduced motion: the CSS shows all at once.
+  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))n.classList.add('in')});
   return box}
 async function overviewView(){
   title(t('cs.nav.overview'));
@@ -1103,6 +1109,9 @@ async function transactionsView(){
 // --- The archive (engine only): the vault's folder tree as its indexes list it, each file in the same sandboxed frame -----
 async function archiveView(){
   title(t('cs.eng.archive'));
+  // Review, 13 Nov: without an engine (a guest, a cloud with none) /v1/engine/vault answers 404, which showed "Could not
+  // load this page" and an error in the browser's console. The page asks the engine first, as its links do, and says why.
+  if(!(await engineStatus())){const back=el('a','btn',t('cs.eng.archive_back'));back.href='#/overview';view().replaceChildren(head(t('cs.eng.archive')),el('div','card panel',[note(t('cs.eng.archive_off')),back]));return}
   const v=await api('/v1/engine/vault');const files=v.files||[];
   // The tree from the paths: the product's own (Dutch) folder names, as they are.
   const root={dirs:new Map(),files:[]};

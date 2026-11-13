@@ -120,7 +120,8 @@ describe("the site after v4", () => {
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    // Max, 13 Nov: "Product tour" first.
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Product tour", "tour"], ["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
@@ -140,9 +141,10 @@ describe("the site after v4", () => {
       // The partner pages follow the product pages after one divider; nothing else is in the dropdown.
       const product = MORE_LINKS.filter((l) => l.group === "product" && served.includes(l.label));
       expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
-      // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
+      // The footer repeats the product pages' links (not the partner pages, not the product tour, 13 Nov), in the same
+      // order; Try, an older page, has no footer.
       const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
-      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href) && l.key !== "tour").map((l) => [l.href, l.label]) });
     }
   });
 
@@ -300,7 +302,7 @@ describe("the site after v4", () => {
 
   it("carries a favicon and an Open Graph image on the redesign's pages, both served", () => {
     for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude"]) {
-      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
+      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
       // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
       expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
     }

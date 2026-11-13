@@ -72,9 +72,9 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
     }
   });
 
-  it("the product tour has no replay step and no link to /watch; it starts with Try and adds up to three minutes", () => {
+  it("the product tour has no replay step and no link to /watch; it starts with the 60-second demo and adds up to three minutes", () => {
     expect(JSON.stringify(TOUR_STEPS)).not.toMatch(/watch|replay/i);
-    expect(TOUR_STEPS[0]!.link.href).toBe("/try");
+    expect(TOUR_STEPS[0]!.link.href).toBe("/try/sign");
     expect(TOUR_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     for (const html of [tourPage(), ON.tour!]) {
       expect(html).not.toMatch(/href="\/?(watch|live|demo|replay)\b/);

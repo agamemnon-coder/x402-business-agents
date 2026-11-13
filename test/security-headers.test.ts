@@ -161,13 +161,14 @@ describe("relay Worker: the headers per kind of answer (A3; test/security-header
   });
 
   it("/favicon.ico is Purser's mark; the pages that allowed no image (phone pages, the evidence report) name it and allow it", async () => {
+    // Since 13 Nov a real ICO (32 and 48 px PNGs) of the header's mark, the same bytes Purser Cloud serves.
     const ico = answer("/favicon.ico");
     expect(ico.status).toBe(200);
-    expect(ico.headers.get("content-type")).toBe("image/svg+xml");
-    expect(Buffer.from(await ico.arrayBuffer()).toString("utf8")).toBe(Buffer.from(pages.images["favicon.svg"]!.data, "base64").toString("utf8"));
+    expect(ico.headers.get("content-type")).toBe("image/x-icon");
+    expect(Buffer.from(await ico.arrayBuffer()).toString("base64")).toBe(pages.images["favicon.ico"]!.data);
     for (const path of ["/approve/P-0001", "/enrol", "/policy", "/metal/report"]) {
       const res = page200(path);
-      expect(await res.text(), path).toMatch(/<link rel="icon" href="\/assets\/favicon\.svg" type="image\/svg\+xml">/);
+      expect(await res.text(), path).toMatch(/<link rel="icon" href="\/assets\/favicon\.svg\?v=1113b" type="image\/svg\+xml">/);
       expect(res.headers.get("content-security-policy"), path).toMatch(/img-src 'self'/);
     }
   });

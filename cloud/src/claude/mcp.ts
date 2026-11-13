@@ -12,6 +12,7 @@
 
 import { z } from "zod";
 import type { Caller } from "../auth.js";
+import { iconsOf } from "../brand.js";
 import { dashboard, feedLine } from "../dashboard.js";
 import { BadRequest, insights, listInvoices, listTransactions, oneInvoice, report } from "../read.js";
 import { auditTrail, cashPosition, cfoPolicy, explain, findPayment, pendingApprovals, quarterOf, spendBy } from "./insight.js";
@@ -451,7 +452,7 @@ export const HEADER_MISMATCH = -32020, UNSUPPORTED_PROTOCOL_VERSION = -32022;
 
 const identity = (c: McpCtx) => ({ name: "purser", title: "Purser", version: SERVER_VERSION, description: "Read a company's books in Purser: invoices, payments, cash, VAT, approvals and the CFO's policy. Never approves or pays.",
   ...(c.origin ? { websiteUrl: c.origin, icons: iconsAt(c.origin) } : {}) });
-export const iconsAt = (origin: string) => [{ src: `${origin}/icon.png`, mimeType: "image/png", sizes: ["512x512"] }, { src: `${origin}/favicon.svg`, mimeType: "image/svg+xml", sizes: ["any"] }];
+export const iconsAt = iconsOf;
 const capabilities = { tools: { listChanged: false }, prompts: { listChanged: false }, resources: { subscribe: false, listChanged: false } };
 const modern = (v: string | undefined) => !!v && (MODERN_VERSIONS as readonly string[]).includes(v);
 /** resource_link came with 2025-06-18; an older client gets text and structured data only (it ignores the latter). */

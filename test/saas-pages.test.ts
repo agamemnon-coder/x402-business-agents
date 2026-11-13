@@ -415,7 +415,8 @@ describe("the two pages on the site", () => {
     }
     expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
     expect(menuItemOf("runs")).toBeNull();
-    expect(menuItemOf("tour")).toBeNull();
+    // The product tour is under More since 13 Nov (Max): /tour marks More.
+    expect(menuItemOf("tour")).toBe("more");
     expect(menuItemOf("pricing")).toBe("more");
     expect(menuItemOf("proof")).toBe("proof");
     expect(menuItemOf(null)).toBeNull();

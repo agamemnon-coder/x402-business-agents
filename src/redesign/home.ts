@@ -154,16 +154,27 @@ export function homeHeadingHtml(): string {
   const [first, ...rest] = HERO.split(/(?<=\.)\s+/);
   return `<h1 class="h-hero"><span>${esc(first!)}</span> <span>${esc(rest.join(" "))}</span></h1>`;
 }
-/** Home's first button, word for word: where the Try tab goes. */
-export const START = "Try it live";
+/**
+ * Home's first button, word for word (owner, 13 Nov: a non-technical visitor understood the idea but did not know where
+ * to look): the 3-minute product tour, /tour, is the one place to start. "Try it" (TRY_BUTTON) is the second button.
+ */
+export const START = "Take the 3-minute tour";
+/**
+ * Home's second button (judges, 13 Nov, #7: one hero demo): "Sign in 60 seconds", /try/sign, where the bundle serves it,
+ * the tour's step 1; the hands-on demo (TRY_URL, "Run the payables inbox", the Try tab) where it does not.
+ */
+export const TRY_BUTTON = "Try it";
 /** The hero's one sentence under the heading (the owner, 12 Nov: one sentence). WHAT_IT_IS stays the README's and the form's. */
 export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms with Face ID.";
 /**
- * The one line under it, saying only what the page behind the button does. Since 12 Nov the button opens the hands-on
- * demo on Purser Cloud (TRY_URL): a test company of your own on test money, deleted after 24 hours (its start page says
+ * The one line under the buttons, saying only what the pages behind them are (13 Nov): the tour's four steps, and the
+ * hands-on demo (TRY_URL), a test company of your own on test money, deleted after 24 hours (its start page says
  * "Test money · deleted after 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
-export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
+export const REASSURE = {
+  sign: "No sign-up, about a minute; nothing real moves.",
+  world: "No sign-up; test companies deleted after 24 hours.",
+} as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
@@ -308,7 +319,7 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
   // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
-  const tryHref = TRY_URL;
+  const tryHref = opts.trySign ? "/try/sign" : TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
   const logos = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, ""], ["logo-metal.svg", "Metal", 114, 36, ""], ["logo-claude.png", "Claude", 330, 72, "tall"]] as const;
@@ -317,7 +328,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <div class="copy">
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
-    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
+    <div class="ctas"><a class="btn primary big start" href="tour">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="${tryHref}">${esc(TRY_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
@@ -356,8 +367,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
-    // The product tour: one quiet footer link (/tour is in either bundle).
-    links: [["tour", TOUR_LINE]],
+    // The product tour is the hero's first button (13 Nov), so the footer has no second link to it.
+    links: [],
     real,
     source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });

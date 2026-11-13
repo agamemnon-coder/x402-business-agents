@@ -9,6 +9,7 @@ import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js
 import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
 import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
+import { ICON_VERSION } from "../ui/brand/mark.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -515,7 +516,8 @@ ${o.js}</script>`;
 <meta name="description" content="${esc(o.description)}">
 <meta name="theme-color" content="#0b1220">
 ${previewTags().join("\n")}
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=${ICON_VERSION}">
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}

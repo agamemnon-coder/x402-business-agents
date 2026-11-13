@@ -20,6 +20,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { chromium } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { ICON_VERSION } from "../../src/ui/brand/mark.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -62,7 +63,9 @@ const rpc = async (token: string, method: string, params: Record<string, unknown
 const challenge401 = await fetch(`${ORIGIN}/mcp`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }) });
 ok(challenge401.status === 401 && /resource_metadata="[^"]+\/\.well-known\/oauth-protected-resource"/.test(challenge401.headers.get("www-authenticate") ?? ""), "discovery: /mcp answers 401 with the protected resource's metadata");
 const as = await (await fetch(`${ORIGIN}/.well-known/oauth-authorization-server`)).json() as { registration_endpoint: string; logo_uri: string };
-ok(as.registration_endpoint === `${ORIGIN}/oauth/register` && as.logo_uri === `${ORIGIN}/icon.png`, "discovery: the authorization server's metadata, with Purser's logo");
+// The logo's address carries the icons' version (src/ui/brand/mark.ts, 13 Nov), and that address serves the PNG.
+const logo = await fetch(as.logo_uri);
+ok(as.registration_endpoint === `${ORIGIN}/oauth/register` && as.logo_uri === `${ORIGIN}/icon.png?v=${ICON_VERSION}` && logo.status === 200 && logo.headers.get("content-type") === "image/png", "discovery: the authorization server's metadata, with Purser's logo");
 const reg = await post("/oauth/register", { client_name: "Claude", redirect_uris: [redirect] as unknown as string }, true);
 const clientId = String(reg.json.client_id ?? "");
 ok(reg.status === 201 && clientId.startsWith("pcc."), "registration: a public client, its id signed");

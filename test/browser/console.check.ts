@@ -399,7 +399,30 @@ async function enginePass() {
   await engineClaude(E);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
+  await engineGuestArchive(origin);
   serverE.close();
+}
+
+/**
+ * Review, 13 Nov (the live purser-try runs an engine): a guest, who has none, opened #/archive and read "Could not load
+ * this page: no such route", GET /v1/engine/vault having answered 404 with an error in the console. The page now asks
+ * the engine first: the guest reads why there is no archive, with a way back, and the vault is never asked.
+ */
+async function engineGuestArchive(origin: string) {
+  const c = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const p = await c.newPage();
+  const errors: string[] = [], vault: string[] = [];
+  p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  p.on("request", (r) => { if (r.url().includes("/v1/engine/vault")) vault.push(r.url()); });
+  await p.goto(`${origin}/#/sign-in`);
+  await p.waitForSelector("#guest");
+  await p.click("#guest");
+  await p.waitForSelector(".dash", { timeout: 20_000 });
+  await p.goto(`${origin}/#/archive`);
+  await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
+  const text = (await p.textContent("main")) ?? "";
+  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+  await c.close();
 }
 
 /** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
@@ -794,6 +817,21 @@ async function guestPass() {
     await p.waitForSelector("#guest");
     await p.click("#guest");
     await p.waitForSelector(".dash", { timeout: 20_000 });
+    // Review, 13 Nov: no empty band below the first screen. Without any scroll (a page read whole, or a full-page
+    // screenshot), every card has risen in, the ones below the first screen too.
+    await p.waitForTimeout(600);
+    const hidden = await p.evaluate(() => [...document.querySelectorAll(".dash .rise")].filter((n) => getComputedStyle(n).opacity !== "1").length);
+    ok(hidden === 0, `${tag}: no empty band: every card is shown without scrolling (${hidden} hidden)`);
+    // The console is not one of the site's pages: its header marks no item ("More" was marked on every page).
+    ok(await p.locator('header.top summary.on, header.top a[aria-current="page"]').count() === 0, `${tag}: the site header marks no menu item on the console`);
+    // Review, 13 Nov, at 390 px: the five pages stay on one row that scrolls sideways ("Settings" wrapped), and below
+    // 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
+    const tabs = await p.locator("#tabs a").evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
+    ok(new Set(tabs).size === 1, `${tag}: the pages are one row (${tabs.join(", ")})`);
+    if (width < 420) {
+      const chip = await p.evaluate(() => { const cn = document.querySelector("#co .cn") as HTMLElement | null; return cn ? { text: cn.innerText.trim(), cut: cn.scrollWidth > cn.clientWidth + 1 } : null; });
+      ok(chip?.text === "Northwind Outdoor" && !chip.cut, `${tag}: the company chip reads "Northwind Outdoor", whole (${JSON.stringify(chip)})`);
+    }
     for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);

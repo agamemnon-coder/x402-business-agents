@@ -5,8 +5,8 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TOUR_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { HOME_SUB, REASSURE, START, TRY_BUTTON, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -50,25 +50,24 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(60);
   });
 
-  it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {
+  it("opens Home under its heading with what Purser is, the 3-minute tour as the one primary button, Try it second, one reassurance line", () => {
     const t = words(hero(HOME));
-    expect([START, PROOF_BUTTON]).toEqual(["Try it live", "See the proof"]);
-    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (try it, see the proof), one reassurance line.
-    expect(t.startsWith(`${HERO} ${HOME_SUB} ${START} ${PROOF_BUTTON} ${REASSURE.sign}`)).toBe(true);
+    expect([START, TRY_BUTTON]).toEqual(["Take the 3-minute tour", "Try it"]);
+    // Owner, 13 Nov: the headline, one sentence, the tour (primary), Try it (secondary), one reassurance line.
+    expect(t.startsWith(`${HERO} ${HOME_SUB} ${START} ${TRY_BUTTON} ${REASSURE.sign}`)).toBe(true);
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost"']);
-    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
-    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="/try">`);
+    expect(hero(HOME)).toContain('<a class="btn primary big start" href="tour">');
+    // Judges, 13 Nov (#7): with /try/sign in the bundle, "Try it" opens it ("Sign in 60 seconds"); without, /try.
+    expect(hero(HOME)).toContain('<a class="btn big ghost" href="/try/sign">');
     expect(HOME).not.toContain("Watch the agents");
     // The three sentences stay in the README, the form and the deck; Home tells the first with its product card.
     for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${START} ${PROOF_BUTTON} ${REASSURE.world}`);
-    // The product tour (13 Nov): one footer link in either bundle; never a call to action in the page, never a tab.
-    expect(HOME).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
-    expect(hero(HOME)).not.toContain('href="tour"');
-    expect(homePage().match(/href="tour"/g)).toEqual(['href="tour"']);
+    expect(hero(homePage())).toContain('<a class="btn big ghost" href="/try">');
+    expect(words(hero(homePage()))).toContain(`${START} ${TRY_BUTTON} ${REASSURE.world}`);
+    // The product tour (13 Nov): the hero's primary button, the one link to it on Home; never a tab.
+    expect(homePage().match(/href="tour"/g)).toEqual(['href="tour"', 'href="tour"']);
     expect(homePage()).not.toMatch(/href="\/?judge"/);
     expect(homePage()).not.toContain('>Judge</a>');
   });
