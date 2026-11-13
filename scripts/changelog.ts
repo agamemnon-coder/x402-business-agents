@@ -2,6 +2,8 @@
 // commit's title, grouped by plain keyword rules. Nothing is typed by hand; run it again after a merge:
 //   npm run changelog                     (writes CHANGELOG.md)
 //   npm run changelog -- --since <tag>    (another starting tag)
+//   npm run changelog -- --ref <ref>      (another end; default origin/main when it exists, else HEAD: on a branch that
+//                                          merged main in, HEAD's first parents skip main's later merges)
 // Needs the full history (a shallow clone has too few commits): `git fetch --unshallow --tags` first in CI.
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -12,13 +14,13 @@ export interface Merged { pr: number; date: string; branch: string; title: strin
 
 /** The groups, in the order they are shown; a pull request goes to the first group whose rule matches its title or branch. */
 export const GROUPS: { name: string; rule: RegExp }[] = [
-  { name: "Live runs and run records", rule: /^run record|\brun record\b|, live \(|live once|live \(1[0-9] nov|sandbox run|run of 1[0-9]/i },
+  { name: "Live runs and run records", rule: /^run record|\brun record\b|, live \(|live once|live \(1[0-9] nov|sandbox run|run of 1[0-9]|receipt of/i },
   { name: "Security, CI and tests", rule: /gitleaks|\bci\b|codeql|security|tests? (follow|green|in step)|^tests\b|red team/i },
   { name: "Rails: Airwallex, Metal, Visa and invoice tokens", rule: /airwallex|metal|visa|vic-|icc|two-locks|two locks|tokeni[sz]|mandate|x402|face id on chain|platform end-to-end/i },
-  { name: "Books: ledger, T:0, Moneybird and ERP", rule: /\bbooks?\b|t:0|\bt0\b|moneybird|ledger|erp|bookkeeping|vault|autopilot|coder agent/i },
-  { name: "Purser Cloud, the engine and the agents", rule: /cloud|console|engine|payer|checker|agents?\b|speed|d1|durable|payables|platform/i },
+  { name: "Books: ledger, T:0, Moneybird and ERP", rule: /\bbooks?\b|t:0|\bt0\b|moneybird|ledger|erp|bookkeeping|vault|autopilot|coder agent|\bvat\b/i },
+  { name: "Purser Cloud, the engine and the agents", rule: /cloud|console|engine|payer|checker|agents?\b|speed|d1|durable|payables|platform|connect|connector|mcp|oauth|consent/i },
   { name: "Site and the hands-on demo", rule: /site|home|\/try|try page|\/proof|\/runs|\/visa|\/watch|menu|footer|pages?\b|design|hero|partner/i },
-  { name: "README, docs, film and submission", rule: /readme|docs?\b|film|video|deck|cheat|submission|claims|consistency|quote|copy pass|review/i },
+  { name: "README, docs, film and submission", rule: /readme|docs?\b|film|video|deck|cheat|submission|claims|consistency|quote|copy pass|review|repo pass|charts?|diagrams?|changelog/i },
 ];
 
 export function groupOf(m: Merged): string {
@@ -51,10 +53,16 @@ export function changelog(merged: Merged[], since: string, repo: string): string
   ].join("\n");
 }
 
+function hasRef(ref: string): boolean {
+  try { execFileSync("git", ["rev-parse", "--verify", "--quiet", ref], { stdio: "ignore" }); return true; } catch { return false; }
+}
+
 function main(argv: string[]): void {
   const i = argv.indexOf("--since");
   const since = i >= 0 ? argv[i + 1]! : "v1.0-submission";
-  const log = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%cs%x09%s%x09%b", `${since}..HEAD`], { encoding: "utf8" });
+  const r = argv.indexOf("--ref");
+  const ref = r >= 0 ? argv[r + 1]! : hasRef("origin/main") ? "origin/main" : "HEAD";
+  const log = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%cs%x09%s%x09%b", `${since}..${ref}`], { encoding: "utf8" });
   // %b can run over several lines; keep only each merge's first body line, which GitHub fills with the PR title.
   const lines = log.split("\n").filter((l) => /^\d{4}-\d{2}-\d{2}\t/.test(l));
   const md = changelog(parseMerges(lines.join("\n")), since, "https://github.com/agamemnon-coder/x402-business-agents");

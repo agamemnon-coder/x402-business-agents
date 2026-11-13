@@ -41,7 +41,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
     // Since 12 Nov (one Try everywhere): Try opens the hands-on demo; the /try/sign story is the last link, "The 60-second story".
-    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect Claude](#connect-claude) · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](${TRY_SIGN_URL})`;
+    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect any AI](#connect-any-ai) · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](${TRY_SIGN_URL})`;
     expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", links, ""]);
     // The first screen ends with the reviewers' block, and "Why this is a company" starts within the first 60 lines.
     expect(lines.slice(badges + 1, badges + 5)).toEqual(["", "</div>", "", "## For reviewers in 30 seconds"]);

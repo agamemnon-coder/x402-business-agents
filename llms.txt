@@ -37,7 +37,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - Metal: https://kit11.max-31b.workers.dev/metal and docs/metal-award.md; the mandates read live, read-only: https://kit11.max-31b.workers.dev/api/metal/mandates
 - T:0: https://kit11.max-31b.workers.dev/t0 (95 journal entries of the main run's books in T:0's sandbox ledger, 10 November, read back with 0 differences)
 - Visa: https://kit11.max-31b.workers.dev/visa and docs/runs/2026-11-07-vic-1.md
-- After the kit: Airwallex connected accounts live in the sandbox (10 Nov: account acct_SC-QD89fOneAeqaRFgOymw ACTIVE; EUR 5.00 payout a9460dba-f31b-4111-be58-6d9a9e71adb1 with Purser's EUR 0.05 fee accepted by Airwallex, settlement simulated); the SME invoice inbox's code is in this repository (src/ap, src/ledger, src/vault, src/erp, src/payouts, cloud/), tested offline on fakes of Airwallex and Claude; it ran once end to end in the sandbox on 10 Nov for three test companies (1 payout PAID, 3 refused by Airwallex for a missing business registration number); purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank; its console's hosted preview exists but is private (behind an access key), no customer uses it, and it is not ready for real money: docs/after-the-kit.md, docs/runs/2026-11-10-platform-e2e.md
+- After the kit: Airwallex connected accounts live in the sandbox (10 Nov: account acct_SC-QD89fOneAeqaRFgOymw ACTIVE; EUR 5.00 payout a9460dba-f31b-4111-be58-6d9a9e71adb1 with Purser's EUR 0.05 fee accepted by Airwallex, settlement simulated); the SME invoice inbox's code is in this repository (src/ap, src/ledger, src/vault, src/erp, src/payouts, cloud/), tested offline on fakes of Airwallex and Claude; it ran once end to end in the sandbox on 10 Nov for three test companies (1 payout PAID, 3 refused by Airwallex for a missing business registration number; the PAID one EUR 4.84, 593c340b-1752-4537-9ef2-0eb3558897cc, Purser's fee EUR 0.02, as /runs and /airwallex show it); purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank, and its console's Try as guest opens a demo company read-only; the product's own console deployment is another matter: that hosted preview exists but is private (behind an access key), no customer uses it, and it is not ready for real money: docs/after-the-kit.md, docs/runs/2026-11-10-platform-e2e.md
 
 ## Product pages
 
@@ -57,6 +57,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 - src/policy/cards.ts: the CFO policy as Airwallex card controls
 - src/policy/mandates.ts: the Metal mandates
 - src/airi/purchase.ts: Visa Intelligent Commerce through Airwallex's Airi
+- Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md
 - src/audit/log.ts: the hash-chained audit log
 
 ## For agents
