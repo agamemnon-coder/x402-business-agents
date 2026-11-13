@@ -721,7 +721,7 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
       head: `Visa Intelligent Commerce via Airwallex's Airi: a live run (${v("airi.day")})`,
       // 12 Nov (jury panel): the site's own summary line, read from the record: "A scripted run, no Claude call: …" (it
       // read "Agents paid with … without the CFO"). The voice-over of the film recorded before 12 Nov is unchanged.
-      line: airiSummaryLine(runs.airi as unknown as AiriRunRecord),
+      line: airiSummaryLine(runs.airi as unknown as AiriRunRecord, { film: true }),
       rows: [
         { ok: true, label: "✓ Within the limit", amount: v("airi.alone"), detail: `within the ${v("airi.limit")} limit · one passkey tap in Airi` },
         { ok: true, label: "✓ Paid after Face ID", amount: `${v("airi.cfo")} · ${v("airi.proposal")}`, detail: "the CFO's Face ID in Purser, then one tap in Airi" },

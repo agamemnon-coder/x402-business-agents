@@ -69,8 +69,14 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(main.indexOf("<h1>")).toBeLessThan(main.indexOf(fig));
     const f = { ...sp, calls: st.reduce((n, a) => n + a.claude_calls, 0), faceId: faceIdDecisions(run.record) };
     expect([f.routine, f.decisions, f.byClaude, f.faceId, f.calls]).toEqual([82, 24, 24, 5, 50]);
-    // Two drawings (wide, phone), each named by the same sentence; the caption holds the rest.
-    expect([...fig.matchAll(/<svg class="(wid|nar)"[^>]*aria-label="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["wid", esc(splitSentence(f))], ["nar", esc(splitSentence(f))]]);
+    // The wide drawing, named by the sentence; the caption holds the rest. Final jury, 13 Nov: the tall flow was unreadable
+    // at 390 px (dark mode the worst), so phones get plain figures instead: the 106 total, then three bars, each with its
+    // count and words in the text colour (CSS swaps the two at 860 px).
+    expect([...fig.matchAll(/<svg class="(wid|nar)"[^>]*aria-label="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["wid", esc(splitSentence(f))]]);
+    const nar = /<div class="nar sbars"[^>]*>[\s\S]*?<\/div>/.exec(fig)?.[0] ?? "";
+    expect(nar).toContain(`aria-label="${esc(splitSentence(f))}"`);
+    expect(text(nar).replace(/\s+/g, " ").trim()).toBe("106 payment requests 82 routine payments by code 24 exceptions, decided by Claude 5 of those, high-risk: the CFO's Face ID");
+    expect([...nar.matchAll(/<rect class="(sk-\w+)" width="([\d.]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["sk-code", "77.4"], ["sk-claude", "22.6"], ["sk-face", "4.7"]]);
     expect(splitSentence(f)).toBe("Payment requests: 82 routine payments by code; 24 exceptions decided by Claude; 5 high-risk ones on to the CFO's Face ID.");
     expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).trim()).toBe("All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged");
     // The page's CSP hashes its one style block: no style attribute anywhere in it, no script.

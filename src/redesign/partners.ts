@@ -196,7 +196,7 @@ export const VISA_H1 = VISA_TITLE;
  * The story in one line, right under the heading, true of the run's three purchases: Purser's policy came before any
  * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
  */
-export const VISA_LEAD = "First the CFO's limit, then a single-use Visa credential.";
+export const VISA_LEAD = "First the CFO's limit, then a Visa credential Purser binds to one purchase.";
 /**
  * Which runs are the entry, and for which award. No dated quote from Visa is on record (docs/evidence/README.md,
  * 7 November: "as reported by the owner"), and the poster's role is not on record either, so since the jury check of
@@ -345,7 +345,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     builtOn: builtOnHtml(run, false),
     title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
-    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
+    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a Visa credential for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
     real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${asker.short}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
     source: `Source: ${AIRI_RUN_FILE} (the Airi run), ${vic3 ? `${VIC3_RUN_FILE} (the latest live run), ` : ""}and ${VIC2_RUN_FILE} (the control test).`,

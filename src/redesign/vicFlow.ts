@@ -21,7 +21,7 @@ export const VIC_FLOW_HEADING = "How it works";
 export type VicOwner = "agent" | "purser" | "airi" | "airwallex";
 /** Whose step it is, in words (each step says it, so colour is never the only sign). */
 export const VIC_OWNER_WORDS: Record<VicOwner, string> = { agent: "Agent", purser: "Purser", airi: "Airi", airwallex: "Airwallex" };
-/** Step 5's own label: the single-use Visa credential is the one step that is Visa Intelligent Commerce. */
+/** Step 5's own label: the Visa credential (Purser binds it to one purchase) is the one step that is Visa Intelligent Commerce. */
 export const VIC_CREDENTIAL_WHO = "Airi · VIC";
 
 export interface VicStep {
@@ -78,7 +78,7 @@ export function vicFlow(rec: AiriRunRecord): VicFlow {
       { owner: "purser", title: "Purser's policy", what: `Limit ${b.currency} ${limit}, allowed merchants; above it, the CFO's Face ID on the exact terms`, value: `${need(b, "proposal_id")} · terms ${short(need(b, "terms_sha256"))}` },
       { owner: "airi", title: "Airi mandate", what: "Amount, merchant and items, for this one purchase", value: need(b, "mandate_id") },
       { owner: "airi", title: "Cardholder confirms", what: "Passkey in Airi", value: "Once" },
-      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: "Single-use Visa credential (VIC)", what: "From Airwallex's Airi wallet", value: `Airi's receipt: ${need(b, "credential_type")} · test card` },
+      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: "Visa credential (VIC)", what: "From Airwallex's Airi wallet; Purser binds it to this purchase", value: `Airi's receipt: ${need(b, "credential_type")} · test card` },
       { owner: "airwallex", title: "Airwallex hosted checkout", what: "Our own sandbox merchant", value: need(b, "payment_intent_id") },
       { owner: "purser", title: "Result read back", what: "Reported to Airi", value: outcome, ...(outcome === "SUCCEEDED" ? { tone: "ok" as const } : {}) },
     ],

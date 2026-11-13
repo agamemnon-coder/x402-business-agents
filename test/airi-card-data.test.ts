@@ -261,11 +261,11 @@ describe("\"Card data\" on /visa", () => {
     expect(cardDataHtml()).toBe(block);
   });
 
-  it("states plainly: not a network-tokenised checkout; a headless browser types the single-use credential; no PCI attestation", () => {
+  it("states plainly: not a network-tokenised checkout; a headless browser types Airi's Visa credential; no PCI attestation", () => {
     const t = text(block);
     expect(CARD_DATA_NOT).toEqual([
       "This is not a network-tokenised checkout.",
-      "A headless browser types the single-use credential into Airwallex's hosted payment page.",
+      "A headless browser types Airi's Visa credential into Airwallex's hosted payment page.",
       "There is no PCI attestation.",
     ]);
     // The three, word for word and in this order, open the block.

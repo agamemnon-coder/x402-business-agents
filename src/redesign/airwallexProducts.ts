@@ -385,7 +385,7 @@ export function airiTile(rec: AiriRunRecord | null): ProductTile | null {
   if (!rec || !b || toCents(b.amount) <= toCents(rec.policy.alone_max_eur) || !checked.length || checked.some(([, c]) => !c.ok)) return null;
   return {
     key: "airi", name: PRODUCTS.airi.name, value: money(b.currency, b.amount),
-    what: `Over Purser's ${euro(rec.policy.alone_max_eur)} limit: paid only after the CFO's Face ID.`, why: "Airi issues a single-use Visa credential.",
+    what: `Over Purser's ${euro(rec.policy.alone_max_eur)} limit: paid only after the CFO's Face ID.`, why: "Visa credential bound to one purchase.",
     id: b.payment_intent_id!, idLabel: "PaymentIntent", href: `#${AIRI_RUN_STEPS_ID}`, iso: b.approved_at ?? rec.started_at, files: [AIRI_RUN_FILE],
   };
 }
