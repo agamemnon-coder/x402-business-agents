@@ -15,7 +15,8 @@ import { seedTreasury } from "../agents/euroBill.js";
 import { actionsFor } from "../ap/detail.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { ingestDocument, type IngestResult } from "../ap/inbox.js";
-import { payApInvoice, syncPayments } from "../ap/pay.js";
+import { earlyPayer, payApInvoice, syncPayments } from "../ap/pay.js";
+import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
@@ -79,6 +80,11 @@ export interface EngineDeps {
    * (speed, 12 Nov): code writes the note, and the Payer agent's own reason is already on the screen.
    */
   reviewNoteOnPay?: boolean;
+  /**
+   * The Payer, early (speed, 13 Nov): once an invoice is filed ready to pay, the Payer proposes in the background, and Pay
+   * uses that answer when its plan is the same case (startEarlyPayer). Default false; the cloud's Worker turns it on.
+   */
+  earlyPayer?: boolean;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -197,6 +203,8 @@ export class EngineHost {
   private readonly deps: EngineDeps;
   /** The end of the last write: the next one starts after it. */
   private tail: Promise<unknown> = Promise.resolve();
+  /** The Payer's early answers, by invoice, while they are worked out and once they are (startEarlyPayer). */
+  private early = new Map<string, { done: boolean; value: EarlyPayer | null; settled: Promise<void> }>();
 
   constructor(deps: EngineDeps) {
     if (!docStoreOf(deps.db)) throw new Error("the engine host needs the ledger's own document store (useDocStore): it has no payables folder to write to");
@@ -268,6 +276,58 @@ export class EngineHost {
     }
   }
 
+  /**
+   * The Payer, early (speed, 13 Nov; Max's yes): once an invoice is filed ready to pay, the Payer proposes on its plan
+   * in the background (src/ap/pay.ts earlyPayer: nothing filed, locked or written but the agent's own run), so Pay can
+   * read the finished answer instead of asking Claude while the visitor waits. Its Claude calls count against the same
+   * caps, under their own reservation, and only with room to spare (cloud/src/engine/spend.ts: never when the day's cap,
+   * the company's or the total is near). Not finished or failed when Pay comes: Pay runs the Payer as before. Outside the
+   * action queue: it only reads, and its one write (the agent's run row) is a single statement.
+   */
+  private startEarlyPayer(invoiceId: string): void {
+    const { db, claude, rails } = this.deps;
+    if (!this.deps.earlyPayer || !claude?.agents || this.early.has(invoiceId)) return;
+    const inv = apInvoice(db, invoiceId);
+    if (!inv || inv.status !== "ready" || !actionsFor(inv).pay.allowed) return;
+    // A company holds at most a few unpaid answers; the oldest goes first.
+    if (this.early.size >= 16) this.early.delete(this.early.keys().next().value!);
+    const slot: { done: boolean; value: EarlyPayer | null; settled: Promise<void> } = { done: false, value: null, settled: Promise.resolve() };
+    this.early.set(invoiceId, slot);
+    slot.settled = (async () => {
+      try {
+        const got = await claude.reserve({ spare: true });
+        if (!got.ok) return;
+        const { micros, settle } = got.reservation;
+        const budget = actionBudget(micros);
+        let cost = 0;
+        try {
+          slot.value = await earlyPayer(db, rails.rail, invoiceId, this.now(), claude.agents!(budget));
+          cost = slot.value?.out.run.costMicros ?? 0;
+        } finally {
+          slot.done = true;
+          await settle(Math.min(micros, Math.max(cost, micros - budget.left())));
+        }
+      } catch {
+        slot.value = null;
+      } finally {
+        slot.done = true;
+      }
+    })();
+  }
+
+  /** The Payer's early answer for Pay, when it is finished; taken once. Not finished: null, and Pay runs the Payer itself. */
+  private takeEarlyPayer(invoiceId: string): EarlyPayer | null {
+    const slot = this.early.get(invoiceId);
+    if (!slot) return null;
+    this.early.delete(invoiceId);
+    return slot.done ? slot.value : null;
+  }
+
+  /** Waits until every early Payer started so far has finished and settled (tests, and a host that is closing). */
+  async earlySettled(): Promise<void> {
+    await Promise.all([...this.early.values()].map((s) => s.settled));
+  }
+
   /** The treasury's test money, floors and payees on the rails, once; safe to repeat. */
   seed(): Promise<void> {
     return this.act(async () => {
@@ -292,6 +352,7 @@ export class EngineHost {
       ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client, readInParallel: true }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
     if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
     const inv = firstInvoice(out);
+    if (inv) this.startEarlyPayer(inv.id);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
     return { kind: out.kind, sha256: out.kind === "invoice" ? out.invoice.doc_sha256 : sha256(bytes), invoice: inv ? this.invoice(inv.id) : null };
   }
@@ -322,7 +383,9 @@ export class EngineHost {
       try {
         // Task A6: the Payer proposes the rail, the day and the currency on the engine's plan when the CFO opens Pay. It may
         // only propose within that plan: held or off the plan, code's plan stands and is filed for Face ID, labelled.
-        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), this.deps.reviewNoteOnPay === false ? undefined : reader, { on: agents.on, claude: agents.client, planStands: true }));
+        // The Payer's early answer, when it is finished, is used if Pay's plan is the same case (src/ap/payerAgent.ts payerGate).
+        const early = this.takeEarlyPayer(invoiceId);
+        const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), this.deps.reviewNoteOnPay === false ? undefined : reader, { on: agents.on, claude: agents.client, planStands: true, ...(early ? { early } : {}) }));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };

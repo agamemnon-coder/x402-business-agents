@@ -83,9 +83,32 @@ export async function runPayer(db: DB, c: PaymentCase, opts: PayerOptions): Prom
   const { source: _label, ...plan } = fallbackProposal(c);
   const proposal = own ?? plan;
   const enforced = enforceProposal(c, proposal);
-  const next: PayerNext = enforced.outcome === "hold" || !enforced.terms ? "hold" : enforced.terms.pay_on > c.today ? "pay_later" : "file_for_cfo";
+  const next = nextOf(c, enforced);
   const provenance = runProvenance(db, PAYER_AGENT, opts.task, run, source === "claude", "the engine's own payment plan stands (the Payer agent was unavailable or did not propose)");
   return { source, proposal, enforced, overridden: source === "claude" && next === "hold", next, run, task: opts.task, provenance };
+}
+
+/** What follows from an enforced proposal on its case. */
+function nextOf(c: PaymentCase, enforced: EnforcedProposal): PayerNext {
+  return enforced.outcome === "hold" || !enforced.terms ? "hold" : enforced.terms.pay_on > c.today ? "pay_later" : "file_for_cfo";
+}
+
+/** What the Payer proposed early (src/ap/pay.ts earlyPayer): the case it proposed on, its outcome there, and when. */
+export interface EarlyPayer { case: PaymentCase; out: PayerOutcome; at: string }
+
+/**
+ * A case as the early Payer's answer must match it: everything the agent was shown, except the quote's id and expiry,
+ * which only a quote locked at Pay fixes. The rate and the amounts must be the same.
+ */
+export function earlyCaseKey(c: PaymentCase): string {
+  return JSON.stringify({ ...c, fx: c.fx && { ...c.fx, quoteId: null, validTo: null } });
+}
+
+/** The early answer on Pay's own case: the agent's proposal and run as they were, enforced again by code on this case. */
+export function onPayCase(c: PaymentCase, early: PayerOutcome): PayerOutcome {
+  const enforced = enforceProposal(c, early.proposal);
+  const next = nextOf(c, enforced);
+  return { ...early, enforced, next, overridden: early.source === "claude" && next === "hold" };
 }
 
 /**
@@ -125,13 +148,17 @@ export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: st
  * pays today on the plan's own route and funding. `last()` is what the gate decided, or null when the engine stopped
  * before the plan reached it.
  */
-export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null; planStands?: boolean }): { gate: PlanGate; last(): PayerOutcome | null } {
+export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null; planStands?: boolean; early?: EarlyPayer }): { gate: PlanGate; last(): PayerOutcome | null } {
   let last: PayerOutcome | null = null;
   // The invoice as the pay call found it: ready, with the proposal it had (none).
   const before = apInvoice(db, about.invoiceId);
   const gate: PlanGate = async (plan): Promise<GateAnswer> => {
     const c = paymentCase(plan, { invoiceId: about.invoiceId, invoiceNo: about.invoiceNo, today: about.now.toISOString().slice(0, 10) });
-    const out = await runPayer(db, c, { task: `ap.pay.${about.invoiceId}`, ...(about.claude !== undefined ? { claude: about.claude } : {}) });
+    // The Payer's early answer, when it proposed on this very case while the invoice was filed (speed, 13 Nov): no second
+    // call. Code enforces it on this plan as on any answer. A case that changed since (balances, a rate, the day): it runs now.
+    const early = about.early && about.early.out.source === "claude" && earlyCaseKey(about.early.case) === earlyCaseKey(c) ? about.early : null;
+    const out = early ? onPayCase(c, early.out) : await runPayer(db, c, { task: `ap.pay.${about.invoiceId}`, ...(about.claude !== undefined ? { claude: about.claude } : {}) });
+    const earlyNote: Record<string, Json> = early ? { early: true, early_at: early.at } : about.early ? { early_unused: "the plan at Pay is not the case the Payer proposed on early, so it proposed again" } : {};
     last = out;
     const who = out.source === "claude" ? "the Payer agent's proposal" : "code's own plan (the Payer agent was unavailable)";
     const terms = out.enforced.terms;
@@ -142,7 +169,7 @@ export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string;
       : null;
     // The cloud engine (task A6, 12 Nov): the agent may only propose within code's plan. Where its proposal is held or
     // off the plan, code's own plan stands and goes to the CFO's Face ID, labelled as code's: an agent never dead-ends Pay.
-    recordProposed(db, about, out, about.now, off && about.planStands ? { plan_stands: true, plan_stands_why: off.slice(0, 600) } : {});
+    recordProposed(db, about, out, about.now, { ...earlyNote, ...(off && about.planStands ? { plan_stands: true, plan_stands_why: off.slice(0, 600) } : {}) });
     if (off && !about.planStands) return { go: false, reason: off };
     // While the agent worked, a person may have rejected or held the invoice, or it was filed by another call (review
     // round 1, 12 Nov: a rejection made during the run was overwritten by "waiting_cfo"). Read again, with nothing

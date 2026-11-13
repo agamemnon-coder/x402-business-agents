@@ -39,18 +39,29 @@ export function d1Spend(sql: Sql, switches: Record<string, unknown>, who: SpendS
     new Map((await sql.all<{ scope: string; micros: number }>(`SELECT scope, micros FROM try_spend WHERE scope IN (${scopes.map(() => "?").join(", ")})`, scopes)).map((r) => [r.scope, r.micros]));
 
   return {
-    async reserve(): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }> {
+    /**
+     * `spare` (the Payer, early: work no one is waiting for yet): reserved only with room to spare, so it never takes
+     * what an action a visitor waits on needs. Its full action ceiling must fit, and every cap must still have the larger
+     * of another ceiling and a tenth of the cap left after it; one more action than it must still be allowed in flight.
+     * Refused, the reason names the cap that is near (the day's cap: pool_day_cap).
+     */
+    async reserve(opts: { spare?: boolean } = {}): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }> {
       if (!isOn(switches.claude)) return { ok: false, reason: "switch_off" };
       const t = now();
       await expireStale(sql, t);
-      const caps = capsAt(t.toISOString().slice(0, 10));
-      const maxInflight = amount(switches.max_inflight);
+      const actionCap = amount(switches.cap_action_micros);
+      const caps = capsAt(t.toISOString().slice(0, 10)).map((c) => ({ ...c, keep: opts.spare ? Math.max(actionCap, Math.ceil(c.cap / 10)) : 0 }));
+      const maxInflight = Math.max(0, amount(switches.max_inflight) - (opts.spare ? 1 : 0));
       const spent = await spentOn(caps.map((c) => c.scope));
       const left = caps.map((c) => ({ ...c, left: c.cap - (spent.get(c.scope) ?? 0) }));
       const out = left.find((c) => c.left <= 0);
       if (out) return { ok: false, reason: out.reason };
-      const micros = Math.min(amount(switches.cap_action_micros), ...left.map((c) => c.left));
+      const micros = Math.min(actionCap, ...left.map((c) => c.left));
       if (micros <= 0) return { ok: false, reason: "action_budget" };
+      if (opts.spare) {
+        const near = left.find((c) => c.left - actionCap < c.keep);
+        if (near) return { ok: false, reason: near.reason };
+      }
 
       const id = crypto.randomUUID();
       // One batch, one transaction: the row only when every cap and the actions in flight allow it; each scope grows
@@ -60,7 +71,7 @@ export function d1Spend(sql: Sql, switches: Record<string, unknown>, who: SpendS
           sql: `INSERT INTO try_resv (id, tenant_id, micros, started_at, state) SELECT ?, ?, ?, ?, 'open'
                 WHERE (SELECT COUNT(*) FROM try_resv WHERE state = 'open') < ?
                 ${caps.map(() => "AND COALESCE((SELECT micros FROM try_spend WHERE scope = ?), 0) + ? <= ?").join(" ")}`,
-          params: [id, who.tenantId, micros, t.toISOString(), maxInflight, ...caps.flatMap((c) => [c.scope, micros, c.cap])],
+          params: [id, who.tenantId, micros, t.toISOString(), maxInflight, ...caps.flatMap((c) => [c.scope, micros, c.cap - c.keep])],
         },
         ...caps.map((c) => ({
           sql: "INSERT INTO try_spend (scope, micros) SELECT ?, ? WHERE EXISTS (SELECT 1 FROM try_resv WHERE id = ?) ON CONFLICT(scope) DO UPDATE SET micros = micros + excluded.micros",
@@ -72,7 +83,7 @@ export function d1Spend(sql: Sql, switches: Record<string, unknown>, who: SpendS
         const open = (await sql.first<{ n: number }>("SELECT COUNT(*) AS n FROM try_resv WHERE state = 'open'"))?.n ?? 0;
         if (open >= maxInflight) return { ok: false, reason: "busy" };
         const now2 = await spentOn(caps.map((c) => c.scope));
-        return { ok: false, reason: caps.find((c) => (now2.get(c.scope) ?? 0) + micros > c.cap)?.reason ?? "busy" };
+        return { ok: false, reason: caps.find((c) => (now2.get(c.scope) ?? 0) + micros > c.cap - c.keep)?.reason ?? "busy" };
       }
       return {
         ok: true,
