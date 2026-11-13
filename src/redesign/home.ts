@@ -43,12 +43,10 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
-.trust img { height: 20px; width: auto; filter: brightness(0); opacity: .45; }
+/* Jury review, 13 Nov: the partners in plain text (their logos were recoloured, against their brand rules). */
+.trust b { font-size: 17px; font-weight: 700; color: var(--muted); letter-spacing: -.01em; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-.trust img.tall { height: 22px; }
-@media (max-width: 640px) { .trust { gap: 12px 14px; } .trust img { height: 16px; } .trust img.tall { height: 18px; } }
-:root[data-theme="dark"] .trust img { filter: brightness(0) invert(1); opacity: .5; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .trust img { filter: brightness(0) invert(1); opacity: .5; } }
+@media (max-width: 640px) { .trust { gap: 12px 18px; } .trust b { font-size: 16px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -278,11 +276,13 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   const refused = steps.findIndex((s) => s.key === "refused");
   const raised = steps.findIndex((s, i) => i > refused && s.key === "replace");
   if (refused < 0 || raised < 0) return [];
-  const all = owners.rec.owners.length, virtual = owners.rec.owners.filter((o) => o.virtual).length;
+  const virtual = owners.rec.owners.filter((o) => o.virtual).length;
   // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
   // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
-  return [{ n: changes, label: `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${countOf(owners.rec.threshold, all, true)} passkeys${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+  // Plain words for a CFO (jury review, 13 Nov): how many passkeys signed each change, and which one is a test key.
+  const words = ["no", "one", "two", "three", "four", "five"], w = (n: number) => words[n] ?? String(n);
+  return [{ n: changes, label: `limit changes, each signed by ${w(owners.rec.threshold)} passkeys on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}${virtual ? `; ${w(virtual)} a test key` : ""})`, icon: "scan-face", tone: "ok" }];
 }
 
 /**
@@ -317,7 +317,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
-  const logos = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, ""], ["logo-metal.svg", "Metal", 114, 36, ""], ["logo-claude.png", "Claude", 330, 72, "tall"]] as const;
+  // The partners by name only (jury review, 13 Nov): no logo, so no mark is ever recoloured or altered.
+  const partners = ["Airwallex", "Visa", "Metal", "Claude"] as const;
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
@@ -326,7 +327,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
     <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map((p) => `<b>${esc(p)}</b>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>

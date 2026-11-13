@@ -79,7 +79,7 @@ Each row from its run record; test money throughout. Every run, newest first: [d
 
 ## Visa Award
 
-Visa Intelligent Commerce through Airwallex's Airi: an agent pays with a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md)); within the CFO's limit on its own and above it only after the CFO's passkey. Live in the Airwallex sandbox with a test card on 7 November (a scripted run, no Claude call; [first run](docs/runs/2026-11-07-vic-1.md)) and 13 November: 2 paid in the 13 Nov run (5 paid across 3 live Visa runs); 1 after Face ID, 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([latest run](docs/runs/2026-11-13-vic-4.md)). Visa TAP is an extra, not part of the entry. [/visa](https://kit11.max-31b.workers.dev/visa)
+Visa Intelligent Commerce through Airwallex's Airi: an agent pays with a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md)); within the CFO's limit on its own and above it only after the CFO's passkey. Live in the Airwallex sandbox with a test card on 7 November (a scripted run, no Claude call; [first run](docs/runs/2026-11-07-vic-1.md)) and 13 November: 2 paid in the 13 Nov run (5 paid across 3 Visa runs); 1 after Face ID, 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([latest run](docs/runs/2026-11-13-vic-4.md)). Visa TAP is an extra, not part of the entry. [/visa](https://kit11.max-31b.workers.dev/visa)
 
 ## Metal Award
 

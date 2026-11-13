@@ -5,7 +5,6 @@
 // jury panel (A1 to A10) still hold: no recorded run called live, simulated and test money said once each outside the
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
 import { FILM_LINK, FILM_URL } from "../src/config/brand.js";
-import { countOf } from "../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
@@ -123,7 +122,11 @@ describe("Home, the enterprise pass", () => {
       const card = /<figure class="hf"[\s\S]*?<\/figure>/.exec(mainOf(html))![0];
       expect(card).toContain(`data-rec="${TRY_SAMPLE_RECORD}"`);
       const t = text(card);
-      for (const v of [SAMPLE.invoice.supplier, `Invoice ${SAMPLE.invoice.number}`, money(SAMPLE.invoice.total), SAMPLE.invoice.due, `…${SAMPLE.invoice.account_ending}`, `${SAMPLE.signed.terms_hash_prefix}…`, ...SAMPLE.booked.map((b) => `${b.account}`), ...SAMPLE.booked.map((b) => money((b.debit ?? b.credit)!))]) expect({ v, found: t.includes(v) }).toEqual({ v, found: true });
+      for (const v of [SAMPLE.invoice.supplier, `Invoice ${SAMPLE.invoice.number}`, money(SAMPLE.invoice.total), SAMPLE.invoice.due, `…${SAMPLE.invoice.account_ending}`, ...SAMPLE.booked.map((b) => `${b.account}`), ...SAMPLE.booked.map((b) => money((b.debit ?? b.credit)!))]) expect({ v, found: t.includes(v) }).toEqual({ v, found: true });
+      // Jury review, 13 Nov: plain words for a CFO; the hash stays in the tooltip. The sample was signed with a virtual test
+      // passkey (its record's mode), so the card says "a passkey", not Face ID.
+      expect(t).toContain("Signed with a passkey · fingerprint of the terms");
+      expect(card).toContain(`title="SHA-256 of the signed terms: ${SAMPLE.signed.terms_hash_prefix}…"`);
       // Claude read this run's invoice, and the chip says so only because the record does; code holds the limits.
       expect(t).toContain("Claude reader");
       expect(t).toContain("Purser's code holds the limits");
@@ -149,7 +152,7 @@ describe("Home, the enterprise pass", () => {
     const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${countOf(owners.threshold, owners.owners.length, true)} passkeys, co-signer a test key`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, each signed by two passkeys on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}; one a test key)`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";

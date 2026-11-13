@@ -23,7 +23,7 @@ function weekOf(iso: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-interface Tx { at: string; direction: "in" | "out" | "internal"; flow: "in" | "out"; rail: string; currency: string; amount: string; moved: boolean; description: string; fee: { amount: string; currency: string } | null; approval: { required: boolean; authority: string; approved_at?: string | null }; invoice: { vendor: string } | null; counterparty: string }
+interface Tx { at: string; direction: "in" | "out" | "internal"; flow: "in" | "out"; rail: string; currency: string; amount: string; moved: boolean; description: string; fee: { amount: string; currency: string } | null; approval: { required: boolean; authority: string; approved_at?: string | null }; invoice: { vendor: string; ap_id?: string | null } | null; counterparty: string }
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }
 
 const AGENTS = new Set(["sourcing", "support", "treasury", "checker", "coder", "payer", "reader", "claude"]);
@@ -113,9 +113,14 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
     if (ok) { s.cents += c; s.count++; } else s.declined++;
     spend.set(key, s);
   };
+  const parts = { inbox: { count: 0, cents: 0 }, outside: { count: 0, cents: 0 }, fees: 0 };
   for (const t of txs.filter((x) => x.direction === "out" && x.currency === currency)) {
     const fee = t.fee && t.fee.currency === currency ? cents(t.fee.amount) : 0;
-    if (t.invoice) bump("invoices", "Supplier invoices, CFO-approved", cents(t.amount) + fee, t.moved);
+    if (t.invoice) {
+      bump("invoices", "Supplier invoices, CFO-approved", cents(t.amount) + fee, t.moved);
+      // What the bar holds (jury review, 13 Nov): the inbox's paid invoices, invoice payments with no inbox invoice, fees.
+      if (t.moved) { const part = t.invoice.ap_id ? parts.inbox : parts.outside; part.count++; part.cents += cents(t.amount); parts.fees += fee; }
+    }
     else { const a = agentOf(t); bump(a ?? "other", a ? `${agentName(a)}, own card` : "Other", cents(t.amount) + fee, t.moved); }
   }
 
@@ -146,7 +151,8 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
     since: main[0]?.at ?? null,
     money: { in: money(totalIn), out: money(totalOut), net: money(totalIn - totalOut), movements: main.length, other_currencies: [...byCur.keys()].filter((c) => c !== currency) },
     cash: days.map((d) => ({ day: d.day, in: money(d.in), out: money(d.out), net: money(d.net) })),
-    spend: [...spend.values()].sort((a, b) => b.cents - a.cents).map((s) => ({ key: s.key, label: s.label, amount: money(s.cents), count: s.count, declined: s.declined })),
+    spend: [...spend.values()].sort((a, b) => b.cents - a.cents).map((s) => ({ key: s.key, label: s.label, amount: money(s.cents), count: s.count, declined: s.declined,
+      ...(s.key === "invoices" ? { parts: { inbox: { count: parts.inbox.count, amount: money(parts.inbox.cents) }, outside: { count: parts.outside.count, amount: money(parts.outside.cents) }, fees: money(parts.fees) } } : {}) })),
     approvals: { weeks: [...weeks.values()].sort((a, b) => a.week.localeCompare(b.week)).map((w) => ({ week: w.week, cfo: w.cfo, cfo_amount: money(w.cfo_cents), alone: w.alone, alone_amount: money(w.alone_cents) })),
       approved_by_cfo: approvedByCfo, waiting: invoices.waiting_cfo!.count },
     invoices: { ...invoices, duplicates_stopped: duplicates },

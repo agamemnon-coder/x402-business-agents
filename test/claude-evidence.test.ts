@@ -15,7 +15,7 @@ import {
 } from "../src/redesign/claudeEvidence.js";
 import { hostileTileLabel, proofTiles, splitSentence } from "../src/redesign/claudePage.js";
 import { agentRun, faceIdDecisions, split } from "../src/redesign/run.js";
-import { REPO_BLOB } from "../src/redesign/metalStory.js";
+import { REPO_BLOB, metalStory } from "../src/redesign/metalStory.js";
 import { HOSTILE_RECORD_FILE, hostileClaimText } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
@@ -78,12 +78,24 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(text(nar).replace(/\s+/g, " ").trim()).toBe("106 payment requests 82 routine payments by code 24 exceptions, decided by Claude 5 of those, high-risk: the CFO's Face ID");
     expect([...nar.matchAll(/<rect class="(sk-\w+)" width="([\d.]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["sk-code", "77.4"], ["sk-claude", "22.6"], ["sk-face", "4.7"]]);
     expect(splitSentence(f)).toBe("Payment requests: 82 routine payments by code; 24 exceptions decided by Claude; 5 high-risk ones on to the CFO's Face ID.");
-    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).trim()).toBe("All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged");
+    // Jury review, 13 Nov: 82 + 24 here, "Metal: 86 payments" and "x402: 41 paid requests" in the footer read as three
+    // counts of one thing. One line says how they relate, from the record (metalStory's payments and the split).
+    const chain = metalStory(run.record).payments;
+    expect([chain.sales + chain.purchases, chain.total]).toEqual([f.routine, f.routine + chain.refunds + chain.sweeps]);
+    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).replace(/\s+/g, " ").trim()).toBe(`All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged On Metal: ${chain.total} payments, the ${f.routine} routine ones (${chain.sales} x402 sales, ${chain.purchases} purchases) and ${chain.refunds} refunds and ${chain.sweeps} sweep, decided among the ${f.decisions} exceptions.`);
     // The page's CSP hashes its one style block: no style attribute anywhere in it, no script.
     expect(CLAUDE_PAGE).not.toMatch(/\sstyle="/);
     // No pass-rate fraction anywhere on the page (13 Nov, from the judge run): words instead ("all 24", "50 of 60"). The
     // one fraction left is a cost ratio, Treasury's Haiku at 1/24 of Opus's cost per pass (in the sweep's fold).
     expect(text(main).replace(/at 1\/\d+ of Opus's cost per pass/, " ").match(/\b\d+\/\d+\b/g)).toBeNull();
+  });
+
+  // Jury review, 13 Nov: the tile's "0 of 10" (one attack case) beside the chart's "50 of 60" (every Support case) read
+  // as a contradiction. Each names what it counts and when, from the eval's own rows.
+  it("names what each Haiku-as-Support figure counts: one attack case on the tile, every case in the chart", () => {
+    const chart = /<article class="cmodels card"[\s\S]*?<\/article>/.exec(main)![0];
+    expect([...chart.matchAll(/<h3>([^<]+)<small>([^<]+)<\/small><\/h3>/g)].map((m) => [m[1], m[2]])).toEqual([
+      ["Sourcing", " · every case run, 31 Oct–6 Nov"], ["Treasury", " · every case run, 31 Oct–6 Nov"], ["Support", " · every case run, 31 Oct"]]);
   });
 
   it("shows the three agents as cards, each with its model, its decisions as a bar and its Claude calls", () => {
@@ -105,7 +117,7 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(said).toEqual([
       "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10 blind holdouts, all safe; H3 on code's rule only",
       // Judge panel, 13 Nov: each tile says what its number counts (runs passed; the calls that stood), in the records' words.
-      "0 of 10 runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
+      "0 of 10 runs passed by Haiku as Support on one attack case (31 Oct): refunds asked outside the dispute; code refused each one, nothing paid. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
       "380 hostile tool calls on the payables agents' 62 test invoices: 318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe)"]);
     // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
     expect(HOSTILE_EVAL).toBe(HOSTILE_RECORD_FILE);
