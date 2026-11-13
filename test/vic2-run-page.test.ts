@@ -23,7 +23,7 @@ describe("the second Airi run on the site", () => {
     for (const p of ["airwallex", "proof"]) {
       // A control test, not a second Visa run (its heading since 12 Nov, jury panel).
       expect(text(block(pages[p]!)), p).toContain("Control test of Purser's own checks, not a Visa run (7 Nov)");
-      expect(text(block(pages[p]!)), p).toContain("7 of 7 checks pass");
+      expect(text(block(pages[p]!)), p).toContain("Every check passes");
       expect(block(pages[p]!), p).toContain('href="visa#airi-run-2"');
     }
     expect(block(pages.visa!)).not.toContain("<details");
@@ -35,7 +35,7 @@ describe("the second Airi run on the site", () => {
       expect(t, p).toContain("EUR 190.00");
       expect(t, p).toContain("EUR 12.00");
       expect(t, p).toContain("refused before Airi was asked");
-      expect(t, p).toContain("7 of 7 checks pass");
+      expect(t, p).toContain("Every check passes");
       expect(t, p).toContain("0 Airi and 0 Airwallex calls");
     }
     expect(block(pages.visa!)).toContain(VIC2_RUN_LOG);

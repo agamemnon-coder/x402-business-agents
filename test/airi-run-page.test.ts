@@ -2,7 +2,7 @@
 // (in full), on /visa (in full, under the page's VIC heading, drawing and overview, above the TAP section; 12 Nov) and on
 // /proof under the partners (short), dated and
 // labelled "Airwallex sandbox, test card, test money", in the owner's copy of 7 Nov word for word (the heading, the
-// summary sentence, purchase A's two sentences, the three outcome badges, the 5 of 5 checks linked to the run log's
+// summary sentence, purchase A's two sentences, the three outcome badges, every check linked to the run log's
 // checks section), every figure and id from its record (docs/demo/airi-run.json), the ids in a "Details" fold, nothing
 // private (no Airi link, no card number, no passkey label or credential, no viewer key, no full hash), no person's name
 // for the cardholder or the CFO, and nothing at all without a live record with test money and the test card.
@@ -40,7 +40,7 @@ describe("the Airi run on the site", () => {
     expect(rec.started_at.slice(0, 10)).toBe("2026-11-07");
   });
 
-  it("says the owner's copy word for word on /airwallex, /visa and /proof: heading, summary, A's sentences, the three badges, the 5 of 5 checks linked", () => {
+  it("says the owner's copy word for word on /airwallex, /visa and /proof: heading, summary, A's sentences, the three badges, every check linked", () => {
     expect([airiHeading("7 Nov"), airiSummaryLine(rec), AIRI_A_SENTENCE, Object.values(AIRI_BADGES), AIRI_CHECKS_URL]).toEqual([HEADING, SUMMARY, A_SENTENCE, BADGES, CHECKS_URL]);
     expect(SUMMARY.endsWith(AIRI_SUMMARY)).toBe(true);
     for (const name of PAGES) {
@@ -49,7 +49,7 @@ describe("the Airi run on the site", () => {
       // In sight, in this order: the heading, the label, the summary, A, B, C with their badges, the checks.
       const order = [HEADING, `A separate run · ${AIRI_RUN_LABEL}`, SUMMARY, `${BADGES[0]} EUR ${buy("A").amount} (Purser's limit: EUR ${rec.policy.alone_max_eur}). ${A_SENTENCE}`,
         `${BADGES[1]} EUR ${buy("B").amount}, above the limit: Purser asked Airi only after the CFO's Face ID on the exact terms.`,
-        `${BADGES[2]} EUR ${buy("C").amount} at a merchant the CFO does not allow: refused before Airi was asked (0 Airi calls).`, "5 of 5 checks pass"].map((x) => ({ x, at: t.indexOf(x) }));
+        `${BADGES[2]} EUR ${buy("C").amount} at a merchant the CFO does not allow: refused before Airi was asked (0 Airi calls).`, "Every check passes"].map((x) => ({ x, at: t.indexOf(x) }));
       for (const o of order) expect({ name, x: o.x, shown: o.at >= 0 }).toEqual({ name, x: o.x, shown: true });
       expect(order.map((o) => o.at)).toEqual([...order.map((o) => o.at)].sort((x, y) => x - y));
       // The checks link to the run log's checks section on GitHub, which lists all five.
@@ -161,7 +161,7 @@ describe("the Airi run on the site", () => {
     expect(airiRunSummary({ ...rec, purchases: rec.purchases.filter((p) => p.step !== "B") })).toBeNull();
     // A failed check shows as such, never as passed.
     const failed = airiRunHtml(airiRunSummary({ ...rec, checks: { ...rec.checks, c_refused_by_purser: { ok: false, detail: "x" } } }));
-    expect(text(failed)).toContain("4 of 5 checks pass");
+    expect(text(failed)).toContain("The checks, not every one passes");
     expect(failed).toContain('class="awm bad"');
     // A badge only as the record has it: an A that did not succeed is not "Paid alone".
     const notPaid = airiRunSummary({ ...rec, purchases: rec.purchases.map((p) => p.step === "A" ? { ...p, outcome: "FAILED" } : p) })!;

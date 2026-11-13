@@ -77,11 +77,14 @@ export function awxRunSummary(rec: Awx1Record): AwxRunSummary | null {
 
 const badge = (ok: boolean, text: string) => `<span class="awm ${ok ? "ok" : "bad"}">${icon(ok ? "circle-check" : "octagon-x", 16)}${esc(text)}</span>`;
 
+/** The checks in words, no pass-rate fraction (judge run, 13 Nov): every check passes, or not every one does. */
+const checksWords = (all: boolean) => (all ? "every check passes" : "not every check passes");
+
 /** The block: its date, name and label, the checks passed, and (folded) every step with its Airwallex id. */
 export function awxRunHtml(s: AwxRunSummary | null): string {
   if (!s) return "";
   return `<div class="card" id="${AWX_RUN_ID}"><h3>${icon("credit-card", 18)}${esc(`${s.date}, ${s.run}: a separate run · ${AWX_RUN_LABEL}`)}</h3>
-${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass`)}
+${badge(s.checksOk === s.checksAll, checksWords(s.checksOk === s.checksAll))}
 <details class="fold" id="${AWX_RUN_STEPS_ID}"><summary>${esc("Every step and id")}</summary><ul class="awc">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AWX_RUN_LOG}`)}" target="_blank" rel="noopener">run\u00a0log\u00a0↗</a></p></details></div>`;
 }
@@ -93,7 +96,7 @@ ${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass
 export function awxRunShortHtml(s: AwxRunSummary | null): string {
   if (!s) return "";
   return `<div class="card" id="${AWX_RUN_ID}"><h3>${icon("credit-card", 18)}${esc(`${s.date}, ${s.run}: a separate run · ${AWX_RUN_LABEL}`)}</h3>
-${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass`)}
+${badge(s.checksOk === s.checksAll, checksWords(s.checksOk === s.checksAll))}
 <p>${esc(s.short)}</p>
 <p class="src">${esc(s.source)}</p>
 <a class="open" href="airwallex#${AWX_RUN_STEPS_ID}">${esc("Every step and id")} ${icon("arrow-right", 14)}</a></div>`;
