@@ -136,3 +136,5 @@ f26d0b8e945485109e36bcaca78a26604ebdae25:docs/runs/README.md:generic-api-key:16
 90b3c3fa60391dfa29ec166caf92c9b7c0eda373:docs/runs/README.md:generic-api-key:17
 # src/cli/awxSwitchOn.ts in 0fa6032: the stand-in deletes env vars by name (AIRWALLEX_API_KEY, T0_API_KEY, ...); names only, no value.
 0fa6032739043e0aa1ca0d63ff821cf5cd961c61:src/cli/awxSwitchOn.ts:generic-api-key:212
+# docs/runs/README.md:18 in bf1ca2d (#282 squashed): public Metal testnet addresses and tx hashes, no secret.
+bf1ca2db17b90c08d407948b4471f20cca59a96f:docs/runs/README.md:generic-api-key:18
