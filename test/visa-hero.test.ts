@@ -44,7 +44,7 @@ describe("/visa's hero, from the vic-4 record", () => {
   it("counts each outcome in the strip's legend from the record, every purchase once, in the record's order", () => {
     const out = section(VISA_OUTCOMES_ID);
     const n = (o: string) => rec.purchases.filter((p) => outcomeOf(p) === o).length;
-    for (const [o, words] of [["paid", "Paid within the limit"], ["paid-faceid", "Paid after Face ID"], ["refused", "Refused by Purser"], ["notap", "Not tapped"]] as const) if (n(o)) expect(text(out)).toContain(`${words}: ${n(o)}`);
+    for (const [o, words] of [["paid", "Paid within the limit"], ["paid-faceid", "Paid after Face ID"], ["refused", "Refused by Purser"], ["notap", "Not confirmed in Airi"]] as const) if (n(o)) expect(text(out)).toContain(`${words}: ${n(o)}`);
     const order = [...out.matchAll(/<li><span class="vh-c [^"]+"[^>]*>[\s\S]*?<b>([A-Z]\d?)<\/b>/g)].map((m) => m[1]);
     expect(order).toEqual(rec.purchases.map((p) => p.step));
   });

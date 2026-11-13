@@ -98,8 +98,8 @@ export function airiHold(record: AiriRecord = JSON.parse(read(AIRI_RUN_FILE)) as
   if (!a || !minutes) return null;
   return {
     rail: "airi", name: "Visa Intelligent Commerce via Airi", code: null, held: "Airi's passkey step", control: "The cardholder's passkey in Airi, each purchase",
-    short: `No tap within ${minutes} minutes: no card credential, nothing charged.`,
-    what: `In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The tap did not come within ${minutes} minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.`,
+    short: `Not confirmed in Airi within ${minutes} minutes: no card credential, nothing charged.`,
+    what: `In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The confirmation did not come within ${minutes} minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.`,
     date: isoDay(a.at), label: "Airwallex sandbox, test card, test money", record: AIRI_RUN_LOG,
     note: "Airi has not refused a purchase outright in a live run.",
   };
