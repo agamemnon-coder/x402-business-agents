@@ -26,8 +26,8 @@ const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wis
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
     expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
-    expect(WHAT_IT_IS).toBe("For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.");
-    expect(TRY_IT).toBe("Try it in a minute.");
+    expect(WHAT_IT_IS).toBe("For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).");
+    expect(TRY_IT).toBe("Try it in 2 minutes."); // one duration wording since 13 Nov: "Try it in 2 minutes" and the "3-minute product tour"
     expect(TRY_SIGN_URL).toBe("https://kit11.max-31b.workers.dev/try/sign");
     // No absolute claim in what Purser is (the stale lines of the jury review).
     expect(WHAT_IT_IS).not.toMatch(/cannot break|can't break|every limit|holds? no keys?/i);
@@ -41,12 +41,13 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">', ""]);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    // Since 12 Nov (one Try everywhere): Try opens the hands-on demo; the /try/sign story is the last link, "The 60-second story".
-    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect any AI](#connect-any-ai) · **[3-minute product tour](https://kit11.max-31b.workers.dev/tour)** · [Film, 3:58](${FILM_URL}) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](${TRY_SIGN_URL})`;
-    expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", links, ""]);
-    // The first screen ends with the reviewers' block, and "Why this is a company" starts within the first 60 lines.
-    expect(lines.slice(badges + 1, badges + 5)).toEqual(["", "</div>", "", "## For reviewers in 30 seconds"]);
-    expect(lines.findIndex((l) => l === "## Why this is a company")).toBeLessThan(60);
+    // Since 13 Nov (second review): three calls to action (Try it, the product tour, Proof), the film on its own line,
+    // three badges (CI, license, live demo), then the rails and "test money only" as plain text.
+    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · **[3-minute product tour](https://kit11.max-31b.workers.dev/tour)** · **[Proof](https://kit11.max-31b.workers.dev/proof)**`;
+    expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", links, "", `[Film, 3:58](${FILM_URL})`, ""]);
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(3);
+    expect(lines.slice(badges + 1, badges + 7)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", "", "</div>", "", "## For reviewers"]);
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(60);
   });
 
   it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {
@@ -80,7 +81,7 @@ describe("the first screen (section D, 6 Nov)", () => {
 });
 
 describe("why this is a company (section D, 6 Nov)", () => {
-  const section = README.slice(README.indexOf("## Why this is a company"), README.indexOf("\n## ", README.indexOf("## Why this is a company") + 5));
+  const section = README.slice(README.indexOf("## The business hypothesis"), README.indexOf("\n## ", README.indexOf("## The business hypothesis") + 5));
   // On /proof since Max's round of 7 Nov (Home shows the way through), behind its own closed line.
   const band = /<section class="band" aria-labelledby="h-company">[\s\S]*?<\/section>/.exec(PROOF)?.[0] ?? "";
 

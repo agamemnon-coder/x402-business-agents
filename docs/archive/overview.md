@@ -67,7 +67,7 @@ Every run prints the five beats: GOAL, PLAN, NEW INFORMATION, REVISED DECISION, 
 - **Audit report (PDF):** `npm run audit:report -- out.pdf` lists every decision that needed a person: the agent that
   proposed it, the models that read its evidence or reviewed it, what it does, the policy rule that sent it to a
   person, who decided and how (Face ID or typed hash), the outcome and the terms hash. Then what the agents did
-  alone, every refusal, and the anchor for `verify-log`. Example: [docs/audit-report-rehearsal-3.pdf](../audit-report-rehearsal-3.pdf).
+  alone, every refusal, and the anchor for `verify-log`. Example: [docs/audit/audit-report-rehearsal-3.pdf](../audit/audit-report-rehearsal-3.pdf).
 - **Failure tests:** `npm run fail -- f1` (an approval after the quote ran out approves nothing; the re-quote
   needs a new approval), `npm run fail -- f2` (refund over the mandate cap, refused on chain, nothing sent; on demand, no run log yet) and
   `npm run fail -- f4` (an annual invoice whose conversion would break the USD floor escalates with options;

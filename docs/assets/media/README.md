@@ -5,29 +5,29 @@ No secret, viewer key, token or jury link is visible in any frame or URL: the ha
 
 **The passkey in the /try clip is not a person's.** It is Chromium's virtual WebAuthn authenticator, a test passkey whose user presence is simulated. No phone and no Face ID are involved. In the product, the CFO's own passkey signs.
 
-## Clips (each at most 15 s; GIFs at most 5 MB)
+## Clips (each at most 15 s; GIFs at most 5 MB; books and cloud-dashboard have a poster, a still from the MP4, instead of a GIF)
 
 ### books
 
-kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money.
+kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money. (a still from the MP4)
 
-Source: https://kit11.max-31b.workers.dev/books · recorded 2026-11-13 · sped up 1.1x to fit 15 s
+Source: https://kit11.max-31b.workers.dev/books · recorded 2026-11-13 · real time
 
 File | Type | Size | Length | Recorded
 --- | --- | --- | --- | ---
-[books.gif](books.gif) | GIF | 4.67 MB | 14.3 s | 2026-11-13
+[books-poster.png](books-poster.png) | PNG | 0.18 MB | 880 px wide | 2026-11-13
 [books.mp4](books.mp4) | MP4 | 1.70 MB | 14.4 s | 2026-11-13
 [books.webm](books.webm) | WEBM | 1.55 MB | 14.3 s | 2026-11-13
 
 ### cloud-dashboard
 
-Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books.
+Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books. (a still from the MP4)
 
-Source: https://purser-try.max-31b.workers.dev/ (Try as guest) · recorded 2026-11-13 · sped up 1.1x to fit 15 s
+Source: https://purser-try.max-31b.workers.dev/ (Try as guest) · recorded 2026-11-13 · real time
 
 File | Type | Size | Length | Recorded
 --- | --- | --- | --- | ---
-[cloud-dashboard.gif](cloud-dashboard.gif) | GIF | 4.26 MB | 13.4 s | 2026-11-13
+[cloud-dashboard-poster.png](cloud-dashboard-poster.png) | PNG | 0.17 MB | 880 px wide | 2026-11-13
 [cloud-dashboard.mp4](cloud-dashboard.mp4) | MP4 | 0.96 MB | 13.4 s | 2026-11-13
 [cloud-dashboard.webm](cloud-dashboard.webm) | WEBM | 1.02 MB | 13.4 s | 2026-11-13
 

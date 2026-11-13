@@ -11,7 +11,7 @@ Intelligent Commerce via Airwallex's Airi (its record: `docs/demo/airi-run.json`
 (separate worlds, dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources
 for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
-The video link is in. Max's steps: [checklist-max.md](checklist-max.md).
+The video link is in. The owner's working checklist (in Dutch, not part of the submission) is kept in [archive/internal/checklist-max.md](../archive/internal/checklist-max.md).
 
 ## Title
 
@@ -20,12 +20,12 @@ Purser · AI agents spend. You sign off.
 ## Synopsis
 
 <!-- synopsis -->
-For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID. An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude. Try it in a minute.
+For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone). An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude. Try it in 2 minutes.
 <!-- /synopsis -->
 
 ## Description
 
-Characters: **3,866** (the text between the markers, as pasted; 3,892 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,867** (the text between the markers, as pasted; 3,893 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -62,7 +62,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 **The problem.** AI agents are starting to spend company money.
 
 **The solution.** Per agent, an Airwallex card and a Metal mandate.
-- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in a minute. https://kit11.max-31b.workers.dev/try/sign
+- An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 2 minutes. https://kit11.max-31b.workers.dev/try/sign
 - One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
 - Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 

@@ -86,9 +86,11 @@ describe("the README's diagrams and media", () => {
     expect(caption).toMatch(/test passkey, no person or phone/);
     const see = readme.slice(readme.indexOf("## See it"), readme.indexOf("\n## ", readme.indexOf("## See it") + 5));
     expect(see.indexOf("docs/assets/media/try-flow.gif")).toBeGreaterThan(0);
-    expect(see.indexOf("docs/assets/media/try-flow.gif")).toBeLessThan(see.indexOf("cloud-dashboard.gif"));
+    expect(see.indexOf("docs/assets/media/try-flow.gif")).toBeLessThan(see.indexOf("cloud-dashboard-poster.png"));
     expect(see).toContain(`*${caption}*`);
-    for (const f of ["cloud-dashboard.gif", "books.gif", "proof.gif"]) expect(existsSync(join(ROOT, "docs/assets/media", f)) && see.includes(f)).toBe(true);
+    // Since 13 Nov the books and cloud clips are posters (stills from their MP4s) that link to the MP4, not GIFs (-9 MB).
+    for (const f of ["cloud-dashboard-poster.png", "cloud-dashboard.mp4", "books-poster.png", "books.mp4", "proof.gif"]) expect({ f, ok: existsSync(join(ROOT, "docs/assets/media", f)) && see.includes(f) }).toEqual({ f, ok: true });
+    for (const f of ["cloud-dashboard.gif", "books.gif"]) expect({ f, gone: !existsSync(join(ROOT, "docs/assets/media", f)) && !see.includes(f) }).toEqual({ f, gone: true });
   });
 
   it("says Connect any AI can read and propose only, with the public demo token and the dated live check", () => {
