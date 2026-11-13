@@ -14,7 +14,7 @@
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { homeStats, START, TRY_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
+import { homeStats, PROOF_BUTTON, START, WHATS_REAL } from "../../src/redesign/home.js";
 import { agentRun } from "../../src/redesign/run.js";
 import { scaleStats } from "../../src/redesign/scale.js";
 
@@ -41,11 +41,11 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const fail = (what: string) => o.fail(`${o.name}: ${what}`);
   await page.goto(o.url, { waitUntil: "load" });
 
-  // One story: the hero's two buttons, the 3-minute tour (primary, owner 13 Nov) then Try it, the first in the first
-  // screen with its one line under it.
+  // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
+  // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify(["tour", o.tryHref])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to tour and ${o.tryHref}`);
-  if (ctas[0]?.text !== START || ctas[1]?.text !== TRY_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${TRY_BUTTON}"`);
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, "proof"])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref} and proof`);
+  if (ctas[0]?.text !== START || ctas[1]?.text !== PROOF_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${PROOF_BUTTON}"`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");

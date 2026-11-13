@@ -133,8 +133,8 @@ describe("the partner pages", () => {
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
     // /books (owner, 12 Nov) sits with the product pages.
-    // Max, 13 Nov: the product tour first.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["tour", "cloud", "pricing", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
+    // 13 Nov, evening (owner): the product tour and Pricing are out.
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
@@ -143,7 +143,7 @@ describe("the partner pages", () => {
     expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"]]);
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
-    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));
+    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Security", "Airwallex", "Metal", "Visa", "Claude"]));
     // The Try tab opens the hands-on demo (TRY_URL, the owner, 12 Nov).
     expect(nav).toContain(`<a href="${TRY_URL}" data-nav="try" class="on" aria-current="page">Try</a>`);
     const pages = buildPages();

@@ -7,7 +7,7 @@ import { recordedRate, type RecordForExposure } from "../policy/exposureSources.
 import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
 import ts from "typescript";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, TOUR_CSP, TOUR_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE, PRICING_CSP, PRICING_PAGE, SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, MOVED, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP as DASHBOARD_CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE as DASHBOARD_PAGE, TRY_CSP, TRY_PAGE, TRY_SIGN_CSP, TRY_SIGN_PAGE, TRY_VERIFY_CSP, TRY_VERIFY_PAGE, demoPage, homeWithTrySign, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, STATUS_CSP, STATUS_PAGE } from "../servers/dashboard.js";
 import type { Pages } from "../../worker/src/core.js";
 import { trySignOn } from "../try/sign.js";
 import { phonePhrases } from "../ui/i18n.js";
@@ -88,7 +88,6 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     visa: flow(VISA_PAGE),
     airwallex: flow(AIRWALLEX_PAGE),
     claude: flow(CLAUDE_PAGE),
-    pricing: flow(PRICING_PAGE),
     security: flow(SECURITY_PAGE),
     docs: flow(DOCS_PAGE),
     status: flow(STATUS_PAGE),
@@ -102,8 +101,6 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     runs: flow(RUNS_PAGE),
     agents: Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, { page: flow(html), csp: AGENT_CSPS[id]! }])),
     notFound: flow(NOT_FOUND_PAGE),
-    // The 3-minute product tour (13 Nov), in either bundle; /judge, its old address, answers 301 to it (moved).
-    tour: flow(TOUR_PAGE),
     ...(trySign ? { trySign: flow(TRY_SIGN_PAGE), tryVerify: flow(TRY_VERIFY_PAGE) } : {}),
     redirects: REDIRECTS,
     moved: MOVED,
@@ -117,7 +114,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     font: FONT.toString("base64"),
     // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
     images: Object.fromEntries(Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, pricing: PRICING_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, tour: TOUR_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

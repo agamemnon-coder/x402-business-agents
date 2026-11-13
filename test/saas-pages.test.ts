@@ -1,19 +1,16 @@
-// The product pages under "More" (12 Nov): /pricing ("Pilot pricing") and /security ("Security and trust"). Nothing on
-// them is typed in by hand: every price comes from src/config/pricing.ts, the platform fee's test amounts from its run
-// record, the red team's counts from its reports, the audit log's rows from the published log, and the "Not yet" lines
-// from the docs, word for word. Each page is served by the Worker and by `npm run judge` under a style-only policy
-// (no script), linked from "More" and from the footer, and named in llms.txt.
+// The product page under "More" (12 Nov): /security ("Security and trust"). Nothing on it is typed in by hand: the red
+// team's counts come from its reports, the audit log's rows from the published log, and the "Not yet" lines from the
+// docs, word for word. It is served by the Worker and by `npm run judge` under a style-only policy (no script), linked
+// from "More" and from the footer, and named in llms.txt. /pricing went on 13 Nov, evening (owner): it answers 302 to
+// /home, and nothing links to it.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
-import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
-import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
-import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
 import { AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
-import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PRICING_CSP, PRICING_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
+import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
 import { navHtml } from "../src/ui/nav.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -26,8 +23,6 @@ const json = <T>(p: string) => JSON.parse(read(p)) as T;
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 /** The page's <main> as a person reads it with every fold open: tags out, entities decoded, white space single. */
 const mainText = (html: string) => decode((/<main[\s\S]*<\/main>/.exec(html)?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
-/** A piece of a page as it is in sight: a fold counts as its summary only. */
-const inSight = (el: string) => mainText(`<main>${el.replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")}</main>`);
 /** One card of a page, by its id. */
 const card = (html: string, id: string) => new RegExp(`<article class="pc card[^"]*" id="${id}">[\\s\\S]*?</article>`).exec(html)?.[0] ?? "";
 const NUM = /\d+(?:[.,]\d+)*/g;
@@ -36,104 +31,6 @@ const REPO = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/
 /** The repository files a page links to on GitHub (without any #anchor). */
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const repoLinks = (html: string) => [...html.matchAll(new RegExp(`href="${reEscape(REPO)}([^"#]+)`, "g"))].map((m) => m[1]!);
-
-describe("/pricing: pilot pricing", () => {
-  const html = pricingPage(), text = mainText(html);
-  const record = read(PRICING.platformFee.runRecord);
-
-  it("keeps the prices in one module, as decided on 12 November: Starter 49 a month with 100 invoices and 0.25 per extra invoice, Business from 249 a month", () => {
-    expect(PRICING.starter).toEqual({ name: "Starter", monthlyCents: 4900, invoicesIncluded: 100, extraInvoiceCents: 25 });
-    expect(PRICING.business).toEqual({ name: "Business", fromMonthlyCents: 24900, includes: ["Several companies", "Four-eyes approval", "Bookkeeping connectors"] });
-    // The fee per payout has no price here: the two run records, the code's own ceiling and the test policy's rate
-    // (test/saas-additions.test.ts checks how they fit).
-    expect(PRICING.platformFee).toEqual({ name: "Platform fee", runRecord: "docs/runs/2026-11-10-connected-accounts-sandbox.md", e2eRecord: "docs/runs/2026-11-10-platform-e2e.md", capBps: FEE_BPS_CAP, testPolicyBps: 50 });
-    expect([euro(4900), euro(25), euro(24900), euro(120000), euro(5)]).toEqual(["€49", "€0.25", "€249", "€1,200", "€0.05"]);
-    expect(() => euro(0.5)).toThrow();
-  });
-
-  it("says in one lead line that these are pilot prices and that nothing is on sale yet", () => {
-    expect(PRICING_LEAD).toBe("Pilot prices. Nothing is on sale yet.");
-    // The owner, 12 Nov 15:52: no "design partner" wording on the page.
-    expect(pricingPage()).not.toMatch(/design partner/i);
-    expect(html).toContain(`<p class="lead">${PRICING_LEAD}</p>`);
-    expect((html.match(/<h1\b/g) ?? []).length).toBe(1);
-    expect(html).toContain("<h1>Pilot pricing</h1>");
-    expect(html).toContain("<title>Purser · Pilot pricing</title>");
-  });
-
-  it("shows three cards, each price formatted from the module", () => {
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)">/g)].map((m) => m[1])).toEqual(["starter", "business", "platform-fee"]);
-    const starter = mainText(`<main>${card(html, "starter")}</main>`), business = mainText(`<main>${card(html, "business")}</main>`);
-    expect(starter).toBe(`Starter ${euro(PRICING.starter.monthlyCents)} a month ${PRICING.starter.invoicesIncluded} invoices included ${euro(PRICING.starter.extraInvoiceCents)} per extra invoice`);
-    expect(business).toBe(`Business from ${euro(PRICING.business.fromMonthlyCents)} a month ${PRICING.business.includes.join(" ")}`);
-    expect(starter).toBe("Starter €49 a month 100 invoices included €0.25 per extra invoice");
-    expect(business).toBe("Business from €249 a month Several companies Four-eyes approval Bookkeeping connectors");
-  });
-
-  it("reads the platform fee's test amounts from the run record, says it ran in the sandbox, labels them test values and links the record", () => {
-    // Counted again here from the record's own payout row, not through the page's reader.
-    const row = record.split("\n").find((l) => /`POST \/transfers\/create` with `x-on-behalf-of`/.test(l) && /application_fee_options/.test(l))!;
-    const payout = /with `x-on-behalf-of`: (EUR \d+\.\d{2}),/.exec(row)![1]!, fee = /`application_fees`: (EUR \d+\.\d{2}) \(TRANSFER\)/.exec(row)![1]!;
-    expect(row).toContain(`amount: "${fee.replace("EUR ", "")}", currency: EUR`);
-    expect(record).toMatch(/\*\*`PAID`\*\*/);
-    expect(record).toMatch(/^# Connected accounts, sandbox runs \(10 November 2026\)/);
-    expect(feeRun()).toEqual({ day: "10 November", payout, fee, record: PRICING.platformFee.runRecord });
-    // In sight: the card as before, and one folded line, "How the fee is set" (12 Nov: counted as its summary only).
-    const fees = inSight(card(html, "platform-fee"));
-    expect(fees).toBe(`Platform fee A small fee per payout Collected through Airwallex connected accounts Already ran in the Airwallex sandbox (10 November) In that run: a ${fee} test fee on a ${payout} test payout. ${TEST_VALUES} The run record ↗ ${FEE_FOLD}`);
-    expect(TEST_VALUES).toBe("Test values, not prices");
-    expect(card(html, "platform-fee")).toContain(`<a class="pf" href="${REPO}${PRICING.platformFee.runRecord}" target="_blank" rel="noopener">The run record ↗</a>`);
-    // A record that no longer says the payout and its fee is an error, never a guess.
-    expect(() => feeRun(record.replace(/`application_fees`: EUR/g, "`application_fees`: about EUR"))).toThrow(/not in the record/);
-    expect(() => feeRun("# Another record (1 January 2027)\n")).toThrow();
-  });
-
-  it("says once, in one line, what is not there yet: no real-money go-live", () => {
-    expect((html.match(/<p class="notyet">/g) ?? []).length).toBe(1);
-    expect(text).toMatch(/Not yet: no real-money go-live\. Everything so far ran in the sandbox, with test money\.$/);
-  });
-
-  it("folds one line into the fee's card: how the fee is set, and how the two runs' fixed test fees fit the percentage", () => {
-    // One fold on the page, in the fee's card, closed; its words are feeLine's, and it links the second record.
-    expect((html.match(/<details class="fold"/g) ?? []).length).toBe(1);
-    expect(html).not.toMatch(/<details[^>]* open/);
-    const fold = /<details class="fold"><summary>([^<]+)<\/summary><ul class="pl">([\s\S]*?)<\/ul><\/details>/.exec(card(html, "platform-fee"))!;
-    expect(fold[1]).toBe(FEE_FOLD);
-    expect(FEE_FOLD).toBe("How the fee is set");
-    expect(mainText(`<main>${fold[2]}</main>`)).toBe(`${feeLine()} The end-to-end run record ↗`);
-    expect(fold[2]).toContain(`<a class="pf" href="${REPO}${PRICING.platformFee.e2eRecord}" target="_blank" rel="noopener">The end-to-end run record ↗</a>`);
-  });
-
-  it("shows no Claude cost per invoice: no eval or run record in the repository holds a measured one (12 Nov)", () => {
-    expect(html).not.toMatch(/costs us in Claude calls/i);
-    expect(text).not.toMatch(/Claude|USD|\$/);
-    // What the records do hold: the end-to-end run counted its Claude calls, not their cost.
-    expect(read("docs/runs/2026-11-10-platform-e2e.md")).toMatch(/\| Claude \| \d+ \| \d+ \| [^|]*classify, read and review per invoice/);
-  });
-
-  it("shows no number that is not in the pricing module or the run record", () => {
-    const run = feeRun(), second = e2eFeeRun();
-    const allowed = new Set([euro(PRICING.starter.monthlyCents), euro(PRICING.starter.extraInvoiceCents), euro(PRICING.business.fromMonthlyCents)].map((e) => e.slice(1))
-      .concat(String(PRICING.starter.invoicesIncluded), run.day.split(" ")[0]!, run.fee.replace("EUR ", ""), run.payout.replace("EUR ", ""))
-      // In the fold: the second run's fee and payout, the code's ceiling and the test policy's rate, as percentages.
-      .concat(second.fee.replace("EUR ", ""), second.payout.replace("EUR ", ""), percentOfBps(PRICING.platformFee.capBps).slice(0, -1), percentOfBps(PRICING.platformFee.testPolicyBps).slice(0, -1)));
-    expect(numbers(text).filter((n) => !allowed.has(n))).toEqual([]);
-    expect(numbers(text).sort()).toEqual([...allowed].sort());
-    // And a typed-in price would be caught.
-    expect(numbers(`${text} only €19 today`).filter((n) => !allowed.has(n))).toEqual(["19"]);
-  });
-
-  it("says what is real in its own words, not the main run's", () => {
-    const real = decode((/<details class="real"[\s\S]*?<\/details>/.exec(html)?.[0] ?? "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
-    expect(real).toContain("Pilot prices. Nothing is on sale yet.");
-    expect(real).toContain("are test values, not prices");
-    expect(real).toContain("No real-money go-live yet: sandbox and test money only.");
-    expect(real).toContain("Source: Purser's price list in its code and docs/runs/2026-11-10-connected-accounts-sandbox.md (the fee's sandbox run).");
-    expect(real).not.toMatch(/Northwind|Real Claude decisions/);
-    expect(html).toContain('<span class="pill note">');
-    expect(text.startsWith("Sandbox and test money only Pilot pricing")).toBe(true);
-  });
-});
 
 describe("/security: security and trust", () => {
   const html = securityPage(), text = mainText(html), cards = securityCards();
@@ -347,28 +244,29 @@ describe("/security: security and trust", () => {
   });
 });
 
-describe("the two pages on the site", () => {
+describe("the page on the site, and the one that went", () => {
   const pages = buildPages() as Pages;
 
-  it("are built once and served as they are: the same page from the Worker's bundle and the judge server", () => {
-    expect(PRICING_PAGE).toBe(pricingPage());
+  it("is built once and served as it is: the same page from the Worker's bundle and the judge server; /pricing is gone", () => {
     expect(SECURITY_PAGE).toBe(securityPage());
-    // Without /try/sign in the bundle the pages are served unchanged; with it, /security's link to Try leads there.
-    expect(pages.pricing).toBe(PRICING_PAGE);
+    // Without /try/sign in the bundle the page is served unchanged; with it, /security's link to Try leads there.
     expect(pages.security).toBe(SECURITY_PAGE);
+    const gone = pageResponse(new Request("https://x.test/pricing"), pages);
+    expect({ status: gone?.status, to: gone?.headers.get("location") }).toEqual({ status: 302, to: "/home" });
     expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="/try" data-next="/try"');
-    expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/pricing", "/security"]));
+    expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/security"]));
+    expect(CHECK_PATHS).not.toContain("/pricing");
     // 12 Nov (review): the README said "18 pages" while the list grew; it now names the list, which no count can outdate.
     // Since 13 Nov (the README upgrade) the quick start's own line says it, as a comment beside the command.
     const check = read("README.md").split("\n").find((l) => l.startsWith("npm run judge -- --check")) ?? "";
     expect(check).toContain("every page in CHECK_PATHS built from the main run's record, offline");
     expect(check).not.toMatch(/\b\d+ pages\b/);
     expect(read("src/cli/judge.ts")).toContain("for (const path of CHECK_PATHS) {");
-    expect(HEADER_PATHS.filter((h) => ["/pricing", "/security"].includes(h.path))).toEqual([{ path: "/pricing", kind: "page", status: 200 }, { path: "/security", kind: "page", status: 200 }]);
+    expect(HEADER_PATHS.filter((h) => ["/pricing", "/security"].includes(h.path))).toEqual(expect.arrayContaining([{ path: "/pricing", kind: "redirect", status: 302 }, { path: "/security", kind: "page", status: 200 }]));
   });
 
-  it("carry no script, so each is served under a style-only policy of its own", () => {
-    for (const [name, html, csp] of [["pricing", PRICING_PAGE, PRICING_CSP], ["security", SECURITY_PAGE, SECURITY_CSP]] as const) {
+  it("carries no script, so it is served under a style-only policy of its own", () => {
+    for (const [name, html, csp] of [["security", SECURITY_PAGE, SECURITY_CSP]] as const) {
       expect({ name, scripts: scriptBlocks(html) }).toEqual({ name, scripts: [] });
       expect({ name, styles: (html.match(/<style>/g) ?? []).length }).toEqual({ name, styles: 1 });
       expect({ name, csp }).toEqual({ name, csp: expect.stringMatching(/^default-src 'none'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/) });
@@ -379,13 +277,12 @@ describe("the two pages on the site", () => {
       expect({ name, outside: html.match(/<(?:img|script|link)[^>]*(?:src|href)="https?:[^"]*"/g) ?? [] }).toEqual({ name, outside: [] });
     }
     // An older bundle without the pages answers nothing for them (the Worker then serves the clean 404).
-    const { pricing: _p, security: _s, ...older } = pages;
-    expect(pageResponse(new Request("https://x.test/pricing"), older as Pages)).toBeNull();
+    const { security: _s, ...older } = pages;
     expect(pageResponse(new Request("https://x.test/security"), older as Pages)).toBeNull();
   });
 
-  it("are marked in the menu as the page the reader is on, under More", () => {
-    for (const [key, html] of [["pricing", PRICING_PAGE], ["security", SECURITY_PAGE]] as const) {
+  it("is marked in the menu as the page the reader is on, under More", () => {
+    for (const [key, html] of [["security", SECURITY_PAGE]] as const) {
       const nav = /<nav class="tabs" aria-label="Main">([\s\S]*?)<\/nav>/.exec(html)![1]!;
       expect({ key, more: /<details class="pmore"><summary class="on">More<\/summary>/.test(nav), here: nav.includes(`<a href="${key}" aria-current="page">`), tabs: (nav.match(/class="on" aria-current="page"/g) ?? []).length }).toEqual({ key, more: true, here: true, tabs: 0 });
     }
@@ -416,24 +313,25 @@ describe("the two pages on the site", () => {
     }
     expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
     expect(menuItemOf("runs")).toBeNull();
-    // The product tour is under More since 13 Nov (Max): /tour marks More.
-    expect(menuItemOf("tour")).toBe("more");
-    expect(menuItemOf("pricing")).toBe("more");
+    // The product tour and Pricing went on 13 Nov, evening (owner): neither is under More.
+    expect(menuItemOf("tour")).toBeNull();
+    expect(menuItemOf("pricing")).toBeNull();
+    expect(menuItemOf("security")).toBe("more");
     expect(menuItemOf("proof")).toBe("proof");
     expect(menuItemOf(null)).toBeNull();
   });
 
-  it("link only to repository files that exist", () => {
-    for (const [name, html] of [["pricing", PRICING_PAGE], ["security", SECURITY_PAGE]] as const) {
+  it("links only to repository files that exist", () => {
+    for (const [name, html] of [["security", SECURITY_PAGE]] as const) {
       const files = repoLinks(html);
       expect({ name, some: files.length > 0 }).toEqual({ name, some: true });
       for (const f of files) expect({ name, file: f, exists: existsSync(new URL(`../${f}`, import.meta.url)) }).toEqual({ name, file: f, exists: true });
     }
   });
 
-  it("are named in llms.txt, one line each, with what they are", () => {
+  it("is named in llms.txt, one line, with what it is; /pricing is not", () => {
     const lines = read("llms.txt").split("\n");
-    expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/pricing( |$)/.test(l))).toEqual(["- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices; nothing is on sale yet)"]);
+    expect(lines.filter((l) => /kit11\.max-31b\.workers\.dev\/(pricing|tour)\b/.test(l))).toEqual([]);
     expect(lines.filter((l) => / https:\/\/kit11\.max-31b\.workers\.dev\/security( |$)/.test(l))).toEqual(["- Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)"]);
   });
 });

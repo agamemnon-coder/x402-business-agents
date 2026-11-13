@@ -25,7 +25,6 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 ## Verify in two minutes
 
 - Sign with your own Face ID, then try to change one cent: https://kit11.max-31b.workers.dev/try/sign
-- The 3-minute product tour: https://kit11.max-31b.workers.dev/tour
 - Offline, no keys: git clone https://github.com/agamemnon-coder/x402-business-agents && cd x402-business-agents && npm ci && npm run judge; then npm run verify-approval checks that real signature of 7 November with Node's own crypto
 
 ## Judging criteria and where each is proven
@@ -41,7 +40,6 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 
 ## Product pages
 
-- Pricing: https://kit11.max-31b.workers.dev/pricing (pilot prices; nothing is on sale yet)
 - Security and trust: https://kit11.max-31b.workers.dev/security (each control with its proof, and what is not in place yet; sandbox and testnet only)
 - Docs and API: https://kit11.max-31b.workers.dev/docs (the agent API's tools as the code defines them, the Purser Cloud REST API's reference, x402 and the Airwallex webhooks, and how to run it offline; sandbox and testnet only)
 - Status: https://kit11.max-31b.workers.dev/status (the site's own /health in plain words, where no live run in progress is the normal state, and the five latest live runs; sandbox and testnet only)

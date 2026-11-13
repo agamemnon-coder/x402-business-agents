@@ -3,12 +3,12 @@
 // "undefined" or "NaN" anywhere on screen, on a page wider than the screen, and on basic accessibility faults (no page
 // language, not exactly one h1, a link or button with no name, an image with no alt text), and on a menu that wraps, is
 // not the four tabs and "More" with the pages under it, or opens "More" off the screen (12 Nov; the dropdown needs no
-// script and works from the keyboard). Also /pricing and /security, the product pages under "More".
+// script and works from the keyboard). Also /security, the product page under "More" (/pricing went on 13 Nov).
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
 import { REASSURE } from "../../src/redesign/home.js";
-import { pageTitle } from "../../src/redesign/ui.js";
+import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
@@ -33,17 +33,15 @@ const shots = args[0] && !args[0].startsWith("--") ? args[0] : "test-results/pag
 mkdirSync(shots, { recursive: true });
 const judge = liveAt >= 0 ? null : await startJudge(0);
 const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
-// /tour (the 3-minute product tour, 13 Nov; /judge before) is in either bundle; with /try/sign: locally a
-// relay of our own built with TRY_SIGN_ENABLED on serves it (and the Home that links to it); live, the hosted relay,
-// once it is deployed there.
+// Home as the bundle with /try/sign builds it: locally a relay of our own built with TRY_SIGN_ENABLED on; live, the
+// hosted relay. There too the old addresses (/tour, /pricing, /judge) are checked to land on Home (13 Nov, evening).
 const relay = liveAt >= 0 ? null : await (async () => {
   const was = process.env.TRY_SIGN_ENABLED;
   process.env.TRY_SIGN_ENABLED = "on";
   const { startLocalRelay } = await import("../../src/relay/local.js");
   try { return await startLocalRelay({ port: 0, token: "pages-check" }); } finally { if (was === undefined) delete process.env.TRY_SIGN_ENABLED; else process.env.TRY_SIGN_ENABLED = was; }
 })();
-const judgeBase = relay ? relay.url : (await fetch(`${base}/tour`, { redirect: "manual" })).status === 200 ? base : null;
-if (!judgeBase) console.log(`SKIP  ${base}/tour is not served there yet: /tour not checked`);
+const judgeBase: string | null = relay ? relay.url : base;
 
 /** The agent API's tools, as the code defines them (/docs lists exactly these). */
 const DOCS_TOOLS = agentTools().map((t) => t.name);
@@ -62,7 +60,7 @@ const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
-// 13 Nov (owner): "Judge" is out of the menu again; the product tour (/tour) is reached from Home's footer.
+// 13 Nov (owner): "Judge" is out of the menu again; the product tour and Pricing went the same evening.
 const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
@@ -289,7 +287,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
     // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
-    // header is no taller for it (test/browser/tapTargets.ts; the whole of /tour below).
+    // header is no taller for it (test/browser/tapTargets.ts).
     if (w <= 430) {
       for (const path of ["/home", "/try", "/proof", "/replay?autoplay=0"]) {
         await page.goto(`${base}${path}`, { waitUntil: "load" });
@@ -855,16 +853,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/metal" && (await page.locator("a.pf[href*='testnet.metalntwx.com/tx/0x']").count()) < 3) fail(`/metal ${tag}: fewer than three transactions`);
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
     }
-    // /pricing and /security (12 Nov), the product pages under "More": short, the prices and the cards in sight, every
-    // detail folded and readable once open, "More" marked as where the reader is, and no text under 14 px in a card.
-    for (const path of ["/pricing", "/security"]) {
+    // /security (12 Nov), the product page under "More": short, the cards in sight, every detail folded and readable once
+    // open, "More" marked as where the reader is, and no text under 14 px in a card. (/pricing went on 13 Nov, evening.)
+    for (const path of ["/security"]) {
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/pricing" ? 150 : 280; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 280; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -872,12 +870,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
       const cards = await page.locator("main article.pc.card").count();
-      if (path === "/pricing") {
-        if (cards !== 3 || !/Pilot pricing\s+Pilot prices\. Nothing is on sale yet\./.test(body) || !/€49\s+a month/.test(body) || !/from\s+€249\s+a month/.test(body)) fail(`/pricing ${tag}: not the heading, the lead line and three cards with their prices`);
-        if (!/a EUR \d+\.\d{2} test fee on a EUR \d+\.\d{2} test payout\.\s+Test values, not prices/.test(body) || !(await page.locator('#platform-fee a[href$="docs/runs/2026-11-10-connected-accounts-sandbox.md"]').count())) fail(`/pricing ${tag}: the platform fee's test values are not labelled, or its run record is not linked`);
-        // One fold since the panel's review (12 Nov): "How the fee is set", closed, in the fee's card.
-        if (!/Not yet: no real-money go-live\./.test(body) || (await page.locator("main details").count()) !== 1 || (await page.locator("#platform-fee details.fold:not([open])").count()) !== 1) fail(`/pricing ${tag}: no "Not yet" line, or a fold that should not be there`);
-      } else {
+      {
         // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
         if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
         // 12 Nov (jury check): "not prevented (detected after)".
@@ -1238,57 +1231,23 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main a.btn").count()) !== (WATCH_IN_MENU ? 4 : 3)) fail(`404 ${tag}: not the menu's tabs`);
     }
 
-    // /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge, which answers 301 to it): four cards, each
-    // with its screenshot (loaded, not broken) and one link; no script, so the page asks nothing but its font, its icon
-    // and its four images. Home's primary button opens it (owner, 13 Nov); "Judge" is in no menu. On a phone every target is 44 px.
+    // Home as the bundle with /try/sign builds it: its first button is the hands-on demo (TRY_URL, since #188 every Try
+    // button), its line Home's own; and the addresses that went on 13 Nov, evening (/tour, /pricing; /judge before
+    // them) land on Home, so an old link still opens the site.
     if (judgeBase) {
-      const asked: string[] = [];
-      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/assets/apple-touch-icon.png", "/favicon.ico", "/assets/tour-sign.webp", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
-      const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !own.includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      // Owner, 13 Nov: the hero's one primary button is the 3-minute tour; "Try it" (TRY_URL, with /try/sign in the bundle
-      // too) is the second.
-      const top = page.locator("main .e-hero a.btn.primary");
-      const box = await top.boundingBox();
-      if ((await top.getAttribute("href")) !== "tour" || (await page.locator('main a[href="tour"]').count()) !== 1 || (await page.locator('header nav .pmenu a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || !(await top.innerText()).trim().startsWith("Take the 3-minute tour") || !box || box.y + box.height > h) fail(`/ (Home, with /try/sign) ${tag}: the one primary button is not "Take the 3-minute tour" to /tour in the first screen, or a link to /judge is back`);
-      // Judges, 13 Nov (#7): "Try it" opens the one hero demo, "Sign in 60 seconds" (/try/sign), where the bundle serves it.
-      if ((await page.locator('main .e-hero a.btn.ghost[href="/try/sign"]').count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: no "Try it" to /try/sign beside it`);
+      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
+      if (await page.locator('a[href="tour"], a[href="pricing"], a[href*="judge"]').count()) fail(`/ (Home, with /try/sign) ${tag}: a link to /tour, /pricing or /judge is back`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
-      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try/sign", fail, quick: true });
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
-      await top.click();
-      await page.waitForURL(/\/tour$/);
-      page.on("request", onRequest);
-      await page.reload({ waitUntil: "load" });
-      const shown = w >= 600;
-      if (shown) for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
-      if (shown) await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
-      await look(page, `/tour ${tag}`, w);
-      const steps = await page.locator("ol.tour > li").evaluateAll((lis) => lis.map((li) => ({
-        img: (li.querySelector("img") as HTMLImageElement | null)?.naturalWidth ?? 0, alt: li.querySelector("img")?.getAttribute("alt") ?? "", links: li.querySelectorAll(".go a").length, title: li.querySelector("h2")?.textContent ?? "",
-      })));
-      if (steps.length !== 5 || steps.some((s) => (shown && s.img !== 1200) || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not five cards, each with ${shown ? "a loaded screenshot, " : ""}its alt text, a title and one link (${JSON.stringify(steps)})`);
-      // Judges, 13 Nov (#7): step 1 is the one hero demo, step 2 the payables inbox.
-      if (JSON.stringify(steps.slice(0, 2).map((s) => s.title)) !== JSON.stringify(["Sign in 60 seconds", "Run the payables inbox"]) || (await page.locator("ol.tour > li").first().locator('.go a[href="/try/sign"]').count()) !== 1) fail(`/tour ${tag}: steps 1 and 2 are not "Sign in 60 seconds" (/try/sign) and "Run the payables inbox"`);
-      if ((await page.locator("h1").innerText()).trim() !== "Product tour · 3 minutes") fail(`/tour ${tag}: the title is not "Product tour · 3 minutes"`);
-      // Max, 13 Nov: "Product tour" is the first item under More; on /tour, More is marked and so is that item.
-      if ((await page.locator("header nav .pmore > summary.on").count()) !== 1 || ((await page.locator('header nav .pmenu a').first().textContent()) ?? "").trim() !== "Product tour" || (await page.locator('header nav .pmenu a[aria-current="page"]').getAttribute("href")) !== "tour" || (await page.locator('header nav a[href*="judge"]').count())) fail(`/tour ${tag}: More does not open with "Product tour", marked, or the menu has Judge`);
-      if (await page.locator('main a[href*="judge"], main a[href*="watch"]').count()) fail(`/tour ${tag}: links to an old page`);
-      if (w <= 430) {
-        await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
-        await noOverlap(page, `/tour ${tag}`, ["ol.tour", "ol.tour .stop .body", "ol.tour .stop .go"]);
-        // Below 600 px the screenshots, unreadable at that size, are not shown (review, 13 Nov).
-        if (await page.locator("ol.tour .shot:visible").count()) fail(`/tour ${tag}: the screenshots are shown at phone width`);
+      for (const old of ["/tour", "/pricing", "/judge"]) {
+        await page.goto(`${judgeBase}${old}`, { waitUntil: "load" });
+        if (new URL(page.url()).pathname !== "/home") fail(`${old} ${tag}: did not land on Home (${page.url()})`);
       }
-      await page.screenshot({ path: join(shots, `tour-${tag}.png`), fullPage: true });
-      page.off("request", onRequest);
-      if (asked.length) fail(`/tour ${tag}: asked a server for ${asked.join(", ")}`);
-      // The old address: /judge lands on /tour (301), so a link in an old form or message keeps working.
-      await page.goto(`${judgeBase}/judge`, { waitUntil: "load" });
-      if (!/\/tour$/.test(page.url())) fail(`/judge ${tag}: did not land on /tour (${page.url()})`);
     }
 
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
@@ -1342,4 +1301,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /tour (four cards with their screenshots, /judge's 301 to it) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
