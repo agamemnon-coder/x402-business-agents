@@ -451,7 +451,7 @@ function signInView(){
   const gb=btn(t('cs.guest.button'),'ghost big','arrow-up-right');gb.id='guest';
   const gs=el('div','');gs.setAttribute('role','status');
   gb.onclick=async()=>{gb.disabled=true;gs.replaceChildren(note(t('cs.guest.opening')));
-    try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go('#/overview')}
+    try{await guestIn(true)}
     catch(e){gs.replaceChildren(note(t('cs.guest.failed',{error:e.message}),'bad'));gb.disabled=false}};
   card.append(el('div','guest',[el('div','or',[el('span','',t('cs.guest.or'))]),gb,el('p','gsub',t('cs.guest.sub')),gs]));
   if(notice){status.append(note(notice,'bad'));notice=null}
@@ -1377,6 +1377,11 @@ function platformView(){
   view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
 }
 
+/** Try as guest: a read-only session for the demo company (POST /v1/auth/guest), then its overview. From a link, a failure is said on the sign-in. */
+async function guestIn(fromButton){
+  try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go('#/overview')}
+  catch(e){if(fromButton)throw e;notice=t('cs.guest.failed',{error:e.message});go('#/sign-in')}
+}
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   S=load();shell();
@@ -1387,6 +1392,9 @@ async function route(){
   try{
     if(path==='/enrol')return enrolView(q);
     if(open[path])return open[path]();
+    // Try as guest from a link (the hands-on demo's last step, 13 Nov): the demo company opens read only, as the sign-in's
+    // button does; a session already open is kept.
+    if(path==='/guest'){if(S)return go('#/overview');view().replaceChildren(el('p','lede',t('cs.guest.opening')));return guestIn()}
     // A provider's code in the address is spent or useless without a session: it leaves the browser's history at once.
     if(path==='/connect'&&!S){history.replaceState(null,'','#/settings');return go('#/sign-in')}
     if(!S)return go('#/sign-in');

@@ -60,8 +60,11 @@ export const INVOICE = {
   /** Under the form, calmly, when the suppliers could not be read; the link reads them again. */
   suppliersFailed: "Suppliers not loaded.",
   retry: "Retry",
-  /** The same hint for an amount past the demo's cap (the simulated bank's USD floor), as the engine says it. */
-  amountCap: "Demo invoices go up to EUR 5,000.",
+  /**
+   * The same hint for an amount outside the demo's range, as the engine says it: up to the simulated bank's USD floor, and
+   * from EUR 100, so the bank's flat transfer fee (EUR 13.40) stays in proportion to the invoice (owner, 13 Nov).
+   */
+  amountCap: "Demo invoices go from EUR 100 to EUR 5,000.",
   send: "File this invoice",
 };
 
@@ -200,6 +203,8 @@ export const BOOKS = {
   /** The payment found for this invoice is not PAID (its status is beside it). */
   payment: "Payment on the simulated bank · test money",
   fee: "Fee",
+  /** Beside the fee: where it comes from (src/redteam/airwallex.ts SANDBOX_SWIFT_FEE_CENTS, measured in the sandbox). */
+  feeWhy: "the simulated bank's flat SWIFT fee",
   booked: "Booked in Purser's ledger",
   account: "Account",
   debit: "Debit",
@@ -219,7 +224,10 @@ export const BOOKS = {
   noFiles: "Not in the archive yet.",
   failed: "Purser could not read this.",
   retry: "Try the payment again",
-  next: "See your company",
+  /** The main link: Purser Cloud's guest dashboard, a demo company read only (cloud/src/try/books.ts CLOUD_URL). */
+  next: "Open Purser Cloud",
+  /** Under it: this visit's own record, screen 5b ("What Purser did with it"). */
+  what: "What Purser did",
   /** A quiet link under the main button, to screen 4's fields. */
   cheat: "Try changing what you signed",
 };
@@ -332,16 +340,16 @@ export const VISIBLE = {
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
-    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.what, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next, BOOKS.what, BOOKS.cheat],
     // A block whose part is not there yet says so in one sentence, without its heading (it claims nothing).
-    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next, BOOKS.cheat],
-    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next, BOOKS.what, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next, BOOKS.what, BOOKS.cheat],
     // The read model was not fed: one sentence for the books, the archive as the engine has it.
-    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.what, BOOKS.cheat],
     // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
     // until a payment that went through is drawn again from the retry's answer.
-    [BOOKS.headingError, BOOKS.retry, BOOKS.next],
+    [BOOKS.headingError, BOOKS.retry, BOOKS.what],
   ],
   company: [
     [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
@@ -358,13 +366,15 @@ export const VISIBLE = {
  * transfers, the raw answer and "Put back what you signed") beside the three fields the visitor edits; it cannot fit in
  * 45 words. Raised for that one state only, to its own count, for the lead to decide. 2026-11-12 (amounts): screen 1's
  * form with the calm amount hint ("Write an amount such as 1,850.00 or 10k.", the owner's words) is 49; both it and
- * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide; with the cap's words
- * ("Demo invoices go up to EUR 5,000.") in its place it is 48.
+ * the IBAN hint are held verbatim, so that state is raised to its count, for the lead to decide; with the range's words
+ * ("Demo invoices go from EUR 100 to EUR 5,000.") in its place it is 50.
  */
 // 12 Nov (one-tap pay): screen 4 now comes after paid, so its states carry "Already paid." and a link back ("pay 4"
 // paid once, "pay 6" failed with retry, "pay 7" refused); screen 5 carries the link to it ("books 0", "books 1").
+// 13 Nov (owner): screen 5 says where the fee comes from ("the simulated bank's flat SWIFT fee") and has two ways on,
+// "Open Purser Cloud" (its guest dashboard) and "What Purser did" (screen 5b): "books 0" and "books 1" are 59.
 // Each is pinned at its exact count.
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 48, "pay 4": 52, "pay 6": 51, "books 0": 50, "books 1": 50 };
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 59, "books 1": 59 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

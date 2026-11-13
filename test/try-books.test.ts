@@ -23,7 +23,8 @@ describe("what Purser did with it", () => {
     expect(DID.label).toMatch(/test company/i);
     expect(DID.label).toMatch(/simulated bank/i);
     expect(JSON.stringify(DID)).not.toMatch(/design partner|contact us/i);
-    expect([CLOUD_URL, LIVE_RUNS_URL, SECURITY_URL]).toEqual(["/", "https://kit11.max-31b.workers.dev/runs", "https://kit11.max-31b.workers.dev/security"]);
+    // Purser Cloud is its guest dashboard, absolute: on kit11 (through the relay) "/" is the site's home (owner, 13 Nov).
+    expect([CLOUD_URL, LIVE_RUNS_URL, SECURITY_URL]).toEqual(["https://purser-try.max-31b.workers.dev/#/guest", "https://kit11.max-31b.workers.dev/runs", "https://kit11.max-31b.workers.dev/security"]);
   });
 
   it("names the lines by the chart: expense, VAT and creditors for the invoice; creditors and bank for the payment", () => {
@@ -46,5 +47,18 @@ describe("what Purser did with it", () => {
     expect(html).toContain("screen('did'");
     expect(html).toContain("show('did')");
     expect(html).toMatch(/prefers-reduced-motion: reduce\)[^}]*\{\s*\.did-step/);
+  });
+});
+
+describe("the paid screen's way on (owner, 13 Nov)", () => {
+  it("links \"Open Purser Cloud\" to the guest dashboard, and the console opens #/guest as the demo company", async () => {
+    const { tryPage } = await import("../cloud/src/tryPage.js");
+    const html = tryPage("n", { origin: "https://purser-try.max-31b.workers.dev", rpId: "purser-try.max-31b.workers.dev" });
+    expect(html).toContain("cloud.href=DIDURL.cloud");
+    expect(html).toContain(`"cloud":"${CLOUD_URL}"`);
+    const { consolePage } = await import("../cloud/src/console.js");
+    const con = consolePage("n", { origin: "https://purser-try.max-31b.workers.dev", rpId: "purser-try.max-31b.workers.dev", mailDomain: "example.invalid" });
+    expect(con).toContain("if(path==='/guest')");
+    expect(con).toContain("api('/v1/auth/guest',{method:'POST',token:'-'})");
   });
 });

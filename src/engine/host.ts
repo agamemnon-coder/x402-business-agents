@@ -36,8 +36,8 @@ import { yearIndexPath } from "../vault/layout.js";
 import { sha256, type VaultSink } from "../vault/sink.js";
 import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
-import { checkCompose, invoiceText, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
-import { pdfOf } from "../e2e/documents.js";
+import { invoicePdf } from "./invoicePdf.js";
+import { checkCompose, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
 import { beginExecution } from "../policy/approvals.js";
@@ -645,7 +645,8 @@ export class EngineHost {
     return this.act(async () => {
       const fields = checkCompose(input, this.suppliers(), this.now());
       if ("refused" in fields) return fields;
-      const bytes = await pdfOf(invoiceText(fields));
+      // The enterprise layout (src/engine/invoicePdf.ts), billed to this test company.
+      const bytes = await invoicePdf({ fields, supplierKey: input.supplier_key, billTo: `${this.deps.company.name} · Purser demo` });
       return this.ingest({ bytes, filename: `${fields.invoiceNo.replace(/[^A-Za-z0-9-]/g, "-")}.pdf`, mime: "application/pdf" });
     });
   }

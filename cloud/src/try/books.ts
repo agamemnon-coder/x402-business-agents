@@ -36,8 +36,12 @@ export const DID = {
 /** The site's pages the last step links to (kit11, package.json's homepage). */
 export const LIVE_RUNS_URL = "https://kit11.max-31b.workers.dev/runs";
 export const SECURITY_URL = "https://kit11.max-31b.workers.dev/security";
-/** Purser Cloud's own start page on this deployment: a try session cannot open the console's pages (cloud/src/try/gate.ts). */
-export const CLOUD_URL = "/";
+/**
+ * Purser Cloud's guest dashboard (owner, 13 Nov): the console's #/guest opens the demo company read only, as its sign-in's
+ * "Try as guest" does (cloud/src/console.ts). Absolute: the page is served on purser-try and, through the relay, on kit11,
+ * where "/" is the site's home. A try session cannot open the console's pages itself (cloud/src/try/gate.ts).
+ */
+export const CLOUD_URL = "https://purser-try.max-31b.workers.dev/#/guest";
 
 export type Role = keyof typeof DID.roles;
 /** An account's role in the invoice's and the payment's entries, by the chart (src/ledger/accounts.ts); else null. */
@@ -84,7 +88,7 @@ screen('did',{heading:DIDC.heading,draw(box){
   const head=(name,words)=>el('p','did-h',[icon(name,18),el('span','',words)]);
   const not=()=>el('p','muted',D.notIn);
   const link=(words,href,ext)=>{const a=el('a','btn did-next',[el('span','',words),ext?icon('external-link',14):null]);a.href=href;if(ext){a.target='_blank';a.rel='noopener'}return a};
-  const next=el('div','did-step did-acts',[link(D.cloud,DIDURL.cloud,false),link(D.runs,DIDURL.runs,true),link(D.safe,DIDURL.safe,true)]);next.style.setProperty('--i','3');
+  const next=el('div','did-step did-acts',[link(D.cloud,DIDURL.cloud,true),link(D.runs,DIDURL.runs,true),link(D.safe,DIDURL.safe,true)]);next.style.setProperty('--i','3');
   box.append(el('p','did-label',D.label),filed,booked,matched,next,main.node);
   const invs=api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];return {items,i:items.find((x)=>x&&x.id===invId)||null}});
   // 1 Filed: the original invoice's folder and name in the archive.

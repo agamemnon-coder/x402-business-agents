@@ -208,7 +208,7 @@ describe("the copy", () => {
     expect(COPY.WORK.reading).toBe("Claude is reading…");
     expect(COPY.WORK.readingCode).toBe("Purser's code is reading…");
     expect(COPY.INVOICE.amountBad).toBe("Write an amount such as 1,850.00 or 10k.");
-    expect(COPY.INVOICE.amountCap).toBe("Demo invoices go up to EUR 5,000.");
+    expect(COPY.INVOICE.amountCap).toBe("Demo invoices go from EUR 100 to EUR 5,000.");
     expect(COPY.INVOICE.suppliersFailed).toBe("Suppliers not loaded.");
     expect(COPY.INVOICE.retry).toBe("Retry");
   });
@@ -286,7 +286,9 @@ describe("the copy", () => {
     expect(COPY.BOOKS.booked).toBe("Booked in Purser's ledger");
     expect(COPY.BOOKS.filed).toBe("Filed in the archive");
     expect(COPY.BOOKS.retry).toBe("Try the payment again");
-    expect(COPY.BOOKS.next).toBe("See your company");
+    // The main link: Purser Cloud's guest dashboard (owner, 13 Nov), never the site's home (cloud/src/try/books.ts CLOUD_URL).
+    expect(COPY.BOOKS.next).toBe("Open Purser Cloud");
+    expect(COPY.BOOKS.what).toBe("What Purser did");
     expect(COPY.COMPANY.download).toBe("Download your company (SyncBatch)");
     expect(COPY.COMPANY.line).toBe("Purser Cloud's own sync format: your test company's invoices with their documents, payments, ledger and audit log.");
     expect(COPY.COMPANY.again).toBe("Start again");

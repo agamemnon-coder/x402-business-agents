@@ -630,9 +630,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   // A calm hint under the amount when it cannot be read (normAmount, shared with screen 4); nothing is sent then.
   const amtHint=el('p','hint calm',C.invoice.amountBad);amtHint.id='f-amt-hint';amtHint.hidden=true;amtHint.setAttribute('aria-live','polite');
   amt.setAttribute('aria-describedby','f-amt-hint');
-  // Past the demo's cap (5000.00: the simulated bank's USD floor) or under 1.00: the same hint, the cap's words for the cap.
-  const amtRead=()=>{const v=normAmount(amt.value);if(v!==null)amt.value=v;const out=v!==null&&(Number(v)>5000||Number(v)<1);
-    amtHint.textContent=out&&Number(v)>5000?C.invoice.amountCap:C.invoice.amountBad;
+  // Outside the demo's range (100.00 to 5000.00: the simulated bank's USD floor, and a flat fee in proportion): the range's words.
+  const amtRead=()=>{const v=normAmount(amt.value);if(v!==null)amt.value=v;const out=v!==null&&(Number(v)>5000||Number(v)<100);
+    amtHint.textContent=out?C.invoice.amountCap:C.invoice.amountBad;
     const ok=v!==null&&!out;amtHint.hidden=ok;amt.setAttribute('aria-invalid',String(!ok));return ok?v:null};
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
@@ -1066,30 +1066,33 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   const B=C.books;const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
   const pid=S.proposal&&S.proposal.id,invId=S.proposal&&S.proposal.invoice;
   const main=mainButton();
-  const toCompany=()=>show('company');
   const err=settledErr(arg);
   if(err){
     // What failed, in the engine's words as they came; the engine's retry route runs only when the visitor asks.
     const said=el('div','',[note(err)]);said.setAttribute('role','status');
-    const next=btn(B.next);next.addEventListener('click',toCompany);
+    const next=btn(B.what);next.addEventListener('click',()=>show('did'));
     main.set(B.retry,async()=>{
       main.off(B.retry);
       const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(pid)+'/retry');
       if(S.screen!=='books')return;
       if(r.status===200&&r.json.settled&&typeof r.json.settled==='object'){S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
-      said.replaceChildren(note(words(r.json,B.failed)));next.remove();main.set(B.next,toCompany);
+      said.replaceChildren(note(words(r.json,B.failed)));next.remove();main.set(B.what,()=>show('did'));
     });
     box.append(said,el('div','acts',[main.node,next]));
     return;
   }
-  main.set(B.next,()=>show('did'));
+  // The main step on: Purser Cloud's guest dashboard, in a new tab (a link, so its address is there to read); this visit's
+  // own record (screen 5b) one quiet button below.
+  main.node.remove();
+  const cloud=el('a','btn primary big go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
+  const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   const slot=()=>el('div','slot');
   const paid=slot(),booked=slot(),filed=slot();
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
   const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,main.node,...(cheat?[el('p','',cheat)]:[]));
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,el('div','acts',[cloud,what]),...(cheat?[el('p','',cheat)]:[]));
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
@@ -1106,7 +1109,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const p=v.i?paymentOf(v.i,ps.items,txs.items||[]):null;
       if(!p){paid.replaceChildren(wait(B.noPayment));return}
       const tx=txOf(p,txs.items||[]);const fee=feeOf(p,tx);const ok=isPaid(p);
-      const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?money(fee.currency,fee.amount):'—'));
+      const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?[money(fee.currency,fee.amount),' ',el('small','muted',B.feeWhy)]:'—'));
       paid.replaceChildren(block('paid',ok?B.paid:B.payment,[el('p','amount',money(p.currency,p.amount)),el('p','',el('span','pill'+(ok?' ok':' bad'),String(p.status||''))),d],ok?'ok':'bad'));
     });
     Promise.all([reads,everyPage('/v1/ledger/entries')]).then(([[v,ps,txs],es])=>{
@@ -1118,7 +1121,9 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const bal=balance(mine);const head=headOf(es.items);
       const tb=el('tbody');
       for(const e of mine){const h=el('td','en',String(e.description||''));h.colSpan=3;tb.append(el('tr','',[h]));
-        for(const l of e.lines||[])tb.append(el('tr','',[el('td','mono',String(l.account||'')),el('td','r',l.debit_cents?money(l.currency,fromCents(l.debit_cents)):''),el('td','r',l.credit_cents?money(l.currency,fromCents(l.credit_cents)):'')]))}
+        // Each account with its role (expense, VAT, creditors, bank: the chart's, cloud/src/try/books.ts), so the VAT line reads as the invoice's VAT line.
+        for(const l of e.lines||[]){const ac=DIDACC[String(l.account||'')]||{};const role=ac.role?DIDC.roles[ac.role]:(ac.name||'');
+          tb.append(el('tr',ac.role==='vat'?'vatl':'',[el('td','',[el('span','mono',String(l.account||'')),role?el('span','role',' · '+role):null]),el('td','r',l.debit_cents?money(l.currency,fromCents(l.debit_cents)):''),el('td','r',l.credit_cents?money(l.currency,fromCents(l.credit_cents)):'')]))}}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
