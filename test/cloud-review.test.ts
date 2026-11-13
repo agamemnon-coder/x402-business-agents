@@ -23,6 +23,15 @@ describe("Purser Cloud after the review of 13 Nov", () => {
     expect(head).toContain('<a href="/">Purser Cloud</a>');
   });
 
+  it("(5) #/archive asks the engine first: without one it says why, and never asks /v1/engine/vault", () => {
+    const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
+    const fn = /async function archiveView\(\)\{[\s\S]*?const v=await api\('\/v1\/engine\/vault'\)/.exec(html)?.[0] ?? "";
+    expect(fn).toContain("if(!(await engineStatus())){");
+    expect(fn).toContain("t('cs.eng.archive_off')");
+    expect(tr("en", "cs.eng.archive_off")).toMatch(/kept by Purser's engine/);
+    expect(tr("nl", "cs.eng.archive_off")).toMatch(/engine van Purser/);
+  });
+
   it("(3) the demo chip says made-up data, as the banner does, never sandbox", () => {
     expect(tr("en", "cs.demo.chip")).toBe("Demo: made-up data");
     expect(tr("nl", "cs.demo.chip")).toBe("Demo: verzonnen gegevens");

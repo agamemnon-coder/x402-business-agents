@@ -817,6 +817,12 @@ async function guestPass() {
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
+    // Review, 13 Nov: #/archive as a guest says calmly why there is none, and asks /v1/engine/vault nothing (it answered
+    // 404 and logged an error); the "no console errors" check below covers the request.
+    const vault: string[] = [];
+    p.on("request", (r) => { if (r.url().includes("/v1/engine/vault")) vault.push(r.url()); });
+    await p.goto(`${ORIGIN}/#/archive`); await p.waitForTimeout(900);
+    ok(/kept by Purser's engine/.test((await p.textContent("main")) ?? "") && !/Could not load/.test((await p.textContent("main")) ?? "") && vault.length === 0, `${tag}: #/archive says the archive needs the engine, and asks the vault nothing`);
     // Settings, Connect Claude: the demo company's public read-only token and the steps; no way to make a token.
     await p.waitForSelector("#claude");
     ok(/purser-demo-read-only/.test((await p.textContent("#claude")) ?? "") && await p.locator("#claude-make").count() === 0, `${tag}: Connect Claude shows the demo's read-only token and makes none`);

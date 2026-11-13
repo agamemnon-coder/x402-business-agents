@@ -91,7 +91,7 @@ export function tourPage(steps: readonly TourStep[] = TOUR_STEPS): string {
 <section class="intro">
   <p class="eyebrow">Product tour</p>
   <h1 class="h-hero">Product tour · ${minutes} minutes</h1>
-  <p class="lead">Purser lets AI agents pay a company's bills, and above an agent's limit, only the CFO's Face ID moves money. Start at step 1: each step takes a minute or less.</p>
+  <p class="lead">Purser lets AI agents pay a company's bills within the limits you set; anything above them waits for your Face ID. Start at step 1: each step takes a minute or less.</p>
 </section>
 <ol class="tour">
 ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">

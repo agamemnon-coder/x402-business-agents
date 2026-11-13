@@ -1108,6 +1108,9 @@ async function transactionsView(){
 // --- The archive (engine only): the vault's folder tree as its indexes list it, each file in the same sandboxed frame -----
 async function archiveView(){
   title(t('cs.eng.archive'));
+  // Review, 13 Nov: without an engine (a guest, a cloud with none) /v1/engine/vault answers 404, which showed "Could not
+  // load this page" and an error in the browser's console. The page asks the engine first, as its links do, and says why.
+  if(!(await engineStatus())){const back=el('a','btn',t('cs.eng.archive_back'));back.href='#/overview';view().replaceChildren(head(t('cs.eng.archive')),el('div','card panel',[note(t('cs.eng.archive_off')),back]));return}
   const v=await api('/v1/engine/vault');const files=v.files||[];
   // The tree from the paths: the product's own (Dutch) folder names, as they are.
   const root={dirs:new Map(),files:[]};

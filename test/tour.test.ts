@@ -101,7 +101,7 @@ describe("/tour: five steps, three minutes", () => {
     // Below 600 px the screenshots are not shown (review, 13 Nov: unreadable thumbnails at phone width).
     expect(html).toContain("@media (max-width: 599px) { .stop .shot { display: none; } }");
     // The lead says what holds without overclaiming: agents pay alone within their limits (review, 13 Nov).
-    expect(html).toContain("Purser lets AI agents pay a company's bills, and above an agent's limit, only the CFO's Face ID moves money.");
+    expect(html).toContain("Purser lets AI agents pay a company's bills within the limits you set; anything above them waits for your Face ID.");
     // No file path or command in what a visitor reads (the footer's "What's real?" names its source, as every page does).
     expect(main.replace(/<[^>]+>/g, " ")).not.toMatch(/\bsrc\/|docs\/|\.ts\b|npm run|localStorage|jury|judg/i);
   });

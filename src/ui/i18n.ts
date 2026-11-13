@@ -840,6 +840,8 @@ const EN = {
   "cs.eng.archive": "Archive",
   "cs.eng.archive_lede": "Every file the engine filed, in its folders. Files are added, never replaced.",
   "cs.eng.archive_empty": "The archive is empty. A paid invoice is filed here.",
+  "cs.eng.archive_off": "The archive is kept by Purser's engine, which this company does not run. Its invoices, payments and books are on the other pages.",
+  "cs.eng.archive_back": "Back to the overview",
   "cs.eng.archive_pick": "Choose a file to see it here.",
   "cs.eng.kb": "{n} kB",
   // One line per event on the allowlist of src/engine/events.ts: _why when the checks found something, _plain when the
@@ -1841,6 +1843,8 @@ const NL: { readonly [K in Key]: string } = {
   "cs.eng.archive": "Archief",
   "cs.eng.archive_lede": "Elk bestand dat de engine opsloeg, in zijn mappen. Er komen bestanden bij, er wordt er nooit een vervangen.",
   "cs.eng.archive_empty": "Het archief is leeg. Een betaalde factuur wordt hier opgeslagen.",
+  "cs.eng.archive_off": "Het archief wordt bijgehouden door de engine van Purser, die dit bedrijf niet draait. De facturen, betalingen en boeken staan op de andere pagina's.",
+  "cs.eng.archive_back": "Terug naar het overzicht",
   "cs.eng.archive_pick": "Kies een bestand om het hier te zien.",
   "cs.eng.kb": "{n} kB",
   "cs.eng.ev.ap.received_why": "Een factuur van {money} kwam binnen en is gecontroleerd: {status}. Gevonden: {why}.",
