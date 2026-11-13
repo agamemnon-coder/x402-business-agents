@@ -106,8 +106,9 @@ describe("the partner pages", () => {
       // /airwallex shows several runs, each dated on its own block (jury panel, 12 Nov): its label is true for all of them.
       if (page === AIRWALLEX_PAGE) { expect(page).toContain(AWX_PAGE_LABEL); expect(page.replace(/<footer[\s\S]*<\/footer>/, "")).not.toMatch(/Replay of the main run/); }
       else expect(page).toMatch(/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
-      // /claude since 12 Nov (jury panel): measured, not asserted, in place of its docs fold (test/claude-evidence.test.ts).
-      if (page === CLAUDE_PAGE) expect(page).toContain('<section class="cev card" aria-labelledby="cev-h"><h2 id="cev-h">Measured, not asserted</h2>');
+      // /claude since 12 Nov (jury panel): measured, not asserted, in place of its docs fold (test/claude-evidence.test.ts);
+      // since 13 Nov as proof tiles (src/redesign/claudePage.ts).
+      if (page === CLAUDE_PAGE) expect(page).toContain('<section class="cev tiles card" aria-labelledby="cev-h"><h2 id="cev-h">Measured, not asserted</h2>');
       else {
         expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
         expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);

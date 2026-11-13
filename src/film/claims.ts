@@ -52,7 +52,7 @@ export const CLAIMS: readonly Claim[] = [
   { id: "C29", text: "The Airi run passed on the fourth attempt that day.", sources: ["docs/runs/2026-11-07-vic-1.md"], keys: ["fourth"] },
   { id: "C30", text: "48 attacks in the test harness, each with part of the system in hostile hands; money moved in 0.", sources: ["docs/zero-trust.md", "test/zero-trust.test.ts"], keys: ["48 attacks"] },
   { id: "C32", text: "Platform run, 10 Nov: Airwallex refused 3 payouts from two new test companies (registration number); 1 payout PAID with Purser's fee, settlement simulated.", sources: ["docs/runs/2026-11-10-platform-e2e.md"], keys: ["3 payouts", "registration number", "1 payout PAID"] },
-  { id: "C33", text: "Routine payments ran as plain code.", sources: ["src/redesign/partners.ts"], keys: ["routine payments by code"] },
+  { id: "C33", text: "Routine payments ran as plain code.", sources: ["src/redesign/claudePage.ts"], keys: ["routine payments by code"] },
   { id: "C34", text: "The entry: Kit 11.", sources: ["docs/claims.md"], keys: ["Kit 11"] },
   // The hand-in film (13 Nov): the runs of 12 November and the product as it is deployed.
   { id: "C40", text: "Metal, 12 Nov: a passkey account (2 owners, threshold 2) checks both signatures on chain: the CFO's passkey on an iPhone with Face ID (as stated by the owner) and a second approver that is a virtual test passkey.", sources: ["docs/runs/2026-11-12-faceid-onchain.md"], keys: ["threshold 2", "iPhone (Face ID) (as stated by the owner)", "virtual test passkey", "the account checks them itself"] },

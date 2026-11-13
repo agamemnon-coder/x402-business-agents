@@ -708,7 +708,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
       // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
-      if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      // /claude (13 Nov, Max: more visuals and data) opens on the split, one drawing at each width: routine to code, the
+      // exceptions to Claude, the high-risk ones on to Face ID; then the three agents, five proof tiles and nine model bars.
+      if (path !== "/airwallex" && path !== "/metal" && path !== "/claude" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if (path === "/claude") {
+        const c = await page.evaluate(`(() => {
+          const shown = [...document.querySelectorAll("#split svg")].filter((s) => s.getBoundingClientRect().width > 0);
+          const r = shown[0] ? shown[0].getBoundingClientRect() : null, h1 = document.querySelector("h1").getBoundingClientRect();
+          return { drawings: shown.length, width: r ? Math.round(r.width) : 0, below: r ? r.top >= h1.bottom : false, top: r ? Math.round(r.top + window.scrollY) : -1,
+            agents: document.querySelectorAll("main .cag").length, tiles: document.querySelectorAll("main .ctile").length, bars: document.querySelectorAll("main .cmr svg.bar").length };
+        })()`) as { drawings: number; width: number; below: boolean; top: number; agents: number; tiles: number; bars: number };
+        if (c.drawings !== 1 || c.width < 280 || !c.below || !(c.top < h)) fail(`/claude ${tag}: the split is not one drawing under the title on the first screen (${JSON.stringify(c)})`);
+        if (c.agents !== 3 || c.tiles !== 5 || c.bars !== 9) fail(`/claude ${tag}: not three agents, five proof tiles and nine model bars (${JSON.stringify(c)})`);
+      }
       if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.

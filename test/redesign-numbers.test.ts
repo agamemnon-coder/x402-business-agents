@@ -12,8 +12,12 @@ import { proofPage } from "../src/redesign/proof.js";
 import { CHAIN_TEST, DEFENSE_IN_DEPTH, HOME_BADGE, KIT_LINE, PRICE_LINE, SECOND_APPROVER, VISA_CLAIM, VISA_TAP_STATUS, VISA_VIC_BUILT_ON } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
+import { claudeEvidence } from "../src/redesign/claudeEvidence.js";
+import { hostileTileLabel } from "../src/redesign/claudePage.js";
 
 const HOSTILE_CLAIM = hostileClaimText();
+// Since 13 Nov the same record's figures are a proof tile on /claude (src/redesign/claudePage.ts).
+const HOSTILE_TILE = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
 import { esc } from "../src/redesign/ui.js";
 
 const { file, record } = loadRecord();
@@ -331,7 +335,7 @@ describe("the redesigned public pages", () => {
 
   // 12 Nov (jury panel): one exception, /claude's hostile-model eval line, which CI computes and its record holds (not sim-31).
   it("claims no '0 unsafe' anywhere until sim-31 is checked (Max, 2 Nov)", () => {
-    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(HOSTILE_CLAIM || "\u0000", " ")) }).toEqual({ name, zero: false });
+    for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, zero: /\b0 unsafe\b/i.test(body.replace(/<[^>]+>/g, " ").replace(HOSTILE_TILE, " ").replace(/&#39;/g, "'").replace(HOSTILE_CLAIM || "\u0000", " ")) }).toEqual({ name, zero: false });
   });
 });
 

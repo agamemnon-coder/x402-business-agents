@@ -10,19 +10,23 @@ import { openDb } from "../src/db/open.js";
 import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
 import {
-  AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, MCP_TRANSCRIPT, SWEEP_RECORD, VARIATION_FIX_SUMMARY, VARIATION_RECORD, VARIATION_SUMMARY, ZERO_TRUST_REPORT,
-  claudeEvidence, firstTry, holdoutsOf, mcpOf, measuredBlock, modelLines, sweepOf, variationOf,
+  AGENT_EVALS, HOLDOUTS_RECORD, HOSTILE_EVAL, INJECTION_LINE, MCP_TRANSCRIPT, SWEEP_RECORD, VARIATION_FIX_SUMMARY, VARIATION_RECORD, VARIATION_SUMMARY, ZERO_TRUST_REPORT,
+  claudeEvidence, firstTry, holdoutsOf, hostileOf, mcpOf, modelLines, sweepOf, variationOf,
 } from "../src/redesign/claudeEvidence.js";
+import { hostileTileLabel, proofTiles, splitSentence } from "../src/redesign/claudePage.js";
+import { agentRun, faceIdDecisions, split } from "../src/redesign/run.js";
 import { REPO_BLOB } from "../src/redesign/metalStory.js";
-import { hostileClaimText } from "../src/redesign/partners.js";
+import { HOSTILE_RECORD_FILE, hostileClaimText } from "../src/redesign/partners.js";
 import { esc } from "../src/redesign/ui.js";
 import { FakeIssuing } from "../src/redteam/issuing.js";
 import { CLAUDE_PAGE } from "../src/servers/dashboard.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+/** Text as read, the drawings (and their tooltips) left out. */
+const shown = (html: string) => text(html.replace(/<svg\b[\s\S]*?<\/svg>/g, " ")).replace(/\s+/g, " ").trim();
 const main = /<main[\s\S]*<\/main>/.exec(CLAUDE_PAGE)![0];
-const block = /<section class="cev card"[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
+const block = /<section class="cev tiles card"[\s\S]*?<\/section>/.exec(main)?.[0] ?? "";
 const ev = claudeEvidence();
 
 describe("the figures on /claude, each from its record", () => {
@@ -57,28 +61,82 @@ describe("the figures on /claude, each from its record", () => {
   });
 });
 
-describe("/claude's measured block", () => {
-  it("shows the four figures on top, each linking its record, and the injection screen", () => {
-    expect(main.indexOf('<section class="cev card"')).toBeLessThan(main.indexOf('class="flow card"'));
-    const t = text(block);
-    for (const line of ["Measured, not asserted", "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed.", "10 blind holdouts, 10 safe; H3 only on code's rule.",
-      "0 of 10 : Haiku as Support on one attack; code refused each stray call.", "9 model and agent pairs: pass rate, cost, time.", INJECTION_LINE]) expect(t).toContain(line);
+describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data, each from its record)", () => {
+  const run = agentRun(), sp = split(run.record), st = run.record.snapshot.agent_stats;
+
+  it("draws the split under the title: routine payments to code, the exceptions to Claude, the high-risk ones on to Face ID", () => {
+    const fig = /<figure class="csplit card" id="split">[\s\S]*?<\/figure>/.exec(main)?.[0] ?? "";
+    expect(main.indexOf("<h1>")).toBeLessThan(main.indexOf(fig));
+    const f = { ...sp, calls: st.reduce((n, a) => n + a.claude_calls, 0), faceId: faceIdDecisions(run.record) };
+    expect([f.routine, f.decisions, f.byClaude, f.faceId, f.calls]).toEqual([82, 24, 24, 5, 50]);
+    // Two drawings (wide, phone), each named by the same sentence; the caption holds the rest.
+    expect([...fig.matchAll(/<svg class="(wid|nar)"[^>]*aria-label="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["wid", esc(splitSentence(f))], ["nar", esc(splitSentence(f))]]);
+    expect(splitSentence(f)).toBe("Payment requests: 82 routine payments by code; 24 exceptions decided by Claude; 5 high-risk ones on to the CFO's Face ID.");
+    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).trim()).toBe("24/24 decisions by Claude (0 fallbacks), holds included · 50 Claude calls, each with a request id");
+    // The page's CSP hashes its one style block: no style attribute anywhere in it, no script.
+    expect(CLAUDE_PAGE).not.toMatch(/\sstyle="/);
+  });
+
+  it("shows the three agents as cards, each with its model, its decisions as a bar and its Claude calls", () => {
+    const cards = [...main.matchAll(/<article class="cag card" data-agent="(\w+)">([\s\S]*?)<\/article>/g)];
+    expect(cards.map((c) => [c[1], shown(c[2]!)])).toEqual(run.agents.map((a) => {
+      const x = st.find((y) => y.agent === a.id)!;
+      return [a.id, `${a.short} ${a.family} ${x.decisions}decisions ${x.claude_calls} Claude calls`.replace(/(\d)decisions/, "$1 decisions")];
+    }));
+    expect(cards.map((c) => /<rect class="fil" width="([\d.]+)%"/.exec(c[2]!)?.[1])).toEqual(st.map((x) => String(Math.round(x.decisions / sp.decisions * 1000) / 10)));
+    expect(cards.map((c) => c[1])).toEqual(["sourcing", "support", "treasury"]);
+  });
+
+  it("shows five proof tiles, each an icon, one number, a short label and its record", () => {
+    expect(main.indexOf('id="split"')).toBeLessThan(main.indexOf('<section class="cev tiles card"'));
+    const tiles = [...block.matchAll(/<li class="ctile" data-rec="([^"]+)">([\s\S]*?)<\/li>/g)];
+    expect(tiles.map((t) => t[1])).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, HOSTILE_EVAL]);
+    for (const t of tiles) { expect(t[2]).toMatch(/^<span class="ic"><svg/); expect(t[2]!.match(/<span class="tv">/g)).toHaveLength(1); }
+    const said = tiles.map((t) => text(t[2]!.replace(/<span class="r">[\s\S]*$/, "")).replace(/\s+/g, " ").trim());
+    expect(said).toEqual([
+      "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10/10 blind holdouts safe; H3 on code's rule only",
+      "0 of 10 Haiku as Support on one attack; code refused each stray call", "9 model and agent pairs, measured",
+      "380 hostile tool calls on the payables agents' 62 test invoices: 370 refused by code, 0 unsafe by the ledger verdict"]);
+    // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
+    expect(HOSTILE_EVAL).toBe(HOSTILE_RECORD_FILE);
+    expect(hostileOf(read(HOSTILE_EVAL))).toEqual({ calls: 380, refused: 370, unsafe: 0, cases: 62 });
+    expect(hostileOf("{}")).toBeNull();
     const links = [...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
-    // The zero-trust report's line links it too, once the report is in the tree (zero-trust-1112, merged 12 Nov).
-    expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));
-    for (const f of [VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, MCP_TRANSCRIPT]) expect(existsSync(new URL(`../${f}`, import.meta.url)), f).toBe(true);
-    // Never the word the site keeps off its pages, never a claim of no unsafe action. One exception, as in
-    // test/site-v4.test.ts: the hostile-model eval's line (12 Nov), whose "0 unsafe" CI computes and its record holds.
-    expect(CLAUDE_PAGE.replace(esc(hostileClaimText()) || "\u0000", " ")).not.toMatch(/stand-in|\b0 unsafe\b/i);
+    expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, HOSTILE_EVAL, ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));
+    for (const f of [VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, MCP_TRANSCRIPT, HOSTILE_EVAL]) expect(existsSync(new URL(`../${f}`, import.meta.url)), f).toBe(true);
+    // The injection screen, as code holds it, in its own fold.
+    expect(text(/<details class="fold" id="injection">[\s\S]*?<\/details>/.exec(main)?.[0] ?? "")).toContain(INJECTION_LINE);
+    // Never the word the site keeps off its pages, never a claim of no unsafe action. The exceptions, as in
+    // test/site-v4.test.ts: the hostile-model eval's figures, whose "0 unsafe" CI computes and its record holds.
+    expect(CLAUDE_PAGE.replace(esc(hostileClaimText()) || "\u0000", " ").replace(esc(hostileTileLabel(ev.hostile!)), " ")).not.toMatch(/stand-in|\b0 unsafe\b/i);
   });
 
-  it("says the hostile model only when its report exists", () => {
+  it("links the zero-trust report only when it exists", () => {
     expect(ev.zeroTrust).toBe(existsSync(new URL(`../${ZERO_TRUST_REPORT}`, import.meta.url)));
-    expect(measuredBlock({ ...ev, zeroTrust: false })).not.toMatch(/hostile/);
-    expect(measuredBlock({ ...ev, zeroTrust: true })).toMatch(/hostile model/);
-    expect(CLAUDE_PAGE.includes("hostile model")).toBe(ev.zeroTrust);
+    expect(proofTiles({ ...ev, zeroTrust: false })).not.toContain(ZERO_TRUST_REPORT);
+    expect(proofTiles({ ...ev, zeroTrust: true })).toContain(`${REPO_BLOB}${ZERO_TRUST_REPORT}`);
+    expect(proofTiles({ ...ev, hostile: null })).not.toContain(HOSTILE_EVAL);
   });
 
+  it("charts each agent on each model: a bar of runs passed, the cost per pass and the time, the models in use marked", () => {
+    const chart = /<article class="cmodels card" data-rec="([^"]+)"[\s\S]*?<\/article>/.exec(main);
+    expect(chart?.[1]).toBe(SWEEP_RECORD);
+    const rows = [...chart![0].matchAll(/<div class="cmr">([\s\S]*?)<\/span><\/div>/g)].map((m) => m[1]!);
+    const lines = modelLines(ev.sweep!);
+    expect(rows).toHaveLength(9);
+    lines.forEach((l, i) => {
+      const w = /<rect class="fil(?: alt)?" width="([\d.]+)%"/.exec(rows[i]!)?.[1];
+      expect(Number(w)).toBe(Math.round(l.passed / l.runs * 1000) / 10);
+      expect(text(rows[i]!)).toContain(`${l.passed}/${l.runs}`);
+    });
+    expect(shown(chart![0])).toContain("Haiku 130/130 · $0.0005 · 4.8s · in use");
+    expect(shown(chart![0])).toContain("Haiku 50/60 · $0.0029 · 10.0s");
+    expect((chart![0].match(/class="use"/g) ?? []).length).toBe(3);
+  });
+
+});
+
+describe("/claude's folds", () => {
   it("folds each agent on each model with its verdict, the Treasury choice as measured, and the failure in three lines", () => {
     const sweep = /<summary>Each agent on each model \(6 Nov\)<\/summary>([\s\S]*?)<\/details>/.exec(main)?.[1] ?? "";
     expect(sweep).not.toBe("");
