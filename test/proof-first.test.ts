@@ -252,10 +252,11 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   // Jury pass, 13 Nov: the heading, the scale band (the owner, 13 Nov), the four summary cards, then the one details
   // fold, which opens with the guarantees.
   // Jury, 13 Nov (second round): the guarantees in sight again, under the band and the four cards; the fold after them.
-  it("has the heading, the band and the four cards above \"What Purser guarantees\", the fold after it: no run label", () => {
+  // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs.
+  it("has the heading, the chain, the band, the offline check and the live runs above \"What Purser guarantees\", the fold after it: no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> $/);
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
@@ -426,14 +427,16 @@ describe("/proof's words in sight", () => {
     // cards (each promise, who enforces it and its evidence; how folded), and the cards name their run: 322 as built.
     // Review, 13 Nov: the EUR 240.00 card says who signed it (a test passkey) and where the owner's own Face ID run
     // stands (IN_APPROVAL): 342 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(345);
-    expect(visibleWords(html)).toBeLessThanOrEqual(720);
+    // The owner, 13 Nov ("the proof is what we need"): every live run in sight, by partner, each with its day, its chip,
+    // its id and how to verify it; the proof chain and the offline check above them; the four cards gone: 810 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1200); // 720 until the live runs came into sight (1,186 as built)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(357);
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built)
   });
 });

@@ -11,6 +11,7 @@ import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js"
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
+import { PROOF_RUNS_CSS, proofChainHtml, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
@@ -50,7 +51,8 @@ details.deep h2.sec { display: none; }
 details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep section.band .wrap { padding: 0; } details.deep .sechead { display: none; }
 /* The jury's order (12 Nov): the heading, then the guarantees at once; the partners; the run's label with its numbers. */
 .proofp { padding: 18px 0 24px; }
-.proofp h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 740; letter-spacing: -.02em; margin: 8px 0 16px; }
+.proofp h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 740; letter-spacing: -.02em; margin: 8px 0 6px; }
+.proofp .plead { margin: 0 0 18px; font-size: 16.5px; line-height: 1.5; color: var(--muted); max-width: 46em; }
 .proofp > .wrap { max-width: 1120px; }
 .proofp [id] { scroll-margin-top: 80px; }
 .runline { margin: 26px 0 10px; }
@@ -472,6 +474,9 @@ const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPRO
  * The four cards on /proof (the owner, 13 Nov: "enterprise level"): one structure each, the same height, no icon: the
  * figure, a one-line title, its context (scope and day), and one link to where its record is shown, "Record".
  */
+/** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */
+export const PROOF_LEAD = "What ran live, when, and how to check each run yourself. Sandbox and testnet, test money.";
+
 export function proofCardsHtml(cards: SummaryCard[]): string {
   if (!cards.length) return "";
   return `<ul class="sumc" data-look="metric" aria-label="${esc("Proof in four cards")}">${cards.map((c) => `<li${c.tone ? ` class="${c.tone}"` : ""}${c.rec ? ` data-rec="${esc(c.rec)}"` : ""}><a href="${esc(c.href)}"><b class="sc-f">${esc(c.fig)}</b><b class="sc-t">${esc(c.title)}</b><small>${esc(c.text)}</small><span class="sc-l">${esc("Record")} →</span></a></li>`).join("")}</ul>`;
@@ -544,8 +549,11 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
+  <p class="plead">${esc(PROOF_LEAD)}</p>
+  ${proofChainHtml()}
   ${scaleBandHtml(scaleStats(), "What ran, in numbers", { strip: true })}
-  ${proofCardsHtml(proofSummary(run))}
+  ${verifyCalloutHtml()}
+  ${proofRunsHtml()}
   ${guaranteesHtml()}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${lifeVisual("wide")}
   ${railsVisual("wide")}
@@ -566,7 +574,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

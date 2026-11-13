@@ -28,13 +28,15 @@ describe("What Purser guarantees", () => {
 
   // Jury pass, 13 Nov: the four summary cards come first; the guarantees open the one details fold under them.
   // Jury, 13 Nov (second round): the first screen was too thin; the guarantees are in sight again, under the four cards.
-  it("is in sight under the band and the four cards, above the fold with the partners and the numbers", () => {
+  // The owner, 13 Nov ("the proof is what we need"): the lead line, the proof chain, the band, the offline check and every
+  // live run come first; the guarantees follow, in sight, above the fold with the partners and the numbers.
+  it("is in sight under the chain, the band, the offline check and the live runs, above the fold with the partners and the numbers", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<ul class="scale"[\s\S]*<\/ul>\s*<ul class="sumc"[\s\S]*<\/ul>$/);
+    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
     expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
   });
 
