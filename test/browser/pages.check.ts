@@ -19,7 +19,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
-import { proofRuns } from "../../src/redesign/proofRuns.js";
+import { proofRuns, TAP_LINK } from "../../src/redesign/proofRuns.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
@@ -719,7 +719,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 480 : 430) /* +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 480 : 430) /* +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 250 /* +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -814,17 +814,17 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" && (!/The hash the CFO signed travels with the payment\./.test(pt) || (pt.match(/\b[0-9a-f]{64}\b/g) ?? []).length !== 2 || !/Match: the same hash/.test(pt))) fail(`/airwallex ${tag}: the CFO's hash and Airwallex's are not shown side by side, or do not match`);
       // awx-1 (7 Nov): the separate Airwallex-only run in its fold since 12 Nov (the Issuing tile leads to it), dated and
       // labelled, with its checks and every step and id.
-      if (path === "/airwallex" && (/awx-1: a separate run/.test(pt) || !/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(open) || !/7 of 7 checks pass/.test(open) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
+      if (path === "/airwallex" && (/awx-1: a separate run/.test(pt) || !/\d{1,2} November, awx-1: a separate run · Airwallex sandbox, test money/.test(open) || !/every check passes/.test(open) || !/LIMIT_EXCEEDED[\s\S]*MERCHANT_CATEGORY_NOT_ALLOWED[\s\S]*738a4263-6d6c-4de8-94a3-93da1c175fb4[\s\S]*4140dee2-6373-4eb4-a71f-bf69130f96a7/.test(open))) fail(`/airwallex ${tag}: awx-1 is not shown, dated and labelled, with its steps`);
       // The Airi run (7 Nov), in the owner's copy on /airwallex and on /visa: Visa Intelligent Commerce via
       // Airwallex's Airi, dated and labelled "Airwallex sandbox, test card, test money", the three outcome badges and the
-      // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
+      // "Every check passes" (a link to the run log's checks; no pass-rate fraction, judge run 13 Nov) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
       // On /airwallex the whole block sits in a fold since 12 Nov (the Airi tile leads to it): there it is read with the folds open.
       // On /visa too since the jury pass (13 Nov): every detail under the four cards is in one fold.
       const airiText = path === "/airwallex" || path === "/visa" ? open : pt;
       if (path === "/airwallex" && /Visa Intelligent Commerce via Airwallex's Airi: a live run/.test(pt)) fail(`/airwallex ${tag}: the Airi run's block is in sight, not in its fold`);
       if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airiText)
-        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/5 of 5 checks pass/.test(airiText)
+        || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/Every check passes/.test(airiText)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
@@ -1059,7 +1059,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.locator("main details.sumd > summary").click();
       await page.locator("main details.deep > summary", { hasText: "Visa Intelligent Commerce via Airwallex's Airi" }).click();
       const airi = await page.locator("#airi-run").innerText().catch(() => "");
-      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
+      if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*Every check passes/.test(airi)
         || !(await page.locator("#airi-run").isVisible()) || (await page.locator('#airi-run a[href="airwallex#airi-run-steps"]').count()) !== 1) fail(`/proof ${tag}: the Airi run not shown when its line is opened, or no link to its steps`);
       await page.evaluate(() => document.querySelectorAll("details.deep").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const rb = await page.locator("#airwallex-readback + .awrb").innerText().catch(() => "");
@@ -1083,14 +1083,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const want: Record<string, RegExp[]> = {
         airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
         metal: [/^#24 refused on chain\s↗$/, /^86 payments, each its own tx\s↗$/],
-        claude: [/^24\/24, 0 fallbacks$/, /^a reliability run found a hand-off fault; fixed: 6\/10 → 10\/10\s↗$/],
+        claude: [/^all \d+ decisions by Claude, 0 fallbacks$/, /^a reliability run found a hand-off fault; the rebuilt eval now passes every run\s↗$/],
       };
       for (const [id, res] of Object.entries(want)) {
         const c = leads.find((x) => x.id === id);
         if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show its first claim in sight, then 2–3 facts and its other claims in the fold (${JSON.stringify(c?.claims)})`);
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
-      if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
+      // Since 13 Nov the live-runs list ends with one link, "Visa TAP run → /visa"; the TAP run itself stays on /visa.
+      if (/\bTAP\b/.test((await page.locator("main").innerText()).replace(TAP_LINK, ""))) fail(`/proof ${tag}: TAP outside its one link to /visa`);
       // 12 Nov (merge of #148 into #157): the footer link to /visa went from Proof too; Visa is a section of its own.
       if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure. Read once they

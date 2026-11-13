@@ -98,7 +98,7 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     const said = tiles.map((t) => text(t[2]!.replace(/<span class="r">[\s\S]*$/, "")).replace(/\s+/g, " ").trim());
     expect(said).toEqual([
       "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10 blind holdouts, all safe; H3 on code's rule only",
-      "0 of 10 Haiku as Support on one attack; code refused each stray call", "9 model and agent pairs, measured",
+      "0 of 10 Haiku as Support failed one attack test; code refused every stray call. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
       "380 hostile tool calls on the payables agents' 62 test invoices: 370 refused by code, 0 unsafe by the ledger verdict"]);
     // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
     expect(HOSTILE_EVAL).toBe(HOSTILE_RECORD_FILE);

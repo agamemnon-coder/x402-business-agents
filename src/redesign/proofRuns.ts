@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
 import { isLive, liveRuns, type RunId, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
+import { VISA_TAP_ID } from "./visaOverview.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const pkgScripts = (JSON.parse(readFileSync(new URL("package.json", ROOT), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -67,16 +68,28 @@ export const commandOf = (r: RunRow): string | null => {
   return name && pkgScripts[name] ? `npm run ${name}` : null;
 };
 
-/** How to verify it yourself: the explorer for a transaction, else the run's record (its log when it has one). */
-export function verifyOf(r: RunRow): { label: string; href: string } | null {
-  const id = keyIdOf(r);
-  if (id?.href && /explorer|testnet\.metalntwx/.test(id.href)) return { label: "On Metal's explorer", href: id.href };
+/** The run's record: its log when it has one, else its first file. */
+export function recordOf(r: RunRow): { label: string; href: string } | null {
   const log = r.files.find((f) => /\.md(#|$)/.test(f.href)) ?? r.files[0];
   return log ? { label: "Run record", href: siteHref(log.href) } : null;
 }
 
+/** How to verify it yourself: the explorer for a transaction, else the run's record. */
+export function verifyOf(r: RunRow): { label: string; href: string } | null {
+  const id = keyIdOf(r);
+  if (id?.href && /explorer|testnet\.metalntwx/.test(id.href)) return { label: "Explorer", href: id.href };
+  return recordOf(r);
+}
+
 export const PROOF_RUNS_ID = "live-runs";
 const NOT_ON_PROOF = new Set(["tap-1"]);
+
+/** How many rows /proof lists: the strip's run count is this number (the orchestrator, 13 Nov: a judge who counts the rows gets the strip's figure). */
+export const proofRunCount = (groups = proofRuns()) => groups.reduce((n, g) => n + g.runs.length, 0);
+
+/** The live runs told elsewhere: the TAP run, on /visa only; one link under the list says where. */
+export const elsewhereRuns = (rows: RunRow[] = liveRuns()) => rows.filter((r) => isLive(r) && NOT_ON_PROOF.has(r.key));
+export const TAP_LINK = "Visa TAP run → /visa";
 
 /** The live runs, newest first inside each group, groups in a fixed order. */
 export function proofRuns(rows: RunRow[] = liveRuns()): { group: ProofGroup; runs: RunRow[] }[] {
@@ -91,16 +104,16 @@ const a = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? 
 export function proofRunsHtml(groups = proofRuns()): string {
   if (!groups.length) return "";
   const row = (r: RunRow) => {
-    const chip = chipOf(r), id = keyIdOf(r), v = verifyOf(r), cmd = commandOf(r);
+    const chip = chipOf(r), id = keyIdOf(r), v = verifyOf(r), recLink = recordOf(r), cmd = commandOf(r);
     const rec = r.files.map((f) => siteHref(f.href).replace(REPO_BLOB, "")).join(" ");
     return `<li id="run-${esc(r.key)}" data-rec="${esc(rec)}"><span class="pr-d">${esc(dayOf(r.iso))}</span><span class="pr-n">${esc(r.name ?? r.title)}</span>`
       + `<span class="pr-c"><span class="chip live">${esc(chip.live)}</span>${chip.simulated ? `<span class="chip sim">${esc(chip.simulated)}</span>` : ""}</span>`
       + `<span class="pr-id">${id ? `<span class="k">${esc(id.label.replace(/ · 0x[0-9a-fA-F]+…[0-9a-fA-F]+$/, "").replace(/ \([A-Z_]+\)$/, ""))}</span> ${id.href ? `<a class="mono" href="${esc(id.href)}" target="_blank" rel="noopener">${esc(id.value)}&nbsp;↗</a>` : `<code>${esc(id.value)}</code>`}` : ""}</span>`
-      + `<span class="pr-v">${v ? a(v.href, v.label) : ""}${cmd ? ` <code class="cmd">${esc(cmd)}</code>` : ""}</span></li>`;
+      + `<span class="pr-v">${v ? a(v.href, v.label) : ""}${v && recLink && recLink.href !== v.href ? ` ${a(recLink.href, "Record")}` : ""}${cmd ? ` <code class="cmd">${esc(cmd)}</code>` : ""}</span></li>`;
   };
   return `<section class="pruns" id="${PROOF_RUNS_ID}" data-rec="docs/runs" aria-labelledby="h-pruns"><h2 id="h-pruns">${icon("calendar-range", 19)} ${esc("What ran live, by partner")}</h2>
-<p class="pr-note">${esc("Sandbox and testnet runs with test money, each with the id to look up and its record. Rehearsals, control tests and partial runs are on /runs.")}</p>
-${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}</section>`;
+<p class="pr-note">${esc("Test money throughout. Each run: the id to look up, how to check it. Rehearsals, control tests and partial runs: /runs.")}</p>
+${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}${elsewhereRuns().length ? `\n<p class="pr-more"><a href="visa#${VISA_TAP_ID}">${esc(TAP_LINK)}</a></p>` : ""}</section>`;
 }
 
 // ── 3. The receipt you check offline ───────────────────────────────────────────────────────────────────────────────
@@ -136,6 +149,7 @@ section.pruns { margin: 0 0 28px; }
 section.pruns h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 20px; font-weight: 720; letter-spacing: -.01em; }
 section.pruns h2 svg { color: var(--muted); }
 .pr-note { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
+.pr-more { margin: 10px 0 0; font-size: 14px; } .pr-more a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 section.pruns h3 { margin: 18px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
 ul.prl { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
 ul.prl li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 200px minmax(0, 220px) 200px; column-gap: 14px; align-items: baseline; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.45; }
