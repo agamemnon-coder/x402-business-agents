@@ -14,7 +14,7 @@ import type { EngineApi } from "../engine/api.js";
 import { DEMO_END, ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
 import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
-import { mcpAnswer, PROTOCOL_VERSIONS } from "./mcp.js";
+import { mcpAnswer } from "./mcp.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../brand.gen.js";
 import { authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
 
@@ -51,7 +51,7 @@ export const iconsOf = (origin: string) => [
 ];
 
 /** What a 401 at /mcp says, so a client finds where to sign in (RFC 9728 section 5.1). */
-export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
+export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource", scope="purser"`;
 
 const CONNECTOR_PURPOSES = ["claude", "claude-propose"];
 const oauthError = (e: OAuthRefused) => new Response(JSON.stringify({ error: e.code, error_description: e.message }), { status: e.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -96,13 +96,11 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
 
     { method: "POST", path: "/mcp", summary: "Purser as a remote MCP server (Streamable HTTP; JSON answers, no session) for Claude: read the books, and with a token made to propose, file an invoice's payment for the CFO's approval. Never approves or pays. A Claude connector token (or an access token from /oauth/token) as Authorization: Bearer; the demo company's public token reads the demo company.", need: "read", run: async (c) => {
-      const asked = c.req.headers.get("mcp-protocol-version");
-      if (asked && !(PROTOCOL_VERSIONS as readonly string[]).includes(asked)) return err(400, `unsupported MCP-Protocol-Version; this server speaks ${PROTOCOL_VERSIONS.join(", ")}`);
       const caller = c.caller!;
       const demo = isDemoTenant(caller.tenantId);
       if (demo) await ensureDemoCompany(c.env.sql, c.env.blobs, c.now);
       const company = (await c.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [caller.tenantId]))?.name ?? "the company";
-      const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000));
+      const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000), c.req.headers);
       return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
     } },
 
