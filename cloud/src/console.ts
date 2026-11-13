@@ -1236,7 +1236,7 @@ async function tokensView(){
     dl([[t('cs.tok.contract'),el('code','',tok.contract),'mono'],[t('cs.tok.token_id'),el('code','',shortHash(tok.token_id)),'mono'],[t('cs.tok.face_value'),tok.face_value],[t('cs.tok.discount'),tok.discount]]),
     steps,tok.verified?note(t('cs.tok.verified'),'ok'):null,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
   const c=r.agent_cards;
-  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
+  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
     el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',t('cs.tok.card')),el('th','',t('cs.tok.holder')),el('th','',t('cs.tok.limits')),el('th','',t('cs.tok.status'))])),el('tbody','',c.cards.map((x)=>el('tr','',[el('td','',[el('b','',x.brand+' ••'+x.last4),el('span','sub',' '+x.form.toLowerCase())]),el('td','',x.holder),el('td','',x.limits.join(' · ')),el('td','',[el('span','ast '+(x.status==='ACTIVE'?'active':'paused'),x.status.charAt(0)+x.status.slice(1).toLowerCase()),x.merchant_categories.length?el('span','sub',' '+t('cs.tok.categories',{list:x.merchant_categories.join(', ')})):null])])))])),
     el('p','links',[ext(c.record,t('cs.tok.record'))])]);
   const v=r.visa_credential;

@@ -5,6 +5,7 @@
 // console's nav has the new tabs, the old Invoices route lands on Books, and the page says what Purser Cloud is.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
+import { MESSAGES } from "../src/ui/i18n.js";
 import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import TOKENIZE from "../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
 
@@ -95,6 +96,11 @@ describe("the console", () => {
     expect(html).toContain("'/agents':agentsView");
     expect(html).toContain("'/tokenisation':tokensView");
     expect(html).toContain("Purser Cloud is where a company runs Purser: its agents, their limits, its payables and books, and every approval.");
+  });
+  it("keeps the live run's sandbox cards apart from the demo company's simulated ones (judge check, 13 Nov)", () => {
+    expect(MESSAGES.en["cs.tok.cards"]).toBe("Agents' cards in the Airwallex sandbox (live run, 6 Nov)");
+    expect(MESSAGES.en["cs.tok.cards_note"]).toBe("Real sandbox cards from the live run; the demo company's cards on Agents are simulated.");
+    expect(html).toContain("el('p','',el('b','',t('cs.tok.cards_note')))");
   });
   it("adds no inline script beyond the one with the page's nonce, and no write call for agents", () => {
     expect([...html.matchAll(/<script[^>]*>/g)].map((m) => m[0])).toEqual([`<script type="module" nonce="n0nce">`]);
