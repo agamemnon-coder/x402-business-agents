@@ -128,6 +128,8 @@ const EVENTS: Record<string, Pick> = {
       account: typeof first.account === "string" ? first.account : undefined, vat_code: typeof first.vat_code === "string" ? first.vat_code : undefined,
       // The foreign code the books set on a line the Coder left without one (src/ap/coderAgent.ts store).
       books_vat_code: p.books_vat_code === "PF_DE19" ? "PF_DE19" : undefined,
+      // The rate of VAT left without a code, a whole percent (src/ap/coderAgent.ts store).
+      uncoded_vat_pct: Number.isSafeInteger(p.uncoded_vat_pct) && (p.uncoded_vat_pct as number) > 0 && (p.uncoded_vat_pct as number) < 100 ? p.uncoded_vat_pct : undefined,
       cost_centre: typeof first.cost_centre === "string" ? first.cost_centre : undefined, overridden_by: p.overridden_by,
       reason: firstSentence(p.reason, 160), request_id: typeof agent.request_id === "string" ? agent.request_id : undefined,
     };
