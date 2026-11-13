@@ -66,6 +66,26 @@
       ]
     }
   ],
+  "cash": [
+    {
+      "day": "2026-11-12",
+      "what": "Airwallex EUR balance before the run (sandbox test money)",
+      "currency": "EUR",
+      "balance_cents": 100000
+    },
+    {
+      "day": "2026-11-12",
+      "what": "Packwise: Starter plan, monthly",
+      "currency": "EUR",
+      "balance_cents": 98001
+    },
+    {
+      "day": "2026-11-13",
+      "what": "Invoice VE-889 · Verpakking Express B.V. (test)",
+      "currency": "EUR",
+      "balance_cents": 97759
+    }
+  ],
   "sorted": {
     "eval": "docs/evals/coder.json",
     "ran_at": "2026-11-12T13:03:11.719Z",
@@ -80,9 +100,15 @@
           "Zeeland Verpakkingen B.V",
           "2026-11-03 ZV-4471 EUR 484.00.pdf"
         ],
+        "supplier": "Zeeland Verpakkingen B.V.",
+        "number": "ZV-4471",
+        "date": "2026-11-03",
+        "currency": "EUR",
+        "total": "484.00",
         "account": "6900",
         "vat": "P21",
-        "cost_centre": "CC300"
+        "cost_centre": "CC300",
+        "reason": "Invoice ZV-4471 from Zeeland Verpakkingen B.V. is one line of EUR 400.00 net with EUR 84.00 VAT at 21%, coded to 6900 Other supplier invoices with P21 because the invoice gives no item detail and there is no coding history. The default cost centre CC300 applies."
       },
       {
         "case": "nl-software-21",
@@ -94,9 +120,15 @@
           "Wolkwerk Software B.V",
           "2026-11-02 WW-2026-1107 EUR 217.80.pdf"
         ],
+        "supplier": "Wolkwerk Software B.V.",
+        "number": "WW-2026-1107",
+        "date": "2026-11-02",
+        "currency": "EUR",
+        "total": "217.80",
         "account": "6100",
         "vat": "P21",
-        "cost_centre": "CC200"
+        "cost_centre": "CC200",
+        "reason": "The helpdesk software subscription (EUR 180.00 net, EUR 37.80 VAT at 21%) is booked to 6100 Software subscriptions with VAT code P21, which reproduces the invoice's VAT exactly. It goes to CC200 Support agent, which covers helpdesk software."
       },
       {
         "case": "nl-books-9",
@@ -108,9 +140,15 @@
           "Boekhandel De Kade B.V",
           "2026-11-03 DK-55120 EUR 163.50.pdf"
         ],
+        "supplier": "Boekhandel De Kade B.V.",
+        "number": "DK-55120",
+        "date": "2026-11-03",
+        "currency": "EUR",
+        "total": "163.50",
         "account": "6900",
         "vat": "P9",
-        "cost_centre": "CC300"
+        "cost_centre": "CC300",
+        "reason": "Professional books on inventory management, EUR 150.00 net, coded to 6900 Other supplier invoices with P9 (9%), which reproduces the invoice's VAT of EUR 13.50 exactly. No earlier invoices from this supplier exist, so the default cost centre is used."
       },
       {
         "case": "de-reverse-charge",
@@ -122,9 +160,15 @@
           "Allgäu Daunen GmbH",
           "2026-11-05 AD-2026-0412 EUR 2600.00.pdf"
         ],
+        "supplier": "Allgäu Daunen GmbH",
+        "number": "AD-2026-0412",
+        "date": "2026-11-05",
+        "currency": "EUR",
+        "total": "2600.00",
         "account": "6200",
         "vat": "PRC_EU",
-        "cost_centre": "CC300"
+        "cost_centre": "CC300",
+        "reason": "Down filling from Allgäu Daunen GmbH (DE), invoice AD-2026-0412, is coded to 6200 Goods from the manufacturer with PRC_EU, since the invoice states EU reverse charge and the VAT is owed by us. No coding history exists, so the default cost centre CC300 applies."
       },
       {
         "case": "ie-saas-reverse",
@@ -136,9 +180,15 @@
           "Liffey Cloud Tools Ltd",
           "2026-11-01 LCT-10422 EUR 320.00.pdf"
         ],
+        "supplier": "Liffey Cloud Tools Ltd",
+        "number": "LCT-10422",
+        "date": "2026-11-01",
+        "currency": "EUR",
+        "total": "320.00",
         "account": "6100",
         "vat": "PRC_EU",
-        "cost_centre": "CC300"
+        "cost_centre": "CC300",
+        "reason": "Inventory forecasting software seats are a software subscription, so account 6100 with the reverse-charge code PRC_EU, since the Irish supplier's invoice states the VAT is reverse-charged. No cost centre is clearly indicated, so the default applies."
       },
       {
         "case": "no-data-reverse",
@@ -150,9 +200,15 @@
           "Fjordvind Data AS",
           "2026-11-02 FD-7731 EUR 90.00.pdf"
         ],
+        "supplier": "Fjordvind Data AS",
+        "number": "FD-7731",
+        "date": "2026-11-02",
+        "currency": "EUR",
+        "total": "90.00",
         "account": "6900",
         "vat": "PRC_NONEU",
-        "cost_centre": "CC300"
+        "cost_centre": "CC300",
+        "reason": "Fjordvind Data AS invoice FD-7731 for EUR 90.00 is a reverse charge from outside the EU, so it is coded to PRC_NONEU. It goes to 6900 Other supplier invoices, the default, because no account fits weather data better and there is no coding history."
       }
     ]
   }
