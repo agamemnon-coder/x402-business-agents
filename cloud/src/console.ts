@@ -402,12 +402,26 @@ class Expired extends Error{}
 async function api(path,o){
   o=o||{};const token=o.token||(S&&S.token);
   const headers={};if(token)headers.authorization='Bearer '+token;if(o.body!==undefined)headers['content-type']='application/json';
+  // A sensitive setting needs a fresh passkey check (cloud/src/stepUp.ts): the step-up token of this session, while it lasts.
+  if(!o.token&&S&&S.up&&S.up.exp>Date.now())headers['x-purser-step-up']=S.up.token;
   const r=await fetch(path,{method:o.method||'GET',headers,body:o.body===undefined?undefined:JSON.stringify(o.body)});
   if(r.status===401&&!o.token&&S){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in');throw new Expired('signed out')}
   if(o.raw){if(!r.ok){const j=await r.json().catch(()=>({error:r.statusText}));throw new Error(j.error||r.statusText)}return r}
   const j=await r.json().catch(()=>({error:r.statusText}));
+  // The server asks for the passkey again: one Face ID prompt, then the same request once more.
+  if(r.status===403&&j.code==='step_up_required'&&!o.token&&!o.stepped&&S){await stepUp();return api(path,Object.assign({},o,{stepped:true}))}
   if(!r.ok)throw new Error(j.error||r.statusText);
   return j}
+// The passkey check before a sensitive setting (alert targets, keys, people, connector tokens): the person's own passkey
+// signs a fresh challenge; the step-up token lasts five minutes and works with this session only.
+async function stepUp(){
+  if(!hasPasskeys())throw new Error(t('cs.no_passkeys'));
+  const ch=await api('/v1/auth/step-up/start',{method:'POST',stepped:true});
+  let cred;try{cred=await navigator.credentials.get({publicKey:{challenge:fromB64u(ch.challenge),rpId:CFG.rpId,userVerification:'required',timeout:60000}})}
+  catch(e){throw new Error(e&&e.name==='NotAllowedError'?t('cs.stepup.cancelled'):(e&&e.message)||String(e))}
+  const r=await api('/v1/auth/step-up',{method:'POST',stepped:true,body:{challenge_id:ch.challenge_id,credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
+  S.up={token:r.step_up,exp:Date.now()+r.expires_in*1000-5000};save(S);
+}
 async function download(path,name){const r=await api(path,{raw:true});const url=URL.createObjectURL(await r.blob());const a=el('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000)}
 const go=(h)=>{if(location.hash===h)route();else location.hash=h};
 
@@ -1210,6 +1224,37 @@ async function claudeCard(m,owner){
   return card;
 }
 
+// Approval alerts (cloud/src/alerts.ts): who hears that a payment waits for the CFO's Face ID. Owners add WhatsApp
+// numbers, e-mail addresses, Slack and Teams webhooks (after a fresh passkey check); every target is shown masked. An
+// alert only tells: it carries the amount, the payee, why, and a link here; it never approves.
+async function alertsCard(){
+  const card=el('div','card panel alerts');card.id='alerts';
+  const list=el('div','');const out=el('div','');const log=el('div','');
+  async function draw(){
+    const r=await api('/v1/alerts');
+    const ul=el('ul','plain tokens');
+    for(const x of r.targets){const rm=btn(t('cs.remove'),'danger','x');
+      rm.onclick=async()=>{rm.disabled=true;try{await api('/v1/alerts/targets/'+encodeURIComponent(x.id),{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rm.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};
+      ul.append(el('li','',[el('span','pill',tk('cs.alerts.ch.'+x.channel,x.channel)),' ',el('b','mono',x.target),r.channels[x.channel]?null:el('span','sub',' '+t('cs.alerts.no_provider')),' ',rm]))}
+    if(r.channels.webhook)ul.append(el('li','',[el('span','pill',t('cs.alerts.ch.webhook')),' ',el('span','sub',t('cs.alerts.webhook_on'))]));
+    list.replaceChildren(ul.children.length?ul:el('p','sub',t('cs.alerts.none')));
+    const d=r.deliveries||[];
+    log.replaceChildren(...(d.length?[el('h2','sub-h',t('cs.alerts.latest')),el('ul','plain',d.slice(0,8).map(x=>el('li','',[el('span','pill'+(x.status==='sent'?' ok':' warn'),tk('cs.alerts.st.'+x.status,x.status)),' ',tk('cs.alerts.ch.'+x.channel,x.channel),' · ',el('span','mono',x.target_mask),' · '+x.invoice_id+' · '+stamp(x.updated_at)])))]:[]));
+  }
+  const ch=el('select','field');ch.id='alert-channel';for(const c of ['whatsapp','email','slack','teams']){const o=el('option','',t('cs.alerts.ch.'+c));o.value=c;ch.append(o)}
+  const val=el('input','field');val.id='alert-target';val.maxLength=500;val.autocomplete='off';
+  const hint=()=>{val.placeholder=t('cs.alerts.ph.'+ch.value);val.type=ch.value==='email'?'email':ch.value==='whatsapp'?'tel':'url'};hint();ch.onchange=hint;
+  const addB=btn(t('cs.alerts.add'),'primary','scan-face');addB.id='alert-add';
+  addB.onclick=async()=>{if(!val.value.trim())return;addB.disabled=true;
+    try{await api('/v1/alerts/targets',{method:'POST',body:{channel:ch.value,target:val.value.trim()}});val.value='';out.replaceChildren(note(t('cs.alerts.added'),'ok'));await draw()}
+    catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{addB.disabled=false}};
+  card.replaceChildren(el('h2','',t('cs.alerts.title')),el('p','',t('cs.alerts.lede')),list,
+    el('div','form-row',[el('div','',[el('label','',t('cs.alerts.channel')),ch]),el('div','',[el('label','',t('cs.alerts.target')),val]),el('div','',[addB])]),
+    out,note(t('cs.alerts.keeps')),log);
+  try{await draw()}catch(e){if(!(e instanceof Expired))list.replaceChildren(note(e.message,'bad'))}
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1225,7 +1270,8 @@ async function settingsView(){
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const alerts=m.kind==='session'?await alertsCard():null;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
