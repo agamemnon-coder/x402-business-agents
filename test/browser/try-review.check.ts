@@ -7,7 +7,7 @@
 //     recorded a step." row, no repeated row, "its own words" only on a model's reason, the Coder's VAT line says who
 //     booked it, and the last row's time equals "Answered in"; at 1440 the Pay button is above the fold;
 //  4. the approval shows the conversion, the fee's cap and the deadline, and the full terms pretty-printed;
-//  5. Paid shows its three blocks, the ledger fits the screen (amounts right-aligned, nothing cut), the Cloud link says
+//  5. Paid shows its three blocks before "File another invoice", the ledger fits the screen (amounts right-aligned, nothing cut), the Cloud link says
 //     it is a sample company, and "File another invoice" keeps the same company;
 //  6. Start again asks first. Nothing is wider than the screen; no console error.
 // npx tsx test/browser/try-review.check.ts [screenshot dir]
@@ -164,7 +164,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   const create = page.getByRole("button", { name: APPROVE.create });
   await create.waitFor({ timeout: 30_000 });
   text = await page.locator("main").innerText();
-  ok(/Conversion\s+USD [\d,]+\.\d{2} → EUR [\d,]+\.\d{2} at \d\.\d{4}/.test(text), `${tag}: the approval shows the conversion`);
+  ok(/Conversion\s+EUR [\d,]+\.\d{2} of it funded from the USD balance \(USD [\d,]+\.\d{2} at \d\.\d{4}\)/.test(text), `${tag}: the approval shows the conversion`);
   ok(/Bank fee\s+at most EUR 20\.00/.test(text), `${tag}: the approval shows the fee's cap`);
   ok(/Sign before\s+\d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}/.test(text), `${tag}: the approval shows its deadline`);
   ok(/Due\s+30 Nov 2026/.test(text), `${tag}: dates as 30 Nov 2026`);
@@ -181,6 +181,9 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   // 5. Paid: three blocks, the ledger whole, the Cloud link said for what it is, another invoice in the same company.
   await page.locator(".paidstamp").waitFor({ timeout: 30_000 });
   ok((await page.locator(".slot .sk-blk, .slot .blk").count()) >= 2, `${tag}: Paid shows its blocks (or their skeletons) at once`);
+  // final-polish, 13 Nov: "File another invoice" never shows under a skeleton; when it shows, all three blocks are drawn.
+  await page.getByRole("button", { name: BOOKS.another }).waitFor({ timeout: 20_000 });
+  ok((await page.locator(".slot .sk-blk").count()) === 0, `${tag}: "${BOOKS.another}" shows only once no block is a skeleton`);
   await page.locator(".blk.paid:not(.sk-blk)").waitFor({ timeout: 15_000 });
   await page.locator(".blk.booked:not(.sk-blk)").waitFor({ timeout: 15_000 });
   await page.locator(".blk.filed:not(.sk-blk)").waitFor({ timeout: 15_000 });

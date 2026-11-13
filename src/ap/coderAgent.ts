@@ -23,7 +23,7 @@ import { toCents } from "../lib/money.js";
 import { VAT_CODES } from "../ledger/vat.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
-import { bookable, dutchVat } from "./books.js";
+import { bookable, dutchVat, foreignVat } from "./books.js";
 import {
   answerCoderTool, buildCodingCase, CODER_EFFORT, CODER_MAX_TURNS, CODER_MODEL, CODER_SYSTEM, CODER_UNFINISHED, coderInputs, coderPrompt, coderTools, enforceCoding,
   fallbackCoding, invoiceAmounts, vatIdCountry, WHOLE_INVOICE, type CaseVatCode, type ChartAccount, type Coding, type CodingCase, type CostCentre, type EnforcedCoding, type HistoryCoding,
@@ -121,6 +121,15 @@ function withDescriptions(c: CodingCase, e: EnforcedCoding): StoredCoding {
   return { ...e, lines: e.lines.map((l, i) => ({ line_no: l.line_no, description: cleanText(read[i]?.description ?? WHOLE_INVOICE, 200) || WHOLE_INVOICE, account: l.account, vat_code: l.vat_code, cost_centre: l.cost_centre, net_cents: l.net_cents, vat_cents: l.vat_cents })) };
 }
 
+/** The whole-percent VAT rate of the lines left without a code (and not coded abroad by the books), exactly, or null. */
+function uncodedRate(lines: StoredCoding["lines"], vatId: string | null | undefined): number | null {
+  const open = lines.filter((l) => l.vat_code === null && foreignVat(l.net_cents, l.vat_cents, vatId) === null);
+  const net = open.reduce((n, l) => n + l.net_cents, 0), vat = open.reduce((n, l) => n + l.vat_cents, 0);
+  if (net <= 0 || vat <= 0) return null;
+  const pct = Math.round((vat * 100) / net);
+  return pct > 0 && pct < 100 && Math.abs(Math.round((net * pct) / 100) - vat) <= 1 ? pct : null;
+}
+
 /** D24: who decided this coding. The agent's own code_invoice call, or code's fallback by its rule (with the agent's call when its answer was refused). */
 function originOf(e: EnforcedCoding, agent: Origin | null): Origin | null {
   if (e.source === "claude" && agent) return agent;
@@ -143,6 +152,13 @@ function store(db: DB, inv: ApInvoiceRow, c: CodingCase, e: EnforcedCoding, raw:
     audit(db, coding.source === "claude" ? "treasury" : "system", "ap.coded", inv.id, {
       source: coding.source, status: coding.status, model: answeredBy, reason: coding.reason, lines: coding.lines, net_cents: coding.net_cents, vat_cents: coding.vat_cents, total_cents: coding.total_cents,
       overridden_by: coding.overridden_by, refused_because: coding.refused_because, review: coding.review,
+      // A line left without a VAT code that the books code from the supplier's own VAT id (src/ap/books.ts codedEntries):
+      // the foreign code they book it under, so the step says where its VAT goes (final-polish, 13 Nov).
+      books_vat_code: coding.lines.some((l) => l.vat_code === null && foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id) !== null) ? "PF_DE19" : null,
+      // Otherwise the whole-percent rate the uncoded lines' VAT is of their net, exactly (to the cent), or null: the step
+      // says it plainly (no Dutch code applies; booked without one for the accountant). Code names no country: without a
+      // VAT id it does not know it.
+      uncoded_vat_pct: uncodedRate(coding.lines, inv.reading?.vat_id),
       // The agent's own coding when code refused it, so the override can be seen.
       agent_coding: coding.overridden_by && raw ? raw : null,
       run: { status: run?.status ?? "not_run", turns: run?.turns ?? 0, cost_usd_micros: run?.costMicros ?? 0, note: run?.note ?? null },

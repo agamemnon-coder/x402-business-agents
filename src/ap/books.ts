@@ -117,8 +117,12 @@ export const codedAccrual = (inv: ApInvoiceRow): boolean => bookedCoding(inv) !=
 function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: string): ApEntry[] {
   const groups: { account: string; cost_centre: string; vat_code: string | null; net: number; vat: number }[] = [];
   for (const l of c.lines) {
-    let g = groups.find((x) => x.account === l.account && x.cost_centre === l.cost_centre && x.vat_code === l.vat_code);
-    if (!g) groups.push(g = { account: l.account, cost_centre: l.cost_centre, vat_code: l.vat_code, net: 0, vat: 0 });
+    // A line the Coder left without a VAT code (its codes are the Dutch return's): the books set the foreign one from the
+    // supplier's own VAT id, as the engine's own accrual does, so a German supplier's 19% goes to 1515, never to 1510
+    // (final-polish, 13 Nov). Anything else stays uncoded for a person.
+    const code = l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id);
+    let g = groups.find((x) => x.account === l.account && x.cost_centre === l.cost_centre && x.vat_code === code);
+    if (!g) groups.push(g = { account: l.account, cost_centre: l.cost_centre, vat_code: code, net: 0, vat: 0 });
     g.net += l.net_cents;
     g.vat += l.vat_cents;
   }
@@ -134,7 +138,7 @@ function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: st
   }
   // VAT under a foreign code (PF_DE19) is that country's VAT, reclaimed through the EU refund: 1515, never 1510 (5b).
   const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
-  const abroad = c.lines.reduce((s, l) => s + (l.vat_code !== null && VAT_CODES[l.vat_code]?.foreign ? l.vat_cents : 0), 0);
+  const abroad = groups.reduce((s, g) => s + (g.vat_code !== null && VAT_CODES[g.vat_code]?.foreign ? g.vat : 0), 0);
   if (vat - abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat - abroad, 0, `${memo}: input VAT`));
   if (abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, abroad, 0, `${memo}: foreign VAT to reclaim`));
   for (const self of owed) {

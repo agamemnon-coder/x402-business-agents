@@ -1070,8 +1070,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
     F.amount.inputMode='decimal';F.amount.classList.add('mono');F.iban_last4.classList.add('mono');F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
     for(const k of ['amount','beneficiary_name','iban_last4'])F[k].addEventListener('input',mark);
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
-    const intro=el('div','',[el('p','muted',Y.line),el('p','hint',Y.already)]);
-    top.replaceChildren(form,intro);reset();
+    // What to do first, then the fields, then the paid state as a quiet line (final-polish, 13 Nov).
+    const intro=el('div','',[el('p','',Y.line)]);
+    top.replaceChildren(intro,form,el('p','hint',Y.already));reset();
     main.set(Y.button,()=>send(intro));
   });
   async function send(intro){
@@ -1196,8 +1197,14 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
   const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,el('div','acts',[another,what]),
-    ...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)]));
+  // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
+  // under three grey skeletons): until then the blocks hold the screen alone.
+  const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,tail);
+  const drawn=[];
+  // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
+  // read ends: call() answers status 0 when the network fails, it never throws.
+  const reveal=()=>{if(S.screen!=='books'||!tail.hidden)return;for(const k of [paid,booked,filed])if(k.querySelector('.sk-blk'))k.replaceChildren(note(B.failed));tail.hidden=false};
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
@@ -1218,7 +1225,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       return out||[{i:null,items:[]},{status:0,items:null,json:{}},{status:0,items:null,json:{}},{status:0,items:null,json:{}}]};
     const all=readAll();
     const reads=all.then((o)=>o.slice(0,3));
-    reads.then(([v,ps,txs])=>{
+    drawn.push(reads.then(([v,ps,txs])=>{
       if(S.screen!=='books')return;
       if(ps.status!==200){paid.replaceChildren(failedOf(ps));return}
       const p=v.i?paymentOf(v.i,ps.items,txs.items||[]):null;
@@ -1226,8 +1233,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const tx=txOf(p,txs.items||[]);const fee=feeOf(p,tx);const ok=isPaid(p);
       const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?[money(fee.currency,fee.amount),' ',el('small','muted',B.feeWhy)]:'—'));
       paid.replaceChildren(block('paid',ok?B.paid:B.payment,[el('p','amount',money(p.currency,p.amount)),el('p','',el('span','pill'+(ok?' ok':' bad'),String(p.status||''))),d],ok?'ok':'bad'));
-    });
-    all.then(([v,ps,txs,es])=>{
+    }));
+    drawn.push(all.then(([v,ps,txs,es])=>{
       if(S.screen!=='books')return;
       if(es.status!==200){booked.replaceChildren(failedOf(es));return}
       const p=v.i&&ps.items?paymentOf(v.i,ps.items,txs.items||[]):null;
@@ -1244,10 +1251,10 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
-    });
+    }));
   }
   // The archive is the engine's own (not the read model): read whether or not the books are in.
-  Promise.all([inv,api('GET','/v1/engine/vault')]).catch(()=>[{i:null,items:[]},{status:0,json:{}}]).then(async ([v,r])=>{
+  drawn.push(Promise.all([inv,api('GET','/v1/engine/vault')]).catch(()=>[{i:null,items:[]},{status:0,json:{}}]).then(async ([v,r])=>{
     if(S.screen!=='books')return;
     if(r.status!==200||!Array.isArray(r.json.files)){filed.replaceChildren(failedOf(r));return}
     const fs=v.i?filesOf(v.i,r.json.files,v.items):{original:null,receipts:[]};
@@ -1262,7 +1269,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const a=el('a','file',[icon('file-text',20),el('span','fl',label),el('span','fn',fileName(f.path))]);a.href=blobUrl(g.blob);a.target='_blank';
       list.append(el('li','',a))});
     filed.replaceChildren(block('filed',B.filed,[list],'ok'));
-  });
+  }));
+  Promise.allSettled(drawn).then(reveal);
 }});
 
 // 6 Your company: the export as a file, start again, and the recorded real runs (links to the site's /runs, dated).
