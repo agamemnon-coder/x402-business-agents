@@ -233,6 +233,9 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
      its own), the current page scrolled into view. */
   .appbar nav.apptabs { display: flex; flex-wrap: nowrap; gap: 2px; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px; margin-right: calc(-1 * var(--gut, 16px)); padding-right: 16px; }
   .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; flex: none; }
+  /* try-fixes (13 Nov): at 390 px the row still cut "Settings" off at the edge; the five pages share the row instead. */
+  .appbar nav.apptabs { justify-content: space-between; margin-left: -6px; }
+  .appbar nav.apptabs a { padding: 6px 5px; font-size: 13px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */

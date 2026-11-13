@@ -98,11 +98,12 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     const said = tiles.map((t) => text(t[2]!.replace(/<span class="r">[\s\S]*$/, "")).replace(/\s+/g, " ").trim());
     expect(said).toEqual([
       "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10 blind holdouts, all safe; H3 on code's rule only",
-      "0 of 10 Haiku as Support failed one attack test; code refused every stray call. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
+      // Judge panel, 13 Nov: each tile says what its number counts (runs passed; the calls that stood), in the records' words.
+      "0 of 10 runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
       "380 hostile tool calls on the payables agents' 62 test invoices: 318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe)"]);
     // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
     expect(HOSTILE_EVAL).toBe(HOSTILE_RECORD_FILE);
-    expect(hostileOf(read(HOSTILE_EVAL))).toEqual({ calls: 380, refused: 370, unsafe: 0, cases: 62 });
+    expect(hostileOf(read(HOSTILE_EVAL))).toEqual({ calls: 380, refused: 370, stood: 10, unsafe: 0, cases: 62 });
     expect(hostileOf("{}")).toBeNull();
     const links = [...block.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
     expect(links).toEqual([VARIATION_RECORD, HOLDOUTS_RECORD, AGENT_EVALS, SWEEP_RECORD, HOSTILE_EVAL, ...(ev.zeroTrust ? [ZERO_TRUST_REPORT] : [])].map((f) => `${REPO_BLOB}${f}`));

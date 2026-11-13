@@ -11,6 +11,7 @@
 //   - Home and /proof no longer carry "Extra, not an award entry"; "Visa (VIC via Airi)" is in Home's "Built on"; /judge
 //     links the Visa run; the 7 November run is called scripted wherever it appears.
 // The page build fails when any of it is lost (assertVicFirst).
+import { countOf } from "../src/redesign/ui.js";
 import { vic3Run } from "../src/redesign/vic3Run.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -91,7 +92,7 @@ describe("/visa: one summary of the paid run", () => {
     const yes = steps.find((s) => s.airwallex.approved)!, no = steps.find((s) => !s.airwallex.approved)!;
     expect(c.kind).toBe("tap");
     expect(c.stats).toEqual([
-      { v: `${ok}/${steps.length}`, l: "signatures accepted" },
+      { v: countOf(ok, steps.length), l: "signatures accepted" },
       // "EUR 45.00" everywhere (the review at 390 px, 12 Nov), never "€".
       { v: `EUR ${yes.airwallex.confirmed_by_get.amount}`, l: "approved" },
       { v: `EUR ${no.airwallex.confirmed_by_get.amount}`, l: `declined (${no.airwallex.failure_reason})` },
@@ -187,6 +188,11 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     const row = readFileSync(new URL("../docs/evidence/README.md", import.meta.url), "utf8").split("\n").find((l) => l.startsWith("| 7 November 2026"))!;
     expect(row).toMatch(/the hackathon Slack \(Visa\), as reported by the owner/);
     expect(row).toMatch(/the VIC run counts for the Visa Award/);
+    // Judge panel, 13 Nov: the 5 November row said Purser "is entered for the Metal Award only", against the README's
+    // Metal and Visa. The list keeps its history, in the past tense, and says what holds since 7 November.
+    const evidence = readFileSync(new URL("../docs/evidence/README.md", import.meta.url), "utf8");
+    expect(evidence).not.toMatch(/is entered for the Metal Award only/);
+    expect(evidence.split("\n").find((l) => l.startsWith("| 5 November 2026"))).toMatch(/until 7 November/);
     // Never more than that: nothing says Visa confirmed, certified, endorsed or approved anything.
     expect(text(html)).not.toMatch(/confirmed by Visa|Visa confirmed|certified|endorsed|approved by Visa/i);
   });

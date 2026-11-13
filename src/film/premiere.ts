@@ -8,6 +8,7 @@
 // rendered with a figure typed in by hand (test/premiere.test.ts). The page (src/film/premiere.html) only places these
 // strings; it computes no figure of its own.
 
+import { countWords } from "../redesign/ui.js";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, TEST_WORLD, canonical, checkPayment, proposalTerms, rateOfRecord } from "../../worker/src/trySign.js";
@@ -728,7 +729,7 @@ export function buildPremiere(r: MainRun, readme: string, script: string = readF
         // signed terms); the disallowed merchant (C) stays in the line above, Max's words, since four rows do not fit.
         { ok: false, label: "✕ Changed after Face ID", amount: `${v("vic2.from").replace(/\.00$/, "")} → ${v("vic2.to").replace(/^[A-Z]{3} /, "").replace(/\.00$/, "")}`, detail: "not what the CFO signed · Airi was never asked" },
       ],
-      checks: `${v("airi.checks")} and ${v("vic2.checks")} checks`,
+      checks: `${countWords(v("airi.checks"), true)} and ${countWords(v("vic2.checks"), true)} checks`,
       label: v("airi.label"),
     },
     "13d-value": { line: ["The agents do the work.", "The CFO signs only the exceptions."] },

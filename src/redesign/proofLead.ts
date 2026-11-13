@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback, type CardsReadback, type TransferReadback } from "./airwallexProof.js";
 import { metalStory, refusalNote, REPO_BLOB } from "./metalStory.js";
 import { split, type RunRecord } from "./run.js";
-import { esc } from "./ui.js";
+import { countOf, esc } from "./ui.js";
 
 export interface LeadLink { label: string; href: string }
 export interface Lead {
@@ -59,7 +59,7 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
     airwallex: [
       ...(h?.match ? [{ text: `The hash the CFO signed is in Airwallex's own record of the ${h.transferMethod} payment`, href: `airwallex#${AWX_HASH_ID}` }] : []),
       ...(rows.length ? [{
-        text: `${rows.filter((r) => r.match).length} of ${rows.length} cards carry the CFO's policy`, href: `airwallex#${AWX_CONTROLS_ID}`,
+        text: `${countOf(rows.filter((r) => r.match).length, rows.length)} cards carry the CFO's policy`, href: `airwallex#${AWX_CONTROLS_ID}`,
         links: rows.map((r) => ({ label: `${r.name.replace(/ agent$/, "")} ····${r.last4}`, href: `airwallex#${awxCardId(r.agent)}` })),
       }] : []),
     ],

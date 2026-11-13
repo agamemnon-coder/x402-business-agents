@@ -17,7 +17,7 @@
 import { readFileSync } from "node:fs";
 import { AWX_RUN_FILE } from "./awxRun.js";
 import type { ProductTile } from "./airwallexProducts.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 const read = (file: string): string | null => { try { return readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"); } catch { return null; } };
 const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
@@ -150,13 +150,13 @@ export interface Meter { done: number; of: number; words: string; tone: "ok" | "
 /** A meter: a thin bar, its count in words beside it. */
 export function meterHtml(m: Meter): string {
   const W = 200, H = 10, w = m.of ? Math.round((m.done / m.of) * W) : 0;
-  return `<div class="awm2"><svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect class="bg" x="0" y="0" width="${W}" height="${H}" rx="5"/><rect class="${m.tone}" x="0" y="0" width="${Math.max(w, 0)}" height="${H}" rx="5"/></svg><p><b>${m.done} of ${m.of}</b> ${esc(m.words)}</p></div>`;
+  return `<div class="awm2"><svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect class="bg" x="0" y="0" width="${W}" height="${H}" rx="5"/><rect class="${m.tone}" x="0" y="0" width="${Math.max(w, 0)}" height="${H}" rx="5"/></svg><p><b>${countOf(m.done, m.of)}</b> ${esc(m.words)}</p></div>`;
 }
 
 /** The two meters, from the tiles' values ("3 of 3", "3 of 4"), which the tiles read from their records; in use or not
  *  yet switched on alike, so a product that is switched on keeps its meter. */
 export function metersHtml(tiles: ProductTile[]): string {
-  const of = (t: ProductTile | undefined) => { const m = /^(\d+) of (\d+)$/.exec(t?.value ?? ""); return m ? { done: Number(m[1]), of: Number(m[2]) } : null; };
+  const of = (t: ProductTile | undefined) => { const v = t?.value ?? "", all = /^All (\d+)$/.exec(v), m = /^(\d+) of (\d+)$/.exec(v); return all ? { done: Number(all[1]), of: Number(all[1]) } : m ? { done: Number(m[1]), of: Number(m[2]) } : null; };
   const ledger = of(tiles.find((t) => t.key === "ledger")), payee = of(tiles.find((t) => t.key === "payee-check"));
   const out = [
     ...(ledger ? [meterHtml({ ...ledger, words: "movements agree with Airwallex's own ledger, to the cent", tone: "ok" })] : []),

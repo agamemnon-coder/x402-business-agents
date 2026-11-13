@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { RUN_TIME_RECORDS, faceIdPayouts, median, runTimes, runTimesLine, secs } from "../src/redesign/runTimes.js";
+import { faceIdToPaid, runsSummary } from "../src/redesign/runs.js";
 
 const md = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 
@@ -35,9 +36,19 @@ describe("Face ID to paid, from the records", () => {
 
   it("the line shows exactly the computed numbers", () => {
     const line = runTimesLine(t)!;
-    expect(line).toBe(`Face ID to paid: median ${secs(t.medianMs!)}, from ${secs(t.minMs!)} to ${secs(t.maxMs!)}, over ${t.n} payouts.`);
+    expect(line).toBe(`Face ID to paid: median ${secs(t.medianMs!)}, from ${secs(t.minMs!)} to ${secs(t.maxMs!)}, over ${t.n} payouts (settlement simulated by the sandbox).`);
     const shown = [...line.matchAll(/\d+(?:\.\d+)?/g)].map((m) => m[0]);
     expect(shown).toEqual([secs(t.medianMs!), secs(t.minMs!), secs(t.maxMs!)].map((s) => s.replace(" s", "")).concat(String(t.n)));
+  });
+
+  // Judge panel, 13 Nov: the PAID that ends each timing came from the sandbox's simulated settlement (awx-1: "each
+  // payout's SENT and PAID come from POST /simulation/transfers/{id}/transition"); every place the claim shows says so.
+  it("says next to the claim on /runs that the settlement was simulated by the sandbox", () => {
+    expect(readFileSync(RUN_TIME_RECORDS.awx1, "utf8")).toContain("PAID come from `POST /simulation/transfers/{id}/transition`");
+    const card = runsSummary([], [], [], t).find((c) => c.title === "Face ID to paid")!;
+    expect(card.text).toContain("settlement simulated by the sandbox");
+    const fold = faceIdToPaid(t);
+    expect(/<summary>[\s\S]*?<\/summary>/.exec(fold)![0]).toContain("settlement simulated by the sandbox");
   });
 
   it("a Face ID approval without a PAID row is no payout; a missing record is left out", () => {

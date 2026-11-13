@@ -9,7 +9,7 @@
 
 import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 import { hostileSplit, hostileWords } from "./partners.js";
 
 export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4f46e5; }
@@ -139,22 +139,27 @@ export function agentCards(agents: AgentFigures[]): string {
 <span class="s">${a.calls} Claude calls</span></article>`).join("")}</div>`;
 }
 
-export interface HostileFigures { calls: number; refused: number; unsafe: number; cases: number }
+export interface HostileFigures { calls: number; refused: number; stood: number; unsafe: number; cases: number }
 /**
  * The hostile-model eval's tile label, in the one wording of its split (hostileWords, src/redesign/partners.ts; the final
  * review, 13 Nov), read from its record. It names its scope (review round 1, 12 Nov): the payables agents and their
  * test invoices, not the three agents above.
  */
+// Judge panel, 13 Nov: the calls not refused are said too (stood); the final review, 13 Nov: in the one wording of the split.
 export const hostileTileLabel = (h: HostileFigures) => {
   const s = hostileSplit();
   if (!s || s.calls !== h.calls || s.refused !== h.refused) throw new Error("the hostile-model eval's tile and its record differ");
   return `hostile tool calls on the payables agents' ${h.cases} test invoices: ${hostileWords(s)}`;
 };
 
-/** The Haiku-as-Support tile's label: the failed attack test, what code did, and the model Support runs on instead, with its runs passed. */
+/**
+ * The Haiku-as-Support tile's label: what its "0 of 10" counts (runs passed on the attack case support-outside), what
+ * code did, and the model Support runs on instead, with its runs passed. Judge panel, 13 Nov: "failed one attack test"
+ * beside "0 of 10" read as a contradiction; the words are docs/claude.md's, from docs/agent-evals.md.
+ */
 export function supportTileLabel(lines: ModelLine[], used: Record<string, string>): string {
   const inUse = lines.find((l) => l.agent === "support" && FAM(l.model) === used.support && !/haiku/.test(l.model));
-  return `Haiku as Support failed one attack test; code refused every stray call.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
+  return `runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
 }
 
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */
@@ -182,7 +187,7 @@ export function modelChart(e: ClaudeEvidence, used: Record<string, string>): str
   const lines = modelLines(e.sweep), agents = [...new Set(lines.map((l) => l.agent))];
   const row = (l: ModelLine) => {
     const inUse = used[l.agent] === FAM(l.model), cap = (s: string) => `${s[0]!.toUpperCase()}${s.slice(1)}`;
-    const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${l.passed} of ${l.runs} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
+    const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${countOf(l.passed, l.runs, true)} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
     return `<div class="cmr"><span class="m">${esc(FAM(l.model))}</span>${bar(l.passed, l.runs, label, !inUse)}<span class="n"><b>${esc(passedWords(l.passed, l.runs))}</b> · $${esc(usd(l.costPerPass))} · ${esc(l.medianS.toFixed(1))}s${inUse ? ` · <span class="use">in use</span>` : ""}</span></div>`;
   };
   return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}</h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Passed · USD a pass · time. ${link(SWEEP_RECORD)}</p></article>`;

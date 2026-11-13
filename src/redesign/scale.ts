@@ -15,7 +15,7 @@
 //    counted once (by its hash, or its event, time and subject).
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { isLive, liveRuns } from "./runs.js";
+import { liveRunCount } from "./runs.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
@@ -92,7 +92,7 @@ export function scaleFigures(): ScaleFigures {
     Object.values(o).forEach(walk);
   };
   for (const f of records) walk(json(f));
-  return { tests: testSummary(), liveRuns: liveRuns().filter(isLive).length, airwallexCalls: { calls, records: callRecords }, metalTx: tx.size, claudeCalls: req.size, refusals: rows.size };
+  return { tests: testSummary(), liveRuns: liveRunCount(), airwallexCalls: { calls, records: callRecords }, metalTx: tx.size, claudeCalls: req.size, refusals: rows.size };
 }
 
 /** A figure: its few words in sight, and in its link's title what exactly it counts and where. */
@@ -111,6 +111,13 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   if (f.refusals) out.push({ n: f.refusals, label: "refusals on record", title: "Audit rows of a refusal, a decline, a rejection or a fraud stop in the run records: over a limit, at the rail, on chain", icon: "ban", href: "proof#stops", tone: "bad" });
   return out;
 }
+
+/**
+ * Home's "On record" band (judge panel, 13 Nov: six figures read as number soup): the three strongest, each with its
+ * link: the tests CI runs, the live runs and the refusals on record. /proof's strip keeps every figure.
+ */
+const HOME_SCALE: readonly string[] = ["tests passing", "sandbox and testnet runs", "refusals on record"];
+export const homeScaleStats = (stats: ScaleStat[] = scaleStats()): ScaleStat[] => stats.filter((s) => HOME_SCALE.includes(s.label));
 
 const fmt = (n: number) => n.toLocaleString("en-GB");
 

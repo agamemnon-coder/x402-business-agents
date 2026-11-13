@@ -75,7 +75,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.
     expect(readme).not.toContain("kit11.max-31b.workers.dev/tour");
-    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
+    expect(readme).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
+    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });

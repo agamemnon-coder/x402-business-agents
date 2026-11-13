@@ -1,6 +1,7 @@
 // The final review before submission (4 Nov), site side: every page says what the main run's record says
 // (docs/demo/main-run.json, read through src/redesign/run.ts), in one way, and labels each other record by its own run.
 // One describe per finding of the review.
+import { countOf } from "../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { publish } from "../src/autonomy/bus.js";
@@ -196,7 +197,7 @@ describe("4. the red team, said as its records say it", () => {
   it("gives the later run it summarises with its scope, and links the latest runs' report", () => {
     const loop = JSON.parse(readFileSync(new URL("../docs/evals/autonomy-redteam.json", import.meta.url), "utf8")) as { summary: { runs: number; held: number } };
     const html = proofPage(), t = words(html);
-    expect(t).toContain(`${loop.summary.held} of ${loop.summary.runs} runs held`);
+    expect(t).toContain(`${countOf(loop.summary.held, loop.summary.runs, true)} runs held`);
     expect(t).toContain("the Sourcing agent on Haiku, simulated rails");
     expect(html).toContain('href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md#5-red-team-opus-as-the-attacker"');
   });

@@ -15,9 +15,9 @@ import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
 import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml } from "./heroFlow.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
-import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
+import { countOf, esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
-import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
+import { homeScaleStats, SCALE_CSS, scaleBandHtml } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 
@@ -197,7 +197,7 @@ export function kit11Html(run: AgentRun = agentRun()): string {
   const company = (run.record as { company?: unknown }).company;
   if (!st.payments.total || !sp.decisions) return "";
   const who = `${run.record.run}${typeof company === "string" ? `, ${company}` : ""}`;
-  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Metal testnet payments, ${sp.byClaude} of ${sp.decisions} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
+  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Metal testnet payments, ${countOf(sp.byClaude, sp.decisions, true)} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
 }
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
@@ -279,7 +279,7 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
   // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
-  return [{ n: changes, label: `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${owners.rec.threshold} of ${all}${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+  return [{ n: changes, label: `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${countOf(owners.rec.threshold, all, true)} passkeys${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
 }
 
 /**
@@ -339,7 +339,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
-  ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
+  ${scaleBandHtml(homeScaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
