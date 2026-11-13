@@ -42,7 +42,13 @@ export async function hmacB64u(secret: string, message: string): Promise<string>
 
 export async function hmacValid(secret: string, message: string, sigB64u: string): Promise<boolean> {
   try {
-    return await crypto.subtle.verify("HMAC", await hmacKey(secret), fromB64(sigB64u), enc.encode(message));
+    const sig = fromB64(sigB64u);
+    // Only the one spelling hmacB64u writes (13 Nov): base64url keeps two padding bits in the last character of a 32-byte
+    // MAC, so "…A" and "…B" decode to the same bytes. A token checked or spent by its text (a consent form's, by its
+    // hash) could otherwise be replayed under a second spelling; and a test that forged one by its last character
+    // passed now and then.
+    if (toB64u(sig) !== sigB64u) return false;
+    return await crypto.subtle.verify("HMAC", await hmacKey(secret), sig, enc.encode(message));
   } catch {
     return false;
   }

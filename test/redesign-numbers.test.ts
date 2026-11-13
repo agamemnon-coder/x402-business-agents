@@ -465,10 +465,11 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
     }
   });
 
+  // Jury, 13 Nov: "the cap at the time", since /metal's table shows today's cap (raised since) beside it.
   it("says the let-through refusal in one clean line, the chain test on its own line and no Defense-in-depth label beside it", () => {
     for (const [name, html] of [["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
       const t = words(html);
-      expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the 0.03 cap (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
+      expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the cap at the time, 0.03 (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
       expect({ name, garbled: /Stockline, Defense in depth|nothing moved\.; nothing moved/.test(t) }).toEqual({ name, garbled: false });
       expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${CHAIN_TEST}</small>`), label: html.replace(/&#39;/g, "'").includes(DEFENSE_IN_DEPTH) }).toEqual({ name, own: true, label: false });
     }

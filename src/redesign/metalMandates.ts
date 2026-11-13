@@ -205,7 +205,7 @@ ${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summa
   const raw = (d: DecodedRefusal) => `<pre class="mcmd">${esc(`address ${d.raw_log.address}\n${d.raw_log.topics.map((t, i) => `topic ${i} ${t}`).join("\n")}\ndata ${d.raw_log.data}`)}</pre>`;
   const decodedFold = decoded ? `<details class="fold" id="refusals" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Both refusals, decoded")}</summary>
 <p class="mnote">${esc(`${insp.abi.MandateRefused} (topic 0 ${insp.abi.topic0.MandateRefused}).`)}</p>
-<p class="mnote"><b>${esc(`#${decoded.purchase}, ${day(decoded.block_time)}, block ${decoded.block}`)}</b> ${a(tx(decoded.tx), "tx")}</p>${r ? `<p class="mnote">${esc(`Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: ${r.amount} *USDZ over the ${r.cap} cap. Nothing moved.`)}</p>` : ""}${r && refusalNote(r) ? `<p class="mnote">${esc(refusalNote(r)!)}</p>` : ""}${ev(decoded)}${raw(decoded)}
+<p class="mnote"><b>${esc(`#${decoded.purchase}, ${day(decoded.block_time)}, block ${decoded.block}`)}</b> ${a(tx(decoded.tx), "tx")}</p>${r ? `<p class="mnote">${esc(`Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: ${r.amount} *USDZ over the cap at the time, ${r.cap}. Nothing moved.`)}</p>` : ""}${r && refusalNote(r) ? `<p class="mnote">${esc(refusalNote(r)!)}</p>` : ""}${ev(decoded)}${raw(decoded)}
 ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.block_time)}, a separate run, block ${revoked.block}`)}</b> ${a(tx(revoked.tx), "tx")}</p>${ev(revoked)}${raw(revoked)}` : ""}
 <pre class="mcmd">${esc(`npm run metal-inspect -- refusal ${decoded.tx}`)}</pre></details>` : "";
 
@@ -214,7 +214,7 @@ ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.bloc
   ${statsHtml([
     { n: rows.length, label: "mandates on chain, one per agent", icon: "link-2" },
     { n: st.payments.total, label: "Metal payments, each its own transaction", icon: "credit-card", tone: "ok" },
-    ...(r ? [{ n: Number(r.amount), dec: (r.amount.split(".")[1] ?? "").length, suf: " *USDZ", label: `refused on chain, over the ${r.cap} cap`, icon: "ban", tone: "bad" as const }] : []),
+    ...(r ? [{ n: Number(r.amount), dec: (r.amount.split(".")[1] ?? "").length, suf: " *USDZ", label: `refused on chain, over the cap at the time: ${r.cap}`, icon: "ban", tone: "bad" as const }] : []),
   ])}
   ${table}
   <div class="mgrid">${payCard}${refusalCard}${replaceCard}</div>

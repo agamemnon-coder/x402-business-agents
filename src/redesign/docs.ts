@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
 import { foldHtml, outLink, productPage, repoHref, repoText } from "./productPage.js";
 import { TRY_URL, esc, icon } from "./ui.js";
+import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js";
 
 // The agent API.
 
@@ -85,7 +86,7 @@ const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-metal-agents-p
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 /** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
-const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = "purser-demo-read-only";
+const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
@@ -95,6 +96,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   const demo = o.cloudDemoUrl === undefined ? CLOUD_DEMO_URL : o.cloudDemoUrl;
   if (!repoText("src/platform/mcpServer.ts").includes(NO_TOOL)) throw new Error("src/platform/mcpServer.ts no longer says what no tool can do");
   if (!repoText(CLOUD_ROUTES).includes(`path: "${CLOUD_OPENAPI_PATH}"`)) throw new Error(`${CLOUD_ROUTES} no longer serves ${CLOUD_OPENAPI_PATH}`);
+  if (!repoText(CONNECT_DOC).includes(`\`${DEMO_CONNECTOR_TOKEN}\``) || !repoText("cloud/src/auth.ts").includes(`DEMO_CONNECTOR_TOKEN = "${DEMO_CONNECTOR_TOKEN}"`)) throw new Error("the demo company's connector token is not the one the cloud and its guide name");
   if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
   const body = `<div class="cols c2">
   <article class="pc card fd wide" id="agent-api">${head("bot", "Agent API (MCP server)")}
@@ -111,8 +113,14 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
-    <p>Claude, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP and can propose a payment. Only the CFO's Face ID approves one. To try: the demo token ${code(DEMO_TOKEN)}.</p>
-    <div class="links">${outLink(repoHref(CONNECT_DOC), "Setup for each AI")}</div></article>
+    <p>Claude, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP and can propose a payment. Only the CFO's Face ID approves one. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
+    <div class="links">${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "Setup for each AI")}</div>
+    ${foldHtml("Open Purser Cloud as guest, connect Claude", [
+      `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
+      `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
+      `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
+      `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
+    ])}</article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>

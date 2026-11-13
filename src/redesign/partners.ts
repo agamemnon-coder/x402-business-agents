@@ -417,6 +417,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
  * not Home, not /visa), each partner a text link with one proof number read from a record. Text only, no logos; ICC
  * only as access requested, not used in this entry.
  */
+const dayShortOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
   const st = metalStory(run.record), tiles = productTiles(run).length, airi = airiRun(), t0 = t0Data().journal;
   // Paid purchases across the live Airi runs, as /visa counts them: 7 Nov (SETTLED) and the latest run (vic-3).
@@ -428,11 +429,12 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles ? [{ name: "Airwallex", href: "airwallex", proof: `${tiles} products, each run dated` }] : []),
-    { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet` },
-    ...(settled ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: `${settled} purchases paid in ${runsN} live run${runsN === 1 ? "" : "s"}` }] : []),
-    { name: "Claude", href: "claude", proof: `${decisions} decisions` },
-    ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries` }] : []),
-    { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests` },
+    { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet (main run)` },
+    // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
+    ...(settled ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${settled} across ${runsN} runs)` : `${settled} purchases paid in ${runsN} live run${runsN === 1 ? "" : "s"}` }] : []),
+    { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },
+    ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries (main run)` }] : []),
+    { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests (main run)` },
   ];
 }
 export const ICC_LINE = "Visa Intelligent Commerce Connect (access requested)";

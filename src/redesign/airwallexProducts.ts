@@ -485,7 +485,7 @@ const liPlain = (t: string, tone = "") => `<li${tone ? ` class="${tone}"` : ""}>
 // On a phone each docs link is a row of its own (PRODUCTS_CSS): the separators are hidden there.
 const docsLi = (title: string, docs: Doc[]) => `<li>${esc(title)}: ${docs.map((d) => `<a class="pf" href="${esc(d.href)}" target="_blank" rel="noopener">${esc(d.label)} ↗</a>`).join('<span class="sep"> · </span>')}</li>`;
 const foldHtml = (summary: string, inner: string, attrs = "") => `<details class="fold"${attrs}><summary>${esc(summary)}</summary>${inner}</details>`;
-const runLog = (file: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a>`;
+const runLog = (file: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">run\u00a0log\u00a0↗</a>`;
 
 /**
  * One line: why the main run's payout went by SWIFT, and the local SEPA payout of the platform run with its fee. The kit

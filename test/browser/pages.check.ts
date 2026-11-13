@@ -32,7 +32,7 @@ const shots = args[0] && !args[0].startsWith("--") ? args[0] : "test-results/pag
 mkdirSync(shots, { recursive: true });
 const judge = liveAt >= 0 ? null : await startJudge(0);
 const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
-// /judge ("Judge it in 3 minutes", item 5.1) is in the bundle only with /try/sign, where three of its steps go: locally a
+// /judge ("Judge it in 3 minutes", item 5.1) is in either bundle since 13 Nov; with /try/sign its footer line too: locally a
 // relay of our own built with TRY_SIGN_ENABLED on serves it (and the Home that links to it); live, the hosted relay,
 // once it is deployed there.
 const relay = liveAt >= 0 ? null : await (async () => {
@@ -61,7 +61,8 @@ const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL], more: moreLinks().map((l) => l.label) });
+// Jury, 13 Nov: "Judge" after Proof.
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), "Judge", MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -73,6 +74,21 @@ const WORST = worstCaseWords();
  */
 const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
 const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
+
+/**
+ * A navigation to the local relay that Firefox now and then does not finish (13 Nov, in CI and here, late in the run): a
+ * new context's goto to /status timed out, once with no request issued at all and once with its request answered but no
+ * load, while the relay answered a fetch in 2 ms, a fresh browser loaded the page at once, and a second goto did too.
+ * Tried again once, said in the log; a page that fails twice still fails the check.
+ */
+async function gotoStarted(page: Page, url: string): Promise<void> {
+  try {
+    await page.goto(url, { waitUntil: "load", timeout: 15_000 });
+  } catch {
+    console.log(`info  ${url}: the browser did not finish loading it within 15 s; tried again`);
+    await page.goto(url, { waitUntil: "load" });
+  }
+}
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -180,7 +196,12 @@ async function tapTargets(page: Page, name: string): Promise<void> {
     const out = [];
     for (const e of document.querySelectorAll("main a, main button, main summary")) {
       if (!e.checkVisibility()) continue;
-      for (const r0 of [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)) {
+      // Each line of a target, measured afresh after every scroll: a rect measured before the previous line's scroll is
+      // stale, and probing it lands off the screen (a link drawn on two lines, seen in Firefox at 390 px, 13 Nov).
+      const lines = [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2).length;
+      for (let i = 0; i < lines; i++) {
+        const r0 = [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)[i];
+        if (!r0) break;
         window.scrollTo({ top: window.scrollY + r0.top - innerHeight / 2, behavior: "instant" });
         const r = [...e.getClientRects()].find((q) => Math.abs(q.width - r0.width) < 0.5 && Math.abs(q.left - r0.left) < 0.5) || r0;
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -685,7 +706,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
           return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? (() => { const r = document.createRange(); r.setStartAfter(tap); r.setEnd(main, main.childNodes.length); return r.toString().trim(); })() : "?",
             title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => !li.closest("details:not(.sumd)")).length,
-            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
+            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: (() => { const f = document.querySelector("footer").cloneNode(true); f.querySelector("ul.builton")?.remove(); return f.textContent; })() };
         })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
         if (c.title !== pageTitle(VISA_TITLE)) fail(`/visa ${tag}: the title is "${c.title}"`);
         if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
@@ -700,6 +721,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
         const inMain = (await page.locator("main").textContent()) ?? "";
         if (!/A scripted run, no Claude call/.test(inMain) || /Agents paid with a single-use Visa|three live runs/.test(inMain)) fail(`/visa ${tag}: the run is not called scripted`);
+        // The shared "Built on" strip aside: each of its figures names its own run (jury, 13 Nov), the main run's among them.
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
       // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
@@ -813,8 +835,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      // The guarantees open the one fold under the four cards (jury pass, 13 Nov): a reader opens it first.
-      await page.locator("main details.sumd > summary").click();
+      // The guarantees are in sight under the four cards (jury, 13 Nov, second round).
       await page.locator("#g-terms details > summary").click();
       await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
       await page.waitForURL(/\/security#unavailable$/);
@@ -840,7 +861,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/docs" ? 245 /* 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card (test/saas-status-docs.test.ts) */ : 90;
+      const budget = path === "/docs" ? 280 /* 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       // /status left "More" on 12 Nov (src/ui/more.ts): a page not in the menu marks nothing there.
@@ -851,7 +872,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
       const cards = await page.locator("main article.pc.card").count();
       if (path === "/docs") {
+        // Five cards since 13 Nov: "Connect your AI" (#connect-ai), with Purser Cloud as a guest (jury, 13 Nov), its steps folded.
         if (cards !== 5 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and five cards with every fold closed`);
+        if (!(await page.locator('#connect-ai a[href="https://purser-try.max-31b.workers.dev/"]').count()) || !/Try as guest/.test(await page.locator("#connect-ai").innerText())) fail(`/docs ${tag}: the Purser Cloud card has no link to the cloud, or does not say "Try as guest"`);
         const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
         if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
         if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#verify-it-yourself-in-3-commands"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
@@ -875,7 +898,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
     // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
     if (relay) {
-      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await gotoStarted(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
@@ -889,7 +912,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
         await broken.unroute("**/health");
         await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
-        await broken.goto(`${relay.url}/status`, { waitUntil: "load" });
+        await gotoStarted(broken, `${relay.url}/status`);
         await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
         const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
         if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
@@ -951,14 +974,20 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
         const fold = document.querySelector("main details.sumd"), cards = document.querySelector("main ul.sumc");
-        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), next: h1 && h1.nextElementSibling ? h1.nextElementSibling.className : "", inFold: !!fold && !!document.getElementById("guarantees") && fold.contains(document.getElementById("guarantees")), open: document.querySelectorAll("main details[open]").length };
-      })()`)) as { cards: number; n: number; fold: number; next: string; inFold: boolean; open: number };
-      // The jury pass (13 Nov): four cards directly under the heading, then one closed fold that opens with the guarantees.
-      if (first.next !== "sumc" || first.n !== 4 || !first.inFold || first.open) fail(`/proof ${tag}: not four cards under the heading and the guarantees in the one fold under them, closed on load (${JSON.stringify(first)})`);
+        // The scale band (the owner, 13 Nov) between the heading and the cards.
+        const band = h1 && h1.nextElementSibling && h1.nextElementSibling.matches("ul.scale") ? h1.nextElementSibling : null;
+        const g = document.getElementById("guarantees");
+        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), gtee: top(g), next: band && band.nextElementSibling ? band.nextElementSibling.className : "no scale band", between: !!cards && !!g && !!fold && cards.nextElementSibling === g && g.nextElementSibling === fold, open: document.querySelectorAll("main details[open]").length };
+      })()`)) as { cards: number; n: number; fold: number; gtee: number; next: string; between: boolean; open: number };
+      // The jury pass (13 Nov): four cards directly under the heading; since the jury's second round the seven guarantees
+      // in sight under them (the first screen was too thin), then the one fold, closed on load.
+      if (first.next !== "sumc" || first.n !== 4 || !first.between || first.open) fail(`/proof ${tag}: not the scale band, then four cards, under the heading, then the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
-        // The four cards are the page in sight: the fold's line comes within the first screen and a half (720 px as built at 390).
-        if (first.fold < 0 || first.fold > 1170) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 1,170 px`);
+        // The guarantees start within the first screen and a half (1,118 px as built at 390), the fold's line under them
+        // (2,213 px as built; 4,062 before the jury's order of 12 Nov).
+        if (first.gtee < 0 || first.gtee > 1270) fail(`/proof ${tag}: the guarantees start at ${first.gtee} px, over 1,270 px`);
+        if (first.fold < 0 || first.fold > 2400) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 2,400 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1153,7 +1182,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main a.btn").count()) !== (WATCH_IN_MENU ? 4 : 3)) fail(`404 ${tag}: not the menu's tabs`);
     }
 
-    // /judge, "Judge it in 3 minutes" (item 5.1): five steps, each with a checkbox and a time, three minutes in all; the
+    // /judge, "Judge it in 3 minutes" (item 5.1): six steps since the jury of 13 Nov (Purser Cloud as a guest, with
+    // Claude), each with a checkbox and a time, three minutes in all; the
     // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
     // and with /try/sign on, Home's first button leads to it and one quiet footer link opens the tour (home-story, 12 Nov:
     // Home has two buttons and no third call to action).
@@ -1165,7 +1195,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
       const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
+      // The tab in the menu (jury, 13 Nov) and one quiet line in the footer.
+      if ((await page.locator('header nav a[href="judge"]').count()) !== 1 || (await page.locator('a[href="judge"]').count()) !== 2 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
@@ -1181,7 +1212,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const steps = await page.locator("ol.steps > li").evaluateAll((lis) => lis.map((li) => ({
         box: !!li.querySelector('input[type="checkbox"]'), secs: Number((li.querySelector(".secs")?.textContent ?? "").replace(/\D/g, "")), links: li.querySelectorAll(".go a").length,
       })));
-      if (steps.length !== 5 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not five steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
+      if (steps.length !== 6 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not six steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
       if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
       if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
       // The tour starts on Home, not on the replay, and on a phone the whole page is 44 px targets: every box, title,
@@ -1191,10 +1222,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
       await page.locator('label[for="step-trick"]').click();
-      if ((await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the count does not follow the ticks`);
+      if ((await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the count does not follow the ticks`);
       await page.reload({ waitUntil: "load" });
       const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
-      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
+      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
       await look(page, `/judge ticked ${tag}`, w);
       await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
@@ -1213,7 +1244,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
       if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
       await bp.locator("#step-proof").check();
-      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
+      if ((await bp.locator("#prog").innerText()) !== "1 of 6 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
       }
@@ -1250,7 +1281,7 @@ if (relay) {
       const tag = `${w}-${scheme}`;
       page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
       page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
-      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await gotoStarted(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();

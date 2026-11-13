@@ -396,7 +396,8 @@ describe("the two pages on the site", () => {
 
   // 12 Nov (orchestrator's preview): the marked item follows the page. A page listed under More marks More and its own
   // link there, never a tab; /runs marks Proof. One mapping in the nav code (src/ui/more.ts menuItemOf).
-  it("mark the item the page sits under: partner pages mark More, /runs marks Proof", () => {
+  // Jury, 13 Nov: /runs highlighted Proof, which read as a bug; it marks no tab now.
+  it("mark the item the page sits under: partner pages mark More, /runs marks no tab", () => {
     const state = (html: string) => {
       const nav = /<nav class="tabs" aria-label="Main">([\s\S]*?)<\/nav>/.exec(html)![1]!;
       return { more: /<summary class="on">More<\/summary>/.test(nav), tabs: [...nav.matchAll(/<a href="(\w+)" class="on" aria-current="page">/g)].map((m) => m[1]) };
@@ -404,7 +405,7 @@ describe("the two pages on the site", () => {
     for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE]] as const) {
       expect({ key, ...state(html), here: html.includes(`<a href="${key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
     }
-    expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: ["proof"] });
+    expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: [] });
     expect(state(PROOF_PAGE)).toEqual({ more: false, tabs: ["proof"] });
     expect(state(pages.home!)).toEqual({ more: false, tabs: ["home"] });
     // The older navigation (src/ui/nav.ts) maps the same way.
@@ -413,7 +414,8 @@ describe("the two pages on the site", () => {
       expect({ key, proof: /data-nav="proof" class="on"/.test(nav), more: /<summary class="on">More<\/summary>/.test(nav) }).toEqual({ key, proof: false, more: true });
     }
     expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
-    expect(menuItemOf("runs")).toBe("proof");
+    expect(menuItemOf("runs")).toBeNull();
+    expect(menuItemOf("judge")).toBe("judge");
     expect(menuItemOf("pricing")).toBe("more");
     expect(menuItemOf("proof")).toBe("proof");
     expect(menuItemOf(null)).toBeNull();

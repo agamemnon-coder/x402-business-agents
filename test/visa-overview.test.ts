@@ -233,7 +233,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
   });
 
   it("cites docs/demo/airi-run.json in its footer, with no main-run paragraph", () => {
-    const foot = text(html.slice(html.indexOf("</main>")));
+    // The shared "Built on" strip aside: each of its figures names its own run (jury, 13 Nov), the main run's among them.
+    const foot = text(html.slice(html.indexOf("</main>")).replace(/<ul class="builton">[\s\S]*?<\/ul>/, " "));
     expect(foot).toContain(`Source: ${AIRI_RUN_FILE} (the Airi run)`);
     expect(foot).toMatch(/Visa Intelligent Commerce via Airwallex's Airi \(7 Nov\), scripted, no Claude call: Airwallex sandbox, test card, test money\./);
     for (const line of MAIN_RUN_REAL) expect({ line, there: foot.includes(line) }).toEqual({ line, there: false });
@@ -288,8 +289,9 @@ describe("the Visa entry on the rest of the site", () => {
     // #216: the list is in every page's footer, never in <main>.
     expect(/<main[\s\S]*<\/main>/.exec(home)![0]).not.toMatch(/<div class="built">|class="builton"/);
     const built = /<ul class="builton">[\s\S]*?<\/ul>/.exec(airwallex)![0];
-    // The same count /visa shows: the purchases paid across the live Airi runs (the jury check, 12 Nov).
-    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ purchases paid in \d+ live runs?<\/a>/);
+    // The latest run's own count first, as /visa leads with it, then the purchases paid across the live Airi runs (the
+    // jury check, 12 Nov; the jury, 13 Nov: the two read as a clash without the run named).
+    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ paid in the \d{1,2} [A-Z][a-z]{2} run \(\d+ across \d+ runs\)<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 

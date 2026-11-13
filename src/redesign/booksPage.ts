@@ -155,7 +155,7 @@ const tr = (cls: string, name: string, cents: number | null) => `<tr${cls ? ` cl
 const lines = (xs: StatementLine[]) => xs.map((x) => tr("ln", x.name, x.cents)).join("");
 const gb = (cents: number) => (cents / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** A key figure; the HTML holds the final value, the script counts up to it (src/redesign/stats.ts COUNT_JS). */
-const kpi = (label: string, cents: number, cur: string, hint: string) => `<li><small>${esc(label)}</small><b><span class="cur">${esc(cur)}</span><span data-count="${cents / 100}" data-dec="2">${esc(gb(cents))}</span></b><span class="hint">${esc(hint)}</span></li>`;
+const kpi = (label: string, cents: number, cur: string, hint: string) => `<li><small>${esc(label)}</small><b><span class="cur">${esc(cur)}\u00a0</span><span data-count="${cents / 100}" data-dec="2">${esc(gb(cents))}</span></b><span class="hint">${esc(hint)}</span></li>`;
 const kpiCount = (label: string, n: number, of: number, hint: string) => `<li><small>${esc(label)}</small><b><span data-count="${n}" data-dec="0">${esc(String(n))}</span><span class="cur of">${esc(` of ${of}`)}</span></b><span class="hint">${esc(hint)}</span></li>`;
 /** Plain words for why an invoice waits for a person: the Checker's own finding codes. */
 const WAIT_WORDS: Record<string, string> = { country_not_paid: "Purser does not pay to this country: a person pays it", currency_not_paid: "Purser does not pay this currency: a person pays it" };

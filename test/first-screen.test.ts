@@ -66,7 +66,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The judge's tour: one footer link, only where /judge exists; never a third call to action in the page.
     expect(HOME).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
     expect(hero(HOME)).not.toContain('href="judge"');
-    expect(homePage()).not.toContain('href="judge"');
+    // The menu's Judge tab (jury, 13 Nov) is the one link to /judge without /try/sign; the footer line only with it.
+    expect(homePage().match(/href="judge"/g)).toEqual(['href="judge"']);
+    expect(homePage()).toContain('<a href="judge">Judge</a>');
   });
 
   it("is the form's synopsis, word for word, within 500 characters", () => {

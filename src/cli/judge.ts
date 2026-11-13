@@ -11,7 +11,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
-import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE, sendInspector, PRICING_CSP, PRICING_PAGE, SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
+import { AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE, sendInspector, PRICING_CSP, PRICING_PAGE, SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, JUDGE_CSP, JUDGE_PAGE, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -64,6 +64,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/pricing", page(PRICING_CSP, () => PRICING_PAGE));
   app.get("/security", page(SECURITY_CSP, () => SECURITY_PAGE));
   app.get("/docs", page(DOCS_CSP, () => DOCS_PAGE));
+  // "Judge" is in the top menu (jury, 13 Nov); this server has no /try/sign, so its one link there leads to /try.
+  app.get("/judge", page(JUDGE_CSP, () => JUDGE_PAGE.replace(/href="\/try\/sign"/g, 'href="/try"').replace(/<span class="sep"> · <\/span><a href="\/try\/verify">[^<]*<\/a>/, "")));
   // /status, the offline copy: this server has no /health and no runner, so the page says so (no script, no request).
   app.get("/status", page(STATUS_OFFLINE_CSP, () => STATUS_PAGE_OFFLINE));
   app.get("/t0", page(T0_CSP, () => T0_PAGE));
