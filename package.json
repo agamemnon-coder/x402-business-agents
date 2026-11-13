@@ -30,6 +30,7 @@
     "links:external": "tsx scripts/linkcheck-external.ts",
     "changelog": "tsx scripts/changelog.ts",
     "charts": "tsx scripts/repo-charts.ts",
+    "test-count": "tsx scripts/test-count.ts",
     "test:shim": "vitest run --config vitest.shim.config.ts",
     "test:coverage": "vitest run --coverage && tsx test/coverage-areas.ts",
     "typecheck": "tsc --noEmit",

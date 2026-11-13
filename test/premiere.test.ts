@@ -342,8 +342,9 @@ describe("the premiere refuses to render when a figure is missing", () => {
   }
 
   it("without the README's test line", () => {
-    expect(() => buildPremiere(raw(), README.replace(/\*\*\d+ tests in \d+ files, all passing\*\*/, "the tests"))).toThrow(/README has no test line/);
+    expect(() => buildPremiere(raw(), README.replace(/\*\*\d+ tests passing\*\*, \d+ skipped, in \d+ files/, "the tests"))).toThrow(/README has no test line/);
     expect(testLine("**2,181 tests in 241 files, all passing**")).toEqual({ tests: "2181", files: "241" });
+    expect(testLine("**6331 tests passing**, 4 skipped, in 553 files (the last full run")).toEqual({ tests: "6331", files: "553" });
   });
 
   it("builds nothing it cannot fill: the page is made from the data alone", () => {
