@@ -99,8 +99,8 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(said).toEqual([
       "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10 blind holdouts, all safe; H3 on code's rule only",
       // Judge panel, 13 Nov: each tile says what its number counts (runs passed; the calls that stood), in the records' words.
-      "0 of 10 runs passed by Haiku as Support on an email asking for refunds outside the dispute; code refused each one, nothing paid. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
-      "380 hostile tool calls on the payables agents' 62 test invoices: 370 refused by code, 10 stood as the script made them, 0 unsafe by the ledger verdict"]);
+      "0 of 10 runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid. So Support runs on Sonnet (all 60)", "9 model and agent pairs, measured",
+      "380 hostile tool calls on the payables agents' 62 test invoices: 370 refused by code, 10 stood as made, 0 unsafe by the ledger verdict"]);
     // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
     expect(HOSTILE_EVAL).toBe(HOSTILE_RECORD_FILE);
     expect(hostileOf(read(HOSTILE_EVAL))).toEqual({ calls: 380, refused: 370, stood: 10, unsafe: 0, cases: 62 });

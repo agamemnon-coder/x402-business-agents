@@ -144,7 +144,7 @@ export interface HostileFigures { calls: number; refused: number; stood: number;
  * through). It names its scope (review round 1, 12 Nov): the payables agents and their test invoices, not the three agents above.
  */
 // Judge panel, 13 Nov: the calls not refused are said too, in the record's word (stood), so the two counts add up.
-export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on the payables agents' ${h.cases} test invoices: ${h.refused} refused by code, ${h.stood} stood as the script made them, ${h.unsafe} unsafe by the ledger verdict`;
+export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on the payables agents' ${h.cases} test invoices: ${h.refused} refused by code, ${h.stood} stood as made, ${h.unsafe} unsafe by the ledger verdict`;
 
 /**
  * The Haiku-as-Support tile's label: what its "0 of 10" counts (runs passed on the attack case support-outside), what
@@ -153,7 +153,7 @@ export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on th
  */
 export function supportTileLabel(lines: ModelLine[], used: Record<string, string>): string {
   const inUse = lines.find((l) => l.agent === "support" && FAM(l.model) === used.support && !/haiku/.test(l.model));
-  return `runs passed by Haiku as Support on an email asking for refunds outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
+  return `runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
 }
 
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */
