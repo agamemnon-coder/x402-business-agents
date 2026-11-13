@@ -169,7 +169,7 @@ const li = (text: string, tone = "", link?: { label: string; href: string | null
 export function letThroughLi(r: RunRecord, e: Extract<Ev, { k: "money" }>, prefix = "Refused by Metal: "): string {
   const cap = letThroughOf(r)?.cap ?? "";
   const link = e.proof.href ? ` <a class="pf" href="${esc(e.proof.href)}" target="_blank" rel="noopener">${esc(e.proof.label)} ↗</a>` : "";
-  return `<li class="no">${esc(`${prefix}${e.what} at ${e.amount}${cap ? `, over the ${cap} cap` : ""} `)}(<code>${esc(e.refused?.code ?? "mandate_cap_exceeded")}</code>); nothing moved.${link}<small>${esc(CHAIN_TEST)}</small></li>`;
+  return `<li class="no">${esc(`${prefix}${e.what} at ${e.amount}${cap ? `, over the cap at the time, ${cap}` : ""} `)}(<code>${esc(e.refused?.code ?? "mandate_cap_exceeded")}</code>); nothing moved.${link}<small>${esc(CHAIN_TEST)}</small></li>`;
 }
 /** A failed licence attempt and what followed, from the run's ledger: "The first licence transfer (P-0005) was refused …". */
 export function earlierLine(e: Extract<Ev, { k: "money" }>): string {
@@ -461,6 +461,9 @@ const dayShortUtc = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "nu
  * Airwallex's own hold, approved by a person and PAID (12 Nov); the Visa run as it ended for each purchase; and Claude's
  * decisions in the main run.
  */
+/** The company a run record names (the main run: Northwind Outdoor), for the labels that say whose run a figure is. */
+const companyOf = (run: AgentRun) => { const c = (run.record as { company?: unknown }).company; return typeof c === "string" ? c : ""; };
+
 export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3?: Vic3Record | null } = {}): SummaryCard[] {
   const out: SummaryCard[] = [];
   const owners = o.owners === undefined ? ownersRun() : o.owners;
@@ -481,10 +484,10 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
   // Its strongest number: the amount paid above the CFO's limit, only after Face ID (the run's other outcomes in the line).
   if (v3) {
     const s3 = vic3Summary(v3), fid = s3.paidFaceId[0]?.request;
-    out.push({ icon: "credit-card", fig: fid ? `${fid.currency} ${fid.amount}` : `${s3.paid} paid`, title: "Visa via Airwallex's Airi: paid after Face ID", href: "visa", rec: VIC3_RUN_FILE, text: `${vic3Lead(v3)}.` });
+    out.push({ icon: "credit-card", fig: fid ? `${fid.currency} ${fid.amount}` : `${s3.paid} paid`, title: "Visa via Airwallex's Airi: paid after Face ID", href: "visa", rec: VIC3_RUN_FILE, text: `Airwallex sandbox, test card, ${dayShortUtc(v3.started_at)}: ${vic3Lead(v3)}.` });
   }
   const sp = split(run.record);
-  if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; Purser's code holds the limits.` });
+  if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in ${run.record.run}${companyOf(run) ? ` (${companyOf(run)})` : ""}, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; Purser's code holds the limits.` });
   return out;
 }
 
@@ -511,14 +514,15 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
   const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
-  // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text).
+  // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text). Jury, 13 Nov (second round):
+  // the first screen was too thin, so the guarantees are in sight again, under the cards; the rest stays folded.
   // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
   ${summaryHtml(proofSummary(run), "Proof in four cards")}
-  ${detailsFold("details", "All the proof: guarantees, partners, numbers and every check", `${guaranteesHtml()}
-  ${lifeVisual("wide")}
+  ${guaranteesHtml()}
+  ${detailsFold("details", "All the proof: partners, numbers and every check", `${lifeVisual("wide")}
   ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}

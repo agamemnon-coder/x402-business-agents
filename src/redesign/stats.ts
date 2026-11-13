@@ -36,10 +36,15 @@ ul.stats b { white-space: nowrap; font-size: 24px; line-height: 1.15; font-weigh
 ul.stats small { font-size: 13.5px; line-height: 1.3; color: var(--muted); }
 `;
 
-/** Counts each [data-count] up from 0 when it first comes into view; nothing moves with reduced motion. */
+/**
+ * Counts a [data-count] up from 0 as it comes into view, and only then (jury, 13 Nov: the final value is in the HTML and
+ * stays there for a reader who has not scrolled, a screenshot, a crawler, or no script). Only a figure still below the
+ * screen once the reader scrolls takes part, and it is set to 0 the moment its first pixel shows; nothing moves with
+ * reduced motion.
+ */
 export const COUNT_JS = `
 (function () {
-  var els = document.querySelectorAll("[data-count]");
+  var els = [].slice.call(document.querySelectorAll("[data-count]"));
   if (!els.length || !("IntersectionObserver" in window) || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   function fmt(n, d) { return n.toLocaleString("en-GB", { minimumFractionDigits: d, maximumFractionDigits: d }); }
   var io = new IntersectionObserver(function (es) {
@@ -49,7 +54,11 @@ export const COUNT_JS = `
       var el = e.target, to = Number(el.getAttribute("data-count")), d = Number(el.getAttribute("data-dec")) || 0, t0 = performance.now(), ms = 900;
       (function tick(t) { var k = Math.min(1, (t - t0) / ms), v = to * (1 - Math.pow(1 - k, 3)); el.textContent = fmt(k < 1 ? v : to, d); if (k < 1) requestAnimationFrame(tick); })(t0);
     });
-  }, { threshold: 0.4 });
-  els.forEach(function (el) { el.textContent = fmt(0, Number(el.getAttribute("data-dec")) || 0); io.observe(el); });
+  }, { threshold: 0 });
+  function arm() {
+    removeEventListener("scroll", arm);
+    els.forEach(function (el) { if (el.getBoundingClientRect().top > innerHeight) io.observe(el); });
+  }
+  addEventListener("scroll", arm, { passive: true });
 })();
 `;

@@ -142,7 +142,7 @@ describe("the payments, the refusal and the replace", () => {
     expect(t).toContain("#24 refused on chain");
     // The card says it in one line (12 Nov); the 402 and the record call, word for word, are in the decoded fold.
     expect(t).toContain("Our own check was off for this test. Metal refused it on chain; nothing moved.");
-    expect(text(decoded)).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the 0.03 cap. Nothing moved.");
+    expect(text(decoded)).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the cap at the time, 0.03. Nothing moved.");
     expect(grid).toContain(`href="${story.refusal!.proof.href}"`);
     const d = insp.refusals.find((x) => x.purchase === "24")!;
     expect({ tx: d.tx, mandate: d.event.mandate, amount: d.event.amount, reason: d.event.reason_name }).toEqual({ tx: String(onChain.payload.tx), mandate: String(onChain.payload.mandate), amount: "0.04", reason: "OverPerPaymentCap" });

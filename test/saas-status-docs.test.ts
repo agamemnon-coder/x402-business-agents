@@ -77,7 +77,7 @@ describe("/docs: docs and API", () => {
     expect(html).toContain("<h1>Docs and API</h1>");
     expect(html).toContain("<title>Purser · Docs and API</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "offline"]);
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "claude", "cloud-api", "payments", "offline"]);
   });
 
   it("lists exactly the tools the code defines, in the code's order, each with its own title; every description is in the fold, word for word", async () => {
@@ -154,7 +154,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(210);
+    expect(visibleWords(set)).toBeLessThanOrEqual(260);
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -185,8 +185,9 @@ describe("/docs: docs and API", () => {
   });
 
   // 210 since the review of 12 Nov: "(KIT is Purser's internal project name)" next to the variable names (6 words).
-  it("stays within 210 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(210);
+  // 260 since the jury of 13 Nov: "Open Purser Cloud as guest, connect Claude", its line and links (its steps folded).
+  it("stays within 260 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(260);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });
@@ -194,7 +195,7 @@ describe("/docs: docs and API", () => {
   it("shows no number of its own: only the names the code and the docs use", () => {
     // Names with digits in them are names (x402, the KIT11_ variables, the OpenAPI document's path), and the tools'
     // descriptions are the code's own words (held to the server's answer above): nothing else carries a figure.
-    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+/g, " ");
+    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+|\bhttps:\/\/[\w.-]+\/[\w/.-]*/g, " ");
     expect(numbers(ours(text))).toEqual([]);
     expect(numbers(ours(`${text} over 40 customers`))).toEqual(["40"]);
   });

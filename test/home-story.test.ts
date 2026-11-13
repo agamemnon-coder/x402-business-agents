@@ -13,6 +13,7 @@ import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RE
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
+import { VIC3_RUN_FILE } from "../src/redesign/vic3Run.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -62,7 +63,7 @@ describe("Home, the enterprise pass", () => {
     expect(buildPages({} as NodeJS.ProcessEnv).home).toBe(OFF);
     expect(ON).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
     expect(mainOf(ON)).not.toContain('href="judge"');
-    expect(OFF).not.toContain('href="judge"');
+    expect(OFF).not.toContain('<a class="flink" href="judge">');
   });
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
@@ -89,14 +90,21 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A4: one note line with the What's real? link; the only date in sight is the sample invoice's own due date", () => {
-    expect(FLOW_NOTE).toBe("A /try run of its sample invoice, test money.");
+    expect(FLOW_NOTE).toBe("One /try run, a test company's sample invoice, test money.");
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       expect(main.match(/<p class="hf-note">/g)).toHaveLength(1);
       expect(text(/<p class="hf-note">[\s\S]*?<\/p>/.exec(main)![0])).toBe(`${FLOW_NOTE} ${WHATS_REAL}`);
       expect(main).toContain(`<a href="#real" data-real>${WHATS_REAL}</a>`);
-      const dates = text(outsideFold(html)).match(/\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|\b20\d\d-\d\d-\d\d/g);
-      expect(dates).toEqual([SAMPLE.invoice.due]);
+      // Above the stat row the only date is the card's due date; from there on each figure names its run's day (jury,
+      // 13 Nov: which run a figure comes from), the Face ID tile its run on Metal testnet and the footer the Visa run.
+      const DATE = /\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|\b20\d\d-\d\d-\d\d/g;
+      const out = outsideFold(html), at = out.indexOf('<article class="e-statrec"');
+      expect(text(out.slice(0, at)).match(DATE)).toEqual([SAMPLE.invoice.due]);
+      const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string };
+      const vic3 = JSON.parse(read(VIC3_RUN_FILE)) as { started_at: string };
+      const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+      expect(text(out.slice(at)).match(DATE)).toEqual([`${day(owners.ran_at)}`, day(vic3.started_at)]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
@@ -133,10 +141,10 @@ describe("Home, the enterprise pass", () => {
     expect([b.read_back.mandate?.equal, b.read_back.payment_intent?.equal]).toEqual([true, true]);
     // First: Face ID verified on chain (the passkey account's record), its strongest number the limit changes the account
     // ran, each only after every passkey signed; its co-signer labelled a test key (the owner, 13 Nov).
-    const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
+    const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, Face ID verified on chain: ${owners.threshold} of ${owners.owners.length} passkeys each (co-signer a test key)`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, Face ID verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length} passkeys, co-signer a test key`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";

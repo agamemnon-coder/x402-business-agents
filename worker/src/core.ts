@@ -79,7 +79,7 @@ export interface Pages {
   trySign?: string;
   /** /try/verify: a receipt.json checked in the browser (src/try/verify.ts); with /try/sign only. */
   tryVerify?: string;
-  /** /judge: "Judge it in 3 minutes", five steps with ticks kept in the browser (src/redesign/judge.ts); with /try/sign only. */
+  /** /judge: "Judge it in 3 minutes", six steps with ticks kept in the browser (src/redesign/judge.ts); in either bundle since 13 Nov. */
   judge?: string;
   /** Old public addresses folded into the four tabs, and where they now go. */
   redirects?: Record<string, string>;

@@ -93,11 +93,14 @@ describe("the Built on strip", () => {
     // 13 Nov: and vic-4's paid, three live runs in all.
     const later = [vic3Run("docs/runs/2026-11-12-vic-3.json")!, vic3Run()!];
     const settled = airiRun()!.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length + later.reduce((n, v) => n + v.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length, 0);
+    // Jury, 13 Nov: each figure names its run (the main run's four, the latest Visa run's own count first).
+    const latest = later[1]!, latestPaid = latest.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length;
+    const latestDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(latest.started_at));
     expect(items.map((i) => i.proof)).toEqual([
-      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet`, `${settled} purchases paid in 3 live runs`,
-      `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions`, `${t0Data().journal!.posted} journal entries`, `${st.payments.sales} paid requests`,
+      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet (main run)`, `${latestPaid} paid in the ${latestDay} run (${settled} across 3 runs)`,
+      `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions (main run)`, `${t0Data().journal!.posted} journal entries (main run)`, `${st.payments.sales} paid requests (main run)`,
     ]);
-    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "5 purchases paid in 3 live runs", "24 decisions", "95 journal entries", "41 paid requests"]);
+    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet (main run)", "2 paid in the 13 Nov run (5 across 3 runs)", "24 decisions (main run)", "95 journal entries (main run)", "41 paid requests (main run)"]);
     // #216 (12 Nov): ICC spelled out in the footer.
     expect(ICC_LINE).toBe("Visa Intelligent Commerce Connect (access requested)");
   });

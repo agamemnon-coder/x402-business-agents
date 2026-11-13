@@ -19,6 +19,8 @@ import { FLOW_STEPS } from "../src/redesign/heroFlow.js";
 import { metalStory } from "../src/redesign/metalStory.js";
 import { loadRecord } from "../src/redesign/run.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
+import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../src/ui/more.js";
+import { DEMO_CONNECTOR_TOKEN as CLOUD_DEMO_TOKEN } from "../cloud/src/auth.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const ON = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
@@ -36,7 +38,7 @@ function bodyOf(path: string, pages = ON): string {
   const p = new URL(path, SITE).pathname;
   const by: Record<string, string | undefined> = {
     "/try/sign": pages.trySign, "/try/verify": pages.tryVerify, "/airwallex": pages.airwallex, "/metal": pages.metal,
-    "/proof": pages.proof, "/watch": pages.watch, "/replay": pages.replay, "/home": pages.home, "/judge": pages.judge,
+    "/proof": pages.proof, "/docs": pages.docs, "/watch": pages.watch, "/replay": pages.replay, "/home": pages.home, "/judge": pages.judge,
   };
   return by[p] ?? "";
 }
@@ -54,6 +56,9 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
   sign: [{ path: "/try/sign", marks: ["Your Treasury agent wants to pay an invoice above its limit.", "Now try to cheat: change one cent", 'id="go-cheat"', "Sign with Face ID"] }],
   trick: [{ path: "/try/sign", marks: ["Try to trick the agent.", "Send your agent a fake invoice", "Sonnet", "Purser's code checks it"] }],
   policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
+  // Purser Cloud is another site; its steps are on /docs, with the cloud's /mcp address and the demo token the cloud
+  // itself names (cloud/src/auth.ts).
+  cloud: [{ path: "/docs", marks: ['id="claude"', "Try as guest", PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, "Use the demo company"] }],
   proof: [
     { path: "/proof", marks: ['id="awx-1"', /\d of \d checks pass/] },
     { path: "/airwallex", marks: ['id="awx-1"', "LIMIT_EXCEEDED"] },
@@ -61,19 +66,24 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
   ],
 };
 
-describe("/judge: the five steps", () => {
+describe("/judge: the six steps", () => {
   it("go in the menu's order (Home, Try, Proof; no replay since 12 Nov), with their times, three minutes in all", () => {
     expect(JUDGE_STEPS.map((s) => [s.title, s.seconds])).toEqual([
-      ["One payment on Home", 40],
-      ["Sign, then try to cheat", 40],
-      ["Try to trick the agent", 30],
-      ["Paid, booked, filed", 30],
-      ["See the proof", 40],
+      ["One payment on Home", 35],
+      ["Sign, then try to cheat", 35],
+      ["Try to trick the agent", 25],
+      ["Paid, booked, filed", 25],
+      // Jury, 13 Nov: Purser Cloud as a guest, with Claude on the demo company's public token.
+      ["Open Purser Cloud as guest, connect Claude (demo token)", 30],
+      ["See the proof", 30],
     ]);
     expect(JUDGE_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
+    // The guest step's token is the one the cloud takes (the site keeps its own copy, so no cloud code ships in its bundle).
+    expect(DEMO_CONNECTOR_TOKEN).toBe(CLOUD_DEMO_TOKEN);
+    expect(PURSER_CLOUD_MCP).toBe("https://purser-try.max-31b.workers.dev/mcp");
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
       // Since 12 Nov (one Try everywhere): steps 2 to 4 in the hands-on demo (TRY_URL); /try/sign once, as "the 60-second story".
-      ["/home"], ["/try", "/try/sign"], ["/try"], ["/try"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/home"], ["/try", "/try/sign"], ["/try"], ["/try"], [PURSER_CLOUD_URL, "/docs#claude"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
       ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.
@@ -147,25 +157,31 @@ describe("/judge: in the browser only", () => {
     for (const line of script.split("\n").filter((l) => l.includes("localStorage"))) expect(line).toMatch(/try \{.*localStorage.*\} catch \(e\) \{/);
   });
 
-  it("the Worker serves it at /judge, with its CSP, only in a bundle that has /try/sign (step 2 links its story)", () => {
+  // Since 13 Nov in either bundle ("Judge" is in the top menu, jury): its one link to /try/sign leads to /try without it.
+  it("the Worker serves it at /judge, with its CSP, in either bundle (step 2 links /try/sign's story only where it is served)", () => {
     expect(JUDGE_STEPS.filter((s) => s.links.some((l) => l.href === "/try/sign"))).toHaveLength(1);
     const r = pageResponse(new Request(`${SITE}/judge`), ON);
     expect(r?.status).toBe(200);
     expect(r?.headers.get("content-security-policy")).toBe(JUDGE_CSP);
     // As served (src/relay/assets.ts flowLinks); the header's "Try" tab is the hands-on demo at /try in either bundle.
     expect(ON.judge).toBe(flowLinks(JUDGE_PAGE, true));
-    expect(pageResponse(new Request(`${SITE}/judge`), OFF)).toBeNull();
-    expect(OFF.judge).toBeUndefined();
+    expect(pageResponse(new Request(`${SITE}/judge`), OFF)?.status).toBe(200);
+    expect(OFF.judge).toBe(flowLinks(JUDGE_PAGE, false).replace(/<span class="sep"> · <\/span><a href="\/try\/verify">[^<]*<\/a>/, ""));
+    expect(OFF.judge).not.toMatch(/href="\/try\/(sign|verify)"/);
   });
 });
 
 describe("the way in: Home, the README and the form", () => {
   it("Home is one story with two buttons (home-story, 12 Nov: try it, see the proof), with the tour as one quiet footer link where /judge exists", () => {
     expect(JUDGE_LINK).toBe("Judge it in 3 minutes →");
-    expect(ON.home!.match(/href="judge"/g)).toHaveLength(1);
+    // The tab in the menu (jury, 13 Nov) and the quiet footer link.
+    expect(ON.home!.match(/href="judge"/g)).toHaveLength(2);
+    expect(ON.home).toContain('<a href="judge">Judge</a>');
     expect(ON.home).toContain('<a class="flink" href="judge">Judging? Take the 3-minute tour</a>');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toContain('href="judge"');
-    expect(OFF.home).not.toContain('href="judge"');
+    // Without /try/sign: the tab only, no footer line.
+    expect(OFF.home!.match(/href="judge"/g)).toHaveLength(1);
+    expect(OFF.home).toContain('<a href="judge">Judge</a>');
     // Home's two buttons are two of /judge's steps: /try/sign, then the proof. Home sends no one to the replay (/replay, at /watch until 12 Nov).
     expect(ON.home).toContain('<a class="btn primary big start" href="/try">'); expect(ON.home).toContain('<a class="btn big ghost" href="proof">');
     expect(/<main[\s\S]*<\/main>/.exec(ON.home!)![0]).not.toMatch(/href="(?:watch|replay)"/);

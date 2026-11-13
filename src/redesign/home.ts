@@ -81,10 +81,12 @@ main.ent ul.stats b { font-size: 32px; }
 .statnote { margin: 16px 0 0; font-size: 14px; color: var(--faint); }
 .e-more { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
-/* Scroll-in: sections rise in once as they come into view; nothing moves for a reader who prefers less motion. */
+/* Scroll-in: a section still below the screen once the reader scrolls rises in as it comes into view. Every section is
+   shown by default (jury, 13 Nov: no blank part for a reader who has not scrolled, a screenshot or no script); nothing
+   moves for a reader who prefers less motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .js-reveal .reveal { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
-  .js-reveal .reveal.in { opacity: 1; transform: none; }
+  .reveal.pre { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.pre.in { opacity: 1; transform: none; }
 }
 section.band { padding: 60px 0; border-top: 1px solid var(--border); }
 .sechead { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
@@ -120,10 +122,14 @@ const JS = `${CFO_FORWARD_JS}
 (function () {
   // Scroll-in: only with IntersectionObserver and no wish for less motion; otherwise everything is simply shown.
   if (!("IntersectionObserver" in window) || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  var els = document.querySelectorAll(".reveal");
+  var els = [].slice.call(document.querySelectorAll(".reveal"));
   var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }); }, { rootMargin: "0px 0px -8% 0px" });
-  document.documentElement.classList.add("js-reveal");
-  els.forEach(function (el) { io.observe(el); });
+  // Only once the reader scrolls, and only what is then still out of sight below: it is never hidden while in view.
+  function arm() {
+    removeEventListener("scroll", arm);
+    els.forEach(function (el) { if (el.getBoundingClientRect().top > innerHeight) { el.classList.add("pre"); io.observe(el); } });
+  }
+  addEventListener("scroll", arm, { passive: true });
 })();`;
 
 /**
@@ -168,7 +174,7 @@ export const FEATURES = [
 ] as const;
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
 export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
-export const STAT_NOTE = "Each figure computed from the records when the site was built.";
+export const STAT_NOTE = "All runs and test companies on record, counted at build.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -233,6 +239,9 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
  * the account itself; a payment over the cap was refused on chain, and paid after both signed the raise. The second
  * signer is a virtual test passkey, and the tile says so. No record, or no refusal followed by a raise: no tile.
  */
+/** "12 Nov", the day of an ISO time in UTC. */
+const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
+
 export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   if (!owners) return [];
   const steps = ownersSteps(owners.rec);
@@ -243,7 +252,7 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
   // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
-  return [{ n: changes, label: `limit changes, Face ID verified on chain: ${owners.rec.threshold} of ${all} passkeys each${virtual ? " (co-signer a test key)" : ""}`, icon: "scan-face", tone: "ok" }];
+  return [{ n: changes, label: `limit changes, Face ID verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${owners.rec.threshold} of ${all} passkeys${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
 }
 
 /**

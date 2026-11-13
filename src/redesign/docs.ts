@@ -9,6 +9,7 @@ import type { DB } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
 import { foldHtml, outLink, productPage, repoHref, repoText } from "./productPage.js";
 import { TRY_URL, esc, icon } from "./ui.js";
+import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js";
 
 // The agent API.
 
@@ -81,6 +82,7 @@ function demoOpenApi(url: string): string {
 
 // Payments and webhooks; offline.
 
+const CONNECT_CLAUDE_DOC = "docs/connect-claude.md";
 const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-metal-agents-pay-per-request";
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
@@ -93,6 +95,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   const demo = o.cloudDemoUrl === undefined ? CLOUD_DEMO_URL : o.cloudDemoUrl;
   if (!repoText("src/platform/mcpServer.ts").includes(NO_TOOL)) throw new Error("src/platform/mcpServer.ts no longer says what no tool can do");
   if (!repoText(CLOUD_ROUTES).includes(`path: "${CLOUD_OPENAPI_PATH}"`)) throw new Error(`${CLOUD_ROUTES} no longer serves ${CLOUD_OPENAPI_PATH}`);
+  if (!repoText(CONNECT_CLAUDE_DOC).includes(`\`${DEMO_CONNECTOR_TOKEN}\``) || !repoText("cloud/src/auth.ts").includes(`DEMO_CONNECTOR_TOKEN = "${DEMO_CONNECTOR_TOKEN}"`)) throw new Error("the demo company's connector token is not the one the cloud and its guide name");
   if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
   const body = `<div class="cols c2">
   <article class="pc card fd wide" id="agent-api">${head("bot", "Agent API (MCP server)")}
@@ -103,6 +106,15 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
     ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
     ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
+  <article class="pc card fd wide" id="claude">${head("bot", "Open Purser Cloud as guest, connect Claude", "Demo token")}
+    <p>Choose <b>Try as guest</b> in Purser Cloud: the demo company, read only, made-up data. Then add Purser to Claude with its public demo token. Only the CFO's passkey can approve or pay.</p>
+    <div class="links">${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_CLAUDE_DOC), "Connect Claude: the guide")}</div>
+    ${foldHtml("The steps", [
+      `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
+      `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
+      `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_CONNECTOR_TOKEN}"`)}`,
+      `Then ask Claude "what's waiting for the CFO?". The demo token ${code(DEMO_CONNECTOR_TOKEN)} reads and proposes nothing.`,
+    ])}</article>
   <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Test preview")}
     <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
     <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>

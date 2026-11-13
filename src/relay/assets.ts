@@ -102,7 +102,10 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     runs: flow(RUNS_PAGE),
     agents: Object.fromEntries(Object.entries(AGENT_PAGES).map(([id, html]) => [id, { page: flow(html), csp: AGENT_CSPS[id]! }])),
     notFound: flow(NOT_FOUND_PAGE),
-    ...(trySign ? { trySign: flow(TRY_SIGN_PAGE), tryVerify: flow(TRY_VERIFY_PAGE), judge: flow(JUDGE_PAGE) } : {}),
+    // /judge in either bundle since 13 Nov ("Judge" is in the top menu, jury): its steps go to /try; its one link to
+    // /try/sign leads to /try where the bundle has no /try/sign (flowLinks), and its link to /try/verify is left out there.
+    judge: trySign ? flow(JUDGE_PAGE) : flow(JUDGE_PAGE).replace(/<span class="sep"> · <\/span><a href="\/try\/verify">[^<]*<\/a>/, ""),
+    ...(trySign ? { trySign: flow(TRY_SIGN_PAGE), tryVerify: flow(TRY_VERIFY_PAGE) } : {}),
     redirects: REDIRECTS,
     // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
     // link-preview tags with an absolute image there.
@@ -114,7 +117,7 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     font: FONT.toString("base64"),
     // The month-end pack (DOWNLOADS) rides with the images: served the same way, at /assets/<name>, under its own type.
     images: Object.fromEntries(Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS }).map(([name, l]) => [name, { type: l.type, data: l.body.toString("base64") }])),
-    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, pricing: PRICING_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP, judge: JUDGE_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
+    csp: { dashboard: DASHBOARD_CSP, month: MONTH_CSP, demo: DEMO_CSP, live: LIVE_CSP, film: FILM_CSP, try: TRY_CSP, lab: LAB_CSP, metal: METAL_CSP, metalReport: METAL_REPORT_CSP, visa: VISA_CSP, airwallex: AIRWALLEX_CSP, claude: CLAUDE_CSP, pricing: PRICING_CSP, security: SECURITY_CSP, docs: DOCS_CSP, status: STATUS_CSP, t0: T0_CSP, books: BOOKS_CSP, home: home.csp, watch: FILM_WATCH_CSP, replay: WATCH_CSP, proof: PROOF_CSP, trace: TRACE_CSP, runs: RUNS_CSP, notFound: NOT_FOUND_CSP, judge: JUDGE_CSP, ...(trySign ? { trySign: TRY_SIGN_CSP, tryVerify: TRY_VERIFY_CSP } : {}), approve: PHONE_CSP, enrol: PHONE_CSP, policy: PHONE_CSP },
   };
 }
 

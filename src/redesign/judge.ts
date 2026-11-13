@@ -1,5 +1,5 @@
 // /judge, "Judge it in 3 minutes" (Max's last round, item 5.1; in the menu's order: Home, Try, Proof; the replay at
-// /watch left the tour on 12 Nov): five steps for a juror with little time, each with a checkbox and a time. On a phone
+// /watch left the tour on 12 Nov): six steps for a juror with little time, each with a checkbox and a time. On a phone
 // every box, title, button and link is a 44 px target. Each step only links to a page that already
 // exists and says in one line what the juror will see there: no new claim (test/judge-tour.test.ts checks every link
 // against the routes the Worker serves, and each line against its page). The ticks live in this browser only
@@ -12,6 +12,7 @@ import { FLOW_STEPS } from "./heroFlow.js";
 import { metalStory, refusalNote } from "./metalStory.js";
 import { loadRecord } from "./run.js";
 import { esc, icon, page, TRY_URL } from "./ui.js";
+import { PURSER_CLOUD_URL } from "../ui/more.js";
 
 /** The link to /judge, word for word: at the top of Home, in the README and in the form. */
 export const JUDGE_LINK = "Judge it in 3 minutes →";
@@ -23,7 +24,7 @@ export interface JudgeLink { label: string; href: string }
 export interface JudgeStep { id: string; title: string; seconds: number; see: string; links: JudgeLink[]; note?: string }
 
 /**
- * The five steps, in the menu's order: Home's own moment (its card plays one payment from a /try run, step by step),
+ * The six steps, in the menu's order: Home's own moment (its card plays one payment from a /try run, step by step),
  * then the hands-on demo (TRY_URL, since 12 Nov: one Try everywhere): a test company of your own, sign the exact terms,
  * try to cheat, try to trick the reader, paid and booked; the old /try/sign story stays one link, "the 60-second story".
  * Then the proof. The tour no longer starts with the replay (12 Nov): /watch is reached from Proof.
@@ -32,27 +33,33 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
   const st = metalStory(record), refusal = st.refusal?.proof.href, note = refusalNote(st.refusal);
   return [
     {
-      id: "home", title: "One payment on Home", seconds: 40,
+      id: "home", title: "One payment on Home", seconds: 35,
       see: `Home's card plays one payment from a /try run: ${FLOW_STEPS.join(", ")}. The reader, the check, the Face ID signature over the exact terms, then the books.`,
       links: [{ label: "Open Home", href: "/home" }],
     },
     {
-      id: "sign", title: "Sign, then try to cheat", seconds: 40,
+      id: "sign", title: "Sign, then try to cheat", seconds: 35,
       see: "Start a test company of your own and file an invoice. Approve the exact terms with your passkey, then change one term and try to pay: Purser refuses it.",
       links: [{ label: "Open the hands-on demo", href: TRY_URL }, { label: "The 60-second story", href: "/try/sign" }],
     },
     {
-      id: "trick", title: "Try to trick the agent", seconds: 30,
+      id: "trick", title: "Try to trick the agent", seconds: 25,
       see: "File an invoice with a changed IBAN, or write your own. Claude or Purser's code reads it; Purser's code checks it and stops what does not add up.",
       links: [{ label: "Trick the reader in the demo", href: TRY_URL }],
     },
     {
-      id: "policy", title: "Paid, booked, filed", seconds: 30,
+      id: "policy", title: "Paid, booked, filed", seconds: 25,
       see: "Pay the terms as signed: the payment on the simulated bank (test money), the ledger's lines, and the invoice and receipt in the archive.",
       links: [{ label: "Finish it in the demo", href: TRY_URL }],
     },
     {
-      id: "proof", title: "See the proof", seconds: 40,
+      // Jury, 13 Nov: the hosted product with Claude, as a guest (the demo company, read only; its token is public).
+      id: "cloud", title: "Open Purser Cloud as guest, connect Claude (demo token)", seconds: 30,
+      see: "Try as guest opens the demo company, read only. Add Purser to Claude as a connector with the demo token; Claude reads the books and can approve or pay nothing.",
+      links: [{ label: "Open Purser Cloud", href: PURSER_CLOUD_URL }, { label: "Connect Claude: the steps", href: "/docs#claude" }],
+    },
+    {
+      id: "proof", title: "See the proof", seconds: 30,
       see: "What Purser guarantees, with the code and the test for each; every id of the main run; the Airwallex-only run of 7 November, every check passed, and Airwallex's own decline; Metal's refusal on chain.",
       links: [
         { label: "Open Proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open Metal", href: "/metal" },
@@ -151,8 +158,8 @@ ${steps.map((s, i) => `<li class="step card" id="s-${s.id}"><input type="checkbo
 </section>
 </div></main>`;
   return page({
-    title: "Judge it in 3 minutes", description: "Five steps for the jury, three minutes in all, in the menu's order: change one cent on Home, sign and try to cheat, try to trick the agent, change the rule, see the proof.",
-    tab: null, css: CSS, body, js: JS, stage: false,
+    title: "Judge it in 3 minutes", description: "Six steps for the jury, three minutes in all: one payment on Home, sign and try to cheat, try to trick the agent, paid and booked, Purser Cloud with Claude as a guest, see the proof.",
+    tab: "judge", css: CSS, body, js: JS, stage: false,
     source: "Source: src/redesign/judge.ts.",
     real: ["This page only links to Purser's pages and Metal's testnet explorer; each of those says what is real there. Your ticks stay in this browser (localStorage); nothing is sent to any server."],
   });

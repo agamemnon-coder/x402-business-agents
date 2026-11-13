@@ -126,7 +126,8 @@ describe("the partner pages", () => {
 
   it("are reached from Proof and from More, with the main nav four tabs and More, and served by the relay", () => {
     // Watch is a tab once the film is on /watch (src/config/film.ts).
-    expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof"] : ["home", "try", "proof"]);
+    // Jury, 13 Nov: Judge after Proof.
+    expect(NAV_MAIN.map(([k]) => k)).toEqual(WATCH_IN_MENU ? ["home", "watch", "try", "proof", "judge"] : ["home", "try", "proof", "judge"]);
     // The fifth item, "More" (12 Nov): the product pages, then the four partner pages, the same list in both navigations.
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
@@ -137,7 +138,7 @@ describe("the partner pages", () => {
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
     const nav = navHtml("try");
     const more = /<details class="pmore"><summary[^>]*>([^<]+)<\/summary><div class="pmenu">([\s\S]*?)<\/div><\/details><\/nav>$/.exec(nav);
-    expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"]]);
+    expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"], ["judge", "Judge"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"], ["judge", "Judge"]]);
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
     expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Pricing", "Security", "Airwallex", "Metal", "Visa", "Claude"]));

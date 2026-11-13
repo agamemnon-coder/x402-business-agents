@@ -41,7 +41,7 @@ describe("/visa's lead: the latest live run", () => {
     const matched = [b.read_back.mandate, b.read_back.payment_intent].filter((x) => x?.equal).length;
     // Jury pass, 13 Nov: on /visa the tiles are the four summary cards above the fold (visaSummary); the block keeps them
     // when shown on its own.
-    expect(text(html)).toContain(`${matched} of 2 Signed hash read back`);
+    expect(text(html)).toContain(`${matched} of 2 Signed hash, equal in Airi and Airwallex`);
     expect(text(vic3RunHtml(raw))).toContain(`${matched} of 2 hash matched at Airi and Airwallex`);
     expect(text(block)).toContain(`mandate read-back ${w(b.read_back.mandate)}`);
     expect(text(block)).toContain(`PaymentIntent read-back ${w(b.read_back.payment_intent)}`);
