@@ -1,13 +1,14 @@
-// Purser's mark, once: the site header's brand (src/redesign/ui.ts `.brand .mk`), a 30 px square with 9 px corners in
-// the ink colour and the feather icon, 17 px, white, centred in it. Every icon is drawn from this (owner, 13 Nov: the
-// browser tab showed a cyan feather, the header a white one): the site's favicon.svg, and the PNGs and the ICO that
-// `npm run cloud:icons` renders into src/ui/brand/icons.gen.ts for both Workers (kit11 and Purser Cloud) and the MCP server.
+// Purser's mark, once: docs/assets/brand/purser-mark.svg (#254, the header's mark: a white feather 16 of 30 units wide,
+// centred on a dark square with corners of 9 of 30), drawn here on a 64 grid. Every icon is drawn from this (owner,
+// 13 Nov: the browser tab showed a cyan feather, the header a white one): the site's favicon.svg, and the PNGs and the
+// ICO that `npm run cloud:icons` renders into src/ui/brand/icons.gen.ts for both Workers (kit11 and Purser Cloud) and
+// the MCP server. test/brand-icons.test.ts holds the two the same.
 
 import { ICONS } from "../icons.js";
 
-/** The header's ink (`--text` in light mode) and its proportions: square 30, corners 9, feather 17. */
+/** The header's ink (`--text` in light mode) and purser-mark.svg's proportions: square 30, corners 9, feather 16. */
 export const MARK_INK = "#0b1220";
-const SQUARE = 30, CORNER = 9, FEATHER = 17;
+const SQUARE = 30, CORNER = 9, FEATHER = 16;
 
 /** The query on every icon link, so a browser that kept the old icon fetches this one (13 Nov). */
 export const ICON_VERSION = "1113b";

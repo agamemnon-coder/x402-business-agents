@@ -19,14 +19,21 @@ const OFF = buildPages({} as NodeJS.ProcessEnv);
 const bytes = async (r: Response | null) => Buffer.from(await r!.arrayBuffer()).toString("base64");
 
 describe("Purser's mark: the header's, in every icon", () => {
-  it("is drawn with the header's proportions and colours: a 30 px square, 9 px corners, a white 17 px feather on the ink", () => {
-    expect(HEADER_CSS).toContain(".brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg);");
-    expect(header("home")).toContain('<span class="mk"><svg class="i" viewBox="0 0 24 24" width="17" height="17"');
+  it("is purser-mark.svg (#254, the header's mark) on a 64 grid: corners 9 of 30, a white feather 16 of 30, on the ink", () => {
+    const ref = readFileSync(new URL("../docs/assets/brand/purser-mark.svg", import.meta.url), "utf8");
+    const num = (re: RegExp, s: string) => Number(re.exec(s)![1]);
+    const k = 64 / 30, svg = markSvg();
+    expect(ref).toContain(`fill="${MARK_INK}"`);
     expect(TOKENS).toContain(`--text: ${MARK_INK};`);
-    const svg = markSvg();
-    // 9/30 of 64 is 19.2; 17/30 of 64 is 36.27, so the 24 grid scales by 1.5111 and sits 13.8667 in.
-    expect(svg).toContain(`<rect width="64" height="64" rx="19.2" fill="${MARK_INK}"/>`);
-    expect(svg).toContain('<g transform="translate(13.8667 13.8667) scale(1.5111)" fill="none" stroke="#fff" stroke-width="2"');
+    expect(HEADER_CSS).toContain(".brand .mk { width: 30px; height: 30px; border-radius: 9px; background: var(--text); color: var(--bg);");
+    expect(header("home")).toContain('<span class="mk"><svg class="i" viewBox="0 0 24 24"');
+    // The same geometry, scaled: corner radius, the feather's offset and its scale.
+    expect(num(/rx="([\d.]+)"/, svg)).toBeCloseTo(num(/rx="([\d.]+)"/, ref) * k, 3);
+    expect(num(/translate\(([\d.]+)/, svg)).toBeCloseTo(num(/translate\(([\d.]+)/, ref) * k, 3);
+    expect(num(/scale\(([\d.]+)\)/, svg)).toBeCloseTo(num(/scale\(([\d.]+)\)/, ref) * k, 3);
+    // The same three paths, white, at the same stroke.
+    for (const d of [...ref.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]!)) expect(svg).toContain(`<path d="${d}"/>`);
+    expect(svg).toContain('stroke="#fff" stroke-width="2"');
     expect(markSvg({ bleed: true })).toContain('rx="0"');
     // The generated icons and the site's file are this mark, not an older one (no cyan).
     expect(ICON_SVG).toBe(svg);
