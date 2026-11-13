@@ -589,7 +589,7 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const started = Date.now();
   const res = await route(req, env);
   const path = new URL(req.url).pathname;
-  const pattern = path.startsWith("/v1/") ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
+  const pattern = path.startsWith("/v1/") || isClaudePath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
   if (env.tryIt && path.startsWith("/v1/")) await noteRequest(env.sql, pattern, res.status, Date.now() - started, new Date());
   logEvent(res.status >= 500 ? "error" : res.status === 401 || res.status === 403 || res.status === 429 ? "warn" : "info", "request", { method: req.method, route: pattern, status: res.status, ms: Date.now() - started });
@@ -613,7 +613,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       // OAuth's registration and token requests hold no session and no key (a code is bound to its PKCE verifier), and a
       // client may make them from its own page: any origin may send them.
       // /mcp takes a bearer token only (no cookie rides along), so Claude's own web origins may call it too.
-      const anyOrigin = url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
+      // The consent page's answer arrives through the client's redirects (often Origin: null, in an app's own browser):
+      // its form's own signed, single-use token holds it instead (cloud/src/claude/oauth.ts consentToken).
+      const anyOrigin = url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || url.pathname === "/oauth/authorize" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
       if (from !== null && from !== env.origin && !anyOrigin) return err(403, "this request came from another site");
       // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
       // controls are a program's, with the platform token, and are not held to it).

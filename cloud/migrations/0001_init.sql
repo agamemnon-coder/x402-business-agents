@@ -448,3 +448,10 @@ CREATE TABLE IF NOT EXISTS oauth_codes (
   expires_at INTEGER NOT NULL,
   used_at INTEGER
 );
+
+-- Connect Claude: a consent form's token, once spent (cloud/src/claude/oauth.ts consentToken). Only its hash, until the
+-- form would have expired anyway; a second answer with the same form is refused.
+CREATE TABLE IF NOT EXISTS oauth_consents (
+  token_sha256 TEXT PRIMARY KEY,
+  expires_at INTEGER NOT NULL
+);
