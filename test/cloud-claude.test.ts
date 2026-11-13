@@ -160,7 +160,7 @@ describe("polish (13 Nov): Purser's icon, ready-made prompts, results a phone ca
     expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg"');
   });
 
-  it("offers three ready-made prompts, each asking for the tools that answer it", async () => {
+  it("offers five ready-made prompts, each asking for the tools that answer it", async () => {
     const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
     expect(init.json.result!.capabilities).toMatchObject({ prompts: {} });
     const list = (await rpc(DEMO_CONNECTOR_TOKEN, "prompts/list")).json.result!.prompts as { name: string; title: string; arguments?: { name: string; required: boolean }[] }[];

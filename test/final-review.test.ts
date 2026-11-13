@@ -8,7 +8,7 @@ const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "u
 describe("the final review (13 Nov)", () => {
   it("states one version: package.json's is the MCP server's serverInfo", () => {
     const pkg = JSON.parse(read("package.json")) as { version: string };
-    const served = /const serverInfo = \{ name: "purser", title: "Purser", version: "([^"]+)"/.exec(read("cloud/src/claude/mcp.ts"))?.[1];
+    const served = /export const SERVER_VERSION = "([^"]+)"/.exec(read("cloud/src/claude/mcp.ts"))?.[1];
     expect(served).toBeDefined();
     expect(pkg.version).toBe(served);
     expect((JSON.parse(read("package-lock.json")) as { version: string }).version).toBe(pkg.version);

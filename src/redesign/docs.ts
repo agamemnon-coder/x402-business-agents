@@ -117,7 +117,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
-    <p>Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf reads your books in Purser over MCP: invoices, payments, cash, VAT, what waits for approval and the CFO's policy. Only the CFO's Face ID approves a payment. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
+    <p>Claude, ChatGPT, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP. Only the CFO's Face ID approves a payment. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
     <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "The connector's guide")}</div>
     ${foldHtml("Open Purser Cloud as guest, connect Claude", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
@@ -125,12 +125,13 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
       `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
     ])}</article>
-  <article class="pc card wide" id="connections">${head("arrow-left-right", "Connections to other systems")}
-    <p>Every connection reads or exports; none moves money, approves or writes to the books.</p>
-    <ul class="pl"><li><b>Live:</b> the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.</li>
-      <li><b>Format exports:</b> Xero, QuickBooks Online and Exact Online CSV, Slack and Teams message formats, ISO 20022 pacs.008. Files and messages in each product's format, not live integrations.</li>
-      <li><b>From the runner:</b> Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live).</li></ul>
-    <div class="links">${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}</div></article>
+  <article class="pc card wide" id="connections">${head("arrow-left-right", "Connections")}
+    <div class="links">${outLink(repoHref(CONNECTIONS_DOC), "Every connection: read or export only")}</div>
+    ${foldHtml("Live, and format exports", [
+      `Live: the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.`,
+      "Format exports, not live integrations: Xero, QuickBooks Online and Exact Online CSV, Slack and Teams messages, an ISO payment message.",
+      "From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live).",
+    ])}</article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>

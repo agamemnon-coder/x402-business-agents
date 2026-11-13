@@ -77,7 +77,7 @@ describe("/docs: docs and API", () => {
     expect(html).toContain("<h1>Docs and API</h1>");
     expect(html).toContain("<title>Purser · Docs and API</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "connect-ai", "offline"]);
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "connect-ai", "connections", "offline"]);
   });
 
   it("lists exactly the tools the code defines, in the code's order, each with its own title; every description is in the fold, word for word", async () => {
@@ -133,7 +133,7 @@ describe("/docs: docs and API", () => {
     // The route is in the route table, and the table builds the document.
     const app = read("cloud/src/app.ts");
     expect(app).toContain(`path: "${CLOUD_OPENAPI_PATH}"`);
-    expect(app).toContain("export function openApi(origin: string)");
+    expect(app).toContain("export function openApi(origin: string, o: { readOnly?: boolean } = {})");
     const api = card(html, "cloud-api");
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     expect(plain(api)).toContain(CLOUD_OPENAPI_PATH);
