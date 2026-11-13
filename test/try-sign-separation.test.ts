@@ -137,7 +137,10 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(off.csp.trySign).toBeUndefined();
     expect(off.home).toBe(HOME_PAGE);
     expect(off.home).not.toContain("try/sign");
-    expect(pageResponse(new Request(`${BASE}/try/sign`), off)).toBeNull();
+    // Judge panel, 13 Nov: off, the page's address answers 301 to /try (never a 404 for the README's old links); its API stays 404.
+    const moved = pageResponse(new Request(`${BASE}/try/sign`), off)!;
+    expect(moved.status).toBe(301);
+    expect(moved.headers.get("location")).toBe("/try");
     expect(notFoundResponse(off).status).toBe(404);
     for (const v of ["off", "", "yes please"]) expect(buildPages({ TRY_SIGN_ENABLED: v }).trySign).toBeUndefined();
   });
@@ -181,11 +184,13 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     expect(on.home).toMatch(/<a class="btn primary big start" href="\/try">Try it live[\s\S]*?<\/a>/);
   });
 
-  it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {
+  it("the local relay: off, /try/sign answers 301 to /try and its API is 404; on, the whole visit works", async () => {
     delete process.env.TRY_SIGN_ENABLED;
     const off = await startLocalRelay({ port: 0, token: "x" });
     try {
-      expect((await fetch(`${off.url}/try/sign`)).status).toBe(404);
+      const moved = await fetch(`${off.url}/try/sign`, { redirect: "manual" });
+      expect(moved.status).toBe(301);
+      expect(moved.headers.get("location")).toBe("/try");
       expect((await fetch(`${off.url}/api/try-sign/world`, { method: "POST", headers: { origin: off.url, "content-type": "application/json" }, body: "{}" })).status).toBe(404);
     } finally { off.server.close(); }
     process.env.TRY_SIGN_ENABLED = "on";

@@ -16,12 +16,12 @@ import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
 import { homeStats, PROOF_BUTTON, START, WHATS_REAL } from "../../src/redesign/home.js";
 import { agentRun } from "../../src/redesign/run.js";
-import { scaleStats } from "../../src/redesign/scale.js";
+import { homeScaleStats } from "../../src/redesign/scale.js";
 
 /** A figure as the stat row writes it (src/redesign/stats.ts): grouped, with its decimals. */
 const fmt = (n: number, dec = 0) => n.toLocaleString("en-GB", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const STATS = homeStats(agentRun());
-const SCALE = scaleStats();
+const SCALE = homeScaleStats();
 
 /** The text in sight above a line of the page (document px): no hidden step, no closed fold, no script. */
 const SEEN_ABOVE = (limit: number) => `(() => {
@@ -90,7 +90,8 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
   if (!/passkeys \(P-256\) verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the passkeys verified on chain (${tiles[0]?.label})`);
-  // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link.
+  // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link;
+  // Home shows three of them since the judge panel of 13 Nov (homeScaleStats).
   const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));
   const wantBand = SCALE.map((x) => ({ figure: fmt(x.n), href: x.href }));
   if (JSON.stringify(band) !== JSON.stringify(wantBand)) fail(`the scale band is ${JSON.stringify(band)}, not the records' ${JSON.stringify(wantBand)}`);

@@ -49,7 +49,7 @@ flowchart LR
 <table>
 <tr>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/"><img src="media/readme/home.png" alt="Home, 12 November: the headline, one button and the hero at its fourth step, where one tap on +1 cent changes EUR 240.00 to 240.01 and the signature no longer matches"></a><br/><b>Home</b> · change one cent of a real approval</td>
-<td width="33%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="media/readme/try-sign.png" alt="Try: sign the exact terms with your own Face ID"></a><br/><b>Try</b> · sign with your own Face ID</td>
+<td width="33%"><a href="https://kit11.max-31b.workers.dev/try"><img src="media/readme/try-sign.png" alt="Try: sign the exact terms with your own Face ID"></a><br/><b>Try</b> · sign with your own Face ID</td>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/proof#guarantees"><img src="media/readme/proof.png" alt="Proof: what Purser guarantees, each with its code, test and run"></a><br/><b>Proof</b> · each guarantee, its code, test and run</td>
 </tr>
 <tr>
