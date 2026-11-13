@@ -174,7 +174,7 @@ describe("/security: security and trust", () => {
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
     // 12 Nov (jury check): the Face ID on chain run linked beside it.
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Face ID signs on chain How If the approver is unavailable");
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Passkeys sign on chain (P-256) How If the approver is unavailable");
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(card(html, "s-sign")).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
     expect(flowLinks(html, true)).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
@@ -332,8 +332,8 @@ describe("/security: security and trust", () => {
       .concat(((r) => [r.cases.length, r.calls, r.refused, r.unsafe].map(String))(json<{ cases: unknown[]; calls: number; refused: number; unsafe: number }>("docs/evals/ap-hostile.json")))
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
-    // Names that carry a digit are not figures: "SOC 2", "SHA-256", and the files the folds name.
-    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
+    // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
+    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(figures(`${text} 100% safe`).filter((n) => !allowed.has(n))).toEqual(["100"]);
   });

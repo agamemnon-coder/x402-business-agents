@@ -105,7 +105,9 @@ describe("Home, the enterprise pass", () => {
       const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string };
       const vic3 = JSON.parse(read(VIC3_RUN_FILE)) as { started_at: string };
       const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
-      expect(text(out.slice(at)).match(DATE)).toEqual([`${day(owners.ran_at)}`, day(vic3.started_at)]);
+      // The main run's line (review, 13 Nov) names its day, as its record does ("the main run, 3 Nov").
+      const mainDay = /\d{1,2} [A-Z][a-z]{2}/.exec(agentRun().record.run)![0];
+      expect(text(out.slice(at)).match(DATE)).toEqual([`${day(owners.ran_at)}`, mainDay, day(vic3.started_at)]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
@@ -145,7 +147,7 @@ describe("Home, the enterprise pass", () => {
     const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, Face ID verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length} passkeys, co-signer a test key`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length}, co-signer a test key`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
@@ -202,9 +204,11 @@ describe("Home, the enterprise pass", () => {
     for (const bad of ["javascript:alert(1)", "http://plain.example.test", 'https://x.test/"><script>']) expect(homePage(undefined, { smallCompanyUrl: bad })).not.toContain('class="next"');
   });
 
-  // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words.
-  it("A11: stays within 300 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(300);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(300);
+  // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words. 345 since the
+  // review of 13 Nov: the main run's line (its company, agents, figures and the film; 32 words) and which agents the
+  // flow shows (9 words); 341 as built.
+  it("A11: stays within 345 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(345);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(345);
   });
 });

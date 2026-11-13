@@ -9,7 +9,7 @@ import { COUNT_JS } from "./stats.js";
 import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
 import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
-import { SUMMARY_CSS, detailsFold, summaryHtml, type SummaryCard } from "./summary.js";
+import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
@@ -50,8 +50,8 @@ details.deep h2.sec { display: none; }
 details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep section.band .wrap { padding: 0; } details.deep .sechead { display: none; }
 /* The jury's order (12 Nov): the heading, then the guarantees at once; the partners; the run's label with its numbers. */
 .proofp { padding: 18px 0 24px; }
-.proofp h1 { font-size: clamp(32px, 3.4vw, 44px); font-weight: 780; margin: 0 0 12px; }
-.proofp .gtee { margin: 0 0 6px; }
+.proofp h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 740; letter-spacing: -.02em; margin: 8px 0 16px; }
+.proofp > .wrap { max-width: 1120px; }
 .proofp [id] { scroll-margin-top: 80px; }
 .runline { margin: 26px 0 10px; }
 .split { margin: 0 0 14px; font-size: clamp(17px, 1.8vw, 21px); font-weight: 650; max-width: 46em; }
@@ -464,6 +464,31 @@ const dayShortUtc = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "nu
 /** The company a run record names (the main run: Northwind Outdoor), for the labels that say whose run a figure is. */
 const companyOf = (run: AgentRun) => { const c = (run.record as { company?: unknown }).company; return typeof c === "string" ? c : ""; };
 
+/** The 13 Nov run with the owner's own iPhone Face ID (review, 13 Nov): where it stands, from its log. */
+const FACEID_AWX_LOG = "docs/runs/2026-11-13-airwallex-faceid.md", FACEID_AWX_DAY = "13 Nov";
+const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPROVAL)`/.exec(readFileSync(new URL(`../../${FACEID_AWX_LOG}`, import.meta.url), "utf8"))?.[1] ?? null; } catch { return null; } })();
+
+/**
+ * The four cards on /proof (the owner, 13 Nov: "enterprise level"): one structure each, the same height, no icon: the
+ * figure, a one-line title, its context (scope and day), and one link to where its record is shown, "Record".
+ */
+export function proofCardsHtml(cards: SummaryCard[]): string {
+  if (!cards.length) return "";
+  return `<ul class="sumc" data-look="metric" aria-label="${esc("Proof in four cards")}">${cards.map((c) => `<li${c.tone ? ` class="${c.tone}"` : ""}${c.rec ? ` data-rec="${esc(c.rec)}"` : ""}><a href="${esc(c.href)}"><b class="sc-f">${esc(c.fig)}</b><b class="sc-t">${esc(c.title)}</b><small>${esc(c.text)}</small><span class="sc-l">${esc("Record")} →</span></a></li>`).join("")}</ul>`;
+}
+
+export const PROOF_CARDS_CSS = `
+ul.sumc[data-look="metric"] { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; margin: 0 0 32px; }
+@media (max-width: 1000px) { ul.sumc[data-look="metric"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { ul.sumc[data-look="metric"] { grid-template-columns: 1fr; grid-auto-rows: auto; } }
+ul.sumc[data-look="metric"] a { display: flex; flex-direction: column; align-items: stretch; gap: 6px; padding: 18px 18px 16px; border-radius: 14px; }
+ul.sumc[data-look="metric"] .sc-f { font-size: 26px; font-weight: 720; letter-spacing: -.02em; }
+ul.sumc[data-look="metric"] .sc-t { font-size: 15px; font-weight: 650; line-height: 1.3; }
+ul.sumc[data-look="metric"] small { margin: 0; flex: 1; font-size: 13.5px; line-height: 1.45; }
+ul.sumc[data-look="metric"] .sc-l { margin-top: 8px; font-size: 13.5px; font-weight: 650; color: var(--accent); }
+ul.sumc[data-look="metric"] a:hover .sc-l, ul.sumc[data-look="metric"] a:focus-visible .sc-l { text-decoration: underline; }
+`;
+
 export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3?: Vic3Record | null } = {}): SummaryCard[] {
   const out: SummaryCard[] = [];
   const owners = o.owners === undefined ? ownersRun() : o.owners;
@@ -473,21 +498,21 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
     const virtual = owners.rec.owners.some((x) => x.virtual);
     // Its strongest number (the owner, 13 Nov): the limit changes the account ran, each only after every passkey signed.
     const changes = steps.filter((x) => x.key === "bind" || x.key === "replace" || x.key === "revoke").length;
-    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Face ID verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
-      text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change ran only after ${owners.rec.threshold} of ${owners.rec.owners.length} passkeys signed${virtual ? " (co-signer a test key)" : ""}. ${refused.label.replace(/^Refused /, "")} over the cap refused, then paid after the raise.` });
+    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Passkeys (P-256) verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
+      text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change only after ${owners.rec.threshold} of ${owners.rec.owners.length} passkeys signed${virtual ? "; co-signer a test key" : ""}.` });
   }
   const hold = airwallexHold(), ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
   // Its strongest number: the amount Airwallex held for a person, then paid.
   const held = hold ? /\((EUR [\d,]+\.\d\d)\)/.exec(hold.short)?.[1] : undefined;
-  if (hold && ended) out.push({ icon: "landmark", fig: held ?? ended, title: `Airwallex held it, then ${ended}`, tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record}`, text: `${hold.short.replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.` });
+  if (hold && ended) out.push({ icon: "landmark", fig: held ?? ended, title: `Held by Airwallex, then ${ended}`, tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record} ${FACEID_AWX_LOG}`, text: `Sandbox, ${dayShortUtc(hold.date)}: a test passkey signed in Purser, a person approved at Airwallex.${FACEID_AWX_REACHED ? ` The owner's own iPhone Face ID run (${FACEID_AWX_DAY}) reached ${FACEID_AWX_REACHED}.` : ""}` });
   const v3 = o.vic3 === undefined ? vic3Run() : o.vic3;
   // Its strongest number: the amount paid above the CFO's limit, only after Face ID (the run's other outcomes in the line).
   if (v3) {
     const s3 = vic3Summary(v3), fid = s3.paidFaceId[0]?.request;
-    out.push({ icon: "credit-card", fig: fid ? `${fid.currency} ${fid.amount}` : `${s3.paid} paid`, title: "Visa via Airwallex's Airi: paid after Face ID", href: "visa", rec: VIC3_RUN_FILE, text: `Airwallex sandbox, test card, ${dayShortUtc(v3.started_at)}: ${vic3Lead(v3)}.` });
+    out.push({ icon: "credit-card", fig: fid ? `${fid.currency} ${fid.amount}` : `${s3.paid} paid`, title: "Visa via Airwallex's Airi, after Face ID", href: "visa", rec: VIC3_RUN_FILE, text: `Airwallex sandbox, test card, ${dayShortUtc(v3.started_at)}: ${vic3Lead(v3)}.` });
   }
   const sp = split(run.record);
-  if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in ${run.record.run}${companyOf(run) ? ` (${companyOf(run)})` : ""}, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; Purser's code holds the limits.` });
+  if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in ${run.record.run}${companyOf(run) ? ` (${companyOf(run)})` : ""}; ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}.` });
   return out;
 }
 
@@ -519,8 +544,8 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
-  ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
-  ${summaryHtml(proofSummary(run), "Proof in four cards")}
+  ${scaleBandHtml(scaleStats(), "What ran, in numbers", { strip: true })}
+  ${proofCardsHtml(proofSummary(run))}
   ${guaranteesHtml()}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${lifeVisual("wide")}
   ${railsVisual("wide")}
@@ -541,7 +566,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

@@ -23,6 +23,8 @@ export interface StatementView {
   assets: StatementLine[]; liabilities: StatementLine[]; equity: StatementLine[];
   totalAssets: number; totalLiabilities: number; totalEquity: number; result: number; balances: boolean;
   revenue: number; expenses: StatementLine[]; totalExpenses: number;
+  /** No revenue, yet the output VAT account holds VAT: reverse charge, shown as such. */
+  reverseCharge: boolean;
   sorted: { date: string; supplier: string; number: string; total: string; currency: string; booking: string; reason: string }[];
 }
 
@@ -36,6 +38,10 @@ export function centsOf(s: string): number | null {
 // read as stock purchases (review, 13 Nov: "Purchased stock data" for mugs confused a visitor).
 const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "1515": "Foreign VAT to reclaim (EU refund)", "2100": "Creditors", "3000": "Owner's equity", "5000": "Stock purchases" };
 export const plainName = (account: string, name: string): string => PLAIN[account] ?? name.replace(/\s*\(.*\)$/, "");
+const OUTPUT_VAT_ACCOUNT = "2210";
+export const REVERSE_CHARGE_NAME = "VAT payable, reverse charge";
+/** One line under the balance sheet when the VAT payable is reverse charge (review, 13 Nov). */
+export const REVERSE_CHARGE_LINE = "No sales this month: the VAT payable is reverse charge, the VAT the company owes on services bought from suppliers in other countries; the same amount is reclaimed as input VAT.";
 const chartName = (account: string) => plainName(account, LEDGER_ACCOUNTS[account] ?? "");
 
 /**
@@ -46,16 +52,20 @@ const chartName = (account: string) => plainName(account, LEDGER_ACCOUNTS[accoun
 export function statementView(f: BooksStatementFile): StatementView | null {
   const b = f.balance[0], p = f.pnl.find((x) => x.currency === b?.currency);
   if (!b || !p) return null;
-  const lines = (type: string) => b.accounts.filter((a) => a.type === type).map((a) => ({ name: plainName(a.account, a.name), cents: centsOf(a.amount) ?? NaN }));
+  const result = centsOf(b.result), revenue = centsOf(p.revenue), expense = centsOf(p.expense);
+  // Review, 13 Nov: "Output VAT" beside no revenue reads as an error. With no sales, what that account holds is the VAT
+  // the company owes itself on reverse-charged purchases (src/ap/books.ts), so it is named for what it is.
+  const reverseCharge = revenue === 0 && b.accounts.some((a) => a.account === OUTPUT_VAT_ACCOUNT && (centsOf(a.amount) ?? 0) !== 0);
+  const nameOf = (account: string, name: string) => (reverseCharge && account === OUTPUT_VAT_ACCOUNT ? REVERSE_CHARGE_NAME : plainName(account, name));
+  const lines = (type: string) => b.accounts.filter((a) => a.type === type).map((a) => ({ name: nameOf(a.account, a.name), cents: centsOf(a.amount) ?? NaN }));
   const assets = lines("asset"), liabilities = lines("liability"), equity = lines("equity");
   const expenses = p.accounts.map((a) => ({ name: plainName(a.account, a.name), cents: centsOf(a.amount) ?? NaN }));
-  const result = centsOf(b.result), revenue = centsOf(p.revenue), expense = centsOf(p.expense);
   if (result === null || revenue === null || expense === null || [...assets, ...liabilities, ...equity, ...expenses].some((x) => !Number.isFinite(x.cents))) return null;
   const sum = (xs: StatementLine[]) => xs.reduce((n, x) => n + x.cents, 0);
   const totalAssets = sum(assets), totalLiabilities = sum(liabilities), totalEquity = sum(equity) + result, totalExpenses = sum(expenses);
   const asOf = f.cash?.length ? f.cash.reduce((d, c) => (c.day > d ? c.day : d), f.day) : f.day;
   return {
-    company: f.company, currency: b.currency, asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity, result,
+    company: f.company, currency: b.currency, asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity, result, reverseCharge,
     balances: b.balanced && totalAssets === totalLiabilities + totalEquity && result === revenue - expense && totalExpenses === expense,
     revenue, expenses, totalExpenses,
     sorted: f.sorted.rows.filter((r) => r.supplier && r.number && r.date && r.total && r.reason).map((r) => ({

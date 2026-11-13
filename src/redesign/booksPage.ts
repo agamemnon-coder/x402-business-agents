@@ -17,7 +17,7 @@ import { T0_JOURNAL_RECORD, t0Journal, type T0Journal } from "./t0Page.js";
 import { esc, icon } from "./ui.js";
 import { statementView, type BooksStatementFile, type StatementLine, type StatementView } from "../vault/statementPdf.js";
 
-import { centsOf } from "../vault/statementPdf.js";
+import { centsOf, REVERSE_CHARGE_LINE } from "../vault/statementPdf.js";
 export { centsOf, plainName } from "../vault/statementPdf.js";
 /** The run record /books is drawn from (npm run books:month). */
 export const RUN_FILE = "docs/runs/2026-11-13-books-month.json";
@@ -179,7 +179,7 @@ ${tr("grp", "Assets", null)}${lines(v.assets)}${tr("sub", "Total assets", v.tota
 ${tr("grp", "Liabilities", null)}${lines(v.liabilities)}${tr("sub", "Total liabilities", v.totalLiabilities)}
 ${tr("grp", "Equity", null)}${lines(v.equity)}${tr("ln", "Result this year", v.result)}${tr("sub", "Total equity", v.totalEquity)}
 ${tr("tot", "Total liabilities and equity", v.totalLiabilities + v.totalEquity)}</tbody></table>
-<p class="bk-ok">${icon("check", 17)}${esc(`Balances: ${money(v.totalAssets)} = ${money(v.totalLiabilities + v.totalEquity)}`)}</p>${others ? `<p class="sub">${esc(others)}</p>` : ""}</section>`;
+<p class="bk-ok">${icon("check", 17)}${esc(`Balances: ${money(v.totalAssets)} = ${money(v.totalLiabilities + v.totalEquity)}`)}</p>${v.reverseCharge ? `<p class="sub">${esc(REVERSE_CHARGE_LINE)}</p>` : ""}${others ? `<p class="sub">${esc(others)}</p>` : ""}</section>`;
   const pnl = `<section class="bk-card" aria-labelledby="bk-pl"><h2 id="bk-pl">${icon("trending-up", 19)}${esc("Profit and loss")}<span class="tag">${esc(`2026 · ${v.currency}`)}</span></h2>
 <table class="bk-st"><tbody>
 ${tr("", "Revenue", v.revenue)}${tr("grp", "Expenses", null)}${lines(v.expenses)}${tr("sub", "Total expenses", v.totalExpenses)}
