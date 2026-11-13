@@ -223,7 +223,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign) (that one needs the live site and your own
 passkey).
 
-The full suite, `npm test` (4 to 7 min): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `2c125977`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`).
+The full suite, `npm test` (4 to 7 min): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `a3918d22`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
