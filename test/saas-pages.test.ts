@@ -11,7 +11,7 @@ import { hostileClaimText } from "../src/redesign/partners.js";
 import { FEE_BPS_CAP } from "../src/airwallex/platform.js";
 import { PRICING, euro, percentOfBps } from "../src/config/pricing.js";
 import { FEE_FOLD, PRICING_LEAD, TEST_VALUES, e2eFeeRun, feeLine, feeRun, pricingPage } from "../src/redesign/pricing.js";
-import { AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
+import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PRICING_CSP, PRICING_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
@@ -140,6 +140,8 @@ describe("/security: security and trust", () => {
   /** A card's words in sight: its fold counts as its summary only. */
   const inSight = (id: string) => mainText(`<main>${card(html, id).replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")}</main>`);
   const folded = (id: string) => mainText(`<main>${/<details class="fold">[\s\S]*?<\/details>/.exec(card(html, id))?.[0] ?? ""}</main>`);
+  /** Any piece of the page as it is in sight: a fold counts as its summary only. */
+  const inSightOf = (el: string) => mainText(`<main>${el.replace(/<details\b[^>]*>\s*<summary[^>]*>([\s\S]*?)<\/summary>[\s\S]*?<\/details>/g, " $1 ")}</main>`);
 
   // The owner, 12 Nov 15:55: the strongest page of the site, enterprise grade and calm: one header line, a grid of
   // controls each with its proof, and a short honest "Not yet".
@@ -330,12 +332,104 @@ describe("/security: security and trust", () => {
       .concat(first.day.split(" ")[0]!, oct.day.split(" ")[0]!, night.day.split(" ")[0]!, audit.day.split(" ")[0]!)
       // And the hostile-model eval's figures, from its own record.
       .concat(((r) => [r.cases.length, r.calls, r.refused, r.unsafe].map(String))(json<{ cases: unknown[]; calls: number; refused: number; unsafe: number }>("docs/evals/ap-hostile.json")))
+      // And the zero-trust report's figures (attacks, stopped per layer, by target and layer), the hostile-model eval's
+      // parts, and the day of the anchor run: each counted from its record here, not from the page's own code.
+      .concat(((z) => [z.attacks_run, z.attacks_stopped, ...z.attacks.map((x) => z.attacks.filter((y) => y.stopped_by?.layer === x.stopped_by?.layer).length), ...z.attacks.map((x) => z.attacks.filter((y) => y.target === x.target && y.stopped_by?.layer === x.stopped_by?.layer).length)].map(String))(json<{ attacks_run: number; attacks_stopped: number; attacks: { target: string; stopped_by: { layer: string } | null }[] }>("docs/zero-trust/report.json")))
+      .concat(((h) => [h.blocked_by_tool, h.overridden_at_enforce, h.stood].map(String))(json<{ blocked_by_tool: number; overridden_at_enforce: number; stood: number }>("docs/evals/ap-hostile.json")))
+      .concat(String(new Date(json<{ anchored_at: string }>("docs/runs/2026-11-13-anchor.json").anchored_at).getUTCDate()))
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
     const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(figures(`${text} 100% safe`).filter((n) => !allowed.has(n))).toEqual(["100"]);
+  });
+
+  // 13 Nov (the owner: "looks simple and a lot of text; visualise and animate all the security, use diagrams and
+  // graphs"): one diagram of the layers a payment must pass, with where each attack was stopped, and two charts.
+  describe("the pictures, each read from its record", () => {
+    const z = json<{ attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; reading: { harness: string }; layer_list: { id: string }[]; attacks: { target: string; moved: boolean; stopped_by: { layer: string } | null }[]; depth: { minimum: { optional_off: { depth: number } } } }>("docs/zero-trust/report.json");
+    const h = json<{ calls: number; refused: number; blocked_by_tool: number; overridden_at_enforce: number; stood: number; unsafe: number }>("docs/evals/ap-hostile.json");
+    const section = (id: string) => new RegExp(`<section class="card [a-z]+" id="${id}"[\\s\\S]*?</section>`).exec(html)?.[0] ?? "";
+
+    it("sit between the lead and the cards: the layers, then the hostile-model eval and the grid", () => {
+      expect(html.indexOf('id="layers"')).toBeGreaterThan(html.indexOf('<p class="lead">'));
+      expect(html.indexOf('id="hostile"')).toBeGreaterThan(html.indexOf('id="layers"'));
+      expect(html.indexOf('id="where"')).toBeGreaterThan(html.indexOf('id="hostile"'));
+      expect(html.indexOf('<div class="cols c3">')).toBeGreaterThan(html.indexOf('id="where"'));
+      expect(securityPage()).toContain(securityViz());
+    });
+
+    it("the layers: the report's six in its order, each with the attacks stopped there, counted from its attacks", () => {
+      const hero = section("layers");
+      expect([...hero.matchAll(/<li class="[a-z]+" id="z-(L\d)">/g)].map((m) => m[1])).toEqual(z.layer_list.map((l) => l.id));
+      expect([...hero.matchAll(/<b class="nm">([^<]+)<\/b>/g)].map((m) => decode(m[1]!))).toEqual(["The agent asks", "Policy and limits in code", "Face ID or a passkey", "Four eyes", "The rail's own limit", "Books and audit chain"]);
+      const counts = [...hero.matchAll(/id="z-(L\d)">[\s\S]*?(?:<b>(\d+)<\/b> stopped here|<\/li>)/g)].map((m) => [m[1], m[2] === undefined ? null : Number(m[2])]);
+      expect(counts).toEqual(z.layer_list.map((l) => [l.id, l.id === "L1" ? null : z.attacks.filter((a) => a.stopped_by?.layer === l.id).length]));
+      expect(counts.reduce((n, [, c]) => n + (c as number ?? 0), 0)).toBe(z.attacks_stopped);
+      expect(z.attacks_stopped).toBe(z.attacks_run);
+      expect(z.attacks_where_money_moved).toBe(0);
+      expect(inSightOf(hero).replace(/ ,/g, ",")).toContain(`${z.attacks_run} attacks, all stopped; none moved money. At least two layers must fail before a hostile payment moves.`);
+      expect(z.depth.minimum.optional_off.depth).toBe(2);
+      // Simulated rails, said where the figures are, and in the fold in the report's own sense.
+      expect(hero).toContain('<span class="pill">Test harness, simulated rails</span>');
+      expect(HARNESS_LINE).toBe(z.reading.harness.replace("Purser's own code is the real code;", "Purser's own code is the real code;").replace(". Purser's", ": Purser's").replace("are stand-ins", "are simulated"));
+      // The rails' own limits, the passkey above the limits and the anchor run, linked to its transaction.
+      expect(inSightOf(hero)).toMatch(/Above the limits, the CFO signs the terms' hash\. .*Metal's mandate on chain; Airwallex card and transfer limits\. .*Hash-linked, anchored on Metal testnet\./);
+      expect(read("docs/security.md")).toContain("nothing above the limits is paid");
+      expect(anchorRun()).toEqual({ day: "13 November", network: "Metal testnet", explorer: json<{ explorer: string }>(ANCHOR_RUN).explorer, check: "npm run verify-anchor" });
+      expect(hero).toContain(`href="${anchorRun().explorer}"`);
+      expect(hero).toContain(`href="${repoHref("docs/zero-trust/report.json")}"`);
+    });
+
+    it("animate with CSS only: no script, no inline style, and still for a reader who asks for reduced motion", () => {
+      expect(scriptBlocks(html)).toEqual([]);
+      expect(html).not.toMatch(/\sstyle="/);
+      expect([...section("layers").matchAll(/<i class="zp ([a-z0-9 ]+)"><\/i>/g)].map((m) => m[1])).toEqual(["ok", "no s2", "no s3", "no s5"]);
+      // The red pulses stop at layers that stopped attacks; each stop is that layer's place on the track.
+      expect(SECURITY_VIZ_CSS).toContain(".zp.s2 { --to: 20%;");
+      expect(SECURITY_VIZ_CSS).toContain(".zp.s3 { --to: 40%;");
+      expect(SECURITY_VIZ_CSS).toContain(".zp.s5 { --to: 80%;");
+      expect(SECURITY_VIZ_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\n {2}\.zp \{ animation: none; opacity: 1;/);
+      expect(html).toContain(SECURITY_VIZ_CSS);
+      // Red and green are the pulses' only; the series use the validated categorical blue, orange and aqua.
+      expect(SECURITY_VIZ_CSS).toContain(".sec { --c-a: #2a78d6; --c-b: #eb6834; --c-c: #1baf7a;");
+      expect(SECURITY_VIZ_CSS).toContain("--c-a: #3987e5; --c-b: #d95926; --c-c: #199e70;");
+    });
+
+    it("the hostile-model eval: its three parts as one bar, each with its figure written beside it, from its record", () => {
+      expect(hostileEval()).toMatchObject({ calls: h.calls, refused: h.refused, tool: h.blocked_by_tool, enforce: h.overridden_at_enforce, stood: h.stood, unsafe: h.unsafe });
+      expect(h.blocked_by_tool + h.overridden_at_enforce).toBe(h.refused);
+      expect(h.refused + h.stood).toBe(h.calls);
+      const t = inSightOf(section("hostile"));
+      expect(t).toContain(`${h.calls} calls · ${h.unsafe === 0 ? "none" : h.unsafe} unsafe`);
+      expect(t).toContain(`${h.blocked_by_tool} refused by the tool's own check ${h.overridden_at_enforce} made stricter by code before it counted ${h.stood} stood as the script made it`);
+      const widths = [...section("hostile").matchAll(/<rect class="f-[abc]" x="[\d.]+" width="([\d.]+)"/g)].map((m) => Number(m[1]));
+      expect(widths.map((w) => Math.round(w))).toEqual([h.blocked_by_tool, h.overridden_at_enforce, h.stood].map((n) => Math.round((n / h.calls) * 1000)));
+      expect(() => hostileEval(JSON.stringify({ ...h, stood: h.stood + 1 }))).toThrow(/do not add up/);
+    });
+
+    it("the grid: every attack by what it aimed at and the layer that refused it, a figure in each cell", () => {
+      const zt = zeroTrust(), grid = section("where");
+      const rows = [...grid.matchAll(/<tr><th scope="row">([^<]+)<\/th>([\s\S]*?)<\/tr>/g)].map((m) => [decode(m[1]!), [...m[2]!.matchAll(/<td class="h\d">([^<]+)<\/td>/g)].map((c) => c[1] === "·" ? 0 : Number(c[1]))]);
+      const layers = ["L2", "L3", "L4", "L5", "L6"];
+      const targets = [...new Set(z.attacks.map((a) => a.target))];
+      expect(rows.length).toBe(targets.length);
+      for (const [name, cells] of rows) {
+        const id = zt.targets.find((t) => t.name === name)!.id;
+        expect({ name, cells }).toEqual({ name, cells: layers.map((l) => z.attacks.filter((a) => a.target === id && a.stopped_by?.layer === l).length) });
+      }
+      expect(rows.flatMap(([, c]) => c as number[]).reduce((a, b) => a + b, 0)).toBe(z.attacks_run);
+      // Most attacked first.
+      expect(rows.map(([, c]) => (c as number[]).reduce((a, b) => a + b, 0))).toEqual([...rows.map(([, c]) => (c as number[]).reduce((a, b) => a + b, 0))].sort((a, b) => b - a));
+      expect([...grid.matchAll(/<th scope="col">(L\d)<span class="wd"> ([^<]+)<\/span><\/th>/g)].map((m) => [m[1], decode(m[2]!)])).toEqual(layers.map((l) => [l, ZT_NAMES[l]!.short]));
+      expect(() => zeroTrust(JSON.stringify({ ...z, attacks_stopped: z.attacks_stopped + 1 }))).toThrow(/do not add up/);
+      expect(() => zeroTrust(JSON.stringify({ ...z, attacks: z.attacks.map((a, i) => (i ? a : { ...a, target: "elsewhere" })) }))).toThrow(/no name for the target elsewhere/);
+    });
+
+    it("no figure written as a fraction", () => {
+      expect(text).not.toMatch(/\b\d+\s*\/\s*\d+\b/);
+    });
   });
 
   it("says what is real in its own words: sandbox and testnet only", () => {

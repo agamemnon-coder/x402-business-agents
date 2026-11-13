@@ -864,7 +864,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/pricing" ? 150 : 280; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = path === "/pricing" ? 150 : 530; // /security 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -884,6 +884,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
         if (!/^(\/?try(\/sign)?|https:\/\/purser-try\.max-31b\.workers\.dev\/try)$/.test((await page.locator("#s-sign .links a").first().getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+        // 13 Nov (the owner: diagrams and graphs, animated): six layers in one row from 900 px, else one column; four pulses
+        // moving along the track (CSS only), standing still for a reader who asks for reduced motion; the two charts.
+        const viz = await page.evaluate(`(() => { const ol = document.querySelector("#layers .zlayers"); const li = [...(ol ? ol.children : [])]; const tops = new Set(li.map((e) => Math.round(e.getBoundingClientRect().top))); return { layers: li.length, rows: tops.size, pulses: [...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName), cells: document.querySelectorAll("#where table.zheat tbody td").length, legend: document.querySelectorAll("#hostile .zlegend li").length }; })()`) as { layers: number; rows: number; pulses: string[]; cells: number; legend: number };
+        if (viz.layers !== 6 || viz.rows !== (w >= 900 ? 1 : 6) || viz.pulses.join() !== Array(4).fill(w >= 900 ? "zx" : "zy").join() || viz.cells !== 35 || viz.legend !== 3) fail(`/security ${tag}: not six layers ${w >= 900 ? "in one row" : "in a column"} with four moving pulses, or a chart is missing (${JSON.stringify(viz)})`);
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        const still = await page.evaluate(`[...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName + "/" + getComputedStyle(e).opacity).join()`) as string;
+        await page.emulateMedia({ reducedMotion: null });
+        if (still !== Array(4).fill("none/1").join()) fail(`/security ${tag}: the pulses still move, or are hidden, under reduced motion (${still})`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
