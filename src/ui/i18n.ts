@@ -458,7 +458,7 @@ const EN = {
   "cs.guest.opening": "Opening the demo company…",
   "cs.guest.failed": "The demo company did not open: {error}",
   // The trust line under the sign-in card: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
-  "cs.trust_works": "Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)",
+  "cs.trust_works": "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   "cs.trust_test": "Test money only",
   "cs.session_ended": "Your sign-in ended (sessions last 15 minutes). Sign in again with your passkey.",
   "cs.ends_in": "ends in {n} min",
@@ -1461,7 +1461,7 @@ const NL: { readonly [K in Key]: string } = {
   "cs.guest.sub": "Open een demobedrijf, alleen lezen. Geen passkey, geen e-mail.",
   "cs.guest.opening": "Het demobedrijf wordt geopend…",
   "cs.guest.failed": "Het demobedrijf ging niet open: {error}",
-  "cs.trust_works": "Werkt met Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox- en testnetruns)",
+  "cs.trust_works": "Werkt met Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox- en testnetruns)",
   "cs.trust_test": "Alleen testgeld",
   "cs.session_ended": "Je aanmelding is verlopen (een sessie duurt 15 minuten). Meld je opnieuw aan met je passkey.",
   "cs.ends_in": "nog {n} min",
