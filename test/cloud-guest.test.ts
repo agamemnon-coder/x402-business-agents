@@ -76,7 +76,7 @@ describe("Try as guest", () => {
     const g = await guest();
     const d = (await c.req("GET", "/v1/dashboard", { key: g.session })).json as {
       currency: string; money: { in: string; out: string; net: string }; cash: { day: string; net: string }[];
-      spend: { key: string; amount: string; count: number; declined: number }[]; invoices: Record<string, { count: number; amount: string }> & { duplicates_stopped: number };
+      spend: { key: string; amount: string; count: number; declined: number; parts?: { inbox: { count: number; amount: string }; outside: { count: number; amount: string }; fees: string } }[]; invoices: Record<string, { count: number; amount: string }> & { duplicates_stopped: number };
       approvals: { weeks: { cfo: number; alone: number }[]; approved_by_cfo: number }; agents: { decisions: number; by_fallback: number }; feed: { who: string; text: string }[];
     };
     type Tx = { direction: string; moved: boolean; currency: string; amount: string; fee: { amount: string; currency: string } | null; approval: { required: boolean }; invoice: unknown };
@@ -93,6 +93,19 @@ describe("Try as guest", () => {
     expect(d.spend.reduce((n, s) => n + cents(s.amount), 0)).toBe(outC);
     expect(d.spend.reduce((n, s) => n + s.count + s.declined, 0)).toBe(out.length);
     expect(d.spend.find((s) => s.key === "invoices")!.count).toBe(out.filter((t) => t.invoice && t.moved).length);
+    // Jury review, 13 Nov: the bar's "CFO-approved EUR 6,802.40 · 6 payments" beside "Paid 4 · EUR 4,658.80" read as two
+    // answers to one question. The bar says what it holds, from the same rows: the inbox's paid invoices (exactly the
+    // Paid figure), the invoice payments with no inbox invoice, and the transfer fees.
+    const bar = d.spend.find((s) => s.key === "invoices")!;
+    const invRows = out.filter((t) => t.invoice && t.moved) as (Tx & { invoice: { ap_id: string | null } })[];
+    const inbox = invRows.filter((t) => t.invoice.ap_id), outside = invRows.filter((t) => !t.invoice.ap_id);
+    expect(bar.parts).toEqual({
+      inbox: { count: inbox.length, amount: (inbox.reduce((n, t) => n + cents(t.amount), 0) / 100).toFixed(2) },
+      outside: { count: outside.length, amount: (outside.reduce((n, t) => n + cents(t.amount), 0) / 100).toFixed(2) },
+      fees: (invRows.reduce((n, t) => n + (t.fee?.currency === "EUR" ? cents(t.fee.amount) : 0), 0) / 100).toFixed(2),
+    });
+    expect(bar.parts!.inbox).toEqual({ count: d.invoices.paid!.count, amount: d.invoices.paid!.amount });
+    expect(cents(bar.parts!.inbox.amount) + cents(bar.parts!.outside.amount) + cents(bar.parts!.fees)).toBe(cents(bar.amount));
     // Approvals: each moved payment once, the CFO's where the register says an approval was required.
     expect(d.approvals.weeks.reduce((n, w) => n + w.cfo, 0)).toBe(moved.filter((t) => t.direction === "out" && t.approval.required).length);
     expect(d.approvals.weeks.reduce((n, w) => n + w.cfo + w.alone, 0)).toBe(moved.filter((t) => t.direction === "out").length);

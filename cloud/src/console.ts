@@ -652,7 +652,7 @@ function invoiceRing(D){
 function spendBars(D){
   const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
   return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null])])}))}
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])}))}
 function feedList(D){
   return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
 function dashBlock(D){

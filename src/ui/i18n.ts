@@ -419,6 +419,8 @@ const EN = {
   "cs.dash.spend.treasury": "Treasury agent, own card",
   "cs.dash.spend.other": "Other",
   "cs.dash.n_payments": "{n} payments",
+  // Jury review, 13 Nov: what the invoices bar holds, so it reconciles with "Paid" in Invoices (from the same rows).
+  "cs.dash.spend_parts": "{inbox} paid inbox invoices {inbox_amt} + {outside} invoices paid outside the inbox {outside_amt} + transfer fees {fees}",
   "cs.dash.declined": "{n} declined by Airwallex",
   "cs.dash.declined_sim": "{n} declined (simulated)",
   "cs.dash.appr_title": "Payments per week",
@@ -1549,6 +1551,7 @@ const NL: { readonly [K in Key]: string } = {
   "cs.dash.spend.treasury": "Treasury-agent, eigen kaart",
   "cs.dash.spend.other": "Overig",
   "cs.dash.n_payments": "{n} betalingen",
+  "cs.dash.spend_parts": "{inbox} betaalde facturen uit de inbox {inbox_amt} + {outside} facturen betaald buiten de inbox {outside_amt} + overboekingskosten {fees}",
   "cs.dash.declined": "{n} geweigerd door Airwallex",
   "cs.dash.declined_sim": "{n} geweigerd (gesimuleerd)",
   "cs.dash.appr_title": "Betalingen per week",

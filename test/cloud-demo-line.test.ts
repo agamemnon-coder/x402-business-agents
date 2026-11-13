@@ -22,3 +22,11 @@ describe("the demo company's one line", () => {
     expect(html).toContain("$('#foot').textContent=document.body.classList.contains('demo')?t('cs.demo.line'):on?t('cs.eng.foot'):t('cs.foot')");
   });
 });
+
+describe("the invoices bar says what it holds", () => {
+  it("renders the inbox, outside-the-inbox and fee parts under the bar, in both languages", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).toContain("s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,");
+    for (const l of ["en", "nl"] as const) expect(MESSAGES[l]["cs.dash.spend_parts"]).toMatch(/\{inbox\}[\s\S]*\{inbox_amt\}[\s\S]*\{outside\}[\s\S]*\{outside_amt\}[\s\S]*\{fees\}/);
+  });
+});
