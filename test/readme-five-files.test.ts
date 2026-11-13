@@ -42,8 +42,8 @@ const sourceLines = (p: string) => read(p).split("\n");
 
 describe("README: How it works in 5 files", () => {
   it("sits after the first screen and why this is a company, and before the deep docs links", () => {
-    expect(start).toBeGreaterThan(README.indexOf("## Why this is a company"));
-    expect(README.indexOf("## Why this is a company")).toBeGreaterThan(0);
+    expect(start).toBeGreaterThan(README.indexOf("## The business hypothesis"));
+    expect(README.indexOf("## The business hypothesis")).toBeGreaterThan(0);
     expect(start).toBeLessThan(README.indexOf("## Links"));
   });
 
@@ -86,7 +86,7 @@ describe("README: How it works in 5 files", () => {
 });
 
 describe("the architecture diagram", () => {
-  const SVG_PATH = "docs/how-it-works.svg";
+  const SVG_PATH = "docs/assets/how-it-works.svg";
   const svg = read(SVG_PATH);
 
   it("is shown in the section", () => {
@@ -154,7 +154,7 @@ describe("the README's own words elsewhere: the package, the business pages, the
   });
 
   it("the business pages carry the README's traction sentence word for word", () => {
-    const heading = "## Why this is a company";
+    const heading = "## The business hypothesis";
     const traction = /^[^\n]*?no pilots, no revenue\./m.exec(README.slice(README.indexOf(heading) + heading.length).trimStart())![0];
     expect(traction.startsWith("Not validated with customers yet")).toBe(true);
     for (const p of ["docs/business/README.md", "docs/business/model.md", "docs/business/problem.md", "docs/business/roadmap.md"]) {

@@ -25,6 +25,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { liveRuns, type RunRow } from "./runs.js";
 import type { AgentRun, RunRecord } from "./run.js";
 import { esc, icon } from "./ui.js";
+import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 
 export const PRODUCT_ORDER = ["issuing", "payouts", "fx", "approvals", "connected", "acceptance", "airi"] as const;
 export type ProductKey = (typeof PRODUCT_ORDER)[number];
@@ -449,7 +450,7 @@ export function flaggedTiles(): ProductTile[] {
   return [payeeCheckTile(json(PAYEE_CHECK_FILE)), batchTile(json(BATCH_FILE)), ledgerTile(json(FT_FILE))].filter((t): t is ProductTile => t !== null);
 }
 export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
-  return tiles.length ? `<h2 class="vh">Behind flags</h2><p class="awflag">${esc(FLAGGED_LINE)}</p><section class="awp" aria-label="Airwallex products behind flags, each run live on 12 Nov">${tiles.map(tileHtml).join("\n")}</section>` : "";
+  return tiles.length ? `<section class="awgroup off" aria-labelledby="awg-off"><h2 id="awg-off"><span class="dot" aria-hidden="true"></span>${esc(FLAGGED_LINE)}</h2><div class="awp">${tiles.map(tileHtml).join("\n")}</div></section>` : "";
 }
 
 /** The tiles that have their facts, in the fixed order. */
@@ -467,18 +468,23 @@ export const tileWords = (html: string) => html.replace(/<svg[\s\S]*?<\/svg>/g, 
 export const shortId = (id: string) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/.test(id) ? `${id.slice(0, 8)}…` : id;
 const link = (href: string, inner: string, attrs = "") => `<a href="${esc(href)}"${attrs}${/^https?:/.test(href) ? ' target="_blank" rel="noopener"' : ""}>${inner}${/^https?:/.test(href) ? " ↗" : ""}</a>`;
 
+/**
+ * One product, quiet (owner, 13 Nov: "overwhelming with all the numbers"): its name, one plain sentence, its day and a
+ * link to its proof in sight; the figure, what Airwallex enforces there and the id under "Details". A tile with states
+ * (transfer approvals) shows them in sight: IN_APPROVAL and PAID are said as the record says them.
+ */
 function tileHtml(t: ProductTile): string {
-  const body = t.states ? `<ol class="aws">${t.states.map((s) => `<li class="${s.tone}"><b>${esc(s.text)}</b></li>`).join("")}</ol>` : `<p class="w">${esc(t.what)}</p>`;
+  const line = t.states ? `<ol class="aws">${t.states.map((s) => `<li class="${s.tone}"><b>${esc(s.text)}</b></li>`).join("")}</ol>`
+    : `<p class="w">${esc(/^[a-z]/.test(t.what) ? `${t.value} ${t.what}` : t.what)}</p>`;
   return `<article class="awt card${t.states ? " wide" : ""}" id="p-${t.key}" data-rec="${esc(t.files.join(" "))}"><h2>${esc(t.name)}</h2>
-<span class="v">${countUp(t.value)}</span>
-${body}
-<p class="y">${esc(t.why)}</p>
-<p class="i">${link(t.href, `<code>${esc(shortId(t.id))}</code>`, ` title="${esc(`${t.idLabel} ${t.id}`)}"`)}<time datetime="${esc(t.iso)}">${esc(dayShort(t.iso))}</time></p></article>`;
+${line}
+<p class="d"><time datetime="${esc(t.iso)}">${esc(dayShort(t.iso))}</time>${link(t.href, icon("file-check", 18), ` class="pr" aria-label="${esc(`${t.name}: the proof`)}" title="The proof"`)}</p>
+<details class="fold awdet"><summary>Details</summary><span class="v">${countUp(t.value)}</span><p class="y">${esc(t.why)}</p><p class="i">${link(t.href, `<code>${esc(shortId(t.id))}</code>`, ` title="${esc(`${t.idLabel} ${t.id}`)}"`)}</p></details></article>`;
 }
 
 /** The tiles: one per product, in order. */
 export function tilesHtml(tiles: ProductTile[]): string {
-  return tiles.length ? `<section class="awp" aria-label="The Airwallex products Purser uses">${tiles.map(tileHtml).join("\n")}</section>` : "";
+  return tiles.length ? `<section class="awgroup on" aria-labelledby="awg-on"><h2 id="awg-on"><span class="dot" aria-hidden="true"></span>In use</h2><div class="awp">${tiles.map(tileHtml).join("\n")}</div></section>` : "";
 }
 
 const liPlain = (t: string, tone = "") => `<li${tone ? ` class="${tone}"` : ""}>${esc(t)}</li>`;
@@ -574,8 +580,9 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${count[0]!.toUpperCase()}${count.slice(1)} Airwallex products in use${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
+  ${visualsHtml(tiles, flagged)}
   ${tilesHtml(tiles)}
-  ${flaggedHtml()}
+  ${flaggedHtml(flagged)}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}
   <div class="folds card">${folds}</div>
   <a class="open" href="proof#${esc(o.proofHash)}">All the proof ${icon("arrow-right", 15)}</a>
@@ -587,9 +594,13 @@ export const PRODUCTS_CSS = `.awflag { margin: 18px 0 8px; color: var(--muted); 
 .awp { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
 .awt { padding: 14px 16px 4px; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; row-gap: 4px; align-items: baseline; align-content: start; min-width: 0; scroll-margin-top: 80px; }
 .awt h2 { font-size: 14px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--awx); line-height: 1.3; }
-.awt .v { font-size: 26px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.awt .v { font-size: 22px; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .awt p, .awt ol { grid-column: 1 / -1; margin: 0; }
-.awt .w { font-size: 15.5px; font-weight: 600; line-height: 1.4; }
+.awt .w { font-size: 15px; font-weight: 500; line-height: 1.45; color: var(--text); }
+.awt .d { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--muted); }
+.awt .d a.pr { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
+.awt details.awdet { grid-column: 1 / -1; margin: 0 0 8px; } .awt details.awdet > summary { font-size: 13.5px; color: var(--muted); }
+.awt details.awdet .v { display: block; margin: 6px 0 2px; }
 .awt .y { font-size: 14.5px; color: var(--muted); line-height: 1.4; }
 .awt .i { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .awt .i a { display: inline-flex; align-items: center; min-height: 44px; min-width: 0; color: var(--accent); text-decoration: none; } .awt time { white-space: nowrap; }
@@ -600,7 +611,7 @@ ol.aws li + li::before { content: "→"; }
 ol.aws b { font-weight: 650; padding: 3px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); }
 ol.aws li.ok b { background: var(--ok-soft); color: var(--ok); } ol.aws li.bad b { background: var(--bad-soft); color: var(--bad); }
 @media (min-width: 560px) { .awp { grid-template-columns: repeat(2, minmax(0, 1fr)); } .awt.wide, .awp > :last-child { grid-column: span 2; }
-  .awt { grid-template-columns: minmax(0, 1fr); padding: 16px 18px 4px; grid-template-rows: auto auto auto 1fr; } .awt .v { font-size: clamp(28px, 3vw, 38px); } .awt .i { align-self: end; } }
+  .awt { grid-template-columns: minmax(0, 1fr); padding: 16px 18px 4px; } }
 @media (min-width: 900px) { .awp { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } .awp > :last-child:not(.wide) { grid-column: auto; } }
 .awrb p.awswift { font-size: 15px; color: var(--muted); padding: 0 20px; } .awswift a { color: var(--accent); font-weight: 600; text-decoration: none; white-space: nowrap; }
 .folds .awrb .card { border: 0; border-radius: 0; box-shadow: none; background: none; padding: 0 0 10px; }
@@ -613,4 +624,5 @@ details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID}, li#${MAIN_RUN_FX_ID}, 
    links stand in a list, one row of 44 px each, so no link's padding covers the one above it (review, 12 Nov). */
 @media (max-width: 700px) { .awxp a.pf, .awxp .awswift a { padding: 14px 0; } .awxp a.open { min-height: 44px; }
   .awxp ul.awd a.pf { display: flex; align-items: center; min-height: 44px; padding: 0; } .awxp ul.awd .sep { display: none; }
-  .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }`;
+  .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }
+${VISUAL_CSS}`;

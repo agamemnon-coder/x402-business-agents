@@ -123,11 +123,13 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(screen("13-proof").kicker).toBe("The main run · 3 November 2026");
   });
 
-  it("shows the test count the README shows, in its line and its badge, and refuses to render when they disagree", () => {
-    const line = testLine(README).tests, badge = /badge\/tests-(\d+)%20passing/.exec(README)![1];
-    expect(badge).toBe(line);
+  it("shows the test count the README shows, and refuses to render when a tests badge disagrees with the line", () => {
+    // Since 13 Nov the README has no tests badge (three badges: CI, license, live demo); the line is the count.
+    const line = testLine(README).tests;
+    expect(/badge\/tests-/.test(README)).toBe(false);
     expect(fact("specs.tests")).toBe(line);
-    expect(() => buildPremiere(raw(), README.replace(/badge\/tests-\d+%20passing/, "badge/tests-1%20passing"))).toThrow(/badge .* disagree/);
+    const withBadge = `${README}\n![t](https://img.shields.io/badge/tests-1%20passing-brightgreen)`;
+    expect(() => buildPremiere(raw(), withBadge)).toThrow(/badge .* disagree/);
   });
 
   it("the Metal card (v5): every Metal payment its own transaction, counted from the record; the render stops without it", () => {
@@ -285,7 +287,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(CORE_LINE.join(" ")).toBe("Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.");
     // The film was recorded on 5 November with this line; on 6 November Max moved the README's core line to the
     // three locks, so the film keeps its own line and the README carries the new one.
-    expect(README).toContain("**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with Face ID.**");
+    expect(README).toContain("**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**"); // "a passkey (Face ID on iPhone)" since 13 Nov: attestation is none
     expect(screen("02-purser").core).toEqual(CORE_LINE);
     // The narrator's opening, word for word, from the script: in the third person, who built it.
     expect([...data.voice["01-hook"]!, ...data.voice["02-purser"]!].map((l) => l.text).join(" ")).toBe("AI agents are starting to spend money. So who signs off? This is Purser, built by Max Geurtsen.");
@@ -661,10 +663,10 @@ describe("docs/video/ holds what the code writes", () => {
     const published = { words, length };
     expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere, v8: ${published.words} words in ${published.length} (`);
     expect(README).toContain(`[Film, ${published.length}](https://youtu.be/kCUsFHrxE-o)`);
-    expect(read("docs/submission/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
+    expect(read("docs/archive/internal/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
-      "docs/submission/README.md", "docs/submission/release-notes.md", "docs/submission/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
+      "docs/submission/README.md", "docs/submission/release-notes.md", "docs/archive/internal/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
     for (const f of docs) expect({ f, max: /Max (records|reads|speaks|voices)\b|his (own )?voice|Max on camera|on Max's voice|\*\*Max:\*\*/i.test(read(f)) }).toEqual({ f, max: false });
     for (const f of ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/submission/README.md", "docs/requirements-matrix.md"]) expect({ f, eleven: /AI-generated voice[^.]*ElevenLabs/.test(read(f).replace(/\s+/g, " ")) }).toEqual({ f, eleven: true });
   });
