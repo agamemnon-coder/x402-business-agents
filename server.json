@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.agamemnon-coder/purser",
   "title": "Purser",
-  "description": "Read a company's books in Purser: invoices, payments, cash, VAT, approvals. Never approves or pays.",
+  "description": "Read Purser's books. Never approves or pays; a propose-scoped token files payments for CFO approval.",
   "version": "1.1.0",
   "websiteUrl": "https://purser-try.max-31b.workers.dev/connect-ai",
   "repository": { "url": "https://github.com/agamemnon-coder/x402-business-agents", "source": "github" },

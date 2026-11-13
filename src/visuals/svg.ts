@@ -328,18 +328,18 @@ export const SOCIAL_LINE = "AI agents spend. You sign off.";
 const MARK_PATHS = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"];
 
 /** The small line under it: what the line means, as docs/security.md says it ("nothing above the limits is paid"). */
-export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face ID."] as const;
-/** Where the "Built with" row goes: the PNG render puts the partners' own logo files there (src/cli/visuals.ts). */
-export const SOCIAL_BUILT_WITH = { x: 72, y: 516, label: "Built with" } as const;
-/** The logos in that row, in this order (the orchestrator, 13 Nov: Airwallex, Metal, Visa (Airi), Claude). */
-export const SOCIAL_LOGOS = ["Airwallex", "Metal", "Visa", "Claude"] as const;
+export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face ID or a passkey."] as const;
+/**
+ * The "Built with" line, in words only (the final partner review, 13 Nov: no partner marks on the card, and Visa by the
+ * product the build used): the partners' names in the site's ink colours, no logos.
+ */
+export const SOCIAL_BUILT_WITH = { x: 72, y: 540, label: "Built with", names: ["Airwallex", "Metal", "Visa Intelligent Commerce", "Claude"] } as const;
 
 /**
  * The link preview and the repository's social preview (the owner, 13 Nov: readable at thumbnail size). 1200×630, on
  * the site's light tokens and in its type: the mark and the name, the one line large in two lines, one small line, and
  * on the right a small version of the payment's path (the agent asks, the payment is above its limit, Face ID, then
- * paid or never paid), drawn with the site's own icons. The "Built with" row of logos is added where the PNG is
- * rendered, from the official files (src/visuals/logos.ts), so this SVG carries no copy of them.
+ * paid or never paid), drawn with the site's own icons, and the "Built with" line in words.
  */
 export function socialSvg(_site?: string): string {
   const { width: W, height: H } = SOCIAL_SIZE;
@@ -374,12 +374,12 @@ export function socialSvg(_site?: string): string {
     text(72, 268, ["AI agents spend."], "s-line", 0),
     text(72, 358, ["You sign off."], "s-line s-line2", 0),
     text(72, 428, [...SOCIAL_SUB], "s-sub", 40),
-    text(SOCIAL_BUILT_WITH.x, SOCIAL_BUILT_WITH.y, [SOCIAL_BUILT_WITH.label], "s-bw", 0),
+    `<text class="s-bw" x="${SOCIAL_BUILT_WITH.x}" y="${SOCIAL_BUILT_WITH.y}">${esc(SOCIAL_BUILT_WITH.label)} <tspan class="s-bwn">${esc(SOCIAL_BUILT_WITH.names.join(" · "))}</tspan></text>`,
     `<rect class="s-card" x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="28"/>`,
     link(ys[0]!), link(ys[1]!), fork,
     step(ys[0]!, "bot", "The agent asks to pay", "by card or by transfer"),
     step(ys[1]!, "sliders-horizontal", "Above its limit", "checked by code"),
-    step(ys[2]!, "scan-face", "Your Face ID", "you sign the exact terms", true),
+    step(ys[2]!, "scan-face", "Face ID or a passkey", "you sign the exact terms", true),
     ending(nx, true), ending(nx + ew + 14, false),
   ];
   const css = `.pv .s-bg { fill: #f7f8fa; } .pv .s-glow { fill: url(#s-grad); }
@@ -388,12 +388,12 @@ export function socialSvg(_site?: string): string {
 .pv .s-name { font-size: 38px; font-weight: 760; letter-spacing: -.025em; fill: #0b1220; }
 .pv .s-line { font-size: 80px; font-weight: 800; letter-spacing: -.04em; fill: #0b1220; } .pv .s-line2 { fill: #4f46e5; }
 .pv .s-sub { font-size: 31px; font-weight: 520; letter-spacing: -.01em; fill: #3b4456; }
-.pv .s-bw { font-size: 20px; font-weight: 600; fill: #586174; letter-spacing: .01em; }
+.pv .s-bw { font-size: 21px; font-weight: 560; fill: #586174; } .pv .s-bwn { font-weight: 680; fill: #0b1220; }
 .pv .s-card { fill: #ffffff; stroke: #e3e6ec; stroke-width: 1.5; filter: drop-shadow(0 18px 40px rgba(16, 24, 40, .10)); }
 .pv .s-node { fill: #f1f3f7; } .pv .s-hot { fill: #eef0ff; stroke: #4f46e5; stroke-width: 2.5; }
 .pv .s-ic { fill: #ffffff; } .pv .s-ic-hot { fill: #4f46e5; }
 .pv .s-g { color: #4f46e5; } .pv .s-g-hot { color: #ffffff; } .pv .s-g-ok { color: #0b7d43; } .pv .s-g-bad { color: #c5363c; }
-.pv .s-n { font-size: 22px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
+.pv .s-n { font-size: 21px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
 .pv .s-link { fill: none; stroke: #c9cfda; stroke-width: 3; stroke-linecap: round; }
 .pv .s-ok { fill: #e6f6ee; stroke: #0b7d43; stroke-width: 2; } .pv .s-bad { fill: #fdecec; stroke: #c5363c; stroke-width: 2; }
 .pv .s-e { font-size: 21px; font-weight: 750; } .pv .s-e-ok { fill: #0b7d43; } .pv .s-e-bad { fill: #c5363c; }

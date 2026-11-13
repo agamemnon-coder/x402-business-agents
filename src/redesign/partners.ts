@@ -357,16 +357,30 @@ export function visaPage(run: AgentRun = agentRun()): string {
 /** The hostile-model eval's record (jury panel, 12 Nov): a script in Claude's place, run in CI (npm run ap-hostile-eval). */
 export const HOSTILE_RECORD_FILE = "docs/evals/ap-hostile.json";
 
+/** The eval's split, from its record: refused by a tool's own check, made stricter when code enforced, stood as made. */
+export interface HostileSplit { calls: number; tool: number; enforce: number; refused: number; stood: number; unsafe: number; cases: number }
+/** The record's split, or null when there is no record; parts that do not add up to its totals are an error. */
+export function hostileSplit(file = HOSTILE_RECORD_FILE): HostileSplit | null {
+  const url = new URL(`../../${file}`, import.meta.url);
+  if (!existsSync(url)) return null;
+  const j = JSON.parse(readFileSync(url, "utf8")) as { calls: number; refused: number; blocked_by_tool: number; overridden_at_enforce: number; stood: number; unsafe: number; cases?: unknown[] };
+  if (j.blocked_by_tool + j.overridden_at_enforce !== j.refused || j.refused + j.stood !== j.calls) throw new Error(`${file}: its parts do not add up to its totals`);
+  return { calls: j.calls, tool: j.blocked_by_tool, enforce: j.overridden_at_enforce, refused: j.refused, stood: j.stood, unsafe: j.unsafe, cases: j.cases?.length ?? 0 };
+}
 /**
- * /claude's line from that record, as a visitor reads it; "" when there is no record. It names its scope (review round
- * 1, 12 Nov: the page shows the three Kit 11 agents, and the eval is of the payables agents): the agents and the number
- * of test invoices, counted from the record's cases.
+ * The one wording of the split, on every page (the final review, 13 Nov: /security and /claude said it three ways):
+ * "318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe)". "Safe" only when the ledger's
+ * verdict found none unsafe.
+ */
+export const hostileWords = (h: HostileSplit) => `${h.tool} refused and ${h.enforce} made stricter: ${h.refused} stopped or tightened by code; ${h.stood} stood (${h.unsafe === 0 ? "safe" : `${h.unsafe} unsafe`})`;
+
+/**
+ * The eval's line, as a visitor reads it; "" when there is no record. It names its scope (review round 1, 12 Nov: the
+ * eval is of the payables agents): the agents and the number of test invoices, counted from the record's cases.
  */
 export function hostileClaimText(file = HOSTILE_RECORD_FILE): string {
-  const url = new URL(`../../${file}`, import.meta.url);
-  if (!existsSync(url)) return "";
-  const { line, cases } = JSON.parse(readFileSync(url, "utf8")) as { line?: string; cases?: unknown[] };
-  return line ? `In CI, a script in place of the payables agents, on ${cases?.length ?? 0} test invoices: ${line}.` : "";
+  const h = hostileSplit(file);
+  return h ? `In CI, a script in place of the payables agents, on ${h.cases} test invoices: ${h.calls} hostile tool calls; ${hostileWords(h)}.` : "";
 }
 
 export function claudePage(run: AgentRun = agentRun()): string {

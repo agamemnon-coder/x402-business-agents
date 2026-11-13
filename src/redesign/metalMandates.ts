@@ -228,10 +228,16 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
 .msteps > li p { margin: 0; font-size: 15px; line-height: 1.45; }
 .msteps .tx2 { display: flex; flex-wrap: wrap; gap: 0 14px; }
 .mtp .mchart p, .mtp .mrep p, .mtp .mhero p, .mtp .mmand p, .mcards dd { overflow-wrap: anywhere; }`;
+/**
+ * What the separate Face ID on chain run showed, and no more (the final review, 13 Nov: "Since 12 Nov it does"
+ * overstated it; the main run's mandates are still owned by the runner's key).
+ */
+export const FACEID_SEPARATE_RUN = "In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).";
 export const METAL_CSS = `${MT_CSS}\n${VIZ_CSS}`;
 
 /**
- * The page's one script: the live read replaces the recorded spend only when the chain answered; otherwise it says why.
+ * The page's one script: the live read replaces the recorded spend only when the chain answered, and only then shows
+ * the live wording ("one read for everyone every 15 minutes"); otherwise the page keeps saying it is a recorded snapshot.
  * Every place that shows an agent's spend (its card, its bar, the table) is updated; a bar's length is an attribute.
  */
 export const METAL_INSPECT_JS = `(function () {
@@ -253,6 +259,10 @@ export const METAL_INSPECT_JS = `(function () {
       });
       label.textContent = "Spent: read live from Metal testnet at " + a.read_at.slice(11, 16) + " UTC, block " + a.block + ".";
       if (why) why.textContent = "";
+      // The live wording only once a live read succeeded (the final review, 13 Nov).
+      var how = document.getElementById("mlive-how"), rec = document.getElementById("mlive-rec");
+      if (how) how.hidden = false;
+      if (rec) rec.hidden = true;
     }
   }).catch(function () {});
 })();`;
@@ -344,8 +354,8 @@ ${x?.revoked ? `<div class="one"><span class="big">${esc(`#${x.revoked.seq}`)}</
       + barSvg(m.agent, m.agent, m.budget, spentOf(m), m.budget, `${name(m)}: spent ${spentOf(m)} of ${m.budget}`) + `</li>`;
   }).join("")}</ul>
 <p class="mnote">${esc("*USDZ, test money.")}</p>
-<p class="mnote" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><b id="mlive">${esc(live ? `Spent: recorded on ${day(live.recorded_on)} at block ${live.block}, a read-only check.` : "Spent: as the main run recorded it.")}</b> <span id="mlive-why"></span></p>
-${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote">${esc(`One read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only. With your own Metal testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
+<p class="mnote" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><b id="mlive">${esc(live ? `Spent: a recorded snapshot from ${day(live.recorded_on)} (block ${live.block}), not a live read.` : "Spent: as the main run recorded it.")}</b> <span id="mlive-why"></span></p>
+${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote"><span id="mlive-rec">${esc(`It answers with the recorded snapshot from ${day(live.recorded_on)} (block ${live.block}) until a live Metal testnet read is set up, and says so.`)}</span><span id="mlive-how" hidden>${esc(`Read live: one read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only.`)}</span> ${esc(`With your own Metal testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
 <details class="fold" id="mandates"><summary>${esc("Details: every mandate")}</summary><section class="mt" aria-labelledby="mt-h"><h2 id="mt-h">${esc("Each mandate, its cap and its spend")}</h2>
 <table class="mtab"><thead><tr><th scope="col">Agent</th><th scope="col">Cap a payment</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Payee</th><th scope="col">Expires</th><th scope="col">Revoked</th></tr></thead><tbody>
 ${rows.map((m) => {
@@ -360,7 +370,7 @@ ${rows.map((m) => {
   const replace = x ? `<section class="mrep card" id="replace" aria-labelledby="mr-h"><h2 class="mh" id="mr-h">${esc("Mandates replaced after Face ID")}</h2>
 <ol class="msteps">
 <li><span class="st">${icon("scan-face", 18)}${esc("Face ID")}</span><p>${esc(`${x.proposal}: the CFO's Face ID and a test passkey approved it in Purser.`)}</p></li>
-<li><span class="st">${icon("link-2", 18)}${esc("New mandates on chain")}</span><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p><p>${esc(signer?.actor === "owner-signer" ? "One owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "")}${signer?.actor === "owner-signer" && ownersRun() ? ` <a class="pf" href="#faceid-onchain">${esc("Since 12 Nov it does")} ↓</a>` : ""}</p></li>
+<li><span class="st">${icon("link-2", 18)}${esc("New mandates on chain")}</span><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p><p>${esc(signer?.actor === "owner-signer" ? "One owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "")}${signer?.actor === "owner-signer" && ownersRun() ? ` <a class="pf" href="#faceid-onchain">${esc(FACEID_SEPARATE_RUN)} ↓</a>` : ""}</p></li>
 ${x.revoked ? `<li class="no"><span class="st">${icon("ban", 18)}${esc("Old mandate refused")}</span><p>${esc(`#${x.revoked.seq} on the old mandate: refused by Metal's facilitator (${x.revoked.code}), no transaction.`)}</p></li>` : ""}
 </ol></section>` : "";
 
