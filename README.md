@@ -186,7 +186,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (4 to 7 min): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `6c230e53`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude, every check above included. The skipped ones run only on local D1 (`npm run test:d1`).
+- `npm test` (4 to 7 min): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `2c125977`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude, every check above included. The skipped ones run only on local D1 (`npm run test:d1`).
 - `npm run judge -- --check` (about 3 s): builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record, offline, and fetches each once.
 - `npm run verify-approval` (under 1 s): checks the receipt of the owner's real passkey approval of 7 November, published on 12 November, offline with Node's own crypto: the passkey signed exactly those terms; change one cent and it says NOT VALID. `npm run verify-receipt -- receipt.json` does the same for the receipt you get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign). Getting the receipt needs the live site and your own passkey.
 
