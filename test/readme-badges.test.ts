@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 // same count as the README's own test line (which in turn is the real `npx vitest run` count).
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const badgeLine = readme.split("\n").find((l) => l.includes("actions/workflows/ci.yml/badge.svg")) ?? "";
+const pkgNode = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { engines: { node: string } }).engines.node;
 
 describe("README badges", () => {
   it("has at most five badges, on one line", () => {
@@ -17,20 +18,23 @@ describe("README badges", () => {
     expect(badgeLine).not.toMatch(/[?&]logo=/);
   });
 
-  // Since 13 Nov (second review): three badges, CI, license and the live demo. No tests badge: the count is the README's
-  // line, written from docs/assets/test-summary.json by npm run test-count (test/test-count.test.ts).
-  it("is three badges: CI, license and the live demo; the count is in the README's test line, not a badge", () => {
-    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "License: MIT", "Live demo: hands-on"]);
+  // Since 13 Nov (the README upgrade): four real badges, CI, CodeQL, the licence and the Node version package.json
+  // requires. No tests badge: the count is the README's line, from docs/assets/test-summary.json (npm run test-count).
+  it("is four badges: CI, CodeQL, the licence and the Node version; the count is in the README's test line", () => {
+    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "License: MIT", `Node: ${pkgNode}`]);
+    expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
+    expect(badgeLine).toContain(`https://img.shields.io/badge/node-${encodeURIComponent(pkgNode).replace(/%20/g, "%20")}-339933`);
     expect(badgeLine).not.toMatch(/badge\/tests-/);
     expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
   });
 
-  // Since 12 Nov (one Try everywhere) the live demo badge opens the hands-on demo, not /try/sign.
-  it("links the live demo to the hands-on demo and says test money only", () => {
-    // Jury pass, 13 Nov: one Try URL everywhere (kit11 /try).
-    expect(badgeLine).toContain("(https://kit11.max-31b.workers.dev/try)");
-    expect(badgeLine).not.toContain("purser-try");
-    // The rails and "test money only" moved from a badge to plain text under the badges (13 Nov).
+  // The three buttons above the badges (13 Nov): the tour, the hands-on demo (one Try URL everywhere, kit11 /try) and the
+  // film; then the rails and "test money only" as plain text.
+  it("puts three buttons above the badges: the tour, Try it on the hands-on demo, the film; and says test money only", () => {
+    const buttons = readme.split("\n").find((l) => l.includes("Take_the_tour")) ?? "";
+    expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/tour", "https://kit11.max-31b.workers.dev/try", "https://youtu.be/kCUsFHrxE-o"]);
+    expect(buttons).not.toContain("purser-try");
+    expect(readme.indexOf(buttons)).toBeLessThan(readme.indexOf(badgeLine));
     expect(readme).toContain("Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.");
   });
 });

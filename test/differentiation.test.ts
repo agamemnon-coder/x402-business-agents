@@ -65,13 +65,16 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(lines.slice(0, 6)).toContain("# Purser · AI agents spend. You sign off.");
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 30).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
+    // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 45).join("\n"));
+    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
+    // Since 13 Nov (the README upgrade) Try it is one of three buttons after them (the tour, Try it, the film).
+    expect(readme).toContain(`alt="${TRY_IT.replace(/\.$/, "")}"`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof); /try/sign stays
     // linked from the README (the "Approve with Face ID" picture), not from the top.
-    expect(lines.slice(0, 16).join("\n")).toContain("(https://kit11.max-31b.workers.dev/tour)");
+    expect(lines.slice(0, 16).join("\n")).toContain("\"https://kit11.max-31b.workers.dev/tour\"");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
