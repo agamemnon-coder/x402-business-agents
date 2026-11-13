@@ -22,3 +22,15 @@ What a page shows is what it showed at capture time; the site is the source, the
 | [`loop-live-home-1440.mp4`](loop-live-home-1440.mp4) | Home's demo playing, first screen | the live site: https://kit11.max-31b.workers.dev/ | 1440 px, dark | 131 KB | 2026-11-12 14:11 UTC |
 | [`loop-live-home-390.mp4`](loop-live-home-390.mp4) | Home's demo playing, first screen | the live site: https://kit11.max-31b.workers.dev/ | 390 px, dark | 63 KB | 2026-11-12 14:12 UTC |
 | [`loop-preview-home-1440.mp4`](loop-preview-home-1440.mp4) | Preview: Home playing, first screen | the preview: https://kit11-next.max-31b.workers.dev/ | 1440 px, dark | 111 KB | 2026-11-12 14:12 UTC |
+
+## Purser Cloud: Try as guest (13 Nov)
+
+Written by the browser check (`npx tsx test/browser/console.check.ts <dir>`, guest pass), on a cloud served on this
+machine, not the live site. A guest clicked "Try as guest" and the demo company's Overview opened. The page is full
+length, light, at 1x. Every figure comes from the demo company's seed: made-up data from a simulated month on
+stand-ins, with no real money.
+
+| File | What | Viewport | Size |
+|---|---|---|---|
+| [`cloud-guest-dashboard-1440.webp`](cloud-guest-dashboard-1440.webp) | Demo company: Overview with the dashboard | 1440 px, light | 139 KB |
+| [`cloud-guest-dashboard-390.webp`](cloud-guest-dashboard-390.webp) | Demo company: Overview with the dashboard | 390 px, light | 108 KB |

@@ -754,6 +754,44 @@ async function engineArchive(E: EnginePass) {
 
 await enginePass();
 
+/**
+ * Try as guest (13 Nov): from the sign-in, one click opens the demo company read only, its ribbon on top and the
+ * dashboard first; at laptop and phone width, with motion and without: no console or CSP error, nothing wider than the
+ * screen, the charts drawn, and no way to write (no upload, no keys, no people).
+ */
+async function guestPass() {
+  // A cloud of its own, fresh: the demo company is made on the first guest's click.
+  const port = PORT + 200;
+  const ORIGIN = `http://localhost:${port}`;
+  const serverG = await serve(cloudEnv(ORIGIN, join(dir, "guest-blobs")), port);
+  for (const [width, height, motion] of [[1440, 1000, "no-preference"], [390, 844, "no-preference"], [390, 844, "reduce"]] as const) {
+    const tag = `guest ${width}x${height} ${motion}`;
+    const c = await browser.newContext({ viewport: { width, height }, reducedMotion: motion, deviceScaleFactor: shots ? 2 : 1 });
+    const p = await c.newPage();
+    const errors: string[] = [];
+    p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+    p.on("pageerror", (e) => errors.push(String(e)));
+    await p.goto(`${ORIGIN}/#/sign-in`);
+    await p.waitForSelector("#guest");
+    await p.click("#guest");
+    await p.waitForSelector(".dash", { timeout: 20_000 });
+    for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
+    await p.evaluate(() => scrollTo(0, 0));
+    await p.waitForTimeout(1600);
+    ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
+    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".feed li").count() >= 8, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
+    ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
+    ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
+    for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
+    ok(await p.locator("button", { hasText: /upload|new key|invite/i }).count() === 0, `${tag}: a guest has no button that writes`);
+    ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
+    if (shots && motion === "no-preference") { await p.goto(`${ORIGIN}/#/overview`); await p.waitForSelector(".dash"); for (let y = 0; y < 8000; y += 400) { await p.mouse.wheel(0, 400); await p.waitForTimeout(150); } await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(2200); await p.screenshot({ path: join(shots, `guest-dashboard-${width}.png`), fullPage: true }); }
+    await c.close();
+  }
+  serverG.close();
+}
+await guestPass();
+
 await browser.close();
 rmSync(dir, { recursive: true, force: true });
 rmSync(w.dir, { recursive: true, force: true });
