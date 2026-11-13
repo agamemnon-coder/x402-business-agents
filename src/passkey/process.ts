@@ -16,6 +16,8 @@ import { checkChanges, type PolicyChangeTerms } from "../executors/policyChange.
 import { approvedAlternative, createProposal, decide, expireDue, type ProposalRow } from "../policy/approvals.js";
 import { codeSha256, openWindow, passkeyById, pendPasskey } from "./ledger.js";
 import { assertionSha256, verifyApprovalSignature, verifyEnrolmentResponse } from "./webauthn.js";
+import { securityKeyById } from "./securityKey.js";
+import { ensureSecondKeyTables, factorsOf, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
 
 /** One submission as the relay queued it. Only `ticket` and `body` are used; the body is checked from scratch. */
 export interface InboxItem {
@@ -68,8 +70,9 @@ function parse<T>(schema: z.ZodType<T>, body: string): T | null {
 }
 
 export interface AssertionOutcome {
-  /** cosigned: the first of two people's approvals (E1, four eyes); the proposal waits for a second person. */
-  status: "approved" | "cosigned" | "rejected" | "too_late" | "already" | "refused" | "removed";
+  /** cosigned: the first of two people's approvals (E1, four eyes); the proposal waits for a second person.
+   *  second_key: one of the two keys of a high-risk payment (src/policy/secondKey.ts); it waits for the other. */
+  status: "approved" | "cosigned" | "second_key" | "rejected" | "too_late" | "already" | "refused" | "removed";
   proposalId: string | null;
   message: string;
   /** For "already": the verdict the phone should see, the first outcome of this very signature if it was handled. */
@@ -94,7 +97,9 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const sha = assertionSha256(response);
   const getProposal = (id: string) => db.prepare("SELECT * FROM proposals WHERE proposal_id = ?").get(id) as ProposalRow | undefined;
 
-  const seen = db.prepare("SELECT proposal_id, outcome FROM passkey_assertions WHERE assertion_sha256 = ?").get(sha) as { proposal_id: string; outcome: string } | undefined;
+  ensureSecondKeyTables(db);
+  const seen = (db.prepare("SELECT proposal_id, outcome FROM passkey_assertions WHERE assertion_sha256 = ?").get(sha)
+    ?? db.prepare("SELECT proposal_id, 'APPROVED' AS outcome FROM security_key_assertions WHERE assertion_sha256 = ?").get(sha)) as { proposal_id: string; outcome: string } | undefined;
   if (seen) {
     // Handled before (a restart, a resend): report what came of it; nothing runs again.
     const now_ = getProposal(seen.proposal_id)?.status;
@@ -120,9 +125,13 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const alternative = approvedAlternative(db, p);
   if (alternative) return refuse("other_option_approved", p.proposal_id, `another option, ${alternative}, was already approved`);
 
-  const pk = passkeyById(db, response.id);
+  // A passkey, or a person's security key: the second key of a high-risk payment, never a key on its own.
+  const asPasskey = passkeyById(db, response.id);
+  const sk = asPasskey ? null : securityKeyById(db, response.id);
+  const pk = asPasskey ?? sk;
   if (!pk) return refuse("unknown_passkey", p.proposal_id, "this passkey is not enrolled");
   if (pk.status !== "ACTIVE") return refuse("revoked_passkey", p.proposal_id, "this passkey was revoked");
+  if (sk && p.kind === OWNERS_EXECUTE) return refuse("not_owner", p.proposal_id, "a security key does not sign on chain");
   // Block 1: an owners_execute approval signs the account's Execute digest (checked against the terms), and only an
   // owner of that account counts; every other proposal signs its terms hash.
   let signedHash: string;
@@ -144,12 +153,12 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
   const v = await verifyApprovalSignature(response, signedHash, pk);
   if (!v.ok) return refuse("bad_signature", p.proposal_id, v.reason);
 
-  const approver = `${pk.label} (passkey ${pk.credential_id.slice(0, 8)})`;
-  const passkey = { credentialId: pk.credential_id, assertionSha256: sha };
+  const approver = `${pk.label} (${sk ? "security key" : "passkey"} ${pk.credential_id.slice(0, 8)})`;
+  const passkey = { credentialId: pk.credential_id, assertionSha256: sha, factor: sk ? "security_key" as const : "passkey" as const };
   try {
     return db.transaction((): AssertionOutcome => {
       // Counters only move forward (passkeys that always report 0 stay at 0).
-      db.prepare("UPDATE passkeys SET counter = ? WHERE credential_id = ? AND counter <= ?").run(v.newCounter, pk.credential_id, v.newCounter);
+      db.prepare(`UPDATE ${sk ? "security_keys" : "passkeys"} SET counter = ? WHERE credential_id = ? AND counter <= ?`).run(v.newCounter, pk.credential_id, v.newCounter);
       const current = getProposal(p.proposal_id)!;
       let result: "APPROVED" | "COSIGNED" | "EXPIRED";
       if (current.status === "EXPIRED") {
@@ -160,10 +169,21 @@ export async function processAssertion(db: DB, item: InboxItem, now = new Date()
         const r = decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver, method: "passkey", signedSha256: signedHash, passkey }, now);
         result = r === "APPROVED" ? "APPROVED" : r === "PENDING_APPROVAL" ? "COSIGNED" : "EXPIRED";
       }
-      db.prepare(
-        `INSERT INTO passkey_assertions (assertion_sha256, proposal_id, credential_id, terms_sha256, assertion_json, counter, outcome, verified_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, result === "EXPIRED" ? "TOO_LATE" : "APPROVED", now.toISOString());
+      if (sk) {
+        db.prepare("INSERT INTO security_key_assertions (assertion_sha256, proposal_id, credential_id, terms_sha256, assertion_json, counter, verified_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+          .run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, now.toISOString());
+      } else {
+        db.prepare(
+          `INSERT INTO passkey_assertions (assertion_sha256, proposal_id, credential_id, terms_sha256, assertion_json, counter, outcome, verified_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(sha, p.proposal_id, pk.credential_id, p.terms_sha256, JSON.stringify(response), v.newCounter, result === "EXPIRED" ? "TOO_LATE" : "APPROVED", now.toISOString());
+      }
+      if (result === "COSIGNED") {
+        // One key of a high-risk payment: the other is still to come (the approval page says which, and why).
+        const reasons = secondKeyReasons(db, current, now);
+        const f = reasons.length ? factorsOf(db, p.proposal_id, p.terms_sha256, pk.label) : null;
+        if (f && !(f.passkey && f.securityKey)) return { status: "second_key", proposalId: p.proposal_id, message: secondKeyMessage(reasons, { passkey: !!f.passkey, securityKey: !!f.securityKey }) };
+      }
       if (result === "COSIGNED") return { status: "cosigned", proposalId: p.proposal_id, message: `${p.proposal_id}: 1 of 2 approvals (${pk.label}); a second person must approve it with their own passkey` };
       return result === "APPROVED"
         ? { status: "approved", proposalId: p.proposal_id, message: `${p.proposal_id} approved with ${approver}` }

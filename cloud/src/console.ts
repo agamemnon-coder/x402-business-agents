@@ -1044,21 +1044,29 @@ function payCard(o){
   // The terms as the engine gives them (the phone page's facts): the first four in view and the rest in a fold, as the
   // phone page shows first and details; the stand-in bank beside them; the fingerprint (hash and request id) last.
   const factsDl=(fs)=>{const d=dl(fs);d.classList.add('facts');return d};
-  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
+  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),p.second_key?note(p.second_key.message,'warn'):null,note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
     fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
   const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
     if(!o.write||p.status!=='PENDING_APPROVAL'){draw([...terms(p),print(p)]);return}
     if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad'),print(p)]);return}
-    const b=eng&&eng.passkey?btn(t('cs.eng.approve'),'primary','scan-face'):btn(t('cs.eng.setup'),'primary','key-round');
+    // A high-risk payment (src/policy/secondKey.ts) whose Face ID is in: the security key is next.
+    const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
+    const b=eng&&eng.passkey?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
     if(eng&&eng.passkey)act(b,()=>approve(p));
     else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
     draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),eng&&eng.passkey?el('p','fine',t('cs.eng.holder',{name:eng.passkey.label})):null,said,print(p)])}
   async function approve(p){
     let c;
-    try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}})}
+    // Face ID first; on a high-risk payment whose Face ID is in, the person's security key (USB or NFC) signs the same terms.
+    const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
+    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}];
+    if(keyNext&&!allow.length)throw new Error(t('cs.sec.no_key'));
+    try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:allow,userVerification:'required',timeout:120000}})}
     catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:eng.passkey.label}));throw e}
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+    // One key of a high-risk payment: the page says why and asks for the other one.
+    if(r.status==='second_key'){const q=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id));proposal(q.proposal);said.replaceChildren(note(r.message,'warn'));return}
     // The engine's own words, for a refusal as for an approval.
     if(r.status!=='approved'){said.replaceChildren(note(r.message,'bad'));return}
     const s=r.settled||{};
@@ -1338,6 +1346,50 @@ async function alertsCard(){
   return card;
 }
 
+// Security (13 Nov): "Ask again before sensitive changes" (off by default; switching it asks for the passkey), and with
+// the engine, a security key as a second key and the CFO's rule for high-risk payments, a policy change signed with Face ID.
+async function securityCard(){
+  const card=el('div','card panel security');card.id='security';
+  const msg=el('div','');msg.setAttribute('role','status');
+  const r=await api('/v1/security/settings');
+  const box=el('input','');box.type='checkbox';box.id='step-up';box.checked=!!r.step_up;
+  const lab=el('label','check',[box,' ',t('cs.sec.step_up')]);lab.htmlFor='step-up';
+  box.onchange=async()=>{const want=box.checked;box.disabled=true;
+    try{const o=await api('/v1/security/settings',{method:'POST',body:{step_up:want}});box.checked=!!o.step_up;msg.replaceChildren(note(t(o.step_up?'cs.sec.step_up_on':'cs.sec.step_up_off'),'ok'))}
+    catch(e){box.checked=!want;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{box.disabled=false}};
+  const kids=[el('h2','',t('cs.sec.title')),lab,el('p','sub',t('cs.sec.step_up_sub')),msg];
+  if(CFG.engine){
+    const keyMsg=el('div','');keyMsg.setAttribute('role','status');
+    const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
+    add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
+      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
+        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
+          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
+        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
+      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+    // The CFO's rule: the triggers become one policy change, approved here with the CFO's Face ID; nothing changes before.
+    const amount=el('input','field');amount.id='second-key-eur';amount.inputMode='decimal';amount.placeholder='10000.00';amount.maxLength=12;
+    const trig=(id,key)=>{const b=el('input','');b.type='checkbox';b.id=id;const l=el('label','check',[b,' ',t(key)]);l.htmlFor=id;return [b,l]};
+    const [np,npl]=trig('second-key-new-payee','cs.sec.t_new_payee'),[bc,bcl]=trig('second-key-bank','cs.sec.t_bank'),[nc,ncl]=trig('second-key-country','cs.sec.t_country');
+    const ruleMsg=el('div','');ruleMsg.setAttribute('role','status');
+    const save=btn(t('cs.sec.rule_save'),'primary','scan-face');save.id='second-key-save';
+    save.onclick=async()=>{const v=amount.value.trim();if(v&&!/^\d{1,9}\.\d{2}$/.test(v)){ruleMsg.replaceChildren(note(t('cs.sec.amount_rule'),'bad'));return}
+      save.disabled=true;
+      try{const eng=await engineStatus();if(!eng||!eng.passkey)throw new Error(t('cs.sec.passkey_first'));
+        const changes=[{key:'approval.second_key_eur',to:v},{key:'approval.second_key_new_payee',to:np.checked?'on':'off'},{key:'approval.second_key_bank_changed',to:bc.checked?'on':'off'},{key:'approval.second_key_new_country',to:nc.checked?'on':'off'}];
+        const r=await engineCall('/v1/engine/policy/second-key',{method:'POST',body:{changes}});const p=r.proposal;
+        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+        const a=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+        ruleMsg.replaceChildren(note(a.status==='approved'?t('cs.sec.rule_saved'):a.message,a.status==='approved'?'ok':'bad'))}
+      catch(e){if(!(e instanceof Expired))ruleMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{save.disabled=false}};
+    kids.push(el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg,
+      el('h2','sub-h',t('cs.sec.rule_h')),el('p','',t('cs.sec.rule_lede')),el('div','form-row',[el('div','',[el('label','',t('cs.sec.t_amount')),amount])]),npl,bcl,ncl,el('div','row2',[save]),ruleMsg,note(t('cs.sec.tested')));
+  }
+  card.replaceChildren(...kids);
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1354,7 +1406,8 @@ async function settingsView(){
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const security=m.kind==='session'&&!m.demo?await securityCard():null;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){

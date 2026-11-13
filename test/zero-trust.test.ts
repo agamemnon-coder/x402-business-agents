@@ -191,6 +191,7 @@ const { MODELS } = await import("../src/claude/reader.js");
 const { openDb } = await import("../src/db/open.js");
 const { confirmPasskey, fingerprintOf, openEnrolment } = await import("../src/passkey/ledger.js");
 const { processAssertion, processRegistration } = await import("../src/passkey/process.js");
+const { finishSecurityKey, startSecurityKey } = await import("../src/passkey/securityKey.js");
 const { challengeFor } = await import("../src/passkey/webauthn.js");
 const { handleAirwallexHook } = await import("../src/policy/cardHooks.js");
 const { cardOf, setupCards } = await import("../src/policy/cards.js");
@@ -251,6 +252,7 @@ const CONTROLS = {
   "a payout is looked up by its request id, never sent blind": "L2",
   "the passkey's signature over the exact terms": "L3",
   "four eyes": "L4",
+  "a second key for high-risk payments": "L3",
   "Airwallex card controls": "L5",
   "Airwallex transfer approval": "L5",
   "Metal mandate": "L5",
@@ -1297,12 +1299,15 @@ SCENARIOS["cross-tenant-read"] = async () => {
   }
 };
 
-// An owner's session token, stolen from a browser tab, used after its first five minutes: every sensitive setting asks for
-// the owner's passkey again (cloud/src/stepUp.ts), and the thief has the token, not the passkey.
+// An owner's session token, stolen from a browser tab, used after its first five minutes, in a company that asks again
+// before sensitive changes: every sensitive setting asks for the owner's passkey again (cloud/src/stepUp.ts), and the
+// thief has the token, not the passkey.
 SCENARIOS["stolen-session-settings"] = async () => {
   const c = testCloud();
   try {
     const a = await c.tenant("alpha");
+    // The owner switched "Ask again before sensitive changes" on (off by default), with their fresh sign-in.
+    expect((await c.req("POST", "/v1/security/settings", { key: a.session, body: { step_up: true } })).status).toBe(200);
     c.clock.now = new Date(c.clock.now.getTime() + 6 * 60_000);
     const tries: [string, string, unknown][] = [
       ["POST", "/v1/alerts/targets", { channel: "whatsapp", target: "+31600000000" }],
@@ -1634,6 +1639,40 @@ SCENARIOS["four-eyes-cfo-signs-rewritten-terms"] = async () => {
   const refused = events(w.db, "passkey.refused");
   expect(refused).toHaveLength(2);
   return { moved: bankMoved(w), control: "four eyes", record: `with the kind column changed: ${swapped.message}; proposal.cosigned: ${String(cosigned[0]!.of)}; passkey.refused: ${String(refused[1]!.reason)}` };
+};
+
+// L3 with the optional second key: a high-risk payment (the CFO's rule: at or above EUR 1000.00) and the attacker holds
+// the CFO's Face ID alone. Face ID leaves it waiting; the same passkey again is refused (one key never counts twice); the
+// executor finds nothing approved. In a world of its own, the CFO's own security key then approves the same kind of payment.
+async function secondKeyWorld() {
+  const w = await bankWorld();
+  const key = new FakeAuthenticator("cross-platform");
+  const s = startSecurityKey(w.db, { label: "max", rpId: RP, origin: ORIGIN }, w.now);
+  const made = await finishSecurityKey(w.db, { label: "max", credential: key.register({ challenge: s.challenge, origin: ORIGIN, rpId: RP }) }, w.now);
+  if (!made.ok) throw new Error(made.reason);
+  const p = proposePolicyChange(w.db, { changes: [{ key: "approval.second_key_eur", to: "1000.00" }], reason: "Face ID and a security key at or above EUR 1000.00" }, "human", w.now);
+  if ((await sign(w.db, w.cfo, p.proposal_id, w.now)).status !== "approved") throw new Error("the CFO could not switch the second key on");
+  executePolicyChange(w.db, p.proposal_id, w.now);
+  return { ...w, key };
+}
+SCENARIOS["high-risk-one-factor"] = async () => {
+  const clean = await secondKeyWorld();
+  const cleanId = await propose(clean, LARGE);
+  expect((await sign(clean.db, clean.cfo, cleanId, clean.now)).status).toBe("second_key");
+  expect((await sign(clean.db, clean.key, cleanId, clean.now)).status).toBe("approved");
+  const w = await secondKeyWorld();
+  const id = await propose(w, LARGE);
+  const first = await sign(w.db, w.cfo, id, w.now);
+  expect(first).toMatchObject({ status: "second_key", message: expect.stringMatching(/^High-risk: amount at or above EUR 1000\.00\. Touch your security key\.$/) });
+  const again = await sign(w.db, w.cfo, id, w.now);
+  expect(again).toMatchObject({ status: "refused", message: expect.stringMatching(/already signed/) });
+  expect(statusOf(w.db, id)).toBe("PENDING_APPROVAL");
+  expect(await refusalOf(() => executeInvoicePayment(w.db, w.awx, w.awx, id))).toMatch(/not approved/);
+  expect(w.awx.transfers).toHaveLength(0);
+  const factor = events(w.db, "proposal.factor_signed");
+  const refused = events(w.db, "passkey.refused");
+  expect(factor).toHaveLength(1);
+  return { moved: bankMoved(w), control: "a second key for high-risk payments", record: `${first.message}; proposal.factor_signed: ${String(factor[0]!.of)}; passkey.refused: ${String(refused[refused.length - 1]!.reason).slice(0, 120)}` };
 };
 
 // L3 on an inbox invoice, the checks breached. The CFO signed the supplier payment; then its amount, payee or currency

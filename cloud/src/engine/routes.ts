@@ -135,6 +135,24 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       const out = await e.passkeyFinish({ code: b.code, credential: b.credential, label: await displayName(c, user), person: user });
       return out.ok ? json(200, { credential_id: out.credential_id }) : err(409, out.reason);
     }) },
+    { method: "POST", path: "/v1/engine/policy/second-key", summary: "Propose the CFO's rule for high-risk payments (off by default): { changes: [{ key, to }] } of approval.second_key_eur (an amount or \"\"), approval.second_key_new_payee, approval.second_key_bank_changed, approval.second_key_new_country (on or off). Answers { proposal }, a policy change the CFO approves with Face ID (POST /v1/engine/proposals/{id}/approve); nothing changes before that.", need: "admin", run: on(async (c, e) => {
+      signedIn(c);
+      const b = await kit.body(c, z.object({ changes: z.array(z.object({ key: z.string().max(60), to: z.string().max(20) }).strict()).min(1).max(4) }).strict(), 4_000);
+      const out = await e.proposeSecondKey(b.changes);
+      return out.ok ? json(200, { proposal: out.proposal }) : err(409, out.reason);
+    }) },
+    { method: "POST", path: "/v1/engine/security-key/start", summary: "Start registering a security key for the signed-in person (a session only): the second key of high-risk payments (USB or NFC, such as a YubiKey), beside their approval passkey, which must exist. Answers the challenge, the user handle, the relying party and the credentials to exclude; the page asks with authenticatorAttachment cross-platform.", need: "admin", run: on(async (c, e) => {
+      const user = signedIn(c);
+      const name = await displayName(c, user);
+      const s = await e.securityKeyStart({ label: name, rp: { rpId: c.env.rpId, origin: c.env.origin } });
+      return s.ok ? json(200, { challenge: s.challenge, user: { id: s.user_id, name, displayName: name }, rp: { id: c.env.rpId, name: "Purser" }, exclude: s.exclude }) : err(409, s.reason);
+    }) },
+    { method: "POST", path: "/v1/engine/security-key/finish", summary: "Finish registering the security key (a session only): { credential } as the browser made it; a credential the browser reports as a platform authenticator (Face ID, Touch ID) is refused, and so is one already registered.", need: "admin", run: on(async (c, e) => {
+      const user = signedIn(c);
+      const b = await kit.body(c, z.object({ credential: Credential }).strict(), 64_000);
+      const out = await e.securityKeyFinish({ label: await displayName(c, user), credential: b.credential });
+      return out.ok ? json(200, { credential_id: out.credential_id }) : err(409, out.reason);
+    }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/approve", summary: "Approve a proposal with the approval passkey (a session only): { terms_sha256, credential } with the passkey's signature over the proposal's challenge. Answers { status, message, settled }: only status approved pays (on the stand-in bank), and settled says paid, booked, archived and fed; a signature over other terms is refused and nothing runs.", need: "admin", run: on(async (c, e) => {
       signedIn(c);
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");

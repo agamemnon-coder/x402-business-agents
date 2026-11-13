@@ -61,7 +61,7 @@ export const LAYERS: readonly Layer[] = [
 /** What an attacker may be assumed to control. */
 export type ComponentId =
   | "agent_output" | "document" | "agent_key" | "relay" | "phone_page" | "approval_in_transit"
-  | "second_phone_page" | "decision_code" | "stored_terms" | "database" | "network" | "webhook_sender" | "other_tenant" | "stolen_session";
+  | "second_phone_page" | "decision_code" | "stored_terms" | "database" | "network" | "webhook_sender" | "other_tenant" | "stolen_session" | "cfo_face_id";
 
 export interface Component {
   id: ComponentId;
@@ -90,6 +90,7 @@ export const COMPONENTS: readonly Component[] = [
   { id: "network", name: "the network to the rail", voids: [], means: "The attacker, or bad luck, drops an answer from Airwallex, cuts the connection or stops the runner at the worst moment. They cannot read or change what is sent." },
   { id: "webhook_sender", name: "a webhook sender", voids: [], means: "The attacker posts events that claim to come from Airwallex, or sends a real one again." },
   { id: "other_tenant", name: "another company's session", voids: [], means: "The attacker is signed in to Purser Cloud as another company, with that company's full rights." },
+  { id: "cfo_face_id", name: "the CFO's Face ID alone", voids: [], means: "The attacker can make the CFO's own platform passkey sign (the CFO's phone, unlocked, in the attacker's hands), but holds none of the CFO's security keys." },
   { id: "stolen_session", name: "an owner's console session", voids: [], means: "The attacker holds an owner's Purser Cloud session token (it lives 15 minutes, in a browser tab), not the owner's passkey." },
 ];
 
@@ -494,6 +495,7 @@ export const ATTACKS: readonly Attack[] = [
     breach: ["stolen_session"], target: "company_data",
     action: "Change who hears about payments, and who has access.",
     bypasses: [], stoppedBy: "L2",
+    needs: "the company switched on \"Ask again before sensitive changes\" (Settings, Security; off by default)",
   },
   // The stop.
   {
@@ -528,6 +530,14 @@ export const ATTACKS: readonly Attack[] = [
     bypasses: ["L1", "L2", "L3"], stoppedBy: "L4",
     note: "The test also changes the kind stored beside the terms, which the hash does not cover, to one that needs one person only. Found here and fixed: four eyes read that copy, so the CFO's signature alone approved the payment (src/policy/approvals.ts).",
     needs: "the CFO has set a four-eyes threshold (approval.four_eyes_eur)",
+  },
+  {
+    id: "high-risk-one-factor",
+    description: "A high-risk payment is approved with one factor: the CFO's Face ID alone, then the same passkey a second time in place of the security key.",
+    breach: ["cfo_face_id"], target: "bank_payout",
+    action: "Pay EUR 9,850.00 on the CFO's Face ID alone.",
+    bypasses: [], stoppedBy: "L3",
+    needs: "the CFO switched on \"High-risk payments need Face ID and a security key\" (here: at or above EUR 1000.00)",
   },
   {
     id: "supplier-invoice-changed-after-signing",
