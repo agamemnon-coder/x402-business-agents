@@ -37,7 +37,7 @@ export const START = {
   /** Under the button. */
   fine: "Test money · deleted after 24 h",
   /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
-  walk: "Watch the 5-min walkthrough first",
+  walk: "Or watch the walkthrough (4:58)",
   /** Under the card, small and grey. */
   trust: "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   starting: "Starting…",
@@ -420,7 +420,7 @@ export const VISIBLE = {
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
-// and +5 for "Watch the 5-min walkthrough first" (the walkthrough on YouTube, 4:58; 13 Nov, owner).
+// and +5 for the walkthrough link (on YouTube, 4:58; 13 Nov, owner; since jury round 2: "Or watch the walkthrough (4:58)").
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
 export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
 

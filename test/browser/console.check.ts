@@ -910,6 +910,12 @@ async function guestPass() {
     // 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
     const tabs = await p.locator("#tabs a").evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
     ok(new Set(tabs).size === 1, `${tag}: the pages are one row (${tabs.join(", ")})`);
+    // Jury round 2, 13 Nov: at 390 px "Tokenisation" read "Toke…" under the fade; on a phone it says "Tokens" and every
+    // tab is whole, inside the row's visible part (the fade's 28 px kept clear).
+    if (width < 640) {
+      const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => a.getBoundingClientRect().right > r.right - 28 + 1).map((a) => (a as HTMLElement).innerText.trim()); });
+      ok(cut.length === 0 && (await p.locator('#tabs a[data-tab="tokenisation"]').innerText()).trim() === "Tokens", `${tag}: every tab is whole on a phone, "Tokens" included (${JSON.stringify(cut)})`);
+    }
     if (width < 420) {
       const chip = await p.evaluate(() => { const cn = document.querySelector("#co .cn") as HTMLElement | null; return cn ? { text: cn.innerText.trim(), cut: cn.scrollWidth > cn.clientWidth + 1 } : null; });
       ok(chip?.text === "Northwind Outdoor" && !chip.cut, `${tag}: the company chip reads "Northwind Outdoor", whole (${JSON.stringify(chip)})`);

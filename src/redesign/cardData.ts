@@ -18,10 +18,13 @@ import { esc } from "./ui.js";
 export const CARD_DATA_ID = "vic-card-data";
 /** The fold's line: what this is not, readable without opening it. */
 export const CARD_DATA_SUMMARY = "Card data: not a network-tokenised checkout, no PCI attestation";
-/** The three plain statements, word for word, that open the block. */
+/**
+ * The three plain statements, word for word, that open the block. Jury round 2, 13 Nov: the second says it was the
+ * sandbox's hosted card page in a test run, and claims nothing about production (the records do not document it).
+ */
 export const CARD_DATA_NOT: readonly string[] = [
   "This is not a network-tokenised checkout.",
-  "A headless browser types Airi's Visa credential into Airwallex's hosted payment page, as Airi's instructions say: like a normal card. How that credential relates to a Visa network token is not documented.",
+  "In a sandbox test run, a headless browser types Airi's Visa credential into Airwallex's hosted card page, as Airi's instructions say: like a normal card. How that credential relates to a Visa network token is not documented.",
   "There is no PCI attestation.",
 ];
 /** The code that handles the credential, and the test that holds this block. */

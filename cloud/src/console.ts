@@ -33,6 +33,7 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .apptabs::-webkit-scrollbar { display: none; }
 .apptabs a { padding: 7px 12px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 650; font-size: 14px; white-space: nowrap; }
 .apptabs a:hover { color: var(--text); }
+.apptabs .tl-short { display: none; }
 .apptabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
@@ -239,6 +240,10 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   /* Jury review, 13 Nov: at 390 px "Tokenisation" was cut to "Token…" with no sign the row scrolls; a fade at the right
      edge says there is more, and the row scrolls on as before. */
   .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
+  /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut. On a phone the tab says "Tokens"; the row
+     then fits, and its full name stays for screen readers. */
+  .appbar nav.apptabs .tl-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .appbar nav.apptabs .tl-short { display: inline; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -353,7 +358,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation"><span class="tl-long" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</span><span class="tl-short" data-t="cs.nav.tokens_short" aria-hidden="true">${tr("en", "cs.nav.tokens_short")}</span></a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
@@ -377,7 +382,9 @@ __I18N__
 __EVENT_LINE__
 document.documentElement.lang=L.lang;
 for(const a of document.querySelectorAll('[data-t]'))a.textContent=(a.classList.contains('tl')?' ':'')+t(a.dataset.t);
-document.querySelector('#foot').textContent=t('cs.foot');
+// The footer is written by footLine once the shell knows the session (jury round 2: a guest saw the sandbox line for
+// ~1.5 s before the demo line); nothing until then.
+document.querySelector('#foot').textContent='';
 for(const b of [document.querySelector('#out')]){b.title=t('cs.sign_out');b.setAttribute('aria-label',t('cs.sign_out'))}
 document.querySelector('.appbar .test').title=t('test.title');
 const IC=__ICONS__;
@@ -444,7 +451,8 @@ function shell(){
       co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
-  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
+  // Demo from the first paint: a guest session says so when it is stored (S.guest), before /v1/me answers.
+  const dm=$('#demo');if(dm){const on=!!(S&&(ME?ME.demo:S.guest));dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
   // An invoice belongs to the Books tab (Invoices & books, 13 Nov): the old Invoices route and an invoice's page light it.
   const tab0=(location.hash.split('/')[1]||'').split('?')[0];const tab=tab0==='invoices'?'books':tab0;
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
@@ -1220,7 +1228,8 @@ async function booksView(q){
 // A VAT code in words where Purser knows it (cloud/src/tryCopy.ts vat), else the code itself.
 const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
 // What Purser Cloud is, in one line, on the sign-in and at the top of the overview; the demo company says what its data is.
-function whatCloud(m){return el('div','what-cloud',[el('p','',t('cs.what_cloud')),m&&m.demo?el('p','demo-label',[ic('flask'),' '+t('cs.demo.label')]):null])}
+// The demo company is said by the ribbon and the footer; the card does not say it a third time (jury round 2, 13 Nov).
+function whatCloud(){return el('div','what-cloud',[el('p','',t('cs.what_cloud'))])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
 function journalTable(items,empty){
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
@@ -1741,6 +1750,8 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .sbars .sf { display: block; height: 100%; border-radius: 999px; background: var(--accent); transform-origin: left center; }
 .sbars li:first-child .sf { background: var(--text); }
 .sbars .ss { font-size: 12.5px; color: var(--faint); } .sbars .dec { color: var(--bad); }
+/* The breakdown of a bar on its own line, never run into the count before it (jury round 2, 13 Nov). */
+.sbars .ss.sp { display: block; margin-top: 2px; }
 .feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 28px; }
 @media (min-width: 980px) { .feed { grid-template-columns: 1fr 1fr; } }
 .feed li { display: grid; grid-template-columns: 12px minmax(0, 1fr); column-gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
@@ -1770,7 +1781,6 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 /* Enterprise pass (13 Nov): what Purser Cloud is, the Agents and Tokenisation tabs, Invoices & books. */
 .what-cloud { margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--sunken); }
 .what-cloud p { margin: 0; font-weight: 600; color: var(--text); }
-.what-cloud .demo-label { margin-top: 4px; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .auth p.what { color: var(--text); }
 .agents { display: grid; gap: 16px; margin: 0 0 16px; }
 .card.agent { padding: 20px; }

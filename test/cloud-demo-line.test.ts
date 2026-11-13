@@ -8,12 +8,28 @@ import { MESSAGES } from "../src/ui/i18n.js";
 const LINE = "Demo company: made-up data, simulated bank, test money. The console never pays.";
 
 describe("the demo company's one line", () => {
-  it("is the ribbon's and the label's words, in English and in Dutch", () => {
+  it("is the ribbon's words, in English and in Dutch", () => {
     expect(MESSAGES.en["cs.demo.line"]).toBe(LINE);
     expect(MESSAGES.en["cs.demo.ribbon"]).toBe(LINE);
-    expect(MESSAGES.en["cs.demo.label"]).toBe(LINE);
     expect(MESSAGES.nl["cs.demo.ribbon"]).toBe(MESSAGES.nl["cs.demo.line"]);
-    expect(MESSAGES.nl["cs.demo.label"]).toBe(MESSAGES.nl["cs.demo.line"]);
+  });
+
+  // Jury round 2, 13 Nov: the Overview's card no longer repeats it (ribbon and footer say it), so a guest reads it twice,
+  // not three times; the footer shows it from the first paint (a guest session is stored as one), and never the sandbox
+  // line first.
+  it("is said twice, by the ribbon and the footer, from the first paint", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).not.toContain("cs.demo.label");
+    expect(html).not.toContain("demo-label");
+    expect(Object.hasOwn(MESSAGES.en, "cs.demo.label")).toBe(false);
+    expect(html).toContain("const on=!!(S&&(ME?ME.demo:S.guest));");
+    expect(html).toContain("document.querySelector('#foot').textContent='';");
+    expect(html).not.toContain("document.querySelector('#foot').textContent=t('cs.foot');");
+  });
+
+  it("the spend bar's breakdown is on a line of its own", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).toContain(".sbars .ss.sp { display: block;");
   });
 
   // The engine's own footer first: when the engine runs it pays (on a stand-in bank), so "the console never pays" would
