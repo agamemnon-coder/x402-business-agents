@@ -12,6 +12,8 @@ import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments,
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { MORE_LABEL, MORE_LINKS } from "../src/ui/more.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
+import { claudeEvidence } from "../src/redesign/claudeEvidence.js";
+import { hostileTileLabel } from "../src/redesign/claudePage.js";
 import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
 import { METAL_INSPECT_JS } from "../src/redesign/metalMandates.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
@@ -114,8 +116,9 @@ describe("the site after v4", () => {
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "pricing", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
-    const hostile = hostileClaimText();
-    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
+    // Since 13 Nov the same record's figures are a proof tile on /claude (hostileTileLabel, src/redesign/claudePage.ts).
+    const hostile = hostileClaimText(), tile = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, then Airwallex, Metal, Visa, Claude", () => {
@@ -273,7 +276,8 @@ describe("the site after v4", () => {
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on one picture (owner's redesign, 13 Nov): a payment paid and one refused under the same mandate.
       // /visa's picture since the redesign of 13 Nov (the owner: "more visuals and data"): the latest run's flow, its purchases on their paths.
-      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mhero card"' : name === "visa" ? (vic3Run() ? 'class="vh-flow card"' : 'class="card vicflow"') : 'class="flow card"';
+      // /claude (13 Nov) opens on the split: routine to code, the exceptions to Claude, the high-risk ones on to Face ID.
+      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mhero card"' : name === "visa" ? (vic3Run() ? 'class="vh-flow card"' : 'class="card vicflow"') : name === "claude" ? 'class="csplit card"' : 'class="flow card"';
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);

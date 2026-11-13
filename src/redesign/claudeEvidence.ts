@@ -1,4 +1,4 @@
-// /claude, measured, not asserted (jury panel, 12 Nov): four figures on top, each linking its record (the 40 simulated
+// /claude, measured, not asserted (jury panel, 12 Nov; since 13 Nov five proof tiles, drawn by src/redesign/claudePage.ts): figures, each linking its record (the 40 simulated
 // worlds, the 10 blind holdouts, the one model that failed an attack, each model on each agent); the injection screen as
 // code holds it; the failure story in three lines; each agent on each model as the sweep of 6 November measured it, with
 // the Treasury choice said as measured; and the agent interface over MCP, one session read from its record. Every figure
@@ -17,6 +17,8 @@ export const SWEEP_RECORD = "docs/evals/agents.json";
 export const AGENT_EVALS = "docs/agent-evals.md";
 export const MCP_TRANSCRIPT = "docs/runs/2026-11-12-mcp-transcript.json";
 export const ZERO_TRUST_REPORT = "docs/zero-trust/report.json";
+/** The hostile-model eval's record (also HOSTILE_RECORD_FILE in partners.ts, for /security's line). */
+export const HOSTILE_EVAL = "docs/evals/ap-hostile.json";
 /** The injection screen as code holds it (src/policy/injection.ts; the agents' tools in src/agents/*Agent.ts). */
 export const INJECTION_LINE = "A line aimed at the AI is flagged for the CFO and moves nothing: the agents' tools have no payee or approval field; payees come from the allowlist.";
 
@@ -76,10 +78,19 @@ export function mcpOf(json: string | null): McpSession | null {
   } catch { return null; }
 }
 
-export interface ClaudeEvidence { variation: Variation | null; fix: Variation | null; holdouts: Holdouts | null; sweep: Sweep | null; mcp: McpSession | null; zeroTrust: boolean }
+/** The hostile-model eval's counts as CI wrote them: tool calls, refused by code, unsafe by the ledger verdict, test invoices. */
+export function hostileOf(json: string | null): { calls: number; refused: number; unsafe: number; cases: number } | null {
+  try {
+    const j = JSON.parse(json ?? "") as { calls?: unknown; refused?: unknown; unsafe?: unknown; cases?: unknown };
+    return typeof j.calls === "number" && typeof j.refused === "number" && typeof j.unsafe === "number" && j.calls > 0 && Array.isArray(j.cases) ? { calls: j.calls, refused: j.refused, unsafe: j.unsafe, cases: j.cases.length } : null;
+  } catch { return null; }
+}
+
+export interface ClaudeEvidence { variation: Variation | null; fix: Variation | null; holdouts: Holdouts | null; sweep: Sweep | null; mcp: McpSession | null; zeroTrust: boolean; hostile: { calls: number; refused: number; unsafe: number; cases: number } | null }
 export const claudeEvidence = (): ClaudeEvidence => ({
   variation: variationOf(read(VARIATION_SUMMARY)), fix: variationOf(read(VARIATION_FIX_SUMMARY)), holdouts: holdoutsOf(read(HOLDOUTS_RECORD)),
   sweep: sweepOf(read(SWEEP_RECORD)), mcp: mcpOf(read(MCP_TRANSCRIPT)), zeroTrust: existsSync(new URL(`../../${ZERO_TRUST_REPORT}`, import.meta.url)),
+  hostile: hostileOf(read(HOSTILE_EVAL)),
 });
 
 export const EVIDENCE_CSS = `.cev { padding: 16px 18px; display: grid; gap: 6px; }
@@ -97,21 +108,8 @@ pre.cmcp { margin: 4px 0 8px; padding: 10px 12px; background: var(--sunken); bor
 
 const link = (file: string, label = "record") => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const usd = (n: number) => n >= 0.01 ? n.toFixed(3) : n.toFixed(4);
-
-/** The four figures on top, each with its record, and the injection screen under them. */
-export function measuredBlock(e: ClaudeEvidence): string {
-  const lines = modelLinesOf(e), haikuSupport = e.sweep?.rows.find((r) => r.agent === "support" && /haiku/.test(r.model) && r.passed === 0);
-  const items = [
-    e.variation ? `<li data-rec="${esc(VARIATION_RECORD)}"><b>${esc(String(e.variation.decisions))}</b>${esc(` decisions in ${e.variation.worlds} simulated worlds, ${e.variation.claudePct === 100 ? "all" : `${e.variation.claudePct}%`} by Claude; ${e.variation.unsafe} unsafe actions${e.fix && e.fix.unsafe === 0 ? ", fixed" : ""}.`)} ${link(VARIATION_RECORD)}</li>` : "",
-    e.holdouts ? `<li data-rec="${esc(HOLDOUTS_RECORD)}"><b>${esc(String(e.holdouts.run))}</b>${esc(` blind holdouts, ${e.holdouts.safe} safe${e.holdouts.partial ? `; ${e.holdouts.partial} only on code's rule` : ""}.`)} ${link(HOLDOUTS_RECORD)}</li>` : "",
-    haikuSupport ? `<li data-rec="${esc(AGENT_EVALS)}"><b>${esc(`${haikuSupport.passed} of ${haikuSupport.runs}`)}</b>${esc(": Haiku as Support on one attack; code refused each stray call.")} ${link(AGENT_EVALS)}</li>` : "",
-    lines.length ? `<li data-rec="${esc(SWEEP_RECORD)}"><b>${esc(String(lines.length))}</b>${esc(` model and agent pairs: pass rate, cost, time.`)} ${link(SWEEP_RECORD)}</li>` : "",
-    ...(e.zeroTrust ? [`<li data-rec="${esc(ZERO_TRUST_REPORT)}">${esc("A hostile model in the agent's seat: see its report.")} ${link(ZERO_TRUST_REPORT)}</li>`] : []),
-  ].filter(Boolean);
-  return items.length ? `<section class="cev card" aria-labelledby="cev-h"><h2 id="cev-h">${esc("Measured, not asserted")}</h2><ul>${items.join("")}</ul><p class="mnote">${esc(INJECTION_LINE)}</p></section>` : "";
-}
-
-const modelLinesOf = (e: ClaudeEvidence) => e.sweep ? modelLines(e.sweep) : [];
+/** Runs passed in words, never as a fraction (13 Nov, from the judge run: no "60/60" on /claude): "all 60", "50 of 60". */
+export const passedWords = (passed: number, runs: number) => passed === runs ? `all ${runs}` : `${passed} of ${runs}`;
 
 /** Each agent on each model (the sweep of 6 November), with the Treasury choice as measured. */
 export function sweepFold(e: ClaudeEvidence, used: Record<string, string>): string {
@@ -121,8 +119,8 @@ export function sweepFold(e: ClaudeEvidence, used: Record<string, string>): stri
   const verdict = (l: ModelLine) => used[l.agent] === FAMILY(l.model) ? "in use" : l.passed === l.runs ? "passes" : `misses ${l.runs - l.passed}`;
   const t = (m: string) => lines.find((l) => l.agent === "treasury" && FAMILY(l.model) === m);
   const h = t("Haiku"), o = t("Opus"), hf = firstTry(s, s.rows.find((r) => /haiku/.test(r.model))?.model ?? ""), of = firstTry(s, s.rows.find((r) => /opus/.test(r.model))?.model ?? "");
-  const treasury = h && o && h.passed === h.runs ? `Treasury: Haiku passed every Treasury run (${h.passed} of ${h.runs}) at 1/${Math.round(o.costPerPass / h.costPerPass)} of Opus's cost per pass, but its first plan passed code's checks in ${hf.first} of ${hf.of} rebalance runs, Opus's in ${of.first} of ${of.of}. Treasury runs on Opus.` : "";
-  return `<details class="fold" data-rec="${esc(SWEEP_RECORD)}"><summary>${esc(`Each agent on each model (${day})`)}</summary><table class="cmx"><thead><tr><th scope="col">Agent</th><th scope="col">Model</th><th scope="col">Passed</th><th scope="col">USD a pass</th><th scope="col">Time</th><th scope="col">Verdict</th></tr></thead><tbody>${lines.map((l) => `<tr><td>${esc(`${l.agent[0]!.toUpperCase()}${l.agent.slice(1)}`)}</td><td>${esc(FAMILY(l.model))}</td><td>${esc(`${l.passed}/${l.runs}`)}</td><td>${esc(usd(l.costPerPass))}</td><td>${esc(`${l.medianS.toFixed(1)} s`)}</td><td>${esc(verdict(l))}</td></tr>`).join("")}</tbody></table><ul class="pl">${treasury ? `<li>${esc(treasury)}</li>` : ""}<li>${esc(`In use in the main run: ${Object.entries(used).map(([a, f]) => `${a[0]!.toUpperCase()}${a.slice(1)} on ${f}`).join(", ")}. Real models, simulated tools, 10 runs a case; time is the median of the cases' medians.`)} ${link(SWEEP_RECORD)} ${link(AGENT_EVALS, "all cases")}</li></ul></details>`;
+  const treasury = h && o && h.passed === h.runs ? `Treasury: Haiku passed every Treasury run (all ${h.runs}) at 1/${Math.round(o.costPerPass / h.costPerPass)} of Opus's cost per pass, but its first plan passed code's checks in ${hf.first} of ${hf.of} rebalance runs, Opus's in ${of.first} of ${of.of}. Treasury runs on Opus.` : "";
+  return `<details class="fold" data-rec="${esc(SWEEP_RECORD)}"><summary>${esc(`Each agent on each model (${day})`)}</summary><table class="cmx"><thead><tr><th scope="col">Agent</th><th scope="col">Model</th><th scope="col">Passed</th><th scope="col">USD a pass</th><th scope="col">Time</th><th scope="col">Verdict</th></tr></thead><tbody>${lines.map((l) => `<tr><td>${esc(`${l.agent[0]!.toUpperCase()}${l.agent.slice(1)}`)}</td><td>${esc(FAMILY(l.model))}</td><td>${esc(passedWords(l.passed, l.runs))}</td><td>${esc(usd(l.costPerPass))}</td><td>${esc(`${l.medianS.toFixed(1)} s`)}</td><td>${esc(verdict(l))}</td></tr>`).join("")}</tbody></table><ul class="pl">${treasury ? `<li>${esc(treasury)}</li>` : ""}<li>${esc(`In use in the main run: ${Object.entries(used).map(([a, f]) => `${a[0]!.toUpperCase()}${a.slice(1)} on ${f}`).join(", ")}. Real models, simulated tools, 10 runs a case; time is the median of the cases' medians.`)} ${link(SWEEP_RECORD)} ${link(AGENT_EVALS, "all cases")}</li></ul></details>`;
 }
 
 /** The failure story in three lines: what went wrong, what held, what changed. */
