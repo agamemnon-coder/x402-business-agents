@@ -69,13 +69,13 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 45).join("\n"));
     expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
-    // (TRY_IT's 2 minutes), the tour, the film.
+    // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
     expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
-    // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof). Judge panel,
-    // 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
-    expect(lines.slice(0, 16).join("\n")).toContain("\"https://kit11.max-31b.workers.dev/tour\"");
+    // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.
+    expect(readme).not.toContain("kit11.max-31b.workers.dev/tour");
+    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
     expect(readme).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
@@ -88,10 +88,10 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const t = words(hero);
     // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
     // in the README and the form.
-    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (since 13 Nov the tour, then Try it),
-    // the reassurance line; the first
+    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (Try it live, See the proof; the tour
+    // was first for part of 13 Nov, then removed), the reassurance line; the first
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Take the 3-minute tour Try it No sign-up, about a minute; nothing real moves.`)).toBe(true);
+    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Try it live See the proof Your own test company, deleted after 24 hours.`)).toBe(true);
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);

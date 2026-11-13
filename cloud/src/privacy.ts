@@ -11,7 +11,7 @@ import { TENANT_TABLES, TenantDb, WriteConflict } from "./tenant.js";
 export class PrivacyRefused extends Error {}
 
 /** Columns that hold a secret's hash: they never leave, not even in an export. */
-export const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret" };
+export const SECRET_COLUMNS: Record<string, string> = { api_keys: "secret_sha256", enrolments: "token_sha256", webhooks: "secret", alert_targets: "target" };
 
 /**
  * Everything the cloud holds for the company, as rows. The documents themselves are not inlined (a large company's would

@@ -1,6 +1,6 @@
 {
-  "attacks_run": 51,
-  "attacks_stopped": 51,
+  "attacks_run": 52,
+  "attacks_stopped": 52,
   "attacks_where_money_moved": 0,
   "layers": 6,
   "min_depth": 2,
@@ -1100,6 +1100,34 @@
       "evidence": {
         "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > cross-tenant-write: A company tries to write into another company, or to pay from another company's account.",
         "record": "invoice.escalated: the account binding is for another company; nothing is paid from its account; nothing is planned; DELETE another company's user: 404",
+        "live": null
+      }
+    },
+    {
+      "id": "stolen-session-settings",
+      "description": "A stolen owner session, past its first five minutes, tries to send the approval alerts to the attacker's own number, make an API key and a Claude connector token, and add a person.",
+      "target": "company_data",
+      "also_tries": [],
+      "action": "Change who hears about payments, and who has access.",
+      "breach": [
+        {
+          "id": "stolen_session",
+          "name": "an owner's console session"
+        }
+      ],
+      "bypassed": [],
+      "stopped_by": {
+        "layer": "L2",
+        "name": "Purser's own checks",
+        "owner": "Purser's code",
+        "control": "step-up on sensitive settings"
+      },
+      "needs": null,
+      "note": null,
+      "moved": 0,
+      "evidence": {
+        "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > stolen-session-settings: A stolen owner session, past its first five minutes, tries to send the approval alerts to the attacker's own number, make an API key and a Claude connector token, and add a person.",
+        "record": "POST /v1/alerts/targets: 403 step_up_required; POST /v1/keys: 403 step_up_required; POST /v1/claude/connectors: 403 step_up_required; POST /v1/users: 403 step_up_required; POST /v1/webhook: 403 step_up_required",
         "live": null
       }
     },
@@ -2557,7 +2585,7 @@
     "property": {
       "seed": 20261112,
       "runs": 60,
-      "moved_with_every_guard_void": 29,
+      "moved_with_every_guard_void": 33,
       "moved_with_a_guard_holding": 0
     }
   },
@@ -3153,7 +3181,7 @@
     }
   ],
   "generated": {
-    "date": "2026-11-12",
-    "commit": "29004f1"
+    "date": "2026-11-13",
+    "commit": "a7211f7"
   }
 }

@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NAV_MAIN } from "../src/ui/nav.js";
-import { TOUR_STEPS } from "../src/redesign/tour.js";
+import { MORE_LINKS } from "../src/ui/more.js";
 import { loadRecord, stopStory, stopsLine } from "../src/redesign/run.js";
 import { worstCaseWords } from "../src/policy/exposureSources.js";
 
@@ -155,7 +155,8 @@ describe("the opening table's numbers are the records' and the code's", () => {
   it("the menu and the tour, from the code", () => {
     const v = row("The menu and the tour").value;
     expect(v.startsWith(`The menu: ${NAV_MAIN.map(([, label]) => label).join(", ")}.`)).toBe(true);
-    expect(v).toContain(`The product tour, /tour: ${TOUR_STEPS.length} steps in ${TOUR_STEPS.reduce((n, s) => n + s.seconds, 0)} s`);
+    expect(v).toContain("The product tour (/tour) and Pricing (/pricing) were taken out on 13 November (owner)");
+    for (const gone of ["tour", "pricing"]) expect(MORE_LINKS.map((l): string => l.key)).not.toContain(gone);
   });
 
   it("the audit log's rows", () => {

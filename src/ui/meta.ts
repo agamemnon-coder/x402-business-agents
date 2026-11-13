@@ -10,16 +10,18 @@ import { ICON_VERSION } from "./brand/mark.js";
 /** The hosted site. */
 export const SITE_URL = "https://kit11.max-31b.workers.dev";
 /**
- * The link preview's image, absolute (the Worker serves it at /assets/og.png): 1200×630, the mark, the name and the one
- * line (the owner, 13 Nov), the same file as docs/assets/social-preview.png (`npm run visuals`). The query only gives
- * the new image a new address, so the previews that cached the old one fetch it again.
+ * The link preview's image, absolute (the Worker serves it at /assets/og.png): 1200×630, the same file as
+ * docs/assets/social-preview.png (`npm run visuals`, src/visuals/svg.ts socialSvg). Since 13 Nov (the owner: the dark
+ * square with a tiny line read poorly in chats) the one line large, one small line, the payment's path to Face ID and
+ * the "Built with" row. The query only gives the new image a new address, so the previews that cached the old one
+ * fetch it again. No square version: the tags name this one image.
  */
-export const OG_IMAGE = `${SITE_URL}/assets/og.png?v=1113`;
+export const OG_IMAGE = `${SITE_URL}/assets/og.png?v=1113b`;
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 /** Every page's preview says the same (the owner, 13 Nov: a long, page-by-page description looked messy in a chat). */
 export const OG_TITLE = `Purser — ${HERO}`;
 export const OG_DESCRIPTION = "Your AI agents pay suppliers. Every payment above their limit needs your Face ID.";
-export const OG_ALT = `Purser. ${HERO}`;
+export const OG_ALT = `Purser. ${HERO} Every payment above its limit waits for your Face ID.`;
 /** The one tagline (Q8): the film's line and Home's heading. */
 export const TAGLINE_LINE = HERO;
 /** What a page says about itself when it says nothing of its own. */
@@ -40,6 +42,7 @@ export function previewTags(o: { url?: string } = {}): string[] {
     `<meta property="og:description" content="${esc(OG_DESCRIPTION)}">`,
     ...(o.url ? [`<meta property="og:url" content="${esc(o.url)}">`] : []),
     `<meta property="og:image" content="${OG_IMAGE}">`,
+    '<meta property="og:image:type" content="image/png">',
     `<meta property="og:image:width" content="${OG_IMAGE_SIZE.width}">`,
     `<meta property="og:image:height" content="${OG_IMAGE_SIZE.height}">`,
     `<meta property="og:image:alt" content="${esc(OG_ALT)}">`,
@@ -47,6 +50,7 @@ export function previewTags(o: { url?: string } = {}): string[] {
     `<meta name="twitter:title" content="${esc(OG_TITLE)}">`,
     `<meta name="twitter:description" content="${esc(OG_DESCRIPTION)}">`,
     `<meta name="twitter:image" content="${OG_IMAGE}">`,
+    `<meta name="twitter:image:alt" content="${esc(OG_ALT)}">`,
   ];
 }
 

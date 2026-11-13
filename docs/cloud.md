@@ -61,6 +61,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/webhook` | admin | The alert webhook: URL, failures in a row, last attempt and status, when it was turned off. Never its secret. |
 | `POST /v1/webhook` | admin | Set the alert webhook (https, a public host name, port 443, no credentials); returns the signing secret once. |
 | `DELETE /v1/webhook` | admin | Remove the alert webhook. |
+| `GET /v1/alerts` | admin | Approval alerts: the targets (masked), which channels this cloud can send on, the latest deliveries and their status. |
+| `POST /v1/alerts/targets` | admin | Add an alert target `{ channel: whatsapp \| email \| slack \| teams, target }`. A signed-in owner with a fresh passkey check (step-up); never a key. |
+| `DELETE /v1/alerts/targets/{id}` | admin | Remove an alert target (a signed-in owner, step-up). |
 | `GET /v1/airwallex/account` | admin | The company's Airwallex account opened through Purser as a platform: its id and onboarding status; `switched_on: false` when the cloud does not offer it ([airwallex-platform.md](airwallex-platform.md)). |
 | `POST /v1/airwallex/account` | admin | Open that account (a signed-in owner only, after agreeing to Airwallex's terms): `business_name`, `country_code`, `email`, `agreed: true`. One per company; 404 when not switched on. |
 | `POST /v1/airwallex/onboarding-link` | admin | Airwallex's hosted onboarding link for the company's checks (a signed-in owner only); short-lived and never stored. |
@@ -85,6 +88,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
 | `POST /v1/auth/invite` | anyone | What an invite is for, from its secret: the company's address and name and the person; nothing is used up. |
 | `POST /v1/auth/guest` | anyone | Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail. |
+| `POST /v1/auth/step-up/start` | read | A signed-in person starts a fresh passkey check for sensitive settings: a one-time challenge. |
+| `POST /v1/auth/step-up` | read | Finish it with the person's own passkey: a step-up token for five minutes, bound to this session (`x-purser-step-up`). |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
 | `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays) or the pages' language for everyone: `{ "name"?, "language"?: "nl" \| "en" }`. |
@@ -100,6 +105,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
+| `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
+| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
+| `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
@@ -462,6 +471,57 @@ What the code does not do yet, and must be in place before a company's real data
   secret shown once. Check the signature and that `t` is recent. Three attempts per event (a 2xx ends it), at most 30
   events an hour per company, and after 20 failed events in a row the webhook is turned off (`disabled_at`); set it
   again to turn it back on. The secret is stored to sign with; it is never shown again or exported.
+
+## Approval alerts
+
+When a runner's push files an invoice for the CFO's Face ID (the `approval.needed` event), Purser tells the people the
+company chose in Settings, Alerts (`cloud/src/alerts.ts`). Every channel sits behind one notifier interface:
+
+| Channel | How | Status |
+|---|---|---|
+| WhatsApp | Twilio's Messages API (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`; the WhatsApp sandbox's number in a demo) | Built and tested with a stand-in; not yet sent live |
+| E-mail | A provider adapter; Resend's API today (`RESEND_API_KEY`, `ALERT_EMAIL_FROM`), with its `Idempotency-Key` | Built and tested with a stand-in; not yet sent live |
+| Slack, Teams | Their incoming webhooks, in the Block Kit and Adaptive Card formats of `cloud/src/connections.ts` | Built and tested with a stand-in; not yet sent live |
+| Signed webhook | The company's webhook (below): the event exactly as before, ids and amounts only, no payee's name | Tested with a stand-in, as before |
+
+- **What an alert says:** the amount, the payee, why it waits, the due day and a link to the invoice's page in Purser
+  Cloud (`/#/invoices/<id>`). Every alert says `[TEST MONEY]` until `ALERTS_LIVE_MONEY` is `on`.
+- **What it never carries:** anything that approves. No token, code, reply word or signed link: the link opens the
+  console, which asks for the passkey to sign in, and approving takes the CFO's passkey (Face ID) there.
+  `test/cloud-alerts.test.ts` scans every channel's message for keys, session and step-up tokens, webhook secrets and
+  reply words, and checks that the only links are the console's pages.
+- **Idempotent:** one delivery row per event and target (`alert_deliveries`, its id the hash of both): a replayed push or
+  a second dispatch sends nothing again. The e-mail provider also gets the row's id as its idempotency key.
+- **Retries:** up to three attempts when the failure may pass (no answer, 429, 5xx), none when it will not (a 4xx).
+- **Rate limit:** at most 30 deliveries an hour per company; past it a delivery is recorded as `capped`.
+- **Audit:** every delivery is recorded in the company's security events (`alert.delivery`: channel, masked target,
+  status, attempts, the provider's message id), and so are targets added and removed. `GET /v1/alerts` shows the
+  latest deliveries.
+- **Masked:** a phone number shows as `+31*******78`, an address as `c***@example.com`, a Slack or Teams webhook as its
+  host. The whole value is kept only to send to: never returned by the API, never logged, never exported.
+- **Who sets them:** a signed-in owner, after a fresh passkey check (below). A key cannot.
+
+## Step-up for sensitive settings
+
+A console session is a bearer token that lives 15 minutes in the browser tab. On sensitive settings a session must also
+show a fresh passkey check (`cloud/src/stepUp.ts`): it was signed in with the passkey less than five minutes ago, or it
+carries a step-up token (`x-purser-step-up`) from the person's own passkey, made less than five minutes ago with
+`POST /v1/auth/step-up`. The step-up token is bound to the session it was made for: next to another session, or after
+sign-out, it is refused. Without it the answer is 403 with code `step_up_required`, and the console asks for Face ID
+once and sends the request again.
+
+- **Sensitive settings:** alert targets, the signed webhook, Claude connector tokens and OAuth connections, API keys, team
+  members and their passkeys and erasure, the staged export and closing the company. The OpenAPI document marks each
+  with `x-purser-step-up`.
+- **Keys:** a key is not a person and has no passkey. An admin key keeps its routes (it is scoped, expiring, revocable and
+  logged), except alert targets, which only a signed-in owner sets.
+- **Spending limits** are not set in Purser Cloud: they live in the CFO's policy on the runner, which only the CFO's
+  passkey changes.
+- **Every route states its auth requirement:** `test/cloud-route-auth.test.ts` fails when a route names none, when a
+  route is public without being on its reviewed list, when a route that needs a key or session answers anything but 401
+  without one, or when a write to alert targets, the webhook, connector tokens, keys or team members is not a step-up
+  route. `test/cloud-step-up.test.ts` tests the step-up itself, and the zero-trust matrix's `stolen-session-settings`
+  attack tries a stolen owner session on these settings.
 
 ## Cloudflare's platform (`cloud/src/edge`)
 

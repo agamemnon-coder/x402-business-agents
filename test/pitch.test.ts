@@ -127,9 +127,9 @@ describe("the core line", () => {
     // the first 16 lines.
     const top = words(SOURCES.README!.split("\n").slice(0, 16).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
     expect(top).toContain(DIFFERENTIATORS[0]);
-    // Since 13 Nov (second review) the README's top links Try, the product tour and Proof. Judge panel, 13 Nov: the live
-    // site has no /try/sign (301 to /try), so the README links the hands-on demo instead; the printed QR keeps working.
-    expect(SOURCES.README!.split("\n").slice(0, 16).join("\n")).toContain("https://kit11.max-31b.workers.dev/tour");
+    // Since 13 Nov, evening (owner), the product tour is gone; the README's top links Try and Proof.
+    expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/tour");
+    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links the hands-on demo instead.
     expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });

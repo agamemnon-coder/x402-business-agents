@@ -5,7 +5,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { visualFiles, SOCIAL_PNG } from "../visuals/files.js";
-import { SOCIAL_SIZE } from "../visuals/svg.js";
+import { SOCIAL_BUILT_WITH, SOCIAL_LOGOS, SOCIAL_SIZE } from "../visuals/svg.js";
 import { BUILT_WITH, BUILT_WITH_PNG } from "../visuals/logos.js";
 
 const root = new URL("../../", import.meta.url);
@@ -30,9 +30,16 @@ if (check) {
   const svg = readFileSync(new URL("docs/assets/social-preview.svg", root), "utf8");
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: SOCIAL_SIZE, deviceScaleFactor: 1 });
-  await page.setContent(`<!doctype html><style>@font-face{font-family:Inter;src:url("${font}") format("woff2");font-weight:100 900}html,body{margin:0}</style>${svg}`, { waitUntil: "load" });
+  // The "Built with" row on the preview: the partners' official files, unmodified, each on a white tile, under the
+  // label the SVG draws (SOCIAL_BUILT_WITH); Visa with the agent that ran on it, as the site names it ("Visa (Airi)").
+  const logo = (name: string) => {
+    const l = BUILT_WITH.find((x) => x.name === name)!, body = readFileSync(new URL(l.file, root)), type = l.file.endsWith(".svg") ? "image/svg+xml" : "image/png";
+    return `<span class="t"><img alt="${l.alt}" style="height:${Math.round(l.height * 0.8)}px" src="data:${type};base64,${body.toString("base64")}">${name === "Visa" ? "<em>(Airi)</em>" : ""}</span>`;
+  };
+  const row = SOCIAL_LOGOS.map(logo).join("");
+  await page.setContent(`<!doctype html><style>@font-face{font-family:Inter;src:url("${font}") format("woff2");font-weight:100 900}html,body{margin:0}.c{position:relative;width:${SOCIAL_SIZE.width}px;height:${SOCIAL_SIZE.height}px}.c>svg{display:block}.bw{position:absolute;left:${SOCIAL_BUILT_WITH.x}px;top:${SOCIAL_BUILT_WITH.y + 14}px;display:flex;gap:10px}.t{display:inline-flex;align-items:center;gap:7px;height:46px;padding:0 15px;background:#fff;border:1.5px solid #e3e6ec;border-radius:12px}.t img{display:block;width:auto}.t em{font:italic 600 17px Inter,sans-serif;color:#586174}</style><div class="c">${svg}<div class="bw">${row}</div></div>`, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
-  const social = await page.locator("svg").screenshot({ type: "png" });
+  const social = await page.locator(".c").screenshot({ type: "png" });
   writeFileSync(new URL(SOCIAL_PNG, root), social);
   // The same image is every page's link preview (src/ui/meta.ts OG_IMAGE, served at /assets/og.png): one file, two places.
   writeFileSync(new URL("src/ui/brand/og.png", root), social);

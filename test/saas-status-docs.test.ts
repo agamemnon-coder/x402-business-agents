@@ -617,14 +617,14 @@ describe("/status on the site", () => {
 
   it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Product tour", "Purser Cloud", "Pricing", "Security", "Docs", "Books", "Airwallex", "Metal", "Visa", "Claude"]);
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Security", "Docs", "Books", "Airwallex", "Metal", "Visa", "Claude"]);
     expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 
   it("carries the site's icon and link-preview image like the other pages, and says what is real in its own words", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE, DOCS_PAGE]) {
       expect(html).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
-      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
+      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113b">/);
     }
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(STATUS_PAGE)?.[1] ?? "");
     expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");
