@@ -98,7 +98,7 @@ if (args.base) {
 }
 // Playwright is not a dependency of this repo; it comes with the environment (Chromium pre-installed). BROWSER=firefox
 // runs the same visit in Firefox (CI job firefox), with the software passkey in place of Chromium's virtual authenticator.
-const { browserName, hasVirtualAuthenticator, launchBrowser } = await import("./support/browser.js");
+const { browserName, gotoLoaded, hasVirtualAuthenticator, launchBrowser } = await import("./support/browser.js");
 const { SOFT_PASSKEY } = await import("./support/softPasskey.js");
 const BROWSER = browserName();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,7 +258,7 @@ async function visitor(o: { width: number; scheme?: "light" | "dark"; ip: string
 /** Opens /try/sign and waits for the test world (it opens when the page is shown); over the relay's minute limit, waits once. */
 async function openWorld(page: Page, tag: string, goto = true): Promise<void> {
   for (let attempt = 0; ; attempt++) {
-    if (goto || attempt > 0) await page.goto(`${local.url}/try/sign`);
+    if (goto || attempt > 0) await gotoLoaded(page, `${local.url}/try/sign`);
     await page.waitForFunction(() => !(document.getElementById("go-sign") as HTMLButtonElement).disabled || document.getElementById("w-status")?.classList.contains("bad"));
     if (await page.locator("#go-sign").isEnabled()) return;
     const said = await page.locator("#w-status").innerText();
