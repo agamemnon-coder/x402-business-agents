@@ -131,24 +131,24 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 
 ## Screenshots
 
-From the live site (https://kit11.max-31b.workers.dev, deployed from main 877151f) on 7 November, 1280 px wide at 2×
-(2560 px; screens 1, 6 and 7 the first 800 px of the page, the others as tall as their part of the page), light mode,
-PNG under 500 KB each, in the form's order: the problem, try it, the proof per partner, the business. Screens 2–4 come
-from one test world on /try/sign (one live Airwallex FX quote, read-only, and the Treasury agent's advice by Claude
-Opus, live; a test passkey; nothing real moves). The other pages replay the main run (3 November) or show the separate
-runs of 7 November, and make no outside call. To be taken again from the current site before submitting: /try/sign now
-redirects to /try (screens 2–4 become /try), and Purser Cloud has Agents and Tokenisation tabs.
+Screens 1 and 5–8 from the live site (https://kit11.max-31b.workers.dev, deployed from main 877151f) on 7 November;
+screens 2–4 from a local build of /try at main 5eeaf5f on 13 November (the code the live /try runs; on this machine, a
+virtual test passkey, Purser's code reading instead of Claude, the simulated bank, test money; nothing outside the
+machine was called). 1280 px wide at 2× (2560 px; screens 1, 6 and 7 the first 800 px of the page, the others as tall
+as their part of the page), light mode, PNG under 500 KB each, in the form's order: the problem, try it, the proof per
+partner, the business. The other pages replay the main run (3 November) or show the separate runs of 7 November, and
+make no outside call. Screen 1 is Home as it was on 7 November (its first button is now "Try it live").
 
 1. `screens/form/form-1-home.png`: Home's first screen: "AI agents spend. You sign off.", the synopsis line, the three
    sentences, "Start: watch the agents"; beside it the main run replayed: the three agents and
    Metal's on-chain refusal
-2. `screens/form/form-2-try-sign-sheet.png`: /try/sign, step 1 of 6, "The agent asks": the Treasury agent's advice by
-   Claude Opus (live), the invoice above the agent's limit with the live Airwallex quote, "Sign with Face ID"; beside it
-   one policy, three locks, and the test payment Purser stopped in this world
-3. `screens/form/form-3-try-sign-verified.png`: step 2, signed with the test passkey: "Signed and verified. Purser checked
-   your signature. It only fits these exact terms.", executed in the test world, the receipt to download and check
-4. `screens/form/form-4-try-sign-tamper.png`: step 3, "Try to cheat": the amount + 1 cent sent with the same signature:
-   "One cent changed. The signature is worthless.", refused by Purser, signed and sent side by side with both hashes
+2. `screens/form/form-2-try-approve.png`: /try, "Approve the payment.": a test company's sample invoice from Bergtex
+   Textil GmbH, with every term the passkey signs: the amount, the payee, the account ending, the due date, the
+   conversion, the bank fee's cap and the deadline; the button approves that amount with the passkey
+3. `screens/form/form-3-try-paid.png`: "Paid, booked, filed.": paid on the simulated bank (test money) with its fee,
+   booked in Purser's ledger (debits equal credits), the invoice and the receipt filed in the archive
+4. `screens/form/form-4-try-refused.png`: "Pay it with your signature.": the amount changed by one cent and sent with the
+   same signature: "Refused by Purser", signed and sent hashes side by side, "Transfers made: 0"
 5. `screens/form/form-5-airwallex.png`: /airwallex: the hash the CFO signed beside the one Airwallex returns with the
    EUR 240.00 SWIFT payment (match), all 3 cards matching the CFO policy, awx-1 (every check passes), and Visa Intelligent
    Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money): paid alone, paid

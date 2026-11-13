@@ -47,7 +47,7 @@ every id.
 ### 4. Why Face ID and not a password or a button?
 
 A button or a password says yes to whatever is on the screen; a passkey signs the SHA-256 hash of these exact terms,
-so one changed cent, IBAN or currency makes the signature worthless, which anyone can try on /try/sign. The server
+so one changed cent, IBAN or currency makes the signature worthless, which anyone can try on /try. The server
 checks the signature, not your face: attestation is "none", so it cannot tell which authenticator made the key, and
 Face ID is what the phone asks for, not something we prove. The receipt checks offline, with no server:
 `npm run verify-receipt -- receipt.json`.
