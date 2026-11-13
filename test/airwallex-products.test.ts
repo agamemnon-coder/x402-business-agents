@@ -35,9 +35,9 @@ const idsOut = (t: string) => t.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-
 const eur = (v: string) => `EUR ${Number(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 describe("/airwallex: one tile per Airwallex product, each from its run's record", () => {
-  it("shows the seven products in order, each with one number, an id and a date, with every fold removed", () => {
+  it("shows the ten products in order, each with one number, an id and a date, with every fold removed", () => {
     expect(tiles.map((t) => t.key)).toEqual([...PRODUCT_ORDER]);
-    expect(tiles.map((t) => t.name)).toEqual(["Issuing", "Payouts", "FX", "Transfer approvals", "Connected accounts", "Payment acceptance", "Airi"]);
+    expect(tiles.map((t) => t.name)).toEqual(["Issuing", "Payouts", "FX", "Transfer approvals", "Connected accounts", "Payment acceptance", "Airi", "Payee check", "Batch transfer", "Ledger reconciliation"]);
     const open = text(withoutFolds(main(awx)));
     let at = -1;
     for (const t of tiles) {
@@ -61,8 +61,9 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
       expect(open).toContain(t.name);
     }
     // The heading counts the tiles; the page is no longer the replay of one run.
-    // Review 12 Nov: the seven products, then the three tested live behind flags.
-    expect(awx).toContain("<h1>Seven Airwallex products in use; three more tested live on 12 Nov</h1>");
+    // Review 12 Nov: the seven products, then the three tested live behind flags. 13 Nov: those three switched on in the
+    // flow and shown live by docs/runs/2026-11-13-airwallex-switch-on.json, so all ten are in use.
+    expect(awx).toContain("<h1>Ten Airwallex products in use</h1>");
     expect(text(main(awx))).not.toMatch(/Replay of the main run/);
     expect(awx).toMatch(/<span class="pill run">[\s\S]*?Airwallex sandbox · test money · each run dated<\/span>/);
   });
@@ -73,9 +74,10 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
       expect({ key: t.key, id: rec.includes(t.id) }).toEqual({ key: t.key, id: true });
       expect({ key: t.key, date: rec.includes(t.iso.slice(0, 10)) || rec.includes(new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(t.iso))) }).toEqual({ key: t.key, date: true });
       const inRecord = new Set(numbers(rec));
+      // One figure, or a count "N of M" (the payee check and the ledger, which the meters draw); each in the record.
       const value = numbers(t.value);
-      expect(value).toHaveLength(1);
-      expect({ key: t.key, value: inRecord.has(value[0]!) }).toEqual({ key: t.key, value: true });
+      expect(value.length === 1 || /^\d+ of \d+$/.test(t.value)).toBe(true);
+      for (const v of value) expect({ key: t.key, value: inRecord.has(v) }).toEqual({ key: t.key, value: true });
       // Every other figure on the tile too: nothing is typed in.
       const shown = numbers(idsOut(text(tileHtml(t.key)))).filter((n) => !inRecord.has(n) && n !== Number(day(t.iso).split(" ")[0]));
       expect({ key: t.key, unknown: shown }).toEqual({ key: t.key, unknown: [] });
@@ -444,7 +446,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     expect(read(PLATFORM_RUN_FILE)).toMatch(/SEPA, LOCAL/);
   });
 
-  it("links docs for all seven products in the docs fold, each on Airwallex's own docs site", () => {
+  it("links docs for all ten products in the docs fold, each on Airwallex's own docs site", () => {
     const fold = /<details class="fold"><summary>The Airwallex products and their docs<\/summary>[\s\S]*?<\/details>/.exec(awx)![0];
     const docs = productDocs();
     expect(docs.map((d) => d.key)).toEqual([...PRODUCT_ORDER]);

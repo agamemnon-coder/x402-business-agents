@@ -4,6 +4,7 @@
 import { erc20Abi, parseAbi, parseEventLogs, type Hash } from "viem";
 import { AirwallexRest } from "../airwallex/adapter.js";
 import { ftBySourceVia } from "./awxFinancialTx.js";
+import { listDeposits } from "../airwallex/deposits.js";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
@@ -38,7 +39,7 @@ export function reconcileSourcesFromEnv(db?: DB): ReconcileSources {
   return {
     ...(rest ? { transfer: async (id: string) => { const t = await rest.getTransfer(id); return { status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
     ...(rest ? { transferByRequestId: async (requestId: string) => { const t = await rest.findTransferByRequestIdStrict(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
-    ...(api ? { financialTransactions: ftBySourceVia(api) } : {}),
+    ...(api ? { financialTransactions: ftBySourceVia(api), deposits: (w: { from: string; to: string }) => listDeposits(api, w) } : {}),
     ...(issuing ? { cardTransactions: (cardId: string) => issuing.rail.listCardTransactions(cardId) } : {}),
     ...(process.env.METAL_RPC_URL ? { chainTransfer: receiptCarries } : {}),
     // A live world (Metal configured): the facilitator's public list of what settled to Northwind.

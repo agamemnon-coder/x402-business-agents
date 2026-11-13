@@ -249,7 +249,81 @@ if (cmd === "stand-in") {
   const { reconcileSourcesFromEnv } = await import("../finance/sources.js");
   // The executor makes its own rails from the environment (no `rails`), exactly as the runner does.
   await runAll(db, { verifier: new AirwallexPayeeNameRest(api), rail: new AirwallexRest(api), sources: reconcileSourcesFromEnv(db) });
+} else if (cmd === "deposit-follow") {
+  // A later read of the last day's deposits (the first read, right after the simulated deposit, found none), recorded and
+  // checked against Airwallex's ledger. Same ledger, log and budget as deposit-live.
+  if (!/awx-switch-on-deposit[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "") || process.env.AWX_SWITCH_ON_GO !== "yes" || !process.env.AIRWALLEX_CALL_BUDGET) { console.error("REFUSED  the deposit run's own KIT11_DB, AWX_SWITCH_ON_GO=yes and its call budget"); process.exit(2); }
+  const db = openDb();
+  const { fromEnv, Airwallex } = await import("../airwallex/client.js");
+  const cfg = fromEnv();
+  if (!cfg) { console.error("no Airwallex sandbox keys; nothing was called"); process.exit(2); }
+  const api = new Airwallex(cfg);
+  const { listDeposits, pullDeposits } = await import("../airwallex/deposits.js");
+  const { ftBySourceVia, reconcileLedgerAtAirwallex } = await import("../finance/awxFinancialTx.js");
+  phase(db, "deposit-follow", "start");
+  try {
+    const r = await pullDeposits(db, (w) => listDeposits(api, w), new Date(), 1);
+    audit(db, "system", "awx_deposit.read", null, { window_days: 1, read: r.read, fresh: r.fresh });
+    console.log(`READ     ${r.read} deposit(s) in the last day, ${r.fresh} new to the ledger`);
+    const l = await reconcileLedgerAtAirwallex(db, ftBySourceVia(api));
+    console.log(`LEDGER   ${l.checked} checked, ${l.agree} agree, ${l.pending.length} pending, ${l.differences.length} difference(s)`);
+  } catch (e) {
+    const err = e as { status?: number; code?: string; message: string };
+    audit(db, "system", "awx_deposit.error", null, { status: err.status ?? null, code: err.code ?? null, message: err.message.slice(0, 300) });
+    console.log(`ERROR    ${err.status ?? ""} ${err.code ?? ""} ${err.message.slice(0, 300)}`);
+  }
+  phase(db, "deposit-follow", "end");
+} else if (cmd === "deposit-live" || cmd === "deposit-record") {
+  // Money received (13 November, src/airwallex/deposits.ts): one sandbox test deposit (EUR 125.00, test money) to the
+  // company's first ACTIVE global account, read back with GET /deposits, recorded, and checked against Airwallex's own
+  // ledger by source_id. Its own ledger (KIT11_DB=…/awx-switch-on-deposit*.sqlite) and budget.
+  const db = openDb();
+  if (cmd === "deposit-live") {
+    const why = switchOnRefusals(process.env).filter((w) => !w.startsWith("KIT11_DB"));
+    if (!/awx-switch-on-deposit[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB=…/awx-switch-on-deposit*.sqlite (this run's own ledger)");
+    if (why.length) { for (const w of why) console.error(`REFUSED  ${w}`); process.exit(2); }
+    const { fromEnv, Airwallex } = await import("../airwallex/client.js");
+    const cfg = fromEnv();
+    if (!cfg) { console.error("no Airwallex sandbox keys; nothing was called"); process.exit(2); }
+    const api = new Airwallex(cfg);
+    const { listDeposits, recordDeposits, simulateDeposit } = await import("../airwallex/deposits.js");
+    const { ftBySourceVia, reconcileLedgerAtAirwallex } = await import("../finance/awxFinancialTx.js");
+    const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "+0000");
+    const start = new Date();
+    phase(db, "deposit", "start");
+    try {
+      const gas = await api.call<{ items?: { id: string; status?: string; currency?: string; country_code?: string }[] }>("GET", "/global_accounts", undefined, { page_num: "0", page_size: "20" });
+      const ga = (gas?.items ?? []).find((g) => g.status === "ACTIVE");
+      audit(db, "system", "awx_deposit.global_accounts", null, { count: gas?.items?.length ?? 0, active: (gas?.items ?? []).filter((g) => g.status === "ACTIVE").length, chosen: ga?.id ?? null });
+      if (!ga) throw new Error("no ACTIVE global account in this sandbox; nothing was deposited");
+      const sim = await simulateDeposit(api, { globalAccountId: ga.id, amount: "125.00", payer: "Sandbox test payer", reference: "awx-switch-on deposit" });
+      audit(db, "system", "awx_deposit.simulated", sim.id, { global_account_id: ga.id, currency: sim.currency, amount_cents: sim.amountCents, status: sim.status, simulated: true });
+      console.log(`SIMULATED deposit ${sim.id} ${sim.currency} ${(sim.amountCents / 100).toFixed(2)} ${sim.status} to ${ga.id}`);
+      const read = await listDeposits(api, { from: iso(new Date(start.getTime() - 5 * 60_000)), to: iso(new Date(Date.now() + 60_000)) });
+      const fresh = recordDeposits(db, read);
+      console.log(`READ     ${read.length} deposit(s) in the window, ${fresh.length} new to the ledger: ${read.map((d) => `${d.id} ${d.currency} ${(d.amountCents / 100).toFixed(2)} ${d.status}`).join("; ")}`);
+      const l = await reconcileLedgerAtAirwallex(db, ftBySourceVia(api));
+      console.log(`LEDGER   ${l.checked} checked, ${l.agree} agree, ${l.pending.length} pending, ${l.differences.length} difference(s)`);
+      for (const m of l.movements) console.log(`${m.agrees ? "AGREE   " : "NOT YET "} ${m.label}: ledger ${m.ledger}; Airwallex ${m.airwallex} (${m.how})`);
+    } catch (e) {
+      const err = e as { status?: number; code?: string; message: string };
+      audit(db, "system", "awx_deposit.error", null, { status: err.status ?? null, code: err.code ?? null, message: err.message.slice(0, 300) });
+      console.log(`ERROR    ${err.status ?? ""} ${err.code ?? ""} ${err.message.slice(0, 300)}`);
+    }
+    phase(db, "deposit", "end");
+  } else {
+    const { countByEndpoint, readCallLog } = await import("../airwallex/callBudget.js");
+    const calls = process.env.AIRWALLEX_CALL_LOG ? readCallLog(process.env.AIRWALLEX_CALL_LOG) : [];
+    const rows = (db.prepare("SELECT seq, ts, actor, event, subject, payload_json FROM audit_log WHERE event LIKE 'awx_%' ORDER BY seq").all() as { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }[])
+      .map((r) => ({ seq: r.seq, ts: r.ts, actor: r.actor, event: r.event, subject: r.subject, payload: JSON.parse(r.payload_json) as unknown }));
+    const date = process.env.AWX_SWITCH_ON_DATE ?? new Date().toISOString().slice(0, 10);
+    const file = resolve(repo, "docs/runs", `${date}-airwallex-deposits.json`);
+    writeFileSync(file, `${JSON.stringify({ stream: "airwallex-switch-on-1113", capability: "deposits", sandbox: "api.sandbox.airwallex.com", test_money: true, simulated_deposit: true,
+      source: "built by `npm run awx-switch-on -- deposit-record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+      budget: { approved: Number(process.env.AIRWALLEX_CALL_BUDGET ?? 0) || null, used: calls.length }, calls: { total: calls.length, by_endpoint: countByEndpoint(calls), lines: calls }, audit: rows }, null, 2)}\n`);
+    console.log(`WROTE    ${file}`);
+  }
 } else {
-  console.error("usage: npm run awx-switch-on -- stand-in | live | record");
+  console.error("usage: npm run awx-switch-on -- stand-in | live | record | deposit-live | deposit-record");
   process.exit(2);
 }

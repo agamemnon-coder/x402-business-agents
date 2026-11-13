@@ -111,3 +111,35 @@ describe("Airwallex's own ledger, in the hourly reconciliation", () => {
     }
   });
 });
+
+// After each payout (switched on 13 November, src/executors/index.ts reconcileAfterPayout): only that payout is looked
+// up in Airwallex's ledger, right after its executor ran; a read that fails never fails the payment.
+describe("Airwallex's own ledger, right after a payout", () => {
+  const paid = () => {
+    const db = ledger();
+    db.prepare("UPDATE transfers SET fee_actual = 'EUR 13.50' WHERE transfer_id = 'tr-1'").run();
+    db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, status, approval_sha256, updated_at, fee_actual) VALUES ('tr-2', 'rq-2', 'OTHER-1', '10.00', 'EUR', 'SWIFT', '20.00', 'PAID', 'cd', ?, 'EUR 1.00')").run(ago(60));
+    db.prepare("INSERT INTO proposals (proposal_id, kind, terms_json, terms_sha256, created_by, status, expires_at, created_at) VALUES ('P-0001', 'invoice_payment', ?, 'ab', 'treasury', 'EXECUTED', ?, ?)").run(JSON.stringify({ transfer_request_id: "rq-1" }), ago(-60), ago(90));
+    return db;
+  };
+  const booked = (id: string): FinancialTx[] => id === "tr-1" ? [
+    { id: "f1", sourceId: "tr-1", sourceType: "PAYOUT", transactionType: "PAYOUT", currency: "EUR", amountCents: -185000, feeCents: 0, netCents: -185000, status: "SETTLED", createdAt: null, settledAt: null },
+    { id: "f2", sourceId: "tr-1", sourceType: "FEE", transactionType: "FEE", currency: "EUR", amountCents: -1350, feeCents: 0, netCents: -1350, status: "SETTLED", createdAt: null, settledAt: null },
+  ] : [];
+
+  it("checks that payout only, and records that it agrees", async () => {
+    const { reconcileAfterPayout } = await import("../src/executors/index.js");
+    const db = paid();
+    const asked: string[] = [];
+    await reconcileAfterPayout(db, "P-0001", now, async (id) => { asked.push(id); return booked(id); });
+    expect(asked).toEqual(["tr-1"]);
+    expect(db.prepare("SELECT subject FROM audit_log WHERE event = 'awx_ft.agreed'").all()).toEqual([{ subject: "tr-1" }]);
+  });
+
+  it("a read that fails is recorded, and the payment it follows is left as it is", async () => {
+    const { reconcileAfterPayout } = await import("../src/executors/index.js");
+    const db = paid();
+    await expect(reconcileAfterPayout(db, "P-0001", now, async () => { throw new Error("503 from Airwallex"); })).resolves.toBeUndefined();
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'awx_ft.read_error'").get()).toEqual({ n: 1 });
+  });
+});

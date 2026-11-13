@@ -12,6 +12,7 @@ import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import type { Airwallex } from "../airwallex/client.js";
+import { settledDeposits } from "../airwallex/deposits.js";
 
 export const FINANCIAL_TX_FLAG = "AIRWALLEX_FINANCIAL_TX";
 export const financialTxOn = (env: Record<string, string | undefined> = process.env): boolean => env[FINANCIAL_TX_FLAG] !== "off";
@@ -178,6 +179,8 @@ export function ledgerMovementsFromDb(db: DB): LedgerMovement[] {
   for (const c of db.prepare("SELECT conversion_id, buy_amount, sell_amount FROM fx_conversions WHERE sell_amount IS NOT NULL").all() as { conversion_id: string; buy_amount: string; sell_amount: string }[]) {
     out.push({ kind: "conversion", sourceId: c.conversion_id, label: `conversion ${c.conversion_id.slice(0, 8)}`, buyCurrency: "EUR", buyCents: toCents(c.buy_amount), sellCurrency: "USD", sellCents: toCents(c.sell_amount) });
   }
+  // Money received (13 November): each SETTLED deposit to a global account the ledger recorded (src/airwallex/deposits.ts).
+  for (const d of settledDeposits(db)) out.push({ kind: "deposit", sourceId: d.id, label: d.label, currency: d.currency, amountCents: d.amountCents });
   return out;
 }
 
