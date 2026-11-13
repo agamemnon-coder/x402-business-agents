@@ -270,7 +270,7 @@ describe("/security: security and trust", () => {
       expect(counts.reduce((n, [, c]) => n + (c as number ?? 0), 0)).toBe(z.attacks_stopped);
       expect(z.attacks_stopped).toBe(z.attacks_run);
       expect(z.attacks_where_money_moved).toBe(0);
-      expect(inSightOf(hero).replace(/ ,/g, ",")).toContain(`${z.attacks_run} attacks, all stopped; none moved money. At least two layers must fail before a hostile payment moves.`);
+      expect(inSightOf(hero).replace(/ ,/g, ",")).toContain(`${z.attacks_run} attacks on the payment path, all stopped (zero-trust harness, 13 November); none moved money. At least two layers must fail before a hostile payment moves.`);
       expect(z.depth.minimum.optional_off.depth).toBe(2);
       // Simulated rails, said where the figures are, and in the fold in the report's own sense.
       expect(hero).toContain('<span class="pill">Test harness, simulated rails</span>');

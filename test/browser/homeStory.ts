@@ -58,8 +58,10 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const steps = (await card.locator(".hf-steps > li").allInnerTexts()).map(squash);
   if (JSON.stringify(steps) !== JSON.stringify([...FLOW_STEPS])) fail(`the card's steps are ${JSON.stringify(steps)}, not ${JSON.stringify(FLOW_STEPS)}`);
   const shown = squash(await card.locator(".hf-card").textContent() ?? "");
-  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, FLOW.account, READER_CHIP, `hash ${FLOW.hash}`, ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
+  const want = [FLOW.supplier, `Invoice ${FLOW.number}`, FLOW.amount, FLOW.due, FLOW.account, READER_CHIP, "Signed with a passkey", "fingerprint of the terms", ...FLOW.ledger.flatMap((l) => [l.code, l.name, l.debit || l.credit])];
   for (const v of want) if (!shown.includes(v)) fail(`the card does not show "${v}" from ${TRY_SAMPLE_RECORD}`);
+  // Jury review, 13 Nov: plain words in sight, the signed terms' hash in the tooltip.
+  if ((await card.locator(".hf-pill span[title]").getAttribute("title")) !== `SHA-256 of the signed terms: ${FLOW.hash}`) fail(`the card's tooltip does not hold the hash ${FLOW.hash} from ${TRY_SAMPLE_RECORD}`);
   if (await card.locator(".hf-card").evaluate((e) => getComputedStyle(e).display) !== "grid") fail("the card lost its style");
   const box = async () => { const b = await card.boundingBox(); return b ? `${Math.round(b.width)}x${Math.round(b.height)}@${Math.round(b.x)}` : "none"; };
   const s0 = await box();
@@ -89,7 +91,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const tiles = await row.locator("li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), label: (l.querySelector("small")?.textContent ?? "").trim() })));
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
-  if (!/passkeys \(P-256\) verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the passkeys verified on chain (${tiles[0]?.label})`);
+  if (!/limit changes, each signed by \w+ passkeys on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the limit changes signed by passkeys on chain (${tiles[0]?.label})`);
   // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link;
   // Home shows three of them since the judge panel of 13 Nov (homeScaleStats).
   const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));

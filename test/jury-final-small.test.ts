@@ -28,3 +28,12 @@ describe("final jury: small fixes", () => {
     expect(SECURITY_VIZ_CSS).toContain(".ztrack { top: 32px; bottom: calc((100% - 104px) / 10); }");
   });
 });
+
+describe("/try's first screen", () => {
+  it("says under the button what the visit is and how long, in words that hold on every device", async () => {
+    const { START } = await import("../cloud/src/tryCopy.js");
+    expect(START.what).toBe("About 2 minutes: read an invoice, sign it with your passkey, see it booked.");
+    const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
+    expect(html).toContain("box.append(text,b,el('p','fine',C.start.what),el('p','fine',C.start.fine));");
+  });
+});

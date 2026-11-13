@@ -73,7 +73,7 @@ describe("/visa's hero, from the vic-4 record", () => {
 
   it("says the Visa runs in one phrase, the same in the footer, on /visa and in the README", () => {
     const line = visaRunsLine()!;
-    expect(line).toMatch(/^\d+ paid in the \d{1,2} \w{3} run \(\d+ paid across \d+ live Visa runs?\)$/);
+    expect(line).toMatch(/^\d+ paid in the \d{1,2} \w{3} run \(\d+ paid across \d+ Visa runs?\)$/);
     expect(text(section(VISA_OUTCOMES_ID))).toContain(`${line}.`);
     expect(text(/<footer[\s\S]*<\/footer>/.exec(html)![0])).toContain(line);
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");

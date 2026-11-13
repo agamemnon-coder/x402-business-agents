@@ -610,7 +610,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const text=el('p','lede',C.start.text);const b=btn(C.start.button,true);
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
   const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
-  box.append(text,b,el('p','fine',C.start.fine),el('p','walkl',walk));
+  box.append(text,b,el('p','fine',C.start.what),el('p','fine',C.start.fine),el('p','walkl',walk));
   b.addEventListener('click',async()=>{
     b.disabled=true;label(C.start.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
