@@ -151,8 +151,9 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
     // the control test, the folded rows, and last the TAP fold.
-    // Jury pass, 13 Nov: the latest run's line and four cards, the entry and ICC lines, then the fold, which opens with the story.
-    const order = ["</h1>", 'class="vlead"', 'class="sumc"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-details"', esc(VISA_LEAD), 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`].map((x) => ({ x, at: main.indexOf(x) }));
+    // Redesign, 13 Nov: the latest run's line, its flow, every purchase's outcome and the signed hash read back; the entry
+    // and ICC lines; then the fold, which opens with the story and the cards.
+    const order = ["</h1>", 'class="vlead"', 'id="visa-flow"', 'id="visa-outcomes"', 'id="visa-hash"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-details"', esc(VISA_LEAD), 'class="sumc"', 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`].map((x) => ({ x, at: main.indexOf(x) }));
     for (const o of order) expect({ x: o.x, found: o.at >= 0 }).toEqual({ x: o.x, found: true });
     expect(order.map((o) => o.at)).toEqual([...order.map((o) => o.at)].sort((a, b) => a - b));
     // The drawing's five beats, in order, each with the record's own value: the CFO's limit, the Airi mandate, the

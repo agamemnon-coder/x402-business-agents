@@ -27,7 +27,8 @@ export interface Vic3Purchase {
   proposal_id: string | null;
   mandate_id: string | null;
   payment_intent_id: string | null;
-  read_back: { mandate: { equal: boolean; before_credential: boolean } | null; payment_intent: { equal: boolean } | null };
+  terms_sha256?: string | null;
+  read_back: { mandate: { equal: boolean; before_credential: boolean; terms_sha256_in_mandate?: string | null } | null; payment_intent: { equal: boolean; read_back?: string | null } | null };
   outcome: Outcome | null;
   calls: { anthropic: number; airwallex: number; airi: number };
   negative_test?: { airwallex: { outcome?: string; code?: string } | null; finding: string };

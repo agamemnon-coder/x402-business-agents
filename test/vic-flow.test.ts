@@ -36,8 +36,9 @@ describe("the VIC flow on /visa", () => {
     // Since the jury pass (13 Nov) the four cards lead and the rest is in one fold: inside it, only the story line and the
     // latest run's block come before the drawing.
     const fold = '<details class="sumd" id="visa-details">';
-    expect(visa.indexOf(fold)).toBeGreaterThan(visa.indexOf('<ul class="sumc"'));
-    const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run">[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
+    // Since the redesign (13 Nov) the latest run's flow, outcomes and hash lead; its cards open the fold, before the drawing.
+    expect(visa.indexOf(fold)).toBeGreaterThan(visa.indexOf('id="visa-flow"'));
+    const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<ul class="sumc"[\s\S]*?<\/ul>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run">[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
     expect(before).not.toMatch(/<section|class="card|<details/);
     // Not on the other pages: /proof links to it.
     for (const name of ["airwallex", "proof", "home"]) expect({ name, flow: pages[name]!.includes('id="vic-flow"') }).toEqual({ name, flow: false });
