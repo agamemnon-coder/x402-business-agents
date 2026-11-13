@@ -83,7 +83,7 @@ export function visaFlowHtml(r: Vic3Record): string {
 <ol class="vh-head"><li class="vh-s"><span class="vh-n">${esc("The agent asks to buy")}</span></li><li class="vh-arr" aria-hidden="true">${ARROW}</li><li class="vh-s vh-key"><span class="vh-n">${esc("Purser's policy check")}</span></li></ol>
 <div class="vh-lanes">
 ${lane("Within the CFO's limit", "vh-l-ok", tail(paidAlone, noTap))}
-${lane("Over the limit", "vh-l-face", [{ name: "CFO's Face ID", at: [] }, ...tail(paidFaceId, [])])}
+${lane("Over the limit", "vh-l-face", [{ name: "CFO's Face ID", at: [] }, { name: "Then the same path", at: [] }, { name: "Paid", at: paidFaceId }])}
 ${lane("Refused", "vh-l-bad", [{ name: "Stopped before any call; nothing charged", at: refused }])}
 </div></section>`;
 }
@@ -158,8 +158,21 @@ export const VISA_HERO_CSS = `
 .vh-eq { align-self: center; font-size: 22px; font-weight: 700; color: var(--ok); }
 .vh-src { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 @media (max-width: 560px) {
-  .vh-flow, .vh-out, .vh-hash { padding: 14px; }
-  .vh-steps { gap: 6px; } .vh-a { width: 16px; } .vh-n { padding: 6px 8px; font-size: 13px; }
-  .vh-hl { flex-direction: column; } .vh-hc { flex: none; } .vh-eq { align-self: flex-start; margin-left: 14px; line-height: 1; }
+  .vh-flow, .vh-out, .vh-hash { padding: 12px; margin-top: 14px; }
+  .vh-h { font-size: 15px; margin-bottom: 8px; }
+  .vh-head { margin-bottom: 10px; } .vh-lanes { gap: 8px; } .vh-lt { margin-bottom: 6px; }
+  .vh-steps { gap: 4px; } .vh-a { width: 14px; } .vh-arr { padding-top: 8px; }
+  .vh-n { padding: 4px 7px; font-size: 12.5px; border-radius: 6px; }
+  .vh-s { gap: 4px; flex-direction: row; flex-wrap: wrap; align-items: center; } .vh-arr { padding-top: 6px; }
+  .vh-flow .vh-why { display: none; }
+  #vic3-run .awc li { font-size: 12.5px; line-height: 1.4; padding: 6px 0; overflow-wrap: anywhere; }
+  #vic3-run .airi-finding, #vic3-run .airi-out li { font-size: 13px; }
+  #vic-more li, #vic-more p, #vic-more td, #vic-more th { font-size: 13.5px; line-height: 1.45; }
+  .vh-c { padding: 3px 8px; font-size: 12.5px; }
+  .vh-leg { gap: 4px 12px; margin-bottom: 8px; font-size: 12.5px; }
+  .vh-strip { grid-template-columns: 1fr 1fr; gap: 5px; }
+  .vh-strip .vh-c { padding: 4px 7px; } .vh-strip .vh-why { flex-basis: 100%; font-size: 11.5px; line-height: 1.25; }
+  .vh-hl { flex-wrap: nowrap; gap: 4px; } .vh-hc { flex: 1 1 0; padding: 7px; } .vh-hs { display: none; }
+  .vh-hc code { font-size: 11px; } .vh-hw { font-size: 13px; } .vh-tick { font-size: 12px; } .vh-eq { font-size: 16px; }
 }
 `;

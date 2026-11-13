@@ -24,8 +24,7 @@ import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, h
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
-import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary, visaSummary } from "./vic3Run.js";
-import { SUMMARY_CSS, summaryHtml } from "./summary.js";
+import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
@@ -340,8 +339,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${visaHashHtml(vic3)}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
-  ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>
-  ${summaryHtml(visaSummary(vic3), "The latest live run in cards")}` : ""}
+  ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>` : ""}
   ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at), summarised: true })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}
   ${vicFactsHtml(vicFacts(rec))}
@@ -359,7 +357,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const html = page({
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${SUMMARY_CSS}\n${VISA_HERO_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.

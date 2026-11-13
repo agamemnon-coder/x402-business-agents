@@ -39,9 +39,9 @@ describe("/visa's lead: the latest live run", () => {
     const w = (x: { equal: boolean } | null) => (x?.equal ? "equal" : "NOT equal");
     // The tile counts the read-backs that matched (of 2), from the record; the fold names each.
     const matched = [b.read_back.mandate, b.read_back.payment_intent].filter((x) => x?.equal).length;
-    // Jury pass, 13 Nov: on /visa the tiles are the four summary cards above the fold (visaSummary); the block keeps them
+    // Redesign, 13 Nov: on /visa the hash is the hero's read-back (src/redesign/visaHero.ts); the block keeps its tiles
     // when shown on its own.
-    expect(text(html)).toContain(`${matched} of 2 Signed hash, equal in Airi and Airwallex`);
+    expect(text(html)).toContain(`${matched} of 2 read-backs equal to the signed hash`);
     expect(text(vic3RunHtml(raw))).toContain(`${matched} of 2 hash matched at Airi and Airwallex`);
     expect(text(block)).toContain(`mandate read-back ${w(b.read_back.mandate)}`);
     expect(text(block)).toContain(`PaymentIntent read-back ${w(b.read_back.payment_intent)}`);
