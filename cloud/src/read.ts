@@ -95,9 +95,9 @@ async function lines(db: TenantDb): Promise<PostedLine[]> {
   return all.map((l) => ({ ...l, closing: closing.has(l.entry_id) }));
 }
 
-export async function report(db: TenantDb, name: string, q: URLSearchParams): Promise<unknown> {
+export async function report(db: TenantDb, name: string, q: URLSearchParams, now: Date = new Date()): Promise<unknown> {
   const all = await lines(db);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
   switch (name) {
     case "trial": return { to: day(q.get("to"), "to") ?? today, rows: trialFrom(all, day(q.get("to"), "to") ?? undefined) };
     case "pnl": {

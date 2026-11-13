@@ -20,6 +20,7 @@
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:guest-seed": "tsx cloud/scripts/guestSeed.ts",
+    "cloud:icons": "tsx cloud/scripts/brandIcons.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",
     "cloud:samples": "tsx cloud/scripts/samples.ts",
     "cloud:scenarios": "tsx cloud/scripts/scenarios.ts",

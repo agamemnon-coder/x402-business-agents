@@ -141,6 +141,62 @@ describe("failed sign-ins", () => {
   });
 });
 
+describe("polish (13 Nov): Purser's icon, ready-made prompts, results a phone can read", () => {
+  it("serves Purser's icon and names it in the server's info and the sign-in's metadata", async () => {
+    for (const [path, type] of [["/favicon.ico", "image/x-icon"], ["/favicon.svg", "image/svg+xml"], ["/apple-touch-icon.png", "image/png"], ["/icon.png", "image/png"]] as const) {
+      const r = await c.fetch(`${ORIGIN}${path}`);
+      expect({ path, status: r.status, type: r.headers.get("content-type") }).toEqual({ path, status: 200, type });
+    }
+    const png = new Uint8Array(await (await c.fetch(`${ORIGIN}/apple-touch-icon.png`)).arrayBuffer());
+    expect([...png.slice(1, 4)].map((b) => String.fromCharCode(b)).join("")).toBe("PNG");
+    expect(new DataView(png.buffer).getUint32(16)).toBe(180);
+    const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
+    expect((init.json.result!.serverInfo as { icons: { src: string }[] }).icons.map((i) => i.src)).toEqual([`${ORIGIN}/icon.png`, `${ORIGIN}/favicon.svg`]);
+    expect((await c.req("GET", "/.well-known/oauth-authorization-server")).json.logo_uri).toBe(`${ORIGIN}/icon.png`);
+    // Every page of the cloud links it.
+    expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg"');
+  });
+
+  it("offers three ready-made prompts, each asking for the tools that answer it", async () => {
+    const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
+    expect(init.json.result!.capabilities).toMatchObject({ prompts: {} });
+    const list = (await rpc(DEMO_CONNECTOR_TOKEN, "prompts/list")).json.result!.prompts as { name: string; title: string; arguments?: { name: string; required: boolean }[] }[];
+    expect(list.map((p) => p.title)).toEqual(["CFO weekly brief", "What needs my Face ID?", "Explain this invoice"]);
+    expect(list[2]!.arguments).toEqual([expect.objectContaining({ name: "invoice_id", required: true })]);
+    const tools = (await toolNames(proposer));
+    for (const p of list) {
+      const got = await rpc(DEMO_CONNECTOR_TOKEN, "prompts/get", { name: p.name, arguments: { invoice_id: "AP-0005" } });
+      const text = ((got.json.result!.messages as { content: { text: string } }[])[0]!.content.text);
+      const named = [...text.matchAll(/\b([a-z]+_[a-z_]+)\b/g)].map((m) => m[1]!).filter((n) => n !== "waiting_cfo");
+      expect({ p: p.name, unknown: named.filter((n) => !tools.includes(n)) }).toEqual({ p: p.name, unknown: [] });
+    }
+    expect((await rpc(DEMO_CONNECTOR_TOKEN, "prompts/get", { name: "explain_invoice", arguments: {} })).json.error!.code).toBe(-32602);
+    expect((await rpc(DEMO_CONNECTOR_TOKEN, "prompts/get", { name: "explain_invoice", arguments: { invoice_id: "x\ny" } })).json.error!.code).toBe(-32602);
+  });
+
+  it("answers in plain words first, money as EUR 1,793.00, no raw data in the text, short enough for a phone", async () => {
+    for (const [name, args] of [["company_overview", {}], ["what_needs_attention", {}], ["list_invoices", {}], ["get_invoice", { id: "AP-0005" }], ["list_transactions", {}], ["books_report", { report: "pnl" }], ["books_report", { report: "balance" }], ["books_report", { report: "vat", quarter: "2026Q4" }], ["books_report", { report: "payables" }], ["agent_decisions", {}]] as const) {
+      const r = await call(DEMO_CONNECTOR_TOKEN, name, args);
+      const text = r.content[0]!.text, first = text.split("\n")[0]!;
+      expect({ name, first: /^[A-Z0-9]/.test(first) && first.length < 200 && !/[{}[\]"]/.test(text), short: text.length < 2000, money: !/\bEUR\d|\d{4,}_cents|cents\b/.test(text) }).toEqual({ name, first: true, short: true, money: true });
+      expect(r.structuredContent).toBeTruthy();
+    }
+    expect((await call(DEMO_CONNECTOR_TOKEN, "what_needs_attention")).content[0]!.text).toMatch(/^As of 12 Nov 2026: 1 invoice waiting for the CFO's Face ID/);
+    expect((await call(DEMO_CONNECTOR_TOKEN, "company_overview")).content[0]!.text).toMatch(/EUR 9,227\.32/);
+  });
+
+  it("reads the demo company as of its own last day everywhere (jury, 13 Nov: three different days)", async () => {
+    const g = (await c.req("POST", "/v1/auth/guest", { key: null })).json.session as string;
+    const d = (await c.req("GET", "/v1/dashboard", { key: g })).json as { as_of: string };
+    const n = (await c.req("GET", "/v1/insights", { key: g })).json as { as_of: string };
+    const pay = (await c.req("GET", "/v1/reports/payables", { key: g })).json as { as_of: string };
+    const me = (await c.req("GET", "/v1/me", { key: g })).json as { demo: { as_of: string } };
+    const day = me.demo.as_of.slice(0, 10);
+    expect([d.as_of.slice(0, 10), n.as_of, pay.as_of]).toEqual([day, day, day]);
+    expect((await call(DEMO_CONNECTOR_TOKEN, "company_overview")).content[0]!.text).toContain("to 12 Nov 2026)");
+  });
+});
+
 describe("the demo company's public token", () => {
   it("reads the demo company, says it is demo data, and proposes nothing", async () => {
     expect(DEMO_CONNECTOR_TENANT).toBe(DEMO_TENANT);
@@ -183,7 +239,9 @@ describe("OAuth for claude.ai", () => {
     const page = await c.fetch(`${ORIGIN}${authorizeUrl()}`);
     expect(page.status).toBe(200);
     const html = await page.text();
-    expect(html).toMatch(/Connect Claude to Purser/);
+    expect(html).toMatch(/Connect your AI to Purser/);
+    expect(html).toMatch(/Use the demo company/);
+    expect(html).toContain('href="/favicon.svg"');
     expect(html).toMatch(/never approve or pay/);
     expect(page.headers.get("content-security-policy")).toMatch(/form-action 'self' https:\/\/claude\.ai; .*frame-ancestors 'none'/);
     expect((await c.fetch(`${ORIGIN}${authorizeUrl({ redirect_uri: "https://evil.example/cb" })}`)).status).toBe(400);

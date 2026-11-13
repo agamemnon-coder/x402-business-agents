@@ -64,7 +64,8 @@ export function feedLine(r: Audit): FeedItem | null {
   }
 }
 
-export async function dashboard(db: TenantDb): Promise<unknown> {
+/** asOf: the day the figures stand at (the demo company's own end); otherwise the newest movement or decision. */
+export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promise<unknown> {
   const txs = (await db.select<{ body_json: string }>("transactions", {}, { order: ["sort_key"] })).map((r) => JSON.parse(r.body_json) as Tx);
   const inv = await db.select<{ status: string; currency: string; total: string; vendor: string; due_date: string }>("invoices", {}, { order: ["id"] });
   const audit = await db.select<Audit>("audit_rows", {}, { order: ["seq"] });
@@ -127,7 +128,7 @@ export async function dashboard(db: TenantDb): Promise<unknown> {
 
   return {
     currency,
-    as_of: main.at(-1)?.at ?? null,
+    as_of: o.asOf ?? ([main.at(-1)?.at, audit.at(-1)?.ts].filter((x): x is string => !!x).sort().at(-1) ?? null),
     since: main[0]?.at ?? null,
     money: { in: money(totalIn), out: money(totalOut), net: money(totalIn - totalOut), movements: main.length, other_currencies: [...byCur.keys()].filter((c) => c !== currency) },
     cash: days.map((d) => ({ day: d.day, in: money(d.in), out: money(d.out), net: money(d.net) })),
