@@ -70,12 +70,14 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
-    expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
+    expect(readme).toContain(`alt="Try it: a test company of your own, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`); // 13 Nov, final pass
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.
     expect(readme).not.toContain("kit11.max-31b.workers.dev/tour");
-    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    // 13 Nov, final pass: /try/sign answers 301 to /try (#283); the README links /try, never /try/sign.
+    expect(readme).not.toContain("kit11.max-31b.workers.dev/try/sign");
+    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });

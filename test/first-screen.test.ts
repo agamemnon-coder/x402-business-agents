@@ -47,11 +47,11 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Since 13 Nov (the README upgrade, then the judge run): three buttons (sign in 60 seconds, the payables inbox, the film;
     // the tour's went with the tour that evening), one row of badges, the rails and "test money only" as plain text, the four screenshots with /try/sign first, then the
     // one-line diagram under "How it works" and the judges' 3 minutes.
-    const buttons = `<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>`;
+    const buttons = `<a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Try_it-2_minutes-0b1220?style=for-the-badge" alt="Try it: a test company of your own, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/proof"><img src="https://img.shields.io/badge/See_the_proof-every_id-0b1220?style=for-the-badge" alt="See the proof: every id"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>`;
     expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", buttons, ""]);
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(13); // CI, CodeQL, tests, MIT, Node, TypeScript, MCP, the MCP Registry, four partners and T:0
     expect(lines.slice(badges + 1, badges + 6)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", "", "**Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))", ""]);
-    expect(lines[badges + 6]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/try\/sign">/);
+    expect(lines[badges + 6]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/proof">/); // /proof first since the final pass
     expect(lines.slice(badges + 7, badges + 12)).toEqual(["", "</div>", "", "## How it works", ""]);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");

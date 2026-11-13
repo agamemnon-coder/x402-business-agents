@@ -141,7 +141,7 @@ connected yet.
 
 ### 13. Why not Airwallex's own spend controls and approvals?
 
-We use them: each agent's card limit is Airwallex's, enforced by Airwallex, and read back on 6 November, 3 of 3 cards
+We use them: each agent's card limit is Airwallex's, enforced by Airwallex, and read back on 6 November, all 3 cards
 carry the CFO policy as Airwallex's own controls. Purser adds one policy across Airwallex and Metal, each agent's
 mandate on chain, and a signature on the exact terms of each payment beyond the limits, whose hash Airwallex's own
 record of the EUR 240.00 SWIFT payment carries.

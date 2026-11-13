@@ -119,15 +119,15 @@ In a month of a test company's 20 invoices, Claude read each one live and chose 
 Code checked every choice before it was booked, and the books balance.
 
 31
-00:03:26,400 --> 00:03:32,400
-This is Purser Cloud's console for a test company: the overview, invoices, transactions and books.
+00:03:26,400 --> 00:03:34,000
+This is Purser Cloud's console for a test company: the overview, its agents, invoices and books, transactions and tokenisation.
 
 32
-00:03:32,400 --> 00:03:35,600
+00:03:34,000 --> 00:03:37,200
 It reads and manages, and it never pays.
 
 33
-00:03:35,600 --> 00:03:39,600
+00:03:37,200 --> 00:03:41,200
 Payments are approved on the CFO's phone with Face ID.
 
 34

@@ -105,7 +105,7 @@ flowchart LR
   U["Browser or phone"] --> K
   F["CFO's phone<br/>passkey"] <--> RO
   subgraph K["Worker kit11 · worker/"]
-    S["Site: Home, Try, Proof, the tour<br/>/try/sign"]
+    S["Site: Home, Try, Proof, /security<br/>the hands-on demo"]
     RO["Durable Object RelayObject<br/>the relay: proposals, approvals"]
   end
   RN["Runner · Node, src/cli<br/>the live runs"] <--> RO

@@ -43,7 +43,7 @@ Airwallex declined a purchase outside the card's merchant category, and the agen
 
 ## 7. Why not just use the card's own spend controls?
 
-We use them: each agent's card limit is Airwallex's own control, and on 6 November 3 of 3 cards carried the CFO policy as Airwallex's controls. Purser adds one policy across card and chain, and a signature over the exact terms for each payment beyond the limits.
+We use them: each agent's card limit is Airwallex's own control, and on 6 November all 3 cards carried the CFO policy as Airwallex's controls. Purser adds one policy across card and chain, and a signature over the exact terms for each payment beyond the limits.
 
 **Source:** [docs/submission/qa.md](../qa.md), question 13; [docs/runs/airwallex-cards-2026-11-06.json](../../runs/airwallex-cards-2026-11-06.json)
 

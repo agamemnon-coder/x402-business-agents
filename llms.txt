@@ -24,7 +24,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 
 ## Verify in two minutes
 
-- Sign with your own Face ID, then try to change one cent: https://kit11.max-31b.workers.dev/try/sign
+- A test company of your own: Claude reads an invoice, you approve the exact terms with a passkey, then try to change one cent: https://kit11.max-31b.workers.dev/try
 - Offline, no keys: git clone https://github.com/agamemnon-coder/x402-business-agents && cd x402-business-agents && npm ci && npm run judge; then npm run verify-approval checks that real signature of 7 November with Node's own crypto
 
 ## Judging criteria and where each is proven

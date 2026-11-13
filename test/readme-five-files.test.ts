@@ -134,7 +134,7 @@ describe("Verify it yourself in 3 commands", () => {
 
   it("says honestly what needs the network", () => {
     expect(SECTION).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
-    expect(SECTION).toContain("(that one needs the live site and your own\npasskey)");
+    expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`\nchecks any receipt of the same format."); // /try/sign's receipt went with it (13 Nov)
   });
 
   it("the tests badge links to this section", () => {

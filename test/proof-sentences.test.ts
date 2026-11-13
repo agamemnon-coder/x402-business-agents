@@ -34,7 +34,9 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     const rows = cardControlRows(record);
     const n = rows.filter((r) => r.match).length;
     expect([n, rows.length]).toEqual([3, 3]);
-    expect(text("Airwallex")).toContain(`${n} of ${rows.length} agent cards carry the CFO's policy as Airwallex's own controls`);
+    // "all 3", not "3 of 3" (13 Nov: no N/N fraction in the submission either), and only because every card matches.
+    expect(n).toBe(rows.length);
+    expect(text("Airwallex")).toContain(`all ${rows.length} agent cards carry the CFO's policy as Airwallex's own controls`);
   });
 
   it("Metal: a mandate per agent, 86 payments each its own transaction, #24 refused on chain, the mandates replaced after Face ID", () => {
