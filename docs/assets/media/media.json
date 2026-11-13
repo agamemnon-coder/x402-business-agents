@@ -1,0 +1,263 @@
+{
+  "note": "Written by npm run media:record (scripts/media-record.ts). Recorded from the live sites; nothing staged.",
+  "files": [
+    {
+      "file": "books-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/books",
+      "recorded_at": "2026-11-13T06:36:41.096Z",
+      "bytes": 325282,
+      "width": 1440,
+      "caption": "books at 1440 px (first screen)"
+    },
+    {
+      "file": "books-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/books",
+      "recorded_at": "2026-11-13T06:37:09.738Z",
+      "bytes": 170318,
+      "width": 390,
+      "caption": "books at 390 px (first screen)"
+    },
+    {
+      "file": "books.gif",
+      "kind": "gif",
+      "source": "https://kit11.max-31b.workers.dev/books",
+      "recorded_at": "2026-11-13T06:37:47.797Z",
+      "bytes": 4669065,
+      "seconds": 14.3,
+      "speed": 1.1,
+      "width": 640,
+      "caption": "kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money."
+    },
+    {
+      "file": "books.mp4",
+      "kind": "mp4",
+      "source": "https://kit11.max-31b.workers.dev/books",
+      "recorded_at": "2026-11-13T06:37:47.797Z",
+      "bytes": 1696716,
+      "seconds": 14.4,
+      "speed": 1.1,
+      "width": 1280,
+      "caption": "kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money."
+    },
+    {
+      "file": "books.webm",
+      "kind": "webm",
+      "source": "https://kit11.max-31b.workers.dev/books",
+      "recorded_at": "2026-11-13T06:37:47.797Z",
+      "bytes": 1546117,
+      "seconds": 14.3,
+      "speed": 1.1,
+      "width": 1280,
+      "caption": "kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money."
+    },
+    {
+      "file": "cloud-dashboard-1440.png",
+      "kind": "png",
+      "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
+      "recorded_at": "2026-11-13T06:36:47.732Z",
+      "bytes": 308647,
+      "width": 1440,
+      "caption": "cloud-dashboard at 1440 px (first screen)"
+    },
+    {
+      "file": "cloud-dashboard-390.png",
+      "kind": "png",
+      "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
+      "recorded_at": "2026-11-13T06:37:16.314Z",
+      "bytes": 172283,
+      "width": 390,
+      "caption": "cloud-dashboard at 390 px (first screen)"
+    },
+    {
+      "file": "cloud-dashboard.gif",
+      "kind": "gif",
+      "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
+      "recorded_at": "2026-11-13T06:39:04.044Z",
+      "bytes": 4255170,
+      "seconds": 13.4,
+      "speed": 1.1,
+      "width": 720,
+      "caption": "Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books."
+    },
+    {
+      "file": "cloud-dashboard.mp4",
+      "kind": "mp4",
+      "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
+      "recorded_at": "2026-11-13T06:39:04.044Z",
+      "bytes": 960787,
+      "seconds": 13.4,
+      "speed": 1.1,
+      "width": 1280,
+      "caption": "Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books."
+    },
+    {
+      "file": "cloud-dashboard.webm",
+      "kind": "webm",
+      "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
+      "recorded_at": "2026-11-13T06:39:04.044Z",
+      "bytes": 1017581,
+      "seconds": 13.4,
+      "speed": 1.1,
+      "width": 1280,
+      "caption": "Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books."
+    },
+    {
+      "file": "home-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/home",
+      "recorded_at": "2026-11-13T06:36:30.094Z",
+      "bytes": 323144,
+      "width": 1440,
+      "caption": "home at 1440 px (first screen)"
+    },
+    {
+      "file": "home-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/home",
+      "recorded_at": "2026-11-13T06:36:58.896Z",
+      "bytes": 143189,
+      "width": 390,
+      "caption": "home at 390 px (first screen)"
+    },
+    {
+      "file": "metal-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/metal",
+      "recorded_at": "2026-11-13T06:36:55.010Z",
+      "bytes": 278940,
+      "width": 1440,
+      "caption": "metal at 1440 px (first screen)"
+    },
+    {
+      "file": "metal-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/metal",
+      "recorded_at": "2026-11-13T06:37:23.320Z",
+      "bytes": 151036,
+      "width": 390,
+      "caption": "metal at 390 px (first screen)"
+    },
+    {
+      "file": "proof-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/proof",
+      "recorded_at": "2026-11-13T06:36:37.577Z",
+      "bytes": 274626,
+      "width": 1440,
+      "caption": "proof at 1440 px (first screen)"
+    },
+    {
+      "file": "proof-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/proof",
+      "recorded_at": "2026-11-13T06:37:06.324Z",
+      "bytes": 171561,
+      "width": 390,
+      "caption": "proof at 390 px (first screen)"
+    },
+    {
+      "file": "proof.gif",
+      "kind": "gif",
+      "source": "https://kit11.max-31b.workers.dev/proof",
+      "recorded_at": "2026-11-13T06:36:10.142Z",
+      "bytes": 1173972,
+      "seconds": 12.5,
+      "speed": 1,
+      "width": 880,
+      "caption": "kit11 /proof: every claim with its run record."
+    },
+    {
+      "file": "proof.mp4",
+      "kind": "mp4",
+      "source": "https://kit11.max-31b.workers.dev/proof",
+      "recorded_at": "2026-11-13T06:36:10.142Z",
+      "bytes": 163343,
+      "seconds": 12.5,
+      "speed": 1,
+      "width": 1280,
+      "caption": "kit11 /proof: every claim with its run record."
+    },
+    {
+      "file": "proof.webm",
+      "kind": "webm",
+      "source": "https://kit11.max-31b.workers.dev/proof",
+      "recorded_at": "2026-11-13T06:36:10.142Z",
+      "bytes": 218742,
+      "seconds": 12.5,
+      "speed": 1,
+      "width": 1280,
+      "caption": "kit11 /proof: every claim with its run record."
+    },
+    {
+      "file": "try-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/try",
+      "recorded_at": "2026-11-13T06:36:34.034Z",
+      "bytes": 1003731,
+      "width": 1440,
+      "caption": "try at 1440 px (first screen)"
+    },
+    {
+      "file": "try-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/try",
+      "recorded_at": "2026-11-13T06:37:02.876Z",
+      "bytes": 354166,
+      "width": 390,
+      "caption": "try at 390 px (first screen)"
+    },
+    {
+      "file": "try-flow.gif",
+      "kind": "gif",
+      "source": "https://kit11.max-31b.workers.dev/try",
+      "recorded_at": "2026-11-13T06:31:15.306Z",
+      "bytes": 3481299,
+      "seconds": 14.3,
+      "speed": 2,
+      "width": 880,
+      "caption": "The hands-on demo, end to end: a test company files a sample invoice, Claude reads it, Pay, the approval passkey (Chromium's virtual authenticator: a test passkey, no person or phone), paid on the simulated bank, booked and filed. Test money."
+    },
+    {
+      "file": "try-flow.mp4",
+      "kind": "mp4",
+      "source": "https://kit11.max-31b.workers.dev/try",
+      "recorded_at": "2026-11-13T06:31:15.306Z",
+      "bytes": 381993,
+      "seconds": 14.4,
+      "speed": 2,
+      "width": 1280,
+      "caption": "The hands-on demo, end to end: a test company files a sample invoice, Claude reads it, Pay, the approval passkey (Chromium's virtual authenticator: a test passkey, no person or phone), paid on the simulated bank, booked and filed. Test money."
+    },
+    {
+      "file": "try-flow.webm",
+      "kind": "webm",
+      "source": "https://kit11.max-31b.workers.dev/try",
+      "recorded_at": "2026-11-13T06:31:15.306Z",
+      "bytes": 414922,
+      "seconds": 14.3,
+      "speed": 2,
+      "width": 1280,
+      "caption": "The hands-on demo, end to end: a test company files a sample invoice, Claude reads it, Pay, the approval passkey (Chromium's virtual authenticator: a test passkey, no person or phone), paid on the simulated bank, booked and filed. Test money."
+    },
+    {
+      "file": "visa-1440.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/visa",
+      "recorded_at": "2026-11-13T06:36:51.214Z",
+      "bytes": 304370,
+      "width": 1440,
+      "caption": "visa at 1440 px (first screen)"
+    },
+    {
+      "file": "visa-390.png",
+      "kind": "png",
+      "source": "https://kit11.max-31b.workers.dev/visa",
+      "recorded_at": "2026-11-13T06:37:19.833Z",
+      "bytes": 160561,
+      "width": 390,
+      "caption": "visa at 390 px (first screen)"
+    }
+  ]
+}
