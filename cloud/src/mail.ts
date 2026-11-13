@@ -2,6 +2,7 @@
 // stores the raw message (R2) and queues it; the company's Purser runner pulls it, files its PDF attachments through
 // the inbox (src/ap/inbox.ts, ingestEmail) and marks it done. An unknown address is refused at the door.
 
+import { isDemoTenant } from "./guest/guest.js";
 import { bump } from "./auth.js";
 import { sha256Hex } from "./crypto.js";
 import type { Blobs, Sql } from "./store.js";
@@ -40,6 +41,8 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
   const slug = slugOf(msg.to, opts.domain);
   if (!slug) return refuse("unknown address");
   const tenant = await sql.first<{ id: string; closed_at: string | null }>("SELECT id, closed_at FROM tenants WHERE slug = ?", [slug]);
+  // The demo company (Try as guest) takes no mail: it holds its seed and nothing else.
+  if (tenant && isDemoTenant(tenant.id)) return refuse("unknown address");
   if (!tenant || tenant.closed_at) return refuse("unknown address");
   if (msg.rawSize > MAX_MAIL_BYTES) return refuse("message too large (25 MB at most)");
   const bytes = await bytesOf(msg.raw);
