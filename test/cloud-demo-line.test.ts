@@ -30,3 +30,19 @@ describe("the invoices bar says what it holds", () => {
     for (const l of ["en", "nl"] as const) expect(MESSAGES[l]["cs.dash.spend_parts"]).toMatch(/\{inbox\}[\s\S]*\{inbox_amt\}[\s\S]*\{outside\}[\s\S]*\{outside_amt\}[\s\S]*\{fees\}/);
   });
 });
+
+describe("the Overview's figures", () => {
+  it("are written final at once, never counted up from zero", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).toContain("function countUp(node,target,fmt){node.textContent=fmt(target)}");
+    expect(html).not.toMatch(/node\.textContent=fmt\(0\)/);
+  });
+});
+
+describe("while a page loads", () => {
+  it("shows a skeleton, with 'Loading …' kept for a screen reader, still under reduced motion", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).toContain("view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),");
+    expect(html).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{ \.skel i \{ animation:/);
+  });
+});

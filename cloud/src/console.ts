@@ -598,13 +598,15 @@ const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.w
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 // --- The start screen's dashboard (GET /v1/dashboard): every figure counted by the cloud from the company's own rows.
 // Charts are SVG and DOM built here (no library, no inline style markup: the page's nonce policy), drawn at the card's
-// own width so their words stay legible on a phone. Numbers count up and parts rise in once they are in view; with
+// own width so their words stay legible on a phone. Numbers stand at their final value; parts rise in once in view; with
 // reduced motion everything simply stands.
 const SVGNS='http://www.w3.org/2000/svg';
 const sv=(tag,attrs,kids)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs||{})e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[]))if(c)e.append(c);return e};
 const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function whenSeen(node,fn){if(RM()||!('IntersectionObserver' in window)){fn(true);return}const io=new IntersectionObserver((es)=>{if(es.some(e=>e.isIntersecting)){io.disconnect();fn(false)}},{threshold:.25});io.observe(node)}
-function countUp(node,target,fmt){node.textContent=fmt(target);whenSeen(node,(still)=>{if(still)return;const t0=performance.now();const step=(now)=>{const k=Math.min(1,(now-t0)/700);node.textContent=fmt(k<1?target*(1-Math.pow(1-k,3)):target);if(k<1)requestAnimationFrame(step)};node.textContent=fmt(0);requestAnimationFrame(step)})}
+// Jury review, 13 Nov: the count-up showed totals that were not yet the real ones (a hidden tab holds the animation for
+// seconds). Every figure is written once, final, at once; only the cards' rise moves.
+function countUp(node,target,fmt){node.textContent=fmt(target)}
 const dday=(iso)=>new Date(String(iso).slice(0,10)+'T12:00:00Z').toLocaleDateString(L.lang==='nl'?'nl-NL':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const kfmt=(c)=>{const a=Math.abs(c)/100;return (c<0?'-':'')+(a>=1000?(a/1000).toFixed(a>=10000?0:1).replace('.',L.lang==='nl'?',':'.')+'k':String(Math.round(a)))};
 const amt=(D,c)=>cur(D.currency)+' '+cents(Math.round(c));
@@ -1600,7 +1602,8 @@ async function route(){
       history.replaceState(null,'','#/settings');
       try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:{code:q.get('code'),state:q.get('state')}});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
       return route()}
-    view().replaceChildren(el('p','lede',t('loading')));
+    // Jury review, 13 Nov: a skeleton of the page while it loads, not a blank "Loading …" (still said to a screen reader).
+    view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),el('i','sk-h'),el('i','sk-l'),el('div','sk-cards',[el('i',''),el('i',''),el('i','')]),el('i','sk-b')]));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // The Invoices tab is part of Books now (13 Nov): its old route keeps its filter and lands there.
@@ -1623,6 +1626,13 @@ route();
  * page, calmer type and spacing, square-ish corners. Last in the one style, so it settles what the shared kit leaves.
  */
 const CLOUD_CSS = `
+.skel { display: grid; gap: 14px; padding-top: 4px; } .skel[hidden] { display: none; }
+.skel .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.skel i { display: block; border-radius: 10px; background: var(--sunken); }
+.skel .sk-h { height: 30px; width: 40%; } .skel .sk-l { height: 16px; width: 65%; } .skel .sk-b { height: 220px; }
+.skel .sk-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } .skel .sk-cards i { height: 96px; }
+@media (prefers-reduced-motion: no-preference) { .skel i { animation: skp 1.4s ease-in-out infinite; } }
+@keyframes skp { 50% { opacity: .55; } }
 :root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #8a93a1; --r: 12px; }
 body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
 header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
