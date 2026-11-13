@@ -1,11 +1,14 @@
-# Runs on every push and pull request: type checks, the full test suite (including the adversarial suite in
+# Runs on pushes to main and on every pull request: type checks, the full test suite (including the adversarial suite in
 # test/adversarial.test.ts), the relay Worker's type check, npm audit (root and worker/), a juror's first run
 # (npm run judge on a fresh clone, then the guest pages in Chromium, /try/sign in WebKit, and both in Firefox), the SBOM and Semgrep (blocking), and gitleaks on the pushed commits and on the whole history of the commit under check (accepted false positives are listed by fingerprint in .gitleaksignore).
 # No secrets and no network beyond npm and GitHub: the tests use fakes for Metal, Airwallex and Claude.
 name: ci
 on:
+  # Pushes to main and every pull request; a pushed PR branch runs once (as the pull request), not twice.
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
