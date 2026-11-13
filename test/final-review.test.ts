@@ -66,7 +66,7 @@ describe("the final review (13 Nov)", () => {
     const readme = read("README.md");
     const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
-    expect(shots.length).toBeGreaterThanOrEqual(9);
+    expect(shots.length).toBeGreaterThanOrEqual(8); // the hero is the link-preview card since 13 Nov, not a shot
     for (const f of shots) {
       expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
       expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
