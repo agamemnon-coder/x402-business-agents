@@ -61,7 +61,7 @@ export const LAYERS: readonly Layer[] = [
 /** What an attacker may be assumed to control. */
 export type ComponentId =
   | "agent_output" | "document" | "agent_key" | "relay" | "phone_page" | "approval_in_transit"
-  | "second_phone_page" | "decision_code" | "stored_terms" | "database" | "network" | "webhook_sender" | "other_tenant";
+  | "second_phone_page" | "decision_code" | "stored_terms" | "database" | "network" | "webhook_sender" | "other_tenant" | "stolen_session";
 
 export interface Component {
   id: ComponentId;
@@ -90,6 +90,7 @@ export const COMPONENTS: readonly Component[] = [
   { id: "network", name: "the network to the rail", voids: [], means: "The attacker, or bad luck, drops an answer from Airwallex, cuts the connection or stops the runner at the worst moment. They cannot read or change what is sent." },
   { id: "webhook_sender", name: "a webhook sender", voids: [], means: "The attacker posts events that claim to come from Airwallex, or sends a real one again." },
   { id: "other_tenant", name: "another company's session", voids: [], means: "The attacker is signed in to Purser Cloud as another company, with that company's full rights." },
+  { id: "stolen_session", name: "an owner's console session", voids: [], means: "The attacker holds an owner's Purser Cloud session token (it lives 15 minutes, in a browser tab), not the owner's passkey." },
 ];
 
 /** The ways money leaves. */
@@ -485,6 +486,13 @@ export const ATTACKS: readonly Attack[] = [
     description: "A company tries to write into another company, or to pay from another company's account.",
     breach: ["other_tenant"], target: "bank_payout",
     action: "Push data into another company, and pay from the account Purser Cloud bound to another company.",
+    bypasses: [], stoppedBy: "L2",
+  },
+  {
+    id: "stolen-session-settings",
+    description: "A stolen owner session, past its first five minutes, tries to send the approval alerts to the attacker's own number, make an API key and a Claude connector token, and add a person.",
+    breach: ["stolen_session"], target: "company_data",
+    action: "Change who hears about payments, and who has access.",
     bypasses: [], stoppedBy: "L2",
   },
   // The stop.

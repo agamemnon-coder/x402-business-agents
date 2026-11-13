@@ -140,6 +140,10 @@ export const SECRETS_LINES: readonly DocLine[] = [
 ];
 /** Each company apart in Purser Cloud: one database, every row scoped to its company (not a Durable Object per company). */
 export const TENANT_LINE: DocLine = { doc: "docs/cloud.md", anchor: "#how-it-fits", quote: "Every row carries the company (tenant_id); routes only reach data through a tenant-scoped layer (cloud/src/tenant.ts), and a test tries every route against another company's objects." };
+/** Sensitive settings in Purser Cloud ask for the passkey again (13 Nov, cloud/src/stepUp.ts). */
+export const STEP_UP_LINE: DocLine = { doc: "docs/cloud.md", anchor: "#step-up-for-sensitive-settings", quote: "On sensitive settings a session must also show a fresh passkey check" };
+/** Every route of the cloud's API states its auth requirement, and a test fails when one does not. */
+export const ROUTE_AUTH_LINE: DocLine = { doc: "docs/cloud.md", anchor: "#step-up-for-sensitive-settings", quote: "test/cloud-route-auth.test.ts fails when a route names none" };
 /** The full matrix behind the page: each risk, its control, who enforces it, its test and its evidence. */
 export const CONTROLS_MATRIX = "docs/controls-matrix.md";
 
@@ -402,7 +406,7 @@ export function securityCards(): SecurityCard[] {
       id: "s-tenants", icon: "users", title: "Each company apart",
       line: esc("Every row carries its company, and a test tries each route on another company's data."),
       links: [outLink(repoHref(TENANT_LINE.doc, TENANT_LINE.anchor), "Purser Cloud")],
-      fold: { summary: "How", lines: [quoted(TENANT_LINE)] },
+      fold: { summary: "How", lines: [quoted(TENANT_LINE), quoted(STEP_UP_LINE), quoted(ROUTE_AUTH_LINE)] },
     },
     {
       id: "s-audit", icon: "file-lock-2", title: "Audit trail",

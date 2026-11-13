@@ -247,6 +247,7 @@ const CONTROLS = {
   "webhook signature and single record": "L2",
   "the phone may only tighten": "L2",
   "tenant isolation": "L2",
+  "step-up on sensitive settings": "L2",
   "a payout is looked up by its request id, never sent blind": "L2",
   "the passkey's signature over the exact terms": "L3",
   "four eyes": "L4",
@@ -1291,6 +1292,38 @@ SCENARIOS["cross-tenant-read"] = async () => {
     // And B can read its own: the answers above are not a cloud that shows nothing.
     expect(JSON.stringify((await c.req("GET", "/v1/invoices", { key: b.key })).json)).toContain("Zeeland");
     return { moved: 0, control: "tenant isolation", record: answers.join("; ") };
+  } finally {
+    c.close();
+  }
+};
+
+// An owner's session token, stolen from a browser tab, used after its first five minutes: every sensitive setting asks for
+// the owner's passkey again (cloud/src/stepUp.ts), and the thief has the token, not the passkey.
+SCENARIOS["stolen-session-settings"] = async () => {
+  const c = testCloud();
+  try {
+    const a = await c.tenant("alpha");
+    c.clock.now = new Date(c.clock.now.getTime() + 6 * 60_000);
+    const tries: [string, string, unknown][] = [
+      ["POST", "/v1/alerts/targets", { channel: "whatsapp", target: "+31600000000" }],
+      ["POST", "/v1/keys", { name: "thief", scopes: ["read", "sync", "admin"] }],
+      ["POST", "/v1/claude/connectors", { name: "thief", propose: true }],
+      ["POST", "/v1/users", { display_name: "Thief", role: "owner" }],
+      ["POST", "/v1/webhook", { url: "https://thief.example/hook" }],
+    ];
+    const answers: string[] = [];
+    for (const [method, path, body] of tries) {
+      const r = await c.req(method, path, { key: a.session, body });
+      expect(r.status, path).toBe(403);
+      expect(r.json.code, path).toBe("step_up_required");
+      answers.push(`${method} ${path}: ${r.status} ${r.json.code as string}`);
+    }
+    // Nothing was made: no target, no new key, no new person, no webhook.
+    expect((await c.req("GET", "/v1/alerts", { key: a.key })).json.targets).toEqual([]);
+    expect(((await c.req("GET", "/v1/keys", { key: a.key })).json.items as unknown[]).length).toBe(2);
+    expect(((await c.req("GET", "/v1/users", { key: a.key })).json.items as unknown[]).length).toBe(1);
+    expect((await c.req("GET", "/v1/webhook", { key: a.key })).json.url).toBeNull();
+    return { moved: 0, control: "step-up on sensitive settings", record: answers.join("; ") };
   } finally {
     c.close();
   }

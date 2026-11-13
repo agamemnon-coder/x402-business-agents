@@ -25,14 +25,16 @@ const COLUMNS = {
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
   security_events: ["id", "at", "kind", "actor", "detail_json"],
   exports: ["id", "status", "created_at", "expires_at", "created_by", "parts_json", "bytes", "downloaded_at"],
+  alert_targets: ["id", "channel", "target", "created_at", "created_by"],
+  alert_deliveries: ["id", "event_key", "invoice_id", "channel", "target_id", "target_mask", "status", "attempts", "http_status", "provider_ref", "created_at", "updated_at"],
   awx_accounts: ["id", "account_id", "status", "business_name", "country_code", "created_at", "created_by", "updated_at", "event_at", "request_id", "attempt", "consent_by", "consent_at", "consent_terms"],
 } as const;
 
 export type Table = keyof typeof COLUMNS;
 export const TENANT_TABLES = Object.keys(COLUMNS) as Table[];
 
-/** Tables whose rows may be deleted at all (a person's credentials on erasure, a removed webhook; nothing else). */
-const DELETABLE = new Set<Table>(["credentials", "webhooks"]);
+/** Tables whose rows may be deleted at all (a person's credentials on erasure, a removed webhook or alert target; nothing else). */
+const DELETABLE = new Set<Table>(["credentials", "webhooks", "alert_targets"]);
 
 export type Cond = SqlValue | { op: ">=" | "<=" | ">" | "<" | "<>"; v: SqlValue } | { in: SqlValue[] };
 export type Where = Record<string, Cond>;
