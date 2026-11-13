@@ -14,12 +14,13 @@ import type { EngineApi } from "../engine/api.js";
 import { DEMO_END, ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
 import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
-import { mcpAnswer, PROTOCOL_VERSIONS } from "./mcp.js";
+import { connectPage } from "./connectPage.js";
+import { mcpAnswer } from "./mcp.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../brand.gen.js";
-import { authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
+import { type FetchDoc, authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
 
 export interface ClaudeCtx {
-  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi };
+  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi; outbound?: FetchDoc };
   req: Request;
   url: URL;
   now: Date;
@@ -38,7 +39,7 @@ export interface ClaudeKit<C extends ClaudeCtx> {
 export interface ClaudeRoute<C extends ClaudeCtx> { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: "public" | "read" | "admin"; run: (c: C) => Promise<Response> }
 
 /** The paths outside /v1 this block answers (the rest of the site is the console's). */
-export const isClaudePath = (p: string): boolean => p === "/mcp" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
+export const isClaudePath = (p: string): boolean => p === "/mcp" || p === "/connect-ai" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
 
 /** Purser's mark (cloud/src/brand.gen.ts, the site header's): what a browser tab, a home screen and a connector show. */
 const ICON_PATHS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
@@ -51,7 +52,7 @@ export const iconsOf = (origin: string) => [
 ];
 
 /** What a 401 at /mcp says, so a client finds where to sign in (RFC 9728 section 5.1). */
-export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
+export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource", scope="purser"`;
 
 const CONNECTOR_PURPOSES = ["claude", "claude-propose"];
 const oauthError = (e: OAuthRefused) => new Response(JSON.stringify({ error: e.code, error_description: e.message }), { status: e.status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
@@ -96,16 +97,15 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
 
     { method: "POST", path: "/mcp", summary: "Purser as a remote MCP server (Streamable HTTP; JSON answers, no session) for Claude: read the books, and with a token made to propose, file an invoice's payment for the CFO's approval. Never approves or pays. A Claude connector token (or an access token from /oauth/token) as Authorization: Bearer; the demo company's public token reads the demo company.", need: "read", run: async (c) => {
-      const asked = c.req.headers.get("mcp-protocol-version");
-      if (asked && !(PROTOCOL_VERSIONS as readonly string[]).includes(asked)) return err(400, `unsupported MCP-Protocol-Version; this server speaks ${PROTOCOL_VERSIONS.join(", ")}`);
       const caller = c.caller!;
       const demo = isDemoTenant(caller.tenantId);
       if (demo) await ensureDemoCompany(c.env.sql, c.env.blobs, c.now);
       const company = (await c.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [caller.tenantId]))?.name ?? "the company";
-      const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000));
+      const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000), c.req.headers);
       return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
     } },
 
+    { method: "GET", path: "/connect-ai", summary: "How to connect each AI client (Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf) to /mcp: a tab per client with an exact config or a one-click install link.", need: "public", run: async (c) => connectPage(c.env.origin) },
     { method: "GET", path: "/favicon.ico", summary: "Purser's icon (ICO, 32 and 48 px).", need: "public", run: async () => icon(bytes(ICON_ICO), "image/x-icon") },
     { method: "GET", path: "/favicon.svg", summary: "Purser's icon (SVG).", need: "public", run: async () => icon(ICON_SVG, "image/svg+xml") },
     { method: "GET", path: "/apple-touch-icon.png", summary: "Purser's icon for a home screen (PNG, 180 px).", need: "public", run: async () => icon(bytes(ICON_PNG_180), "image/png") },
@@ -126,7 +126,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "GET", path: "/oauth/authorize", summary: "The consent page: connect Claude with a connector token made in Purser Cloud, or open the demo company (read only). PKCE S256 required.", need: "public", run: async (c) => {
       try {
-        const { ask, client } = await authorizeAsk(c.env.sessionSecret, c.env.origin, c.url.searchParams);
+        const { ask, client } = await authorizeAsk(c.env.sessionSecret, c.env.origin, c.url.searchParams, c.env.outbound, c.now);
         return await consentPage(c.env.sessionSecret, ask, client, c.env.origin, c.now);
       } catch (e) {
         if (e instanceof OAuthRefused) return err(400, `${e.code}: ${e.message}`);
@@ -135,7 +135,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "POST", path: "/oauth/authorize", summary: "The consent page's answer: the form's own token (signed, bound to this request, ten minutes, good once), then a live connector token (or the demo), then back to the client with a one-time code (five minutes).", need: "public", run: async (c) => {
       try {
-        const out = await consent(c.env.sql, c.env.sessionSecret, c.env.origin, new URLSearchParams(await kit.text(c, 20_000)), c.now);
+        const out = await consent(c.env.sql, c.env.sessionSecret, c.env.origin, new URLSearchParams(await kit.text(c, 20_000)), c.now, c.env.outbound);
         return "page" in out ? out.page : new Response(null, { status: 303, headers: { location: out.redirect, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
       } catch (e) {
         if (e instanceof OAuthRefused) return err(400, `${e.code}: ${e.message}`);
@@ -144,7 +144,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "POST", path: "/oauth/token", summary: "A code and its PKCE verifier for an access token (authorization_code, public client). The token names the connector token it was issued for, never its secret; revoking that ends it.", need: "public", run: async (c) => {
       try {
-        return json(200, await exchange(c.env.sql, c.env.sessionSecret, c.env.origin, await formOf(kit, c), c.now));
+        return json(200, await exchange(c.env.sql, c.env.sessionSecret, c.env.origin, await formOf(kit, c), c.now, c.env.outbound));
       } catch (e) {
         if (e instanceof OAuthRefused) return oauthError(e);
         throw e;

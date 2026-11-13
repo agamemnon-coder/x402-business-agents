@@ -1168,7 +1168,7 @@ async function claudeCard(m,owner){
   const codeCmd=(token)=>'claude mcp add --transport http purser '+url+' --header "Authorization: Bearer '+token+'"';
   const steps=el('ol','steps',[el('li','',t('cs.claude.step1')),el('li','',t('cs.claude.step2')),el('li','',t('cs.claude.step3'))]);
   const urlRow=el('div','once',[el('b','',t('cs.claude.url')),el('code','cmd',url),el('div','row2',[copyBtn(url)])]);
-  const guide=el('a','',t('cs.claude.guide')+' ↗');guide.href='https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md';guide.target='_blank';guide.rel='noopener';
+  const guide=el('a','',t('cs.claude.guide')+' ↗');guide.href='/connect-ai';guide.target='_blank';guide.rel='noopener';
   const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide])];
   if(m.demo){
     const tok='purser-demo-read-only';

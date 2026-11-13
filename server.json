@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.agamemnon-coder/purser",
+  "title": "Purser",
+  "description": "Read a company's books in Purser: invoices, payments, cash, VAT, approvals. Never approves or pays.",
+  "version": "1.1.0",
+  "websiteUrl": "https://purser-try.max-31b.workers.dev/connect-ai",
+  "repository": { "url": "https://github.com/agamemnon-coder/x402-business-agents", "source": "github" },
+  "icons": [
+    { "src": "https://purser-try.max-31b.workers.dev/icon.png", "mimeType": "image/png", "sizes": ["512x512"] },
+    { "src": "https://purser-try.max-31b.workers.dev/favicon.svg", "mimeType": "image/svg+xml", "sizes": ["any"] }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://purser-try.max-31b.workers.dev/mcp",
+      "headers": [
+        { "name": "Authorization", "description": "Optional: 'Bearer <connector token>' from Purser Cloud (Settings, Connect your AI), or 'Bearer purser-demo-read-only' for the demo company. Without it the client signs in by OAuth.", "isRequired": false, "isSecret": true }
+      ]
+    }
+  ]
+}

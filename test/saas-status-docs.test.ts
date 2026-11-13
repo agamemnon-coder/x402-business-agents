@@ -133,7 +133,7 @@ describe("/docs: docs and API", () => {
     // The route is in the route table, and the table builds the document.
     const app = read("cloud/src/app.ts");
     expect(app).toContain(`path: "${CLOUD_OPENAPI_PATH}"`);
-    expect(app).toContain("export function openApi(origin: string)");
+    expect(app).toContain("export function openApi(origin: string, o: { readOnly?: boolean } = {})");
     const api = card(html, "cloud-api");
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     expect(plain(api)).toContain(CLOUD_OPENAPI_PATH);

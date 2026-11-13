@@ -27,7 +27,7 @@ interface Tx { at: string; direction: "in" | "out" | "internal"; flow: "in" | "o
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }
 
 const AGENTS = new Set(["sourcing", "support", "treasury", "checker", "coder", "payer", "reader", "claude"]);
-const agentOf = (t: Tx): string | null => /\bthe (\w+) agent\b/i.exec(`${t.approval.authority} ${t.description}`)?.[1]?.toLowerCase() ?? null;
+export const agentOf = (t: Pick<Tx, "approval" | "description">): string | null => /\bthe (\w+) agent\b/i.exec(`${t.approval.authority} ${t.description}`)?.[1]?.toLowerCase() ?? null;
 const reasonWords: Record<string, string> = { LIMIT_EXCEEDED: "over the card's limit", MERCHANT_CATEGORY_NOT_ALLOWED: "a merchant category this card may not pay" };
 const who = (actor: string) => (actor === "human" ? "The CFO" : AGENTS.has(actor) && actor !== "claude" ? agentName(actor) : actor === "awx-executor" ? "Purser (Airwallex)" : "Purser's code");
 

@@ -111,16 +111,16 @@ for (const width of [390, 1440]) {
   const icon = await fetch(info?.icons?.[0]?.src ?? `${ORIGIN}/icon.png`);
   ok(icon.status === 200 && icon.headers.get("content-type") === "image/png", `demo ${width}px: the server's icon loads`);
   const tools = ((await rpc(r.token, "tools/list")).json.result?.tools ?? []) as { name: string; annotations?: { readOnlyHint?: boolean } }[];
-  ok(tools.length === 7 && tools.every((t) => t.annotations?.readOnlyHint), `demo ${width}px: seven read-only tools (${tools.map((t) => t.name).join(", ")})`);
+  ok(tools.length === 14 && tools.every((t) => t.annotations?.readOnlyHint), `demo ${width}px: fourteen read-only tools (${tools.map((t) => t.name).join(", ")})`);
   for (const t of tools) {
-    const out = await rpc(r.token, "tools/call", { name: t.name, arguments: t.name === "get_invoice" ? { id: "AP-0005" } : t.name === "books_report" ? { report: "pnl" } : {} });
+    const out = await rpc(r.token, "tools/call", { name: t.name, arguments: t.name === "get_invoice" ? { id: "AP-0005" } : t.name === "books_report" ? { report: "pnl" } : ["payment_audit_trail", "explain_payment"].includes(t.name) ? { id: "AP-0004" } : {} });
     const res = out.json.result as { content?: { text: string }[]; isError?: boolean } | undefined;
     const text = res?.content?.[0]?.text ?? "";
     ok(out.status === 200 && !res?.isError && /^[A-Z0-9]/.test(text) && text.length < 2000 && !/[{}]/.test(text), `demo ${width}px: ${t.name} answers in plain words (${JSON.stringify(text.split("\n")[0]!.slice(0, 70))})`);
   }
   const prompts = ((await rpc(r.token, "prompts/list")).json.result?.prompts ?? []) as { name: string }[];
   const brief = await rpc(r.token, "prompts/get", { name: "cfo_weekly_brief" });
-  ok(prompts.length === 3 && ((brief.json.result?.messages ?? []) as unknown[]).length === 1, `demo ${width}px: three prompts, the weekly brief among them`);
+  ok(prompts.length === 5 && ((brief.json.result?.messages ?? []) as unknown[]).length === 1, `demo ${width}px: five prompts, the weekly brief among them`);
 }
 
 // A person's own company: its starter key is an ordinary API key, which the consent page must refuse.
@@ -142,7 +142,7 @@ ok(!wrong.code && /not a live Claude connector token/.test(wrong.page), "an ordi
   const called = await sdkClient.callTool({ name: "what_needs_attention", arguments: {} }) as { content: { type: string; text: string }[] };
   const prompts = await sdkClient.listPrompts();
   const got = await sdkClient.getPrompt({ name: "explain_invoice", arguments: { invoice_id: "AP-0005" } });
-  ok(tools.tools.length === 7 && /^As of 12 Nov 2026/.test(called.content[0]?.text ?? "") && prompts.prompts.length === 3 && got.messages.length === 1, "the MCP SDK's own client: connects, lists seven tools and three prompts, calls a tool, fills a prompt");
+  ok(tools.tools.length === 14 && /^As of 12 Nov 2026/.test(called.content[0]?.text ?? "") && prompts.prompts.length === 5 && got.messages.length === 1, "the MCP SDK's own client: connects, lists fourteen tools and five prompts, calls a tool, fills a prompt");
   await sdkClient.close();
 }
 
