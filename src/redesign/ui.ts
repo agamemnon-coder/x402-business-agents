@@ -516,7 +516,7 @@ export const OPEN_TARGET_JS = `(function () {
 /** A page around a body: one style, one script, the run's data in a data block ("<" escaped). */
 /** Every <title> is branded "Purser · <Page>" (review, 12 Nov); a title that already starts with Purser stays. */
 export const pageTitle = (t: string) => (/^Purser\b/.test(t) ? t : `Purser · ${t}`);
-export function page(o: { title: string; description: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
+export function page(o: { title: string; description: string; /** The page's one canonical address (Home, served at / and /home). */ canonical?: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
   return `<!doctype html>
@@ -525,7 +525,7 @@ ${o.js}</script>`;
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="${esc(o.description)}">
-<meta name="theme-color" content="#0b1220">
+${o.canonical ? `<link rel="canonical" href="${esc(o.canonical)}">\n` : ""}<meta name="theme-color" content="#0b1220">
 ${previewTags().join("\n")}
 <link rel="icon" href="assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=${ICON_VERSION}">

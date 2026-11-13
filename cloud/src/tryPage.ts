@@ -1330,6 +1330,9 @@ const nonce = () => {
 const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
+/** What /try is, for a search engine or a link preview (final jury, 13 Nov: the page had no meta description). */
+export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read and check each invoice, and you approve what is above their limit with your passkey. Test money on a simulated bank, deleted after 24 hours.";
+
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
   const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
@@ -1343,6 +1346,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
+<meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
 <style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}</style></head><body>
