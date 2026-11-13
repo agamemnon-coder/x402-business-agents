@@ -64,6 +64,9 @@ export interface Env {
   TRY_ENGINE?: Fetcher;
 }
 
+/** The try-sign instance's answer to the relay's /health: today's spend on its live agents. Not a public path. */
+export const LIVE_AGENTS_PATH = "/internal/try-sign/live-agents";
+
 export class RelayObject extends DurableObject<Env> {
   // Each desk is made on its instance's first request, so an instance holds only its own desk's tables: the try-sign
   // instance never has the relay's, and is handed only the Airwallex sandbox key, inside a client that can do nothing but
@@ -74,29 +77,42 @@ export class RelayObject extends DurableObject<Env> {
   private x402?: X402Desk;
   private metal?: MetalInspector;
 
+  /** The try-sign instance's desk, made on its first request (it holds only its own tables). */
+  private trySignDesk(): TrySignDesk {
+    const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
+    return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql, {
+      fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
+      // Section 6: the runner's invoice reader (Sonnet), live; spec 6b: the Treasury agent's advice (Opus). Only
+      // functions that make those calls: the desk never holds the key itself. Both under the switch and the budget.
+      reader: invoiceReaderSource(this.env, fetch),
+      advisor: treasuryAdvisorSource(this.env, fetch),
+      // "Talk the agent round" (worker/src/talkRound.ts): only with TRY_TALK=on; under the same switch and budget.
+      ...(this.env.TRY_TALK === "on" ? { talk: talkSource(this.env, fetch) } : {}),
+      // The recorded real outputs, built into the bundle, for when a live agent is unavailable.
+      recorded: PAGES.tryAgentsRecorded ?? null,
+      // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.
+      rate: PAGES.exposureRate ?? null,
+    }));
+  }
+
   override fetch(req: Request): Promise<Response> {
     const path = new URL(req.url).pathname;
-    if (isTrySignPath(path)) {
-      const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
-      return (this.trySign ??= new TrySignDesk(this.ctx.storage.sql, {
-        fx: id && key ? new SandboxQuotes({ clientId: id, apiKey: key }) : null,
-        // Section 6: the runner's invoice reader (Sonnet), live; spec 6b: the Treasury agent's advice (Opus). Only
-        // functions that make those calls: the desk never holds the key itself. Both under the switch and the budget.
-        reader: invoiceReaderSource(this.env, fetch),
-        advisor: treasuryAdvisorSource(this.env, fetch),
-        // "Talk the agent round" (worker/src/talkRound.ts): only with TRY_TALK=on; under the same switch and budget.
-        ...(this.env.TRY_TALK === "on" ? { talk: talkSource(this.env, fetch) } : {}),
-        // The recorded real outputs, built into the bundle, for when a live agent is unavailable.
-        recorded: PAGES.tryAgentsRecorded ?? null,
-        // 1.1: the main run's recorded rate, built in with the pages, for step 0's worst case.
-        rate: PAGES.exposureRate ?? null,
-      })).fetch(req);
-    }
+    // The relay's /health asks the try-sign instance for today's spend on its live agents. LIVE_AGENTS_PATH reaches an
+    // instance only from the relay's own (the Worker routes no outside request to it).
+    if (path === LIVE_AGENTS_PATH) return Promise.resolve(Response.json(this.trySignDesk().spentToday()));
+    if (isTrySignPath(path)) return this.trySignDesk().fetch(req);
     if (path === X402_PATH) return (this.x402 ??= new X402Desk(this.ctx.storage.sql, { settle: this.env.X402_TESTNET_SETTLE, payTo: this.env.X402_PAY_TO })).fetch(req);
     // The mandate inspector's own instance holds only the RPC URL and the switch, inside the desk.
     if (path === METAL_INSPECTOR_PATH) return (this.metal ??= new MetalInspector(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: inspectorOff(this.env.METAL_INSPECTOR) ? "switched off" : null, recorded: PAGES.metalRecorded ?? null })).fetch(req);
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
-    return (this.relay ??= new Relay(this.ctx.storage.sql, { relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on" })).fetch(req);
+    return (this.relay ??= new Relay(this.ctx.storage.sql, {
+      relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
+      // /health's live agents: read from the try-sign instance, where their spend is kept (code review, 13 Nov).
+      liveAgents: async () => {
+        const r = await this.env.RELAY.get(this.env.RELAY.idFromName("try-sign")).fetch(`https://relay.internal${LIVE_AGENTS_PATH}`);
+        return r.ok ? ((await r.json()) as { usd: number; budget_usd: number }) : null;
+      },
+    })).fetch(req);
   }
 }
 

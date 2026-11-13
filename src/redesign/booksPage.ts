@@ -136,7 +136,7 @@ ul.bk-inv > li:first-child { border-top: 0; padding-top: 4px; }
 ul.bk-sync { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 ul.bk-sync li { display: flex; gap: 10px; align-items: center; font-size: 14.5px; overflow-wrap: anywhere; }
 .bk-sync .lg { flex: none; min-width: 84px; text-align: center; font-weight: 800; font-size: 13px; border: 1px solid var(--border); border-radius: 8px; padding: 4px 6px; }
-a.bk-rec { font-size: 13px; white-space: nowrap; }
+a.bk-rec { font-size: 13px; white-space: nowrap; display: inline-flex; align-items: center; min-height: 24px; vertical-align: middle; }
 ul.bk-codes { margin: 0; padding-left: 18px; font-size: 13.5px; }
 .bk-tree { margin: 0; font-size: 12.5px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--muted); }
 table.bk-t0 { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
@@ -284,7 +284,7 @@ export function booksBody(d: BooksData): string {
   const owed = v.liabilities.find((a) => a.name === "Creditors");
   const kpis = `<ul class="bk-kpi">${[
     cash ? kpi("Cash at bank", cash.cents, v.currency, `at ${dayShort(v.asOf)}`) : "",
-    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, "approved with the CFO's passkey") : "",
+    d.run ? kpiCount("Invoices paid", d.run.checks.paid, d.run.checks.invoices, "approved with a test passkey (software)") : "",
     kpi("Expenses", v.totalExpenses, v.currency, "October's invoices and fees"),
     owed ? kpi("Owed to suppliers", owed.cents, v.currency, "waiting for a person") : "",
   ].join("")}</ul>`;

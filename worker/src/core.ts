@@ -6,7 +6,6 @@
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
-import { AGENT_LINE_DAILY_USD } from "./agentLine.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import type { MetalRecorded } from "./metalInspector.js";
 
@@ -221,12 +220,24 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     });
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
+  // /mcp and /connect are Purser Cloud's (the MCP server and the connect settings), not this site's: someone who tries
+  // them here is sent to the docs' "Connect your AI" card, which names the server's address (review, 13 Nov).
+  if (CONNECT_PATHS.has(path)) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: CONNECT_DOCS } });
   // A link pasted with the sentence's full stop or comma on it ("…/tour." in a form, jury review, 7 Nov, #18) goes to
   // the same path without it, its query kept. Only a trailing "." or ","; the page itself is then answered as usual.
+  // Never off the site (code review, 13 Nov): "//evil.com." trimmed is "//evil.com", which a browser reads as another
+  // host; the new address must be this site's own path.
   const trimmed = path.replace(/[.,]+$/, "");
-  if (trimmed !== path && trimmed.startsWith("/")) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: trimmed + new URL(req.url).search } });
+  if (trimmed !== path && trimmed.startsWith("/") && !/^[/\\]{2}/.test(trimmed)) {
+    const here = new URL(req.url), to = new URL(trimmed + here.search, here);
+    if (to.origin === here.origin && to.pathname === trimmed) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: trimmed + here.search } });
+  }
   return null;
 }
+
+/** Paths someone may try on this site for Purser Cloud's MCP server or its connect page, and where they go. */
+export const CONNECT_PATHS: ReadonlySet<string> = new Set(["/mcp", "/connect"]);
+export const CONNECT_DOCS = "/docs#connect-ai";
 
 /** Any other address: the clean 404 page when the bundle has one, else plain text. */
 export function notFoundResponse(pages: Pages): Response {
@@ -377,7 +388,11 @@ export class Relay {
   private readonly now: () => Date;
 
   /** liveRun: a live run is declared (the Worker's LIVE_RUN variable), so /health keeps the alarm however long the runner is silent. */
-  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean }) {
+  /**
+   * liveAgents: /try/sign's spend on live agents today, read from its own instance ("try-sign", worker/src/index.ts),
+   * where its table is; absent, /health says nothing about it.
+   */
+  constructor(private readonly sql: Sql, private readonly opts: { relayToken: string; webhookSecret?: string; now?: () => Date; mfa?: boolean; liveRun?: boolean; liveAgents?: () => Promise<{ usd: number; budget_usd: number } | null> }) {
     this.now = opts.now ?? (() => new Date());
     this.sql.exec("CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
     this.sql.exec(`CREATE TABLE IF NOT EXISTS inbox (
@@ -464,12 +479,13 @@ export class Relay {
     return s ? (JSON.parse(s) as StoredState) : null;
   }
 
-  /** /try/sign's live agents today (same storage as its desk): USD spent of the daily budget, or null before the first call. */
-  private liveAgentsToday(): { usd: number; budget_usd: number } | null {
+  /**
+   * /try/sign's live agents today: USD spent of the daily budget, from its own instance (code review, 13 Nov: its table
+   * is in the "try-sign" instance, never in the relay's), or null when it cannot say.
+   */
+  private async liveAgentsToday(): Promise<{ usd: number; budget_usd: number } | null> {
     try {
-      const day = new Date().toISOString().slice(0, 10);
-      const row = (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0];
-      return { usd: Math.round((row?.usd ?? 0) * 10_000) / 10_000, budget_usd: AGENT_LINE_DAILY_USD };
+      return (await this.opts.liveAgents?.()) ?? null;
     } catch {
       return null;
     }
@@ -525,7 +541,7 @@ export class Relay {
       const info = state ? this.relayInfo(state) : null;
       const h = path === "/health/live" ? publicHealth(ok, info?.age_ms ?? null) : publicStatus(ok, info?.age_ms ?? null, { liveRun: this.opts.liveRun, lastSync: info?.synced_at ?? null });
       // Section 6 (Max, 7 Nov): today's spend on /try/sign's live agents, against its daily budget, on /health.
-      const live = path === "/health" ? this.liveAgentsToday() : null;
+      const live = path === "/health" ? await this.liveAgentsToday() : null;
       return json(h.status, live ? { ...h.body, live_agents_today: live } : h.body);
     }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,

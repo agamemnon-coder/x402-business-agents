@@ -10,7 +10,7 @@ import { openDb } from "../src/db/open.js";
 import { toCents } from "../src/lib/money.js";
 import { policyValue } from "../src/policy/rules.js";
 import { createHash } from "node:crypto";
-import { EXPOSURE_HOW, EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposureOf, exposureWords, moneyShort, type ExposurePolicy } from "../src/policy/exposure.js";
+import { EXPOSURE_HOW, EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposureOf, exposureWords, moneyShort, TRY_WORLD_WORST_HEAD, type ExposurePolicy } from "../src/policy/exposure.js";
 import { exposurePolicyFromDb, exposurePolicyFromRecord, readmeWorstCase, recordedRate, startPolicy, worstCaseLine, worstCaseWords, worstCaseWordsOf } from "../src/policy/exposureSources.js";
 import { ALONE_PER_DAY, STEP0_CHAIN, defaultPolicy, exposurePolicyOfWorld } from "../src/try/policy.js";
 import { BASE, RP, call, challengeOf, desk, withPasskey } from "./support/trySign.js";
@@ -143,9 +143,13 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const html = trySignPage();
     const { esc } = await import("../src/redesign/ui.js");
     const block = /<div class="pexpo" id="p-expo"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1]!;
-    expect(start.headline.startsWith(TRY_POLICY.worstCase)).toBe(true);
-    // The test world's own figure (Max, 7 Nov: it counts what the Treasury agent may pay alone), by the Worker's code.
-    const world = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), { reserve_floor: "25000.00", alone_limit: "500.00" })));
+    // The test world's own figure (Max, 7 Nov: it counts what the Treasury agent may pay alone), by the Worker's code,
+    // under a heading that says whose policy it is (judge run, 13 Nov); the README and Home keep Purser's.
+    const world = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), { reserve_floor: "25000.00", alone_limit: "500.00" })), undefined, TRY_POLICY.worstCase);
+    expect(TRY_POLICY.worstCase).toBe("Worst case, your test world's policy");
+    expect(world.headline.startsWith(`${TRY_POLICY.worstCase}: `)).toBe(true);
+    expect(start.headline.startsWith("Worst case, set by policy: ")).toBe(true);
+    expect(world.tasks).toMatch(/^Task cards under a CFO-signed limit: EUR [\d,]+ a day\.$/);
     for (const t of [world.headline, world.tasks, world.above, ...world.how, TRY_POLICY.worstCaseChain]) expect(block).toContain(esc(t));
     expect(block).toMatch(new RegExp(`<details class="how"><summary>${EXPOSURE_HOW}</summary>`));
     expect(block).not.toMatch(/<details[^>]* open/);
@@ -156,7 +160,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const res = await call(d, "world", {});
     const w = (await res.json()) as { exposure: ReturnType<typeof worstCaseWords>; policy: Parameters<typeof exposurePolicyOfWorld>[0] };
     const ep = exposurePolicyOfWorld(w.policy);
-    expect(w.exposure).toEqual(exposureWords(exposureOf(ep), ep, recordedRate(record)));
+    expect(w.exposure).toEqual(exposureWords(exposureOf(ep), ep, recordedRate(record), undefined, TRY_WORLD_WORST_HEAD));
     const eur = (h: string) => Number(/EUR ([\d,]+) (?:on cards|incl\.)/.exec(h)![1]!.replace(/,/g, ""));
     expect(eur(w.exposure.headline)).toBe(eur(start.headline) + 500 * ALONE_PER_DAY * MONTH_DAYS);
     expect(w.exposure.above).toBe(start.above);
@@ -226,7 +230,7 @@ describe("in step 0: a stricter policy lowers it at once, a looser one raises it
     expect(eurMonth(out.exposure.headline)).toBe(before - 50);
     const p = exposurePolicyOfWorld(out.policy);
     expect(p.cardMonthlyCents.support).toBe(10000);
-    expect(out.exposure.headline).toBe(exposureWords(exposureOf(p), p, recordedRate(record)).headline);
+    expect(out.exposure.headline).toBe(exposureWords(exposureOf(p), p, recordedRate(record), undefined, TRY_WORLD_WORST_HEAD).headline);
   });
   it("looser: refused, the figure in force unchanged and the one it would set shown; signed, it holds", async () => {
     const v = await visitor();

@@ -8,7 +8,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { RECEIPT_FORMAT, RECEIPT_MEANS } from "./receipt.js";
+import { RECEIPT_FORMAT, RECEIPT_MEANS, RECEIPT_TRY_WORLD } from "./receipt.js";
 
 /** The line under the heading, word for word. */
 export const VERIFY_LEAD = "Don't trust our server: check it yourself.";
@@ -269,7 +269,7 @@ export function tryVerifyPage(): string {
   <dl class="terms" id="v-terms" hidden></dl>
   <details class="more" id="v-checks" hidden></details>
   <div class="flip" id="v-flipbox" hidden><select id="v-field" aria-label="Which field">${fields}</select><button class="btn" type="button" id="v-flip" aria-pressed="false">${icon("triangle-alert", 18)}Change one field</button></div>
-  <details class="more"><summary>more</summary><ul>${RECEIPT_MEANS.map((l) => `<li>${esc(l)}</li>`).join("")}<li>The same checks run offline with <code>npm run verify-receipt -- receipt.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}.</li></ul></details>
+  <details class="more"><summary>more</summary><ul>${RECEIPT_MEANS.map((l) => `<li>${esc(l)}</li>`).join("")}<li>${esc(`A /try/sign receipt: ${RECEIPT_TRY_WORLD}`)}</li><li>The same checks run offline with <code>npm run verify-receipt -- receipt.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}.</li></ul></details>
 </section>
 <p class="small muted"><a href="/try/sign">${icon("arrow-right", 16)}Make a receipt on /try/sign</a></p>
 </div></main>`;

@@ -30,7 +30,7 @@ import { AGENTS, MCC_WORDS } from "../config/policy.js";
 import { agentName } from "../config/brand.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, defaultPolicy, exposurePolicyOfWorld, FIELD_WORDS, PAID_ALONE, POLICY_CURRENCIES, POLICY_FIELDS, POLICY_MCCS, STEP0_CHAIN } from "./policy.js";
 import { worstCaseWords, worstCaseWordsOf } from "../policy/exposureSources.js";
-import { EXPOSURE_HOW, exposureOf } from "../policy/exposure.js";
+import { EXPOSURE_HOW, exposureOf, TRY_WORLD_WORST_HEAD } from "../policy/exposure.js";
 import { AGENT_STEPS, FIXED_PROPOSALS, NEXT_INVOICE, TEST_WORLD, type AgentStep } from "../../worker/src/trySign.js";
 import { CODE_LABEL } from "../../worker/src/agentLine.js";
 import { ATTACKS, TRICKS } from "../../worker/src/trick.js";
@@ -160,7 +160,7 @@ export const TRY_POLICY = {
   /** Beside the agent's sentence on a payment that ran alone after a policy change: it was said before that change. */
   saidBefore: "said before your policy change",
   /** 1.1: the worst case block's heading, "Worst case" word for word. */
-  worstCase: "Worst case, set by policy",
+  worstCase: TRY_WORLD_WORST_HEAD,
   /** 1.1, decision B1: what the block counts on chain, since the policy here does not change Purser's mandates. */
   worstCaseChain: STEP0_CHAIN === "purser" ? "Here: the card limits you set; on chain, Purser's own mandates, which this page does not change." : "Here: the card limits you set; on chain, your test world's mandate as panel 3 shows it.",
   ifSigned: "If you sign it:",
@@ -184,11 +184,11 @@ export const LOCK_CHANNELS = {
 } as const;
 
 /** Screens 4 and 5 say the worst case as one line, and whom it counts: all three agents' cards and mandates. */
-export const allAgents = (headline: string) => headline.replace("Worst case, set by policy:", "Worst case, all agents:");
+export const allAgents = (headline: string) => headline.replace(`${TRY_WORLD_WORST_HEAD}:`, "Worst case, all agents:");
 /** The worst case before a world opens: the starting policy's, as the README and the CFO's view show it. */
 // The test world's opening figure (Max, 7 Nov): Purser's policy plus what its Treasury agent may pay alone, by the code
 // the Worker uses (exposurePolicyOfWorld), with the main run's rate; the page shows it before the world answers.
-const START_WORST = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD)));
+const START_WORST = worstCaseWordsOf(exposurePolicyOfWorld(defaultPolicy(new Date(), TEST_WORLD)), undefined, TRY_WORLD_WORST_HEAD);
 /** Purser's own figure (the README's and the main run's): no payments alone there. */
 const README_WORST = worstCaseWords();
 /** The test world's opening worst case, EUR cents a month (cards and payments alone), as the Worker computes it. */

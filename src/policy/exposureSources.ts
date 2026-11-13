@@ -65,9 +65,9 @@ export function worstCaseWords(record: Pick<RecordForExposure, "ledger"> = loadR
   return exposureWords(exposureOf(p), p, recordedRate(record));
 }
 export const worstCaseLine = (): string => worstCaseWords().form;
-/** The same words for another policy (the /try/sign test world's), with the main run's rate. */
-export function worstCaseWordsOf(p: ExposurePolicy, record: Pick<RecordForExposure, "ledger"> = loadRecord().record as unknown as RecordForExposure) {
-  return exposureWords(exposureOf(p), p, recordedRate(record));
+/** The same words for another policy (the /try/sign test world's, under its own heading), with the main run's rate. */
+export function worstCaseWordsOf(p: ExposurePolicy, record: Pick<RecordForExposure, "ledger"> = loadRecord().record as unknown as RecordForExposure, head?: string) {
+  return exposureWords(exposureOf(p), p, recordedRate(record), undefined, head);
 }
 
 /** The README's block (between its worst-case markers), from the same words: the figure, two lines, the fold. */

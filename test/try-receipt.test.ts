@@ -5,12 +5,12 @@
 // command on it).
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
-import { RECEIPT_FORMAT, canonicalTerms, verifyReceipt, type TryReceipt } from "../src/try/receipt.js";
+import { RECEIPT_FORMAT, RECEIPT_TRY_WORLD, canonicalTerms, receiptOrigin, verifyReceipt, type TryReceipt } from "../src/try/receipt.js";
 import { BASE, RP, call, challengeOf, desk, signBody, withPasskey } from "./support/trySign.js";
 
 /** A real signature in a test world, and the receipt the page makes of it (src/try/sign.ts, receipt()). */
@@ -109,6 +109,7 @@ describe("/try/sign's receipt", () => {
       expect(ok.status).toBe(0);
       expect(ok.stdout).toContain("VALID:");
       expect(ok.stdout).not.toContain("FAIL");
+      expect(ok.stdout).toContain(RECEIPT_TRY_WORLD);
       const bad = run({ ...receipt, terms: { ...receipt.terms, amount: "1850.01" } });
       expect(bad.status).toBe(1);
       expect(bad.stdout).toMatch(/FAIL {2}terms hash/);
@@ -116,5 +117,20 @@ describe("/try/sign's receipt", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("says what the receipt is from the receipt: a test world's only when its terms name one (judge run, 13 Nov)", async () => {
+    const { receipt } = await signed();
+    expect(typeof receipt.terms.test_world).toBe("string");
+    expect(receiptOrigin(receipt)).toBe(RECEIPT_TRY_WORLD);
+    const repo = resolve(import.meta.dirname, "..");
+    const awx = JSON.parse(readFileSync(resolve(repo, "docs/runs/2026-11-07-awx-1/receipt-P-0002.json"), "utf8")) as TryReceipt;
+    expect(receiptOrigin(awx)).toBe("Airwallex sandbox approval of 7 Nov, test money.");
+    const run = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/verifyReceipt.ts"), resolve(repo, "docs/runs/2026-11-07-awx-1/receipt-P-0002.json")], { cwd: repo, encoding: "utf8", timeout: 60_000 });
+    expect(run.status).toBe(0);
+    expect(run.stdout).toContain("Airwallex sandbox approval of 7 Nov, test money.");
+    expect(run.stdout).not.toMatch(/test world/i);
+    expect(receiptOrigin({ ...awx, note: "something else" })).toBeNull();
+    expect(receiptOrigin(null)).toBeNull();
   });
 });
