@@ -16,10 +16,14 @@ describe("the demo company's one line", () => {
     expect(MESSAGES.nl["cs.demo.label"]).toBe(MESSAGES.nl["cs.demo.line"]);
   });
 
-  it("is the footer in the demo company, whatever the engine chip says", () => {
+  // The engine's own footer first: when the engine runs it pays (on a stand-in bank), so "the console never pays" would
+  // not hold there (console check, engine pass).
+  it("is the footer in the demo company, unless the engine runs, whose own line comes first", () => {
     const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
-    expect(html).toMatch(/dm\.hidden=!on;document\.body\.classList\.toggle\('demo',on\);\$\('#foot'\)\.textContent=on\?t\('cs\.demo\.line'\):t\('cs\.foot'\)/);
-    expect(html).toContain("$('#foot').textContent=document.body.classList.contains('demo')?t('cs.demo.line'):on?t('cs.eng.foot'):t('cs.foot')");
+    expect(html).toContain("function footLine(){$('#foot').textContent=ENG_ON?t('cs.eng.foot'):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}");
+    expect(html).toContain("dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}");
+    expect(html).toContain("var ENG_ON=false;");
+    expect(html).toContain("function engineChip(on){ENG_ON=!!on;");
   });
 });
 
