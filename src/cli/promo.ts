@@ -116,10 +116,10 @@ function mix() {
   for (const p of [picture, ...voice.map((v) => v.file), resolve(OUT, "music.mp3")]) if (!existsSync(p)) throw new Error(`promo: ${p} is missing`);
   const inputs = [picture, ...voice.map((v) => v.file), resolve(OUT, "music.mp3")].flatMap((f) => ["-i", f]);
   const m = voice.length + 1, ms = Math.round(MUSIC_AT * 1000);
-  // The voice bus from mix.ts, then the music: a slow fade out, ducked about 9 dB under the voice by a sidechain.
+  // The voice bus from mix.ts, then the music: a slow fade out, ducked about 10 dB under the voice by a sidechain.
   const graph = `${placeFilter(voice, TOTAL).replace("[mix]", "[vo]")};[vo]asplit=2[vo1][key];`
-    + `[${m}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-3dB,adelay=${ms}|${ms},afade=t=out:st=${TOTAL - 2.5}:d=2.5,apad,atrim=duration=${TOTAL}[mus];`
-    + `[mus][key]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350:makeup=1[duck];`
+    + `[${m}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-6dB,adelay=${ms}|${ms},afade=t=out:st=${TOTAL - 2.5}:d=2.5,apad,atrim=duration=${TOTAL}[mus];`
+    + `[mus][key]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=400:makeup=1[duck];`
     + `[vo1]volume=1.6[vo2];[vo2][duck]amix=inputs=2:normalize=0:duration=first[mix]`;
   // loudnorm prints its measurement on stderr; ffmpeg is run directly, no shell.
   const measure = spawnSync("ffmpeg", ["-hide_banner", "-nostats", ...inputs, "-filter_complex", `${graph};[mix]${measureFilter()}[m]`, "-map", "[m]", "-f", "null", "-"], { encoding: "utf8", maxBuffer: 1 << 26 });
