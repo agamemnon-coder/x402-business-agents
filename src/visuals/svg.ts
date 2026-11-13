@@ -14,7 +14,7 @@
 // (src/cli/visuals.ts writes a light and a dark file of each); on the site the SVG takes the page's tokens and its
 // class rules go into the page's one stylesheet (VISUAL_CSS), so the pages keep their hash-based CSP.
 
-import { esc } from "../redesign/ui.js";
+import { esc, icon } from "../redesign/ui.js";
 import { paletteCss, type Theme } from "./tokens.js";
 import type { RailRefusal } from "./facts.js";
 
@@ -327,26 +327,78 @@ export const SOCIAL_LINE = "AI agents spend. You sign off.";
 /** Purser's mark (a feather, the favicon's), as 24-unit paths. */
 const MARK_PATHS = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"];
 
+/** The small line under it: what the line means, as docs/security.md says it ("nothing above the limits is paid"). */
+export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face ID."] as const;
+/** Where the "Built with" row goes: the PNG render puts the partners' own logo files there (src/cli/visuals.ts). */
+export const SOCIAL_BUILT_WITH = { x: 72, y: 516, label: "Built with" } as const;
+/** The logos in that row, in this order (the orchestrator, 13 Nov: Airwallex, Metal, Visa (Airi), Claude). */
+export const SOCIAL_LOGOS = ["Airwallex", "Metal", "Visa", "Claude"] as const;
+
 /**
- * The link preview and the repository's social preview (the owner, 13 Nov: "clean, enterprise"): 1200×630, the mark,
- * the name and the one line, centred, nothing small. The mark and the name sit in the middle 630 px, so a square crop
- * (WhatsApp, Telegram) still shows both. `site` is kept for callers; nothing on the image names an address.
+ * The link preview and the repository's social preview (the owner, 13 Nov: readable at thumbnail size). 1200×630, on
+ * the site's light tokens and in its type: the mark and the name, the one line large in two lines, one small line, and
+ * on the right a small version of the payment's path (the agent asks, the payment is above its limit, Face ID, then
+ * paid or never paid), drawn with the site's own icons. The "Built with" row of logos is added where the PNG is
+ * rendered, from the official files (src/visuals/logos.ts), so this SVG carries no copy of them.
  */
 export function socialSvg(_site?: string): string {
-  const { width: W, height: H } = SOCIAL_SIZE, cx = W / 2, m = 132, my = 112;
+  const { width: W, height: H } = SOCIAL_SIZE;
+  const ic = (name: string, x: number, y: number, size: number, cls: string) => `<g class="${cls}">${icon(name, size).replace('<svg class="i"', `<svg class="i" x="${x}" y="${y}"`)}</g>`;
+  // The path, right: a card with three steps and two endings.
+  const cx = 756, cy = 64, cw = 372, ch = 502, nx = cx + 28, nw = cw - 56, nh = 74;
+  const step = (y: number, name: string, label: string, sub: string, hot = false) => [
+    `<rect class="${hot ? "s-node s-hot" : "s-node"}" x="${nx}" y="${y}" width="${nw}" height="${nh}" rx="18"/>`,
+    `<rect class="${hot ? "s-ic s-ic-hot" : "s-ic"}" x="${nx + 16}" y="${y + 16}" width="42" height="42" rx="12"/>`,
+    ic(name, nx + 25, y + 25, 24, hot ? "s-g-hot" : "s-g"),
+    text(nx + 74, y + 33, [label], "s-n", 0),
+    text(nx + 74, y + 58, [sub], "s-ns", 0),
+  ].join("");
+  const ys = [cy + 30, cy + 30 + nh + 34, cy + 30 + 2 * (nh + 34)];
+  const link = (y: number) => `<path class="s-link" d="M${nx + 37} ${y + nh + 4} L${nx + 37} ${y + nh + 30}"/>`;
+  const ey = ys[2]! + nh + 34, ew = (nw - 14) / 2, eh = 110;
+  const ending = (x: number, ok: boolean) => [
+    `<rect class="${ok ? "s-ok" : "s-bad"}" x="${x}" y="${ey}" width="${ew}" height="${eh}" rx="18"/>`,
+    ic(ok ? "circle-check" : "octagon-x", x + 16, ey + 14, 26, ok ? "s-g-ok" : "s-g-bad"),
+    text(x + 16, ey + 68, [ok ? "Signed" : "Not signed"], ok ? "s-e s-e-ok" : "s-e s-e-bad", 0),
+    text(x + 16, ey + 94, [ok ? "Paid" : "Never paid"], "s-es", 0),
+  ].join("");
+  // Face ID's two endings: down into "Signed", and across, then down into "Not signed".
+  const midY = ys[2]! + nh + 17, right = nx + ew + 14 + 37;
+  const fork = `<path class="s-link" d="M${nx + 37} ${ys[2]! + nh + 4} L${nx + 37} ${ey - 4}"/><path class="s-link" d="M${nx + 37} ${midY} L${right} ${midY} L${right} ${ey - 4}"/>`;
   const out = [
+    `<rect class="s-bg" x="0" y="0" width="${W}" height="${H}"/>`,
     `<rect class="s-glow" x="0" y="0" width="${W}" height="${H}"/>`,
-    `<rect class="s-mark" x="${cx - m / 2}" y="${my}" width="${m}" height="${m}" rx="34"/>`,
-    `<g class="s-feather" transform="translate(${cx - 42} ${my + 24}) scale(3.5)">${MARK_PATHS.map((d) => `<path d="${d}"/>`).join("")}</g>`,
-    text(cx, 382, ["Purser"], "s-name", 0, "middle"),
-    text(cx, 468, [SOCIAL_LINE], "s-line", 0, "middle"),
+    `<rect class="s-mark" x="72" y="64" width="60" height="60" rx="16"/>`,
+    `<g class="s-feather" transform="translate(84 76) scale(1.5)">${MARK_PATHS.map((d) => `<path d="${d}"/>`).join("")}</g>`,
+    text(150, 106, ["Purser"], "s-name", 0),
+    text(72, 268, ["AI agents spend."], "s-line", 0),
+    text(72, 358, ["You sign off."], "s-line s-line2", 0),
+    text(72, 428, [...SOCIAL_SUB], "s-sub", 40),
+    text(SOCIAL_BUILT_WITH.x, SOCIAL_BUILT_WITH.y, [SOCIAL_BUILT_WITH.label], "s-bw", 0),
+    `<rect class="s-card" x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="28"/>`,
+    link(ys[0]!), link(ys[1]!), fork,
+    step(ys[0]!, "bot", "The agent asks to pay", "by card or by transfer"),
+    step(ys[1]!, "sliders-horizontal", "Above its limit", "checked by code"),
+    step(ys[2]!, "scan-face", "Your Face ID", "you sign the exact terms", true),
+    ending(nx, true), ending(nx + ew + 14, false),
   ];
-  const css = `.pv .s-glow { fill: url(#s-grad); }
-.pv .s-mark { fill: #f5f7fb; }
-.pv .s-feather path { fill: none; stroke: #0b1220; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pv .s-name { font-size: 104px; font-weight: 780; letter-spacing: -.035em; fill: #f5f7fb; }
-.pv .s-line { font-size: 42px; font-weight: 560; letter-spacing: -.01em; fill: #aab4c5; }`;
-  const grad = `<defs><radialGradient id="s-grad" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#1b2a4a"/><stop offset="1" stop-color="#0b1220"/></radialGradient></defs>`;
-  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE}`, body: `${grad}
-${out.join("\n")}`, standalone: "dark" }).replace("</style>", `\n${css}</style>`);
+  const css = `.pv .s-bg { fill: #f7f8fa; } .pv .s-glow { fill: url(#s-grad); }
+.pv .s-mark { fill: #0b1220; }
+.pv .s-feather path { fill: none; stroke: #ffffff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pv .s-name { font-size: 38px; font-weight: 760; letter-spacing: -.025em; fill: #0b1220; }
+.pv .s-line { font-size: 80px; font-weight: 800; letter-spacing: -.04em; fill: #0b1220; } .pv .s-line2 { fill: #4f46e5; }
+.pv .s-sub { font-size: 31px; font-weight: 520; letter-spacing: -.01em; fill: #3b4456; }
+.pv .s-bw { font-size: 20px; font-weight: 600; fill: #586174; letter-spacing: .01em; }
+.pv .s-card { fill: #ffffff; stroke: #e3e6ec; stroke-width: 1.5; filter: drop-shadow(0 18px 40px rgba(16, 24, 40, .10)); }
+.pv .s-node { fill: #f1f3f7; } .pv .s-hot { fill: #eef0ff; stroke: #4f46e5; stroke-width: 2.5; }
+.pv .s-ic { fill: #ffffff; } .pv .s-ic-hot { fill: #4f46e5; }
+.pv .s-g { color: #4f46e5; } .pv .s-g-hot { color: #ffffff; } .pv .s-g-ok { color: #0b7d43; } .pv .s-g-bad { color: #c5363c; }
+.pv .s-n { font-size: 22px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
+.pv .s-link { fill: none; stroke: #c9cfda; stroke-width: 3; stroke-linecap: round; }
+.pv .s-ok { fill: #e6f6ee; stroke: #0b7d43; stroke-width: 2; } .pv .s-bad { fill: #fdecec; stroke: #c5363c; stroke-width: 2; }
+.pv .s-e { font-size: 21px; font-weight: 750; } .pv .s-e-ok { fill: #0b7d43; } .pv .s-e-bad { fill: #c5363c; }
+.pv .s-es { font-size: 17px; font-weight: 600; fill: #0b1220; }`;
+  const grad = `<defs><radialGradient id="s-grad" cx="88%" cy="18%" r="75%"><stop offset="0" stop-color="#e4e7ff" stop-opacity=".9"/><stop offset="1" stop-color="#f7f8fa" stop-opacity="0"/></radialGradient></defs>`;
+  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE} ${SOCIAL_SUB.join(" ")}`, body: `${grad}
+${out.join("\n")}`, standalone: "light" }).replace("</style>", `\n${css}</style>`);
 }
