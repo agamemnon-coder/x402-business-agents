@@ -7,7 +7,7 @@
 <rect class="bg" width="720" height="268" rx="8"/>
 <text class="t" x="20" y="30">Live runs per rail (sandbox and testnet, test money)</text>
 <text class="l" x="20" y="66">Airwallex sandbox</text><rect class="a" x="260" y="53" width="290.0" height="18" rx="3"/><text class="l" x="558.0" y="66">13</text>
-<text class="l" x="20" y="96">Metal testnet</text><rect class="a" x="260" y="83" width="200.8" height="18" rx="3"/><text class="l" x="468.8" y="96">9</text>
+<text class="l" x="20" y="96">Metal testnet</text><rect class="a" x="260" y="83" width="223.1" height="18" rx="3"/><text class="l" x="491.1" y="96">10</text>
 <text class="l" x="20" y="126">Claude (live calls)</text><rect class="a" x="260" y="113" width="89.2" height="18" rx="3"/><text class="l" x="357.2" y="126">4</text>
 <text class="l" x="20" y="156">Visa (Airi, TAP)</text><rect class="a" x="260" y="143" width="89.2" height="18" rx="3"/><text class="l" x="357.2" y="156">4</text>
 <text class="l" x="20" y="186">T:0 sandbox</text><rect class="a" x="260" y="173" width="44.6" height="18" rx="3"/><text class="l" x="312.6" y="186">2</text>

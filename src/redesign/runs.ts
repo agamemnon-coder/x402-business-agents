@@ -330,6 +330,20 @@ function extraRuns(): RunRow[] {
     files: [log("docs/runs/2026-11-10-metal-extra.md")],
   });
 
+  // The anchor run (13 Nov): one Metal testnet transaction whose calldata is the head of Purser's committed records.
+  type Anchor = { anchored_at: string; height: number; tx: string; block: number; parts: { name: string }[] };
+  const an = has("docs/runs/2026-11-13-anchor.json") ? readJson<Anchor>("docs/runs/2026-11-13-anchor.json") : null;
+  if (an) out.push({
+    key: "anchor-1", iso: an.anchored_at, date: day(an.anchored_at), kind: "testnet", partners: ["Metal"],
+    name: "Records anchored on chain",
+    line: `One transaction's calldata is the head over ${an.height} rows and journal lines of the committed records. Metal testnet, test money.`,
+    title: "Records anchored", rails: "Metal testnet (one anchor transaction)",
+    what: `Purser hashed ${an.parts.length} parts of its committed records (the recorded run's decision log, the main run's audit chain and its journal) into one head and wrote it as the calldata of one Metal testnet transaction.`,
+    checks: "npm run verify-anchor recomputes the head from the repository, reads the transaction from the chain (a Metal testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
+    ids: [tx("Anchor", an.tx), { label: "Block", value: String(an.block) }],
+    files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-13-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-13-anchor.md") }],
+  });
+
   type Owners = { ran_at: string; account: string; steps: { kind: string; outcome: string; tx: string | null }[]; proposals: { proposal_id: string }[] };
   const ow = has("docs/runs/2026-11-12-faceid-onchain.json") ? readJson<Owners>("docs/runs/2026-11-12-faceid-onchain.json") : null;
   if (ow) {

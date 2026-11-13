@@ -68,12 +68,17 @@ export const commandOf = (r: RunRow): string | null => {
   return name && pkgScripts[name] ? `npm run ${name}` : null;
 };
 
-/** How to verify it yourself: the explorer for a transaction, else the run's record (its log when it has one). */
-export function verifyOf(r: RunRow): { label: string; href: string } | null {
-  const id = keyIdOf(r);
-  if (id?.href && /explorer|testnet\.metalntwx/.test(id.href)) return { label: "On Metal's explorer", href: id.href };
+/** The run's record: its log when it has one, else its first file. */
+export function recordOf(r: RunRow): { label: string; href: string } | null {
   const log = r.files.find((f) => /\.md(#|$)/.test(f.href)) ?? r.files[0];
   return log ? { label: "Run record", href: siteHref(log.href) } : null;
+}
+
+/** How to verify it yourself: the explorer for a transaction, else the run's record. */
+export function verifyOf(r: RunRow): { label: string; href: string } | null {
+  const id = keyIdOf(r);
+  if (id?.href && /explorer|testnet\.metalntwx/.test(id.href)) return { label: "Explorer", href: id.href };
+  return recordOf(r);
 }
 
 export const PROOF_RUNS_ID = "live-runs";
@@ -99,15 +104,15 @@ const a = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? 
 export function proofRunsHtml(groups = proofRuns()): string {
   if (!groups.length) return "";
   const row = (r: RunRow) => {
-    const chip = chipOf(r), id = keyIdOf(r), v = verifyOf(r), cmd = commandOf(r);
+    const chip = chipOf(r), id = keyIdOf(r), v = verifyOf(r), recLink = recordOf(r), cmd = commandOf(r);
     const rec = r.files.map((f) => siteHref(f.href).replace(REPO_BLOB, "")).join(" ");
     return `<li id="run-${esc(r.key)}" data-rec="${esc(rec)}"><span class="pr-d">${esc(dayOf(r.iso))}</span><span class="pr-n">${esc(r.name ?? r.title)}</span>`
       + `<span class="pr-c"><span class="chip live">${esc(chip.live)}</span>${chip.simulated ? `<span class="chip sim">${esc(chip.simulated)}</span>` : ""}</span>`
       + `<span class="pr-id">${id ? `<span class="k">${esc(id.label.replace(/ · 0x[0-9a-fA-F]+…[0-9a-fA-F]+$/, "").replace(/ \([A-Z_]+\)$/, ""))}</span> ${id.href ? `<a class="mono" href="${esc(id.href)}" target="_blank" rel="noopener">${esc(id.value)}&nbsp;↗</a>` : `<code>${esc(id.value)}</code>`}` : ""}</span>`
-      + `<span class="pr-v">${v ? a(v.href, v.label) : ""}${cmd ? ` <code class="cmd">${esc(cmd)}</code>` : ""}</span></li>`;
+      + `<span class="pr-v">${v ? a(v.href, v.label) : ""}${v && recLink && recLink.href !== v.href ? ` ${a(recLink.href, "Record")}` : ""}${cmd ? ` <code class="cmd">${esc(cmd)}</code>` : ""}</span></li>`;
   };
   return `<section class="pruns" id="${PROOF_RUNS_ID}" data-rec="docs/runs" aria-labelledby="h-pruns"><h2 id="h-pruns">${icon("calendar-range", 19)} ${esc("What ran live, by partner")}</h2>
-<p class="pr-note">${esc("Sandbox and testnet runs with test money, each with the id to look up and its record. Rehearsals, control tests and partial runs are on /runs.")}</p>
+<p class="pr-note">${esc("Test money throughout. Each run: the id to look up, how to check it. Rehearsals, control tests and partial runs: /runs.")}</p>
 ${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}${elsewhereRuns().length ? `\n<p class="pr-more"><a href="visa#${VISA_TAP_ID}">${esc(TAP_LINK)}</a></p>` : ""}</section>`;
 }
 

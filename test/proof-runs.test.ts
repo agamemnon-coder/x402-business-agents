@@ -1,6 +1,7 @@
 // /proof's live runs (the owner, 13 Nov: "the proof is what we need"): one row per live run, grouped by partner, and the
 // strip's run count is the number of rows, from the same array (the orchestrator, 13 Nov: a judge who counts the rows
 // gets the strip's figure). The TAP run is told on /visa only; one link under the list says so.
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { proofPage, proofScaleStats } from "../src/redesign/proof.js";
 import { elsewhereRuns, proofRunCount, proofRuns, TAP_LINK } from "../src/redesign/proofRuns.js";
@@ -32,5 +33,15 @@ describe("/proof: the live runs and the strip's count", () => {
   it("links the TAP run to /visa, once, under the list", () => {
     expect(runs).toContain(`<p class="pr-more"><a href="visa#visa-tap">${TAP_LINK.replace(">", "&gt;")}</a></p>`);
     expect(main.match(/\bTAP\b/g)).toHaveLength(1);
+  });
+
+  it("lists the anchor run of 13 Nov as Live · testnet, linking its transaction on the explorer and its record", () => {
+    const rec = JSON.parse(readFileSync("docs/runs/2026-11-13-anchor.json", "utf8")) as { tx: string; block: number; explorer: string };
+    const row = /<li id="run-anchor-1"[\s\S]*?<\/li>/.exec(runs)![0];
+    expect(row).toContain('<span class="chip live">Live · testnet</span>');
+    expect(rec.explorer).toBe(`https://testnet.metalntwx.com/tx/${rec.tx}`);
+    expect(row).toContain(`href="${rec.explorer}"`);
+    expect(row).toMatch(/href="[^"]*docs\/runs\/2026-11-13-anchor\.md"[^>]*>Record/);
+    expect(row).toContain('data-rec="docs/runs/2026-11-13-anchor.json docs/runs/2026-11-13-anchor.md"');
   });
 });
