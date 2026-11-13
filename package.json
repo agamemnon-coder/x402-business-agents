@@ -16,6 +16,7 @@
   "scripts": {
     "books:statement": "tsx scripts/books-statement.ts",
     "books:month": "tsx scripts/books-month.ts",
+    "media:record": "tsx scripts/media-record.ts",
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:guest-seed": "tsx cloud/scripts/guestSeed.ts",
