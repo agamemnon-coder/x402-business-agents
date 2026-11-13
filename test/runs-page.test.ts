@@ -1,5 +1,6 @@
 // /runs and /agents/<id> (competitor gap list, 10 Nov): every live run in one list with its ids, checks and records,
 // and one page per Kit 11 agent, every figure read from the records. docs/runs/README.md is the same list, generated.
+import { countOf } from "../src/redesign/ui.js";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
@@ -509,7 +510,7 @@ describe("/runs as a timeline", () => {
     for (const r of rows.filter((x) => x.rate)) {
       const e = entriesOf(html).find((x) => x.key === r.key)!;
       // Checks have no pass-rate fraction (judge run, 13 Nov); other series keep "N of M".
-      const words = r.rate!.what === "checks passed" ? (r.rate!.done === r.rate!.of ? "every check passed" : "not every check passed") : `${r.rate!.done} of ${r.rate!.of} ${r.rate!.what}`;
+      const words = r.rate!.what === "checks passed" ? (r.rate!.done === r.rate!.of ? "every check passed" : "not every check passed") : `${countOf(r.rate!.done, r.rate!.of)} ${r.rate!.what}`;
       // A full rate carries the tick and the colour of success; one that fell short carries neither.
       const full = r.rate!.done === r.rate!.of;
       expect(inSight(e.html), r.key).toMatch(new RegExp(full ? `<span class="rt ok"><svg[^>]*>.*?</svg>${words}</span>` : `<span class="rt">${words}</span>`));
@@ -572,7 +573,8 @@ describe("/runs as a timeline", () => {
       expect(foldIds, r.key).toEqual(r.ids.map((i) => [escAttr(i.label), escAttr(i.value)]));
       // A link relative to docs/runs/README.md opens the file on GitHub from the page.
       for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href.replace(/^\.\.\/\.\.\//, REPO_BLOB)}"`);
-      for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part));
+      // A recorded "2,000 of 2,000" reads "all 2,000" on the page (no N/N fraction, 13 Nov).
+      for (const part of [r.what, r.checks, r.rails, r.money]) expect(fold, r.key).toContain(escAttr(part.replace(/\b(\d[\d,]*) of \1\b/g, "all $1")));
       expect(seen, r.key).not.toContain(escAttr(r.checks));
     }
     // In the rehearsals group (itself the fold) an entry shows the same parts without a fold of its own.

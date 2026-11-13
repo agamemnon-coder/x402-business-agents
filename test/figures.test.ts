@@ -3,6 +3,7 @@
 // with its label and compared with a value counted here, straight from the raw files (docs/demo/main-run.json, the
 // TAP run, the eval and red-team records), not through the page code. A labelled figure this test
 // does not know fails too, so a new number cannot slip in unchecked.
+import { countOf } from "../src/redesign/ui.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
@@ -67,9 +68,9 @@ function expected(): Record<string, string | string[]> {
     "refused by Metal at the limit": String(metalRefusals),
     "limits replaced on chain": String(ev.filter((e) => e.event === "mandate.replaced").length),
     "calls to Claude, each logged": String(sum((a) => a.claude_calls)),
-    "cards carry the CFO's limits": (() => { const rows = cardControlRows(loadRecord().record); return `${rows.filter((r) => r.match).length} of ${rows.length}`; })(),
+    "cards carry the CFO's limits": (() => { const rows = cardControlRows(loadRecord().record); return countOf(rows.filter((r) => r.match).length, rows.length); })(),
     // Proof's Airwallex tile (12 Nov): the same count, from the same card read-back.
-    "cards carry the CFO's policy as Airwallex's own controls": (() => { const rows = cardControlRows(loadRecord().record); return `${rows.filter((r) => r.match).length} of ${rows.length}`; })(),
+    "cards carry the CFO's policy as Airwallex's own controls": (() => { const rows = cardControlRows(loadRecord().record); return countOf(rows.filter((r) => r.match).length, rows.length); })(),
     "refused by Metal: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.

@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
 import { COUNT_JS } from "./stats.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { T0_JOURNAL_RECORD, t0Journal, type T0Journal } from "./t0Page.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 import { statementView, type BooksStatementFile, type StatementLine, type StatementView } from "../vault/statementPdf.js";
 
 import { centsOf, REVERSE_CHARGE_LINE } from "../vault/statementPdf.js";
@@ -248,7 +248,7 @@ function invoicesCard(d: BooksData, v: StatementView, f: BooksStatementFile): st
   const rows = items.slice(0, SHOWN).join("");
   const more = items.length > SHOWN ? `<details class="fold bk-more"><summary>${esc(`All ${items.length} invoices`)}</summary><ul class="bk-inv">${items.slice(SHOWN).join("")}</ul></details>` : "";
   const run = d.run;
-  return `<section class="bk-card" aria-labelledby="bk-inv"><h2 id="bk-inv">${icon("sparkles", 19)}${esc("Invoices, sorted by Claude")}<span class="tag">${esc(`${v.sorted.length} of ${run?.checks.invoices ?? v.sorted.length} invoices`)}</span></h2>
+  return `<section class="bk-card" aria-labelledby="bk-inv"><h2 id="bk-inv">${icon("sparkles", 19)}${esc("Invoices, sorted by Claude")}<span class="tag">${esc(`${countOf(v.sorted.length, run?.checks.invoices ?? v.sorted.length)} invoices`)}</span></h2>
 <p class="sub">${esc(`Claude (${model}) read each invoice and chose its account, VAT code and cost centre, live in this run; code checked every choice before it was booked.${run ? ` Claude's cost for the month: USD ${(run.claude.spent_micros / 1e6).toFixed(2)}.` : ""}`)} ${rec(RUN_FILE)}</p>
 <ul class="bk-inv">${rows}</ul>${more}</section>`;
 }

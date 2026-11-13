@@ -12,7 +12,7 @@
 
 import { airiAsker, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
-import { esc } from "./ui.js";
+import { countOf, esc } from "./ui.js";
 
 /** The TAP fold's anchor on /visa: the last thing on the page, closed (src/redesign/partners.ts). */
 export const VISA_TAP_ID = "visa-tap";
@@ -51,7 +51,7 @@ export function tapCard(tap: Tap): RunCard {
   const approved = tap.steps.filter((s) => s.approved), declined = tap.steps.filter((s) => !s.approved);
   return {
     kind: "tap", tag: `Visa TAP · ${day(tap.ranAt)}`, title: "The agent signs its checkout",
-    stats: [{ v: `${ok}/${tap.steps.length}`, l: "signatures accepted" }, ...(approved[0] ? [{ v: `EUR ${approved[0].amount}`, l: "approved" }] : []), ...(declined[0] ? [{ v: `EUR ${declined[0].amount}`, l: `declined (${declined[0].reason ?? "by Airwallex"})` }] : [])],
+    stats: [{ v: countOf(ok, tap.steps.length), l: "signatures accepted" }, ...(approved[0] ? [{ v: `EUR ${approved[0].amount}`, l: "approved" }] : []), ...(declined[0] ? [{ v: `EUR ${declined[0].amount}`, l: `declined (${declined[0].reason ?? "by Airwallex"})` }] : [])],
     ids: [["Visa reference verifier", `commit ${tap.commit}`]],
     label: "Our merchant (simulated) · Airwallex sandbox authorisations",
   };

@@ -9,7 +9,7 @@
 
 import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4f46e5; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #7a73f0; } }
@@ -176,7 +176,7 @@ export function modelChart(e: ClaudeEvidence, used: Record<string, string>): str
   const lines = modelLines(e.sweep), agents = [...new Set(lines.map((l) => l.agent))];
   const row = (l: ModelLine) => {
     const inUse = used[l.agent] === FAM(l.model), cap = (s: string) => `${s[0]!.toUpperCase()}${s.slice(1)}`;
-    const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${l.passed} of ${l.runs} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
+    const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${countOf(l.passed, l.runs, true)} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
     return `<div class="cmr"><span class="m">${esc(FAM(l.model))}</span>${bar(l.passed, l.runs, label, !inUse)}<span class="n"><b>${esc(passedWords(l.passed, l.runs))}</b> · $${esc(usd(l.costPerPass))} · ${esc(l.medianS.toFixed(1))}s${inUse ? ` · <span class="use">in use</span>` : ""}</span></div>`;
   };
   return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}</h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Passed · USD a pass · time. ${link(SWEEP_RECORD)}</p></article>`;

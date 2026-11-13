@@ -1106,7 +1106,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         return { id: c.id, lead: inSight && facts >= 2 && facts <= 3 && !c.querySelector("img:not(.ph img)") && !!ul && !fold.open, claims: [...main, ...(ul ? ul.querySelectorAll("a.c") : [])].map((a) => a.textContent.trim()) };
       })`)) as { id: string; lead: boolean; claims: string[] }[];
       const want: Record<string, RegExp[]> = {
-        airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
+        airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^(?:All 3|3 of 3) cards carry the CFO's policy$/],
         metal: [/^#24 refused on chain\s↗$/, /^86 payments, each its own tx\s↗$/],
         claude: [/^all \d+ decisions by Claude, 0 fallbacks$/, /^a reliability run found a hand-off fault; the rebuilt eval now passes every run\s↗$/],
       };
@@ -1125,7 +1125,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(2000);
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
       const stop = tiles.find((t) => / stop$/.test(t.cls));
-      if (tiles.length !== 4 || !tiles.some((t) => / awx$/.test(t.cls) && /^\d+ of \d+$/.test(t.v)) || !stop || stop.parts.length < 2 || stop.parts.reduce((k, x) => k + x, 0) !== Number(/^\d+/.exec(stop.v)?.[0])) fail(`/proof ${tag}: not four tiles with Airwallex's figure, or the stops' parts do not sum to their figure (${JSON.stringify(tiles)})`);
+      if (tiles.length !== 4 || !tiles.some((t) => / awx$/.test(t.cls) && /^(?:\d+ of \d+|All \d+|Both)$/.test(t.v)) || !stop || stop.parts.length < 2 || stop.parts.reduce((k, x) => k + x, 0) !== Number(/^\d+/.exec(stop.v)?.[0])) fail(`/proof ${tag}: not four tiles with Airwallex's figure, or the stops' parts do not sum to their figure (${JSON.stringify(tiles)})`);
       if (!(await page.locator(".runline .pill.run", { hasText: "Replay of the main run" }).isVisible())) fail(`/proof ${tag}: the run's label is not shown with its numbers`);
       await page.locator(".partners").screenshot({ path: join(shots, `proof-partners-${tag}.png`) });
     }
@@ -1152,7 +1152,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // Each Airwallex claim lands on its anchor on /airwallex, in view (the cards' fold opened). At 390 and 1440 px.
     if (w === 390 || w === 1440) {
       // The first claim is the card's link in sight (12 Nov): followed without opening anything; the others in its fold.
-      for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["3 of 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
+      for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["All 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
         // The partner cards are in the one fold under the four cards (jury pass, 13 Nov): a reader opens it first.
         await page.locator("main details.sumd > summary").click();
