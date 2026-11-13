@@ -27,7 +27,9 @@ import type { AgentRun, RunRecord } from "./run.js";
 import { esc, icon } from "./ui.js";
 import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 
-export const PRODUCT_ORDER = ["issuing", "payouts", "fx", "approvals", "connected", "acceptance", "airi"] as const;
+// 13 Nov: the payee check, the batch transfer and the ledger reconciliation joined once the switch-on run showed them
+// live in the flow (SWITCH_ON_FILE below); a record that does not show one leaves it with the built ones.
+export const PRODUCT_ORDER = ["issuing", "payouts", "fx", "approvals", "connected", "acceptance", "airi", "payee-check", "batch", "ledger"] as const;
 export type ProductKey = (typeof PRODUCT_ORDER)[number];
 
 /** The two-locks run's first log (10 Nov), the record the tile falls back to. */
@@ -66,6 +68,9 @@ const PRODUCTS: Record<ProductKey, { name: string; docs: Doc[] }> = {
   connected: { name: "Connected accounts", docs: [{ label: "About connected accounts", href: `${DOCS}connected-accounts/about/about-connected-accounts` }, { label: "Platform relationships", href: `${DOCS}connected-accounts/about/platform-relationships` }, { label: "Create connected account", href: `${DOCS}api/scale/accounts/create` }] },
   acceptance: { name: "Payment acceptance", docs: [{ label: "Payment Intents API: create", href: `${DOCS}api/payments/payment_intents/create` }, { label: "Payment Intents API: confirm", href: `${DOCS}api/payments/payment_intents/confirm` }, { label: "Hosted payment page", href: `${DOCS}payments/integration-options/web-checkout/hosted-payment-page` }] },
   airi: { name: "Airi", docs: [{ label: "Airi", href: `${DOCS}payments/payment-methods/global/airi` }] },
+  "payee-check": { name: "Payee check", docs: [{ label: "Verify a beneficiary account", href: `${DOCS}payouts/beneficiaries/verify-a-beneficiary-account` }] },
+  batch: { name: "Batch transfer", docs: [{ label: "Create a batch transfer", href: `${DOCS}payouts/batch-transfers/create-a-batch-transfer` }] },
+  ledger: { name: "Ledger reconciliation", docs: [{ label: "Financial transactions API", href: `${DOCS}api/finance/financial_transactions` }] },
 };
 /** The docs of all seven products, in the tiles' order (the docs fold). */
 export const productDocs = () => PRODUCT_ORDER.map((key) => ({ key, ...PRODUCTS[key] }));
@@ -105,7 +110,7 @@ const countUp = (v: string) => {
 const money = (currency: string, amount: string) => currency === "EUR" ? euro(amount) : `${currency} ${amount}`;
 const dayShort = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 const faceId = (method: string | null | undefined, virtual = false) => method === "passkey" && !virtual ? "Face ID" : "the CFO's approval";
-const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 
 /**
  * Issuing, from the Airwallex-only run: a charge over the card's limit as Airwallex read it back, declined by Airwallex;
@@ -409,7 +414,7 @@ export function firstConnectedRunOfRecord(): FirstConnectedRun | null {
   return md ? firstConnectedRun(md) : null;
 }
 
-// ── Behind flags in this build, each run live on 12 Nov (jury check, 12 Nov): the payee check, the batch transfer and
+// ── Built and run live on 12 Nov (jury check, 12 Nov), switched on in the flow on 13 Nov: the payee check, the batch transfer and
 // Airwallex's own ledger against Purser's. Every figure and id is read from its record; a missing record leaves its tile out.
 export const PAYEE_CHECK_FILE = "docs/runs/2026-11-12-airwallex-payee-check.json";
 export const BATCH_FILE = "docs/runs/2026-11-12-airwallex-batch-transfer.json";
@@ -422,8 +427,8 @@ export function payeeCheckTile(r: { checks: { match: string; proceed: number; ch
   const ok = r.checks.filter((c) => c.proceed).length, refused = r.checks.length - ok;
   return {
     key: "payee-check", name: "Payee check", value: `${refused} of ${r.checks.length}`,
-    what: `name checks stopped before the CFO is asked; ${ok} full match let through.`, why: "Airwallex asks the payee's bank for the account's name.",
-    id: PAYEE_CHECK_FILE.replace(/^docs\/runs\/|\.json$/g, ""), idLabel: "Run record", href: `${REPO_BLOB}${PAYEE_CHECK_FILE.replace(/\.json$/, ".md")}`, iso: r.checks[0]!.checked_at, files: [PAYEE_CHECK_FILE],
+    what: "checks stopped before the CFO is asked.", why: "The payee's bank checks the name.",
+    id: PAYEE_CHECK_FILE.replace(/^docs\/runs\/|\.json$/g, ""), idLabel: "Run record", href: `${REPO_BLOB}${PAYEE_CHECK_FILE.replace(/\.json$/, ".md")}`, iso: r.checks[0]!.checked_at, files: [PAYEE_CHECK_FILE, PAYEE_CHECK_FILE.replace(/\.json$/, ".md")],
   };
 }
 export function batchTile(r: { audit: { ts: string }[]; awx_batches: { awx_batch_id: string; status: string }[]; transfers: { amount: string; currency: string }[] } | null): ProductTile | null {
@@ -432,7 +437,7 @@ export function batchTile(r: { audit: { ts: string }[]; awx_batches: { awx_batch
   const total = (r.transfers.reduce((n, t) => n + toCents(t.amount), 0) / 100).toFixed(2);
   return {
     key: "batch", name: "Batch transfer", value: money(r.transfers[0]!.currency, total),
-    what: `${WORDS[r.transfers.length] ?? r.transfers.length} payouts, signed once, one batch; read back, then held ${b.status}.`, why: "Airwallex's approval workflow holds the batch.",
+    what: `${WORDS[r.transfers.length] ?? r.transfers.length} payouts signed once as one batch, held ${b.status}.`, why: "Airwallex's approval workflow holds it.",
     id: b.awx_batch_id, idLabel: "Airwallex batch", href: `${REPO_BLOB}${BATCH_FILE.replace(/\.json$/, ".md")}`, iso: r.audit[0]!.ts, files: [BATCH_FILE],
   };
 }
@@ -442,12 +447,43 @@ export function ledgerTile(r: { audit: { ts: string; event: string; payload: { a
   if (!rec || rec.payload.checked === undefined || !id) return null;
   return {
     key: "ledger", name: "Ledger reconciliation", value: `${rec.payload.agree} of ${rec.payload.checked}`,
-    what: `movements agree with Airwallex's own ledger to the cent; ${rec.payload.differences} differences.`, why: "Airwallex books each movement in its financial transactions.",
+    what: `movements agree with Airwallex's ledger to the cent.`, why: "Airwallex books each movement.",
     id, idLabel: "Airwallex financial transaction", href: `${REPO_BLOB}${FT_FILE.replace(/\.json$/, ".md")}`, iso: rec.ts, files: [FT_FILE],
   };
 }
-export function flaggedTiles(): ProductTile[] {
-  return [payeeCheckTile(json(PAYEE_CHECK_FILE)), batchTile(json(BATCH_FILE)), ledgerTile(json(FT_FILE))].filter((t): t is ProductTile => t !== null);
+
+// ── Switched on in the flow on 13 Nov (no flag): a product moves to "In use" only when the switch-on run's record shows
+// it working live through the flow with none of the three settings in the environment. A missing record moves nothing.
+export const SWITCH_ON_FILE = "docs/runs/2026-11-13-airwallex-switch-on.json";
+export interface SwitchOnRecord {
+  flags_in_environment?: string;
+  audit: { event: string; payload: Record<string, unknown> }[];
+  awx_batches: { awx_batch_id: string | null; status: string }[];
+}
+/** The keys of the products the switch-on record shows working live in the flow, with no flag set. */
+export function switchedOnKeys(r: SwitchOnRecord | null = json<SwitchOnRecord>(SWITCH_ON_FILE)): Set<string> {
+  const on = new Set<string>();
+  if (!r || !/^none\b/.test(r.flags_in_environment ?? "")) return on;
+  const ev = (e: string) => r.audit.filter((a) => a.event === e);
+  // Payee check: the bank was asked live (Airwallex, not a stand-in) and each answer was enforced before the CFO.
+  const asked = r.audit.filter((a) => a.event.startsWith("payee.name_check") && a.payload.source === "airwallex");
+  const outcomes = ev("awx_switch.payee").map((a) => a.payload.outcome);
+  if (asked.length && outcomes.length === asked.length && outcomes.every((o) => o === "proposed" || o === "stopped before the CFO")) on.add("payee-check");
+  // Batch: ONE Airwallex batch, read back with no difference, submitted and held in Airwallex's approval workflow.
+  if (r.awx_batches.some((b) => b.awx_batch_id && b.status === "IN_APPROVAL") && ev("awx_batch.read_back").some((a) => a.payload.agrees === true) && ev("awx_batch.submitted").length) on.add("batch");
+  // Ledger: the scheduled reconciliation checked movements against Airwallex's ledger and found no difference.
+  const rec = ev("awx_ft.reconciled").at(-1)?.payload;
+  if (rec && Number(rec.checked) > 0 && rec.differences === 0 && rec.agree === rec.checked && ev("reconcile.done").some((a) => a.payload.differences === 0)) on.add("ledger");
+  return on;
+}
+const builtTiles = (): ProductTile[] => [payeeCheckTile(json(PAYEE_CHECK_FILE)), batchTile(json(BATCH_FILE)), ledgerTile(json(FT_FILE))].filter((t): t is ProductTile => t !== null);
+/** The three built on 12 Nov that the switch-on record does not (yet) show in use. */
+export function flaggedTiles(on: Set<string> = switchedOnKeys()): ProductTile[] {
+  return builtTiles().filter((t) => !on.has(t.key));
+}
+/** The three built on 12 Nov that the switch-on record shows in use. */
+export function switchedOnTiles(on: Set<string> = switchedOnKeys()): ProductTile[] {
+  return builtTiles().filter((t) => on.has(t.key));
 }
 export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
   return tiles.length ? `<section class="awgroup off" aria-labelledby="awg-off"><h2 id="awg-off"><span class="dot" aria-hidden="true"></span>${esc(FLAGGED_LINE)}</h2><div class="awp">${tiles.map(tileHtml).join("\n")}</div></section>` : "";
@@ -457,7 +493,7 @@ export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
 export function productTiles(run: AgentRun): ProductTile[] {
   return [
     issuingTile(awxRun()), payoutTile(hashTravel(run.record), run.file), fxTile(fxQuote(run.record), run.file), approvalsTile(twoLocksOfRecord()),
-    connectedTile(platformRunOfRecord()), acceptanceTile(acceptanceRunOfRecord()), airiTile(airiRun()),
+    connectedTile(platformRunOfRecord()), acceptanceTile(acceptanceRunOfRecord()), airiTile(airiRun()), ...switchedOnTiles(),
   ].filter((t): t is ProductTile => t !== null);
 }
 

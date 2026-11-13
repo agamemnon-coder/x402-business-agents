@@ -1,4 +1,5 @@
 // Red team round 4 (money and books, 9 November): each finding's reproduction, asserting what must happen instead.
+import { standInBank } from "./support/standInBank.js";
 import { request } from "node:http";
 import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
@@ -13,7 +14,7 @@ import { syncLedger } from "../src/ledger/feed.js";
 import { transactionRegister } from "../src/money/register.js";
 import { checkEvent } from "../src/policy/airwallexEvents.js";
 import { assessAgainst } from "../src/policy/fraudCore.js";
-import { executePayeeChange, proposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
+import { executePayeeChange, checkThenProposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
 import { payablesApp } from "../src/servers/payables.js";
 import { DE, EN } from "./fakes/apInvoices.js";
 import { CN, UK, US } from "./fakes/fxInvoices.js";
@@ -93,7 +94,7 @@ describe("red team 4, money", () => {
     const req = requestPayeeChange(w.db, { vendor: MANUFACTURER.name, iban: "DE75512108001245126199", bic: "SOGEDEFFXXX", source: null }, "human");
     w.db.prepare("UPDATE payee_changes SET new_iban = ?, new_bic = ? WHERE change_id = ?").run(LICENSOR.iban, LICENSOR.bic, req.change_id);
     recordVerification(w.db, req.change_id, { by: "the CFO", how: "called Bergtex on the number in our 2025 contract; confirmed", actor: "human" });
-    const p = proposePayeeChange(w.db, req.change_id, "human");
+    const p = await checkThenProposePayeeChange(w.db, standInBank(), req.change_id, "human");
     w.approve(p.proposal_id);
     await expect(executePayeeChange(w.db, w.awx, p.proposal_id)).rejects.toThrow(/on file/);
     const names = (w.db.prepare("SELECT name FROM beneficiaries").all() as { name: string }[]).map((b) => b.name);

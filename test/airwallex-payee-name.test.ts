@@ -1,7 +1,7 @@
-// The payee's bank checks the account and the name before the CFO is asked (src/airwallex/payeeName.ts,
-// AIRWALLEX_PAYEE_CHECK=on). Breaks if a mismatched, closed or unchecked account reaches a proposal with the flag on, if
-// a check of one account covers another, if the bank's answer is missing from the signed terms, or if the flag being
-// off changes anything. No network: the in-memory stand-ins only.
+// The payee's bank checks the account and the name before the CFO is asked (src/airwallex/payeeName.ts; on by default
+// since 13 November). Breaks if a mismatched, closed or unchecked account reaches a proposal, if a check of one account
+// covers another, if the bank's answer is missing from the signed terms, if the flow proposes without asking the bank,
+// or if the emergency stop changes anything else. No network: the in-memory stand-ins only.
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,10 +10,10 @@ import { seedTreasury } from "../src/agents/euroBill.js";
 import { ibanSha } from "../src/agents/invoice.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import type { Asker } from "../src/ap/read.js";
-import { checkPayeeAddName, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
-import { FakePayeeNames, nameCheckVerdict, verifyBody } from "../src/airwallex/payeeName.js";
+import { checkPayeeAddName, checkThenProposePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { FakePayeeNames, nameCheckVerdict, payeeCheckOn, PayeeNameRefused, STAND_IN_LABEL, verifyBody } from "../src/airwallex/payeeName.js";
 import { openDb, type DB } from "../src/db/open.js";
-import { checkPayeeChangeName, proposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
+import { checkPayeeChangeName, checkThenProposePayeeChange, proposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
 import { DE } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -34,7 +34,9 @@ beforeEach(async () => {
   const awx = new FakeAirwallex();
   await seedTreasury(db, awx, awx);
   bank = new FakePayeeNames();
-  process.env = { ...env, AIRWALLEX_PAYEE_CHECK: "on" };
+  // On by default: nothing in the environment switches it on.
+  process.env = { ...env };
+  delete process.env.AIRWALLEX_PAYEE_CHECK;
 });
 afterEach(() => { process.env = env; rmSync(dir, { recursive: true, force: true }); });
 
@@ -56,7 +58,7 @@ describe("a new supplier's account, checked with its bank before the CFO is aske
     const c = await checkPayeeAddName(db, bank, id, "human", now);
     expect(c).toMatchObject({ code: "VERIFIED", match: "FULL_MATCH", proceed: 1 });
     const p = proposePayeeAdd(db, id, "treasury", now);
-    expect(JSON.parse(p.terms_json).name_check).toMatchObject({ name: "Lagerhaus Nord GmbH", code: "VERIFIED", match: "FULL_MATCH", label: "the payee's bank confirmed the account and the name" });
+    expect(JSON.parse(p.terms_json).name_check).toMatchObject({ name: "Lagerhaus Nord GmbH", code: "VERIFIED", match: "FULL_MATCH", label: `${STAND_IN_LABEL}; the payee's bank confirmed the account and the name` });
   });
 
   it("checks the supplier's own name, never an account holder named on the request", async () => {
@@ -110,9 +112,9 @@ describe("a new supplier's account, checked with its bank before the CFO is aske
     expect(() => proposePayeeAdd(db, id, "treasury", now)).toThrow(/older than a day/);
   });
 
-  it("with the flag off, nothing is asked and the terms are as before", async () => {
-    process.env = { ...env };
-    delete process.env.AIRWALLEX_PAYEE_CHECK;
+  it("is on by default; with its emergency stop set, nothing is asked and the terms are as before", async () => {
+    expect(payeeCheckOn({})).toBe(true);
+    process.env = { ...env, AIRWALLEX_PAYEE_CHECK: "off" };
     const id = await verifiedAdd();
     const p = proposePayeeAdd(db, id, "treasury", now);
     expect(JSON.parse(p.terms_json).name_check).toBeUndefined();
@@ -138,6 +140,43 @@ describe("a supplier's new bank details, checked with the new bank", () => {
     bank.accounts.set(NEW, { name: "Bergtex Textil GmbH", entity: "COMPANY", bank: "Test Bank" });
     await checkPayeeChangeName(db, bank, id, "human", now);
     expect(JSON.parse(proposePayeeChange(db, id, "treasury", now).terms_json).name_check.match).toBe("FULL_MATCH");
+  });
+});
+
+describe("in the flow: the bank is asked before the CFO is (switched on 13 November)", () => {
+  it("a full match is proposed, with the bank's answer in the signed terms; a fresh check is not asked again", async () => {
+    const id = await verifiedAdd();
+    bank.accounts.set(LAGERHAUS_IBAN, { name: "Lagerhaus Nord GmbH", entity: "COMPANY", bank: "Test Bank" });
+    const p = await checkThenProposePayeeAdd(db, bank, id, "treasury", now);
+    expect(JSON.parse(p.terms_json).name_check).toMatchObject({ code: "VERIFIED", match: "FULL_MATCH" });
+    expect(bank.calls).toBe(1);
+  });
+
+  it("a mismatch stops it: nothing reaches the CFO, the reason names the bank's holder, and asking again uses the record", async () => {
+    const id = await verifiedAdd();
+    bank.accounts.set(LAGERHAUS_IBAN, { name: "Mallory Ltd", entity: "COMPANY", bank: "Test Bank" });
+    const first = checkThenProposePayeeAdd(db, bank, id, "treasury", now);
+    await expect(first).rejects.toBeInstanceOf(PayeeNameRefused);
+    await expect(checkThenProposePayeeAdd(db, bank, id, "treasury", now)).rejects.toThrow(/holds this account as "Mallory Ltd", not as "Lagerhaus Nord GmbH"/);
+    expect(bank.calls).toBe(1);
+    expect(proposals()).toBe(0);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'payee.name_check_refused'").get()).toEqual({ n: 1 });
+  });
+
+  it("without a bank to ask (no keys), nothing is proposed", async () => {
+    const id = await verifiedAdd();
+    await expect(checkThenProposePayeeAdd(db, null, id, "treasury", now)).rejects.toThrow(/cannot be asked/);
+    expect(proposals()).toBe(0);
+  });
+
+  it("a bank-detail change in the flow: refused on a mismatch, proposed on a full match", async () => {
+    const OLD = "DE89370400440532013000", NEW = "DE02100100100006820101";
+    db.prepare("INSERT INTO beneficiaries (beneficiary_id, name, iban_last4, iban_sha256, bic, currency, method) VALUES ('ben_old', 'Bergtex Textil GmbH', ?, ?, 'COBADEFFXXX', 'EUR', 'SWIFT')").run(OLD.slice(-4), ibanSha(OLD));
+    const c = requestPayeeChange(db, { vendor: "Bergtex Textil GmbH", iban: NEW, bic: "PBNKDEFFXXX", source: "BTX-2026-12" }, "treasury", now);
+    recordVerification(db, c.change_id, { by: "max", how: "called Bergtex on +49 30 0000000 from our 2025 contract; the accounts team confirmed the new account", actor: "human" }, now);
+    bank.accounts.set(NEW, { name: "Bergtex Holding Services", entity: "COMPANY", bank: "Test Bank" });
+    await expect(checkThenProposePayeeChange(db, bank, c.change_id, "treasury", now)).rejects.toBeInstanceOf(PayeeNameRefused);
+    expect(proposals()).toBe(0);
   });
 });
 

@@ -60,12 +60,12 @@ if (at >= 0) {
 }
 
 // npm run reconcile -- --financial-transactions <from> <to>: the ledger's payouts and conversions against Airwallex's own
-// ledger (GET /financial_transactions, read only), to the cent (src/finance/awxFinancialTx.ts). Only with
-// AIRWALLEX_FINANCIAL_TX=on.
+// ledger (GET /financial_transactions, read only), to the cent (src/finance/awxFinancialTx.ts). On by default (13 Nov);
+// AIRWALLEX_FINANCIAL_TX=off stops it.
 const ftAt = process.argv.indexOf("--financial-transactions");
 if (ftAt >= 0) {
   const { financialTxOn, ledgerMovementsFromDb, listFinancialTransactions, reconcileFinancialTransactions, recordReconciliation } = await import("../finance/awxFinancialTx.js");
-  if (!financialTxOn()) { console.log("STOP             AIRWALLEX_FINANCIAL_TX is not on; nothing was asked"); process.exit(2); }
+  if (!financialTxOn()) { console.log("STOP             AIRWALLEX_FINANCIAL_TX=off (the emergency stop); nothing was asked"); process.exit(2); }
   const cfg = fromEnv();
   if (!cfg) { console.log("STOP             no Airwallex sandbox keys: Airwallex cannot be asked"); process.exit(2); }
   const window = { from: process.argv[ftAt + 1] ?? "", to: process.argv[ftAt + 2] ?? "" };

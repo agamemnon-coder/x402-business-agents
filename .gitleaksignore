@@ -134,3 +134,5 @@ f26d0b8e945485109e36bcaca78a26604ebdae25:docs/runs/README.md:generic-api-key:16
 # generated runs list for one commit; removed from that list in the next.
 40608c076f95d62377b54d0595a5c6f4cb02b3ed:docs/runs/README.md:generic-api-key:12
 90b3c3fa60391dfa29ec166caf92c9b7c0eda373:docs/runs/README.md:generic-api-key:17
+# src/cli/awxSwitchOn.ts in 0fa6032: the stand-in deletes env vars by name (AIRWALLEX_API_KEY, T0_API_KEY, ...); names only, no value.
+0fa6032739043e0aa1ca0d63ff821cf5cd961c61:src/cli/awxSwitchOn.ts:generic-api-key:212

@@ -4,6 +4,7 @@
 // payment the agent set for a later day is filed today, if the CFO's signature over the exact terms changes, if a run
 // without Claude is not labelled as code's fallback, or if the flag being off changes anything. A scripted stand-in
 // for the Claude client and the in-memory Airwallex stand-in: no network, test money.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -16,7 +17,7 @@ import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import { PAY_LATER, PAYER_DECISION } from "../src/ap/payerAgent.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice, setStatus } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { audit } from "../src/audit/log.js";
 import { MODELS } from "../src/claude/reader.js";
 import { agentStats } from "../src/dashboard/agentStats.js";
@@ -86,7 +87,7 @@ const add = async (text: string, name = "invoice.pdf") => {
 const addSupplier = async (id: string) => {
   const req = requestPayeeAddForInvoice(db, id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+  const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
   approve(p.proposal_id);
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly, claude: null }, now);
 };

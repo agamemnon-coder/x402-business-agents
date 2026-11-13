@@ -10,7 +10,7 @@ import { seedTreasury } from "../src/agents/euroBill.js";
 import { payApInvoices } from "../src/ap/batchPay.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import type { Asker } from "../src/ap/read.js";
-import { FakeBatchTransfers, toBatch, toItem, itemBody } from "../src/airwallex/batchTransfers.js";
+import { batchTransferOn, FakeBatchTransfers, toBatch, toItem, itemBody } from "../src/airwallex/batchTransfers.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { batchRequestId, compareReadBack, executeAsOneAirwallexBatch, followAirwallexBatch, lineShapeRefusal } from "../src/executors/airwallexBatch.js";
 import { decide } from "../src/policy/approvals.js";
@@ -163,9 +163,10 @@ describe("one signed batch as ONE Airwallex batch transfer", () => {
     expect(batches.calls.filter((c) => c === "createBatch")).toHaveLength(1);
   });
 
-  it("does nothing with its flag off, and nothing at Airwallex when Purser's own checks refuse", async () => {
+  it("is on by default; does nothing with its emergency stop set, and nothing at Airwallex when Purser's own checks refuse", async () => {
     const batch = await signed();
-    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: {} })).rejects.toThrow(/AIRWALLEX_BATCH_TRANSFER is not on/);
+    expect(batchTransferOn({})).toBe(true);
+    await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: { AIRWALLEX_BATCH_TRANSFER: "off" } })).rejects.toThrow(/AIRWALLEX_BATCH_TRANSFER is not on/);
     setSetting(db, "treasury", "eur_floor", "34000.00");
     await expect(executeAsOneAirwallexBatch(db, { batches, rail: awx }, batch.proposal_id, { env: ON })).rejects.toThrow(/floor/);
     expect(batches.calls).toEqual([]);
@@ -308,5 +309,32 @@ describe("the read-back comparison and the REST mapping", () => {
       .toEqual({ request_id: "rq", beneficiary_id: "b", transfer_amount: "1309.00", transfer_currency: "EUR", source_currency: "EUR", transfer_method: "SWIFT", reference: "R", reason: "x", metadata: { approval_sha256: "h" } });
     expect(batchRequestId("a".repeat(64))).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-a[0-9a-f]{3}-[0-9a-f]{12}$/);
     expect(batchRequestId("a".repeat(64))).toBe(batchRequestId("a".repeat(64)));
+  });
+});
+
+// Switched on in the flow (13 November): the approved batch's executor picks ONE Airwallex batch by default, with no
+// setting in the environment; a host without a batch rail, or a batch whose lines do not all fit, runs line by line.
+describe("in the flow: the payment batch executor (src/executors/index.ts)", () => {
+  const was = process.env.AIRWALLEX_BATCH_TRANSFER;
+  beforeEach(() => { delete process.env.AIRWALLEX_BATCH_TRANSFER; });
+  afterEach(() => { if (was === undefined) delete process.env.AIRWALLEX_BATCH_TRANSFER; else process.env.AIRWALLEX_BATCH_TRANSFER = was; });
+
+  it("sends several approved payouts as ONE Airwallex batch, read back and held IN_APPROVAL, by default", async () => {
+    const { execute } = await import("../src/executors/index.js");
+    const batch = await signed();
+    await execute(db, batch.proposal_id, undefined, undefined, { rail: awx, sim: awx, batches });
+    expect(batches.batches.size).toBe(1);
+    expect(batches.calls.filter((c) => c === "createBatch" || c === "submitBatch")).toEqual(["createBatch", "submitBatch"]);
+    expect([...batches.batches.values()][0]!.batch.status).toBe("IN_APPROVAL");
+    expect(awx.calls.filter((c) => c.startsWith("createTransfer") || c.startsWith("createPayoutTransfer"))).toEqual([]);
+    expect(row(batch.proposal_id).status).toBe("EXECUTED");
+  });
+
+  it("runs line by line on a host that holds no batch rail", async () => {
+    const { execute } = await import("../src/executors/index.js");
+    const batch = await signed();
+    await execute(db, batch.proposal_id, undefined, undefined, { rail: awx, sim: awx });
+    expect(batches.calls).toEqual([]);
+    expect(transfers().filter((t) => t.transfer_id)).toHaveLength(2);
   });
 });

@@ -3,6 +3,7 @@
 // policy that goes only to Purser's account in that binding, the phone shows both and the totals with them, four eyes
 // counts the fee and a batch's total, every Airwallex payment kind is checked against the binding, and the fee never
 // fails a paid payment, is booked only once settled, is taken when a live payout turns PAID, and is held while owed.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +16,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { describeTerms } from "../src/approve/client.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -61,7 +62,7 @@ const usInvoice = async (no = "PC-7781", total = "2,400.00") => {
   if (!db.prepare("SELECT 1 FROM beneficiaries WHERE name LIKE 'Pinecrest%' AND status='ACTIVE'").get()) {
     const req = requestPayeeAddForInvoice(db, out.invoice.id, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   }

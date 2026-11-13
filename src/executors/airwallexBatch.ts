@@ -185,6 +185,21 @@ function lineRefusalNow(db: DB, l: Line, at: Date): string | null {
   return null;
 }
 
+/**
+ * Why this signed batch cannot go to Airwallex as one batch transfer (a line that is not a EUR SWIFT invoice payment, or
+ * one with a conversion, a Purser fee or a connected account), or null when every line fits. A batch that does not fit
+ * runs line by line, each line its own checked payment, as before.
+ */
+export function oneBatchRefusal(db: DB, batchId: string): string | null {
+  for (const l of batchLinesOf(db, batchId)) {
+    const p = db.prepare("SELECT kind, terms_json FROM proposals WHERE proposal_id = ?").get(l.proposal_id) as { kind: string; terms_json: string } | undefined;
+    if (!p) return `${l.proposal_id} is missing`;
+    const why = lineShapeRefusal({ proposal_id: l.proposal_id, kind: p.kind, terms: JSON.parse(p.terms_json) });
+    if (why) return why;
+  }
+  return null;
+}
+
 /** Runs an approved batch as one Airwallex batch transfer. Throws when the flag is off or a check refuses it. */
 export async function executeAsOneAirwallexBatch(db: DB, rails: { batches: BatchTransferRail; rail: AirwallexRail }, batchId: string,
   opts: { now?: () => Date; env?: Record<string, string | undefined> } = {}): Promise<OneBatchResult> {

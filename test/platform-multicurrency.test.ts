@@ -2,6 +2,7 @@
 // no BIC; TRY to a Turkish IBAN, bought from EUR) reaches the ERP as a valid vendor and a payment on the right
 // Airwallex bank account, and the vault files a receipt that names the supplier's route, the currency and the FX.
 // All against the in-memory Airwallex stand-in: no outside call, test money.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { validate } from "../src/erp/model.js";
 import { ledgerItems } from "../src/erp/source.js";
@@ -54,7 +55,7 @@ const paid = async (text: string, name: string) => {
   const id = out.invoice.id;
   const req = requestPayeeAddForInvoice(db, id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+  const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
   approve(p.proposal_id);
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   const pay = await payApInvoice(db, awx, id, now);

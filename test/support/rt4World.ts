@@ -1,4 +1,5 @@
 import { mkdtempSync } from "node:fs";
+import { standInBank } from "./standInBank.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { seedTreasury } from "../../src/agents/euroBill.js";
@@ -6,7 +7,7 @@ import { ingestDocument, type InboxDeps } from "../../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../../src/ap/pay.js";
 import type { Asker } from "../../src/ap/read.js";
 import { apInvoice } from "../../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../../src/ap/vendors.js";
 import { openDb, type DB } from "../../src/db/open.js";
 import { executeSupplierPayment } from "../../src/executors/supplierPayment.js";
 import { executeInvoicePayment } from "../../src/executors/invoicePayment.js";
@@ -38,7 +39,7 @@ export async function world(now = new Date()) {
   const addSupplier = async (id: string) => {
     const req = requestPayeeAddForInvoice(db, id, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
     return apInvoice(db, id)!;

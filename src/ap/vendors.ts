@@ -20,7 +20,7 @@ import { checkpoint } from "../policy/saga.js";
 import { accountKey, chooseRoute, maskAccount, validateDetails, type BankDetails, type Method } from "../payouts/routes.js";
 import { apInvoice } from "./store.js";
 import { suppliersOnFile } from "./bank.js";
-import { nameCheckGate, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { freshCheck, nameCheckGate, payeeCheckOn, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
 
 /** A new supplier waits an hour for the CFO, like a change of bank details. */
 const PAYEE_ADD_TTL_MS = 60 * 60 * 1000;
@@ -202,8 +202,15 @@ const payeeNameOf = (vendor: string, _bank: PayeeBank) => vendor.trim();
 
 /**
  * Asks the payee's bank, through Airwallex, whether this verified request's account exists and carries the supplier's
- * name (step 2½, before the proposal; AIRWALLEX_PAYEE_CHECK). Records the answer; moves nothing.
+ * name (step 2½, before the proposal; on by default). Records the answer; moves nothing.
  */
+/** The name and account a new supplier's bank check is filed under. */
+export function payeeAddCheckTarget(db: DB, id: string): { name: string; accountKey: string } {
+  const r = row(db, id);
+  const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
+  return { name: payeeNameOf(r.vendor, bank), accountKey: accountKey(bank) };
+}
+
 export async function checkPayeeAddName(db: DB, verifier: PayeeNameVerifier, id: string, by: Actor, now = new Date()): Promise<NameCheckRow> {
   const r = row(db, id);
   if (r.status !== "VERIFIED") throw new Error(`${id} is ${r.status}; only a request a person verified is checked with the bank`);
@@ -213,6 +220,24 @@ export async function checkPayeeAddName(db: DB, verifier: PayeeNameVerifier, id:
     ...(bank.iban ? { iban: bank.iban } : {}), ...(bank.accountNumber ? { accountNumber: bank.accountNumber } : {}),
     ...(bank.routingType && bank.routingValue ? { routingType: bank.routingType, routingValue: bank.routingValue } : {}),
   }, by, now);
+}
+
+/**
+ * The flow's way to file a new supplier for the CFO (13 November: the bank check switched on): the payee's bank is
+ * asked first, through Airwallex, unless a check of exactly this name and account from the last day is on record; then
+ * the proposal. A mismatch throws PayeeNameRefused and nothing reaches the CFO's phone; the reason is shown instead.
+ * Without a verifier (no Airwallex keys) nothing is proposed: the bank cannot be asked.
+ */
+export async function checkThenProposePayeeAdd(db: DB, verifier: PayeeNameVerifier | null, id: string, by: Actor, now = new Date()): Promise<ProposalRow> {
+  if (payeeCheckOn()) {
+    const r = row(db, id);
+    const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
+    if (r.status === "VERIFIED" && !freshCheck(db, payeeNameOf(r.vendor, bank), accountKey(bank), now)) {
+      if (!verifier) throw new Error(`no Airwallex keys: the payee's bank cannot be asked whether the account carries ${r.vendor}'s name, so nothing is proposed`);
+      await checkPayeeAddName(db, verifier, id, by, now);
+    }
+  }
+  return proposePayeeAdd(db, id, by, now);
 }
 
 export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
@@ -225,8 +250,8 @@ export function proposePayeeAdd(db: DB, id: string, by: Actor, now = new Date())
   if (taken) throw new Error(`this account is already on file for ${taken}; one account is never added under a second name`);
   const v = JSON.parse(r.verification_json) as { by: string; how: string; at: string; address: Address };
   const bank: PayeeBank = r.details_json ? JSON.parse(r.details_json) as PayeeBank : legacyPayeeBank(r.vendor, r.iban, r.bic);
-  // AIRWALLEX_PAYEE_CHECK=on: the payee's bank must have confirmed this exact account and name first (src/airwallex/payeeName.ts);
-  // its answer goes into the signed terms. Off: no field, the hash as before.
+  // The payee's bank must have confirmed this exact account and name first (src/airwallex/payeeName.ts; on by default);
+  // its answer goes into the signed terms.
   const nameCheck = nameCheckGate(db, payeeNameOf(r.vendor, bank), accountKey(bank), now);
   const terms: PayeeAddTerms = {
     schema: TERMS_SCHEMA, kind: "payee_add", proposal_id: nextProposalId(db),

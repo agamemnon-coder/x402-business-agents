@@ -1,6 +1,7 @@
 // Payables: the independent review of PR #107. Each test reproduces one finding: a resent copy that blocked its
 // original, books missing an accrual, a supplier locked out after an expired or rejected request, an IBAN read too long,
 // invoices stuck waiting for the CFO, the rejected accrual left in the sink, and the cost of a huge e-mail or text.
+import { standInCheckedAdd } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -60,6 +61,7 @@ const decideAs = (id: string, decision: "APPROVED" | "REJECTED", at = now) => {
 const proposeSupplier = (apId: string, at = now) => {
   const req = requestPayeeAddForInvoice(db, apId, "treasury", at);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, at);
+  standInCheckedAdd(db, req.add_id, at);
   return proposePayeeAdd(db, req.add_id, "treasury", at);
 };
 
