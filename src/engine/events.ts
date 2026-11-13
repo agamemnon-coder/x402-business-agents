@@ -131,6 +131,8 @@ const EVENTS: Record<string, Pick> = {
     reason: firstSentence(p.reason, 160), request_id: lastRequest(p.request_ids),
     // In the cloud engine the agent proposes within code's plan: when it is held or off the plan, code's plan stands.
     plan_stands: p.plan_stands === true ? true : undefined,
+    // Speed (13 Nov): the agent proposed while the invoice was filed, on this same case; Pay used that answer, enforced again.
+    early: p.early === true ? true : undefined,
     enforced: p.plan_stands === true ? masked(`${firstSentence(p.plan_stands_why, 110) ?? "off the plan"}; code's own plan goes to the CFO's Face ID`, 200) : firstSentence(p.why, 160),
   }),
   // The passkey (src/passkey).

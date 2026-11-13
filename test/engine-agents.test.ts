@@ -74,11 +74,15 @@ function standInClaude() {
 }
 
 /** Claude access as the cloud gives it (cloud/src/engine/claudeAccess.ts): the reader parses, the agents ask the stand-in within the action's budget. */
-function access(o: { refuse?: CappedReason; micros?: number; client: Anthropic }) {
-  const log = { reserved: 0, settled: [] as number[] };
+function access(o: { refuse?: CappedReason; refuseSpare?: CappedReason; micros?: number; client: Anthropic }) {
+  const log = { reserved: 0, spare: 0, settled: [] as number[] };
   const a: ClaudeAccess = {
-    reserve: async () => {
+    reserve: async (opts) => {
       if (o.refuse) return { ok: false, reason: o.refuse };
+      if (opts?.spare) {
+        if (o.refuseSpare) return { ok: false, reason: o.refuseSpare };
+        log.spare++;
+      }
       log.reserved++;
       return { ok: true, reservation: { micros: o.micros ?? 250_000, settle: async (m: number) => { log.settled.push(m); } } };
     },
@@ -90,7 +94,7 @@ function access(o: { refuse?: CappedReason; micros?: number; client: Anthropic }
   return { access: a, log };
 }
 
-function host(claude?: ClaudeAccess) {
+function host(claude?: ClaudeAccess, opts: { earlyPayer?: boolean } = {}) {
   const db = openDb(":memory:");
   const docs = new Map<string, Buffer>();
   useDocStore(db, { put: (sha, b) => { docs.set(`mem:${sha}`, Buffer.from(b)); return `mem:${sha}`; }, get: (p) => docs.get(p)! });
@@ -99,9 +103,9 @@ function host(claude?: ClaudeAccess) {
   const h = new EngineHost({
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => store.save(bankToText(bank)),
     rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Agents Test Co", lang: "en" }, vault: null, feed: null,
-    ...(claude ? { claude } : {}),
+    ...(claude ? { claude } : {}), ...(opts.earlyPayer ? { earlyPayer: true } : {}),
   });
-  return { db, host: h };
+  return { db, host: h, bank };
 }
 
 const events = (db: DB) => (db.prepare("SELECT seq, ts, actor, event, subject, payload_json FROM audit_log ORDER BY seq").all() as EventRow[]).map(publicEvent);
@@ -230,5 +234,98 @@ describe("the demo world's own seed and clean sample (task A6 regression, 12 Nov
     // Filed as code's: the proposal's origin names code's rule, not the agent.
     const created = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
     expect(JSON.parse(created.payload_json).origin).toMatchObject({ actor: "code" });
+  });
+});
+
+describe("the Payer, early (speed, 13 Nov)", () => {
+  const payerCalls = (seen: Req[]) => seen.filter((r) => (r.tools ?? []).some((t) => t.name === "propose_payment")).length;
+  const count = (db: DB, table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n;
+
+  it("proposes while the invoice is filed, without a trace but its run; Pay files on that answer with no second call", async () => {
+    const s = standInClaude();
+    const { access: a, log } = access({ client: s.client });
+    const { db, host: h, bank } = host(a, { earlyPayer: true });
+    await h.seed();
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(up.invoice).toMatchObject({ status: "ready", payable: true });
+    const before = { audit: count(db, "audit_log"), snapshots: count(db, "balance_snapshots"), quotes: count(db, "fx_quotes"), invoices: count(db, "invoices"), bankQuotes: bank.quotes.size };
+    await h.earlySettled();
+    // Its own reservation, with room to spare; the plan was only read: the one new row is the agent's run.
+    expect(log.spare).toBe(1);
+    expect(log.settled).toHaveLength(2);
+    const added = db.prepare("SELECT actor, event FROM audit_log WHERE seq > ? ORDER BY seq").all(before.audit) as { actor: string; event: string }[];
+    expect(added.every((r) => r.actor === "payer" && (r.event === "agent.tool" || r.event === "agent.run"))).toBe(true);
+    expect(added.at(-1)).toEqual({ actor: "payer", event: "agent.run" });
+    expect({ audit: count(db, "audit_log") - added.length, snapshots: count(db, "balance_snapshots"), quotes: count(db, "fx_quotes"), invoices: count(db, "invoices"), bankQuotes: bank.quotes.size }).toEqual(before);
+    expect(payerCalls(s.seen)).toBeGreaterThan(0);
+    const early = payerCalls(s.seen);
+
+    const p = await h.propose(up.invoice!.id);
+    expect(p).toMatchObject({ ok: true, proposal: { status: "PENDING_APPROVAL" } });
+    // No second Payer call at Pay: the early answer was used, enforced again by code on Pay's own plan.
+    expect(payerCalls(s.seen)).toBe(early);
+    const [payer] = decided(db, "ap.payer_proposed");
+    expect(payer!.fields).toMatchObject({ source: "claude", model: "claude-haiku-5-5", outcome: "ask_cfo", early: true });
+    expect(payer!.fields.request_id).toMatch(/^req_a6_\d+$/);
+    // Filed with the agent's origin, as a proposal made at Pay is.
+    const created = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'proposal.created' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string };
+    expect(JSON.parse(created.payload_json).origin).toMatchObject({ agent: "payer" });
+  });
+
+  it("skipped when a cap is near: no early run, and Pay asks the Payer as before", async () => {
+    const s = standInClaude();
+    const { access: a, log } = access({ client: s.client, refuseSpare: "pool_day_cap" });
+    const { db, host: h } = host(a, { earlyPayer: true });
+    await h.seed();
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    await h.earlySettled();
+    expect(log.spare).toBe(0);
+    expect(payerCalls(s.seen)).toBe(0);
+    expect(decided(db, "agent.run").map((r) => r.fields.agent)).toEqual(["checker", "treasury"]);
+    expect(await h.propose(up.invoice!.id)).toMatchObject({ ok: true });
+    expect(payerCalls(s.seen)).toBeGreaterThan(0);
+    expect(decided(db, "ap.payer_proposed")[0]!.fields).not.toHaveProperty("early");
+  });
+
+  it("not finished when Pay comes: Pay runs the Payer itself and files as before", async () => {
+    const s = standInClaude();
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((r) => { release = r; });
+    let held = true;
+    let waiting = 0;
+    const slow = { beta: { messages: { create: async (r: Req) => {
+      if (held && (r.tools ?? []).some((t) => t.name === "propose_payment")) { waiting++; await gate; }
+      return (s.client.beta.messages.create as unknown as (x: Req) => Promise<unknown>)(r);
+    } } } } as unknown as Anthropic;
+    const { access: a } = access({ client: slow });
+    const { db, host: h } = host(a, { earlyPayer: true });
+    await h.seed();
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    // The early Payer's call is out and unanswered when Pay comes.
+    for (let i = 0; i < 50 && waiting === 0; i++) await new Promise((r) => setTimeout(r, 1));
+    expect(waiting).toBe(1);
+    held = false;
+    const p = await h.propose(up.invoice!.id);
+    expect(p).toMatchObject({ ok: true, proposal: { status: "PENDING_APPROVAL" } });
+    const [payer] = decided(db, "ap.payer_proposed");
+    expect(payer!.fields.source).toBe("claude");
+    expect(payer!.fields).not.toHaveProperty("early");
+    release();
+    await h.earlySettled();
+  });
+
+  it("a case that changed since (another balance): the early answer is not used, and the Payer proposes again", async () => {
+    const s = standInClaude();
+    const { access: a } = access({ client: s.client });
+    const { db, host: h, bank } = host(a, { earlyPayer: true });
+    await h.seed();
+    const up = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    await h.earlySettled();
+    const early = payerCalls(s.seen);
+    bank.bal.EUR.availableCents += 12_345;
+    expect(await h.propose(up.invoice!.id)).toMatchObject({ ok: true });
+    expect(payerCalls(s.seen)).toBeGreaterThan(early);
+    const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.payer_proposed'").get() as { payload_json: string };
+    expect(JSON.parse(row.payload_json)).toMatchObject({ early_unused: expect.stringMatching(/not the case the Payer proposed on early/) });
   });
 });

@@ -44,6 +44,34 @@ describe("Claude's spend in the cloud's database", () => {
     expect((await scopes(sql)).all).toBe(90_000);
   });
 
+  it("the Payer, early (spare): reserved only with room to spare under every cap, and never the last action in flight", async () => {
+    const sql = await fresh();
+    // The day's cap holds four ceilings; a spare reservation must leave another ceiling (and a tenth of each cap) after it.
+    const caps = { ...ON, cap_company_micros: 10_000_000, cap_day_micros_smoke: 1_000_000, max_inflight: 8 };
+    const spend = d1Spend(sql, caps, smoke(), () => T0);
+    const a = await spend.reserve({ spare: true });
+    if (!a.ok) throw new Error(a.reason);
+    await a.reservation.settle(250_000);
+    const b = await spend.reserve({ spare: true });
+    if (!b.ok) throw new Error(b.reason);
+    await b.reservation.settle(250_000);
+    // 500,000 of the day's 1,000,000 left: one more spare ceiling would leave 250,000, the larger of a ceiling and a tenth.
+    const c = await spend.reserve({ spare: true });
+    if (!c.ok) throw new Error(c.reason);
+    await c.reservation.settle(250_000);
+    // 250,000 left: the day's cap is near, so the early Payer is skipped; an action a visitor waits on still gets it.
+    expect(await spend.reserve({ spare: true })).toEqual({ ok: false, reason: "pool_day_cap" });
+    const d = await spend.reserve();
+    expect(d.ok).toBe(true);
+    // In flight: a spare reservation leaves one place for an action someone waits on.
+    const sql2 = await fresh();
+    const two = d1Spend(sql2, { ...caps, max_inflight: 2 }, smoke(), () => T0);
+    const held = await two.reserve();
+    expect(held.ok).toBe(true);
+    expect(await two.reserve({ spare: true })).toEqual({ ok: false, reason: "busy" });
+    expect((await two.reserve()).ok).toBe(true);
+  });
+
   it("gives an action no more than the company has left, and refuses when nothing is left: company_cap", async () => {
     const sql = await fresh();
     const spend = d1Spend(sql, ON, smoke(), () => T0);

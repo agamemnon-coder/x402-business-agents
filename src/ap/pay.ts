@@ -18,7 +18,7 @@ import type { Terms } from "../lib/terms.js";
 import { ensureCoded } from "./coderAgent.js";
 import { expireDue, signedTerms } from "../policy/approvals.js";
 import { readDoc } from "./docStore.js";
-import { PAY_LATER, payerGate } from "./payerAgent.js";
+import { PAY_LATER, paymentCase, payerGate, runPayer, type EarlyPayer } from "./payerAgent.js";
 import { pdfText } from "./pdfText.js";
 import type { Asker } from "./read.js";
 import { writeReviewNote } from "./review.js";
@@ -27,6 +27,8 @@ import { cleanText, totalLine, totalLineCurrency } from "./reading.js";
 import { scanTotalLine, scanView } from "./detail.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow, type Finding } from "./store.js";
 import { payoutBeneficiary, proposeSupplierPayment, type SupplierPaymentOutcome } from "../payouts/plan.js";
+import type { PlanGate, PlannedPayment } from "../payouts/planGate.js";
+import { readOnlyLedger, quoteFreeRail } from "../payouts/probe.js";
 import { MAX_REFERENCE, payableCurrency, referenceProblem } from "../payouts/routes.js";
 
 export type PayOutcome = InvoiceOutcome | SupplierPaymentOutcome;
@@ -45,11 +47,19 @@ export function transferReason(glAccount: string): string {
 /** The longest payment reference Purser sends (src/payouts/routes.ts). */
 export { MAX_REFERENCE };
 
-/** The Payer agent's Claude client (KIT11_AP_AGENTS=on); null: no key, so code's plan stands. Default: the runner's own. */
-/** The Payer agent's client, and whether it runs (the cloud engine says so, task A6; absent: KIT11_AP_AGENTS decides). */
-export interface PayAgents { claude?: Anthropic | null; on?: boolean; planStands?: boolean }
+/**
+ * The Payer agent's client (null: no key, so code's plan stands; default: the runner's own), and whether it runs (the
+ * cloud engine says so, task A6; absent: KIT11_AP_AGENTS decides). `early`: what the Payer already proposed on this
+ * invoice while it was filed (earlyPayer), used only when the plan at Pay is the same case.
+ */
+export interface PayAgents { claude?: Anthropic | null; on?: boolean; planStands?: boolean; early?: EarlyPayer }
 
-export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<PayOutcome> {
+/**
+ * An invoice checked for payment, and how its payment is planned: the supplier's route (supplier_payment) or the EUR
+ * invoice payment, on the given ledger and rails, with the gate shown the plan before it is filed. Throws what keeps it
+ * from being paid at all (not ready, a credit note, a currency Purser does not pay, a reference the rails refuse).
+ */
+async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApInvoiceRow; plan(on: DB, rail: AirwallexRail & PayoutRail, gate?: PlanGate): Promise<PayOutcome> }> {
   const inv = apInvoice(db, id);
   if (!inv) throw new Error(`no payables invoice ${id}`);
   // A credit note is money the supplier owes back: it is set against its invoices, never paid out (whatever its status).
@@ -73,14 +83,22 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
   const document = scan
     ? { total_line: scanTotalLine(inv, scan), currency: inv.currency, reason: transferReason(inv.gl_account) }
     : { total_line: totalLine(text), currency: totalLineCurrency(text), reason: transferReason(inv.gl_account) };
+  // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
+  const plan = (on: DB, rail: AirwallexRail & PayoutRail, gate?: PlanGate): Promise<PayOutcome> => payoutBeneficiary(on, r.vendor) || r.currency !== "EUR"
+    ? proposeSupplierPayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, gate)
+    : proposeInvoicePayment(on, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, gate);
+  return { inv, plan };
+}
+
+export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id: string, now = new Date(), reader?: Asker, agents: PayAgents = {}): Promise<PayOutcome> {
+  const { inv, plan } = await preparePayment(db, id, now);
   // KIT11_AP_AGENTS=on: the engine plans as always, then the Payer agent proposes the rail, the day and the currency on
   // that plan, and code enforces it (src/ap/payerAgent.ts). The plan is filed only when the enforced proposal pays today
   // on the plan's own terms; the CFO signs those exact terms as before. Off: no gate, and nothing here changes.
-  const payer = (agents.on ?? apAgentsOn()) ? payerGate(db, { invoiceId: id, invoiceNo: r.invoice_no, now, ...(agents.claude !== undefined ? { claude: agents.claude } : {}), ...(agents.planStands ? { planStands: true } : {}) }) : null;
-  // A supplier added through the inbox carries its route; a Kit 11 payee on file is paid in EUR as before.
-  const out: PayOutcome = payoutBeneficiary(db, r.vendor) || r.currency !== "EUR"
-    ? await proposeSupplierPayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, reference, reason: document.reason }, text, now, document, payer?.gate)
-    : await proposeInvoicePayment(db, rail, { invoice_no: invoiceNo, vendor: r.vendor, amount: r.total, currency: r.currency, due_date: due, iban: r.iban, bic: r.bic, reference }, text, now, "MIN_15", document, payer?.gate);
+  const payer = (agents.on ?? apAgentsOn()) ? payerGate(db, {
+    invoiceId: id, invoiceNo: inv.reading.invoice_no, now, ...(agents.claude !== undefined ? { claude: agents.claude } : {}), ...(agents.planStands ? { planStands: true } : {}), ...(agents.early ? { early: agents.early } : {}),
+  }) : null;
+  const out = await plan(db, rail, payer?.gate);
   if (out.kind === "proposed") {
     // An earlier "planned for a later day" no longer describes it once it is filed.
     const later = inv.findings.some((f) => f.code === PAY_LATER);
@@ -104,6 +122,34 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
     waits ? { code: PAY_LATER, level: "warn", detail: out.reason } : { code: "payment_not_planned", level: "warn", detail: `the payment could not be planned: ${out.reason}` }];
   setStatus(db, id, "fraud" in out && out.fraud?.suspicious ? "blocked" : inv.status, "treasury", { findings, reason: out.reason }, now);
   return out;
+}
+
+/**
+ * The Payer, early (speed, 13 Nov): once an invoice is ready, the engine works out its payment plan without filing or
+ * locking anything (a read-only ledger and rails that only read: no audit row, no balance snapshot, no quote locked;
+ * the quote is the market's current rate, src/payouts/probe.ts), and the Payer proposes on that case. Pay then reads
+ * the finished answer, and uses it only when its own plan is the same case (payerGate: the locked quote's id and
+ * expiry aside); code enforces the proposal on Pay's own plan, as always. null: nothing to propose on (not payable, the
+ * plan stopped), no client, or the agent did not propose; Pay then runs the Payer as before. Moves nothing.
+ */
+export async function earlyPayer(db: DB, rail: AirwallexRail & PayoutRail, id: string, now: Date, claude: Anthropic | null): Promise<EarlyPayer | null> {
+  if (!claude) return null;
+  let planned: PlannedPayment | null = null;
+  let invoiceNo: string;
+  try {
+    const p = await preparePayment(db, id, now);
+    invoiceNo = p.inv.reading.invoice_no;
+    await p.plan(readOnlyLedger(db), quoteFreeRail(rail), async (plan) => {
+      planned = plan;
+      return { go: false, reason: "only the plan was read (the Payer, early)" };
+    });
+  } catch {
+    return null;
+  }
+  if (!planned) return null;
+  const c = paymentCase(planned, { invoiceId: id, invoiceNo, today: now.toISOString().slice(0, 10) });
+  const out = await runPayer(db, c, { task: `ap.pay.${id}`, claude });
+  return out.source === "claude" ? { case: c, out, at: now.toISOString() } : null;
 }
 
 /**

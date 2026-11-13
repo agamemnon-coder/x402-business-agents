@@ -41,7 +41,7 @@ export function claudeAccess(o: {
   const client = o.key ? (o.client ?? tryClaudeClient)(o.key) : null;
   const spend = async () => d1Spend(o.sql, await (o.switches ?? noSwitches)(o.sql), { tenantId: o.tenantId, ...(await (o.scopes ?? smokePool)(o.sql, o.tenantId)) });
   return {
-    reserve: async () => (client ? (await spend()).reserve() : { ok: false, reason: "no_key" }),
+    reserve: async (opts) => (client ? (await spend()).reserve(opts) : { ok: false, reason: "no_key" }),
     reader: (db, budget) => new ClaudeReader(db, client, Date.now, READER_MODELS, { budget, maxTokens: READER_MAX_TOKENS, announce: true }),
     // Task A6: the payables agents, on the same key and the same action's budget (each call's worst case first).
     agents: (budget) => (client ? budgetedClient(client, budget) : null),

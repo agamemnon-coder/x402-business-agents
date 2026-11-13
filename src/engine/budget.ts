@@ -34,7 +34,8 @@ export interface Reservation { micros: number; settle(actualMicros: number): Pro
  * Claude may read at all and the company's cap.
  */
 export interface ClaudeAccess {
-  reserve(): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }>;
+  /** `spare`: work no one waits on yet (the Payer, early), reserved only with room to spare under every cap (cloud/src/engine/spend.ts). */
+  reserve(opts?: { spare?: boolean }): Promise<{ ok: true; reservation: Reservation } | { ok: false; reason: CappedReason }>;
   reader(db: DB, budget: Budget): Asker;
   /**
    * Task A6: the Anthropic client the payables agents (the Checker, the Coder, the Payer) use within the same action,
