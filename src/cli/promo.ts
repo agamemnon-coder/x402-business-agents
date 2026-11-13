@@ -156,16 +156,29 @@ async function sheets() {
 }
 
 /** Every frame from promo.html, piped into x264. */
+/**
+ * Every frame from promo.html, piped into x264. With `--patch A-B` (seconds), only the GOPs around A–B are drawn again
+ * and spliced into the existing picture by stream copy, from the keyframe at or before A to the one at or after B.
+ */
 async function render() {
   gate();
   const out = resolve(OUT, `picture-${tag}.mp4`);
+  const patch = args.find((a) => a.startsWith("--patch="))?.slice(8).split("-").map(Number);
+  let from = 0, to = Math.round(TOTAL * FPS), file = out;
+  if (patch) {
+    if (!existsSync(out)) throw new Error("promo: no picture to patch; render it whole first");
+    const keys = execFileSync("ffprobe", ["-v", "error", "-select_streams", "v", "-skip_frame", "nokey", "-show_entries", "frame=pts_time", "-of", "csv=p=0", out], { encoding: "utf8" }).trim().split("\n").map((x) => parseFloat(x)).filter((x) => Number.isFinite(x));
+    const k1 = Math.max(...keys.filter((k) => k <= patch[0]!)), after = keys.filter((k) => k >= patch[1]!), k2 = after.length ? Math.min(...after) : TOTAL;
+    from = Math.round(k1 * FPS); to = Math.round(k2 * FPS); file = resolve(OUT, `patch-${tag}.mp4`);
+    console.log(`patch: ${k1.toFixed(3)}–${k2.toFixed(3)} s (frames ${from}–${to})`);
+  }
   const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-f", "image2pipe", "-c:v", "mjpeg", "-framerate", String(FPS), "-i", "-",
-    "-c:v", "libx264", "-preset", draft ? "veryfast" : "slow", "-crf", draft ? "23" : "15", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", out], { stdio: ["pipe", "inherit", "inherit"] });
+    "-c:v", "libx264", "-preset", draft ? "veryfast" : "slow", "-crf", draft ? "23" : "15", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
   const done = new Promise<void>((ok, no) => ff.on("close", (c) => (c ? no(new Error(`ffmpeg ${c}`)) : ok())));
   const browser = await chromium.launch();
   const page = await framePage(browser, tag);
-  const n = Math.round(TOTAL * FPS), step = draft ? 2 : 1;
-  for (let f = 0; f < n; f += step) {
+  const step = draft ? 2 : 1;
+  for (let f = from; f < to; f += step) {
     await page.evaluate(`window.__promo(${f / FPS})`);
     const jpg = await page.screenshot({ type: "jpeg", quality: 95 });
     for (let k = 0; k < step; k++) if (!ff.stdin.write(jpg)) await new Promise((ok) => ff.stdin.once("drain", ok));
@@ -174,6 +187,19 @@ async function render() {
   ff.stdin.end();
   await browser.close();
   await done;
+  if (patch) {
+    // Head and tail by stream copy (each cut on a keyframe), the new middle between them.
+    const head = resolve(OUT, `head-${tag}.mp4`), tail = resolve(OUT, `tail-${tag}.mp4`), list = resolve(OUT, `concat-${tag}.txt`), joined = resolve(OUT, `joined-${tag}.mp4`);
+    const parts = [];
+    if (from > 0) { execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", out, "-frames:v", String(from), "-c", "copy", head]); parts.push(head); }
+    parts.push(file);
+    if (to < Math.round(TOTAL * FPS)) { execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(to / FPS), "-i", out, "-c", "copy", tail]); parts.push(tail); }
+    writeFileSync(list, parts.map((x) => `file '${x}'`).join("\n"));
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", "-movflags", "+faststart", joined]);
+    const frames = Number(execFileSync("ffprobe", ["-v", "error", "-count_packets", "-select_streams", "v", "-show_entries", "stream=nb_read_packets", "-of", "csv=p=0", joined], { encoding: "utf8" }).trim());
+    if (frames !== Math.round(TOTAL * FPS)) throw new Error(`promo: the patched picture has ${frames} frames, not ${Math.round(TOTAL * FPS)}`);
+    execFileSync("mv", [joined, out]);
+  }
   console.log(out);
 }
 

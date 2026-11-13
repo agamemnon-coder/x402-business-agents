@@ -119,6 +119,8 @@ export function promoData() {
   const f = (text: string, source: string, find = text): Figure => ({ text, source, find });
   const attacks = num(ZT, "attacks_run"), stopped = num(ZT, "attacks_stopped"), moved = num(ZT, "attacks_where_money_moved");
   const calls = num(HOSTILE, "calls"), refused = num(HOSTILE, "refused"), unsafe = num(HOSTILE, "unsafe");
+  const tool = num(HOSTILE, "blocked_by_tool"), enforce = num(HOSTILE, "overridden_at_enforce");
+  if (tool + enforce !== refused) throw new Error(`promo: ${HOSTILE}: blocked_by_tool and overridden_at_enforce do not add up to refused`);
   if (stopped !== attacks) throw new Error(`promo: ${ZT} says ${stopped} of the attacks stopped, not all; the line "all stopped" cannot be said`);
   const d = {
     cent: { from: f("EUR 1,850.00", "src/try/sign.ts", "1,850"), to: f("EUR 1,850.01", "src/redesign/walk.ts", "One cent off: refused"), refused: f("Refused", "src/try/sign.ts", "Refused by Purser") },
@@ -140,7 +142,12 @@ export function promoData() {
       block: f("27469355", ANCHOR, "block 27469355"), tx: f("0xaa93f270…", ANCHOR, "0xaa93f270"), date: f("13 Nov 2026", ANCHOR, "2026-11-13"),
     },
     attacks: { run: f(String(attacks), ZT, `"attacks_run": ${attacks}`), moved: f(String(moved), ZT, `"attacks_where_money_moved": ${moved}`) },
-    hostile: { calls: f(String(calls), HOSTILE, `"calls": ${calls}`), refused: f(String(refused), HOSTILE, `"refused": ${refused}`), unsafe: f(String(unsafe), HOSTILE, `"unsafe": ${unsafe}`) },
+    // The site's one wording of the split (src/redesign/partners.ts hostileWords): "318 refused and 52 made stricter:
+    // 370 stopped or tightened by code". The film says the same, so a judge who compares the two sees one count.
+    hostile: {
+      calls: f(String(calls), HOSTILE, `"calls": ${calls}`), refused: f(String(refused), HOSTILE, `"refused": ${refused}`), unsafe: f(String(unsafe), HOSTILE, `"unsafe": ${unsafe}`),
+      tool: f(String(tool), HOSTILE, `"blocked_by_tool": ${tool}`), enforce: f(String(enforce), HOSTILE, `"overridden_at_enforce": ${enforce}`),
+    },
   };
   return d;
 }

@@ -37,7 +37,7 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
 | 0:31 | Metal | The cap and the payment as bars, then a chain of blocks; the last breaks: **REFUSED ON CHAIN**, the tx typing out |
 | 0:37 | The audit chain | Blocks link, a pulse runs along them, the anchor drops, the head types out |
 | 0:40 | Zero-trust | Slot-machine digits race to the report's count; **Money moved: 0** |
-| 0:44 | Hostile model | 380 races up, 370 refused by code, **0 unsafe** |
+| 0:44 | Hostile model | 380 races up, 370 stopped or tightened by code (318 refused, 52 made stricter: the site's wording), **0 unsafe** |
 | 0:50 | Recap | Every refusal again, one per beat, then "Money moved: 0" |
 | 0:55 | Payoff | Split screen: "Your agents do the work" (Cloud's pages racing) against "Your CFO signs the exceptions" (the phone, still) |
 | 1:01 | End card | The mark, "Try it yourself", `kit11.max-31b.workers.dev/try`, "Full walkthrough: youtu.be/mp9fmOYfBWc" (`FILM_URL`), the small type |
@@ -51,7 +51,7 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
   `LIMIT_EXCEEDED` (awx-1, 7 Nov); payout `4074d684…` held `IN_APPROVAL` (10 Nov) until the owner approved it at
   Airwallex, then `PAID`, settlement simulated (12 Nov); Metal refusing 0.06 test USD over the 0.05 mandate cap on
   chain, `mandate_cap_exceeded` (12 Nov); the anchor `aaaf56a1…` on Metal testnet (13 Nov); 53 zero-trust attacks,
-  0 moved (`docs/zero-trust/report.json`); 380 hostile tool calls, 370 refused by code, 0 unsafe
+  0 moved (`docs/zero-trust/report.json`); 380 hostile tool calls, 370 stopped or tightened by code (318 refused, 52 made stricter), 0 unsafe
   (`docs/evals/ap-hostile.json`). Count-ups rest on the record's figure. No fractions.
 - **Small type** on every proof shot says what is simulated ("Test money · sandbox/testnet", and per shot: test world,
   test company, Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no

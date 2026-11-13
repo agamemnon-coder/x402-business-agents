@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { FILM_URL } from "../src/config/brand.js";
 import { LABELS, LINES, ROOT, SCENES, SFX, TOTAL, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../src/film/promo.js";
 import { effect } from "../src/film/sfx.js";
+import { hostileWords } from "../src/redesign/partners.js";
 
 describe("the promo film", () => {
   it("passes its own check", () => {
@@ -58,6 +59,16 @@ describe("the promo film", () => {
       expect(Number.isFinite(peak)).toBe(true);
       expect(peak).toBeGreaterThan(0.05);
     }
+  });
+
+  it("words the hostile-model split as the site does (src/redesign/partners.ts hostileWords), from the record", () => {
+    const d = promoData();
+    const site = hostileWords({ calls: Number(d.hostile.calls.text), tool: Number(d.hostile.tool.text), enforce: Number(d.hostile.enforce.text), refused: Number(d.hostile.refused.text), stood: 0, unsafe: Number(d.hostile.unsafe.text), cases: 0 });
+    expect(site).toContain(`${d.hostile.tool.text} refused and ${d.hostile.enforce.text} made stricter: ${d.hostile.refused.text} stopped or tightened by code`);
+    const html = readFileSync(resolve(ROOT, "src/film/promo.html"), "utf8");
+    expect(html).toContain("stopped or tightened by code");
+    expect(html).toContain("made stricter");
+    expect(html).not.toContain("refused by code");
   });
 
   it("writes one subtitle per line, in order", () => {
