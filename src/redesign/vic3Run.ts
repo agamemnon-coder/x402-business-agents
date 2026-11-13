@@ -4,6 +4,7 @@
 // PaymentIntent record; Purser refused C, D and E before any outside call; F1 and F2 tested whether the Airi/Airwallex
 // sandbox refuses a credential used for another order, and the record keeps what it answered.
 
+import type { SummaryCard } from "./summary.js";
 import { existsSync, readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
 import { statsHtml, type Stat } from "./stats.js";
@@ -71,6 +72,30 @@ export function vic3Summary(r: Vic3Record) {
   };
 }
 
+/** The run in one line, as it ended for each purchase: "1 paid after Face ID, 3 refused by Purser, 1 not tapped: nothing charged". */
+export function vic3Lead(r: Vic3Record): string {
+  const s = vic3Summary(r);
+  const noTap = s.other.filter((p) => codeOf(p) === "PURSER_NO_TAP").length;
+  const otherRefused = s.other.length - noTap;
+  return [`${s.paid} paid after Face ID`, ...(s.byPurser.length ? [`${s.byPurser.length} refused by Purser`] : []), ...(otherRefused ? [`${otherRefused} refused at the network`] : []), ...(noTap ? [`${noTap} not tapped: nothing charged`] : [])].join(", ");
+}
+
+/**
+ * The four cards at the top of /visa (jury pass, 13 Nov), from the record: the purchase paid after Face ID, those
+ * Purser refused before any call, the one not tapped in Airi, and the signed hash read back at Airi and Airwallex.
+ */
+export function visaSummary(r: Vic3Record): SummaryCard[] {
+  const s = vic3Summary(r), lead = s.paidSteps[0];
+  const noTap = s.other.filter((p) => codeOf(p) === "PURSER_NO_TAP");
+  const equal = lead ? [lead.read_back.mandate, lead.read_back.payment_intent].filter((x) => x?.equal).length : 0;
+  return [
+    ...(lead?.request ? [{ icon: "scan-face", fig: String(s.paid), title: "Paid after Face ID", tone: "ok" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_RUN_ID}`, text: `Purchase ${lead.step}, ${lead.request.currency} ${lead.request.amount}, above the CFO's limit: paid only after the CFO's Face ID.` }] : []),
+    ...(s.byPurser.length ? [{ icon: "ban", fig: String(s.byPurser.length), title: "Refused by Purser", tone: "bad" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${s.byPurser.map((p) => p.step).join(", ")}: stopped before any call to Airi or Airwallex; nothing charged.` }] : []),
+    ...(noTap.length ? [{ icon: "clock", fig: String(noTap.length), title: "Not tapped", tone: "bad" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${noTap.map((p) => p.step).join(", ")}: the cardholder did not confirm in Airi in time; nothing charged.` }] : []),
+    ...(lead ? [{ icon: "file-check", fig: `${equal} of 2`, title: "Signed hash read back", tone: "ok" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_RUN_ID}`, text: "The hash the CFO signed, equal in Airi's mandate and in Airwallex's PaymentIntent." }] : []),
+  ];
+}
+
 const outcomeText = (p: Vic3Purchase) => {
   if (p.negative_test) return `the sandbox answered ${p.negative_test.airwallex?.outcome ?? "nothing"}`;
   const o = p.outcome ?? {};
@@ -79,7 +104,7 @@ const outcomeText = (p: Vic3Purchase) => {
 const eq = (x: { equal: boolean } | null | undefined) => (x ? (x.equal ? "equal" : "NOT equal") : "—");
 
 /** The block at the top of /visa: the run in four lines, every purchase with its ids in one fold. */
-export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: string } = {}): string {
+export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: string; summarised?: boolean } = {}): string {
   if (!r) return "";
   const s = vic3Summary(r);
   const lead = s.paidSteps[0];
@@ -93,14 +118,17 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
   // The owner, 12 Nov ("less text, numbers as count-up stats"): a short heading, four figures, the finding in one line;
   // the rail line, the paid and refused lines and every purchase with its ids in the fold.
   const equal = lead ? [lead.read_back.mandate, lead.read_back.payment_intent].filter((x) => x?.equal).length : 0;
+  // Jury pass, 13 Nov: what happened to each purchase leads, not "1 of 5 paid" (the rest were stopped on purpose).
+  const noTap = s.other.filter((p) => codeOf(p) === "PURSER_NO_TAP").length;
   const stats: Stat[] = [
-    { n: s.paid, suf: ` of ${s.of}`, label: "purchases paid", icon: "credit-card", tone: "ok" },
-    ...(lead?.request ? [{ n: Number(lead.request.amount), dec: 2, pre: `${lead.request.currency} `, label: `purchase ${lead.step}, paid after Face ID`, icon: "scan-face" }] : []),
-    ...(lead ? [{ n: equal, suf: " of 2", label: "hash matched at Airi and Airwallex", icon: "file-check", tone: "ok" as const }] : []),
+    { n: s.paid, label: "paid after Face ID", icon: "scan-face", tone: "ok" },
     ...(s.byPurser.length ? [{ n: s.byPurser.length, label: "refused by Purser, 0 calls", icon: "ban", tone: "bad" as const }] : []),
+    ...(noTap ? [{ n: noTap, label: "not tapped: nothing charged", icon: "clock", tone: "bad" as const }] : []),
+    ...(lead ? [{ n: equal, suf: " of 2", label: "hash matched at Airi and Airwallex", icon: "file-check", tone: "ok" as const }] : []),
   ];
   return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
-${statsHtml(stats)}
+${o.summarised ? "" : `<p class="vlead">${esc(vic3Lead(r))}</p>
+${statsHtml(stats)}`}
 ${chosen.length ? `<p class="airi-finding">${esc(`Claude picked the Airi rail for each purchase it was asked about (${chosen.join(", ")}); Purser's code enforced the limit.`)}</p>` : ""}
 <p class="airi-finding">${esc(s.finding)}</p>
 <details class="fold" id="${VIC3_PURCHASES_ID}"><summary>${esc("Each purchase, with its ids")}</summary>

@@ -249,14 +249,16 @@ const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
 describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners, numbers, folds, utility links", () => {
-  it("has the heading and nothing else above \"What Purser guarantees\": no run label, no link", () => {
+  // Jury pass, 13 Nov: the heading, the four summary cards, then the one details fold, which opens with the guarantees.
+  it("has the heading, the four cards and the details fold's line above \"What Purser guarantees\": no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, "")).toBe('<mainclass="proofp"><divclass="wrap"><h1>Proof</h1>');
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> <details class="sumd" id="details"><summary>[^<]+<\/summary>$/);
+    expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
 
   it("orders the page: heading, guarantees, partners, the run's label with its numbers, the folds, the utility links", () => {
-    const at = ["<h1>Proof</h1>", `id="${GUARANTEES_ID}"`, '<h2 class="sec">The partners</h2>', '<div class="partners">', '<span class="pill run">', '<p class="split">', '<div class="nums">', '<details class="deep"', '<nav class="util"'].map((x) => main.indexOf(x));
+    const at = ["<h1>Proof</h1>", `id="${GUARANTEES_ID}"`, '<h2 class="sec">The partners</h2>', '<div class="partners">', '<span class="pill run">', '<p class="split">', '<div class="nums">', '<details class="deep">', '<nav class="util"'].map((x) => main.indexOf(x));
     expect(at.every((i) => i >= 0)).toBe(true);
     expect(at).toEqual([...at].sort((x, y) => x - y));
     // The page stays labelled with the run it shows, beside the numbers it belongs to; the split line under it.
@@ -414,7 +416,10 @@ describe("/proof's words in sight", () => {
     // +25, 12 Nov wire-in (owner: "T:0 and Visa are missing"): the Visa and T:0 cards, a name and one line each (540 as built).
     // +12, 12 Nov: the rail cards went to one line each and their full account into a fold, whose header ("What each
     // rail did, in full") counts once per drawing (wide and tall).
-    expect(visibleWords(html)).toBeLessThanOrEqual(560);
+    // Jury pass, 13 Nov ("far less visible text"): four cards in sight, everything else in one fold: 123 words as built,
+    // counted with folds inside folds (wordsOutsideFolds), a margin of 12.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(135);
+    expect(visibleWords(html)).toBeLessThanOrEqual(720);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
