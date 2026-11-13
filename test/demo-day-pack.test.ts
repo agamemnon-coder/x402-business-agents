@@ -187,7 +187,7 @@ describe("the Demo Day runbook, cheat sheet and after-submission list", () => {
   });
 
   it("keeps the after-submission list a list, nothing done", () => {
-    const t = read("docs/internal/after-submission.md");
+    const t = read("docs/archive/internal/after-submission.md");
     expect(t).not.toMatch(/\[x\]/i);
     for (const s of ["Film v4", "VIC", "MFA", "Dependabot", "Playwright", "branch", "T:0"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
   });

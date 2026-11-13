@@ -1,4 +1,4 @@
--- Purser's own books (docs/superpowers/specs/2026-11-08-bookkeeping-core-design.md): a stored general ledger.
+-- Purser's own books (docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md): a stored general ledger.
 -- Append-only like the audit log: entries, lines, month locks and stock moves are never changed or deleted; a mistake
 -- is corrected by a reversing entry. Each entry's hash covers the previous one's (src/ledger/core.ts).
 CREATE TABLE IF NOT EXISTS ledger_entries (

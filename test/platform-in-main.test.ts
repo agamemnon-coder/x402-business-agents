@@ -220,7 +220,7 @@ describe("the product for small companies, in this repository (decision D29, 12 
   });
 
   it("the design notes of 8 November are marked as that day's, with today's status beside them", () => {
-    const dir = "docs/superpowers/specs";
+    const dir = "docs/archive/superpowers/specs";
     const specs = readdirSync(root(dir)).filter((f) => /^2026-11-08-.*-design\.md$/.test(f));
     expect(specs.length).toBe(6);
     for (const f of specs) {

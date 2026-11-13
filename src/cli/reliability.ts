@@ -2,7 +2,7 @@
 //
 // Phase 1A (6 November): one reliability run, the full Kit 11 flow in a FRESH world rel-N, on the Airwallex sandbox and
 // the Metal testnet with test money, with real Claude agents, in the same order as the main run of 3 November
-// (docs/runs/2026-11-03-main-run.md; the runbook docs/internal/draaiboek-wereld-donderdag.md). It is the dry-run driver
+// (docs/runs/2026-11-03-main-run.md; the runbook docs/archive/internal/draaiboek-wereld-donderdag.md). It is the dry-run driver
 // (docs/runs/driver/thursday-dry.ts, the order dry-180 and the main run followed) made repeatable for rel-1 … rel-N:
 //   - its own world: ledger data/rel-N.sqlite, keys <keys root>/rel-N (KIT11_KEYS_ROOT, default ../x402-business-agents-keys
 //     beside the main checkout), refused when either already exists; never main-1, a dry-N or the reserve world;
@@ -475,7 +475,7 @@ const commit = spawnSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repo, e
 const dirty = spawnSync("git", ["status", "--porcelain", "--", "src"], { cwd: repo, encoding: "utf8" }).stdout.trim() !== "";
 const m = measureRun(openDb(ledger));
 const recycled = (() => {
-  const log = join(repo, "docs/runs/testgeld-recycling.md");
+  const log = join(repo, "docs/archive/runs/testgeld-recycling.md");
   return existsSync(log) ? readFileSync(log, "utf8").split("\n").filter((l) => l.includes(`| ${world} · `)).length : 0;
 })();
 const fpByRole = { "virtual test passkey (CFO role)": facts.fp_cfo ?? null, "virtual test passkey (second approver role)": facts.fp_controller ?? null };
@@ -496,7 +496,7 @@ const record = {
   rails: { metal: "testnet", airwallex: "sandbox", money: "test money only", customer_supplier_merchants: "simulated (ours)" },
   agents: { sourcing: "claude-haiku-5-5", support: "claude-sonnet-5-5", treasury: "claude-opus-5-5", claude_env_var: "KIT11_ANTHROPIC_API_KEY from the environment" },
   signers: { cfo: "virtual test passkey (CFO role), test identity \"test-cfo\"", second_approver: "virtual test passkey (second approver role), test identity \"test-controller\"", fingerprints: fpByRole, note: "No person signed in this run. Claude typed the world commands and approved nothing itself; the virtual test passkeys signed on the steps of the runbook." },
-  funding: { mode: funding, faucet_calls: funding === "faucet" ? "about 4 (business owner, customer owner, customer account, refusal recorder gas)" : 0, recycled_transfers: recycled, from: funding === "recycle" ? "finished dry-N worlds (docs/runs/testgeld-recycling.md)" : "the Metal testnet faucet" },
+  funding: { mode: funding, faucet_calls: funding === "faucet" ? "about 4 (business owner, customer owner, customer account, refusal recorder gas)" : 0, recycled_transfers: recycled, from: funding === "recycle" ? "finished dry-N worlds (docs/archive/runs/testgeld-recycling.md)" : "the Metal testnet faucet" },
   steps: timings.map((t) => ({ step: t.step, seconds: t.seconds, ok: t.ok, ...(t.note ? { note: t.note } : {}) })),
   checks,
   acceptance: acc,

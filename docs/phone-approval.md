@@ -20,7 +20,7 @@ opens the approval page (`npm run approvals`). Every ledger text is rendered as 
 and the page runs under a CSP that allows only its own script and style. The page uses relative URLs only, so the
 same file can be served from a phone-reachable host later.
 
-![Dashboard](dashboard-desktop.png)
+![Dashboard](screens/dashboard-desktop.png)
 
 ## Approving on a phone with a passkey
 
@@ -93,5 +93,5 @@ another hash, but the runner still executes nothing that is not a waiting propos
 
 | The approval view | Against Opus's advice | Done | A new run's key |
 |---|---|---|---|
-| ![The approval view](approve-view.png) | ![Against advice](approve-against-advice.png) | ![Done](approve-done.png) | ![A new run's key](approve-keychange.png) |
+| ![The approval view](screens/approve-view.png) | ![Against advice](screens/approve-against-advice.png) | ![Done](screens/approve-done.png) | ![A new run's key](screens/approve-keychange.png) |
 

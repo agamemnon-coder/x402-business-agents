@@ -282,7 +282,8 @@ describe("7. copy slips", () => {
 
   it("the README says x402 in the protocol's own words: the seller settles before it answers, and the payer's budget is Purser's part", () => {
     // x402's default flow verifies, runs the resource, then settles; the specification leaves client-side budgets out of scope.
-    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    // The x402 row is in docs/in-depth.md's table of one id per rail since the final review (13 Nov); the README links it.
+    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8") + readFileSync(new URL("../docs/in-depth.md", import.meta.url), "utf8");
     expect(readme).not.toContain("paid on Metal before it is answered");
     expect(readme).toContain("leaves the payer's budget to the payer");
   });

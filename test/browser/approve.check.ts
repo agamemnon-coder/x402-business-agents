@@ -42,7 +42,7 @@ import { passkeySigner } from "../../src/metal/passkeyOwner.js";
 import { PASSKEY_VERIFIER } from "../../src/metal/passkeyRelay.js";
 
 const live = process.argv.includes("--live");
-const shots = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "docs");
+const shots = resolve(process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "docs/screens");
 const ledger = process.env.KIT11_CHECK_LEDGER ?? resolve(import.meta.dirname, "../../../rewardssystem/entries/airwallex/rehearsal-2-ledger.sqlite");
 const dir = mkdtempSync(join(tmpdir(), "kit11-browser-"));
 copyFileSync(ledger, join(dir, "world.sqlite"));

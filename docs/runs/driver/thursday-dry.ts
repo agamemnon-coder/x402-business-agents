@@ -1,5 +1,5 @@
-// Thursday's world as a dry run, in the order of docs/internal/draaiboek-wereld-donderdag.md (Max, 2 November), for the
-// three acceptance dry runs (docs/runs/dry-run-acceptatie.md). Not product code and not part of npm test.
+// Thursday's world as a dry run, in the order of docs/archive/internal/draaiboek-wereld-donderdag.md (Max, 2 November), for the
+// three acceptance dry runs (docs/archive/runs/dry-run-acceptatie.md). Not product code and not part of npm test.
 //
 //   KIT11_DB=data/dry-N.sqlite KIT11_KEYS_DIR=…/dry-N KIT11_AGENTS=on KIT11_AUTONOMY=on \
 //     npx tsx docs/runs/driver/thursday-dry.ts <out dir>

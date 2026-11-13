@@ -2,7 +2,7 @@
 
 **Kind: reliability run.** Each row is the full Kit 11 flow, run again in a **fresh world** of its own, to show that
 Purser works every time and not once. The flow and its order are the main run's (3 November,
-[2026-11-03-main-run.md](2026-11-03-main-run.md); the runbook `docs/internal/draaiboek-wereld-donderdag.md`).
+[2026-11-03-main-run.md](2026-11-03-main-run.md); the runbook `docs/archive/internal/draaiboek-wereld-donderdag.md`).
 
 - **Rails:** Airwallex sandbox and Metal testnet, test money only. The customer (Summit), the suppliers (Stockline,
   Ridgeline Data) and the merchant (Packwise) are simulated, as in the main run.
@@ -130,7 +130,7 @@ above are the evidence for the fix.
 ## Test money
 
 Both worlds were filled with **recycled test money** from the finished dry run dry-142 (`KIT11_RECYCLE=on`, Max's rules
-of 1 November). Each world took 4 transfers, logged with their txs in [testgeld-recycling.md](testgeld-recycling.md):
+of 1 November). Each world took 4 transfers, logged with their txs in [testgeld-recycling.md](../archive/runs/testgeld-recycling.md):
 
 | Wallet | *USDZ |
 |---|---|

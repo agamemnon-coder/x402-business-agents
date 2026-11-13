@@ -441,7 +441,7 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   the badges, the Kit 11 line with the live site, the entry line, then "Look here first" (Watch, Try, Proof, the Airi
   run) and "How to run" (`npm run judge`, offline). The seven /try/sign steps moved lower, to "Try it, step by step";
   no fact or figure changed. New: docs/README.md, the docs grouped by reader (juror, builder, video). Five internal or
-  superseded notes moved to docs/internal/ (its README listed them; most of the folder left the tree on 12 November). package.json has `homepage` and `repository`;
+  superseded notes moved to docs/archive/internal/ (its README listed them; most of the folder left the tree on 12 November). package.json has `homepage` and `repository`;
   .gitignore ignores `out` as a file or symlink too. 3049 tests in 295 files, all passing.
 
 ## Real, and ours

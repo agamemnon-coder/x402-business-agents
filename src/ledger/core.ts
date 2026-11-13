@@ -1,4 +1,4 @@
-// Purser's stored general ledger (docs/superpowers/specs/2026-11-08-bookkeeping-core-design.md, decision 1).
+// Purser's stored general ledger (docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md, decision 1).
 // An entry is balanced per currency or refused; once posted it is never changed (the database refuses UPDATE and
 // DELETE) and a mistake is corrected by a reversing entry. entry_hash = SHA-256(prev_hash ‖ jcs(entry with its lines)),
 // the audit log's pattern, so `verifyLedger` recomputes the whole chain. A closed month is never posted into: a late

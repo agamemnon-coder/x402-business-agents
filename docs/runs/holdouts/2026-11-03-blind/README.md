@@ -10,7 +10,7 @@ A separate Claude agent wrote it blind, before this run, for this purpose. It ne
 profile or an eval. Per its own report it read only:
 
 - `README.md`
-- `docs/internal/draaiboek-wereld-donderdag.md` (the world runbook for the main run)
+- `docs/archive/internal/draaiboek-wereld-donderdag.md` (the world runbook for the main run)
 - `src/cli/world.ts`
 - `src/world/*.ts`
 - the Kit 11 brief

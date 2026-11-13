@@ -1,11 +1,11 @@
-// The live-run runbook (docs/internal/draaiboek-live-run.md) as a dry run, end to end, in a throwaway test world:
+// The live-run runbook (docs/archive/internal/draaiboek-live-run.md) as a dry run, end to end, in a throwaway test world:
 //   KIT11_DB=data/dry-2.sqlite KIT11_KEYS_DIR=../x402-business-agents-keys/dry-2 npx tsx test/browser/dryrun.check.ts [out dir]
 // Not part of npm test. Live: Metal testnet, the Airwallex sandbox and Claude, with test money. The real runner
 // (npm run relay -- --local) serves the phone pages on localhost and runs the real executors. Two Chromium contexts,
 // each with its own virtual authenticator, stand in for the two phones: "test-cfo" and "test-controller". They are
 // test identities in a test world, never Max or the controller; nothing here touches another world. Refuses any
 // ledger that is not a dry-* world. Writes a step log with timings to the out dir (default: the scratchpad's qa/).
-// With DRYRUN_AUTONOMY=1 and KIT11_WORLD=thursday, Thursday's world (docs/internal/draaiboek-wereld-donderdag.md): Ridgeline
+// With DRYRUN_AUTONOMY=1 and KIT11_WORLD=thursday, Thursday's world (docs/archive/internal/draaiboek-wereld-donderdag.md): Ridgeline
 // Data offline for maintenance, then Stockline's silent price rise; A2 then requires the Kit 11 core scene (the refusal
 // at Stockline over the cap, recorded on chain, Treasury's options, the replace on chain) and fails without it.
 

@@ -1,4 +1,4 @@
-// Dutch VAT as data (docs/superpowers/specs/2026-11-08-bookkeeping-core-design.md, decision 3). A VAT code sits on
+// Dutch VAT as data (docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md, decision 3). A VAT code sits on
 // the net line of an entry (revenue, expense or stock) with the VAT amount that was posted for it; the quarterly
 // overview (src/ledger/reports.ts) adds them up into the rubrics of the Dutch VAT return. An overview, not a filing.
 

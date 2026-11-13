@@ -95,7 +95,7 @@ export function testsOverTime(): { date: string; value: number }[] {
   for (const c of commits) {
     const [sha, date] = c.split(" ") as [string, string];
     const text = execFileSync("git", ["show", `${sha}:README.md`], { cwd: ROOT, encoding: "utf8", maxBuffer: 16 << 20 });
-    const m = /\*\*([\d,]+) tests in (\d+) files/.exec(text);
+    const m = /\*\*([\d,]+) tests (?:in \d+ files|passing\*\*)/.exec(text);
     if (m) byDay.set(date, Number(m[1]!.replace(/,/g, "")));
   }
   return [...byDay].map(([date, value]) => ({ date, value }));

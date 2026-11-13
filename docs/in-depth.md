@@ -1,8 +1,22 @@
 # Purser in depth
 
-Back to the [README](../README.md). The README's first screen in full: where each judging criterion is proven, how a
-payment flows, the site in pictures, the proof per partner, the three live runs with every id, Try step by step, what
-is real and what is mock, and the words. Test money only throughout: the Airwallex sandbox and Metal testnet.
+Back to the [README](../README.md). The README's first screen in full: what ran live with one id per rail, where each
+judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the Kit 11 runs with
+every id, Try step by step, what is real and what is mock, and the words. Every live run: [runs/README.md](runs/README.md). Test money only throughout: the Airwallex sandbox and Metal testnet.
+
+## What ran live, one id per rail
+
+The Kit 11 scenario, run live on 3 November, and the separate runs after it:
+
+| Rail | What ran live (Airwallex sandbox, Metal testnet, test money) | One id |
+|---|---|---|
+| Airwallex | Airwallex's own card controls declined an agent's EUR 45.00 purchase over its EUR 30.00 limit (`LIMIT_EXCEEDED`; the charge simulated through the sandbox), in the Airwallex-only run of 7 November | card transaction [`01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38`](demo/airwallex-run.json) |
+| Metal | Purchase #24, over the agent's mandate, refused on chain in the main run of 3 November, after we switched off our own check once to test the chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
+| Visa | Visa Intelligent Commerce (VIC) through Airwallex's Airi wallet. Latest live run, 13 November: 2 paid (1 after Face ID), 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([record](runs/2026-11-13-vic-4.md)). First run, 7 November: a scripted purchase with no model call, confirmed by a person's passkey tap in Airi; above Purser's limit it ran only after the CFO's Face ID. TAP is an extra ([note](submission/long-description.md#visa)) | PaymentIntent [`int_sgpvzc9hjhnxvxc26ie`](runs/2026-11-07-vic-1.md) |
+| Claude | Three tool-use agents made all 24 of the main run's decisions, with 0 fallbacks; routine payments are code | request [`req_011Cgfuhfh5iBjb9NbobuahB`](demo/main-run.json) |
+| x402 | The seller checks each payment before it does the work and settles it on Metal before it sends the answer; the protocol leaves the payer's budget to the payer, and in Purser that is the CFO's signed limit. 41 sales among the main run's 86 test-USD payments, each its own transaction | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7) |
+
+**The live runs of 12 and 13 November** (sandbox and testnet, test money; [all runs](runs/README.md)): on Metal, a passkey account whose two owners (the CFO's passkey and a labelled virtual test passkey) signed 2 of 2, and Metal refused a payment over the mandate's cap on chain ([record](runs/2026-11-12-faceid-onchain.md)); at Airwallex, a payout held `IN_APPROVAL` until a person approved it there, then PAID, settlement simulated ([record](runs/2026-11-12-airwallex-two-locks-paid.md)); an invoice token minted, financed and settled on Metal testnet, a prototype with a simulated financier ([record](runs/2026-11-12-tokenize.md)); the books in a Moneybird sandbox, 0 differences ([record](runs/2026-11-12-moneybird-sandbox.md)); and Try with Claude Haiku reading the invoice, on a simulated bank and a test passkey ([record](runs/2026-11-13-try-sample.json)).
 
 ## Where each judging criterion is proven
 
@@ -235,7 +249,7 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
 - **Live in the sandbox:** T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line ([record](runs/2026-11-10-t0-journal-sandbox.md)).
 - **Built, not yet live (stand-ins only):** the Cardputer hub push and gate (a fake hub in the tests), the emergency stop and `npm run smoke:sandbox`.
 
-**Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, above;
+**Other live tests (separate worlds, dated):** awx-1, the Airwallex-only run (7 November, above), the Airi run (Visa Intelligent Commerce via Airwallex's Airi, 7 November, a scripted run, no Claude call, above;
 Airwallex sandbox, test card, test money), the TAP run (2 November), four eyes on chain (two test keys on one machine, not two people), the compliance contract and
 clearing under load (30 October): [docs/runs/](runs/) and [docs/metal-award.md](metal-award.md).
 

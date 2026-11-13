@@ -300,7 +300,8 @@ describe("the Visa entry on the rest of the site", () => {
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
     // The README of 12 Nov (#185) names the 7 November Airi run in one table row: it says the purchase was scripted, with
     // no model call. Any README line that names that run says so.
-    const lines = readFileSync(new URL("../README.md", import.meta.url), "utf8").split("\n").filter((l) => /7 November/.test(l) && /Airi/.test(l));
+    // Since the final review (13 Nov) that row is in docs/in-depth.md, "What ran live, one id per rail", which the README links.
+    const lines = ["../README.md", "../docs/in-depth.md"].flatMap((f) => readFileSync(new URL(f, import.meta.url), "utf8").split("\n")).filter((l) => /7 November/.test(l) && /Airi/.test(l));
     expect(lines.length).toBeGreaterThanOrEqual(1);
     for (const l of lines) expect({ l: l.slice(0, 80), scripted: /scripted (?:run, no Claude call|purchase with no model call)/.test(l) }).toEqual({ l: l.slice(0, 80), scripted: true });
     expect(readme).not.toMatch(/a second live run|second run \(vic-2\)/i);

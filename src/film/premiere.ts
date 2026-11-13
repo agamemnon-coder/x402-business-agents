@@ -106,10 +106,11 @@ export function spoken(n: number): string {
 }
 const cap1 = (s: string) => s.replace(/^./, (c) => c.toUpperCase());
 
-/** The README's test line ("**2181 tests in 241 files, all passing**"), read when the film is built. */
+/** The README's test line, read when the film is built: "**2181 tests in 241 files, all passing**" until 13 Nov, then
+ *  "**6331 tests passing**, 4 skipped, in 553 files", written by `npm run test-count` from docs/assets/test-summary.json. */
 export function testLine(readme: string): { tests: string; files: string } {
-  const m = /\*\*(\d[\d,]*) tests in (\d[\d,]*) files, all passing\*\*/.exec(readme);
-  if (!m) throw new Missing("premiere: the README has no test line (\"**N tests in M files, all passing**\"); nothing is rendered without it");
+  const m = /\*\*(\d[\d,]*) tests in (\d[\d,]*) files, all passing\*\*/.exec(readme) ?? /\*\*(\d[\d,]*) tests passing\*\*, \d+ skipped, in (\d[\d,]*) files/.exec(readme);
+  if (!m) throw new Missing("premiere: the README has no test line (\"**N tests passing**, S skipped, in M files\"); nothing is rendered without it");
   return { tests: m[1]!.replace(/,/g, ""), files: m[2]!.replace(/,/g, "") };
 }
 
