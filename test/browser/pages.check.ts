@@ -790,6 +790,24 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // 12 Nov (jury check): then three tiles behind flags, each live on 12 Nov, under their own line.
         if (tiles.map((t) => t.name).join("|") !== "Issuing|Payouts|FX|Transfer approvals|Connected accounts|Payment acceptance|Airi|Payee check|Batch transfer|Ledger reconciliation" || tiles.some((t) => t.v !== 1 || !t.id || !/^\d{1,2} [A-Z][a-z]{2}$/.test(t.date))) fail(`/airwallex ${tag}: not seven product tiles, each with one number, an id and a date (${JSON.stringify(tiles.map((t) => [t.name, t.v, t.id, t.date]))})`);
         if (!(await page.evaluate(`(() => { const t = document.querySelector(".awp"), f = document.querySelector("#awx-hash"); return !!t && !!f && !!(t.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); })()`))) fail(`/airwallex ${tag}: the tiles are not above the hash block`);
+        // "When each product ran live" on a phone (owner, 13 Nov, iPhone at 390 px): each name on its dot's line (centres
+        // under 6 px apart), the names clear of every gridline, a full date beside each dot, and a legend item only for a
+        // mark a dot uses.
+        if (w <= 390) {
+          const tl = (await page.evaluate(`(() => { const s = document.querySelector("svg.awtl.narrow"); if (!s) return null; const mid = (r) => r.top + r.height / 2;
+            const rows = [...s.querySelectorAll("g")].map((g) => { const n = g.querySelector("text.rl"), c = g.querySelector("circle"), d = g.querySelector("text.dt"); return { name: n ? n.textContent : "", dy: n && c ? Math.abs(mid(n.getBoundingClientRect()) - mid(c.getBoundingClientRect())) : 99, nameRight: n ? n.getBoundingClientRect().right : 0, date: d ? d.textContent : "" }; });
+            const gridLeft = Math.min(...[...s.querySelectorAll("line.g")].map((l) => l.getBoundingClientRect().left));
+            const card = s.closest(".awv"), keys = card ? [...card.querySelectorAll(".awkey li")].map((l) => l.textContent.trim()) : [];
+            return { rows, gridLeft, keys, rings: s.querySelectorAll("circle.off").length, shown: s.getBoundingClientRect().height > 0 }; })()`)) as { rows: { name: string; dy: number; nameRight: number; date: string }[]; gridLeft: number; keys: string[]; rings: number; shown: boolean } | null;
+          if (!tl || !tl.shown || tl.rows.length < 2) fail(`/airwallex ${tag}: the phone's time axis is not shown`);
+          else {
+            const off = tl.rows.filter((r) => r.dy >= 6);
+            if (off.length) fail(`/airwallex ${tag}: a name is not on its dot's line (${JSON.stringify(off.map((r) => [r.name, Math.round(r.dy * 10) / 10]))})`);
+            if (tl.rows.some((r) => r.nameRight > tl.gridLeft)) fail(`/airwallex ${tag}: a gridline runs through the names`);
+            if (tl.rows.some((r) => !/^\d{1,2} [A-Z][a-z]{2}$/.test(r.date))) fail(`/airwallex ${tag}: a dot without its full date (${JSON.stringify(tl.rows.map((r) => r.date))})`);
+            if (tl.keys.includes("Built, not yet switched on") !== tl.rings > 0) fail(`/airwallex ${tag}: the legend shows a mark no dot uses, or misses one (${JSON.stringify(tl.keys)}, ${tl.rings} ring(s))`);
+          }
+        }
         // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
         const first = await firstScreen(page);
         if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
@@ -862,7 +880,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 280; // /security 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 530; // /security 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -877,6 +895,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
         if (!/^(\/?try(\/sign)?|https:\/\/purser-try\.max-31b\.workers\.dev\/try)$/.test((await page.locator("#s-sign .links a").first().getAttribute("href")) ?? "")) fail(`/security ${tag}: the signature card does not link to Try`);
+        // 13 Nov (the owner: diagrams and graphs, animated): six layers in one row from 900 px, else one column; four pulses
+        // moving along the track (CSS only), standing still for a reader who asks for reduced motion; the two charts.
+        const viz = await page.evaluate(`(() => { const ol = document.querySelector("#layers .zlayers"); const li = [...(ol ? ol.children : [])]; const tops = new Set(li.map((e) => Math.round(e.getBoundingClientRect().top))); return { layers: li.length, rows: tops.size, pulses: [...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName), cells: document.querySelectorAll("#where table.zheat tbody td").length, legend: document.querySelectorAll("#hostile .zlegend li").length }; })()`) as { layers: number; rows: number; pulses: string[]; cells: number; legend: number };
+        if (viz.layers !== 6 || viz.rows !== (w >= 900 ? 1 : 6) || viz.pulses.join() !== Array(4).fill(w >= 900 ? "zx" : "zy").join() || viz.cells !== 35 || viz.legend !== 3) fail(`/security ${tag}: not six layers ${w >= 900 ? "in one row" : "in a column"} with four moving pulses, or a chart is missing (${JSON.stringify(viz)})`);
+        await page.emulateMedia({ reducedMotion: "reduce" });
+        const still = await page.evaluate(`[...document.querySelectorAll("#layers .zp")].map((e) => getComputedStyle(e).animationName + "/" + getComputedStyle(e).opacity).join()`) as string;
+        await page.emulateMedia({ reducedMotion: null });
+        if (still !== Array(4).fill("none/1").join()) fail(`/security ${tag}: the pulses still move, or are hidden, under reduced motion (${still})`);
       }
       await page.screenshot({ path: join(shots, `${path.slice(1)}-${tag}.png`), fullPage: true });
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
