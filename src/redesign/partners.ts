@@ -23,7 +23,7 @@ import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
-import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary, visaSummary } from "./vic3Run.js";
+import { VIC3_RUN_FILE, vic3Checks, vic3Lead, vic3Run, vic3RunHtml, vic3Summary, visaSummary } from "./vic3Run.js";
 import { SUMMARY_CSS, summaryHtml } from "./summary.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
@@ -333,7 +333,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
-  ${summaryHtml(visaSummary(vic3), "The latest live run in four cards")}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  <p class="vchecks" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Checks(vic3)}.`)}</p>
+  ${summaryHtml(visaSummary(vic3), "The latest live run in cards")}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
   ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>` : ""}

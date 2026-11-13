@@ -96,6 +96,22 @@ export function vic3Lead(r: Vic3Record): string {
 }
 
 /**
+ * The run's own checks, counted from the record: "14 of 15 checks passed; the other (G paid) needed a tap in Airi that
+ * did not go through, so nothing was charged". A failed check that is not a no-tap purchase is named as it is.
+ */
+export function vic3Checks(r: Vic3Record): string {
+  const all = Object.entries(r.checks), failed = all.filter(([, c]) => !c.ok);
+  const line = `${all.length - failed.length} of ${all.length} checks passed`;
+  if (!failed.length) return line;
+  const noTap = new Set(r.purchases.filter((p) => codeOf(p) === "PURSER_NO_TAP").map((p) => p.step.toLowerCase()));
+  const said = failed.map(([k]) => {
+    const step = /^([a-z]\d?)_paid$/.exec(k)?.[1];
+    return step && noTap.has(step) ? `${step.toUpperCase()} paid: it needed a tap in Airi that did not go through, so nothing was charged` : k.replaceAll("_", " ");
+  });
+  return `${line}; ${failed.length === 1 ? "the other" : "the others"} (${said.join("; ")})`;
+}
+
+/**
  * The four cards at the top of /visa (jury pass, 13 Nov), from the record: the purchase paid after Face ID, those
  * Purser refused before any call, the one not tapped in Airi, and the signed hash read back at Airi and Airwallex.
  */
@@ -145,7 +161,8 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
   ];
   return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
 ${o.summarised ? "" : `<p class="vlead">${esc(vic3Lead(r))}</p>
-${statsHtml(stats)}`}
+${statsHtml(stats)}
+<p class="airi-finding">${esc(`${vic3Checks(r)}.`)}</p>`}
 ${chosen.length ? `<p class="airi-finding">${esc(`Claude picked the Airi rail for each purchase it was asked about (${chosen.join(", ")}); Purser's code enforced the limit.`)}</p>` : ""}
 <p class="airi-finding">${esc(s.finding)}</p>
 <details class="fold" id="${VIC3_PURCHASES_ID}"><summary>${esc("Each purchase, with its ids")}</summary>
