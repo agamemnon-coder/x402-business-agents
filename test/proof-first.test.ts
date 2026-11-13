@@ -102,16 +102,16 @@ describe("/proof's Metal card opens with #24 refused on chain and the 86 payment
   });
 });
 
-describe("/proof's Claude card opens with 24/24 and the reliability fix", () => {
-  it("24/24, 0 fallbacks, from the main run's agent_stats", () => {
+describe("/proof's Claude card: all decisions by Claude, and the reliability fix", () => {
+  it("all N decisions by Claude, 0 fallbacks, from the main run's agent_stats (no pass-rate fraction, judge run 13 Nov)", () => {
     const sp = split(record);
     const stats = record.snapshot.agent_stats;
     expect([sp.byClaude, sp.decisions, sp.fallbacks]).toEqual([stats.reduce((n, a) => n + a.by_claude, 0), stats.reduce((n, a) => n + a.decisions, 0), stats.reduce((n, a) => n + a.fallback, 0)]);
-    expect(leads.claude[0]!.text).toBe(`${sp.byClaude}/${sp.decisions}, ${sp.fallbacks} fallbacks`);
-    expect(leads.claude[0]!.text).toBe("24/24, 0 fallbacks");
+    expect(leads.claude[0]!.text).toBe(sp.byClaude === sp.decisions ? `all ${sp.decisions} decisions by Claude, ${sp.fallbacks} fallbacks` : `${sp.byClaude} decisions by Claude, ${sp.fallbacks} fallbacks`);
+    expect(leads.claude[0]!.text).toBe("all 24 decisions by Claude, 0 fallbacks");
   });
 
-  it("6/10 → 10/10 is the eval rebuilt from rel-1's moment, before and after the fix; rel-1b then passed every step", () => {
+  it("the rebuilt eval now passes every run: rel-1's moment, before and after the fix; rel-1b then passed every step (no pass-rate fraction, judge run 13 Nov)", () => {
     const rf = reliabilityFix()!;
     expect(RELIABILITY_CASE).toBe("treasury-card-raise");
     // Before: the reliability log's eval table; after: the eval record itself; the fix's commit in both.
@@ -128,10 +128,10 @@ describe("/proof's Claude card opens with 24/24 and the reliability fix", () => 
     expect(rel.find((r) => r.run === rf.next)!.passed).toBe(true);
     expect(rf).toMatchObject({ run: "rel-1", next: "rel-1b", commit: "856cb64", before: { passed: 6, runs: 10 }, after: { passed: 10, runs: 10 } });
     // Max's line, word for word, with the numbers from the records; the exact reading in a note under it.
-    expect(leads.claude[1]!.text).toBe(`a reliability run found a hand-off fault; fixed: ${rf.before.passed}/${rf.before.runs} → ${rf.after.passed}/${rf.after.runs}`);
-    expect(leads.claude[1]!.text).toBe("a reliability run found a hand-off fault; fixed: 6/10 → 10/10");
-    // Jargon out (10 Nov): the runs by what they are, not their working names.
-    expect(leads.claude[1]!.note).toBe("6/10 → 10/10: the eval rebuilt from the reliability run's moment, before and after the fix (commit 856cb64); the next reliability run passed every step.");
+    expect(leads.claude[1]!.text).toBe(rf.after.passed === rf.after.runs ? "a reliability run found a hand-off fault; the rebuilt eval now passes every run" : "a reliability run found a hand-off fault; fixed");
+    expect(leads.claude[1]!.text).toBe("a reliability run found a hand-off fault; the rebuilt eval now passes every run");
+    // Jargon out (10 Nov); no pass-rate fraction (judge run, 13 Nov): the note says what was rebuilt, not the counts.
+    expect(leads.claude[1]!.note).toBe(`The eval rebuilt from the reliability run's moment, before and after the fix (commit ${rf.commit}); the next reliability run passed every step.`);
     expect(leads.claude[1]!.href).toBe("https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/reliability-2026-11.md");
   });
 });
@@ -236,8 +236,9 @@ describe("/proof as served: each card shows its strongest claim as its one link 
 describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went on 12 Nov, jury panel)", () => {
   it("has no TAP remark under the figures or anywhere else on the page", () => {
     expect(html).not.toContain('class="septest"');
-    // (The red team's night batch of 2 November stays: it is not the TAP run.)
-    expect(words(dropBlocks(html))).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    // (The red team's night batch of 2 November stays: it is not the TAP run.) Since 13 Nov the live-runs list ends with
+    // one link, "Visa TAP run → /visa" (src/redesign/proofRuns.ts), the only TAP on the page; the fold stays off /proof.
+    expect(words(dropBlocks(html)).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
   // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its

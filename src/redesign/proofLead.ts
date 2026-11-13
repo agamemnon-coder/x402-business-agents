@@ -55,7 +55,6 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
   const rb = o.cards === undefined ? cardsReadback() : o.cards;
   const rows = rb ? cardControlRows(record, rb) : [];
   const m = metalStory(record), sp = split(record), rf = reliabilityFix();
-  const pct = (x: { passed: number; runs: number }) => `${x.passed}/${x.runs}`;
   return {
     airwallex: [
       ...(h?.match ? [{ text: `The hash the CFO signed is in Airwallex's own record of the ${h.transferMethod} payment`, href: `airwallex#${AWX_HASH_ID}` }] : []),
@@ -70,11 +69,11 @@ export function proofLeads(record: RunRecord, o: { transfer?: { file: string; re
       ...(m.payments.total && m.payments.account.href ? [{ text: `${m.payments.total} payments, each its own tx`, href: m.payments.account.href }] : []),
     ],
     claude: [
-      { text: `${sp.byClaude}/${sp.decisions}, ${sp.fallbacks} fallbacks`, href: "claude" },
+      { text: sp.byClaude === sp.decisions ? `all ${sp.decisions} decisions by Claude, ${sp.fallbacks} fallbacks` : `${sp.byClaude} decisions by Claude, ${sp.fallbacks} fallbacks`, href: "claude" },
       // Max's line; the note says what 6/10 → 10/10 is: the eval rebuilt from the run's moment, not the run itself.
       ...(rf ? [{
-        text: `a reliability run found a hand-off fault; fixed: ${pct(rf.before)} → ${pct(rf.after)}`, href: `${REPO_BLOB}${RELIABILITY_LOG}`,
-        note: `${pct(rf.before)} → ${pct(rf.after)}: the eval rebuilt from the reliability run's moment, before and after the fix (commit ${rf.commit}); the next reliability run passed every step.`,
+        text: `a reliability run found a hand-off fault; ${rf.after.passed === rf.after.runs ? "the rebuilt eval now passes every run" : "fixed"}`, href: `${REPO_BLOB}${RELIABILITY_LOG}`,
+        note: `The eval rebuilt from the reliability run's moment, before and after the fix (commit ${rf.commit}); the next reliability run passed every step.`,
       }] : []),
     ],
   };

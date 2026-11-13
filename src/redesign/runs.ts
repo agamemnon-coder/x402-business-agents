@@ -93,7 +93,8 @@ const checkRate = (checks: Record<string, { ok: boolean }>): RunRate => {
   const all = Object.values(checks);
   return { done: all.filter((c) => c.ok).length, of: all.length, what: "checks passed" };
 };
-const rateWords = (r: RunRate) => `${r.done} of ${r.of} ${r.what}`;
+/** A rate in words. Checks have no pass-rate fraction (judge run, 13 Nov): every check passed, or not every one did. */
+const rateWords = (r: RunRate) => (r.what === "checks passed" ? (r.done === r.of ? "every check passed" : "not every check passed") : `${r.done} of ${r.of} ${r.what}`);
 const okOf = (checks: Record<string, { ok: boolean }>) => rateWords(checkRate(checks));
 /** What the main run and its rehearsal simulated: the site's one caveat line, without its "Test money." */
 const SIMULATED_LINE = CAVEAT_LINE.replace(/^Test money\. /, "");
@@ -328,6 +329,20 @@ function extraRuns(): RunRow[] {
     checks: "Each step's receipt status success; the capture simulated read-only first. Every RPC request within a hard cap of 15.", money: "Testnet · test money",
     ids: [tx("captureHold", "0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859"), tx("holdFrom", "0x41ef8b799002e32015fad9a0a988d1f7c2772636a0552e22f8424ed4e1bb39fb"), tx("approve", "0x2f2d7afce9fce6b21278104828cc552c9d0aea387857f1c8384419cc6b64fb2a")],
     files: [log("docs/runs/2026-11-10-metal-extra.md")],
+  });
+
+  // The anchor run (13 Nov): one Metal testnet transaction whose calldata is the head of Purser's committed records.
+  type Anchor = { anchored_at: string; height: number; tx: string; block: number; parts: { name: string }[] };
+  const an = has("docs/runs/2026-11-13-anchor.json") ? readJson<Anchor>("docs/runs/2026-11-13-anchor.json") : null;
+  if (an) out.push({
+    key: "anchor-1", iso: an.anchored_at, date: day(an.anchored_at), kind: "testnet", partners: ["Metal"],
+    name: "Records anchored on chain",
+    line: `One transaction's calldata is the head over ${an.height} rows and journal lines of the committed records. Metal testnet, test money.`,
+    title: "Records anchored", rails: "Metal testnet (one anchor transaction)",
+    what: `Purser hashed ${an.parts.length} parts of its committed records (the recorded run's decision log, the main run's audit chain and its journal) into one head and wrote it as the calldata of one Metal testnet transaction.`,
+    checks: "npm run verify-anchor recomputes the head from the repository, reads the transaction from the chain (a Metal testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
+    ids: [tx("Anchor", an.tx), { label: "Block", value: String(an.block) }],
+    files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-13-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-13-anchor.md") }],
   });
 
   type Owners = { ran_at: string; account: string; steps: { kind: string; outcome: string; tx: string | null }[]; proposals: { proposal_id: string }[] };
