@@ -1,8 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">
-
-<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp" alt="Purser's Home page: AI agents spend. You sign off. One sample invoice from Read to Paid (a local build of this repository)" width="100%"></picture></a>
+<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a>
 
 # Purser · AI agents spend. You sign off.
 
@@ -18,13 +16,80 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 </div>
 
+## Watch it
+
+<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg" alt="Purser: the walkthrough on YouTube, 4:58" width="100%"></a>
+
+*5-minute walkthrough · AI voice and music: ElevenLabs* · [youtu.be/mp9fmOYfBWc](https://youtu.be/mp9fmOYfBWc) · test money only
+
+## How it works in 3 steps
+
+| 1 · The agent asks | 2 · Code checks the limit | 3 · You sign the exact terms |
+|---|---|---|
+| A Claude agent proposes a payment: an invoice, a card charge, an x402 purchase. | Within the CFO's limits it pays alone; Airwallex and Metal hold the limit again. | Above them, the CFO's passkey (Face ID on iPhone) signs the SHA-256 of the exact terms. |
+
+**Not signed is never paid.**
+
+
 - **Face ID or a passkey signs the exact terms.** The approval is a signature over the SHA-256 of the terms; change one cent and it no longer verifies. The owner's real approval of 7 November is checked offline by `npm run verify-approval` ([record](docs/runs/2026-11-07-awx-1.md)).
 - **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Metal's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Metal refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Metal testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
 - **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Metal testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md)).
 
 Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))
 
-<table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/proof"><img src="docs/assets/readme/proof.webp" alt="/proof: each claim with its id, its code and its run"></a><br><b>/proof</b></td><td width="25%"><a href="https://purser-try.max-31b.workers.dev/"><img src="docs/assets/readme/cloud-guest.webp" alt="Purser Cloud as a guest: the demo company's overview, made-up data from a simulated month, test money"></a><br><b>Purser Cloud as a guest</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/books"><img src="docs/assets/readme/books.webp" alt="/books: a test company's month, read and booked by Claude, test money"></a><br><b>/books</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/security"><img src="docs/assets/readme/security.webp" alt="/security: the layers a payment must pass"></a><br><b>/security</b></td></tr></table>
+## Built with
+
+| Partner | What Purser uses | Proof |
+|---|---|---|
+| **Airwallex** (sandbox) | agent cards and limits, FX, SWIFT payouts, its approval as a second lock, the payee name check | [the card decline](docs/runs/2026-11-07-awx-1.md), [two locks](docs/runs/2026-11-12-airwallex-two-locks-paid.md), [name check](docs/runs/2026-11-12-airwallex-payee-check.md) |
+| **Metal** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
+| **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
+| **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
+| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
+
+Text names only; no endorsement implied.
+
+## Gallery
+
+<table>
+<tr><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/try-phone.webp" alt="/try on a phone: the approval with the exact terms, the conversion, the bank fee's cap and the deadline; test money" width="62%"></a><br><b>/try on a phone</b>: the approval with the exact terms (recorded from the live page; test money, a virtual test passkey)</td><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/proof"><img src="docs/assets/readme/proof.webp" alt="/proof: each claim with its id, its code and its run"></a><br><b>/proof</b>: what Purser guarantees, who enforces it, the evidence</td></tr>
+<tr><td width="50%" align="center"><a href="https://purser-try.max-31b.workers.dev/"><img src="docs/assets/readme/cloud-guest.webp" alt="Purser Cloud as a guest: the demo company's overview, made-up data, test money"></a><br><b>Purser Cloud as a guest</b>: the demo company, made-up data, test money</td><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/security"><img src="docs/assets/readme/security.webp" alt="/security: the layers a payment must pass"></a><br><b>/security</b>: the layers a payment must pass</td></tr>
+</table>
+
+<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp" alt="Purser's Home page: AI agents spend. You sign off. One sample invoice from Read to Paid (a local build of this repository)" width="100%"></picture></a>
+
+*Home, light or dark as your GitHub is: one sample invoice from Read to Paid.*
+
+
+## Verify it yourself in 3 commands
+
+The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
+
+```sh
+npm ci                       # under a minute: the exact versions in the lockfile
+npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
+npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
+```
+
+What you should see (abridged):
+
+```text
+ok    /  200  63106 bytes
+ok    /proof  200  138535 bytes
+…
+ok    signature          the ES256 signature verifies with the receipt's public key
+
+VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
+Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
+Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
+```
+
+`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
+checks any receipt of the same format.
+
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6524 tests passing**, 4 skipped, in 580 files (the last full run, on commit `0e031afc`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+
+CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
 ## Enterprise
 
@@ -65,6 +130,8 @@ passkey, then change them: refused.\
 
 ## What's live, what's simulated
 
+<details><summary><b>The run records: what ran live, what is simulated, each with its record</b></summary>
+
 Each row from its run record; test money throughout. Every run, newest first: [docs/runs/](docs/runs/README.md).
 
 | What | Status | Date | Record |
@@ -80,6 +147,8 @@ Each row from its run record; test money throughout. Every run, newest first: [d
 | Purser's records anchored on chain: one value-0 transaction carries their head; `npm run verify-anchor` prints MATCH | Live, Metal testnet | 13 Nov | [record](docs/runs/2026-11-13-anchor.md) |
 | In Purser Cloud: the payee check, batch approval and reconciliation as product features | Built and tested on stand-ins; not shown switched on in a live run | — | [reconcile-books.md](docs/reconcile-books.md) |
 | Real customers, real money, a second person approving | Not yet | — | [go-live.md](docs/go-live.md) |
+
+</details>
 
 ## Visa Award
 
@@ -114,11 +183,17 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 
 <table><tr><td width="33%"><a href="docs/assets/media/cloud-dashboard.mp4"><img src="docs/assets/media/cloud-dashboard-poster.png" alt="Purser Cloud as a guest (a still; the clip is the MP4)"></a><br>▶ <a href="docs/assets/media/cloud-dashboard.mp4">MP4, 13 s</a></td><td width="33%"><a href="docs/assets/media/books.mp4"><img src="docs/assets/media/books-poster.png" alt="/books (a still; the clip is the MP4)"></a><br>▶ <a href="docs/assets/media/books.mp4">MP4, 14 s</a></td><td width="33%"><img src="docs/assets/media/proof.gif" alt="/proof"></td></tr><tr><td>Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books.</td><td>kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money.</td><td>kit11 /proof: every claim with its run record.</td></tr></table>
 
-<table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/airwallex"><img src="docs/assets/readme/airwallex.webp" alt="/airwallex, its first screen"></a><br><b>/airwallex</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/metal"><img src="docs/assets/readme/metal.webp" alt="/metal, its first screen"></a><br><b>/metal</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/visa"><img src="docs/assets/readme/visa.webp" alt="/visa, its first screen"></a><br><b>/visa</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/claude"><img src="docs/assets/readme/claude.webp" alt="/claude, its first screen"></a><br><b>/claude</b></td></tr></table>
+<table>
+<tr><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/airwallex"><img src="docs/assets/readme/airwallex.webp" alt="/airwallex, its first screen"></a><br><b>/airwallex</b></td><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/metal"><img src="docs/assets/readme/metal.webp" alt="/metal, its first screen"></a><br><b>/metal</b></td></tr>
+<tr><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/visa"><img src="docs/assets/readme/visa.webp" alt="/visa, its first screen"></a><br><b>/visa</b></td><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/claude"><img src="docs/assets/readme/claude.webp" alt="/claude, its first screen"></a><br><b>/claude</b></td></tr>
+<tr><td width="50%" align="center"><a href="https://kit11.max-31b.workers.dev/books"><img src="docs/assets/readme/books.webp" alt="/books, its first screen"></a><br><b>/books</b></td></tr>
+</table>
 
 The pages and the console as the live site showed them on 13 November (`npm run readme:shots -- --live`; without `--live` the same shots from a local build): Purser Cloud as a guest with its demo company, light theme. Test money throughout.
 
 ## How it works in 5 files
+
+<details><summary><b>The code in 5 files, one payment end to end, and the worst case the policy allows</b></summary>
 
 Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the
 kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
@@ -180,37 +255,11 @@ Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for t
 4. **The Metal mandate layer.** [`payUnderMandate`](src/metal/pay.ts#L34) signs an x402 payment with the agent's own mandate key only after the caller's guard passes it (Sourcing's is `reserveSpend`); on chain, Metal refuses what is over the mandate.
 5. **The audit chain.** [`audit`](src/audit/log.ts#L37) appends each event with `row_hash = SHA-256(prev_hash ‖ JCS(row))`; the database refuses UPDATE and DELETE, and `npm run verify` re-checks the chain.
 
-### Verify it yourself in 3 commands
-
-The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
-
-```sh
-npm ci                       # under a minute: the exact versions in the lockfile
-npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
-npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
-```
-
-What you should see (abridged):
-
-```text
-ok    /  200  63106 bytes
-ok    /proof  200  138535 bytes
-…
-ok    signature          the ES256 signature verifies with the receipt's public key
-
-VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
-Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
-Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
-```
-
-`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
-checks any receipt of the same format.
-
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6587 tests passing**, 4 skipped, in 590 files (the last full run, on commit `f202ea61`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
-
-CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
+</details>
 
 ## Architecture
+
+<details><summary><b>Where it runs: the Workers, Durable Objects, D1, the MCP server and the relay</b></summary>
 
 Where it runs: two Cloudflare Workers, their Durable Objects, D1, the MCP server and the relay.
 
@@ -237,6 +286,8 @@ flowchart LR
   S & E --> CL["Claude · Anthropic API"]
 ```
 
+</details>
+
 ## Proof in numbers
 
 <img src="docs/assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, from the run records" width="49%"> <img src="docs/assets/charts/main-run-claude.svg" alt="Main run: Claude's decisions and cost per agent, from its record" width="49%"> <img src="docs/assets/charts/main-run-refusals.svg" alt="Main run: what was refused, from its record" width="49%"> <img src="docs/assets/charts/tests-over-time.svg" alt="Tests in the suite over time, from the README's own history" width="49%">
@@ -257,6 +308,8 @@ Since then, in this repository (live once the cloud is redeployed): the server s
 
 ## Built after the kit (test environment, test money)
 
+<details><summary><b>The payables inbox, scanned invoices, batch approval, the console, the attack rounds, connected accounts</b></summary>
+
 On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's invoice and the CFO signs the exact terms with a passkey (Face ID on iPhone). The payables inbox below is built to do that for every supplier invoice of a small company. It runs on this site as the [hands-on demo](https://kit11.max-31b.workers.dev/try) and [/books](https://kit11.max-31b.workers.dev/books), on test money; the product console is a private preview. Its code is in this repository: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview at [purser-try.max-31b.workers.dev](https://purser-try.max-31b.workers.dev/), where *Try as guest* opens a demo company read-only (made-up data from a simulated month); what ran live and when is [above](#whats-live-whats-simulated). The product's own console deployment is another matter: that hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout ran end to end in the Airwallex sandbox on 10 November: EUR 4.84 PAID on a test company's behalf (`593c340b-1752-4537-9ef2-0eb3558897cc`, settlement simulated), with Purser's EUR 0.02 fee, booked in T:0 ([run record](docs/runs/2026-11-10-platform-e2e.md)); an earlier run that morning paid EUR 5.00 with a EUR 0.05 fee (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, [record](docs/runs/2026-11-10-connected-accounts-sandbox.md)). The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
 
 - **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
@@ -265,6 +318,8 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 - **Cloud console** with passkey sign-in, a register of every money movement, Dutch screens.
 - **Six red-team rounds:** every confirmed finding fixed with a test, except one point from round 6 that is still open ([docs/go-live.md](docs/go-live.md)).
 - **Airwallex connected accounts:** each customer would open its own Airwallex account through Purser; every payout and card call is checked against that company's signed account binding. Live in the sandbox since 10 November: 3 connected accounts ACTIVE; payouts with Purser's fee from the first (above, and an end-to-end run from invoice to T:0); the two newer accounts' payouts refused by Airwallex, which wants the paying company's registration number ([run record](docs/runs/2026-11-10-platform-e2e.md)).
+
+</details>
 
 ## Who does what
 
