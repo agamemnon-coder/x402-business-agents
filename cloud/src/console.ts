@@ -236,6 +236,9 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   /* try-fixes (13 Nov): at 390 px the row still cut "Settings" off at the edge; the five pages share the row instead. */
   .appbar nav.apptabs { justify-content: space-between; margin-left: -6px; }
   .appbar nav.apptabs a { padding: 6px 5px; font-size: 13px; }
+  /* Jury review, 13 Nov: at 390 px "Tokenisation" was cut to "Token…" with no sign the row scrolls; a fade at the right
+     edge says there is more, and the row scrolls on as before. */
+  .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */

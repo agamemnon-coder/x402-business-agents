@@ -46,3 +46,10 @@ describe("while a page loads", () => {
     expect(html).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{ \.skel i \{ animation:/);
   });
 });
+
+describe("the tabs on a phone", () => {
+  it("fade at the right edge, so a cut tab reads as a row that scrolls on", () => {
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "in.cloud.test" });
+    expect(html).toContain(".appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image:");
+  });
+});
