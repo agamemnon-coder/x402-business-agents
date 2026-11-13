@@ -19,6 +19,8 @@ import { hmacB64u, hmacValid, randomToken, sha256Hex, toB64u, fromB64 } from "..
 import type { Sql } from "../store.js";
 
 export const CODE_TTL_MS = 5 * 60 * 1000;
+/** How long the consent page's form is good for: one answer, within ten minutes. */
+export const CONSENT_TTL_MS = 10 * 60 * 1000;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
@@ -103,10 +105,37 @@ export function backTo(ask: AuthorizeAsk, origin: string, add: Record<string, st
   return u.toString();
 }
 
+/** What a consent form is bound to: this client, its redirect address, its PKCE challenge, its state and the resource. */
+const bindingOf = (ask: AuthorizeAsk) => sha256Hex(JSON.stringify([ask.client_id, ask.redirect_uri, ask.code_challenge, ask.state, ask.resource]));
+
+/**
+ * The consent form's own token. The page is reached through a chain of redirects from the client (claude.ai, often in an
+ * app's own browser), and its POST may carry Origin: null, so the Origin check cannot hold its forms; this does instead.
+ * It is signed by Purser, bound to this authorization request, good for ten minutes and spent on its first use, so a page
+ * elsewhere cannot answer the consent for a person, and an answer cannot be replayed.
+ */
+export async function consentToken(secret: string, ask: AuthorizeAsk, now: Date): Promise<string> {
+  const body = toB64u(enc.encode(JSON.stringify({ b: await bindingOf(ask), n: randomToken(16), exp: now.getTime() + CONSENT_TTL_MS })));
+  return `pcf.${body}.${await hmacB64u(`consent:${secret}`, body)}`;
+}
+
+/** Checks a consent form's token for this request and spends it; false when it is missing, forged, for another request, expired or used. */
+async function spendConsentToken(sql: Sql, secret: string, ask: AuthorizeAsk, token: string, now: Date): Promise<boolean> {
+  const [tag, body, sig] = token.split(".");
+  if (tag !== "pcf" || !body || !sig || token.length > 1000 || !(await hmacValid(`consent:${secret}`, body, sig))) return false;
+  let p: { b: string; n: string; exp: number };
+  try { p = JSON.parse(dec.decode(fromB64(body))) as typeof p; } catch { return false; }
+  if (typeof p.exp !== "number" || p.exp <= now.getTime() || p.b !== (await bindingOf(ask))) return false;
+  await sql.run("DELETE FROM oauth_consents WHERE expires_at < ?", [now.getTime()]);
+  const spent = await sql.run("INSERT OR IGNORE INTO oauth_consents (token_sha256, expires_at) VALUES (?, ?)", [await sha256Hex(token), p.exp]);
+  return spent.changes === 1;
+}
+
 /** The consent page (no script; one form). Its CSP lets the form go to this page and, after it, to the client's address. */
-export function consentPage(ask: AuthorizeAsk, client: Client, origin: string, error = ""): Response {
+export async function consentPage(secret: string, ask: AuthorizeAsk, client: Client, origin: string, now: Date, error = "", status = 401): Promise<Response> {
   const nonce = randomToken(12);
-  const hidden = (Object.entries(ask) as [string, string][]).map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
+  const form = await consentToken(secret, ask, now);
+  const hidden = [...(Object.entries(ask) as [string, string][]), ["consent", form] as [string, string]].map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Connect Claude to Purser</title><meta name="robots" content="noindex">
 <style nonce="${nonce}">
@@ -136,9 +165,10 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 </div></main></body></html>`;
   const formTo = new URL(ask.redirect_uri).origin;
   return new Response(html, {
-    status: error ? 401 : 200,
+    status: error ? status : 200,
     headers: {
-      "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
+      // same-origin, not no-referrer: under no-referrer a browser sends the form's POST with Origin: null.
+      "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "same-origin",
       "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self' ${formTo}; base-uri 'none'; frame-ancestors 'none'`,
     },
   });
@@ -150,6 +180,10 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
  */
 export async function consent(sql: Sql, secret: string, origin: string, form: URLSearchParams, now: Date): Promise<{ redirect: string } | { page: Response }> {
   const { ask, client } = await authorizeAsk(secret, origin, new URLSearchParams({ ...Object.fromEntries(form), response_type: "code", code_challenge_method: "S256" }));
+  // The form's own token, spent here whatever the answer: without it nothing happens, not even a cancel.
+  if (!(await spendConsentToken(sql, secret, ask, form.get("consent") ?? "", now))) {
+    return { page: await consentPage(secret, ask, client, origin, now, "This page expired or was already used. Choose again below.", 403) };
+  }
   const act = form.get("act");
   if (act === "deny") return { redirect: backTo(ask, origin, { error: "access_denied" }) };
   let tenant: string, keyId: string;
@@ -164,7 +198,7 @@ export async function consent(sql: Sql, secret: string, origin: string, form: UR
     } catch (e) {
       if (!(e instanceof AuthError)) throw e;
     }
-    if (!ok) return { page: consentPage(ask, client, origin, "That is not a live Claude connector token. Make one in Purser Cloud (Settings, Connect Claude); an ordinary API key is not one.") };
+    if (!ok) return { page: await consentPage(secret, ask, client, origin, now, "That is not a live Claude connector token. Make one in Purser Cloud (Settings, Connect Claude); an ordinary API key is not one.") };
     tenant = ok.tenantId; keyId = ok.principal;
   }
   const code = randomToken(32);

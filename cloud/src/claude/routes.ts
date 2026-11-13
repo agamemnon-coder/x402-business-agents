@@ -111,13 +111,13 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     { method: "GET", path: "/oauth/authorize", summary: "The consent page: connect Claude with a connector token made in Purser Cloud, or open the demo company (read only). PKCE S256 required.", need: "public", run: async (c) => {
       try {
         const { ask, client } = await authorizeAsk(c.env.sessionSecret, c.env.origin, c.url.searchParams);
-        return consentPage(ask, client, c.env.origin);
+        return await consentPage(c.env.sessionSecret, ask, client, c.env.origin, c.now);
       } catch (e) {
         if (e instanceof OAuthRefused) return err(400, `${e.code}: ${e.message}`);
         throw e;
       }
     } },
-    { method: "POST", path: "/oauth/authorize", summary: "The consent page's answer: a live connector token (or the demo), then back to the client with a one-time code (five minutes).", need: "public", run: async (c) => {
+    { method: "POST", path: "/oauth/authorize", summary: "The consent page's answer: the form's own token (signed, bound to this request, ten minutes, good once), then a live connector token (or the demo), then back to the client with a one-time code (five minutes).", need: "public", run: async (c) => {
       try {
         const out = await consent(c.env.sql, c.env.sessionSecret, c.env.origin, new URLSearchParams(await kit.text(c, 20_000)), c.now);
         return "page" in out ? out.page : new Response(null, { status: 303, headers: { location: out.redirect, "cache-control": "no-store", "referrer-policy": "no-referrer" } });

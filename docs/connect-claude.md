@@ -87,6 +87,6 @@ against a deployed cloud: this branch makes no live calls and deploys nothing.
 `/mcp` answers 401 with `WWW-Authenticate: Bearer resource_metadata=".../.well-known/oauth-protected-resource"`
 (RFC 9728). The authorization server's metadata is at `/.well-known/oauth-authorization-server` (RFC 8414). Clients
 register at `/oauth/register` (RFC 7591, public clients) and use the authorization code flow with PKCE S256. The
-consent page `/oauth/authorize` takes a connector token or the demo. `/oauth/token` gives an access token for at most
+consent page `/oauth/authorize` takes a connector token or the demo. Its forms carry their own token, signed by Purser, bound to that authorization request, good for ten minutes and spent on first use. The Origin check cannot hold this page: it is reached through the client's redirects, and an app's own browser (Claude on iOS) posts it with `Origin: null`. `/oauth/token` gives an access token for at most
 30 days, never longer than the connector token lives. When it ends, Claude asks you to sign in again. The endpoints and
 their tests are in `cloud/src/claude/` and `test/cloud-claude.test.ts`. The API table is in [cloud.md](cloud.md).

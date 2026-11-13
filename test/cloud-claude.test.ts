@@ -176,6 +176,8 @@ describe("OAuth for claude.ai", () => {
 
   const ask = () => ({ client_id: clientId, redirect_uri: redirect, state: "st-1", code_challenge: challenge, resource: `${ORIGIN}/mcp` });
   const authorizeUrl = (o: Record<string, string> = {}) => `/oauth/authorize?${new URLSearchParams({ response_type: "code", code_challenge_method: "S256", ...ask(), ...o })}`;
+  /** The consent form's own token, as the page a person sees holds it. */
+  const consentOf = async (o: Record<string, string> = {}) => /name="consent" value="([^"]+)"/.exec(await (await c.fetch(`${ORIGIN}${authorizeUrl(o)}`)).text())![1]!;
 
   it("shows a consent page that asks for a connector token; refuses an unknown client, address or missing PKCE", async () => {
     const page = await c.fetch(`${ORIGIN}${authorizeUrl()}`);
@@ -192,10 +194,10 @@ describe("OAuth for claude.ai", () => {
   it("takes a connector token only (not another key), gives a code good once for its verifier, and an access token that ends with the connector token", async () => {
     const t = await c.req("POST", "/v1/claude/connectors", { key: A.session, body: { name: "claude.ai" } });
     // An ordinary API key is not a connector token.
-    const wrong = await post("/oauth/authorize", form({ ...ask(), act: "connect", token: A.key }));
+    const wrong = await post("/oauth/authorize", form({ ...ask(), consent: await consentOf(), act: "connect", token: A.key }));
     expect(wrong.status).toBe(401);
     expect(await wrong.text()).toMatch(/not a live Claude connector token/);
-    const ok = await post("/oauth/authorize", form({ ...ask(), act: "connect", token: t.json.token as string }));
+    const ok = await post("/oauth/authorize", form({ ...ask(), consent: await consentOf(), act: "connect", token: t.json.token as string }));
     expect(ok.status).toBe(303);
     const back = new URL(ok.headers.get("location")!);
     expect(`${back.origin}${back.pathname}`).toBe(redirect);
@@ -209,7 +211,7 @@ describe("OAuth for claude.ai", () => {
     // The wrong verifier spent the code: a stolen code is worth one try.
     expect(((await (await exchange(verifier)).json()) as { error: string }).error).toBe("invalid_grant");
     // Again, properly.
-    const again = await post("/oauth/authorize", form({ ...ask(), act: "connect", token: t.json.token as string }));
+    const again = await post("/oauth/authorize", form({ ...ask(), consent: await consentOf(), act: "connect", token: t.json.token as string }));
     const code2 = new URL(again.headers.get("location")!).searchParams.get("code")!;
     const tok = await exchange(verifier, code2);
     expect(tok.status).toBe(200);
@@ -224,13 +226,40 @@ describe("OAuth for claude.ai", () => {
   });
 
   it("can open the demo company instead, read only; cancel goes back with access_denied", async () => {
-    const r = await post("/oauth/authorize", form({ ...ask(), act: "demo" }));
+    const r = await post("/oauth/authorize", form({ ...ask(), consent: await consentOf(), act: "demo" }));
     const code = new URL(r.headers.get("location")!).searchParams.get("code")!;
     const tok = await post("/oauth/token", form({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: clientId, redirect_uri: redirect }), null);
     expect(((await tok.json()) as { access_token: string }).access_token).toBe(DEMO_CONNECTOR_TOKEN);
-    const deny = await post("/oauth/authorize", form({ ...ask(), act: "deny" }));
+    const deny = await post("/oauth/authorize", form({ ...ask(), consent: await consentOf(), act: "deny" }));
     expect(new URL(deny.headers.get("location")!).searchParams.get("error")).toBe("access_denied");
-    // A consent form posted from another site is refused.
-    expect((await post("/oauth/authorize", form({ ...ask(), act: "demo" }), "https://evil.example")).status).toBe(403);
+    // A consent form needs its own token: missing or forged, nothing happens (a page shows again, with a fresh form).
+    for (const consent of ["", "pcf.e30.forged", (await consentOf()).replace(/.$/, (ch) => (ch === "A" ? "B" : "A"))]) {
+      const r = await post("/oauth/authorize", form({ ...ask(), consent, act: "demo" }), "https://evil.example");
+      expect({ consent, status: r.status, location: r.headers.get("location") }).toEqual({ consent, status: 403, location: null });
+    }
+  });
+  it("answers the consent from any origin (claude.ai's in-app browser sends Origin: null), but only once per form and only for its own request", async () => {
+    const answer = async (origin: string | null, consent: string, o: Record<string, string> = {}) => post("/oauth/authorize", form({ ...ask(), ...o, consent, act: "demo" }), origin);
+    // Origin: null, as a browser sends it after a chain of redirects or under no-referrer; and Origin: claude.ai.
+    for (const origin of ["null", "https://claude.ai", null]) {
+      const r = await answer(origin, await consentOf());
+      expect({ origin, status: r.status }).toEqual({ origin, status: 303 });
+      expect(new URL(r.headers.get("location")!).searchParams.get("code")).toMatch(/^[A-Za-z0-9_-]{40,}$/);
+    }
+    // The same form twice: the second answer is refused, and no code comes back.
+    const once = await consentOf();
+    expect((await answer("null", once)).status).toBe(303);
+    const twice = await answer("null", once);
+    expect([twice.status, twice.headers.get("location")]).toEqual([403, null]);
+    expect(await twice.text()).toMatch(/expired or was already used/);
+    // A form made for one request does not answer another: another state or PKCE challenge.
+    const other = createHash("sha256").update("another verifier, long enough to pass the check").digest("base64url");
+    for (const o of [{ state: "st-2" }, { code_challenge: other }] as Record<string, string>[]) expect((await answer("null", await consentOf(), o)).status).toBe(403);
+    // A form older than ten minutes is refused.
+    const old = await consentOf();
+    c.clock.now = new Date(c.clock.now.getTime() + 11 * 60_000);
+    try { expect((await answer("null", old)).status).toBe(403); } finally { c.clock.now = new Date(c.clock.now.getTime() - 11 * 60_000); }
+    // The page itself sends the browser's origin on its forms again.
+    expect((await c.fetch(`${ORIGIN}${authorizeUrl()}`)).headers.get("referrer-policy")).toBe("same-origin");
   });
 });
