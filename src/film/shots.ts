@@ -78,6 +78,17 @@ export const SHOTS: readonly Shot[] = [
   // Not capturable yet: no demo deployment (cloud-demo), and the zero-trust tests are on their branch (a terminal shot).
   desktop({ id: "D5-B", what: "Purser Cloud's demo world (cloud-demo, DEMO_PUBLIC=on): inbox, held, waiting, FX, ledger, vault", urls: [], actions: [{ hold: 33 }], must: ["test company", "stand-in"], gate: { stream: "cloud-demo" } }),
   desktop({ id: "D6", what: "Terminal: npx vitest run test/zero-trust.test.ts, the green summary", urls: [], actions: [{ hold: 10 }], must: ["passed"], gate: { stream: "zero-trust" } }),
+  // The hand-in film (13 Nov): the runs of 12 November, the books, Purser Cloud and the proof page.
+  desktop({ id: "F0", what: "/runs: Face ID signs on chain, two passkeys, the second a virtual test passkey (12 Nov)", urls: [`${LIVE}/runs`], actions: [{ hold: 0.5 }, { scroll: "Face ID signs on chain", s: 2, at: 0.2 }, { highlight: ["Face ID signs on chain"] }, { hold: 12.5 }], must: ["Face ID signs on chain", "virtual test passkey"] }),
+  desktop({ id: "F1", what: "The Face ID on-chain record on GitHub: the owners, and both passkeys signing", urls: [`${GH}/docs/runs/2026-11-12-faceid-onchain.md`], actions: [{ hold: 0.5 }, { scroll: "The owners", s: 1.5, at: 0.2 }, { highlight: ["iPhone (Face ID) (as stated by the owner)"] }, { hold: 7 }, { scroll: "the owners sign P-0001", s: 1.5, at: 0.4 }, { highlight: ["2 of 2 approvals"] }, { hold: 9.5 }], must: ["threshold 2", "virtual test passkey"], ownTheme: true }),
+  desktop({ id: "F1b", what: "The same record: refused, then paid", urls: [`${GH}/docs/runs/2026-11-12-faceid-onchain.md`], actions: [{ hold: 0.5 }, { scroll: "Refused, then paid", s: 1.5, at: 0.2 }, { highlight: ["refused on chain under the 0.05 cap"] }, { hold: 10 }], must: ["Refused, then paid", "refused on chain"], ownTheme: true }),
+  desktop({ id: "F2", what: "The explorer page of the refused payment, tx 0xe6d9c7ea…585df4", urls: ["https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4"], actions: [{ hold: 8 }], must: ["0xe6d9…5df4"], ownTheme: true }),
+  desktop({ id: "V3", what: "The vic-3 record on GitHub: purchase B, 45.00 EUR after Face ID, both read-backs equal", urls: [`${GH}/docs/runs/2026-11-12-vic-3.md`], actions: [{ hold: 0.5 }, { scroll: "above the CFO's limit: Face ID", s: 1.5, at: 0.35 }, { highlight: ["above the CFO's limit: Face ID"] }, { hold: 16 }], must: ["above the CFO's limit: Face ID", "succeeded"], ownTheme: true }),
+  desktop({ id: "V3n", what: "The vic-3 record: the negative tests, only Purser enforces the binding", urls: [`${GH}/docs/runs/2026-11-12-vic-3.md`], actions: [{ hold: 0.5 }, { scroll: "Negative test (F1, F2)", s: 1.5, at: 0.2 }, { highlight: ["only Purser enforces the binding here"] }, { hold: 12 }], must: ["only Purser enforces the binding here"], ownTheme: true }),
+  desktop({ id: "T5f", what: "The two-locks record on GitHub: approved at Airwallex, then PAID (12 Nov)", urls: [`${GH}/docs/runs/2026-11-12-airwallex-two-locks-paid.md`], actions: [{ hold: 0.5 }, { scroll: "What happened on 12 November", s: 1.5, at: 0.2 }, { highlight: ["The owner approved the transfer in the Airwallex sandbox web app"] }, { hold: 10 }], must: ["IN_APPROVAL", "PAID"], ownTheme: true }),
+  desktop({ id: "B1", what: "/books: the test company's books, then the Coder agent's choices with its reasons", urls: [`${LIVE}/books`], actions: [{ hold: 3 }, { scroll: "chose account, VAT code and cost centre", s: 2.5, at: 0.2 }, { highlight: ["chose account, VAT code and cost centre"] }, { hold: 16.5 }], must: ["Test company · test money", "chose account, VAT code and cost centre"] }),
+  desktop({ id: "C1", what: "Purser Cloud (purser-try): the console's landing, test money", urls: ["https://purser-try.max-31b.workers.dev/"], actions: [{ hold: 10 }], must: ["Purser Cloud", "The console never pays"] }),
+  desktop({ id: "PR1", what: "/proof: what Purser guarantees, who enforces it, the evidence", urls: [`${LIVE}/proof`], actions: [{ hold: 3 }, { scroll: "What Purser guarantees", s: 2, at: 0.15 }, { hold: 13 }], must: ["What Purser guarantees"] }),
   { id: "T7a", what: "Screenshot: the payables inbox of a test company", still: "docs/screenshots/after-kit/1-payables-inbox.png", viewport: "desktop", actions: [{ hold: 7 }], must: [] },
   { id: "T7b", what: "Screenshot: several invoices approved at once with Face ID", still: "docs/screenshots/after-kit/3-batch-face-id-phone.png", viewport: "desktop", actions: [{ hold: 7 }], must: [] },
   { id: "T7c", what: "Screenshot: an Airwallex account opened through Purser", still: "docs/screenshots/after-kit/4-airwallex-account.png", viewport: "desktop", actions: [{ hold: 7 }], must: [] },
@@ -105,8 +116,26 @@ export const OWN_FOOTAGE = {
   P1b: "Phone recording: the terms, then Face ID, then \"Signed and verified.\"",
   P1c: "Phone recording: \"Try to cheat\", + 1 cent, \"Refused by Purser\"",
   P1d: "Phone recording: \"Trick the agent\", \"Blocked: a new IBAN needs a person's Face ID.\"",
+  P2a: "Phone recording: /try on purser-try, start a test company, the invoice is read and checked",
+  P2b: "Phone recording: /try, sign the exact terms with Face ID, paid on the simulated bank",
+  P2c: "Phone recording: /try, change one cent, refused",
+  S1: "Screen recording: the test company's console (Overview, Invoices, Transactions, Books)",
 } as const;
 export type OwnShot = keyof typeof OWN_FOOTAGE;
+
+/** How the owner records each of his shots: the device, the screen and what to do on it (the shot lists print it). */
+export const OWN_HOW: Record<OwnShot, { device: string; where: string; steps: string[] }> = {
+  M1: { device: "iPhone, landscape, 1080p 30 fps, on a tripod at eye height", where: "a quiet room, light from the front", steps: ["Say the opening line word for word; look into the lens", "Hold the gaze 1 s after the last word", "Three takes"] },
+  M2: { device: "iPhone, landscape, 1080p 30 fps", where: "the same set as M1", steps: ["Say the close word for word", "Three takes"] },
+  P1a: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["The reading and the advice; keep only a take whose labels say live"] },
+  P1b: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["The terms, Face ID, \"Signed and verified.\""] },
+  P1c: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["\"Try to cheat\", + 1 cent, \"Refused by Purser\""] },
+  P1d: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["\"Trick the agent\", the blocked IBAN"] },
+  P2a: { device: "iPhone screen recording (Control Centre), dark mode, Do Not Disturb on", where: "https://purser-try.max-31b.workers.dev/try", steps: ["Start a test company", "Pick the clean sample invoice (Bergtex Textil GmbH, EUR 1,850.00)", "Let the screen show who read it and what the checks found; hold 2 s"] },
+  P2b: { device: "iPhone screen recording, plus 2–3 s of a second camera at the Face ID moment", where: "the same test company", steps: ["Open the terms", "Sign with Face ID", "Hold on Paid (simulated bank) 2 s"] },
+  P2c: { device: "iPhone screen recording", where: "the same test company", steps: ["Change the amount by one cent", "Hold on the refusal 2 s"] },
+  S1: { device: "Laptop screen recording, 1440 px wide, dark mode", where: "Purser Cloud's console for the test company of P2 (purser-try.max-31b.workers.dev)", steps: ["Overview, 4 s", "Invoices: the paid invoice, 6 s", "Transactions, 5 s", "Books: the journal, 6 s", "No e-mail, keys or personal data on screen"] },
+};
 
 export const shot = (id: string): Shot => {
   const s = ALL_SHOTS.find((x) => x.id === id);

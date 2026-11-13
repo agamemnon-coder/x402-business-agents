@@ -8,6 +8,7 @@
 // missing-<n>.txt (what is still a placeholder or not captured). Not in git.
 //   --stills    the stills /watch shows, from the shot clips: src/film/stills/poster.webp (a frame of D1a, Home's
 //               hero) and one thumbnail per chapter (its first shot's last frame), and nothing else
+//   --docs <cut> the script table, the shot list and the .srt of a cut into docs/video/ (words only)
 //   --check     the honesty and timing check of both cuts (and the Demo Day close), nothing rendered; exit 1 on a problem
 //   --draft     x264 veryfast (a first look); the narration runs as a line at the bottom while there is no voice
 //   --demo-day  the 3:00 with the Demo Day close (M2-DD) and the QR end card
@@ -20,7 +21,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PHONE_BOX, assFile } from "../film/captions.js";
 import { BG, FPS, guardDisk } from "../film/capture.js";
-import { CUTS, checkCut, chapters, clock, resolveCut, scriptMarkdown, srt, total, type Cut, type Placed } from "../film/cuts.js";
+import { CUTS, checkCut, chapters, clock, resolveCut, scriptMarkdown, shotListMarkdown, srt, total, type Cut, type Placed } from "../film/cuts.js";
 import { measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
 import { OWN_FOOTAGE, shot as shotOf } from "../film/shots.js";
 import { STILL_SHOTS } from "../film/stills.js";
@@ -87,7 +88,7 @@ function render(cut: Cut, demoDay: boolean): void {
   const own = ownArgs();
   const voDir = opt("--vo");
   const name = `${cut.file}${demoDay ? "-demoday" : ""}`;
-  const n = cut.id === "submission-3" ? "3" : "5";
+  const n = cut.id === "submission-3" ? "3" : cut.id === "handin-5" ? "handin" : "5";
   const build = resolve(out, "build", name);
   rmSync(build, { recursive: true, force: true });
   mkdirSync(build, { recursive: true });
@@ -155,10 +156,25 @@ function stills(): void {
   console.log(`${done.length} stills in src/film/stills/: ${done.join(", ")}`);
 }
 
+/** --docs <cut>: the script table, the shot list and the .srt into docs/video/ (words only; nothing is rendered). */
+function docs(id: Cut["id"]): void {
+  const cut = CUTS[id];
+  const problems = checkCut(cut);
+  if (problems.length) throw new Error(`cut: ${id} does not pass its check:\n${problems.join("\n")}`);
+  const placed = resolveCut(cut);
+  const dir = resolve(root, "docs/video");
+  const base = id.replace(/-\d+$/, "");
+  writeFileSync(resolve(dir, `${base}-script.md`), scriptMarkdown(cut, placed));
+  writeFileSync(resolve(dir, `${base}-shots.md`), shotListMarkdown(cut, placed));
+  writeFileSync(resolve(dir, `${base}.srt`), srt(placed));
+  console.log(`docs/video/${base}-script.md, ${base}-shots.md, ${base}.srt (${clock(total(placed))})`);
+}
+
 function main(): void {
   if (flag("--stills")) return stills();
+  if (flag("--docs")) { const id = argv.find((a) => a in CUTS) as Cut["id"] | undefined; if (!id) throw new Error("cut: --docs needs a cut id"); return docs(id); }
   if (flag("--check")) {
-    const problems = [...checkCut(CUTS["submission-3"]), ...checkCut(CUTS["submission-3"], { demoDay: true }).map((p) => `demo day: ${p}`), ...checkCut(CUTS["walkthrough-5"])];
+    const problems = [...checkCut(CUTS["submission-3"]), ...checkCut(CUTS["submission-3"], { demoDay: true }).map((p) => `demo day: ${p}`), ...checkCut(CUTS["walkthrough-5"]), ...checkCut(CUTS["handin-5"])];
     for (const c of Object.values(CUTS)) console.log(`${c.id}: ${clock(total(resolveCut(c)))}`);
     if (problems.length) { console.error(problems.join("\n")); process.exit(1); }
     console.log("Every row fits, every caption is short, every number is in its record.");

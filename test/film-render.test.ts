@@ -29,7 +29,7 @@ describe("the shot list", () => {
       // A shot with no address yet waits for a stream, and says which.
       if (s.urls && s.urls.length === 0) expect(s.gate?.stream).toBeTruthy();
       // GETs of public pages only: the site, its preview, the public repository on GitHub, Metal's explorer.
-      for (const u of s.urls ?? []) expect(u).toMatch(/^local:\/|^https:\/\/(kit11(-next)?\.max-31b\.workers\.dev|github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main|testnet\.metalntwx\.com)\//);
+      for (const u of s.urls ?? []) expect(u).toMatch(/^local:\/|^https:\/\/(kit11(-next)?\.max-31b\.workers\.dev|purser-try\.max-31b\.workers\.dev|github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main|testnet\.metalntwx\.com)\//);
     }
     expect(VIEWPORTS.desktop).toMatchObject({ width: 1440, height: 900 });
     expect(VIEWPORTS.phone).toMatchObject({ width: 390, height: 844 });
@@ -45,7 +45,7 @@ describe("the shot list", () => {
   });
 
   it("the owner's footage is named, never captured", () => {
-    expect(Object.keys(OWN_FOOTAGE)).toEqual(["M1", "M2", "P1a", "P1b", "P1c", "P1d"]);
+    expect(Object.keys(OWN_FOOTAGE)).toEqual(["M1", "M2", "P1a", "P1b", "P1c", "P1d", "P2a", "P2b", "P2c", "S1"]);
     expect(ALL_SHOTS.some((s) => /^[MP]\d/.test(s.id))).toBe(false);
   });
 });
@@ -110,7 +110,7 @@ describe("captions, badges and placeholder cards (ASS)", () => {
     expect(ass).toMatch(/Dialogue: 5,0:01:17\.15,0:01:28\.90,Caption,.*awx-1 · 7 Nov · EUR 240\.00 by SWIFT/);
     expect(ass).toMatch(/Dialogue: 5,0:01:17\.00,0:01:55\.00,Badge,.*Airwallex sandbox · test money/);
     for (const b of ["Test world · no money moves", "Metal testnet · test USD", "Airi test card · test money"]) expect(ass).toContain(b);
-    expect(Object.values(BADGES).length).toBe(8);
+    expect(Object.values(BADGES).length).toBe(10);
   });
 
   it("draws a placeholder card where the owner's footage goes, and none once it is given", () => {
