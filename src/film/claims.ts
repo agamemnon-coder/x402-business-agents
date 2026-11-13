@@ -4,6 +4,8 @@
 // names that file under `file`: the cut lists use their fallback words until the file is in this repository
 // (src/film/cuts.ts `when`), so nothing is said before its record is here.
 
+import { ZT_ATTACKS, ZT_LAYERS, ZT_MIN_DEPTH } from "./zeroTrust.js";
+
 export interface Claim {
   id: string;
   /** What is said or shown, in short. */
@@ -65,7 +67,7 @@ export const CLAIMS: readonly Claim[] = [
   { id: "C45", text: "Purser Cloud's console: overview, invoices, transactions, books; it reads and manages, it never pays; payments are approved on the CFO's phone with Face ID.", sources: ["docs/cloud.md"], keys: ["The console reads and manages; it never pays", "the CFO's phone with Face ID"] },
   { id: "C46", text: "The proof page lists what Purser guarantees, who enforces each, and its evidence.", sources: ["src/redesign/proof.ts"], keys: ["What Purser guarantees"] },
   // Film v10 (13 Nov): the enterprise hand-in. Security, Purser Cloud, the hands-on demo's approval, the partners' newer runs.
-  { id: "C47", text: "Zero trust: 6 layers that do not trust each other; 52 attacks in the test harness, all stopped, money moved in none; at least 2 layers must fail before a hostile payment moves.", sources: ["docs/zero-trust/report.json", "docs/zero-trust.md"], keys: ["\"attacks_run\": 52", "\"attacks_stopped\": 52", "\"attacks_where_money_moved\": 0", "\"layers\": 6", "\"min_depth\": 2", "Nothing here attacked a live rail"] },
+  { id: "C47", text: `Zero trust: ${ZT_LAYERS} layers that do not trust each other; ${ZT_ATTACKS} attacks in the test harness, all stopped, money moved in none; at least ${ZT_MIN_DEPTH} layers must fail before a hostile payment moves.`, sources: ["docs/zero-trust/report.json", "docs/zero-trust.md"], keys: [`"attacks_run": ${ZT_ATTACKS}`, `"attacks_stopped": ${ZT_ATTACKS}`, "\"attacks_where_money_moved\": 0", `"layers": ${ZT_LAYERS}`, `"min_depth": ${ZT_MIN_DEPTH}`, "Nothing here attacked a live rail"] },
   { id: "C48", text: "Hostile-model eval (12 Nov): a script in Claude's place made the worst tool call it could on every turn; 380 calls, 0 unsafe by the ledger's verdict; test data, no network.", sources: ["docs/evals/ap-hostile.json"], keys: ["\"calls\": 380", "\"unsafe\": 0", "makes the worst tool call it can on every turn", "No network, no key, test data only"] },
   { id: "C49", text: "Approval alerts by WhatsApp, e-mail, Slack and Teams: built and tested with a stand-in, not yet sent live (WhatsApp: built, live once Twilio keys are set); an alert never carries anything that approves.", sources: ["docs/cloud.md", "cloud/src/alerts.ts", "scripts/approval-alert-live.ts"], keys: ["built, live once Twilio keys are set", "WhatsApp", "E-mail", "Slack, Teams", "Built and tested with a stand-in; not yet sent live", "No token, code, reply word or signed link"] },
   { id: "C50", text: "Purser Cloud's Agents tab (each agent's job, Claude model, may and may not, card limits, decisions), Invoices & books, and the Tokenisation tab; shown with the demo company (made-up data, test money, read only).", sources: ["docs/cloud.md", "cloud/src/console.ts"], keys: ["GET /v1/agents", "what each may and may not do", "GET /v1/tokenisation", "Invoices & books"] },

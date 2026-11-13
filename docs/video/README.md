@@ -31,8 +31,8 @@ Nobody is on camera and nobody recorded anything by hand. Every line is read by 
 voice is “Ian” from ElevenLabs' voice library, `src/film/narrator10.ts`: the repository does not record which stock voice
 v6/v8 used, so this is a calm, warm, neutral English narrator), over **AI-generated music** (ElevenLabs), mixed with
 `src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.3 LUFS integrated, true peak -1.0 dB),
-the music about 21 dB under the voice (one 293 s track; a second take for 4:56 was refused by ElevenLabs with a 429, so the
-track ends with its own fade and the end card's last seconds are silent). The end card
+the music about 21 dB under the voice. The music is one 293 s ElevenLabs track; for 4:56 its own soft opening is
+crossfaded onto its end (ffmpeg, 3 s), as a new take of that length was over the account's remaining credits. The end card
 says so: “Voice-over and music: AI-generated (ElevenLabs)”, and “Test money only”.
 
 The hand-in script's placeholders (`handin-script.md`: M1, M2, P2a–c, S1) are gone:
@@ -44,7 +44,8 @@ The hand-in script's placeholders (`handin-script.md`: M1, M2, P2a–c, S1) are 
 | S1, the owner's screen recording of the console | Page shots of Purser Cloud's **demo company** (the sign-in page's “Try as guest”: read only, made-up data, test money), each badged “Demo company · made-up data · test money” |
 | M2, the owner on camera (the close) | The AI narrator over a title card |
 
-Every claim is a row of `src/film/claims.ts` (C47–C55 are new: the zero-trust report, the hostile-model eval, the alerts,
+Every claim is a row of `src/film/claims.ts` (C47–C55 are new; the attack count of C47, of the narration and of the caption is read from
+`docs/zero-trust/report.json` by `src/film/zeroTrust.ts`, so a new attack there changes the film's words: the zero-trust report, the hostile-model eval, the alerts,
 Cloud's tabs, /try's approval card, the payee check, the batch, the invoice token, the anchor), and `npm run cut --
 --check` checks every number said or shown against its record. The words: [film-v10-script.md](film-v10-script.md) (the
 script table with claim ids), [film-v10-shots.md](film-v10-shots.md) (the shot list) and [film-v10.srt](film-v10.srt)

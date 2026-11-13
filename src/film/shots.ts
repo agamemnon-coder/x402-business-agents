@@ -7,6 +7,8 @@
 // T = can be captured from the live site today; D = waits for a stream, and is taken from the first site whose page
 // passes its gate (the preview, kit11-next, until the stream is live); stills are files of this repository.
 
+import { ZT_ATTACKS } from "./zeroTrust.js";
+
 export const LIVE = "https://kit11.max-31b.workers.dev";
 /** "local:/path": the page as this branch builds it (npm run capture serves the Worker's pages on this computer). */
 export const LOCAL = "local:";
@@ -123,7 +125,7 @@ export const SCOPE_SHOTS: readonly Shot[] = [
   scope({ id: "X-cloud-agents", what: "Purser Cloud, demo company: the Agents tab", urls: [CLOUD], actions: [...guest("agents"), { hold: 2 }, { scroll: "LIMITS (CFO POLICY", s: 3, at: 0.15 }, { hold: 6 }], must: ["Try as guest"] }),
   scope({ id: "X-cloud-books", what: "Purser Cloud, demo company: Invoices & books", urls: [CLOUD], actions: [...guest("books"), { hold: 2 }, { scroll: "Waits for the CFO's Face ID", s: 2, at: 0.35 }, { hold: 4 }], must: ["Try as guest"] }),
   scope({ id: "X-cloud-tokens", what: "Purser Cloud, demo company: the Tokenisation tab", urls: [CLOUD], actions: [...guest("tokenisation"), { hold: 2 }, { scroll: "Invoice token on Metal testnet", s: 2, at: 0.1 }, { hold: 5 }], must: ["Try as guest"], mustNot: ["Northwind Outdoor (demo company): what is open"] }),
-  scope({ id: "X-security", what: "/security: the layers a payment must pass", urls: [`${LIVE}/security`], actions: [{ hold: 1 }, { scroll: "The layers a payment must pass", s: 2.5, at: 0.16 }, { hold: 10 }], must: ["The layers a payment must pass", "52 attacks, all stopped"] }),
+  scope({ id: "X-security", what: "/security: the layers a payment must pass", urls: [`${LIVE}/security`], actions: [{ hold: 1 }, { scroll: "The layers a payment must pass", s: 2.5, at: 0.16 }, { hold: 10 }], must: ["The layers a payment must pass", `${ZT_ATTACKS} attacks, all stopped`] }),
   scope({ id: "X-attacks", what: "/security: where each attack was stopped", urls: [`${LIVE}/security`], actions: [{ hold: 0.5 }, { scroll: "Where each attack was stopped", s: 2.5, at: 0.08 }, { hold: 9 }], must: ["Where each attack was stopped"] }),
   scope({ id: "X-hostile", what: "/security: a hostile model, against the code", urls: [`${LIVE}/security`], actions: [{ hold: 0.5 }, { scroll: "A hostile model, against the code", s: 2.5, at: 0.12 }, { hold: 12 }], must: ["A hostile model, against the code", "380"] }),
   scope({ id: "X-claude", what: "/claude: the three agents and their decisions", urls: [`${LIVE}/claude`], actions: [{ hold: 3 }, { scroll: "Three agents", s: 2.5, at: 0.62 }, { hold: 8 }], must: ["Three agents", "Haiku"] }),

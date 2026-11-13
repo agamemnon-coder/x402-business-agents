@@ -7,7 +7,7 @@
 // The words spoken are the row's words, with only the spellings below changed so the voice says them as written.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { HANDIN10, VO_LEAD, resolveCut, total } from "../film/cuts.js";
 import { VOICE_10, spoken } from "../film/narrator10.js";
@@ -33,7 +33,7 @@ async function tts(text: string, file: string): Promise<void> {
 
 async function music(len: number): Promise<void> {
   const prompt = "Soft, calm, minimal ambient instrumental for a fintech product film: warm sustained pads, a slow gentle piano motif, light pulse, no drums in the first half, a subtle lift in the middle, resolving calmly at the end. No vocals. Understated, trustworthy, spacious, never busy; it sits under a narrator.";
-  post("/v1/music?output_format=mp3_44100_128", { prompt, music_length_ms: Math.min(300_000, Math.ceil(len) * 1000), model_id: "music_v1", force_instrumental: true }, resolve(out, "music.mp3"));
+  post("/v1/music?output_format=mp3_44100_128", { prompt, music_length_ms: Math.min(300_000, Math.ceil(len + 6) * 1000), model_id: "music_v1", force_instrumental: true }, resolve(out, "music.mp3"));
   console.log(`music.mp3: ${seconds(resolve(out, "music.mp3")).toFixed(1)} s`);
 }
 
@@ -48,7 +48,9 @@ async function main(): Promise<void> {
   for (const p of placed) {
     if (p.row.kind !== "vo" || (only.length && !only.includes(p.row.id))) continue;
     const file = resolve(dir, `${p.row.id}.wav`);
-    if (!existsSync(file) || only.includes(p.row.id)) await tts(spoken(p.row.words), file);
+    // A line is voiced again when its words change (its spoken text is kept beside it), or when it is named.
+    const said = resolve(dir, `${p.row.id}.txt`), text = spoken(p.row.words);
+    if (!existsSync(file) || only.includes(p.row.id) || !existsSync(said) || readFileSync(said, "utf8") !== text) { await tts(text, file); writeFileSync(said, text); }
     const d = seconds(file), room = p.seconds - VO_LEAD - 0.3;
     if (d > room) bad++;
     report.push(`${p.row.id}  ${d.toFixed(2)} s of ${room.toFixed(1)} s${d > room ? "  TOO LONG" : ""}`);
