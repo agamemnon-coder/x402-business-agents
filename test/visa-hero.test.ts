@@ -3,7 +3,7 @@
 // count of checks anywhere on the page.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { visaPage } from "../src/redesign/partners.js";
+import { visaPage, visaRunsLine } from "../src/redesign/partners.js";
 import { VIC3_RUN_FILE, type Vic3Record } from "../src/redesign/vic3Run.js";
 import { VISA_FLOW_ID, VISA_HASH_ID, VISA_OUTCOMES_ID, outcomeOf, visaHashHtml } from "../src/redesign/visaHero.js";
 import { VISA_ICC_LINE } from "../src/config/brand.js";
@@ -69,5 +69,15 @@ describe("/visa's hero, from the vic-4 record", () => {
     expect(main).toContain(VISA_ICC_LINE);
     // No script was added: the page's own scripts are the ones it had (CSP hashes unchanged).
     expect(section(VISA_FLOW_ID) + section(VISA_OUTCOMES_ID) + section(VISA_HASH_ID)).not.toMatch(/<script|style="|on[a-z]+=/i);
+  });
+
+  it("says the Visa runs in one phrase, the same in the footer, on /visa and in the README", () => {
+    const line = visaRunsLine()!;
+    expect(line).toMatch(/^\d+ paid in the \d{1,2} \w{3} run \(\d+ paid across \d+ live Visa runs?\)$/);
+    expect(text(section(VISA_OUTCOMES_ID))).toContain(`${line}.`);
+    expect(text(/<footer[\s\S]*<\/footer>/.exec(html)![0])).toContain(line);
+    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    expect(readme).toContain(line);
+    expect(readme).not.toMatch(/fourth live run/);
   });
 });

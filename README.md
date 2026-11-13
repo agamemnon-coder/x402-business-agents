@@ -243,7 +243,7 @@ Every pull request since `v1.0-submission` is in [CHANGELOG.md](CHANGELOG.md); t
 - **Purser Cloud and Connect any AI:** a public guest console, and your own AI over MCP, read and propose only ([above](#connect-any-ai)).
 - **The CFO's real Face ID at Airwallex:** on 13 Nov the owner's own iPhone approved an invoice; Purser created the SWIFT transfer once and Airwallex held it `IN_APPROVAL` for a person; its step to PAID was not done that day ([record](docs/runs/2026-11-13-airwallex-faceid.md)).
 - **Metal:** a passkey account on chain (2 of 2 owners, the second a labelled virtual test passkey) bound, raised and revoked a mandate, and Metal refused a payment over the cap ([record](docs/runs/2026-11-12-faceid-onchain.md)); an invoice token minted, financed and settled, a prototype ([record](docs/runs/2026-11-12-tokenize.md)).
-- **Visa via Airwallex's Airi (sandbox, test card):** a fourth live run on 13 Nov: 2 paid (1 after Face ID), 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([record](docs/runs/2026-11-13-vic-4.md)).
+- **Visa via Airwallex's Airi (sandbox, test card):** 2 paid in the 13 Nov run (5 paid across 3 live Visa runs). On 13 Nov: 2 paid (1 after Face ID), 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([record](docs/runs/2026-11-13-vic-4.md)).
 - **Books elsewhere:** Moneybird sandbox, 0 differences ([record](docs/runs/2026-11-12-moneybird-sandbox.md)); T:0, the main run's books posted ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)).
 - **Quality:** Firefox next to Chromium and WebKit in CI, chaos tests per partner, property tests for tokens and the bookkeeping links, and the suite's own count under [Verify it yourself](#verify-it-yourself-in-3-commands).
 

@@ -291,7 +291,7 @@ describe("the Visa entry on the rest of the site", () => {
     const built = /<ul class="builton">[\s\S]*?<\/ul>/.exec(airwallex)![0];
     // The latest run's own count first, as /visa leads with it, then the purchases paid across the live Airi runs (the
     // jury check, 12 Nov; the jury, 13 Nov: the two read as a clash without the run named).
-    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ paid in the \d{1,2} [A-Z][a-z]{2} run \(\d+ across \d+ runs\)<\/a>/);
+    expect(built).toMatch(/<a class="flink" href="visa">Visa \(VIC through Airwallex's Airi\): \d+ paid in the \d{1,2} [A-Z][a-z]{2} run \(\d+ paid across \d+ live Visa runs\)<\/a>/);
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 

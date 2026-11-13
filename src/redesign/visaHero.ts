@@ -89,13 +89,13 @@ ${lane("Refused", "vh-l-bad", [{ name: "Stopped before any call; nothing charged
 }
 
 /** Every purchase of the run in one strip, in the record's order, with a legend that counts each outcome. */
-export function visaOutcomesHtml(r: Vic3Record): string {
+export function visaOutcomesHtml(r: Vic3Record, runs: string | null = null): string {
   const order: Outcome[] = ["paid", "paid-faceid", "refused", "notap"];
   const n = (o: Outcome) => r.purchases.filter((p) => outcomeOf(p) === o).length;
   const legend = order.filter((o) => n(o)).map((o) => `<li class="vh-${o}">${ICON[o]}${esc(`${OUT_WORDS[o]}: ${n(o)}`)}</li>`).join("");
   return `<section class="vh-out card" id="${VISA_OUTCOMES_ID}"><h2 class="vh-h">${esc("Every purchase, as it ended")}</h2>
 <ul class="vh-leg">${legend}</ul>
-<ol class="vh-strip">${r.purchases.map((p) => `<li>${chip(p, { reason: true })}</li>`).join("")}</ol></section>`;
+<ol class="vh-strip">${r.purchases.map((p) => `<li>${chip(p, { reason: true })}</li>`).join("")}</ol>${runs ? `<p class="vh-src">${esc(`${runs}.`)}</p>` : ""}</section>`;
 }
 
 const shortHash = (h: string) => `${h.slice(0, 8)}…${h.slice(-4)}`;
@@ -117,6 +117,7 @@ export function visaHashHtml(r: Vic3Record): string {
 
 /** The page's own CSS for the hero: site tokens, plus one amber of its own for "not tapped", light and dark. */
 export const VISA_HERO_CSS = `
+.pp a.pf, .pp a[data-rec], .pp .src a, .foot a.flink { display: inline-block; min-height: 24px; line-height: 24px; }
 .pp { --vwarn: #8a4b00; --vwarn-soft: #fdf1dc; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pp { --vwarn: #f2b45a; --vwarn-soft: #3a2a10; } }
 :root[data-theme="dark"] .pp { --vwarn: #f2b45a; --vwarn-soft: #3a2a10; }
