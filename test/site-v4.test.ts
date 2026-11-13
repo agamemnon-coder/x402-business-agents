@@ -308,7 +308,7 @@ describe("the site after v4", () => {
     for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude"]) {
       expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
       // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
-      expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
+      expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113b">/);
     }
     for (const a of ["favicon.svg", "og.png"]) expect(pageResponse(new Request(`https://x.test/assets/${a}`), pages as Pages)?.status).toBe(200);
   });
