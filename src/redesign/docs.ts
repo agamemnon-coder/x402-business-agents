@@ -84,6 +84,8 @@ function demoOpenApi(url: string): string {
 const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-metal-agents-pay-per-request";
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
+/** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
+const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = "purser-demo-read-only";
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
@@ -108,6 +110,9 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
+  <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
+    <p>Claude, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP and can propose a payment. Only the CFO's Face ID approves one. To try: the demo token ${code(DEMO_TOKEN)}.</p>
+    <div class="links">${outLink(repoHref(CONNECT_DOC), "Setup for each AI")}</div></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>

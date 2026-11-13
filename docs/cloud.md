@@ -114,6 +114,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/claude/connectors` | admin | Make a Claude connector token (a signed-in owner only): `{ name, propose?, expires_in_days? }`. It reads the books at `/mcp`. With `propose`, it can also file an invoice's payment for the CFO's approval, which only the CFO's passkey gives. Returned once; only its hash is kept. It works at `/mcp` only. |
 | `DELETE /v1/claude/connectors/{id}` | admin | Revoke a Claude connector token (a signed-in owner only): Claude's connection with it, and every access token signed for it, ends at once. |
 | `POST /mcp` | read | Purser as a remote MCP server for Claude (Streamable HTTP; JSON answers, no session): `initialize`, `ping`, `tools/list`, `tools/call`. It reads the books. With a token made to propose, it can also file an invoice's payment for the CFO. It never approves or pays. It takes a connector token, an access token from `/oauth/token`, or the demo company's public token (`purser-demo-read-only`). A 401 names the protected resource metadata. |
+| `GET /favicon.ico` | anyone | Purser's icon (ICO, 32 and 48 px), the site header's mark (`npm run cloud:icons`). |
+| `GET /favicon.svg` | anyone | Purser's icon (SVG). |
+| `GET /apple-touch-icon.png` | anyone | Purser's icon for a home screen (PNG, 180 px). |
+| `GET /icon.png` | anyone | Purser's icon (PNG, 512 px): the MCP server's `serverInfo.icons` and the OAuth metadata's `logo_uri`. |
 | `GET /.well-known/oauth-protected-resource` | anyone | OAuth protected resource metadata (RFC 9728) for `/mcp`: this cloud is its authorization server. |
 | `GET /.well-known/oauth-protected-resource/mcp` | anyone | The same, at the path RFC 9728 derives from `/mcp`. |
 | `GET /.well-known/oauth-authorization-server` | anyone | OAuth authorization server metadata (RFC 8414): registration, the consent page, the token endpoint; PKCE S256; public clients. |

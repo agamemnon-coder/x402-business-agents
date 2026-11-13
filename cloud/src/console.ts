@@ -5,6 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
+import { ICON_LINKS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
@@ -115,6 +116,7 @@ img.qr { width: 180px; height: 180px; background: #fff; border-radius: 8px; padd
 .co .aw { flex: none; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; padding-left: 8px; border-left: 1px solid var(--border); }
 .co .aw i { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
 .co .aw.active i { background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.co .aw.demo i { background: var(--warn); }
 .co .aw.created i, .co .aw.pending i, .co .aw.action_required i, .co .aw.opening i { background: var(--warn); }
 .co .aw.refused i, .co .aw.closed i, .co .aw.dormant i { background: var(--bad); }
 .who-am-i { gap: 10px; }
@@ -412,7 +414,9 @@ function shell(){
     w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
     // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
     const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
-      co.append(aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
+      // The demo company has no account of its own: its chip says what its rows are (jury, 13 Nov: "No Airwallex account
+      // yet" read against rows paid on Airwallex rails).
+      co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
@@ -556,7 +560,7 @@ function enrolView(q){
 
 // --- Overview ------------------------------------------------------------------------------------------------------
 const byCur=(m)=>Object.entries(m||{}).filter(([,v])=>v!==0).sort(([a],[b])=>a.localeCompare(b));
-function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('none');const s=el('span','');s.append(el('small','',cur(e[0][0])),cents(e[0][1]));return s}
+function money(m,emptyWord){const e=byCur(m);if(!e.length)return emptyWord||t('none');const s=el('span','');s.append(el('small','',cur(e[0][0])),'\u00a0'+cents(e[0][1]));return s}
 function others(m){const e=byCur(m).slice(1);return e.length?e.map(([c,v])=>cur(c)+' '+cents(v)).join(' · '):''}
 function tile(label,icon,value,extra,tone){const t=el('div','card tile'+(tone?' '+tone:''));const v=el('div','v num');if(value instanceof Node)v.append(value);else v.textContent=value;t.append(el('div','l',[ic(icon),label]),v);if(extra)t.append(el('div','x',extra));return t}
 const initials=(n)=>{const w=String(n||'?').replace(/\([^)]*\)/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').trim().split(/\s+/).filter(Boolean);return (((w[0]||'?')[0]||'?')+((w[1]||'')[0]||'')).toUpperCase()};
@@ -576,7 +580,7 @@ const SVGNS='http://www.w3.org/2000/svg';
 const sv=(tag,attrs,kids)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs||{})e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[]))if(c)e.append(c);return e};
 const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function whenSeen(node,fn){if(RM()||!('IntersectionObserver' in window)){fn(true);return}const io=new IntersectionObserver((es)=>{if(es.some(e=>e.isIntersecting)){io.disconnect();fn(false)}},{threshold:.25});io.observe(node)}
-function countUp(node,target,fmt){node.textContent=fmt(target);whenSeen(node,(still)=>{if(still)return;const t0=performance.now();const step=(now)=>{const k=Math.min(1,(now-t0)/950);node.textContent=fmt(k<1?target*(1-Math.pow(1-k,3)):target);if(k<1)requestAnimationFrame(step)};node.textContent=fmt(0);requestAnimationFrame(step)})}
+function countUp(node,target,fmt){node.textContent=fmt(target);whenSeen(node,(still)=>{if(still)return;const t0=performance.now();const step=(now)=>{const k=Math.min(1,(now-t0)/700);node.textContent=fmt(k<1?target*(1-Math.pow(1-k,3)):target);if(k<1)requestAnimationFrame(step)};node.textContent=fmt(0);requestAnimationFrame(step)})}
 const dday=(iso)=>new Date(String(iso).slice(0,10)+'T12:00:00Z').toLocaleDateString(L.lang==='nl'?'nl-NL':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const kfmt=(c)=>{const a=Math.abs(c)/100;return (c<0?'-':'')+(a>=1000?(a/1000).toFixed(a>=10000?0:1).replace('.',L.lang==='nl'?',':'.')+'k':String(Math.round(a)))};
 const amt=(D,c)=>cur(D.currency)+' '+cents(Math.round(c));
@@ -682,7 +686,8 @@ async function overviewView(){
 // asks and looks as it always did. The answer is kept for the signed-in session; engineStale() has it asked again.
 const ENG={token:null,p:null};
 function engineStatus(){
-  if(!CFG.engine||!S)return Promise.resolve(null);
+  // The demo company has no engine (its guests only read): it is never asked, so no 404 lands in the browser's console.
+  if(!CFG.engine||!S||S.guest)return Promise.resolve(null);
   if(ENG.token!==S.token){ENG.token=S.token;ENG.p=null}
   if(!ENG.p)ENG.p=api('/v1/engine').catch((e)=>{if(e instanceof Expired)throw e;return null});
   return ENG.p}
@@ -792,7 +797,7 @@ function invoiceRow(i){
   const no=el('span','no',[i.invoice_no||t('no_number'),el('span','sub',[el('code','idc',i.id)])]);no.title=i.invoice_no||'';
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   const w=why(i);const wy=el('span','why',[ic(w[0]),el('span','',w[1])]);wy.title=w[2]||w[1];
-  a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),amount(i.total)||'–']),el('span','stc',[chip(i.status,i.status_words)]),wy);
+  a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),'\u00a0'+(amount(i.total)||'–')]),el('span','stc',[chip(i.status,i.status_words)]),wy);
   const g=ic('chevron-right');g.className='go';a.append(g);return a}
 const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
 async function invoicesView(q){
@@ -819,7 +824,7 @@ async function invoicesView(q){
     reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
       catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
     return reloading}
-  view().replaceChildren(...[head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean));
+  view().replaceChildren(...[head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean));
   // An invoice that arrived, was paid or was filed in the archive: the list is read again.
   if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
   await page();
@@ -829,7 +834,7 @@ const RES={block:['octagon-x',t('res.block')],review:['triangle-alert',t('res.re
 function detailTop(i){
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   return el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
-    el('div','money',[el('div','big',[el('small','',cur(i.currency)),amount(i.total)||'–']),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])])}
+    el('div','money',[el('div','big',[el('small','',cur(i.currency)),'\u00a0'+(amount(i.total)||'–')]),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])])}
 function timelineOf(i){
   const tl=el('ul','timeline');
   tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
@@ -1085,7 +1090,7 @@ async function transactionsView(){
     list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));
     if(!p.items.length)list.append(el('div','empty',[el('b','',t('cs.no_movements')),t('cs.nothing_matches')]));
     for(const r of p.items){const b=el('div','trow');
-      const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
+      const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),'\u00a0'+(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
       b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
         el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
@@ -1125,7 +1130,7 @@ async function booksView(){
   const vat=el('div','card panel');const journal=el('div','card panel');
   // With an engine, its archive is one link away from the books.
   const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
-  view().replaceChildren(head(t('cs.nav.books'),t('cs.books_lede'),arch?[arch]:null),el('div','split2',[vat,journal]));
+  view().replaceChildren(head(t('cs.nav.books'),ME&&ME.demo?t('cs.demo.books_lede'):t('cs.books_lede'),arch?[arch]:null),el('div','split2',[vat,journal]));
   async function drawVat(){
     const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
@@ -1160,7 +1165,8 @@ async function claudeCard(m,owner){
   const codeCmd=(token)=>'claude mcp add --transport http purser '+url+' --header "Authorization: Bearer '+token+'"';
   const steps=el('ol','steps',[el('li','',t('cs.claude.step1')),el('li','',t('cs.claude.step2')),el('li','',t('cs.claude.step3'))]);
   const urlRow=el('div','once',[el('b','',t('cs.claude.url')),el('code','cmd',url),el('div','row2',[copyBtn(url)])]);
-  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps];
+  const guide=el('a','',t('cs.claude.guide')+' ↗');guide.href='https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md';guide.target='_blank';guide.rel='noopener';
+  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps,el('p','sub others',[t('cs.claude.others'),' ',guide])];
   if(m.demo){
     const tok='purser-demo-read-only';
     kids.push(note(t('cs.claude.demo')),el('div','once',[el('b','',t('cs.claude.demo_token')),el('code','cmd',tok),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(tok)),el('div','row2',[copyBtn(codeCmd(tok))])]));
@@ -1454,6 +1460,7 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .claude code.cmd { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
 .claude ul.tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
 .claude ul.tokens li .btn { margin-left: auto; }
+.claude p.others { margin-top: 10px; } .claude p.others a { display: inline-block; padding: 12px 0; font-weight: 600; }
 .demo-ribbon { background: #fff7e6; border-bottom: 1px solid #f3dfb5; color: #7a4a00; font-size: 13.5px; }
 .demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
 .demo-ribbon span { flex: 1; line-height: 1.4; }
@@ -1518,19 +1525,20 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
 .feed .fw time { color: var(--faint); white-space: nowrap; }
 .feed p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
 @media (max-width: 979px) { .feed li:nth-child(n+9) { display: none; } }
+/* Every part is in place within 800 ms of coming into view (jury, 13 Nov: still moving after 2.5 s at 390 px). */
 @media (prefers-reduced-motion: no-preference) {
-  .rise { opacity: 0; transform: translateY(10px); transition: opacity .55s ease, transform .55s ease; }
+  .rise { opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; }
   .rise.in { opacity: 1; transform: none; }
-  .kpis .kpi:nth-child(2) { transition-delay: .06s; } .kpis .kpi:nth-child(3) { transition-delay: .12s; } .kpis .kpi:nth-child(4) { transition-delay: .18s; }
-  .rise .sf { transform: scaleX(0); transition: transform .9s cubic-bezier(.2, .7, .2, 1) .2s; }
+  .kpis .kpi:nth-child(2) { transition-delay: .04s; } .kpis .kpi:nth-child(3) { transition-delay: .08s; } .kpis .kpi:nth-child(4) { transition-delay: .12s; }
+  .rise .sf { transform: scaleX(0); transition: transform .5s cubic-bezier(.2, .7, .2, 1) .1s; }
   .rise.in .sf { transform: scaleX(1); }
   .rise svg.chart .line { stroke-dasharray: 1; stroke-dashoffset: 1; }
-  .rise.in svg.chart .line { animation: drawline 1.4s ease-out .25s forwards; }
-  .rise svg.chart .area, .rise svg.chart .end { opacity: 0; transition: opacity .7s ease 1.1s; }
+  .rise.in svg.chart .line { animation: drawline .6s ease-out .1s forwards; }
+  .rise svg.chart .area, .rise svg.chart .end { opacity: 0; transition: opacity .3s ease .45s; }
   .rise.in svg.chart .area, .rise.in svg.chart .end { opacity: 1; }
-  .rise svg.chart .b { transform-box: fill-box; transform-origin: center bottom; transform: scaleY(0); transition: transform .7s cubic-bezier(.2, .7, .2, 1) .2s; }
+  .rise svg.chart .b { transform-box: fill-box; transform-origin: center bottom; transform: scaleY(0); transition: transform .5s cubic-bezier(.2, .7, .2, 1) .1s; }
   .rise.in svg.chart .b { transform: scaleY(1); }
-  .rise svg.ring .seg { opacity: 0; transition: opacity .6s ease .3s; }
+  .rise svg.ring .seg { opacity: 0; transition: opacity .4s ease .1s; }
   .rise.in svg.ring .seg { opacity: 1; }
   @keyframes drawline { to { stroke-dashoffset: 0; } }
 }
@@ -1554,7 +1562,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>

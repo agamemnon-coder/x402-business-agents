@@ -12,11 +12,12 @@
 // No new secret is kept anywhere: the client's id is signed, not stored; a code is stored as its hash, five minutes,
 // good once; the access token is signed and names the connector key it is for (never its secret), so revoking that key
 // in Purser Cloud ends the connection at once. The consent page asks for a connector token made in Purser Cloud
-// (Settings, Connect Claude), so whoever connects Claude already holds the company's own consent for it.
+// (Settings, Connect your AI), so whoever connects Claude already holds the company's own consent for it.
 
 import { accessToken, ACCESS_TOKEN_TTL_MS, AuthError, callerOf, DEMO_CONNECTOR_TOKEN, isConnector } from "../auth.js";
 import { hmacB64u, hmacValid, randomToken, sha256Hex, toB64u, fromB64 } from "../crypto.js";
 import type { Sql } from "../store.js";
+import { ICON_LINKS } from "../brand.js";
 
 export const CODE_TTL_MS = 5 * 60 * 1000;
 /** How long the consent page's form is good for: one answer, within ten minutes. */
@@ -35,6 +36,8 @@ export function authorizationServer(origin: string): Record<string, unknown> {
     issuer: origin, authorization_endpoint: `${origin}/oauth/authorize`, token_endpoint: `${origin}/oauth/token`, registration_endpoint: `${origin}/oauth/register`,
     response_types_supported: ["code"], grant_types_supported: ["authorization_code"], code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"], scopes_supported: ["purser"],
+    // Not in RFC 8414's list; a client that shows the server's mark can read it here (the MCP server carries it as icons).
+    logo_uri: `${origin}/icon.png`, service_documentation: "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
   };
 }
 
@@ -136,32 +139,41 @@ export async function consentPage(secret: string, ask: AuthorizeAsk, client: Cli
   const nonce = randomToken(12);
   const form = await consentToken(secret, ask, now);
   const hidden = [...(Object.entries(ask) as [string, string][]), ["consent", form] as [string, string]].map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Connect Claude to Purser</title><meta name="robots" content="noindex">
+  const check = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Connect your AI to Purser</title><meta name="robots" content="noindex">${ICON_LINKS}
 <style nonce="${nonce}">
-:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f6f7f9;color:#0f172a;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
-main{max-width:480px;margin:6vh auto;padding:0 16px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:28px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
-h1{font-size:22px;margin:0 0 6px}p{margin:0 0 14px;color:#334155}.who{font-weight:600;color:#0f172a}ul{margin:0 0 18px;padding-left:20px;color:#334155}li{margin:4px 0}
-label{display:block;font-weight:600;margin:0 0 6px}input[type=password]{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;font:14px ui-monospace,monospace}
-button{font:600 15px system-ui,sans-serif;border-radius:10px;padding:11px 16px;cursor:pointer;border:1px solid #4f46e5;background:#4f46e5;color:#fff;width:100%;margin-top:12px}
-button.ghost{background:#fff;color:#4f46e5}button.plain{background:none;border:0;color:#64748b;font-weight:500}.or{display:flex;align-items:center;gap:10px;color:#94a3b8;margin:18px 0 0;font-size:13px}
-.or:before,.or:after{content:"";flex:1;height:1px;background:#e5e7eb}.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px 12px;margin:0 0 14px}
-.small{font-size:13px;color:#64748b;margin-top:16px}.brand{font-weight:700;letter-spacing:-.01em;margin:0 0 18px;color:#0f172a}
-</style></head><body><main><div class="brand">Purser</div><div class="card">
-<h1>Connect Claude to Purser</h1>
-<p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. It says it is a Claude client; Purser cannot check a client's name.</p>
-<ul><li>It reads your books: invoices, money movements, reports and what your agents decided.</li>
-<li>With a token made to propose, it can file an invoice's payment for approval. It can never approve or pay: every payment needs the CFO's Face ID in Purser Cloud.</li>
-<li>Revoke the token in Purser Cloud and the connection ends at once.</li></ul>
+:root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4f46e5;--accent-ink:#fff}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:460px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom))}
+.brand{display:flex;align-items:center;gap:10px;margin:0 0 18px;font-weight:750;font-size:18px;letter-spacing:-.01em}.brand img{width:32px;height:32px;border-radius:9px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 1px 2px rgba(11,18,32,.04),0 8px 24px rgba(11,18,32,.04)}
+h1{font-size:22px;line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}p{margin:0 0 14px;color:var(--muted)}.who{font-weight:650;color:var(--ink)}
+ul.can{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:8px}ul.can li{display:grid;grid-template-columns:20px 1fr;gap:8px;color:var(--ink);font-size:14.5px}ul.can svg{color:#16a34a;margin-top:3px}
+label{display:block;font-weight:650;margin:0 0 6px;font-size:14px}
+input[type=password]{width:100%;min-height:48px;padding:12px 14px;border:1px solid #cbd2dc;border-radius:12px;font:16px ui-monospace,SFMono-Regular,Menlo,monospace;background:#fff;color:var(--ink)}
+input[type=password]:focus{outline:3px solid rgba(79,70,229,.25);border-color:var(--accent)}
+button{display:block;width:100%;min-height:48px;margin-top:12px;border-radius:12px;padding:12px 16px;font:650 16px Inter,system-ui,-apple-system,sans-serif;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);-webkit-appearance:none;appearance:none}
+button.demo{background:#fff;color:var(--ink);border:1.5px solid var(--ink);text-align:left;display:grid;gap:2px;padding:12px 16px}button.demo small{font:500 13.5px Inter,system-ui,sans-serif;color:var(--muted)}
+button.plain{background:none;border:0;color:var(--muted);font-weight:550;min-height:44px}
+.or{display:flex;align-items:center;gap:10px;color:#8a93a3;margin:20px 0 4px;font-size:13px}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px 12px;margin:0 0 14px}
+.small{font-size:13px;color:var(--muted);margin:16px 0 0;text-align:center}
+</style></head><body><main><div class="brand"><img src="/favicon.svg" alt="" width="32" height="32">Purser</div><div class="card">
+<h1>Connect your AI to Purser</h1>
+<p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. Purser cannot check a client's name.</p>
+<ul class="can"><li>${check}<span>It reads your books: invoices, money movements, reports and what your agents decided.</span></li>
+<li>${check}<span>With a token that may propose, it can file an invoice's payment for approval. It can never approve or pay: each payment needs the CFO's Face ID.</span></li>
+<li>${check}<span>Revoke the token in Purser Cloud and the connection ends at once.</span></li></ul>
 ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
 <form method="post" action="/oauth/authorize">${hidden}
-<label for="token">Your Claude connector token</label>
-<input id="token" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="pck_…" required>
+<label for="token">Your connector token</label>
+<input id="token" name="token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="pck_…" required>
 <button type="submit" name="act" value="connect">Connect</button></form>
 <div class="or">or</div>
-<form method="post" action="/oauth/authorize">${hidden}<button class="ghost" type="submit" name="act" value="demo">Use the demo company (read only, made-up data)</button></form>
+<form method="post" action="/oauth/authorize">${hidden}<button class="demo" type="submit" name="act" value="demo"><span>Use the demo company</span><small>Read only, made-up data. No token needed.</small></button></form>
 <form method="post" action="/oauth/authorize">${hidden}<button class="plain" type="submit" name="act" value="deny">Cancel</button></form>
-<p class="small">Make a token in Purser Cloud: Settings, Connect Claude. Only an owner can make one.</p>
+<p class="small">Make a token in Purser Cloud: Settings, Connect your AI. Only an owner can make one.</p>
 </div></main></body></html>`;
   const formTo = new URL(ask.redirect_uri).origin;
   return new Response(html, {
@@ -169,7 +181,7 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
     headers: {
       // same-origin, not no-referrer: under no-referrer a browser sends the form's POST with Origin: null.
       "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "same-origin",
-      "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; form-action 'self' ${formTo}; base-uri 'none'; frame-ancestors 'none'`,
+      "content-security-policy": `default-src 'none'; style-src 'nonce-${nonce}'; img-src 'self'; form-action 'self' ${formTo}; base-uri 'none'; frame-ancestors 'none'`,
     },
   });
 }
@@ -198,7 +210,7 @@ export async function consent(sql: Sql, secret: string, origin: string, form: UR
     } catch (e) {
       if (!(e instanceof AuthError)) throw e;
     }
-    if (!ok) return { page: await consentPage(secret, ask, client, origin, now, "That is not a live Claude connector token. Make one in Purser Cloud (Settings, Connect Claude); an ordinary API key is not one.") };
+    if (!ok) return { page: await consentPage(secret, ask, client, origin, now, "That is not a live Claude connector token. Make one in Purser Cloud (Settings, Connect your AI); an ordinary API key is not one.") };
     tenant = ok.tenantId; keyId = ok.principal;
   }
   const code = randomToken(32);

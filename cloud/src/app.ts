@@ -406,8 +406,8 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/export.csv", summary: "The register as CSV, the same filters; one line per movement.", need: "read", run: async (c) => new Response(registerCsv(await allTransactions(db(c), c.url.searchParams)), { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="transactions.csv"', "cache-control": "no-store", "x-content-type-options": "nosniff" } }) },
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
-  { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
-  { method: "GET", path: "/v1/dashboard", summary: "The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words.", need: "read", run: async (c) => json(200, await dashboard(db(c))) },
+  { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
+  { method: "GET", path: "/v1/dashboard", summary: "The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words.", need: "read", run: async (c) => json(200, await dashboard(db(c), isDemoTenant(c.caller!.tenantId) ? { asOf: c.now.toISOString() } : {})) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
 
   { method: "GET", path: "/v1/documents/{sha256}", summary: "A document the company holds, by its SHA-256 (the export lists them).", need: "read", run: async (c) => {
@@ -688,6 +688,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       if (!tryPoll && !(await withinRate(env.sql, bucket, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
+      // The demo company is a month that ended on DEMO_END: every page and the connector read it as of that day
+      // (jury, 13 Nov: the overview, the decisions and what needs attention gave three different days).
+      if (demo) ctx.now = new Date(DEMO_END);
     }
     // A company that writes to its engine is in tonight's autopilot (cloud/src/edge/autopilot.ts).
     if (env.engine && ctx.caller && isEngineWrite(req.method, hit.r.path)) await noteEngineCompany(env.sql, ctx.caller.tenantId, now);
