@@ -296,7 +296,7 @@ export const T0_PAGE = t0Page();
 export const T0_CSP = styleOnlyCsp(T0_PAGE);
 /** /books (owner, 12 Nov): the bookkeeping with AI agents, from the run records; no script, so a style-only policy. */
 export const BOOKS_PAGE = booksPage();
-export const BOOKS_CSP = styleOnlyCsp(BOOKS_PAGE);
+export const BOOKS_CSP = BOOKS_PAGE.includes("<script>") ? styleAndScriptCsp(BOOKS_PAGE) : styleOnlyCsp(BOOKS_PAGE);
 /** /trace: any payment of the main run, step by step (src/redesign/trace.ts); no script, so a style-only policy. */
 export const TRACE_PAGE = tracePage();
 export const TRACE_CSP = styleOnlyCsp(TRACE_PAGE);

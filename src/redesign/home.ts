@@ -312,6 +312,6 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 
 /** One card for /books (owner, 12 Nov): one word, as Home's word budget allows (test/site-v4.test.ts); none without the statement. */
 export function booksCardHtml(): string {
-  if (!booksData().statement) return "";
+  if (!booksData().view) return "";
   return `<a class="btn big ghost" href="books">${icon("database", 18)}${esc("Books")}</a>`;
 }
