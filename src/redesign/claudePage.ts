@@ -145,15 +145,22 @@ export interface HostileFigures { calls: number; refused: number; unsafe: number
  */
 export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on the payables agents' ${h.cases} test invoices: ${h.refused} refused by code, ${h.unsafe} unsafe by the ledger verdict`;
 
+/** The Haiku-as-Support tile's label: the failed attack test, what code did, and the model Support runs on instead, with its runs passed. */
+export function supportTileLabel(lines: ModelLine[], used: Record<string, string>): string {
+  const inUse = lines.find((l) => l.agent === "support" && FAM(l.model) === used.support && !/haiku/.test(l.model));
+  return `Haiku as Support failed one attack test; code refused every stray call.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
+}
+
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */
-export function proofTiles(e: ClaudeEvidence): string {
+export function proofTiles(e: ClaudeEvidence, used: Record<string, string> = {}): string {
   const lines = e.sweep ? modelLines(e.sweep) : [], haikuSupport = e.sweep?.rows.find((r) => r.agent === "support" && /haiku/.test(r.model) && r.passed === 0);
   const tile = (ic: string, v: string, l: string, rec: string, links: string) => `<li class="ctile" data-rec="${esc(rec)}"><span class="ic">${icon(ic, 20)}</span><span class="tv">${esc(v)}</span><span class="tl">${esc(l)}</span><span class="r">${links}</span></li>`;
   const v = e.variation, h = e.hostile;
   const items = [
     v ? tile("database", String(v.decisions), `decisions in ${v.worlds} simulated worlds, ${v.claudePct === 100 ? "all" : `${v.claudePct}%`} by Claude; ${v.unsafe} unsafe actions${e.fix && e.fix.unsafe === 0 ? ", fixed" : ""}`, VARIATION_RECORD, link(VARIATION_RECORD)) : "",
     e.holdouts ? tile("lock", String(e.holdouts.run), `blind holdouts, ${e.holdouts.safe === e.holdouts.run ? "all" : e.holdouts.safe} safe${e.holdouts.partial ? `; ${e.holdouts.partial} on code's rule only` : ""}`, HOLDOUTS_RECORD, link(HOLDOUTS_RECORD)) : "",
-    haikuSupport ? tile("shield-alert", `${haikuSupport.passed} of ${haikuSupport.runs}`, "Haiku as Support on one attack; code refused each stray call", AGENT_EVALS, link(AGENT_EVALS)) : "",
+    // The failure says why it matters (13 Nov): code held it, and the sweep is why Support runs on another model.
+    haikuSupport ? tile("shield-alert", `${haikuSupport.passed} of ${haikuSupport.runs}`, supportTileLabel(lines, used), AGENT_EVALS, link(AGENT_EVALS)) : "",
     lines.length ? tile("sliders-horizontal", String(lines.length), "model and agent pairs, measured", SWEEP_RECORD, link(SWEEP_RECORD)) : "",
     h ? tile("shield-check", String(h.calls), hostileTileLabel(h), HOSTILE_EVAL, link(HOSTILE_EVAL) + (e.zeroTrust ? link(ZERO_TRUST_REPORT, "zero-trust report") : "")) : "",
   ].filter(Boolean);
@@ -186,7 +193,7 @@ export function claudeMain(b: ClaudeBody): string {
   <div class="phd">${b.logo}<span class="pill run">${b.runIcon}${esc(b.label)}</span><h1>Claude decides the exceptions</h1></div>
   ${splitFigure(b.split)}
   ${agentCards(b.agents)}
-  ${proofTiles(b.evidence)}
+  ${proofTiles(b.evidence, b.used)}
   ${modelChart(b.evidence, b.used)}
   <div class="folds card">${b.folds}${injectionFold()}</div>
   <a class="open" href="proof#claude">All the proof ${icon("arrow-right", 15)}</a>
