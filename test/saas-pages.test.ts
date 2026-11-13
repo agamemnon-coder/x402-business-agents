@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
 import { repoHref } from "../src/redesign/productPage.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
-import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
+import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityLead, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
 import { menuItemOf } from "../src/ui/more.js";
@@ -48,7 +48,7 @@ describe("/security: security and trust", () => {
     expect(html).toContain('<div class="cols c3">');
     expect(cards.filter((c) => c.wide).map((c) => c.id)).toEqual(["s-notyet"]);
     // One header line, then the full matrix behind it.
-    expect(text).toContain("Each control below, with its proof. Every risk, its control and its test ↗");
+    expect(text).toContain(`${securityLead()} Every risk, its control and its test ↗`);
     expect(html).toContain(`href="${repoHref("docs/controls-matrix.md")}"`);
     expect([...html.matchAll(/<article class="pc card[^"]*" id="(s-[a-z]+)">/g)].map((m) => m[1])).toEqual(cards.map((c) => c.id));
     for (const c of cards) {

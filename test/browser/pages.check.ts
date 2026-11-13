@@ -880,7 +880,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 530; // /security 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 560; // /security 560 since the final jury (13 Nov): the line under the heading names the three attack tests; 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);

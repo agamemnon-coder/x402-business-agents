@@ -458,11 +458,19 @@ const cardHtml = (c: SecurityCard) => `<article class="pc card fd${c.wide ? " wi
     <p>${c.line}</p><div class="links">${c.links.join("")}</div>
     ${foldHtml(c.fold.summary, c.fold.lines)}${c.more ? `\n    ${foldHtml(c.more.summary, c.more.lines).replace('<details class="fold">', `<details class="fold" id="${c.more.id}">`)}` : ""}</article>`;
 
+/**
+ * The line under /security's heading (final jury, 13 Nov): the three attack tests, each with its total from its record,
+ * and the red team's two not prevented (detected after) said there, beside the headline, not only in its card.
+ */
+export function securityLead(zt: ZeroTrust = zeroTrust(), he: HostileEval = hostileEval(), rt: RedTeamRound = redTeamRound([REDTEAM_REPORT])): string {
+  return `Three attack tests: zero trust, ${zt.run} attacks, ${zt.stopped === zt.run ? "all" : zt.stopped} stopped; a hostile model, ${he.calls} tool calls, ${he.unsafe === 0 ? "none" : he.unsafe} unsafe by the ledger verdict; the red team, ${rt.attempts} attacks, ${rt.after ?? 0} not prevented (detected after).`;
+}
+
 export function securityPage(): string {
   const cards = securityCards();
   return productPage({
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
-    lead: "Each control below, with its proof.",
+    lead: securityLead(),
     description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
     css: SECURITY_VIZ_CSS,
     body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
