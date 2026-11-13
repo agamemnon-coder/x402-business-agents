@@ -373,7 +373,7 @@ describe("/security: security and trust", () => {
       expect(z.depth.minimum.optional_off.depth).toBe(2);
       // Simulated rails, said where the figures are, and in the fold in the report's own sense.
       expect(hero).toContain('<span class="pill">Test harness, simulated rails</span>');
-      expect(HARNESS_LINE).toBe(z.reading.harness.replace("Purser's own code is the real code;", "Purser's own code is the real code;").replace(". Purser's", ": Purser's").replace("are stand-ins", "are simulated"));
+      expect(HARNESS_LINE).toBe(z.reading.harness.replace(". Purser's", ": Purser's").replace("are stand-ins", "are simulated"));
       // The rails' own limits, the passkey above the limits and the anchor run, linked to its transaction.
       expect(inSightOf(hero)).toMatch(/Above the limits, the CFO signs the terms' hash\. .*Metal's mandate on chain; Airwallex card and transfer limits\. .*Hash-linked, anchored on Metal testnet\./);
       expect(read("docs/security.md")).toContain("nothing above the limits is paid");
