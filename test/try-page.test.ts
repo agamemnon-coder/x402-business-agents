@@ -238,7 +238,7 @@ describe("the copy", () => {
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
@@ -286,11 +286,12 @@ describe("the copy", () => {
     expect(COPY.BOOKS.booked).toBe("Booked in Purser's ledger");
     expect(COPY.BOOKS.filed).toBe("Filed in the archive");
     expect(COPY.BOOKS.retry).toBe("Try the payment again");
-    // The main link: Purser Cloud's guest dashboard (owner, 13 Nov), never the site's home (cloud/src/try/books.ts CLOUD_URL).
-    expect(COPY.BOOKS.next).toBe("Open Purser Cloud");
+    // Purser Cloud's guest dashboard, said to be a sample company, never the visitor's own (try-fixes, 13 Nov).
+    expect(COPY.BOOKS.next).toBe("See a sample company in Purser Cloud");
+    expect(COPY.BOOKS.another).toBe("File another invoice");
     expect(COPY.BOOKS.what).toBe("What Purser did");
-    expect(COPY.COMPANY.download).toBe("Download your company (SyncBatch)");
-    expect(COPY.COMPANY.line).toBe("Purser Cloud's own sync format: your test company's invoices with their documents, payments, ledger and audit log.");
+    expect(COPY.COMPANY.download).toBe("Download your test company's records");
+    expect(COPY.COMPANY.line).toBe("One JSON file: your invoices with their documents, payments, ledger and audit log.");
     expect(COPY.COMPANY.again).toBe("Start again");
     expect(COPY.COMPANY.runs).toBe("Recorded real runs");
     expect(COPY.COMPANY.recorded).toBe("recorded {date}");

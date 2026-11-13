@@ -213,8 +213,8 @@ describe("bodies and origins", () => {
       const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, ...o } });
       expect(r.status, JSON.stringify(o).slice(0, 60)).toBe(400);
     }
-    // One invoice so far: the clean sample.
-    expect(((await c.req("GET", "/v1/engine/invoices", { key: v.s })).json.items as unknown[]).length).toBe(1);
+    // Two invoices so far: the paid original every test company starts with, and the clean sample.
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: v.s })).json.items as unknown[]).length).toBe(2);
   });
 
   it("reads a composed invoice's amount as people write it (a page cached before the page read it), then checks it as strictly as before", async () => {

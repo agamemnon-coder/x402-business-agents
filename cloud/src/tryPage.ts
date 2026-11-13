@@ -1200,15 +1200,14 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   const failedOf=(r)=>note(words(r.json||{},B.failed));
   const inv=api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];return {r,items,i:items.find((x)=>x&&x.id===invId)||null}});
   // A read that failed outright says so; one that came back without this invoice's part is read again a few times
-  // (the read model may be a moment behind the engine) before the block says it is not there yet.
-  const later=(ms)=>new Promise((ok)=>setTimeout(ok,ms));
+  // at once (the read model may be a moment behind the engine; no timer of its own) before the block says it is not there yet.
   const settledReads=(p)=>p.catch(()=>({status:0,items:null,json:{}}));
   if(s.fed===false){
     // The read model is fed by the engine during pay: not fed, nothing of the books is shown.
     paid.replaceChildren(wait(B.notIn));booked.replaceChildren();
   }else{
     const readAll=async()=>{let out=null;
-      for(let k=0;k<4;k++){if(k)await later(1200);if(S.screen!=='books')break;
+      for(let k=0;k<3;k++){if(S.screen!=='books')break;
         out=await Promise.all([inv,settledReads(everyPage('/v1/payments')),settledReads(everyPage('/v1/transactions')),settledReads(everyPage('/v1/ledger/entries'))]);
         const [v,ps,txs,es]=out;if(ps.status!==200||es.status!==200)break;
         const p=v.i?paymentOf(v.i,ps.items,txs.items||[]):null;if(p&&v.i&&entriesOf(v.i,p,txs.items||[],es.items).length)break}

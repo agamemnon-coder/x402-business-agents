@@ -79,9 +79,9 @@ export const WORK = {
   readySub: "Nothing is paid until you sign the exact terms.",
   /** Above the engine's own words when the invoice cannot be paid as it is. */
   notReady: "Not ready to pay:",
-  duplicate: "Caught: a copy of an invoice already on file.",
+  duplicate: "Caught: a copy of a filed invoice.",
   /** Under it: the original as the engine holds it ({no}: its number; {status}: its status in words). */
-  duplicateOf: "The same file was filed before as {no}, now {status}. Nothing was added and nothing will be paid.",
+  duplicateOf: "Filed before as {no}, now {status}. Nothing added or paid.",
   noInvoice: "No invoice was found in it.",
   failed: "Purser could not file this invoice.",
   /** The request's round trip, measured in the browser ({s}: seconds). */
@@ -238,7 +238,7 @@ export const BOOKS = {
    * the visitor's own test company (a try company cannot sign in to Purser Cloud), and the note under it says so.
    */
   next: "See a sample company in Purser Cloud",
-  cloudNote: "A demo company, read only. Your test company stays on this page.",
+  cloudNote: "A demo company, read only: not your test company.",
   /** The main button: another invoice, in this same test company. */
   another: "File another invoice",
   /** For screen readers, on a block's skeleton while its reads run. */
@@ -328,7 +328,7 @@ export const VISIBLE = {
     [WORK.heading, WORK.readingCode, WORK.invoiceFold],
     [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
     [WORK.heading, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
-    [WORK.heading, WORK.duplicate, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
+    [WORK.heading, WORK.duplicate, WORK.duplicateOf, WORK.took, WORK.invoiceFold, WORK.another],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
   ],
@@ -336,6 +336,8 @@ export const VISIBLE = {
     [APPROVE.heading, APPROVE.filing],
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
+    // The fold open: what the passkey signs, above the terms (the terms themselves are data).
+    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.create],
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
     // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
     [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
@@ -363,13 +365,15 @@ export const VISIBLE = {
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.what, BOOKS.cheat],
-    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.next, BOOKS.what, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
+    [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
+    // While the blocks' reads run: a skeleton each, named for screen readers.
+    [BOOKS.heading, BOOKS.loading, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     // A block whose part is not there yet says so in one sentence, without its heading (it claims nothing).
-    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.next, BOOKS.what, BOOKS.cheat],
-    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.next, BOOKS.what, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.noPayment, BOOKS.noLines, BOOKS.noFiles, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
+    [BOOKS.heading, BOOKS.failed, BOOKS.failed, BOOKS.failed, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     // The read model was not fed: one sentence for the books, the archive as the engine has it.
-    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.next, BOOKS.what, BOOKS.cheat],
+    [BOOKS.heading, BOOKS.notIn, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
     // until a payment that went through is drawn again from the retry's answer.
     [BOOKS.headingError, BOOKS.retry, BOOKS.what],
@@ -378,6 +382,8 @@ export const VISIBLE = {
     [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
     [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
     [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.proof, COMPANY.runs],
+    // Start again asks first: the question and its two answers in place of the button.
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.proof, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -397,7 +403,11 @@ export const VISIBLE = {
 // 13 Nov (owner): screen 5 says where the fee comes from ("the simulated bank's flat SWIFT fee") and has two ways on,
 // "Open Purser Cloud" (its guest dashboard) and "What Purser did" (screen 5b): "books 0" and "books 1" are 59.
 // Each is pinned at its exact count.
-export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 59, "books 1": 59 };
+// try-fixes (13 Nov): screen 2 names the paid original a duplicate copies ("work 4"); screen 5 adds "File another
+// invoice", the ledger's Dr/Cr on a phone, and says under the Cloud link that it is a sample company (the review's
+// finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
+// asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
+export const OVER_BUDGET: Record<string, number> = { "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -476,7 +486,7 @@ export const LIVE = {
     "ap.coded_why": "{account} expense, VAT {vat}: {reason}. Purser's code enforced: {enforced}.",
     "ap.coded": "{account} expense, VAT {vat}: {reason}. Purser's code checked it and booked it.",
     "ap.coded_plain": "The invoice was coded. Purser's code checked it.",
-    "ap.payer_proposed_why": "Proposed: pay on {pay_on} via {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
+    "ap.payer_proposed_why": "Proposed: pay on {pay_on} by {rail} from {currency}, because {reason}. Purser's code enforced: {outcome}; {enforced}.",
     "ap.payer_proposed": "A way to pay was proposed. Purser's code checked it.",
     "document.injection_flagged": "The document holds text that tries to give instructions. It was flagged and not followed.",
     "passkey.enrolment_opened": "A short window opened to set up the approval passkey.",
