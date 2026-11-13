@@ -505,9 +505,19 @@ describe("nothing private is kept or printed", () => {
     // A number as long as a card number (the stand-in for one is built here from parts), grouped or not, and any security code word.
     const numberLike = ["4" + "1".repeat(3), "1".repeat(4), "1".repeat(4), "1".repeat(4)];
     expect(/\b\d{12,19}\b/.test(numberLike.join(""))).toBe(true);
-    // A random UUID (the correlation ID, the tail of an instruction ID) can end in twelve digits by chance: UUIDs are
-    // taken out first, so that this check is about numbers and not about luck.
-    const withoutUuids = everything.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "[uuid]");
+    // A random UUID (the correlation ID, the tail of an instruction ID) can end in twelve digits by chance, and so can
+    // the stand-in's instruction ID: "1-", twelve random hex digits, then a UUID (test/support/iccStandIn.ts). Those
+    // twelve are all digits about once in 280 IDs, and then "1-" plus twelve digits looks like a card number (13 Nov:
+    // this check failed about once in five runs). So the IDs the stand-in issued are taken out first, by value, then
+    // UUIDs, so that this check is about numbers and not about luck.
+    const issued = [...w.standIn.instructions.keys()];
+    expect(issued.length).toBeGreaterThan(0);
+    const allDigits = `1-${"7".repeat(12)}${"0".repeat(8)}-0000-4000-8000-${"0".repeat(12)}`;
+    const strip = (t: string, ids: string[]) => ids.reduce((x, id) => x.split(id).join("[instruction]"), t).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "[uuid]");
+    // The case that made it flaky, held here for good: an ID whose twelve hex digits are all digits is taken out whole.
+    expect(strip(`created ${allDigits} ok`, [allDigits])).not.toMatch(/\b\d{12,19}\b/);
+    expect(`created ${allDigits} ok`.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "[uuid]")).toMatch(/\b\d{12,19}\b/);
+    const withoutUuids = strip(everything, issued);
     expect(withoutUuids).not.toMatch(/\b\d{12,19}\b/);
     expect(withoutUuids).not.toMatch(/\b\d{4}[ -]\d{4}[ -]\d{4}[ -]\d{1,7}\b/);
     expect(everything).not.toMatch(/\b(cvv2?|cvc|csc|security[ _-]?code)\b/i);
