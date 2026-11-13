@@ -29,6 +29,7 @@ signed: the changed terms are refused.\
 **Verify offline:** `npm ci && npm run judge`, then `npm run verify-approval`: Node's own crypto checks that real
 signature; each run's audit log is hash-chained, every row covering the one before. [Three commands](#verify-it-yourself-in-3-commands);
 every run and id: [docs/in-depth.md](docs/in-depth.md).\
+**Latest live runs, 12 and 13 November** (sandbox and testnet, test money; [all runs](docs/runs/README.md)): on Metal, a passkey account whose two owners (the CFO's passkey and a labelled virtual test passkey) signed 2 of 2, and Metal refused a payment over the mandate's cap on chain ([record](docs/runs/2026-11-12-faceid-onchain.md)); at Airwallex, a payout held `IN_APPROVAL` until a person approved it there, then PAID, settlement simulated ([record](docs/runs/2026-11-12-airwallex-two-locks-paid.md)); an invoice token minted, financed and settled on Metal testnet, a prototype with a simulated financier ([record](docs/runs/2026-11-12-tokenize.md)); the books in a Moneybird sandbox, 0 differences ([record](docs/runs/2026-11-12-moneybird-sandbox.md)); and Try with Claude Haiku reading the invoice, on a simulated bank and a test passkey ([record](docs/runs/2026-11-13-try-sample.json)).\
 **Simulated:** the customer, the supplier, the merchants' charges, the settlement and the second approver; test money
 only. Built with Claude (Anthropic) as the developer, directed and reviewed by Max Geurtsen.
 

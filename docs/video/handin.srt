@@ -111,12 +111,12 @@ Then it was paid, with simulated settlement.
 The books keep themselves.
 
 29
-00:03:05,000 --> 00:03:13,000
-For each test invoice, Claude's Coder agent chose the account, the VAT code and the cost centre, and wrote why.
+00:03:05,000 --> 00:03:14,200
+In a month of a test company's 20 invoices, Claude read each one live and chose its account, VAT code and cost centre.
 
 30
-00:03:13,000 --> 00:03:16,200
-Code checks every choice before it is booked.
+00:03:14,200 --> 00:03:19,000
+Code checked every choice before it was booked, and the books balance.
 
 31
 00:03:26,400 --> 00:03:32,400
