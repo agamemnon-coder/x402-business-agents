@@ -42,8 +42,8 @@ describe("the sample tray", () => {
     expect(r.status).toBe(200);
     expect(r.json.items).toEqual([
       { key: "clean", title: "A supplier's invoice", filename: "bergtex-BTX-2026-21.pdf" },
-      { key: "again", title: "The same invoice, sent twice", filename: "bergtex-BTX-2026-21.pdf" },
-      { key: "renumbered", title: "The same invoice under a new number", filename: "bergtex-BTX-2026-21A.pdf" },
+      { key: "again", title: "An invoice you already paid, sent again", filename: "bergtex-BTX-2026-17.pdf" },
+      { key: "renumbered", title: "A paid invoice under a new number", filename: "bergtex-BTX-2026-17A.pdf" },
       { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf" },
       { key: "unknown", title: "An invoice from a new supplier", filename: "zeeland-ZV-4471.pdf" },
     ]);
@@ -59,6 +59,19 @@ describe("the sample tray", () => {
       expect(u.kind, src.key).toBe(src.expect.kind);
       if (src.expect.status) expect(u.invoice?.status, src.key).toBe(src.expect.status);
       if (src.expect.finding) expect(u.invoice?.findings.map((f) => f.code), src.key).toContain(src.expect.finding);
+    }
+  });
+
+  it("a fresh test company starts with the paid original, so each duplicate sample is caught even when it comes first", async () => {
+    for (const key of ["again", "renumbered"]) {
+      const s = await visitor();
+      const before = await c.req("GET", "/v1/engine/invoices", { key: s });
+      expect((before.json.items as Invoice[]).map((i) => i.status)).toEqual(["paid"]);
+      const r = await c.req("POST", `/v1/engine/samples/${key}`, { key: s });
+      const u = r.json as unknown as Upload;
+      expect(u.invoice?.payable, key).toBe(false);
+      if (key === "again") expect(u).toMatchObject({ kind: "duplicate_document", invoice: { status: "paid" } });
+      else expect(u.invoice?.findings.map((f) => f.code)).toContain("possible_duplicate");
     }
   });
 
@@ -149,7 +162,7 @@ describe("write your own", () => {
     // Shapes the route itself refuses: a field too long, a field more.
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ invoice_no: "A".repeat(10_000) }) })).status).toBe(400);
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: { ...typed(), extra: "x" } })).status).toBe(400);
-    expect((await c.req("GET", "/v1/engine/invoices", { key: s })).json.items).toEqual([]);
+    expect(((await c.req("GET", "/v1/engine/invoices", { key: s })).json.items as Invoice[]).map((i) => i.status)).toEqual(["paid"]);
   });
 
   it("is for a test company only", async () => {

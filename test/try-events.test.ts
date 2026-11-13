@@ -122,8 +122,8 @@ describe("eventLine", () => {
     const checker = eventLine(ev("ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", action: "pay", outcome: "ask_cfo", overridden: true, overridden_by: "agent_may_not_pay_alone",
       code_requires: "ask_cfo", codes: "possible_duplicate", reason: "Bergtex is on file and the totals add up.", enforced: "The agent may pay no invoice alone.", request_id: "req_1" }, "checker"));
     expect(checker).toMatchObject({ who: "Checker agent · Claude Haiku 4.5", tag: "claude", fold: false, lead: "Decided: pay, because", own: "Bergtex is on file and the totals add up",
-      enforced: "Purser's code enforced: ask cfo; The agent may pay no invoice alone" });
-    expect(checker.text).toBe("Decided: pay, because Bergtex is on file and the totals add up. Purser's code enforced: ask cfo; The agent may pay no invoice alone.");
+      enforced: "Purser's code enforced: ask the CFO; The agent may pay no invoice alone" });
+    expect(checker.text).toBe("Decided: pay, because Bergtex is on file and the totals add up. Purser's code enforced: ask the CFO; The agent may pay no invoice alone.");
 
     const coded = eventLine(ev("ap.coded", { source: "claude", model: "claude-haiku-4-5", status: "coded", lines: 2, account: "6200", vat_code: "P21", cost_centre: "OPS", reason: "Office supplies at the high rate.", request_id: "req_2" }, "treasury"));
     expect(coded).toMatchObject({ who: "Coder agent · Claude Haiku 4.5", tag: "claude", fold: false, lead: "6200 expense, VAT 21%:", own: "Office supplies at the high rate", enforced: "" });
@@ -133,12 +133,18 @@ describe("eventLine", () => {
 
     const payer = eventLine(ev("ap.payer_proposed", { source: "claude", model: "claude-haiku-4-5", rail: "bank_swift", pay_on: "2026-11-20", pay_currency: "EUR", outcome: "ask_cfo", overridden: false,
       reason: "Due on the 26th; paying on the 20th keeps the float.", enforced: "Over the agent's limit: the CFO signs these exact terms.", request_id: "req_3" }, "payer"));
-    expect(payer).toMatchObject({ who: "Payer agent · Claude Haiku 4.5", lead: "Proposed: pay on 2026-11-20 via bank swift from EUR, because", own: "Due on the 26th; paying on the 20th keeps the float",
-      enforced: "Purser's code enforced: ask cfo; Over the agent's limit: the CFO signs these exact terms" });
+    expect(payer).toMatchObject({ who: "Payer agent · Claude Haiku 4.5", lead: "Proposed: pay on 20 Nov 2026 by a SWIFT bank transfer from EUR, because", own: "Due on the 26th; paying on the 20th keeps the float",
+      enforced: "Purser's code enforced: ask the CFO; Over the agent's limit: the CFO signs these exact terms" });
 
     // Code decided (no model answered): Purser's code, never Claude, and no reason in a model's name.
     const code = eventLine(ev("ap.checker_decided", { source: "fallback", action: "ask_cfo", outcome: "ask_cfo", enforced: "No answer came." }));
-    expect(code).toMatchObject({ who: `Checker agent · ${LIVE.who.code}`, tag: "code", lead: "Decided: ask cfo.", own: "", enforced: "Purser's code enforced: ask cfo; No answer came" });
+    expect(code).toMatchObject({ who: `Checker agent · ${LIVE.who.code}`, tag: "code", lead: "Decided: ask the CFO.", own: "", enforced: "Purser's code enforced: ask the CFO; No answer came" });
+    // Code's own reason is plain text beside the lead, never marked as an agent's own words (try-fixes, 13 Nov).
+    const codeWhy = eventLine(ev("ap.checker_decided", { source: "fallback", action: "hold", outcome: "hold", reason: "The total does not match the lines." }));
+    expect(codeWhy).toMatchObject({ tag: "code", own: "", lead: "Decided: hold for a person, because the total does not match the lines." });
+    // A German supplier's VAT code in words; no code picked: the ledger's VAT line is Purser's code's, and the line says so.
+    expect(eventLine(ev("ap.coded", { source: "claude", model: "claude-haiku-4-5", account: "6200", vat_code: "PF_DE19", reason: "Fabric." }, "treasury")).lead).toBe("6200 expense, VAT German 19%, reclaimed from Germany:");
+    expect(LIVE.noVat).toMatch(/Purser's code/);
     // No fields at all: the event's own sentence, nothing made up.
     for (const e of ["ap.checker_decided", "ap.coded", "ap.payer_proposed"]) {
       const l = eventLine(ev(e));

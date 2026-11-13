@@ -34,8 +34,11 @@ export const TRY_PREFIX = "t_try_";
 export const isTryTenant = (tenantId: string): boolean => tenantId.startsWith(TRY_PREFIX);
 const TRY_ID = /^t_try_[0-9a-f]{16}$/;
 export const VISITOR_NAME = "You (visitor)";
-/** Every company says what it is in its name. */
-const NAMES = ["Harbour Linen (test)", "Polder Print (test)", "Dune Coffee Roasters (test)", "Canal Bikes (test)", "Tulip Tiles (test)", "North Sea Ropes (test)"];
+/**
+ * Every company says what it is in its name. Each one makes things from fabric (try-fixes, 13 Nov), so the samples'
+ * suppliers fit it: Bergtex's linen, a new supplier's packaging, the data licence every company on file holds.
+ */
+const NAMES = ["Harbour Linen (test)", "North Sea Ropes (test)", "Dune Outdoor Wear (test)", "Canal Canvas Bags (test)", "Polder Workwear (test)", "Tulip Sailcloth (test)"];
 /** A session renewal per company and minute. */
 export const SESSIONS_PER_MINUTE = 30;
 

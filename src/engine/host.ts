@@ -18,7 +18,7 @@ import { ingestDocument, type IngestResult } from "../ap/inbox.js";
 import { earlyPayer, payApInvoice, syncPayments } from "../ap/pay.js";
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
-import { apInvoice, apInvoices, type ApInvoiceRow } from "../ap/store.js";
+import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
 import { firstScreenFacts, isPayablesPayment, payablesFacts } from "../approve/client.js";
 import { audit, verifyAuditChain } from "../audit/log.js";
 import type { DB } from "../db/open.js";
@@ -37,7 +37,7 @@ import { sha256, type VaultSink } from "../vault/sink.js";
 import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { invoicePdf } from "./invoicePdf.js";
-import { checkCompose, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
+import { checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
 import { beginExecution } from "../policy/approvals.js";
@@ -85,6 +85,13 @@ export interface EngineDeps {
    * uses that answer when its plan is the same case (startEarlyPayer). Default false; the cloud's Worker turns it on.
    */
   earlyPayer?: boolean;
+  /**
+   * The hands-on demo (try-fixes, 13 Nov): the test company starts with one invoice already paid, the PDF of the sample
+   * keyed `paid` (a supplier's earlier invoice), so the two duplicate samples meet a paid original and are caught.
+   * Filed through the inbox with the parser (no model), then marked paid before the visitor arrived: no money moved
+   * for it on the simulated bank, and the audit row says so. Default false; only a try company turns it on.
+   */
+  seedPaid?: boolean;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -333,7 +340,21 @@ export class EngineHost {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
+      if (this.deps.seedPaid) await this.seedPaidOriginal();
     });
+  }
+
+  /** The try company's paid original (seedPaid): once, safe to repeat; it never moves money on the stand-in bank. */
+  private async seedPaidOriginal(): Promise<void> {
+    const { db } = this.deps;
+    const s = (this.deps.samples ?? []).find((x) => x.key === PAID_SAMPLE);
+    if (!s) return;
+    const bytes = Buffer.from(s.base64, "base64");
+    if (db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(sha256(bytes))) return;
+    const now = this.now();
+    const out = await ingestDocument(db, { dir: NO_FOLDER, reader: parserOnly, now: () => now, agents: false }, { bytes, filename: s.filename, mime: "application/pdf", source: "upload" });
+    const inv = firstInvoice(out);
+    if (inv) setStatus(db, inv.id, "paid", "system", { paid_at: now.toISOString(), reason: "seeded: paid before this test company started (simulated, no money moved)" }, now);
   }
 
   /** A document through the inbox: filed, read and checked. What the inbox refuses (not a PDF, too large) is thrown. */
@@ -603,7 +624,9 @@ export class EngineHost {
     if (max === undefined) return;
     const { db } = this.deps;
     if (db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(docSha256)) return;
-    const n = (db.prepare("SELECT COUNT(*) AS n FROM ap_documents").get() as { n: number }).n;
+    // The seeded paid original (seedPaid) is the company's history, not the visitor's: it does not count.
+    const seeded = this.deps.seedPaid ? (this.deps.samples ?? []).find((x) => x.key === PAID_SAMPLE) : undefined;
+    const n = (db.prepare("SELECT COUNT(*) AS n FROM ap_documents WHERE sha256 <> ?").get(seeded ? sha256(Buffer.from(seeded.base64, "base64")) : "") as { n: number }).n;
     if (n >= max) throw new Error(`this test company holds ${n} documents, its limit of ${max}; nothing was filed`);
   }
 

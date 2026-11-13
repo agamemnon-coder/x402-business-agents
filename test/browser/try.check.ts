@@ -487,10 +487,12 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const transfers0 = L0.transfers();
   ok((await page.textContent(".short"))!.startsWith(L0.terms_sha256.slice(0, 12)), `${tag}: the first 12 characters of the terms' hash`);
   ok((await page.textContent("#main"))!.includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: before the passkey exists, it says a test passkey is saved for this host`);
-  ok(await page.locator("pre.terms").textContent() === "", `${tag}: the exact terms are not fetched before the fold opens`);
+  // try-fixes (13 Nov): the terms are read with the proposal (the rows of what is signed come from them) and shown
+  // pretty-printed; their canonical form is what the passkey signs.
   await page.click(`summary:has-text("${APPROVE.terms}")`);
   await page.waitForFunction(() => (document.querySelector("pre.terms")?.textContent ?? "") !== "");
-  ok(createHash("sha256").update((await page.textContent("pre.terms"))!).digest("hex") === L0.terms_sha256, `${tag}: the fold holds the canonical terms, whose SHA-256 is the proposal's hash`);
+  const { canonicalTerms } = await import("../../src/lib/terms.js");
+  ok(createHash("sha256").update(canonicalTerms(JSON.parse((await page.textContent("pre.terms"))!) as Terms)).digest("hex") === L0.terms_sha256, `${tag}: the fold holds the exact terms, whose canonical SHA-256 is the proposal's hash`);
   await page.click(`summary:has-text("${APPROVE.terms}")`);
   await screenChecks(page, `${tag} screen 3 (create)`, width, 1, false);
   // The main button's labels as they change, with " [ring]" while it carries the ring (a string: no helpers in the page).
@@ -675,7 +677,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`);
 
   // The main step on is Purser Cloud's guest dashboard (owner, 13 Nov): a link, in a new tab, never the site's home.
-  const go = page.locator(`a.btn.primary.go-cloud:has-text("${BOOKS.next}")`);
+  // try-fixes (13 Nov): a quiet link, said to be a sample company (the main button files another invoice).
+  const go = page.locator(`a.btn.go-cloud:has-text("${BOOKS.next}")`);
   ok(await go.count() === 1 && await go.getAttribute("href") === CLOUD_URL && CLOUD_URL === "https://purser-try.max-31b.workers.dev/#/guest" && await go.getAttribute("target") === "_blank",
     `${tag}: "${BOOKS.next}" opens Purser Cloud's guest dashboard (${CLOUD_URL}), in a new tab`);
   // The fee says where it comes from; the booked VAT line is named as such.
@@ -713,7 +716,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     }
     return out;
   });
-  ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => new Set(edges.filter((e) => e[2] === k).map((e) => e[0])).size <= 1), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
+  // On a phone the lines stack and the headings are for screen readers only: there each amount ends at the table's edge.
+  if (width < 600) ok(edges.length > 0 && edges.every(([a]) => a! <= width), `${tag}: did: every amount on screen, stacked (${edges.map(([a]) => a).join(" ")})`);
+  else ok(edges.length > 0 && edges.every(([a, b]) => Math.abs(a! - b!) <= 1) && [0, 1].every((k) => new Set(edges.filter((e) => e[2] === k).map((e) => e[0])).size <= 1), `${tag}: did: every amount, VAT included, ends where its Debit or Credit heading ends (${edges.map(([a, b]) => `${a}/${b}`).join(" ")})`);
   ok((await page.locator(".did-step tr.vatl td.r").evaluateAll((cs) => cs.map((c) => getComputedStyle(c).fontWeight))).every((w) => w === "400"), `${tag}: did: the VAT amount in the same weight as the others`);
   ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
   ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);
@@ -746,6 +751,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(await page.locator("ul.did li").count() === 3 && await page.getAttribute("a.proofl", "href") === PROOF_URL, `${tag}: screen 6: what you just did in three icons, and the site's proof page`);
   await design("6-company", { full: true });
   await page.click(`button:has-text("${COMPANY.again}")`);
+  await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(!(await keptState(page)).session, `${tag}: start again shows screen 0 and forgets the company in this tab`);
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
@@ -908,9 +914,9 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await run(p.page, 1000);
   const shown = await p.page.locator(".live li:visible").allInnerTexts();
   ok(shown.length === 3 && await p.page.locator(".live li.agent:visible").count() === 3, `agents: three lines in view, one per agent (${shown.length})`);
-  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code enforced: ask cfo; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
+  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code enforced: ask the CFO; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
   ok(/^Coder agent · Claude Haiku 4\.5\s+6200 expense, VAT 21%: “?Office supplies at the high rate”? \(its own words\)/.test(shown[1] ?? "") && !(shown[1] ?? "").includes("enforced"), `agents: the Coder's line (${shown[1]?.replace(/\s+/g, " ")})`);
-  ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 2026-11-20 via bank swift from EUR, because .*\(its own words\)\s+Purser's code enforced: ask cfo/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
+  ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 20 Nov 2026 by a SWIFT bank transfer from EUR, because .*\(its own words\)\s+Purser's code enforced: ask the CFO/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
   ok(await p.page.locator(".live .own").count() === 3 && await p.page.locator(".live .enf:visible").count() === 2, "agents: each reason marked as its own words; what code enforced, where the event says it");
   ok(await p.page.locator(".live li.fold").count() === 6 && await p.page.locator(".live li.fold:visible").count() === 0, "agents: the tool calls, words, runs and the agent's Claude call wait in the fold");
   ok(!(await p.page.textContent(".live"))!.includes("SECRET"), "agents: a field the allowlist does not name is never shown");
