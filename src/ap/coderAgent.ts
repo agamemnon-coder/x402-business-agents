@@ -23,7 +23,7 @@ import { toCents } from "../lib/money.js";
 import { VAT_CODES } from "../ledger/vat.js";
 import { skeleton } from "../policy/fraudCore.js";
 import { currentOrigin, parseOrigin, type Origin } from "../provenance/origin.js";
-import { bookable, dutchVat } from "./books.js";
+import { bookable, dutchVat, foreignVat } from "./books.js";
 import {
   answerCoderTool, buildCodingCase, CODER_EFFORT, CODER_MAX_TURNS, CODER_MODEL, CODER_SYSTEM, CODER_UNFINISHED, coderInputs, coderPrompt, coderTools, enforceCoding,
   fallbackCoding, invoiceAmounts, vatIdCountry, WHOLE_INVOICE, type CaseVatCode, type ChartAccount, type Coding, type CodingCase, type CostCentre, type EnforcedCoding, type HistoryCoding,
@@ -143,6 +143,9 @@ function store(db: DB, inv: ApInvoiceRow, c: CodingCase, e: EnforcedCoding, raw:
     audit(db, coding.source === "claude" ? "treasury" : "system", "ap.coded", inv.id, {
       source: coding.source, status: coding.status, model: answeredBy, reason: coding.reason, lines: coding.lines, net_cents: coding.net_cents, vat_cents: coding.vat_cents, total_cents: coding.total_cents,
       overridden_by: coding.overridden_by, refused_because: coding.refused_because, review: coding.review,
+      // A line left without a VAT code that the books code from the supplier's own VAT id (src/ap/books.ts codedEntries):
+      // the foreign code they book it under, so the step says where its VAT goes (final-polish, 13 Nov).
+      books_vat_code: coding.lines.some((l) => l.vat_code === null && foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id) !== null) ? "PF_DE19" : null,
       // The agent's own coding when code refused it, so the override can be seen.
       agent_coding: coding.overridden_by && raw ? raw : null,
       run: { status: run?.status ?? "not_run", turns: run?.turns ?? 0, cost_usd_micros: run?.costMicros ?? 0, note: run?.note ?? null },

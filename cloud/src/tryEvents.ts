@@ -73,10 +73,12 @@ const eventLineOf=(W)=>{
     if(PERSON.test(name)){who=W.who.you;tag=null}
     if(SIGN.test(name))tag='sign';else if(MONEY.test(name))tag='money';
     // An agent's own sentence and code's, as the server masked and cut them (text nodes only, never markup).
+    // A line the Coder left without a VAT code that the books coded from the supplier's German VAT id (final-polish, 13 Nov).
+    const abroad=!code(f.vat_code)&&code(f.books_vat_code)==='PF_DE19';
     const said=(v)=>typeof v==='string'&&v.length<=200?v.replace(/[.\s]+$/,''):'';
     const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
-      action:said2(W.actions,f.action),outcome:said2(W.actions,f.outcome),reason:said(f.reason),enforced:said(f.enforced)||said(f.refused),
-      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||W.noVat,rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
+      action:said2(W.actions,f.action),outcome:said2(W.actions,f.outcome),reason:said(f.reason),enforced:said(f.enforced)||said(f.refused)||(abroad?W.booksVat:''),
+      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;

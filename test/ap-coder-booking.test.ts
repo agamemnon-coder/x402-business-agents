@@ -164,15 +164,26 @@ describe("the accrual of a coded invoice", () => {
     expect(verifyLedger(db).ok).toBe(true);
   });
 
-  it("no VAT code: the agent's account stands, the invoice's VAT is booked, and the overview counts the line as uncoded", async () => {
+  // final-polish, 13 Nov: a German supplier's 19% left without a code by the Coder (its codes are the Dutch return's) is
+  // coded by the books from the supplier's own German VAT id, as the engine's own accrual is: PF_DE19 on 1515, never on
+  // 1510, so 1510 stays equal to box 5b. Before, it sat on 1510 while 5b counted none of it.
+  it("no VAT code on a German supplier's 19%: the agent's account stands, and the books code its VAT as German, on 1515", async () => {
     onFile(db, "ben_lagerhaus2", "Lagerhaus Nord GmbH", "DE75512108001245126199", "BYLADEM1001");
     const inv = await coded(DE, [{ line_no: 1, account: "6200", vat_code: null, cost_centre: "CC100" }]);
     expect(inv.coding).toMatchObject({ source: "claude", status: "needs_review", lines: [{ vat_code: null, vat_cents: 19000 }] });
     const es = accrualEntries(inv);
-    expect(es.map(brief)).toEqual(["6200|1000.00||CC100|||", "1510|190.00|||||input VAT", "2100||1190.00||||"]);
-    expect(Object.hasOwn(es[0]!, "vat_code") || Object.hasOwn(es[0]!, "vat_cents")).toBe(false);
+    expect(es.map(brief)).toEqual(["6200|1000.00||CC100|PF_DE19|19000|", "1515|190.00|||||foreign VAT to reclaim", "2100||1190.00||||"]);
     syncLedger(db, now);
-    expect(posted(db)[0]).toEqual({ account: "6200", d: 100000, c: 0, cc: "CC100", code: null, vat: null });
+    expect(posted(db)[0]).toEqual({ account: "6200", d: 100000, c: 0, cc: "CC100", code: "PF_DE19", vat: 19000 });
+    expect(vatOverview(db, "2026Q4")).toMatchObject({ input_5b_cents: 0, uncoded_lines: 0, foreign_vat: { vat_cents: 19000 } });
+  });
+
+  it("no VAT code and no foreign VAT id: the line stays uncoded for a person, its VAT on 1510 as before", async () => {
+    const inv = await coded(NL, [{ line_no: 1, account: "6200", vat_code: null, cost_centre: "CC100" }]);
+    const es = accrualEntries(inv);
+    expect(Object.hasOwn(es[0]!, "vat_code") || Object.hasOwn(es[0]!, "vat_cents")).toBe(false);
+    expect(es.some((e) => e.account === "1515")).toBe(false);
+    syncLedger(db, now);
     expect(vatOverview(db, "2026Q4")).toMatchObject({ input_5b_cents: 0, uncoded_lines: 1 });
   });
 

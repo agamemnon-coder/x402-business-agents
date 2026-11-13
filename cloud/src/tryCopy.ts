@@ -150,8 +150,12 @@ export const APPROVE = {
  */
 export const PROPOSAL_FIELDS = {
   account: "Account ending", due: "Due", amount: "Amount", payee: "Payee",
-  /** try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap. */
-  fx: "Conversion", fxLine: "{sell} → {buy} at {rate}", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
+  /**
+   * try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap.
+   * final-polish, 13 Nov: the engine converts only the EUR shortfall (needed minus free EUR, src/policy/treasury.ts), so the
+   * row says how much of the payment that part is and what it costs in USD.
+   */
+  fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell} at {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
 };
 
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
@@ -166,9 +170,10 @@ export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint",
 export const PAY = {
   heading: "Pay it with your signature.",
   loading: "Loading the terms you signed…",
-  line: "Your signature covers exactly these terms. Change one and try to pay, or pay them as signed.",
-  /** Screen 4 comes after paid. */
-  already: "Already paid.",
+  /** final-polish, 13 Nov: the screen leads with what to do; it is shown above the fields. */
+  line: "These are the terms you signed. Change one and press Pay.",
+  /** Screen 4 comes after paid: a quiet line under the fields, not an error (final-polish, 13 Nov). */
+  already: "This invoice is already paid.",
   /** Screen 4's quiet link back to screen 5. */
   back: "Back",
   button: "Pay with my signature",
@@ -413,7 +418,7 @@ export const VISIBLE = {
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 59, "start 1": 55, "start 2": 55, "start 3": 49, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 59, "start 1": 55, "start 2": 55, "start 3": 49, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -436,6 +441,11 @@ export const LIVE = {
    * accrualEntries), which is the VAT line the ledger shows. Said so, so the two agree (try-fixes, 13 Nov).
    */
   noVat: "from the invoice, booked by Purser's code",
+  /**
+   * The Coder left a German supplier's 19% without a code (its codes are the Dutch return's); the books code it from the
+   * supplier's German VAT id (src/ap/books.ts codedEntries) and book it to 1515 (final-polish, 13 Nov).
+   */
+  booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
   /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */

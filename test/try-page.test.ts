@@ -253,7 +253,7 @@ describe("the copy", () => {
     expect(COPY.APPROVE.terms).toBe("Show the exact terms");
     expect(Object.values(COPY.METHOD)).toEqual(["Face ID", "Touch ID", "fingerprint", "Windows Hello", "your passkey"]);
     expect(COPY.PAY.heading).toBe("Pay it with your signature.");
-    expect(COPY.PAY.line).toBe("Your signature covers exactly these terms. Change one and try to pay, or pay them as signed.");
+    expect(COPY.PAY.line).toBe("These are the terms you signed. Change one and press Pay.");
     expect(COPY.PAY.button).toBe("Pay with my signature");
     expect(COPY.PAY.stamp).toBe("Refused by Purser");
     expect(COPY.PAY.executor).toBe("Purser's payment check: refused (the terms do not match what was approved)");

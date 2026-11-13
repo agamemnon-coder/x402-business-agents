@@ -126,6 +126,8 @@ const EVENTS: Record<string, Pick> = {
     return {
       source: p.source, model: p.model, agent_model: p.overridden_by && typeof agent.model === "string" ? agent.model : undefined, status: p.status, lines: lines.length, refused: firstSentence(p.refused_because, 160),
       account: typeof first.account === "string" ? first.account : undefined, vat_code: typeof first.vat_code === "string" ? first.vat_code : undefined,
+      // The foreign code the books set on a line the Coder left without one (src/ap/coderAgent.ts store).
+      books_vat_code: p.books_vat_code === "PF_DE19" ? "PF_DE19" : undefined,
       cost_centre: typeof first.cost_centre === "string" ? first.cost_centre : undefined, overridden_by: p.overridden_by,
       reason: firstSentence(p.reason, 160), request_id: typeof agent.request_id === "string" ? agent.request_id : undefined,
     };
