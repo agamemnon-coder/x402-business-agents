@@ -70,13 +70,13 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
-    expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
+    expect(readme).toContain(`alt="Try it: a test company of your own, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`); // 13 Nov, final pass
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.
     expect(readme).not.toContain("kit11.max-31b.workers.dev/tour");
-    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
-    expect(readme).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
+    // 13 Nov, final pass: /try/sign answers 301 to /try (#283); the README links /try, never /try/sign.
+    expect(readme).not.toContain("kit11.max-31b.workers.dev/try/sign");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
@@ -188,13 +188,14 @@ describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov;
     }
   });
 
-  it("the form's screenshots are the live site's, /try/sign signed and tampered among them, not /visa", () => {
+  it("the form's screenshots: the live site's, /try approved, paid and tampered (a local build of it) among them, not /visa", () => {
     const list = between(form, "## Screenshots", "## Deck and zip");
     // Since D6 (6 Nov) the form's 8 screenshots come from the live site, in the form's order: the problem, try it (three,
-    // from one /try/sign world), the proof per partner, the business. Each file the list names is in the repository.
+    // from one /try/sign world), the proof per partner, the business. Since 13 Nov screens 2–4 are /try from a local
+    // build of main 5eeaf5f (approve, paid, one cent refused). Each file the list names is in the repository.
     const named = [...list.matchAll(/^(\d)\. `(screens\/form\/[^`]+\.png)`/gm)].map((m) => [Number(m[1]), m[2]!] as const);
     expect(named.map(([n]) => n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(named.map(([, f]) => f)).toEqual(["home", "try-sign-sheet", "try-sign-verified", "try-sign-tamper", "airwallex", "metal", "claude", "business"].map((x, i) => `screens/form/form-${i + 1}-${x}.png`));
+    expect(named.map(([, f]) => f)).toEqual(["home", "try-approve", "try-paid", "try-refused", "airwallex", "metal", "claude", "business"].map((x, i) => `screens/form/form-${i + 1}-${x}.png`));
     for (const [, f] of named) expect({ f, there: existsSync(new URL(`../docs/submission/${f}`, import.meta.url)) }).toEqual({ f, there: true });
     expect(list).not.toContain("17-visa");
     expect(read("src/cli/submission.ts")).toContain('"18-try-sign.png"');

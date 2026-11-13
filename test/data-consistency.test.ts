@@ -254,7 +254,8 @@ describe("the separate test worlds' figures against their run files", () => {
     const paid = `${n(load.paid)} of ${n(load.attempted)}`;
     const p50 = `p50 ${(load.latency_ms.p50 / 1000).toFixed(1)} s`;
     const p95 = `p95 ${(load.latency_ms.p95 / 1000).toFixed(1)} s`;
-    expect(form).toContain(`${paid} pay-per-call payments in ${load.seconds} s (${load.throughput_per_second} a second, ${p50}, ${p95})`);
+    // The form's long text says it as "All 2,000" (no N/N fraction, 13 Nov); paid equals attempted above.
+    expect(form).toContain(`All ${n(load.paid)} pay-per-call payments in ${load.seconds} s (${load.throughput_per_second} a second, ${p50}, ${p95})`);
     expect(form).toContain(`A first run paid ${n(first.paid)} before`);
     expect(flat("docs/claims.md")).toContain(`${paid} paid in ${load.seconds} s (${load.throughput_per_second} a second), ${p50}, ${p95}`);
     expect(flat("docs/claims.md")).toContain(`A first run paid ${n(first.paid)}`);

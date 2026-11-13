@@ -36,5 +36,4 @@ merge `main` into your branch rather than rebasing a shared one. The changelog i
 
 ## Conduct
 
-This project follows the [Code of Conduct](CODE_OF_CONDUCT.md). Security reports go to [SECURITY.md](SECURITY.md), not to
-a public issue.
+Security reports go to [SECURITY.md](SECURITY.md), not to a public issue.

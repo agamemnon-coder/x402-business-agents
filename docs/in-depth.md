@@ -49,7 +49,7 @@ flowchart LR
 <table>
 <tr>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/"><img src="media/readme/home.png" alt="Home, 12 November: the headline, one button and the hero at its fourth step, where one tap on +1 cent changes EUR 240.00 to 240.01 and the signature no longer matches"></a><br/><b>Home</b> · change one cent of a real approval</td>
-<td width="33%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="media/readme/try-sign.png" alt="Try: sign the exact terms with your own Face ID"></a><br/><b>Try</b> · sign with your own Face ID</td>
+<td width="33%"><a href="https://kit11.max-31b.workers.dev/try"><img src="media/readme/try-sign.png" alt="Try: sign the exact terms with your own Face ID"></a><br/><b>Try</b> · sign with your own Face ID</td>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/proof#guarantees"><img src="media/readme/proof.png" alt="Proof: what Purser guarantees, each with its code, test and run"></a><br/><b>Proof</b> · each guarantee, its code, test and run</td>
 </tr>
 <tr>
@@ -61,7 +61,7 @@ flowchart LR
 
 ## The proof, one sentence per partner
 
-- Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex. ([proof](https://kit11.max-31b.workers.dev/proof#airwallex))
+- Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex. ([proof](https://kit11.max-31b.workers.dev/proof#airwallex))
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey). ([proof](https://kit11.max-31b.workers.dev/proof#metal))
 - Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step. ([proof](https://kit11.max-31b.workers.dev/proof#claude))
 - awx-1, a separate Airwallex-only run (7 November; sandbox, test money, 0 Metal calls): accepted, all seven checks passed in one attempt. Airwallex approved and declined the agents' cards itself (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`); the Sourcing agent (Claude Haiku) read the decline and asked the CFO for a raise instead of retrying; two invoices were paid by SWIFT after the CFO's Face ID (settlement simulated in the sandbox), each carrying the signed hash in Airwallex's own metadata. ([run](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money), [on the site](https://kit11.max-31b.workers.dev/airwallex#awx-1))

@@ -144,10 +144,12 @@ describe("the Demo Day pitch (docs/submission/pitch.md)", () => {
     expect([Number(total?.[1]), Number(total?.[2])]).toEqual([parts.reduce((a, p) => a + budget(p.to - p.from), 0), parts.reduce((a, p) => a + p.words, 0)]);
   });
 
-  it("demos /try/sign live (sign, try to cheat, change the rule), shows the three proofs and ends on the ask", () => {
+  // Since 13 Nov the live part runs on /try (/try/sign answers 301 to it): an invoice, Face ID, one cent, a copy caught.
+  it("demos /try live (file an invoice, approve with Face ID, change one cent, a copy caught), shows the three proofs and ends on the ask", () => {
     const t = prose(demo);
-    for (const s of ["Tap Sign with Face ID", "Now try to cheat: change one cent", "One cent changed. The signature is worthless.", "Next: change the rule", "A looser rule needs my signature too.", "paid alone, no signature needed",
-      "Proof one", "Proof two", "Proof three: Claude made 24 of 24 decisions, with 0 fallbacks.", "we're looking for design partners on Airwallex"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
+    for (const s of ["File this invoice", "Approve … with Face ID", "My Face ID signs the hash of exactly these terms.", "Try changing what you signed", "One cent changed. The signature is worthless.",
+      "Caught: a copy of a filed invoice.", "Proof one", "Proof two", "Proof three: Claude made all 24 decisions, with 0 fallbacks.", "we're looking for design partners on Airwallex"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
+    expect(demo).not.toContain("/try/sign`, opened");
   });
 });
 

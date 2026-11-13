@@ -52,6 +52,14 @@ describe("the changelog", () => {
     expect(changelog(parseMerges(log), "v1.0-submission", "https://github.com/o/r")).toContain("[#158](https://github.com/o/r/pull/158) Run record");
   });
 
+  // Squash merges count too (13 Nov: #258, #262, #263, #268 and #273 were squashed and the changelog missed them).
+  it("reads GitHub's squash merges as well as its merge commits, and puts the latest day first", () => {
+    const log = "2026-11-13\tREADME follow-up: screenshots (#273)\t\n2026-11-12\tMerge pull request #250 from o/firefox-retry\tFirefox checks: retry\n2026-11-12\tA direct commit, no PR\t";
+    expect(parseMerges(log)).toEqual([{ date: "2026-11-13", pr: 273, branch: "", title: "README follow-up: screenshots" }, { date: "2026-11-12", pr: 250, branch: "firefox-retry", title: "Firefox checks: retry" }]);
+    const md = changelog(parseMerges(log), "v1.0-submission", "https://github.com/o/r");
+    expect(md).toContain("### Merged on 13 November 2026, the latest day (1)\n\n- [#273](https://github.com/o/r/pull/273) README follow-up: screenshots");
+  });
+
   it("gives the release notes the same counts, total and per group", () => {
     const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
     const notes = readFileSync(join(ROOT, "docs/releases/v1.1-final.md"), "utf8");
@@ -80,7 +88,7 @@ describe("the README's diagrams and media", () => {
     const docs = blocks(readFileSync(join(ROOT, "docs/diagrams.md"), "utf8"));
     expect(docs).toHaveLength(5);
     expect(blocks(readme)).toEqual([docs[0], docs[2], docs[4]]);
-    expect(readme).toContain("(docs/diagrams.md#1-architecture-who-holds-which-limit)");
+    expect(readme).toContain("(docs/diagrams.md)"); // who holds which limit: in docs/diagrams.md, linked from Links (13 Nov)
     // The mandate on Metal is linked from the Metal Award section since the award sections came in (13 Nov).
     expect(readme).toContain("(docs/diagrams.md#3-the-mandate-on-metal-bound-refused-raised-revoked)");
   });

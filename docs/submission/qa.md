@@ -47,7 +47,7 @@ every id.
 ### 4. Why Face ID and not a password or a button?
 
 A button or a password says yes to whatever is on the screen; a passkey signs the SHA-256 hash of these exact terms,
-so one changed cent, IBAN or currency makes the signature worthless, which anyone can try on /try/sign. The server
+so one changed cent, IBAN or currency makes the signature worthless, which anyone can try on /try. The server
 checks the signature, not your face: attestation is "none", so it cannot tell which authenticator made the key, and
 Face ID is what the phone asks for, not something we prove. The receipt checks offline, with no server:
 `npm run verify-receipt -- receipt.json`.
@@ -141,7 +141,7 @@ connected yet.
 
 ### 13. Why not Airwallex's own spend controls and approvals?
 
-We use them: each agent's card limit is Airwallex's, enforced by Airwallex, and read back on 6 November, 3 of 3 cards
+We use them: each agent's card limit is Airwallex's, enforced by Airwallex, and read back on 6 November, all 3 cards
 carry the CFO policy as Airwallex's own controls. Purser adds one policy across Airwallex and Metal, each agent's
 mandate on chain, and a signature on the exact terms of each payment beyond the limits, whose hash Airwallex's own
 record of the EUR 240.00 SWIFT payment carries.

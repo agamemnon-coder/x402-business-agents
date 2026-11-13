@@ -29,7 +29,7 @@ Made by `npm run cut -- --docs handin-5` from src/film/cuts.ts and src/film/shot
   - On screen: caption "Your own test company · 24 hours"; badge "Simulated bank · test money"
 - **P2b**, 17 s · **Max (iPhone)** · iPhone screen recording, plus 2–3 s of a second camera at the Face ID moment
   - Where: the same test company
-  - Do: Open the terms; Sign with Face ID; Hold on Paid (simulated bank) 2 s
+  - Do: Open the terms (the card shows the conversion, the bank fee cap and the deadline); Sign with Face ID; Hold on Paid (simulated bank) 2 s
   - On screen: caption "The CFO signs the exact terms"; badge "Simulated bank · test money"
 - **P2c**, 13 s · **Max (iPhone)** · iPhone screen recording
   - Where: the same test company
@@ -103,7 +103,7 @@ Made by `npm run cut -- --docs handin-5` from src/film/cuts.ts and src/film/shot
 
 - **S1**, 22 s · **Max (screen)** · Laptop screen recording, 1440 px wide, dark mode
   - Where: Purser Cloud's console for the test company of P2 (purser-try.max-31b.workers.dev)
-  - Do: Overview, 4 s; Invoices: the paid invoice, 6 s; Transactions, 5 s; Books: the journal, 6 s; No e-mail, keys or personal data on screen
+  - Do: Overview, 4 s; Agents, 4 s; Invoices & books: the paid invoice, then the journal, 6 s; Transactions, 4 s; Tokenisation, 4 s; No e-mail, keys or personal data on screen
   - On screen: caption "Purser Cloud · a test company"; badge "Test company · test money"
 
 ## 3:48–4:06 · The proof (h11)
