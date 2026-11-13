@@ -125,8 +125,8 @@ describe("one tagline (Q8)", () => {
 describe("the film (Q3)", () => {
   it("/film says it is the earlier animation of 30 October, and points to the 3:58 film", () => {
     expect(pages.film).toContain("<title>Purser: the earlier animation (30 October)</title>");
-    expect(pages.film).toContain("The earlier animation of 30 October, not the 3:58 film (youtu.be/kCUsFHrxE-o)");
-    expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
+    expect(pages.film).toContain("The earlier animation of 30 October, not the walkthrough (youtu.be/mp9fmOYfBWc)");
+    expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
   });
 
   it("the replay and Proof link the film of the main run; Proof's archive names /film for what it is", () => {

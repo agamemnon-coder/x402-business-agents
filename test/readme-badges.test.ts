@@ -39,7 +39,7 @@ describe("README badges", () => {
   it("puts the live demo's line under the badges, then three proofs with their records, and says test money only", () => {
     const lines = readme.split("\n");
     const at = lines.indexOf(badgeLine);
-    expect(lines[at + 2]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film, 3:58](https://youtu.be/kCUsFHrxE-o) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(lines[at + 2]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough, 4:58](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     expect(readme).not.toContain("for-the-badge");
     const proofs = lines.slice(at + 3).filter((l) => l.startsWith("- **")).slice(0, 3);
     expect(proofs.map((l) => /^- \*\*([^.:]+)/.exec(l)![1])).toEqual(["Face ID or a passkey signs the exact terms", "Limits are enforced in 3 layers", "The audit chain is anchored on chain"]);
