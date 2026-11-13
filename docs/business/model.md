@@ -38,7 +38,7 @@ not a finding about where demand is.
 These are pilot prices, set on 12 November 2026. Nothing is on sale yet and no customer has seen a
 price. Business adds several companies, four-eyes approval and bookkeeping connectors.
 
-It is one model, said in the same sentence in the [README](../../README.md#why-this-is-a-company) and in
+It is one model, said in the same sentence in the [README](../../README.md#the-business-hypothesis) and in
 [after-the-kit.md](../after-the-kit.md); [/pricing](https://kit11.max-31b.workers.dev/pricing) shows the same figures.
 Every figure comes from `src/config/pricing.ts`, and `test/saas-additions.test.ts` keeps the four places in step.
 

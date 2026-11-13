@@ -2,7 +2,7 @@
 // report. The site's stats band reads it (src/redesign/scale.ts); the README's line and badge, docs/claims.md's Tests row
 // and docs/submission/demo-day.md are written from it by `npm run test-count` (scripts/test-count.ts).
 import { describe, expect, it } from "vitest";
-import { apply, badge, read, readmeLine, summary } from "../scripts/test-count.js";
+import { apply, read, readmeLine, summary } from "../scripts/test-count.js";
 import { scaleFigures, scaleStats } from "../src/redesign/scale.js";
 
 describe("the test count, from one file", () => {
@@ -17,7 +17,8 @@ describe("the test count, from one file", () => {
   it("is the number the README, the claims and the Demo Day pack show, written by npm run test-count", () => {
     expect(apply(s, now)).toEqual(now);
     expect(now.readme).toContain(readmeLine(s));
-    expect(now.readme).toContain(badge(s));
+    // Three badges since 13 Nov (CI, license, live demo): no tests badge to disagree with the line.
+    expect(now.readme).not.toMatch(/badge\/tests-/);
   });
 
   it("is the number the site's stats band shows", () => {
