@@ -21,6 +21,7 @@
 // the agent's sentence shown as text, never markup; and one timed visit, the opening to the closing card in at most 75 s.
 // CI runs it (.github/workflows/ci.yml, job judge). A test world only: nothing here reaches the runner, Airwallex or Metal.
 
+import { TRY_URL } from "../../src/redesign/ui.js";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -305,12 +306,15 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const v = await visitor({ width, scheme, ip: `198.51.${100 + run++}.7` });
   const { page, errors, mobile, height } = v;
 
-  // Home's one button leads here (competitive review, 10 Nov), and so does Watch's "Now try it yourself".
+  // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL): Home's first button and Watch's "Now try it
+  // yourself" lead there; /try/sign is "The 60-second story", linked from /judge. The visit opens it from /judge's link.
   await page.goto(`${local.url}/home`);
-  check(await page.locator('main a.btn.primary[href="try/sign"]').count() === 1, `${tag}: Home's button leads to /try/sign`);
+  check(await page.locator(`main .e-hero a.btn.primary[href="${TRY_URL}"]`).count() === 1, `${tag}: Home's button leads to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/watch`);
-  const button = page.locator('a.nextstep[href="try/sign"]');
-  check(await button.count() === 1, `${tag}: Watch ends in "Now try it yourself", to /try/sign`);
+  check(await page.locator(`a.nextstep[href="${TRY_URL}"]`).count() >= 1, `${tag}: Watch ends in "Now try it yourself", to the hands-on demo (${TRY_URL})`);
+  await page.goto(`${local.url}/judge`);
+  const button = page.locator('main a[href="/try/sign"]', { hasText: "The 60-second story" });
+  check(await button.count() === 1, `${tag}: /judge links "The 60-second story" to /try/sign`);
   await button.click();
   await page.waitForURL(`${local.url}/try/sign`);
   const t0 = Date.now();

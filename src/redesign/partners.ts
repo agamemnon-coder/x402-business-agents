@@ -329,7 +329,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const vic3 = vic3Run();
   const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
   // Jury pass, 13 Nov: the latest run as it ended for each purchase ("1 paid after Face ID, 3 refused by Purser, 1 not
-  // tapped: nothing charged"), four cards, the two lines that say what the entry is, then every detail in one fold.
+  // tapped: nothing charged"), four cards, the two lines that say what the entry is, then every detail in one fold; the
+  // TAP work, outside the entry, last inside it (its own closed fold), so it is never on the first screen at any width.
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
@@ -348,8 +349,8 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
-  </details>
   <div class="folds card">${visaTapFold(run)}</div>
+  </details>
 </div></main>`;
   const html = page({
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
