@@ -27,13 +27,24 @@ export function contextOptions(name: BrowserName, o: BrowserContextOptions = {})
 export const hasVirtualAuthenticator = (name: BrowserName): boolean => name === "chromium";
 
 /**
+ * Firefox under Playwright: no browsing-context-group switch for Cross-Origin-Opener-Policy. Every page of the site is sent
+ * with COOP: same-origin (worker/src/core.ts PAGE_HEADERS); a fresh page's first navigation to one then moves Firefox to a
+ * new browsing context group, and Playwright's Firefox driver now and then never sees that navigation finish: the document
+ * is loaded (readyState "complete") while page.goto waits until its timeout, and every later action waits on it too
+ * (13 Nov, the red firefox job: 16 of 80 fresh pages hung on a bare page with the header, 0 of 80 without it, 0 of 100
+ * with this preference). The browser checks do not test COOP's effect on other windows; the header itself is still sent
+ * and checked by test/security-headers.test.ts.
+ */
+export const FIREFOX_PREFS = { "browser.tabs.remote.useCrossOriginOpenerPolicy": false } as const;
+
+/**
  * Launches the browser BROWSER names. Every context it makes takes its options through contextOptions, so a check written
  * for Chromium (with isMobile) runs in Firefox unchanged.
  */
 export async function launchBrowser(name: BrowserName = browserName()): Promise<Browser> {
   const require = createRequire(import.meta.url);
-  const pw = require("playwright") as Record<BrowserName, { launch(o?: { executablePath?: string }): Promise<Browser> }>;
-  const browser = await pw[name].launch(name === "chromium" && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+  const pw = require("playwright") as Record<BrowserName, { launch(o?: { executablePath?: string; firefoxUserPrefs?: Record<string, boolean> }): Promise<Browser> }>;
+  const browser = await pw[name].launch(name === "chromium" && process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : name === "firefox" ? { firefoxUserPrefs: FIREFOX_PREFS } : {});
   const newContext = browser.newContext.bind(browser);
   browser.newContext = async (o?: BrowserContextOptions) => {
     const context = await newContext(contextOptions(name, o));
