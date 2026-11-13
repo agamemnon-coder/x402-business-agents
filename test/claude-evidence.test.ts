@@ -72,9 +72,12 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     // Two drawings (wide, phone), each named by the same sentence; the caption holds the rest.
     expect([...fig.matchAll(/<svg class="(wid|nar)"[^>]*aria-label="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["wid", esc(splitSentence(f))], ["nar", esc(splitSentence(f))]]);
     expect(splitSentence(f)).toBe("Payment requests: 82 routine payments by code; 24 exceptions decided by Claude; 5 high-risk ones on to the CFO's Face ID.");
-    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).trim()).toBe("24/24 decisions by Claude (0 fallbacks), holds included · 50 Claude calls, each with a request id");
+    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).trim()).toBe("All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged");
     // The page's CSP hashes its one style block: no style attribute anywhere in it, no script.
     expect(CLAUDE_PAGE).not.toMatch(/\sstyle="/);
+    // No pass-rate fraction anywhere on the page (13 Nov, from the judge run): words instead ("all 24", "50 of 60"). The
+    // one fraction left is a cost ratio, Treasury's Haiku at 1/24 of Opus's cost per pass (in the sweep's fold).
+    expect(text(main).replace(/at 1\/\d+ of Opus's cost per pass/, " ").match(/\b\d+\/\d+\b/g)).toBeNull();
   });
 
   it("shows the three agents as cards, each with its model, its decisions as a bar and its Claude calls", () => {
@@ -94,7 +97,7 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     for (const t of tiles) { expect(t[2]).toMatch(/^<span class="ic"><svg/); expect(t[2]!.match(/<span class="tv">/g)).toHaveLength(1); }
     const said = tiles.map((t) => text(t[2]!.replace(/<span class="r">[\s\S]*$/, "")).replace(/\s+/g, " ").trim());
     expect(said).toEqual([
-      "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10/10 blind holdouts safe; H3 on code's rule only",
+      "408 decisions in 40 simulated worlds, all by Claude; 2 unsafe actions, fixed", "10 blind holdouts, all safe; H3 on code's rule only",
       "0 of 10 Haiku as Support on one attack; code refused each stray call", "9 model and agent pairs, measured",
       "380 hostile tool calls on the payables agents' 62 test invoices: 370 refused by code, 0 unsafe by the ledger verdict"]);
     // The hostile-model eval's figures as CI wrote them (the same record as /security's line).
@@ -127,10 +130,10 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     lines.forEach((l, i) => {
       const w = /<rect class="fil(?: alt)?" width="([\d.]+)%"/.exec(rows[i]!)?.[1];
       expect(Number(w)).toBe(Math.round(l.passed / l.runs * 1000) / 10);
-      expect(text(rows[i]!)).toContain(`${l.passed}/${l.runs}`);
+      expect(text(rows[i]!)).toContain(l.passed === l.runs ? `all ${l.runs}` : `${l.passed} of ${l.runs}`);
     });
-    expect(shown(chart![0])).toContain("Haiku 130/130 · $0.0005 · 4.8s · in use");
-    expect(shown(chart![0])).toContain("Haiku 50/60 · $0.0029 · 10.0s");
+    expect(shown(chart![0])).toContain("Haiku all 130 · $0.0005 · 4.8s · in use");
+    expect(shown(chart![0])).toContain("Haiku 50 of 60 · $0.0029 · 10.0s");
     expect((chart![0].match(/class="use"/g) ?? []).length).toBe(3);
   });
 
@@ -140,9 +143,9 @@ describe("/claude's folds", () => {
   it("folds each agent on each model with its verdict, the Treasury choice as measured, and the failure in three lines", () => {
     const sweep = /<summary>Each agent on each model \(6 Nov\)<\/summary>([\s\S]*?)<\/details>/.exec(main)?.[1] ?? "";
     expect(sweep).not.toBe("");
-    expect(text(sweep)).toContain("Sourcing Haiku 130/130 0.0005 4.8 s in use");
-    expect(text(sweep)).toContain("Support Haiku 50/60 0.0029 10.0 s misses 10");
-    expect(text(sweep)).toContain("Treasury: Haiku passed every Treasury run (70 of 70) at 1/24 of Opus's cost per pass, but its first plan passed code's checks in 8 of 40 rebalance runs, Opus's in 18 of 20. Treasury runs on Opus.");
+    expect(text(sweep)).toContain("Sourcing Haiku all 130 0.0005 4.8 s in use");
+    expect(text(sweep)).toContain("Support Haiku 50 of 60 0.0029 10.0 s misses 10");
+    expect(text(sweep)).toContain("Treasury: Haiku passed every Treasury run (all 70) at 1/24 of Opus's cost per pass, but its first plan passed code's checks in 8 of 40 rebalance runs, Opus's in 18 of 20. Treasury runs on Opus.");
     const failure = /<summary>What went wrong<\/summary><ul class="pl">([\s\S]*?)<\/ul>/.exec(main)?.[1] ?? "";
     expect(failure.match(/<li>/g)).toHaveLength(3);
     expect(text(failure)).toContain("In 2 of 40 simulated worlds, an agent passed an unvetted payee address to another agent.");

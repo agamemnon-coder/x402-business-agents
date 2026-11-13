@@ -7,7 +7,7 @@
 // its one style block), so every width is an SVG attribute, never a style attribute. The colours of the marks are the
 // page's own: Claude and Face ID validated as a pair in both themes (dataviz validator, 13 Nov), code in neutral grey.
 
-import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
+import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
@@ -115,7 +115,7 @@ export function splitFigure(f: SplitFigures): string {
 <text x="${r1(lx + wl - wf - 14)}" y="296" text-anchor="end"><tspan class="sk-n">${f.faceId}</tspan><tspan class="sk-l" x="${r1(lx + wl - wf - 14)}" dy="24">high-risk: the CFO's Face ID</tspan></text>
 </svg>`;
   // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
-  const cap = `<b>${f.byClaude}/${f.decisions}</b> decisions by Claude (${f.fallbacks} fallbacks), holds included · <b>${f.calls}</b> Claude calls, each with a request id`;
+  const cap = `${f.byClaude === f.decisions ? `<b>All ${f.decisions}</b>` : `<b>${f.byClaude} of ${f.decisions}</b>`} decisions by Claude, holds included; <b>${f.fallbacks}</b> fallbacks · <b>${f.calls}</b> Claude calls, each logged`;
   return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}</figcaption></figure>`;
 }
 
@@ -132,7 +132,7 @@ const AGENT_ICON: Record<string, string> = { sourcing: "package", support: "head
 export function agentCards(agents: AgentFigures[]): string {
   const all = agents.reduce((n, a) => n + a.decisions, 0);
   if (!agents.length || !all) return "";
-  return `<h2 class="csec" id="agents">The three agents</h2><div class="cagents">${agents.map((a) => `<article class="cag card" data-agent="${esc(a.id)}">
+  return `<h2 class="csec" id="agents">Three agents</h2><div class="cagents">${agents.map((a) => `<article class="cag card" data-agent="${esc(a.id)}">
 <div class="top"><span class="ic">${icon(AGENT_ICON[a.id] ?? "bot", 20)}</span><h3>${esc(a.short)}</h3><span class="model fam">${esc(a.family)}</span></div>
 <span class="v">${a.decisions}<small>decisions</small></span>${bar(a.decisions, all, `${a.short}: ${a.decisions} of ${all} decisions`)}
 <span class="s">${a.calls} Claude calls</span></article>`).join("")}</div>`;
@@ -152,7 +152,7 @@ export function proofTiles(e: ClaudeEvidence): string {
   const v = e.variation, h = e.hostile;
   const items = [
     v ? tile("database", String(v.decisions), `decisions in ${v.worlds} simulated worlds, ${v.claudePct === 100 ? "all" : `${v.claudePct}%`} by Claude; ${v.unsafe} unsafe actions${e.fix && e.fix.unsafe === 0 ? ", fixed" : ""}`, VARIATION_RECORD, link(VARIATION_RECORD)) : "",
-    e.holdouts ? tile("lock", `${e.holdouts.safe}/${e.holdouts.run}`, `blind holdouts safe${e.holdouts.partial ? `; ${e.holdouts.partial} on code's rule only` : ""}`, HOLDOUTS_RECORD, link(HOLDOUTS_RECORD)) : "",
+    e.holdouts ? tile("lock", String(e.holdouts.run), `blind holdouts, ${e.holdouts.safe === e.holdouts.run ? "all" : e.holdouts.safe} safe${e.holdouts.partial ? `; ${e.holdouts.partial} on code's rule only` : ""}`, HOLDOUTS_RECORD, link(HOLDOUTS_RECORD)) : "",
     haikuSupport ? tile("shield-alert", `${haikuSupport.passed} of ${haikuSupport.runs}`, "Haiku as Support on one attack; code refused each stray call", AGENT_EVALS, link(AGENT_EVALS)) : "",
     lines.length ? tile("sliders-horizontal", String(lines.length), "model and agent pairs, measured", SWEEP_RECORD, link(SWEEP_RECORD)) : "",
     h ? tile("shield-check", String(h.calls), hostileTileLabel(h), HOSTILE_EVAL, link(HOSTILE_EVAL) + (e.zeroTrust ? link(ZERO_TRUST_REPORT, "zero-trust report") : "")) : "",
@@ -170,9 +170,9 @@ export function modelChart(e: ClaudeEvidence, used: Record<string, string>): str
   const row = (l: ModelLine) => {
     const inUse = used[l.agent] === FAM(l.model), cap = (s: string) => `${s[0]!.toUpperCase()}${s.slice(1)}`;
     const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${l.passed} of ${l.runs} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
-    return `<div class="cmr"><span class="m">${esc(FAM(l.model))}</span>${bar(l.passed, l.runs, label, !inUse)}<span class="n"><b>${l.passed}/${l.runs}</b> · $${esc(usd(l.costPerPass))} · ${esc(l.medianS.toFixed(1))}s${inUse ? ` · <span class="use">in use</span>` : ""}</span></div>`;
+    return `<div class="cmr"><span class="m">${esc(FAM(l.model))}</span>${bar(l.passed, l.runs, label, !inUse)}<span class="n"><b>${esc(passedWords(l.passed, l.runs))}</b> · $${esc(usd(l.costPerPass))} · ${esc(l.medianS.toFixed(1))}s${inUse ? ` · <span class="use">in use</span>` : ""}</span></div>`;
   };
-  return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}</h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Runs passed · USD a pass · median time. ${link(SWEEP_RECORD)}</p></article>`;
+  return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}</h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Passed · USD a pass · time. ${link(SWEEP_RECORD)}</p></article>`;
 }
 
 /** The injection screen as code holds it, in its own fold (13 Nov: the proof tiles carry figures only). */
