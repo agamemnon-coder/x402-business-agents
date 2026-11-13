@@ -18,7 +18,7 @@ import { agentTools } from "../../src/redesign/docs.js";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
-import { browserName, launchBrowser } from "./support/browser.js";
+import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
@@ -74,21 +74,6 @@ const WORST = worstCaseWords();
  */
 const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
 const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
-
-/**
- * A navigation to the local relay that Firefox now and then does not finish (13 Nov, in CI and here, late in the run): a
- * new context's goto to /status timed out, once with no request issued at all and once with its request answered but no
- * load, while the relay answered a fetch in 2 ms, a fresh browser loaded the page at once, and a second goto did too.
- * Tried again once, said in the log; a page that fails twice still fails the check.
- */
-async function gotoStarted(page: Page, url: string): Promise<void> {
-  try {
-    await page.goto(url, { waitUntil: "load", timeout: 15_000 });
-  } catch {
-    console.log(`info  ${url}: the browser did not finish loading it within 15 s; tried again`);
-    await page.goto(url, { waitUntil: "load" });
-  }
-}
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -898,7 +883,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
     // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
     if (relay) {
-      await gotoStarted(page, `${relay.url}/status`);
+      await gotoLoaded(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
@@ -912,7 +897,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
         await broken.unroute("**/health");
         await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
-        await gotoStarted(broken, `${relay.url}/status`);
+        await gotoLoaded(broken, `${relay.url}/status`);
         await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
         const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
         if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
@@ -1281,7 +1266,7 @@ if (relay) {
       const tag = `${w}-${scheme}`;
       page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
       page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
-      await gotoStarted(page, `${relay.url}/status`);
+      await gotoLoaded(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
