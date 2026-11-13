@@ -5,7 +5,7 @@
 // Inline SVG and HTML only, no script: the page's CSP hashes stay as they are. Its CSS is this page's own (VISA_HERO_CSS).
 
 import type { Vic3Purchase, Vic3Record } from "./vic3Run.js";
-import { esc } from "./ui.js";
+import { countOf, esc } from "./ui.js";
 
 export const VISA_FLOW_ID = "visa-flow";
 export const VISA_OUTCOMES_ID = "visa-outcomes";
@@ -112,7 +112,7 @@ export function visaHashHtml(r: Vic3Record): string {
   const eqAwx = !!b.read_back.payment_intent?.equal && inAwx === signed;
   return `<section class="vh-hash card" id="${VISA_HASH_ID}"><h2 class="vh-h">${esc(`The hash the CFO signed for ${b.step}, read back`)}</h2>
 <ol class="vh-hl">${cell("Purser", `signed with Face ID (${b.proposal_id ?? ""})`, signed, null)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airi", "the mandate, before the credential", inAiri, eqAiri)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airwallex", "the PaymentIntent's metadata", inAwx, eqAwx)}</ol>
-<p class="vh-src">${esc(`${[eqAiri, eqAwx].filter(Boolean).length} of 2 read-backs equal to the signed hash (SHA-256 ${signed}).`)}</p></section>`;
+<p class="vh-src">${esc(`${countOf([eqAiri, eqAwx].filter(Boolean).length, 2)} read-backs equal to the signed hash (SHA-256 ${signed}).`)}</p></section>`;
 }
 
 /** The page's own CSS for the hero: site tokens, plus one amber of its own for "not tapped", light and dark. */

@@ -479,7 +479,7 @@ describe("the two live runs of 7 November (v6): each figure its own record's", (
         { ok: true, label: "✓ Paid after Face ID", amount: "EUR 45.00 · P-0002", detail: "the CFO's Face ID in Purser, then one tap in Airi" },
         { ok: false, label: "✕ Changed after Face ID", amount: "EUR 30 → 190", detail: "not what the CFO signed · Airi was never asked" },
       ],
-      checks: "5 of 5 and 7 of 7 checks",
+      checks: "all 5 and all 7 checks",
       label: "Airwallex sandbox · test card · test money",
     });
     const by = (route: string) => airi.purchases.find((p) => p.route === route)!;

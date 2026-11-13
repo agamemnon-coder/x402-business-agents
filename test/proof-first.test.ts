@@ -5,6 +5,7 @@
 // Since the jury of 12 Nov the page opens with "What Purser guarantees", then the partners (one claim each in sight),
 // then the main run's numbers (four tiles, one of them Airwallex's, the stops with their breakdown), then the folds,
 // and the utility links last: the last describe blocks hold that order, the tiles, the folds, the anchors and the words.
+import { countOf } from "../src/redesign/ui.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
@@ -69,8 +70,8 @@ describe("/proof's Airwallex card opens with the hash and the cards, each linked
     const rows = cardControlRows(record);
     const n = rows.filter((r) => r.match).length;
     expect([n, rows.length]).toEqual([3, 3]);
-    expect(leads.airwallex[1]).toMatchObject({ text: `${n} of ${rows.length} cards carry the CFO's policy`, href: `airwallex#${AWX_CONTROLS_ID}` });
-    expect(leads.airwallex[1]!.text).toBe("3 of 3 cards carry the CFO's policy");
+    expect(leads.airwallex[1]).toMatchObject({ text: `${countOf(n, rows.length)} cards carry the CFO's policy`, href: `airwallex#${AWX_CONTROLS_ID}` });
+    expect(leads.airwallex[1]!.text).toBe("All 3 cards carry the CFO's policy");
     expect(leads.airwallex[1]!.links!.map((l) => l.href)).toEqual(rows.map((r) => `airwallex#${awxCardId(r.agent)}`));
     expect(leads.airwallex[1]!.links!.map((l) => l.label)).toEqual(rows.map((r) => `${r.name.replace(/ agent$/, "")} ····${r.last4}`));
   });
@@ -140,7 +141,9 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
   it("each short claim is the matching sentence's fact, in fewer words", () => {
     const awx = sentence("Airwallex"), metal = sentence("Metal"), claude = sentence("Claude");
     expect(awx).toContain("the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment");
-    expect(awx).toContain(`${leads.airwallex[1]!.text.split(" cards")[0]} agent cards carry the CFO's policy`);
+    // The page says "All 3" (no N/N fraction, 13 Nov); the sentence for the submission says the same count as "3 of 3".
+    const head = leads.airwallex[1]!.text.split(" cards")[0]!, all = /^All (\d+)$/.exec(head);
+    expect(awx).toContain(`${all ? `${all[1]} of ${all[1]}` : head} agent cards carry the CFO's policy`);
     expect(metal).toContain(`purchase ${leads.metal[0]!.text}`);
     expect(metal).toContain(`${leads.metal[1]!.text.replace(/ tx$/, " transaction")}`);
     const sp = split(record), rf = reliabilityFix()!;
@@ -170,7 +173,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       const facts = [...fold.slice(0, fold.indexOf("</div>")).matchAll(/<span class="fact"><b>([^<]+)<\/b> ([^<]+)<\/span>/g)];
       expect(facts.length).toBeGreaterThanOrEqual(2);
       expect(facts.length).toBeLessThanOrEqual(3);
-      for (const f of facts) expect({ id, fact: f[0], plain: /^[\d][\d ,.ofx/]*$/.test(f[1]!) && !/[()]|four eyes|rel-\d|eval/i.test(f[2]!) }).toEqual({ id, fact: f[0], plain: true });
+      for (const f of facts) expect({ id, fact: f[0], plain: /^(?:[\d][\d ,.ofx/]*|All \d+|Both)$/.test(f[1]!) && !/[()]|four eyes|rel-\d|eval/i.test(f[2]!) }).toEqual({ id, fact: f[0], plain: true });
       // Then the partner's other claims, in order, each a link; the first claim's own note is kept there.
       const rest = leads[id].slice(1), at = fold.indexOf('<ul class="lead">');
       const list = fold.slice(at, fold.indexOf("</ul>", at));
@@ -309,9 +312,9 @@ describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with 
   it("Airwallex's tile: the cards that carry the CFO's policy as Airwallex's own controls, counted from the card read-back", () => {
     const rows = cardControlRows(record), n = rows.filter((r) => r.match).length;
     expect([n, rows.length]).toEqual([3, 3]);
-    expect(tiles[1]!.inner).toBe(`<span class="v">${n} of ${rows.length}</span><span class="l">cards carry the CFO's policy as Airwallex's own controls</span>`);
+    expect(tiles[1]!.inner).toBe(`<span class="v">${countOf(n, rows.length)}</span><span class="l">cards carry the CFO's policy as Airwallex's own controls</span>`);
     // The same count as the Airwallex card's claim, from the same read-back.
-    expect(leads.airwallex[1]!.text).toBe(`${n} of ${rows.length} cards carry the CFO's policy`);
+    expect(leads.airwallex[1]!.text).toBe(`${countOf(n, rows.length)} cards carry the CFO's policy`);
     expect(buildPages().airwallex).toContain(` id="${AWX_CONTROLS_ID}"`);
   });
 

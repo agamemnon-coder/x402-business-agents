@@ -13,7 +13,7 @@ import { CARD_ACTIVE_DAYS, MCC_WORDS } from "../config/policy.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { cardControls } from "../policy/cards.js";
 import { cardRaiseOf, type RunRecord } from "./run.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 const RUNS = new URL("../../docs/runs/", import.meta.url);
 
@@ -175,7 +175,7 @@ ${badge(h.match, "Match: the same hash", "No match")}
 /** One line for all the cards: how many match the CFO policy on every control, counted from the rows. */
 export function cardsMatchBadge(rows: CardControlRow[]): string {
   const matched = rows.filter((r) => r.match).length;
-  return badge(matched === rows.length, `${matched} of ${rows.length} cards match the CFO policy`, `${rows.length - matched} of ${rows.length} cards differ from the CFO policy`);
+  return badge(matched === rows.length, `${countOf(matched, rows.length)} cards match the CFO policy`, `${rows.length - matched} of ${rows.length} cards differ from the CFO policy`);
 }
 
 /** /airwallex's fold of the cards, side by side with the CFO policy: Proof links here, and the page opens it on arrival. */

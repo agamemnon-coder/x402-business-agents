@@ -4,6 +4,7 @@
 // (who decides, who enforces); one stat row, every figure from a run record; the last buttons. The honesty rules of the
 // jury panel (A1 to A10) still hold: no recorded run called live, simulated and test money said once each outside the
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
+import { countOf } from "../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
@@ -147,7 +148,7 @@ describe("Home, the enterprise pass", () => {
     const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length}, co-signer a test key`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${countOf(owners.threshold, owners.owners.length, true)} passkeys, co-signer a test key`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";

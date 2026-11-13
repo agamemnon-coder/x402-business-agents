@@ -22,7 +22,7 @@ import { runTimes, secs, type RunTimes } from "./runTimes.js";
 import { SUMMARY_CSS, summaryHtml, type SummaryCard } from "./summary.js";
 import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } from "./verifyTerms.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
-import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
+import { countOf, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
 import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
@@ -94,7 +94,9 @@ const checkRate = (checks: Record<string, { ok: boolean }>): RunRate => {
   return { done: all.filter((c) => c.ok).length, of: all.length, what: "checks passed" };
 };
 /** A rate in words. Checks have no pass-rate fraction (judge run, 13 Nov): every check passed, or not every one did. */
-const rateWords = (r: RunRate) => (r.what === "checks passed" ? (r.done === r.of ? "every check passed" : "not every check passed") : `${r.done} of ${r.of} ${r.what}`);
+/** No N/N fraction on a page (13 Nov): a recorded "2,000 of 2,000" reads "all 2,000" (countOf for counts in code). */
+const FULL_COUNT = /\b(\d[\d,]*) of \1\b/g;
+const rateWords = (r: RunRate) => (r.what === "checks passed" ? (r.done === r.of ? "every check passed" : "not every check passed") : `${countOf(r.done, r.of)} ${r.what}`);
 const okOf = (checks: Record<string, { ok: boolean }>) => rateWords(checkRate(checks));
 /** What the main run and its rehearsal simulated: the site's one caveat line, without its "Test money." */
 const SIMULATED_LINE = CAVEAT_LINE.replace(/^Test money\. /, "");
@@ -356,7 +358,7 @@ function extraRuns(): RunRow[] {
       line: `${ran.length} mandate changes run by the account only with both signatures; one payment refused on chain, then paid. Second signer: a virtual test passkey.`,
       title: "The passkey account on chain", rails: "Metal testnet (a passkey account, two owners), CFO passkey, labelled virtual test passkey",
       what: "A passkey account on Metal testnet with two passkey owners and a threshold of 2 bound, raised and revoked an agent's mandate; the account checked both signatures itself (WebAuthn verifier). The second owner is a labelled virtual test passkey.",
-      checks: `${ran.length} of ${ow.proposals.length} proposals executed by the account; the over-cap payment refused on chain, then paid under the raised cap.`, money: "Testnet · test money",
+      checks: `${countOf(ran.length, ow.proposals.length)} proposals executed by the account; the over-cap payment refused on chain, then paid under the raised cap.`, money: "Testnet · test money",
       ids: [{ label: "Passkey account", value: ow.account }, ...ran.map((x, i) => tx(`Change ${i + 1}`, x.tx!)), ...(refused?.tx ? [tx("Refused on chain", refused.tx)] : [])],
       files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-faceid-onchain.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-faceid-onchain.md") }],
     });
@@ -436,7 +438,8 @@ function extraRuns(): RunRow[] {
   for (const m of separateRuns()) {
     const what = m.what.replace(/^\d{1,2} \w+: /, "");
     // Review 12 Nov: no file paths in sight, whole sentences, units said out loud.
-    const plain = what.replace(/\s*\([^)]*\.ts\)/g, "").replace(/ a second\b/g, " payments per second").replace(/\b0 tx per call\b/g, "no on-chain transaction per call");
+    const plain = what.replace(/\s*\([^)]*\.ts\)/g, "").replace(/ a second\b/g, " payments per second").replace(/\b0 tx per call\b/g, "no on-chain transaction per call")
+      .replace(FULL_COUNT, "all $1");
     const first = plain.split("; ")[0]!.replace(/[.,]$/, "");
     const soft = /software passkeys/.test(plain) && !/software passkeys/.test(first) ? " Software passkeys, not a phone." : "";
     const line = `${first[0]!.toUpperCase()}${first.slice(1)}.${soft}`;
@@ -574,7 +577,7 @@ function entry(r: RunRow, o: { newest?: boolean; folded: boolean; signed?: Signe
   const full = r.rate && r.rate.done === r.rate.of;
   const rate = r.rate ? `<span class="rt${full ? " ok" : ""}">${full ? icon("check", 14) : ""}${esc(rateWords(r.rate))}</span>` : "";
   const files = r.files.map((f) => `<a class="f" href="${esc(siteHref(f.href))}" target="_blank" rel="noopener"${linkWords(f.label) === f.label ? "" : ` aria-label="${esc(f.label)}"`}>${esc(linkWords(f.label))} ↗</a>`).join(" ");
-  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what)}</p>`}<p><b>Checks:</b> ${esc(r.checks)}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
+  const fold = `<div class="fold">${r.ids.length ? `<div class="ids">${r.ids.map(idChip).join("")}</div>` : ""}${said ? "" : `<p>${esc(r.what.replace(FULL_COUNT, "all $1"))}</p>`}<p><b>Checks:</b> ${esc(r.checks.replace(FULL_COUNT, "all $1"))}</p>${r.stats?.length ? `<p class="q">${r.stats.map((x) => `${esc(x.v)} ${esc(x.l)}`).join(" · ")}</p>` : ""}<p class="q">Rails: ${esc(r.rails)}. Money: ${esc(r.money)}.</p>${verifyList(o.signed)}</div>`;
   const label = `Ids, what ran and the checks${more ? `: ${pl(more, "more id")}` : ""}`;
   return `<li class="${cls}" id="${esc(r.key)}"><article${o.folded ? ' class="fd"' : ""} aria-label="${esc(nameOf(r))}">
 <p class="meta"><time datetime="${esc(r.iso)}" title="${esc(r.date)}">${esc(r.date.replace(/ \d{4}$/, ""))}</time><span class="kd ${kind}">${esc(KIND_LABEL[kind])}</span>${o.newest ? '<span class="mk new">Newest</span>' : ""}${r.product ? `<span class="mk prod">${esc(PRODUCT_MARK)}</span>` : ""}</p>

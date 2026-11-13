@@ -128,7 +128,7 @@ describe("the payables agents in the cloud engine (task A6)", () => {
     // The /try "At work" panel: the agent's own step, its reason, then what Purser's code enforced.
     const line = eventLine(check!);
     expect(line.who).toBe("Checker agent · Claude Haiku 5.5");
-    expect(line.text).toMatch(/^Decided: pay, because Bergtex is on file.*Purser's code enforced: ask cfo; the agent may pay no invoice alone/);
+    expect(line.text).toMatch(/^Decided: pay, because Bergtex is on file.*Purser's code enforced: ask the CFO; the agent may pay no invoice alone/);
     const [coded] = decided(db, "ap.coded");
     expect(eventLine(coded!).who).toBe("Coder agent · Claude Haiku 5.5");
     expect(coded!.fields).toMatchObject({ source: "claude", model: "claude-haiku-5-5", account: "6200" });
@@ -149,7 +149,7 @@ describe("the payables agents in the cloud engine (task A6)", () => {
       expect(payer!.fields).toMatchObject({ source: "claude", model: "claude-haiku-5-5", outcome: "ask_cfo" });
       expect(payer!.fields.request_id).toMatch(/^req_a6_\d+$/);
       expect(eventLine(payer!)).toMatchObject({ who: "Payer agent · Claude Haiku 5.5" });
-      expect(eventLine(payer!).text).toMatch(/^Proposed: pay on \d{4}-\d{2}-\d{2} via bank swift from [A-Z]{3}, because .*Purser's code enforced: ask cfo/);
+      expect(eventLine(payer!).text).toMatch(/^Proposed: pay on \d{1,2} [A-Z][a-z]{2} \d{4} by a SWIFT bank transfer from [A-Z]{3}, because .*Purser's code enforced: ask the CFO/);
       expect(typeof payer!.fields.enforced).toBe("string");
       expect(log.reserved).toBe(2);
       // Filed for the CFO's Face ID: code let the agent's proposal through on the engine's own plan.

@@ -55,7 +55,7 @@ describe("/visa's hero, from the vic-4 record", () => {
     expect(h).toContain(b.terms_sha256!);
     expect(text(h)).toContain(`${b.terms_sha256!.slice(0, 8)}…${b.terms_sha256!.slice(-4)}`);
     expect((h.match(/vh-tick/g) ?? []).length).toBe(2);
-    expect(text(h)).toContain("2 of 2 read-backs equal");
+    expect(text(h)).toContain("Both read-backs equal");
     const flipped = JSON.parse(JSON.stringify(rec)) as Vic3Record;
     flipped.purchases.find((p) => p.step === b.step)!.read_back.payment_intent!.equal = false;
     expect(text(visaHashHtml(flipped))).toContain("not equal");
