@@ -5,6 +5,8 @@
 //   GET  /.well-known/oauth-protected-resource      (RFC 9728) /mcp is protected by this cloud's own authorization server
 //   GET  /.well-known/oauth-authorization-server    (RFC 8414) where to register, authorize and get a token
 //   POST /oauth/register                            (RFC 7591) a public client: its redirect addresses, signed into its id
+//   (or no registration at all: a client whose id is the https address of its own metadata document, as MCP's Client ID
+//   Metadata Documents ask; Purser fetches that document, checks it names itself, and takes its redirect addresses)
 //   GET  /oauth/authorize                           the consent page: paste a connector token, or open the demo company
 //   POST /oauth/authorize                           checks the token, then sends the browser back with a one-time code
 //   POST /oauth/token                               the code and its PKCE verifier (S256) for an access token
@@ -27,17 +29,23 @@ const dec = new TextDecoder();
 
 export function resourceOf(origin: string): string { return `${origin}/mcp`; }
 
+const GUIDE = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md";
+
 export function protectedResource(origin: string): Record<string, unknown> {
-  return { resource: resourceOf(origin), authorization_servers: [origin], bearer_methods_supported: ["header"], scopes_supported: ["purser"], resource_name: "Purser" };
+  return { resource: resourceOf(origin), authorization_servers: [origin], bearer_methods_supported: ["header"], scopes_supported: ["purser"], resource_name: "Purser", resource_documentation: GUIDE };
 }
 
 export function authorizationServer(origin: string): Record<string, unknown> {
   return {
     issuer: origin, authorization_endpoint: `${origin}/oauth/authorize`, token_endpoint: `${origin}/oauth/token`, registration_endpoint: `${origin}/oauth/register`,
     response_types_supported: ["code"], grant_types_supported: ["authorization_code"], code_challenge_methods_supported: ["S256"],
-    token_endpoint_auth_methods_supported: ["none"], scopes_supported: ["purser"],
+    token_endpoint_auth_methods_supported: ["none"], scopes_supported: ["purser"], response_modes_supported: ["query"],
+    // RFC 9207: the authorization response carries iss (backTo below), so a client can tell this server's answer apart.
+    authorization_response_iss_parameter_supported: true,
+    // MCP 2025-11-25 and later: a client may use the https address of its metadata document as its id, unregistered.
+    client_id_metadata_document_supported: true,
     // Not in RFC 8414's list; a client that shows the server's mark can read it here (the MCP server carries it as icons).
-    logo_uri: `${origin}/icon.png`, service_documentation: "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
+    logo_uri: `${origin}/icon.png`, service_documentation: GUIDE,
   };
 }
 
@@ -55,7 +63,55 @@ function goodRedirect(u: string): boolean {
   return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]");
 }
 
-interface Client { n: string; r: string[] }
+/** n: the client's name; r: its redirect addresses; h: the host Purser fetched its metadata document from (CIMD only). */
+interface Client { n: string; r: string[]; h?: string }
+
+/** How Purser fetches a client's metadata document (the Worker's fetch; tests pass a fake). Absent: CIMD is refused. */
+export type FetchDoc = (url: string, init: RequestInit) => Promise<Response>;
+const CIMD_MAX_BYTES = 10_000;
+const cimdCache = new Map<string, { client: Client; until: number }>();
+
+/** A client id that is a metadata document's address: https, a host name (not an address), a path, nothing else. */
+export function isCimdId(id: string): boolean {
+  if (!id.startsWith("https://") || id.length > 500) return false;
+  try {
+    const u = new URL(id);
+    return u.protocol === "https:" && u.pathname.length > 1 && !u.hash && !u.username && !u.password && !u.port && /[a-z]/i.test(u.hostname.split(".").at(-1) ?? "") && u.hostname.includes(".") && u.hostname !== "localhost";
+  } catch { return false; }
+}
+
+/**
+ * Client ID Metadata Documents (MCP authorization, client registration): fetch the document at the client's id, once per
+ * five minutes, without following a redirect, at most 10 kB, and take it only when it names that exact address as its
+ * client_id and lists redirect addresses Purser accepts. Only public clients (token_endpoint_auth_method none).
+ */
+async function cimdClient(id: string, fetchDoc: FetchDoc | undefined, now: Date): Promise<Client> {
+  const hit = cimdCache.get(id);
+  if (hit && hit.until > now.getTime()) return hit.client;
+  if (!fetchDoc) throw new OAuthRefused(401, "invalid_client", "this server cannot fetch a client's metadata document; register at /oauth/register");
+  let res: Response;
+  try {
+    const signal = typeof AbortSignal !== "undefined" && "timeout" in AbortSignal ? AbortSignal.timeout(5000) : undefined;
+    res = await fetchDoc(id, { method: "GET", headers: { accept: "application/json" }, redirect: "manual", ...(signal ? { signal } : {}) });
+  } catch {
+    throw new OAuthRefused(401, "invalid_client", "the client's metadata document could not be fetched");
+  }
+  if (res.status !== 200) throw new OAuthRefused(401, "invalid_client", `the client's metadata document answered ${res.status} (a redirect is not followed)`);
+  const raw = new Uint8Array(await res.arrayBuffer());
+  if (raw.length > CIMD_MAX_BYTES) throw new OAuthRefused(401, "invalid_client", "the client's metadata document is larger than 10 kB");
+  let doc: { client_id?: unknown; client_name?: unknown; redirect_uris?: unknown; token_endpoint_auth_method?: unknown };
+  try { doc = JSON.parse(dec.decode(raw)) as typeof doc; } catch { throw new OAuthRefused(401, "invalid_client", "the client's metadata document is not JSON"); }
+  if (!doc || typeof doc !== "object" || doc.client_id !== id) throw new OAuthRefused(401, "invalid_client", "the client's metadata document does not name its own address as client_id");
+  const uris = Array.isArray(doc.redirect_uris) ? doc.redirect_uris : [];
+  if (!uris.length || uris.length > 10 || !uris.every((u) => typeof u === "string" && goodRedirect(u))) throw new OAuthRefused(401, "invalid_client", "the client's metadata document needs 1 to 10 redirect_uris (https, or http on localhost)");
+  if (doc.token_endpoint_auth_method !== undefined && doc.token_endpoint_auth_method !== "none") throw new OAuthRefused(401, "invalid_client", "only public clients (token_endpoint_auth_method none) can sign in here");
+  const name = typeof doc.client_name === "string" ? [...doc.client_name].filter((ch) => ch >= " " && ch !== "\u007f").join("").slice(0, 60) : "";
+  const client: Client = { n: name || new URL(id).hostname, r: uris as string[], h: new URL(id).hostname };
+  const age = /max-age=(\d{1,7})/.exec(res.headers.get("cache-control") ?? "")?.[1];
+  cimdCache.set(id, { client, until: now.getTime() + Math.min(Number(age ?? 300), 3600) * 1000 });
+  if (cimdCache.size > 500) cimdCache.delete(cimdCache.keys().next().value!);
+  return client;
+}
 
 /** RFC 7591: the client's name and redirect addresses, signed into its id. Nothing is stored. */
 export async function registerClient(secret: string, body: unknown): Promise<Record<string, unknown>> {
@@ -69,7 +125,8 @@ export async function registerClient(secret: string, body: unknown): Promise<Rec
   return { client_id, client_name: client.n, redirect_uris: client.r, grant_types: ["authorization_code"], response_types: ["code"], token_endpoint_auth_method: "none" };
 }
 
-export async function clientOf(secret: string, clientId: string): Promise<Client> {
+export async function clientOf(secret: string, clientId: string, fetchDoc?: FetchDoc, now: Date = new Date()): Promise<Client> {
+  if (isCimdId(clientId)) return cimdClient(clientId, fetchDoc, now);
   const [tag, body, sig] = clientId.split(".");
   if (tag !== "pcc" || !body || !sig || clientId.length > 4000 || !(await hmacValid(`client:${secret}`, body, sig))) throw new OAuthRefused(401, "invalid_client", "unknown client: register first");
   try {
@@ -84,8 +141,8 @@ export async function clientOf(secret: string, clientId: string): Promise<Client
 export interface AuthorizeAsk { client_id: string; redirect_uri: string; state: string; code_challenge: string; resource: string }
 
 /** What an authorize request asks, checked: a registered client, one of its redirect addresses, PKCE S256, this resource. */
-export async function authorizeAsk(secret: string, origin: string, q: URLSearchParams): Promise<{ ask: AuthorizeAsk; client: Client }> {
-  const client = await clientOf(secret, q.get("client_id") ?? "");
+export async function authorizeAsk(secret: string, origin: string, q: URLSearchParams, fetchDoc?: FetchDoc, now?: Date): Promise<{ ask: AuthorizeAsk; client: Client }> {
+  const client = await clientOf(secret, q.get("client_id") ?? "", fetchDoc, now);
   const redirect = q.get("redirect_uri") ?? (client.r.length === 1 ? client.r[0]! : "");
   if (!client.r.includes(redirect)) throw new OAuthRefused(400, "invalid_request", "redirect_uri is not one this client registered");
   if (q.get("response_type") !== "code") throw new OAuthRefused(400, "unsupported_response_type", "response_type must be code");
@@ -161,7 +218,7 @@ button.plain{background:none;border:0;color:var(--muted);font-weight:550;min-hei
 .small{font-size:13px;color:var(--muted);margin:16px 0 0;text-align:center}
 </style></head><body><main><div class="brand"><img src="/favicon.svg" alt="" width="32" height="32">Purser</div><div class="card">
 <h1>Connect your AI to Purser</h1>
-<p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. Purser cannot check a client's name.</p>
+<p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. ${client.h ? `Purser fetched its details from <span class="who">${esc(client.h)}</span>.` : "Purser cannot check a client's name."}</p>
 <ul class="can"><li>${check}<span>It reads your books: invoices, money movements, reports and what your agents decided.</span></li>
 <li>${check}<span>With a token that may propose, it can file an invoice's payment for approval. It can never approve or pay: each payment needs the CFO's Face ID.</span></li>
 <li>${check}<span>Revoke the token in Purser Cloud and the connection ends at once.</span></li></ul>
@@ -190,8 +247,8 @@ ${error ? `<div class="err" role="alert">${esc(error)}</div>` : ""}
  * The consent page's answer. connect: the pasted token must be a live Claude connector token (not any other key);
  * demo: the demo company's public read-only token. Either way the browser goes back with a one-time code.
  */
-export async function consent(sql: Sql, secret: string, origin: string, form: URLSearchParams, now: Date): Promise<{ redirect: string } | { page: Response }> {
-  const { ask, client } = await authorizeAsk(secret, origin, new URLSearchParams({ ...Object.fromEntries(form), response_type: "code", code_challenge_method: "S256" }));
+export async function consent(sql: Sql, secret: string, origin: string, form: URLSearchParams, now: Date, fetchDoc?: FetchDoc): Promise<{ redirect: string } | { page: Response }> {
+  const { ask, client } = await authorizeAsk(secret, origin, new URLSearchParams({ ...Object.fromEntries(form), response_type: "code", code_challenge_method: "S256" }), fetchDoc, now);
   // The form's own token, spent here whatever the answer: without it nothing happens, not even a cancel.
   if (!(await spendConsentToken(sql, secret, ask, form.get("consent") ?? "", now))) {
     return { page: await consentPage(secret, ask, client, origin, now, "This page expired or was already used. Choose again below.", 403) };
@@ -221,10 +278,10 @@ export async function consent(sql: Sql, secret: string, origin: string, form: UR
 }
 
 /** POST /oauth/token: the code, once, from the client it was issued to, with the verifier of its PKCE challenge. */
-export async function exchange(sql: Sql, secret: string, origin: string, form: URLSearchParams, now: Date): Promise<Record<string, unknown>> {
+export async function exchange(sql: Sql, secret: string, origin: string, form: URLSearchParams, now: Date, fetchDoc?: FetchDoc): Promise<Record<string, unknown>> {
   if (form.get("grant_type") !== "authorization_code") throw new OAuthRefused(400, "unsupported_grant_type", "grant_type must be authorization_code");
   const code = form.get("code") ?? "", verifier = form.get("code_verifier") ?? "", clientId = form.get("client_id") ?? "";
-  await clientOf(secret, clientId);
+  await clientOf(secret, clientId, fetchDoc, now);
   const resource = form.get("resource");
   if (resource && resource !== resourceOf(origin) && resource !== origin) throw new OAuthRefused(400, "invalid_target", `resource must be ${resourceOf(origin)}`);
   if (!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) throw new OAuthRefused(400, "invalid_request", "code_verifier: 43 to 128 characters");

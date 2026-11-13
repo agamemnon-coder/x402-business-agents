@@ -4,7 +4,8 @@
 // initialize still serves older clients; every tool has a title, icons, annotations and an outputSchema its results
 // conform to; results link the resources they name; the books, invoices, payments and the policy are resources;
 // lists page with cursors; errors say what to do; and still nothing approves, pays, changes a limit or writes.
-import Ajv from "ajv";
+import { createHash, randomBytes } from "node:crypto";
+import { Ajv } from "ajv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEMO_CONNECTOR_TOKEN } from "../cloud/src/auth.js";
 import { MODERN_VERSIONS, PAGE_SIZE, PROTOCOL_VERSIONS } from "../cloud/src/claude/mcp.js";
@@ -93,7 +94,7 @@ describe("protocol 2026-07-28 (stateless, per-request _meta)", () => {
     for (const v of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]) {
       const r = await c.req("POST", "/mcp", { key: DEMO_CONNECTOR_TOKEN, body: { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: v, capabilities: {}, clientInfo: { name: "t", version: "1" } } }, headers: { origin: "null-omit" } });
       expect(r.json.result).toMatchObject({ protocolVersion: v, capabilities: { resources: {} }, serverInfo: { name: "purser", version: expect.any(String) } });
-      expect(r.json.result.resultType).toBeUndefined();
+      expect((r.json.result as Record<string, unknown>).resultType).toBeUndefined();
     }
     const b = await c.req("POST", "/mcp", { key: DEMO_CONNECTOR_TOKEN, body: [{ jsonrpc: "2.0", id: 1, method: "ping" }, { jsonrpc: "2.0", id: 2, method: "tools/list" }], headers: { origin: "null-omit" } });
     expect((b.json as unknown as unknown[]).length).toBe(2);
@@ -295,5 +296,76 @@ describe("pagination", () => {
       Object.assign(PAGE_SIZE, was);
     }
     for (const cursor of ["nope", btoa("o:99999"), 42]) expect((await modern("resources/list", { cursor })).json.error).toMatchObject({ code: -32602, message: expect.stringMatching(/invalid cursor/) });
+  });
+});
+
+describe("OAuth: complete metadata, and Client ID Metadata Documents (ChatGPT, Claude, VS Code prefer them)", () => {
+  const verifier = randomBytes(32).toString("base64url");
+  const challenge = createHash("sha256").update(verifier).digest("base64url");
+  const CLIENT = "https://client.example/oauth/client.json", REDIRECT = "https://client.example/callback";
+  const doc = (o: Record<string, unknown> = {}) => ({ client_id: CLIENT, client_name: "Example AI", redirect_uris: [REDIRECT], grant_types: ["authorization_code"], response_types: ["code"], token_endpoint_auth_method: "none", ...o });
+  let served: { status: number; body: unknown; headers?: Record<string, string> } = { status: 200, body: doc() };
+  const fetched: string[] = [];
+  const install = () => {
+    c.env.outbound = async (url: string, init: RequestInit) => {
+      fetched.push(url);
+      expect(init.redirect).toBe("manual");
+      return new Response(typeof served.body === "string" ? served.body : JSON.stringify(served.body), { status: served.status, headers: { "content-type": "application/json", ...(served.headers ?? {}) } });
+    };
+  };
+  const authorize = (o: Record<string, string> = {}) => c.fetch(`${ORIGIN}/oauth/authorize?${new URLSearchParams({ response_type: "code", code_challenge_method: "S256", client_id: CLIENT, redirect_uri: REDIRECT, state: "s", code_challenge: challenge, resource: `${ORIGIN}/mcp`, ...o })}`);
+
+  it("publishes complete protected-resource and authorization-server metadata, and a scoped challenge", async () => {
+    expect((await c.req("GET", "/.well-known/oauth-protected-resource")).json).toEqual({ resource: `${ORIGIN}/mcp`, authorization_servers: [ORIGIN], bearer_methods_supported: ["header"], scopes_supported: ["purser"], resource_name: "Purser", resource_documentation: expect.stringMatching(/^https:\/\//) });
+    expect((await c.req("GET", "/.well-known/oauth-protected-resource/mcp")).json.resource).toBe(`${ORIGIN}/mcp`);
+    const as = (await c.req("GET", "/.well-known/oauth-authorization-server")).json;
+    expect(as).toMatchObject({ issuer: ORIGIN, authorization_endpoint: `${ORIGIN}/oauth/authorize`, token_endpoint: `${ORIGIN}/oauth/token`, registration_endpoint: `${ORIGIN}/oauth/register`,
+      response_types_supported: ["code"], grant_types_supported: ["authorization_code"], code_challenge_methods_supported: ["S256"], token_endpoint_auth_methods_supported: ["none"],
+      authorization_response_iss_parameter_supported: true, client_id_metadata_document_supported: true });
+    const r = await c.req("POST", "/mcp", { key: null, body: { jsonrpc: "2.0", id: 1, method: "tools/list" }, headers: { origin: "null-omit" } });
+    expect(r.res.headers.get("www-authenticate")).toBe(`Bearer resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource", scope="purser"`);
+  });
+
+  it("signs in a client by its metadata document's address, with no registration, and names the host it checked", async () => {
+    install();
+    const page = await authorize();
+    const html = await page.text();
+    expect(page.status).toBe(200);
+    expect(html).toMatch(/Example AI<\/span> asks to use your company's Purser\. Purser fetched its details from <span class="who">client\.example<\/span>/);
+    expect(fetched).toEqual([CLIENT]);
+    const consentTok = /name="consent" value="([^"]+)"/.exec(html)![1]!;
+    const ok = await c.fetch(`${ORIGIN}/oauth/authorize`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: CLIENT, redirect_uri: REDIRECT, state: "s", code_challenge: challenge, resource: `${ORIGIN}/mcp`, consent: consentTok, act: "demo" }).toString() });
+    expect(ok.status).toBe(303);
+    const back = new URL(ok.headers.get("location")!);
+    expect([`${back.origin}${back.pathname}`, back.searchParams.get("iss")]).toEqual([REDIRECT, ORIGIN]);
+    const tok = await c.fetch(`${ORIGIN}/oauth/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "authorization_code", code: back.searchParams.get("code")!, code_verifier: verifier, client_id: CLIENT, redirect_uri: REDIRECT, resource: `${ORIGIN}/mcp` }).toString() });
+    expect(((await tok.json()) as { access_token: string }).access_token).toBe(DEMO_CONNECTOR_TOKEN);
+    // The document was fetched once and kept for five minutes.
+    expect(fetched).toEqual([CLIENT]);
+  });
+
+  it("refuses a document that does not name itself, a redirect, a confidential client, an address it does not list, and an address that is not a document's", async () => {
+    install();
+    let n = 0;
+    const fresh = () => `https://client${++n}.example/meta.json`;
+    for (const [body, status, why] of [
+      [doc({ client_id: "https://other.example/meta.json" }), 200, /does not name its own address/],
+      [doc(), 302, /answered 302 \(a redirect is not followed\)/],
+      [doc({ token_endpoint_auth_method: "private_key_jwt" }), 200, /only public clients/],
+      [doc({ redirect_uris: ["http://evil.example/cb"] }), 200, /redirect_uris/],
+      ["not json", 200, /not JSON/],
+    ] as const) {
+      const id = fresh();
+      served = { status, body: typeof body === "string" ? body : { ...body, client_id: body.client_id === CLIENT ? id : body.client_id } };
+      const r = await authorize({ client_id: id });
+      expect({ status: r.status, text: await r.text() }).toEqual({ status: 400, text: expect.stringMatching(why) });
+    }
+    served = { status: 200, body: { ...doc(), client_id: "https://client99.example/meta.json" } };
+    const unlisted = await authorize({ client_id: "https://client99.example/meta.json", redirect_uri: "https://client99.example/elsewhere" });
+    expect(unlisted.status).toBe(400);
+    // Not a document's address: an IP literal, a bare host, plain http. These are treated as (unknown) registered ids.
+    for (const id of ["https://203.0.113.9/meta.json", "https://client.example/", "http://client.example/meta.json"]) expect((await authorize({ client_id: id })).status).toBe(400);
+    expect(fetched.some((u) => /203\.0\.113|http:\/\//.test(u))).toBe(false);
+    delete c.env.outbound;
   });
 });

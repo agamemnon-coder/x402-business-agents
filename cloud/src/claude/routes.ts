@@ -16,10 +16,10 @@ import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
 import { mcpAnswer } from "./mcp.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../brand.gen.js";
-import { authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
+import { type FetchDoc, authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
 
 export interface ClaudeCtx {
-  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi };
+  env: { sql: Sql; blobs: Blobs; sessionSecret: string; origin: string; engine?: (tenantId: string) => EngineApi; outbound?: FetchDoc };
   req: Request;
   url: URL;
   now: Date;
@@ -124,7 +124,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "GET", path: "/oauth/authorize", summary: "The consent page: connect Claude with a connector token made in Purser Cloud, or open the demo company (read only). PKCE S256 required.", need: "public", run: async (c) => {
       try {
-        const { ask, client } = await authorizeAsk(c.env.sessionSecret, c.env.origin, c.url.searchParams);
+        const { ask, client } = await authorizeAsk(c.env.sessionSecret, c.env.origin, c.url.searchParams, c.env.outbound, c.now);
         return await consentPage(c.env.sessionSecret, ask, client, c.env.origin, c.now);
       } catch (e) {
         if (e instanceof OAuthRefused) return err(400, `${e.code}: ${e.message}`);
@@ -133,7 +133,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "POST", path: "/oauth/authorize", summary: "The consent page's answer: the form's own token (signed, bound to this request, ten minutes, good once), then a live connector token (or the demo), then back to the client with a one-time code (five minutes).", need: "public", run: async (c) => {
       try {
-        const out = await consent(c.env.sql, c.env.sessionSecret, c.env.origin, new URLSearchParams(await kit.text(c, 20_000)), c.now);
+        const out = await consent(c.env.sql, c.env.sessionSecret, c.env.origin, new URLSearchParams(await kit.text(c, 20_000)), c.now, c.env.outbound);
         return "page" in out ? out.page : new Response(null, { status: 303, headers: { location: out.redirect, "cache-control": "no-store", "referrer-policy": "no-referrer" } });
       } catch (e) {
         if (e instanceof OAuthRefused) return err(400, `${e.code}: ${e.message}`);
@@ -142,7 +142,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
     } },
     { method: "POST", path: "/oauth/token", summary: "A code and its PKCE verifier for an access token (authorization_code, public client). The token names the connector token it was issued for, never its secret; revoking that ends it.", need: "public", run: async (c) => {
       try {
-        return json(200, await exchange(c.env.sql, c.env.sessionSecret, c.env.origin, await formOf(kit, c), c.now));
+        return json(200, await exchange(c.env.sql, c.env.sessionSecret, c.env.origin, await formOf(kit, c), c.now, c.env.outbound));
       } catch (e) {
         if (e instanceof OAuthRefused) return oauthError(e);
         throw e;
