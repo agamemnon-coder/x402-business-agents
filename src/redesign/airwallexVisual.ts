@@ -56,18 +56,27 @@ export function timelineSvg(inUse: ProductTile[], flagged: ProductTile[], layout
   const day = (iso: string) => Date.parse(`${iso.slice(0, 10)}T12:00:00Z`);
   const t0 = Math.min(...rows.map((r) => day(r.t.iso))), t1 = Math.max(...rows.map((r) => day(r.t.iso)));
   // Drawn at the size it shows: wide on a laptop (names left of the track), narrow on a phone (each name above its
-  // track, the middle days by their number), so its text stays 12.5 to 14 px and nothing is cut.
+  // track, the middle days by their number), so its text stays 12.5 to 14 px and nothing is cut. The dots sit inside a
+  // padded plot (PAD from the track's ends, more on the right for the last day's label), so none touches an edge; every
+  // dot and its day's label sit on that day's gridline, the same x.
   const wide = layout === "wide";
-  const W = wide ? 860 : 340, L = wide ? 200 : 14, R = wide ? 24 : 20, TOP = wide ? 8 : 4, ROW = wide ? 30 : 38, H = TOP + rows.length * ROW + 34;
-  const x = (iso: string) => t1 === t0 ? L : Math.round(L + ((day(iso) - t0) / (t1 - t0)) * (W - L - R));
+  const W = wide ? 860 : 340, L = wide ? 200 : 14, R = wide ? 8 : 4, TOP = wide ? 8 : 4, ROW = wide ? 30 : 38, H = TOP + rows.length * ROW + 34;
+  const PAD_L = wide ? 16 : 20, PAD_R = wide ? 28 : 24;
+  const x0 = L + PAD_L, x1 = W - R - PAD_R;
+  const x = (iso: string) => t1 === t0 ? x0 : Math.round(x0 + ((day(iso) - t0) / (t1 - t0)) * (x1 - x0));
   const ticks = [...new Set(rows.map((r) => r.t.iso.slice(0, 10)))].sort();
   const grid = ticks.map((d) => `<line class="g" x1="${x(d)}" y1="${TOP}" x2="${x(d)}" y2="${TOP + rows.length * ROW}"/>`).join("");
   const tickText = (d: string, i: number) => wide || i === 0 || i === ticks.length - 1 ? dayShort(`${d}T12:00:00Z`) : String(Number(d.slice(8, 10)));
-  const labels = ticks.map((d, i) => `<text class="ax" x="${x(d)}" y="${TOP + rows.length * ROW + 22}" text-anchor="${i === 0 ? "start" : i === ticks.length - 1 ? "end" : "middle"}">${esc(tickText(d, i))}</text>`).join("");
+  const labels = ticks.map((d, i) => `<text class="ax" x="${x(d)}" y="${TOP + rows.length * ROW + 22}" text-anchor="middle">${esc(tickText(d, i))}</text>`).join("");
+  // One dot size: both reach DOT from their centre, a filled dot, or a ring whose stroke ends at the same radius.
+  // The wide drawing shows at about 1.09x (860 wide in a ~940 px card), the narrow one at 0.86 to 0.95x (340 wide on a
+  // 360 to 390 px phone): radii chosen so a dot is about 12 px across on screen in both, the size of the legend swatch.
+  const DOT = wide ? 5.5 : 6.5, RING = 2.5;
   const marks = rows.map((r, i) => {
     const y = TOP + i * ROW + (wide ? ROW / 2 : ROW - 10);
     const name = wide ? `<text class="rl" x="${L - 12}" y="${y + 5}" text-anchor="end">${esc(r.t.name)}</text>` : `<text class="rl n" x="${L}" y="${y - 10}">${esc(r.t.name)}</text>`;
-    return `<g><title>${esc(`${r.t.name}: ran live ${dayShort(r.t.iso)}${r.on ? ", in use" : ", not yet switched on"}`)}</title>${name}<line class="rr" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/><circle class="${r.on ? "on" : "off"}" cx="${x(r.t.iso)}" cy="${y}" r="${wide ? 7 : 6}"/></g>`;
+    const dot = r.on ? `<circle class="on" cx="${x(r.t.iso)}" cy="${y}" r="${DOT}"/>` : `<circle class="off" cx="${x(r.t.iso)}" cy="${y}" r="${DOT - RING / 2}" stroke-width="${RING}"/>`;
+    return `<g><title>${esc(`${r.t.name}: ran live ${dayShort(r.t.iso)}${r.on ? ", in use" : ", not yet switched on"}`)}</title>${name}<line class="rr" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/>${dot}</g>`;
   }).join("");
   const id = `awtl-${layout}`;
   return `<svg class="awtl ${layout}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="${id}"><title id="${id}">${esc(`When each Airwallex product ran live, ${dayShort(new Date(t0).toISOString())} to ${dayShort(new Date(t1).toISOString())}`)}</title>${grid}${marks}${labels}</svg>`;
@@ -111,10 +120,11 @@ export function meterHtml(m: Meter): string {
   return `<div class="awm2"><svg viewBox="0 0 ${W} ${H}" aria-hidden="true"><rect class="bg" x="0" y="0" width="${W}" height="${H}" rx="5"/><rect class="${m.tone}" x="0" y="0" width="${Math.max(w, 0)}" height="${H}" rx="5"/></svg><p><b>${m.done} of ${m.of}</b> ${esc(m.words)}</p></div>`;
 }
 
-/** The two meters, from the flagged tiles' values ("3 of 3", "3 of 4"), which the tiles read from their records. */
-export function metersHtml(flagged: ProductTile[]): string {
+/** The two meters, from the tiles' values ("3 of 3", "3 of 4"), which the tiles read from their records; in use or not
+ *  yet switched on alike, so a product that is switched on keeps its meter. */
+export function metersHtml(tiles: ProductTile[]): string {
   const of = (t: ProductTile | undefined) => { const m = /^(\d+) of (\d+)$/.exec(t?.value ?? ""); return m ? { done: Number(m[1]), of: Number(m[2]) } : null; };
-  const ledger = of(flagged.find((t) => t.key === "ledger")), payee = of(flagged.find((t) => t.key === "payee-check"));
+  const ledger = of(tiles.find((t) => t.key === "ledger")), payee = of(tiles.find((t) => t.key === "payee-check"));
   const out = [
     ...(ledger ? [meterHtml({ ...ledger, words: "movements agree with Airwallex's own ledger, to the cent", tone: "ok" })] : []),
     ...(payee ? [meterHtml({ ...payee, words: "payee name checks stopped before the CFO is asked", tone: "acc" })] : []),
@@ -125,7 +135,7 @@ export function metersHtml(flagged: ProductTile[]): string {
 /** The drawings in one block, under the heading; each names its record (data-rec). */
 export function visualsHtml(inUse: ProductTile[], flagged: ProductTile[]): string {
   const files = (keys: string[]) => [...new Set([...inUse, ...flagged].filter((t) => keys.includes(t.key)).flatMap((t) => t.files))].join(" ");
-  const tl = timelineSvg(inUse, flagged), pay = paymentChart(), meters = metersHtml(flagged);
+  const tl = timelineSvg(inUse, flagged), pay = paymentChart(), meters = metersHtml([...inUse, ...flagged]);
   return `${pathHtml(inUse, flagged)}
 <div class="awviz">
 ${tl ? `<article class="awv card wide" data-rec="${esc(files([...inUse, ...flagged].map((t) => t.key)))}"><h2>When each product ran live</h2>${tl}${timelineSvg(inUse, flagged, "narrow")}<ul class="awkey"><li><span class="sw on" aria-hidden="true"></span>In use</li><li><span class="sw off" aria-hidden="true"></span>Built, not yet switched on</li></ul></article>` : ""}
@@ -142,10 +152,10 @@ export const VISUAL_CSS = `
 .awpath li a { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 0; color: var(--text); text-decoration: none; border-radius: 10px; }
 .awpath li a:hover b { color: var(--awx); } .awpath li a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .awpath .pi { position: relative; z-index: 1; flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--awx-soft); color: var(--awx); }
-.awpath .pt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; min-width: 0; }
+.awpath .pt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
 .awpath b { font-size: 15px; font-weight: 650; line-height: 1.25; }
 .awpath .ps { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--muted); white-space: nowrap; }
-.awpath .pn { font-size: 13px; color: var(--muted); font-style: italic; }
+.awpath .pn { font-size: 13px; color: var(--muted); font-style: italic; padding-left: 14px; }
 .awpath .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
 .awpath li.off .dot { background: none; box-shadow: inset 0 0 0 2px var(--ok); }
 @media (min-width: 900px) {
@@ -153,7 +163,9 @@ export const VISUAL_CSS = `
   .awpath li:not(:last-child)::after { left: calc(50% + 24px); right: calc(-50% + 24px); top: 23px; bottom: auto; width: auto; height: 2px; }
   .awpath li a { flex-direction: column; text-align: center; gap: 8px; padding: 4px 4px 8px; }
   .awpath .pi { width: 44px; height: 44px; border-radius: 12px; }
-  .awpath .pt { flex-direction: column; align-items: center; gap: 4px; } .awpath b { font-size: 14px; } }
+  .awpath .pt { align-items: center; gap: 4px; } .awpath .pn { padding-left: 0; }
+  /* Every name gets two lines, its text at the bottom, so the status dots and captions of all stops share one row. */
+  .awpath b { font-size: 14px; min-height: 2.5em; display: flex; align-items: flex-end; justify-content: center; } }
 .awviz { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin: 14px 0 20px; }
 @media (min-width: 900px) { .awviz { grid-template-columns: repeat(2, minmax(0, 1fr)); } .awviz .wide { grid-column: 1 / -1; } }
 .awv { padding: 16px 18px; min-width: 0; } .awv h2 { font-size: 15px; font-weight: 650; margin: 0 0 12px; }
@@ -162,7 +174,8 @@ export const VISUAL_CSS = `
 .awtl .g { stroke: var(--border); stroke-width: 1; } .awtl .rr { stroke: var(--sunken); stroke-width: 1; }
 .awtl .rl { fill: var(--text); font: 500 14px Inter, system-ui, sans-serif; } .awtl .rl.n { font-size: 12.5px; }
 .awtl .ax { fill: var(--muted); font: 600 13px Inter, system-ui, sans-serif; }
-.awtl circle.on { fill: var(--awx); stroke: var(--surface); stroke-width: 2; } .awtl circle.off { fill: var(--surface); stroke: var(--awx); stroke-width: 2.5; }
+.awtl circle.on { fill: var(--awx); } .awtl circle.off { fill: var(--surface); stroke: var(--awx); }
+.awtl line { shape-rendering: crispEdges; }
 .awpay .free { fill: color-mix(in srgb, var(--awx) 35%, var(--surface)); } .awpay .fx { fill: var(--awx); }
 .awkey { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13.5px; color: var(--muted); }
 .awkey li { display: inline-flex; align-items: center; gap: 6px; }

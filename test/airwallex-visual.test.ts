@@ -41,6 +41,28 @@ describe("the runs on one time axis", () => {
       expect((svg.match(/<circle class="off"/g) ?? []).length).toBe(flagged.length);
     }
   });
+  it("keeps every dot clear of the edges, on its day's gridline, all the same size (owner, 13 Nov: \"make sure the dots are clean\")", () => {
+    for (const layout of ["wide", "narrow"] as const) {
+      const svg = timelineSvg(inUse, flagged, layout);
+      const W = Number(/viewBox="0 0 (\d+)/.exec(svg)![1]);
+      const grid = new Set([...svg.matchAll(/<line class="g" x1="(\d+)"/g)].map((m) => Number(m[1])));
+      const dots = [...svg.matchAll(/<circle class="(on|off)" cx="(\d+)" cy="[\d.]+" r="([\d.]+)"(?: stroke-width="([\d.]+)")?/g)]
+        .map((m) => ({ cx: Number(m[2]), outer: Number(m[3]) + (m[4] ? Number(m[4]) / 2 : 0) }));
+      expect(dots).toHaveLength(inUse.length + flagged.length);
+      expect(new Set(dots.map((d) => d.outer)).size).toBe(1);
+      for (const d of dots) { expect(grid.has(d.cx)).toBe(true); expect(d.cx - d.outer).toBeGreaterThan(8); expect(W - d.cx - d.outer).toBeGreaterThan(8); }
+    }
+  });
+});
+
+describe("when a flagged product is switched on (another run flips it in the page data)", () => {
+  it("moves to filled dots and keeps its meter, with no 'not yet switched on' left", () => {
+    const all = [...inUse, ...flagged];
+    expect(timelineSvg(all, [])).not.toContain('class="off"');
+    expect(pathHtml(all, [])).not.toContain("not yet switched on");
+    expect(metersHtml(all)).toBe(metersHtml(flagged));
+    expect(visualsHtml(all, [])).toContain("payee name checks stopped before the CFO is asked");
+  });
 });
 
 describe("one payment as a bar", () => {
