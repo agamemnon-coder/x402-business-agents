@@ -36,6 +36,8 @@ export const START = {
   what: "About 2 minutes: read an invoice, sign it with your passkey, see it booked.",
   /** Under the button. */
   fine: "Test money · deleted after 24 h",
+  /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
+  walk: "Watch the 5-min walkthrough first",
   /** Under the card, small and grey. */
   trust: "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   starting: "Starting…",
@@ -311,10 +313,10 @@ export const ENDED = {
  */
 export const VISIBLE = {
   start: [
-    [START.heading, START.text, START.button, START.what, START.fine, START.trust],
-    [START.heading, START.text, START.starting, START.what, START.fine, START.trust],
-    [START.heading, START.failed, START.button, START.what, START.fine, START.trust],
-    [START.heading, START.runs, START.button, START.what, START.fine, START.trust],
+    [START.heading, START.text, START.button, START.what, START.fine, START.walk, START.trust],
+    [START.heading, START.text, START.starting, START.what, START.fine, START.walk, START.trust],
+    [START.heading, START.failed, START.button, START.what, START.fine, START.walk, START.trust],
+    [START.heading, START.runs, START.button, START.what, START.fine, START.walk, START.trust],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -412,8 +414,9 @@ export const VISIBLE = {
 // invoice", the ledger's Dr/Cr on a phone, and says under the Cloud link that it is a sample company (the review's
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
-// The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 59, "start 1": 55, "start 2": 55, "start 3": 49, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
+// The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
+// and +5 for "Watch the 5-min walkthrough first" (the walkthrough on YouTube, 4:58; 13 Nov, owner).
+export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 52, "pay 6": 51, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

@@ -24,9 +24,10 @@ describe("Purser's mark in the README and docs/assets", () => {
     expect(mark).not.toMatch(/#2dd4bf/i);
   });
 
-  // Since 13 Nov (the enterprise README) the README opens with the site's link-preview card, which carries this mark.
-  it("is the mark the README's hero (the social preview) carries: the same feather as the site header", () => {
-    expect(read("README.md")).toContain('<img src="docs/assets/social-preview.png"');
+  // Since 13 Nov, evening (owner) the README opens with this mark at 72 px above Home's picture; the link-preview card
+  // (docs/assets/social-preview.svg) carries the same feather.
+  it("is the mark atop the README and in the link-preview card: the same feather as the site header", () => {
+    expect(read("README.md")).toContain('<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">');
     for (const d of paths(header)) expect(read("docs/assets/social-preview.svg")).toContain(d);
   });
 });

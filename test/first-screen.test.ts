@@ -3,7 +3,7 @@
 // (home-story, 12 Nov) opens with what Purser is, one button with one reassurance line, and the first of the three
 // sentences, word for word, leading into its hero. And "Why this is a company", five lines from docs/business/, on the README and on Home. One source of
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
@@ -23,7 +23,9 @@ const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!
 /** Names of other spend and payment companies that must never appear in these lines (the partners are not competitors). */
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
 
-const HERO_BANNER = `<a href="https://kit11.max-31b.workers.dev/"><img src="docs/assets/social-preview.png" alt="Purser: AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey: the agent asks to pay, code checks it against its limit, you sign the exact terms; signed is paid, not signed is never paid. Built with Airwallex, Metal, Visa Intelligent Commerce and Claude." width="100%"></a>`;
+const MARK = '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">';
+// The Home page with the Purser logo, dark or light as the reader's GitHub is (restored 13 Nov, owner, from 642f3be).
+const HERO_BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp" alt="Purser's Home page: AI agents spend. You sign off. One sample invoice from Read to Paid (a local build of this repository)" width="100%"></picture></a>`;
 
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
@@ -41,14 +43,17 @@ describe("the first screen (section D, 6 Nov)", () => {
     // repeated, one line of links with Try it first, the badges, then the reviewers' block.
     // Since 13 Nov (owner): the mark is the site header's own, black and white (docs/assets/brand/purser-mark.svg, test/brand-mark.test.ts).
     // Since 13 Nov (the enterprise README): the site's link-preview card as the hero (the same file as src/ui/brand/og.png).
-    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", HERO_BANNER, ""]);
-    expect(readFileSync(new URL("../docs/assets/social-preview.png", import.meta.url)).equals(readFileSync(new URL("../src/ui/brand/og.png", import.meta.url)))).toBe(true);
-    expect(lines[4]).toBe(`# Purser · ${HERO}`);
+    // 13 Nov, evening (owner): the mark at 72 px above the Home page's picture, dark and light.
+    expect(lines.slice(0, 6)).toEqual(['<div align="center">', "", MARK, "", HERO_BANNER, ""]);
+    for (const f of ["docs/assets/brand/purser-mark.svg", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
+    expect(lines[6]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
     // What Purser is (README_WHAT), the sentence every juror repeated, the three badges, the live demo's line, then the
     // three proofs, the rails with "test money only" and the three commands, the four screenshots, then Enterprise.
-    expect(lines.slice(5, badges)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(3); // CI, MIT, the live demo
+    // The three buttons (Try it, the proof, the walkthrough) above the full badge row (13 Nov, evening, owner).
+    expect(lines.slice(7, badges - 2)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
+    expect(lines[badges - 2]).toContain("Watch_the_walkthrough-4%3A58");
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(13);
     expect(lines[badges + 2]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     expect(lines.slice(badges + 3, badges + 6)).toEqual(["", "</div>", ""]);
     expect(lines.slice(badges + 9, badges + 12)).toEqual(["", "Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))", ""]);
