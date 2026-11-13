@@ -136,7 +136,8 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   if (hero && card && trust) {
     ok(card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card and the trust line are in view without scrolling`);
     if (width === 390) {
-      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.3 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px), the card below`);
+      // Since 13 Nov the band is Purser Cloud's own calm panel, not /try's illustration: on top, compact, the card below.
+      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 80, `${tag}: a phone: the panel on top (${Math.round(hero.height)} px), the card below`);
       ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
     } else {
       ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (to the bottom), the card right`);
