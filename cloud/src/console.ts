@@ -5,7 +5,7 @@
 // page as text (textContent), never as HTML; account numbers come masked from the runner. The console reads and
 // manages; it never pays: a payment is approved on the CFO's phone with Face ID, through the runner's approval flow.
 
-import { ICON_LINKS } from "./brand.js";
+import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
@@ -1564,7 +1564,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>

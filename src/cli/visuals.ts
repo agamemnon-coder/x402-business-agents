@@ -32,7 +32,10 @@ if (check) {
   const page = await browser.newPage({ viewport: SOCIAL_SIZE, deviceScaleFactor: 1 });
   await page.setContent(`<!doctype html><style>@font-face{font-family:Inter;src:url("${font}") format("woff2");font-weight:100 900}html,body{margin:0}</style>${svg}`, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
-  writeFileSync(new URL(SOCIAL_PNG, root), await page.locator("svg").screenshot({ type: "png" }));
+  const social = await page.locator("svg").screenshot({ type: "png" });
+  writeFileSync(new URL(SOCIAL_PNG, root), social);
+  // The same image is every page's link preview (src/ui/meta.ts OG_IMAGE, served at /assets/og.png): one file, two places.
+  writeFileSync(new URL("src/ui/brand/og.png", root), social);
   // The "Built with" row: each official logo file, unmodified, on its own white tile with clear space; transparent
   // around the tiles so it sits on GitHub's light and dark themes alike. Rendered at 2x.
   const tile = (l: (typeof BUILT_WITH)[number]) => {
@@ -43,5 +46,5 @@ if (check) {
   await strip.setContent(`<!doctype html><style>html,body{margin:0;background:transparent}.row{display:inline-flex;gap:16px;padding:2px}.t{background:#fff;border:1px solid #e3e6ec;border-radius:14px;padding:20px 30px;display:flex;align-items:center}img{display:block;width:auto}</style><div class="row">${BUILT_WITH.map(tile).join("")}</div>`, { waitUntil: "load" });
   writeFileSync(new URL(BUILT_WITH_PNG, root), await strip.locator(".row").screenshot({ type: "png", omitBackground: true }));
   await browser.close();
-  console.log(`wrote ${SOCIAL_PNG} (${SOCIAL_SIZE.width}×${SOCIAL_SIZE.height}) and ${BUILT_WITH_PNG}`);
+  console.log(`wrote ${SOCIAL_PNG} and src/ui/brand/og.png (${SOCIAL_SIZE.width}×${SOCIAL_SIZE.height}) and ${BUILT_WITH_PNG}`);
 }

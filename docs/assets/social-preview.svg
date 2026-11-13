@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" class="pv pv-social" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-labelledby="pv-social-t pv-social-d">
-<title id="pv-social-t">Purser</title><desc id="pv-social-d">AI agents spend company money only within limits the CFO signs with Face ID.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" class="pv pv-social" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="pv-social-t pv-social-d">
+<title id="pv-social-t">Purser</title><desc id="pv-social-d">Purser. AI agents spend. You sign off.</desc>
 <style>.pv{--bg:#0a0c11;--surface:#12151d;--sunken:#191d27;--border:#262b37;--text:#eef1f6;--muted:#a4adbd;--faint:#858fa1;--accent:#8b85ff;--accent-soft:#23224a;--ok:#3ccf82;--ok-soft:#12291e;--bad:#ff6b70;--bad-soft:#341a1c;--metal:#2dd4bf;--metal-soft:#0f2a28;--awx:#ff8a4c;--awx-soft:#33200f;--claude:#ef9a76;--claude-soft:#33221b;--a-sourcing:#60a5fa}
 .pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
 .pv .pv-bg { fill: var(--bg); }
@@ -49,36 +49,15 @@
 @keyframes pv-prog { 0% { stroke-dashoffset: var(--pv-len); } 88% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; } }
 @keyframes pv-step { 0% { opacity: 0; } 1.5% { opacity: 1; } 11% { opacity: 1; } 13% { opacity: 0; } 100% { opacity: 0; } }
 
-.pv .s-bar { fill: var(--accent); }
-.pv .s-brand { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
-.pv .s-hero { font-size: 56px; font-weight: 780; letter-spacing: -.03em; }
-.pv .s-chip { font-size: 20px; font-weight: 720; } .pv .s-sub { font-size: 17px; fill: var(--muted); }
-.pv .s-cap { font-size: 17px; font-weight: 650; fill: var(--accent); letter-spacing: .02em; }
-.pv .s-foot { font-size: 17px; fill: var(--faint); } .pv .s-site { font-size: 17px; font-weight: 650; fill: var(--accent); }</style><defs><marker id="pv-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pv-tip" d="M0 0 L10 5 L0 10 z"/></marker></defs><rect class="pv-bg" width="1280" height="640"/>
-<rect class="s-bar" x="0" y="0" width="1280" height="6"/>
-<text class="s-brand" x="80" y="104"><tspan x="80" dy="0">Purser</tspan></text>
-<text class="s-hero" x="80" y="186"><tspan x="80" dy="0">AI agents spend company money</tspan><tspan x="80" dy="66">only within limits the CFO</tspan><tspan x="80" dy="66">signs with Face ID.</tspan></text>
-<rect class="pv-claude" x="80" y="430" width="190" height="86" rx="18"/>
-<text class="s-chip t-claude" x="100" y="468"><tspan x="100" dy="0">AI agents</tspan></text>
-<text class="s-sub" x="100" y="496"><tspan x="100" dy="0">propose</tspan></text>
-<path class="pv-still" d="M274 473 L294 473" marker-end="url(#pv-arrow)"/>
-<rect class="pv-box" x="298" y="430" width="190" height="86" rx="18"/>
-<text class="s-chip " x="318" y="468"><tspan x="318" dy="0">Purser's checks</tspan></text>
-<text class="s-sub" x="318" y="496"><tspan x="318" dy="0">code</tspan></text>
-<path class="pv-still" d="M492 473 L512 473" marker-end="url(#pv-arrow)"/>
-<rect class="pv-box" x="516" y="430" width="190" height="86" rx="18"/>
-<text class="s-chip " x="536" y="468"><tspan x="536" dy="0">CFO's Face ID</tspan></text>
-<text class="s-sub" x="536" y="496"><tspan x="536" dy="0">signature</tspan></text>
-<path class="pv-still" d="M710 473 L730 473" marker-end="url(#pv-arrow)"/>
-<rect class="pv-box" x="734" y="430" width="190" height="86" rx="18"/>
-<text class="s-chip " x="754" y="468"><tspan x="754" dy="0">The rail</tspan></text>
-<text class="s-sub" x="754" y="496"><tspan x="754" dy="0">its own controls</tspan></text>
-<path class="pv-still" d="M928 473 L948 473" marker-end="url(#pv-arrow)"/>
-<rect class="pv-box" x="952" y="430" width="190" height="86" rx="18"/>
-<text class="s-chip " x="972" y="468"><tspan x="972" dy="0">Ledger</tspan></text>
-<text class="s-sub" x="972" y="496"><tspan x="972" dy="0">audit log</tspan></text>
-<rect class="pv-layer" x="288" y="416" width="646" height="114" rx="24"/>
-<text class="s-cap" x="611" y="404" text-anchor="middle"><tspan x="611" dy="0">three layers that do not trust each other</tspan></text>
-<text class="s-foot" x="80" y="590"><tspan x="80" dy="0">Airwallex · Metal · Visa Intelligent Commerce via Airi · sandbox and testnet runs, test money only</tspan></text>
-<text text-anchor="end" class="s-site" x="1200" y="590"><tspan x="1200" dy="0">kit11.max-31b.workers.dev</tspan></text>
+.pv .s-glow { fill: url(#s-grad); }
+.pv .s-mark { fill: #f5f7fb; }
+.pv .s-feather path { fill: none; stroke: #0b1220; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pv .s-name { font-size: 104px; font-weight: 780; letter-spacing: -.035em; fill: #f5f7fb; }
+.pv .s-line { font-size: 42px; font-weight: 560; letter-spacing: -.01em; fill: #aab4c5; }</style><rect class="pv-bg" width="1200" height="630"/>
+<defs><radialGradient id="s-grad" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#1b2a4a"/><stop offset="1" stop-color="#0b1220"/></radialGradient></defs>
+<rect class="s-glow" x="0" y="0" width="1200" height="630"/>
+<rect class="s-mark" x="534" y="112" width="132" height="132" rx="34"/>
+<g class="s-feather" transform="translate(558 136) scale(3.5)"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></g>
+<text class="s-name" x="600" y="382" text-anchor="middle"><tspan x="600" dy="0">Purser</tspan></text>
+<text class="s-line" x="600" y="468" text-anchor="middle"><tspan x="600" dy="0">AI agents spend. You sign off.</tspan></text>
 </svg>
