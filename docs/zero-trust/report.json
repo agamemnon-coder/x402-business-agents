@@ -1,6 +1,6 @@
 {
-  "attacks_run": 52,
-  "attacks_stopped": 52,
+  "attacks_run": 53,
+  "attacks_stopped": 53,
   "attacks_where_money_moved": 0,
   "layers": 6,
   "min_depth": 2,
@@ -1122,7 +1122,7 @@
         "owner": "Purser's code",
         "control": "step-up on sensitive settings"
       },
-      "needs": null,
+      "needs": "the company switched on \"Ask again before sensitive changes\" (Settings, Security; off by default)",
       "note": null,
       "moved": 0,
       "evidence": {
@@ -1263,6 +1263,34 @@
       "evidence": {
         "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > four-eyes-cfo-signs-rewritten-terms: A payment's stored terms are rewritten to the attacker's account and the CFO's own passkey signs them on a breached phone page.",
         "record": "with the kind column changed: P-0002 is filed as dev_test, but its signed terms say invoice_payment; nothing is approved; proposal.cosigned: 1 of 2; passkey.refused: max already approved P-0002; a second person must approve it with their own passkey",
+        "live": null
+      }
+    },
+    {
+      "id": "high-risk-one-factor",
+      "description": "A high-risk payment is approved with one factor: the CFO's Face ID alone, then the same passkey a second time in place of the security key.",
+      "target": "bank_payout",
+      "also_tries": [],
+      "action": "Pay EUR 9,850.00 on the CFO's Face ID alone.",
+      "breach": [
+        {
+          "id": "cfo_face_id",
+          "name": "the CFO's Face ID alone"
+        }
+      ],
+      "bypassed": [],
+      "stopped_by": {
+        "layer": "L3",
+        "name": "The CFO's signature",
+        "owner": "the CFO's device",
+        "control": "a second key for high-risk payments"
+      },
+      "needs": "the CFO switched on \"High-risk payments need Face ID and a security key\" (here: at or above EUR 1000.00)",
+      "note": null,
+      "moved": 0,
+      "evidence": {
+        "test": "test/zero-trust.test.ts > the matrix: every attack against the real code > high-risk-one-factor: A high-risk payment is approved with one factor: the CFO's Face ID alone, then the same passkey a second time in place of the security key.",
+        "record": "High-risk: amount at or above EUR 1000.00. Touch your security key.; proposal.factor_signed: 1 of 2 keys; passkey.refused: this key already signed P-0002; a high-risk payment needs your other key (Face ID and a security key, two different keys",
         "live": null
       }
     },
@@ -1935,6 +1963,7 @@
               "relay-alters-terms-shown",
               "relay-alters-terms-forwarded",
               "relay-forged-assertion",
+              "high-risk-one-factor",
               "one-approval-two-executions"
             ]
           },
@@ -2585,7 +2614,7 @@
     "property": {
       "seed": 20261112,
       "runs": 60,
-      "moved_with_every_guard_void": 33,
+      "moved_with_every_guard_void": 32,
       "moved_with_a_guard_holding": 0
     }
   },
@@ -3182,6 +3211,6 @@
   ],
   "generated": {
     "date": "2026-11-13",
-    "commit": "a7211f7"
+    "commit": "9a66913"
   }
 }
