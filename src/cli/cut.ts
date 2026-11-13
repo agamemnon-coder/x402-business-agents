@@ -19,10 +19,10 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { PHONE_BOX, assFile } from "../film/captions.js";
+import { BAR, PHONE_BOX, PHONE_BOX_LB, assFile } from "../film/captions.js";
 import { BG, FPS, guardDisk } from "../film/capture.js";
 import { CUTS, checkCut, chapters, clock, resolveCut, scriptMarkdown, shotListMarkdown, srt, total, type Cut, type Placed } from "../film/cuts.js";
-import { measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
+import { LIMITER, measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
 import { OWN_FOOTAGE, shot as shotOf } from "../film/shots.js";
 import { STILL_SHOTS } from "../film/stills.js";
 import { maskExpr } from "../film/slots.js";
@@ -51,8 +51,41 @@ const ENC = draft ? ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18"] : [
 const SEG = [...ENC, "-pix_fmt", "yuv420p", "-r", String(FPS), "-an"];
 const clipOf = (id: string) => resolve(out, "shots", `${id}.mp4`);
 
+/** Film v10: the picture's dark navy (as film v8's) between black bars. */
+const NAVY = "0x0a1020";
+/**
+ * Film v10's segment, letterboxed: black bars of 138 px, the picture between them. A page shot (captured at 1920x804)
+ * fills the picture; a title card is the dark navy alone (its words are burned in with the captions); a recording sits
+ * in the phone frame, its corners rounded, on the navy.
+ */
+function letterboxSegment(file: string, g: Placed["segs"][number]): string | null {
+  const d = g.seconds.toFixed(3);
+  const bars = `drawbox=x=0:y=0:w=1920:h=${BAR}:color=black:t=fill,drawbox=x=0:y=${1080 - BAR}:w=1920:h=${BAR}:color=black:t=fill`;
+  const navy = ["-f", "lavfi", "-i", `color=c=${NAVY}:s=1920x1080:r=${FPS}:d=${d}`];
+  if (g.title || g.card) { ff([...navy, "-vf", `${bars},format=yuv420p`, ...SEG, file]); return null; }
+  if (g.rec) {
+    const src = resolve(out, "recordings", `${g.rec}.mp4`);
+    if (!existsSync(src)) { ff([...navy, "-vf", `${bars},format=yuv420p`, ...SEG, file]); return `recording ${g.rec} not made yet`; }
+    const b = PHONE_BOX_LB;
+    // The rounded masks are drawn once (geq per frame is slow) and looped.
+    const mask = (w: number, h: number, r: number, f: string) => { if (!existsSync(f)) ff(["-f", "lavfi", "-i", `color=c=white:s=${w}x${h}:d=1`, "-frames:v", "1", "-vf", `format=gray,geq=lum='${maskExpr(r)}'`, f]); return f; };
+    const m1 = mask(b.w, b.h, b.r, resolve(out, "mask-phone.png")), m2 = mask(b.w + 16, b.h + 16, b.r + 8, resolve(out, "mask-bezel.png"));
+    ff([...navy, "-i", src, "-loop", "1", "-t", d, "-i", m1, "-f", "lavfi", "-i", `color=c=0x2a3346:s=${b.w + 16}x${b.h + 16}:d=${d}`, "-loop", "1", "-t", d, "-i", m2, "-filter_complex",
+      `[1:v]fps=${FPS},scale=${b.w}:${b.h}:force_original_aspect_ratio=increase:flags=lanczos,crop=${b.w}:${b.h}:0:0,setsar=1,tpad=stop_mode=clone:stop_duration=${d},trim=duration=${d},setpts=PTS-STARTPTS,format=yuva420p[r];[2:v]fps=${FPS},format=gray[m];[r][m]alphamerge[rm];` +
+      `[3:v]format=yuva420p[bz0];[4:v]fps=${FPS},format=gray[bm];[bz0][bm]alphamerge[bz];` +
+      `[0:v][bz]overlay=${b.x - 8}:${b.y - 8}:shortest=1[v0];[v0][rm]overlay=${b.x}:${b.y}:eof_action=pass:shortest=1,${bars},format=yuv420p[v]`,
+      "-map", "[v]", ...SEG, file]);
+    return null;
+  }
+  const id = g.shot!.find((x) => existsSync(clipOf(x)));
+  if (!id) { ff([...navy, "-vf", `${bars},format=yuv420p`, ...SEG, file]); return `${g.shot!.join(" / ")}: ${shotOf(g.shot![0]!).what}`; }
+  ff(["-i", clipOf(id), "-vf", `fps=${FPS},tpad=stop_mode=clone:stop_duration=${d},trim=duration=${d},setpts=PTS-STARTPTS,scale=1920:${1080 - 2 * BAR}:flags=lanczos,pad=1920:1080:0:${BAR}:color=black,setsar=1,fade=t=in:st=0:d=0.25,fade=t=out:st=${(g.seconds - 0.25).toFixed(3)}:d=0.25,format=yuv420p`, ...SEG, file]);
+  return null;
+}
+
 /** One segment's picture, exactly `seconds` long, at 1920x1080 and 60 fps. Returns a note when it is a stand-in. */
-function segment(file: string, g: Placed["segs"][number], own: ReturnType<typeof ownArgs>): string | null {
+function segment(file: string, g: Placed["segs"][number], own: ReturnType<typeof ownArgs>, letterbox = false): string | null {
+  if (letterbox) return letterboxSegment(file, g);
   const d = g.seconds.toFixed(3);
   const blank = ["-f", "lavfi", "-i", `color=c=${BG}:s=1920x1080:r=${FPS}:d=${d}`];
   if (g.card) { ff([...blank, ...SEG, file]); return null; }
@@ -88,7 +121,7 @@ function render(cut: Cut, demoDay: boolean): void {
   const own = ownArgs();
   const voDir = opt("--vo");
   const name = `${cut.file}${demoDay ? "-demoday" : ""}`;
-  const n = cut.id === "submission-3" ? "3" : cut.id === "handin-5" ? "handin" : "5";
+  const n = cut.id === "submission-3" ? "3" : cut.id === "handin-5" ? "handin" : cut.id === "handin-10" ? "v10" : "5";
   const build = resolve(out, "build", name);
   rmSync(build, { recursive: true, force: true });
   mkdirSync(build, { recursive: true });
@@ -99,7 +132,7 @@ function render(cut: Cut, demoDay: boolean): void {
   let k = 0;
   for (const p of placed) for (const g of p.segs) {
     const file = resolve(build, `${String(k++).padStart(3, "0")}.mp4`);
-    const note = segment(file, g, own);
+    const note = segment(file, g, own, cut.letterbox);
     if (note) { notes.push({ at: g.start, to: g.start + g.seconds, text: note }); missing.push(`${clock(g.start)} ${p.row.id} not captured: ${note}`); }
     if (g.own && !own.has(g.own)) missing.push(`${clock(g.start)} ${p.row.id} placeholder: ${g.own}, ${OWN_FOOTAGE[g.own]}`);
     list.push(`file '${file}'`);
@@ -116,14 +149,18 @@ function render(cut: Cut, demoDay: boolean): void {
     if (p.row.kind === "vo" && voDir && existsSync(resolve(voDir, `${p.row.id}.wav`))) pieces.push({ file: resolve(voDir, `${p.row.id}.wav`), at, seconds: p.seconds - 0.4 });
     for (const g of p.segs) { const f = g.own ? own.get(g.own) : undefined; if (f && g.own!.startsWith("M")) pieces.push({ file: f.file, at: g.start, seconds: g.seconds }); }
   }
+  // --music <file>: one bed under the whole film, about 20 dB under the voice, faded in and out (film v10).
+  const musicFile = opt("--music");
+  if (musicFile && existsSync(resolve(musicFile))) pieces.push({ file: resolve(musicFile), at: 0, seconds: len, gain: -21, fade: 2.5 });
   const ass = resolve(build, "captions.ass");
-  writeFileSync(ass, assFile(placed, { filled: new Set(own.keys()), draft: pieces.length === 0, notes }));
+  writeFileSync(ass, assFile(placed, { filled: new Set(own.keys()), draft: pieces.length === 0, notes, letterbox: cut.letterbox }));
   // An own camera file is trimmed to its window by its start (-ss) before it is placed.
   const inputsTrimmed = pieces.flatMap((p) => { const o = [...own.values()].find((x) => x.file === p.file); return o ? ["-ss", String(o.from), "-i", p.file] : ["-i", p.file]; });
   let audio = placeFilter(pieces, len);
   if (pieces.length) {
     const r = spawnSync("ffmpeg", ["-hide_banner", "-i", picture, ...inputsTrimmed, "-filter_complex", `${audio};[mix]${measureFilter()}[o]`, "-map", "[o]", "-f", "null", "-"], { encoding: "utf8" });
-    audio = `${audio};[mix]${normaliseFilter(parseMeasured(r.stderr))}[aout]`;
+    // A limiter after the loudness pass keeps the true peak under -1 dB after the AAC encode.
+    audio = `${audio};[mix]${normaliseFilter(parseMeasured(r.stderr))},${LIMITER}[aout]`;
   } else audio = audio.replace("[mix]", "[aout]");
   const master = resolve(out, `${name}.mp4`);
   // The captions file is named relative to the build folder (ffmpeg runs there), so no path is quoted into the filter.
@@ -134,7 +171,7 @@ function render(cut: Cut, demoDay: boolean): void {
   writeFileSync(resolve(out, `script-${n}${demoDay ? "-demoday" : ""}.md`), scriptMarkdown(cut, placed));
   writeFileSync(resolve(out, `missing-${n}${demoDay ? "-demoday" : ""}.txt`), missing.join("\n") + "\n");
   rmSync(build, { recursive: true, force: true });
-  console.log(`\n${master} (${clock(len)})${missing.length ? `\n${missing.length} placeholders or missing shots: out/video/v9/missing-${n}${demoDay ? "-demoday" : ""}.txt` : ""}`);
+  console.log(`\n${master} (${clock(len)})${missing.length ? `\n${missing.length} placeholders or missing shots: ${out}/missing-${n}${demoDay ? "-demoday" : ""}.txt` : ""}`);
 }
 
 /** /watch's stills: real frames of the shot clips (a still image as it is), small WebP files kept in the repository. */
@@ -163,7 +200,7 @@ function docs(id: Cut["id"]): void {
   if (problems.length) throw new Error(`cut: ${id} does not pass its check:\n${problems.join("\n")}`);
   const placed = resolveCut(cut);
   const dir = resolve(root, "docs/video");
-  const base = id.replace(/-\d+$/, "");
+  const base = id === "handin-10" ? "film-v10" : id.replace(/-\d+$/, "");
   writeFileSync(resolve(dir, `${base}-script.md`), scriptMarkdown(cut, placed));
   writeFileSync(resolve(dir, `${base}-shots.md`), shotListMarkdown(cut, placed));
   writeFileSync(resolve(dir, `${base}.srt`), srt(placed));
@@ -174,7 +211,7 @@ function main(): void {
   if (flag("--stills")) return stills();
   if (flag("--docs")) { const id = argv.find((a) => a in CUTS) as Cut["id"] | undefined; if (!id) throw new Error("cut: --docs needs a cut id"); return docs(id); }
   if (flag("--check")) {
-    const problems = [...checkCut(CUTS["submission-3"]), ...checkCut(CUTS["submission-3"], { demoDay: true }).map((p) => `demo day: ${p}`), ...checkCut(CUTS["walkthrough-5"]), ...checkCut(CUTS["handin-5"])];
+    const problems = [...checkCut(CUTS["submission-3"]), ...checkCut(CUTS["submission-3"], { demoDay: true }).map((p) => `demo day: ${p}`), ...checkCut(CUTS["walkthrough-5"]), ...checkCut(CUTS["handin-5"]), ...checkCut(CUTS["handin-10"])];
     for (const c of Object.values(CUTS)) console.log(`${c.id}: ${clock(total(resolveCut(c)))}`);
     if (problems.length) { console.error(problems.join("\n")); process.exit(1); }
     console.log("Every row fits, every caption is short, every number is in its record.");
