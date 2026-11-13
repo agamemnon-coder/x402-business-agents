@@ -276,7 +276,8 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/openapi.read.json", summary: "The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin, { readOnly: true })) },
   { method: "GET", path: "/v1/export/csv/{format}/{kind}", summary: "Supplier invoices (kind bills: xero, quickbooks, exact) or ledger journals (kind journals: xero, exact) as a CSV file in that product's import columns; from and to (days) narrow it. A format export, not a live integration: the file is imported by a person.", need: "read", run: async (c) => {
     const [format, kind] = c.params as [string, string];
-    const allowed = (CSV_FORMATS as Record<string, readonly string[]>)[format];
+    // Own keys only: "__proto__" or "constructor" is a path segment the route table lets through.
+    const allowed = Object.hasOwn(CSV_FORMATS, format) ? (CSV_FORMATS as Record<string, readonly string[]>)[format] : undefined;
     if (!allowed) return err(404, `no CSV format ${format}: xero, quickbooks or exact`);
     if (!allowed.includes(kind)) return err(404, `${format} exports ${allowed.join(" and ")}`);
     const day = (k: string) => { const v = c.url.searchParams.get(k); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new BadRequest(`${k} must be a day like 2026-11-30`); return v || null; };

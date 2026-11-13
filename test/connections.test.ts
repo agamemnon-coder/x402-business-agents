@@ -154,7 +154,7 @@ describe("accounting exports (CSV format exports)", () => {
   });
 
   it("refuses an unknown format or kind, a bad day, and a key without the read scope sees nothing; a formula cannot ride in", async () => {
-    expect((await c.req("GET", "/v1/export/csv/sage/bills", { key: tenant.key })).status).toBe(404);
+    for (const f of ["sage", "__proto__", "constructor", "toString"]) expect((await c.req("GET", `/v1/export/csv/${f}/bills`, { key: tenant.key })).status).toBe(404);
     expect((await c.req("GET", "/v1/export/csv/quickbooks/journals", { key: tenant.key })).json.error).toMatch(/quickbooks exports bills/);
     expect((await c.req("GET", "/v1/export/csv/xero/bills?from=9-11-2026", { key: tenant.key })).status).toBe(400);
     expect((await c.req("GET", "/v1/export/csv/xero/bills", { key: null })).status).toBe(401);

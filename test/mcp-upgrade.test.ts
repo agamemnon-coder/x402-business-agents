@@ -422,7 +422,7 @@ describe("the consent page says where the browser goes back to (code review, 13 
       const html = await page(redirect, "Claude");
       const host = new URL(redirect).host;
       expect(html).toContain(`After you allow, you go back to <b>${host}</b>`);
-      expect(html).toMatch(new RegExp(`<div class="warn" role="alert"><b>Check this address\\.</b> Purser does not know ${host.replace(/\./g, "\\.")}`));
+      expect(html).toContain(`<div class="warn" role="alert"><b>Check this address.</b> Purser does not know ${host}.`);
     }
   });
 });
