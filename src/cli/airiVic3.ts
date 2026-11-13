@@ -19,15 +19,18 @@ const args = process.argv.slice(2);
 const cmd = args.includes("--dry") ? "dry" : (args.find((a) => !a.startsWith("--") && !/\.(json|md|log)$/.test(a)) ?? "help");
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const repo = resolve(import.meta.dirname, "../..");
+/** npm run airi:vic-4 passes --vic-4: a third paid purchase (G), a ready check before each tap, F1/F2 to Purser's
+ *  credential check. Its own go (VIC4_GO=yes), ledger (data/vic-4*.sqlite) and keys folder (…/vic-4*). */
+const variant = args.includes("--vic-4") ? "vic-4" as const : "vic-3" as const;
 
 if (cmd === "help") {
-  console.log("npm run airi:vic-3 -- --dry | preflight | live | recover  [--record f.json] [--md f.md]   (docs/runs/vic-3-plan.md)");
+  console.log(`npm run airi:${variant} -- --dry | preflight | live | recover  [--record f.json] [--md f.md]   (docs/runs/${variant}-plan.md)`);
   process.exit(0);
 }
 
-const LIVE_KEYS = ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "AIRWALLEX_CALL_BUDGET", "AIRWALLEX_CALL_LOG", "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY", "KIT11_AGENTS", "KIT11_AUTONOMY", "HUB_PUSH_ENABLED", "HUB_DECISIONS_ENABLED", "T0_ENABLED", "VIC3_GO"];
+const LIVE_KEYS = ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "AIRWALLEX_CALL_BUDGET", "AIRWALLEX_CALL_LOG", "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY", "KIT11_AGENTS", "KIT11_AUTONOMY", "HUB_PUSH_ENABLED", "HUB_DECISIONS_ENABLED", "T0_ENABLED", "VIC3_GO", "VIC4_GO"];
 
-const logFile = opt("--log") ?? resolve(repo, cmd === "dry" ? "data/vic-3-dry.log" : "data/vic-3.log");
+const logFile = opt("--log") ?? resolve(repo, cmd === "dry" ? `data/${variant}-dry.log` : `data/${variant}.log`);
 mkdirSync(dirname(logFile), { recursive: true });
 let check: ((text: string) => void) | null = null;
 /** Every line to the console and the run log, checked for secrets first. The one-time links never come here. */
@@ -67,6 +70,7 @@ if (cmd === "dry") {
     const db = openDb();
     const log = makeLog("STAND-IN  ");
     const rec = await runVic3({
+      variant, ready: async (step, what) => log(`READY ${step}    (STAND-IN: no wait; live, the conductor waits here for Enter: ${what})`),
       db, mode: "dry", airi: new StandInAiriClient(), checkout: new StandInCheckout(), claude: standInClaude(), log, tmpRoot: dir, sleep: async () => {},
       showPasskeyUrl: (_url, i) => log(`AIRI TAP   ${i.actionId} (STAND-IN: a stand-in link, not printed; no tap needed)`),
       awaitCfo: async (id) => {
@@ -76,16 +80,16 @@ if (cmd === "dry") {
         return (db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(id) as { status: string }).status;
       },
     });
-    await write(rec, resolve(repo, "data/vic-3-dry-record.json"), log);
+    await write(rec, resolve(repo, `data/${variant}-dry-record.json`), log);
     db.close();
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 } else {
   const { vic3LiveRefusals } = await import("../airi/vic3.js");
-  const why = vic3LiveRefusals(cmd, process.env);
+  const why = vic3LiveRefusals(cmd, process.env, variant);
   if (why.length) {
-    console.error(`vic-3 ${cmd} refused; nothing was called:\n- ${why.join("\n- ")}`);
+    console.error(`${variant} ${cmd} refused; nothing was called:\n- ${why.join("\n- ")}`);
     process.exit(2);
   }
   check = (await import("../airi/vic1.js")).assertNoSecrets;
@@ -131,9 +135,26 @@ if (cmd === "dry") {
         const root = mkdtempSync(join(tmpdir(), "vic3-live-"));
         chmodSync(root, 0o700);
         removeOnSignal(root);
+        const { createInterface } = await import("node:readline/promises");
+        const QR = (await import("qrcode")).default;
+        let current = "A";
         const rec = await runVic3({
+          variant,
+          // The 5-minute tap window starts only once Max says his phone is ready (vic-3's A ran out waiting).
+          ready: variant === "vic-4" ? async (step, what) => {
+            current = step;
+            log(`READY ${step}    waiting for Max: ${what}`);
+            const rl = createInterface({ input: process.stdin, output: process.stdout });
+            await rl.question(`\n>>> ${step}: ${what}. Phone unlocked, Airi open? Press Enter to start (the link and its QR code follow, 5 minutes to tap) `);
+            rl.close();
+            log(`READY ${step}    Max is ready`);
+          } : undefined,
           db, mode: "live", airi: new AiriCliClient(), checkout: live.checkout, claude: claudeClient(), log, tmpRoot: root,
-          showPasskeyUrl: (url, i) => tap(tapLine(i.actionId === "vic3-F1" ? "F1" : i.actionId.startsWith("P-") ? "B" : "A", i.actionId, i, url)),
+          showPasskeyUrl: (url, i) => {
+            tap(tapLine(variant === "vic-4" ? current : i.actionId === "vic3-F1" ? "F1" : i.actionId.startsWith("P-") ? "B" : "A", i.actionId, i, url));
+            // The QR code: the console only, like the link (Max scans it with his phone).
+            if (variant === "vic-4") void QR.toString(url, { type: "terminal", small: true }).then((q) => tap(q), () => {});
+          },
           awaitCfo: async (id) => {
             log(`FACE ID    ${approvalHint(db, id)}`);
             log(`FACE ID    after this Face ID the phone may say "execution stopped: the Airi rail is off": expected, this conductor runs it, not the runner`);
@@ -141,7 +162,7 @@ if (cmd === "dry") {
           },
         });
         rmSync(root, { recursive: true, force: true });
-        await write(rec, resolve(repo, "data/vic-3-record.json"), log);
+        await write(rec, resolve(repo, `data/${variant}-record.json`), log);
       }
     }
   } catch (e) {
