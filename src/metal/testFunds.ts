@@ -5,7 +5,7 @@
 //     world being filled, so never the reserve world (live-*) or Thursday's world;
 //   - only the customer owner's plain wallet in each, keeping 0.10 for its own gas; the accounts, mandates and every proof on
 //     chain stay as they are, and no old ledger is opened or changed;
-//   - each transfer is appended to docs/runs/testgeld-recycling.md with its tx; keys stay in their folders, and
+//   - each transfer is appended to docs/archive/runs/testgeld-recycling.md with its tx; keys stay in their folders, and
 //     nothing secret is printed or logged.
 // Without KIT11_RECYCLE=on the faucet is asked, as before.
 
@@ -27,7 +27,7 @@ const floorCents = (units: bigint) => units - (units % CENT);
 const usdz = (units: bigint) => fromCents(baseUnitsToCents(floorCents(units < 0n ? 0n : units)));
 const FINISHED_AFTER_MS = 60 * 60_000;
 const REPO = resolve(import.meta.dirname, "../..");
-const LOG = join(REPO, "docs/runs/testgeld-recycling.md");
+const LOG = join(REPO, "docs/archive/runs/testgeld-recycling.md");
 
 export interface FundDeps {
   recycle: boolean;

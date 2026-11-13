@@ -186,7 +186,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     const cheat = collapse(read("docs/submission/cheat-sheet.md"));
     expect(cheat).toContain("Two locks (10 and 12 Nov): a labelled test passkey signed, Airwallex held the payout `IN_APPROVAL` until the owner approved it in Airwallex's web app; then PAID (sandbox, settlement simulated).");
     // The owner's own demo card (Dutch, docs/internal) says the same.
-    const card = read("docs/internal/spiekkaart-demo.html");
+    const card = read("docs/archive/internal/spiekkaart-demo.html");
     expect(card).toContain("Twee sloten (10 en 12 nov): gelabelde test-passkey tekende, Airwallex hield de betaling <code>IN_APPROVAL</code> tot de eigenaar hem goedkeurde in Airwallex' web-app; daarna PAID (sandbox, settlement gesimuleerd).");
     expect(card).not.toMatch(/niet goedgekeurd in de web-app|dus niet betaald/);
     for (const [name, t] of [["README", readme], ["llms.txt", llms], ["cheat sheet", cheat]] as const) expect({ name, old: /approval was not completed|nobody approved|is not paid/.test(t) }).toEqual({ name, old: false });

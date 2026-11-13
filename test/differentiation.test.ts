@@ -142,7 +142,7 @@ describe("the 12 overpriced checks: a buy rule Claude set, applied by code (jury
       ["home", PAGES.home!], ["proof", PAGES.proof!], ["watch", PAGES.watch!], ["metal", String(PAGES.metal)], ["claude", PAGES.claude!],
       ["deck", deckHtml(packFacts(), shots, "")],
       ...["README.md", "docs/submission/README.md", "docs/submission/long-description.md", "docs/submission/pitch.md", "docs/submission/qa.md",
-        "docs/submission/demo-day.md", "docs/internal/spiekkaart-demo.html"].map((p): [string, string] => [p, read(p)]),
+        "docs/submission/demo-day.md", "docs/archive/internal/spiekkaart-demo.html"].map((p): [string, string] => [p, read(p)]),
     ];
     for (const [name, body] of surfaces) expect({ name, old: OLD.exec(words(body))?.[0] ?? null }).toEqual({ name, old: null });
     // The claims keep the film's line once each, labelled as older than this wording.

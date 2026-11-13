@@ -1,7 +1,7 @@
 // npm run test-funds -- <address> <usdz> --label <words>: fills one wallet of the world in KIT11_KEYS_DIR with spare test
 // money from finished dry runs (src/metal/testFunds.ts, Max's rules of 1 November), up to <usdz>. For a world whose
 // own code cannot recycle (the reserve world runs eff08b4): fill its owner keys, then run its bootstrap. Prints the
-// address and the outcome only; every transfer is logged with its tx in docs/runs/testgeld-recycling.md.
+// address and the outcome only; every transfer is logged with its tx in docs/archive/runs/testgeld-recycling.md.
 
 import type { Address } from "viem";
 import { getAddress } from "viem";

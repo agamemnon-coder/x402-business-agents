@@ -1,4 +1,4 @@
-// npm run readme-draft: writes docs/readme-v2-draft.md, the README's next structure for an enterprise reader (12 Nov),
+// npm run readme-draft: writes docs/archive/readme-v2-draft.md, the README's next structure for an enterprise reader (12 Nov),
 // not README.md itself (the orchestrator integrates it). Every number is read from a run record or computed here:
 // the refusals and the main run's counts from their records, the test counts from a vitest JSON report
 // (`npx vitest run --reporter=json --outputFile.json=<file>`, then `npm run readme-draft -- --tests <file>`), the CI
@@ -16,7 +16,7 @@ import { AIRI_RUN_FILE, AIRI_RUN_LOG } from "../redesign/airiRun.js";
 import { SOCIAL_SENTENCE } from "../visuals/svg.js";
 import { BUILT_WITH, BUILT_WITH_PNG, LEFT_OUT } from "../visuals/logos.js";
 
-const OUT = "docs/readme-v2-draft.md";
+const OUT = "docs/archive/readme-v2-draft.md";
 const LIVE = "https://kit11.max-31b.workers.dev";
 const read = (p: string) => readFileSync(p, "utf8");
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };

@@ -1,7 +1,7 @@
 # Purser's own books
 
 Purser keeps the books itself: a stored general ledger, fed from every movement of money Purser makes, with VAT,
-reports, closing and stock. Design: [docs/superpowers/specs/2026-11-08-bookkeeping-core-design.md](superpowers/specs/2026-11-08-bookkeeping-core-design.md).
+reports, closing and stock. Design: [docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md](archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md).
 Test money only, like the rest of Purser.
 
 ## Run it

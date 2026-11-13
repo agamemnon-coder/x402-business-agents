@@ -2,7 +2,7 @@
 
 > **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
 > "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
-> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+> private (behind an access key), with no customer: [after-the-kit.md](../../../after-the-kit.md).
 
 Max, 8 November 2026: "connect to ERPs instead of building one, but collect everything in Purser; we need the backend
 now." Purser keeps everything a company's finance runs on in one place, readable by its apps, its accountant and its

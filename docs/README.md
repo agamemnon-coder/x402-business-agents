@@ -64,8 +64,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
   [agent-evals-ledger.md](agent-evals-ledger.md) (evals of the ledger agents, generated),
   [engine-events.md](engine-events.md) (the engine's events for the hands-on page; the code wins) and
   [visa-icc.md](visa-icc.md) (Visa Intelligent Commerce Connect from public docs; access not granted, not used).
-- [readme-v2-draft.md](readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
-- [superpowers/specs/](superpowers/specs/): the design specs of 8 November for what was built after the kit. [plans/](plans/): design notes and research (Visa TAP, Airi, one source for the books).
+- [plans/](plans/): design notes and research (Visa TAP, Airi, one source for the books).
 - Dated records, kept where other documents cite them: [data-qa.md](data-qa.md) (the data check of the recorded run of 30 October; the main run's is [runs/2026-11-03-main-run-data-qa.md](runs/2026-11-03-main-run-data-qa.md)) and [metal-qa-2026-11-01-week.md](metal-qa-2026-11-01-week.md) (the Metal QA of 1 November).
 
 ## Video
@@ -75,8 +74,10 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 ## History
 
-- [archive/](archive/): kept for history; each file says what replaced it.
-
-Not part of the submission: `internal/` holds only the working notes a test, a script or another document still cites
-(two runbooks, a restart plan, a requirements audit and a cheat sheet, in Dutch; the Demo Day card; the
-after-submission list).
+- [archive/](archive/): kept for history; each file says what replaced it. Working files moved out of the docs root on
+  13 November, kept as evidence because a test, a script or a run log still cites them:
+  - [archive/internal/](archive/internal/): the working notes, in Dutch (two runbooks, a restart plan, a requirements
+    audit, a cheat sheet), the Demo Day card and the after-submission list. Not part of the submission.
+  - [archive/superpowers/specs/](archive/superpowers/specs/): the design specs of 8 November for what was built after the kit.
+  - [archive/readme-v2-draft.md](archive/readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
+  - [archive/runs/](archive/runs/): two notes of the dry runs: the acceptance list (in Dutch) and the recycling of test money.

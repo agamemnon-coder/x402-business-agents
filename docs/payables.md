@@ -2,7 +2,7 @@
 
 Built after the hackathon submission (8 November 2026). Its code is in this repository (`src/ap`, the page in
 `src/servers/payables.ts`); it is not part of the submitted run or the live site. Where the whole product stands:
-[after-the-kit.md](after-the-kit.md). Design: [superpowers/specs/2026-11-08-payables-inbox-design.md](superpowers/specs/2026-11-08-payables-inbox-design.md).
+[after-the-kit.md](after-the-kit.md). Design: [superpowers/specs/2026-11-08-payables-inbox-design.md](archive/superpowers/specs/2026-11-08-payables-inbox-design.md).
 Test money only: the Airwallex sandbox.
 
 Supplier invoices come in as PDFs; Purser reads them, checks them, files the payment for the CFO's Face ID and books
@@ -88,7 +88,7 @@ Paid Airi purchases are booked by the ledger feed like a card charge (default ex
 
 ## Paying suppliers abroad
 
-Design: [superpowers/specs/2026-11-08-fx-payouts-design.md](superpowers/specs/2026-11-08-fx-payouts-design.md). Each
+Design: [superpowers/specs/2026-11-08-fx-payouts-design.md](archive/superpowers/specs/2026-11-08-fx-payouts-design.md). Each
 rule cites the Airwallex guide it comes from in `src/payouts/routes.ts`.
 
 | Bank country | Paid by | Account details |

@@ -10,16 +10,16 @@
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="assets/payment-life-tall-dark.svg">
   <source media="(max-width: 600px)" srcset="assets/payment-life-tall-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/payment-life-wide-dark.svg">
-  <img src="assets/payment-life-wide-light.svg" alt="One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked." width="100%">
+  <img src="../assets/payment-life-wide-light.svg" alt="One payment's life: invoice, read by Claude, checked by Purser's code, the exact terms hashed, signed by the CFO's Face ID, checked again by the rail's own control, paid, booked." width="100%">
 </picture>
 
 Three runs where the rail itself held a payment, each a live sandbox or testnet run:
 
 | Rail | What happened | Record |
 |---|---|---|
-| **Airwallex**<br>`IN_APPROVAL` | A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00 on 10 Nov. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement). | 12 Nov, Airwallex sandbox, test money.<br>[Run record](runs/2026-11-12-airwallex-two-locks-paid.md) |
-| **Metal**<br>`mandate_cap_exceeded` | As a test, Purser's own check was switched off for one purchase. Metal refused #24 (0.04 test USD, over the 0.03 cap) and recorded the refusal on chain; nothing settled. | 3 Nov, Metal testnet, test money.<br>[Run record](runs/2026-11-03-main-run.md) · [tx 0x2e92…1871](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
-| **Visa Intelligent Commerce via Airi**<br>Airi's passkey step | In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The tap did not come within 5 minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.<br>_Airi has not refused a purchase outright in a live run._ | 7 Nov, Airwallex sandbox, test card, test money.<br>[Run record](runs/2026-11-07-vic-1.md) |
+| **Airwallex**<br>`IN_APPROVAL` | A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00 on 10 Nov. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement). | 12 Nov, Airwallex sandbox, test money.<br>[Run record](../runs/2026-11-12-airwallex-two-locks-paid.md) |
+| **Metal**<br>`mandate_cap_exceeded` | As a test, Purser's own check was switched off for one purchase. Metal refused #24 (0.04 test USD, over the 0.03 cap) and recorded the refusal on chain; nothing settled. | 3 Nov, Metal testnet, test money.<br>[Run record](../runs/2026-11-03-main-run.md) · [tx 0x2e92…1871](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
+| **Visa Intelligent Commerce via Airi**<br>Airi's passkey step | In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The tap did not come within 5 minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.<br>_Airi has not refused a purchase outright in a live run._ | 7 Nov, Airwallex sandbox, test card, test money.<br>[Run record](../runs/2026-11-07-vic-1.md) |
 
 **Try it with your own Face ID:** [kit11.max-31b.workers.dev/try/sign](https://kit11.max-31b.workers.dev/try/sign) signs a test payment
 in your own test world (stand-in executors: no payment reaches Airwallex or Metal).
@@ -30,7 +30,7 @@ in your own test world (stand-in executors: no payment reaches Airwallex or Meta
   <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="assets/architecture-tall-dark.svg">
   <source media="(max-width: 600px)" srcset="assets/architecture-tall-light.svg">
   <source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg">
-  <img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger." width="100%">
+  <img src="../assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger." width="100%">
 </picture>
 
 1. **Agents propose.** Claude agents read invoices and propose payments. An agent cannot change its own limits.
@@ -57,24 +57,24 @@ What this does not cover: the rails' limits (Metal mandate caps, Airwallex card 
 which holds the keys, with the CFO's signature for each change. So the layers hold against an agent, a changed
 invoice or changed terms, not against a compromised runner (see the threat model).
 
-Threat model: [security.md](security.md). Controls: [controls.md](controls.md). Security reports:
-[SECURITY.md](../SECURITY.md).
+Threat model: [security.md](../security.md). Controls: [controls.md](../controls.md). Security reports:
+[SECURITY.md](../../SECURITY.md).
 
 ## Partners, and what ran live on each
 
 Built with:
 
-<img src="assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa, Cloudflare" height="44">
+<img src="../assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa, Cloudflare" height="44">
 
-The logos are the partners' official files, unmodified ([sources](assets/logos/SOURCES.md)); no endorsement is
-implied. Named in text only: Moneybird, T:0 (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
-Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
+The logos are the partners' official files, unmodified ([sources](../assets/logos/SOURCES.md)); no endorsement is
+implied. Named in text only: Moneybird, T:0 (why: [sources](../assets/logos/SOURCES.md#left-out-named-in-text-only)).
+Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](../runs/README.md).
 
 - **Airwallex (sandbox).** Main run, 3 Nov: the hash the CFO signed is in Airwallex's own record of SWIFT transfer `03360bfa…` (EUR 240.00). awx-1, 7 Nov: Airwallex declined agents' cards with its own controls (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`). Two locks, from 12 Nov: A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00 on 10 Nov. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement).
 - **Metal (testnet).** Main run: a mandate on chain per agent; 86 payments, each its own transaction; #24 refused on chain (`mandate_cap_exceeded`); the mandates replaced on chain after the CFO's Face ID.
-- **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card).** 7 Nov: 2 purchases paid with a single-use credential, each confirmed by the cardholder's passkey in Airi; 5 of 5 checks passed ([run log](runs/2026-11-07-vic-1.md)).
+- **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card).** 7 Nov: 2 purchases paid with a single-use credential, each confirmed by the cardholder's passkey in Airi; 5 of 5 checks passed ([run log](../runs/2026-11-07-vic-1.md)).
 - **Claude (Anthropic).** Main run: 24 of 24 decisions by Claude, 0 fallbacks; 5 Face ID signatures in the same run.
-- **Books.** T:0 (sandbox): 95 journal entries of the main run posted ([record](runs/2026-11-10-t0-journal-sandbox.md)). Moneybird (Moneybird sandbox administration, test data, no e-mail sent): 6 documents read back, 0 differences ([record](runs/2026-11-12-moneybird-sandbox.md)).
+- **Books.** T:0 (sandbox): 95 journal entries of the main run posted ([record](../runs/2026-11-10-t0-journal-sandbox.md)). Moneybird (Moneybird sandbox administration, test data, no e-mail sent): 6 documents read back, 0 differences ([record](../runs/2026-11-12-moneybird-sandbox.md)).
 
 ## Run it yourself
 
@@ -90,7 +90,7 @@ npm run judge               # serves them on http://localhost:4311
 npm run visuals -- --check  # the diagrams in docs/assets are what the code draws
 ```
 
-Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
+Running it live (sandbox keys, a Metal RPC): [run-it.md](../run-it.md).
 
 ## Repository map
 
@@ -106,10 +106,10 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 ## Tests and CI
 
-- **6331 of 6335 tests passed** in 553 files, 4 skipped, on commit `60df283a` ([summary](assets/test-summary.json)); CI runs them on every push.
+- **6331 of 6335 tests passed** in 553 files, 4 skipped, on commit `60df283a` ([summary](../assets/test-summary.json)); CI runs them on every push.
 - 549 test files under `test/`, 14 browser checks (Playwright, 390 and 1440 px), 2 workflows.
 - CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Engine tests through the Durable Object handle; Hostile-model eval of the payables agents (the line /claude shows); Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); The CFO's phone pages in Chromium (enrol, approve in every state, policy; 390 and 1440 px, light and dark); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); Playwright Firefox, with its system libraries; Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark); /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 78 dated run logs in [runs/](runs/).
+- 78 dated run logs in [runs/](../runs/).
 
 ## Limits, and what is simulated
 
@@ -126,4 +126,4 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 | Tests | Run on stand-ins for Airwallex, Metal and Anthropic. |
 | Customers | Not validated with customers yet; no pilots, no revenue. |
 
-Screenshots and short loops of the live site: [assets/screens/](assets/screens/README.md).
+Screenshots and short loops of the live site: [assets/screens/](../assets/screens/README.md).
