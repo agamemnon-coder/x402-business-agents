@@ -17,8 +17,8 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     // 150 lines until 13 Nov; the owner then asked for the three diagrams and the charts inline, so the cap is 300.
     expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(300);
     expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(1);
-    expect(lines.indexOf("## Why this is a company")).toBeGreaterThan(0);
-    expect(lines.indexOf("## Why this is a company")).toBeLessThan(60);
+    expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
+    expect(lines.indexOf("## The business hypothesis")).toBeLessThan(60);
   });
 
   it("names no run by its code", () => {
@@ -28,8 +28,8 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
   // The final review (13 Nov): "For reviewers in 30 seconds" under 120 words, its table of one id per rail moved to
   // docs/in-depth.md, "What ran live, one id per rail", which the block links.
   it("keeps 'For reviewers in 30 seconds' under 120 words, linking the table of one id per rail", () => {
-    const start = README.indexOf("## For reviewers in 30 seconds");
-    const block = README.slice(start + "## For reviewers in 30 seconds".length, README.indexOf("\n## ", start + 5)).split("<picture>")[0]!;
+    const start = README.indexOf("## For reviewers");
+    const block = README.slice(start + "## For reviewers".length, README.indexOf("\n## ", start + 5)).split("<picture>")[0]!;
     const words = block.replace(/\]\([^)]*\)/g, "]").replace(/<[^>]+>/g, " ").replace(/\\/g, " ").split(/\s+/).filter(Boolean);
     expect(words.length).toBeLessThan(120);
     expect(block).toContain("](docs/in-depth.md#what-ran-live-one-id-per-rail)");
