@@ -147,11 +147,30 @@ async function film(page: Page, shot: Shot, out: string, url: string, size: [num
       } else if ("click" in a) {
         // By role and accessible name: no selector is built from the text.
         await page.getByRole("button", { name: a.click }).or(page.getByRole("link", { name: a.click })).first().click({ timeout: 10_000 });
+        // The pointer leaves the page, so no menu stays open under it.
+        await page.mouse.move(1, 1);
         await page.waitForTimeout(700); await snap();
       } else if ("pick" in a) {
         await page.locator('input[type="file"]').first().setInputFiles(`${o.root}/${a.pick}`);
         await page.waitForTimeout(1200); await snap();
       } else if ("highlight" in a) { await highlight(page, a.highlight); await snap(); }
+      else if ("hash" in a) {
+        // The app routes itself first (a sign-in lands on its own tab); the hash is set once that has settled.
+        await page.waitForLoadState("networkidle").catch(() => undefined);
+        await page.waitForFunction(() => location.hash.length > 2 && !location.hash.includes("sign-in"), undefined, { timeout: 20_000 }).catch(() => undefined);
+        await page.waitForTimeout(1500);
+        for (let i = 0; i < 3; i++) {
+          await page.evaluate((h) => { location.hash = h; }, a.hash);
+          await page.waitForTimeout(800);
+          if (await page.evaluate((h) => location.hash === h, a.hash)) break;
+        }
+        await page.waitForLoadState("networkidle").catch(() => undefined);
+        await page.waitForFunction(() => !(document.querySelector("main")?.textContent ?? "").includes("Loading …"), undefined, { timeout: 20_000 }).catch(() => undefined);
+        // Close an open menu (the pointer or focus may have opened one).
+        await page.evaluate(() => { for (const b of document.querySelectorAll<HTMLElement>("[aria-expanded=true]")) b.click(); (document.activeElement as HTMLElement | null)?.blur(); });
+        await page.mouse.move(800, 600);
+        await page.waitForTimeout(1500); await page.addStyleTag({ content: PREP_CSS }); await snap();
+      }
     }
     const shown = (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, " ");
     const wrong = (shot.mustNot ?? []).filter((m) => shown.includes(m));

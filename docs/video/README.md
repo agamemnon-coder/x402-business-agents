@@ -1,6 +1,7 @@
 # The premiere: edit guide
 
-**Purser in 3:58**, film v8 (7 November), **the current film and the submission video**: the premiere-style film made
+**Film v10 (13 November), the enterprise hand-in, is the hand-in video now: [its section below](#film-v10-13-nov-enterprise-hand-in).**
+**Purser in 3:58**, film v8 (7 November), the earlier submission video: the premiere-style film made
 from the main run of 3 November 2026 (world `main-1`, [run log](../runs/2026-11-03-main-run.md)), with the two live runs
 of 7 November (awx-1 on Airwallex alone, [run log](../runs/2026-11-07-awx-1.md); the Airi run, Visa Intelligent
 Commerce via Airwallex's Airi, [run log](../runs/2026-11-07-vic-1.md)) and a recorded walk of the live /try/sign page.
@@ -15,6 +16,66 @@ Studio, written from the same times. The script with every picture, line and sou
 
 Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
 [premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
+
+## Film v10 (13 Nov): enterprise hand-in
+
+**Purser: the enterprise hand-in**, 4:58, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
+It shows what Purser is today, at a company's scale: Purser Cloud as the place where a company runs Purser (its demo
+company: the Agents tab, Invoices & books, the Tokenisation tab), the approval alerts (WhatsApp, e-mail, Slack, Teams:
+built, live once Twilio keys are set), the hands-on demo recorded from the live page, the layers of security with the zero-trust
+report and the hostile-model eval, Claude's decisions checked by code, the partners' runs (Airwallex, Metal, Visa via
+Airi, T:0), the proof page, and what is not done. Film v8's look: dark, large and slow, letterboxed to 2.39:1 (black
+bars of 138 px), the captions in the bar below and the badges in the bar above.
+
+Nobody is on camera and nobody recorded anything by hand. Every line is read by an **AI narrator** (ElevenLabs; the
+voice is “Ian” from ElevenLabs' voice library, `src/film/narrator10.ts`: the repository does not record which stock voice
+v6/v8 used, so this is a calm, warm, neutral English narrator), over **AI-generated music** (ElevenLabs), mixed with
+`src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.4 LUFS integrated, true peak -1.2 dB),
+the music about 21 dB under the voice. The music is one 293 s ElevenLabs track; for 4:58 its own soft opening is
+crossfaded onto its end (ffmpeg, 3 s), as a new take of that length was over the account's remaining credits. The end card
+says so: “Voice-over and music: AI-generated (ElevenLabs)”, and “Test money only”.
+
+The hand-in script's placeholders (`handin-script.md`: M1, M2, P2a–c, S1) are gone:
+
+| Was | Now |
+|---|---|
+| M1, the owner on camera (the opening) | The AI narrator over a title card (“AI agents are starting to pay company bills. / Who signs off?”) and Home |
+| P2a–c, the owner's phone recording of /try | `npm run record-try10`: the live hands-on demo (purser-try.max-31b.workers.dev/try, after #284), walked once in headless Chromium at phone size, the passkey a CDP **virtual test passkey**, one test company (test money on the simulated bank, deleted after 24 hours), no other write and no money rail. Cut into four windows at the walk's marks, nothing sped up; what the page said at each mark is in [recording-try-v10.json](recording-try-v10.json) |
+| S1, the owner's screen recording of the console | Page shots of Purser Cloud's **demo company** (the sign-in page's “Try as guest”: read only, made-up data, test money), each badged “Demo company · made-up data · test money” |
+| M2, the owner on camera (the close) | The AI narrator over a title card |
+
+Every claim is a row of `src/film/claims.ts` (C47–C55 are new; the attack count of C47, of the narration and of the caption is read from
+`docs/zero-trust/report.json` by `src/film/zeroTrust.ts`, so a new attack there changes the film's words: the zero-trust report, the hostile-model eval, the alerts,
+Cloud's tabs, /try's approval card, the payee check, the batch, the invoice token, the anchor), and `npm run cut --
+--check` checks every number said or shown against its record. The words: [film-v10-script.md](film-v10-script.md) (the
+script table with claim ids), [film-v10-shots.md](film-v10-shots.md) (the shot list) and [film-v10.srt](film-v10.srt)
+(the subtitles), written by `npm run cut -- --docs handin-10`; [film-v10-youtube.md](film-v10-youtube.md) has the
+chapters and the description. Six stills are in [stills-v10/](stills-v10/).
+
+**The file** (not in git, as every film before: `out/` is ignored): `out/video/v10/purser-v10.mp4`, 1920×1080, 60 fps,
+H.264 (CRF 16) with AAC 320 kb/s, 4:58 (298.0 s), about 44 MB, and `out/video/v10/purser-v10.srt` next to it (the same as
+[film-v10.srt](film-v10.srt)). Made again with:
+
+```sh
+npm ci
+VIDEO_OUT=out/video/v10 npm run capture -- X-home X-cloud-overview X-cloud-agents X-cloud-books X-cloud-tokens \
+  X-security X-attacks X-hostile X-claude X-books X-awx-card X-awx-locks X-awx-payee X-faceid-chain X-refused \
+  X-anchor X-visa X-visa-n X-t0 X-proof                       # the page shots, 1600x669 at 2x, into out/video/v10/shots/
+npm run record-try10                                          # ONE live walk of /try (one test company); --recut re-cuts it
+npm run voice10 && npm run voice10 -- --music                 # the narration (one WAV a row) and the music (ElevenLabs)
+VIDEO_OUT=out/video/v10 npm run cut -- handin-10 --vo out/video/v10/vo --music out/video/v10/music.mp3
+```
+
+`npm run voice10` needs ElevenLabs: `ELEVENLABS_API_KEY` in the environment, or a session whose proxy injects the key
+for api.elevenlabs.io (it calls the API through curl). It stops when a line is longer than its row. Without a voice,
+`npm run cut -- handin-10 --draft` burns the narration in as a line at the bottom, so the picture can be checked.
+
+What is labelled on screen: “Simulated bank · test money” and “Recorded from the live page · virtual test passkey” on
+/try; “Demo company · made-up data · test money” on Cloud; “Built · live once Twilio keys are set” on the alerts; “Test harness
+· stand-in rails” on the attacks and “Test data · no network” on the hostile-model eval; “Airwallex sandbox · test
+money”, “Metal testnet · test USD”, “Airi test card · test money” and “Sandbox · test data” on the partners' runs; the
+narration says “simulated settlement” for every payout PAID in the Airwallex sandbox. No N/N fraction is said or shown
+(`test/film-v10.test.ts`), and the shots were framed so none on the pages is in view.
 
 ## Film v8 (7 November, night): 3:58, every scene long enough to read
 
