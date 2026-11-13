@@ -3,7 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
-import { AuthError, callerOf, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
+import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
@@ -36,6 +36,7 @@ import { SwitchRefused } from "./try/switches.js";
 import { noteRequest } from "./try/metrics.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
+import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -552,6 +553,9 @@ export const ROUTES: Route[] = [
 
   // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
   ...tryRoutes<Ctx>({ json, err, body }),
+
+  // Connect Claude (cloud/src/claude/routes.ts): connector tokens, the MCP server at /mcp and its OAuth sign-in.
+  ...claudeRoutes<Ctx>({ json, err, body, text: (c, max) => readCapped(c.req, max) }),
 ];
 
 function match(path: string, pattern: string): string[] | null {
@@ -592,18 +596,25 @@ export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   return res;
 }
 
+/** Claude's web origins, which may call /mcp from a browser (cloud/src/claude/routes.ts). */
+const CLAUDE_ORIGINS = new Set(["https://claude.ai", "https://claude.com"]);
+
 async function route(req: Request, env: CloudEnv): Promise<Response> {
   const now = (env.now ?? (() => new Date()))();
   const url = new URL(req.url);
   try {
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
-    if (!url.pathname.startsWith("/v1/")) return consoleResponse(req, url, env);
+    if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
     // signed-in browser post here (the console keeps its session in the tab and sends it as a bearer token, so there is
     // no cookie to ride on either). The runner and other programs send no Origin.
     if (req.method !== "GET" && req.method !== "HEAD") {
       const from = req.headers.get("origin");
-      if (from !== null && from !== env.origin) return err(403, "this request came from another site");
+      // OAuth's registration and token requests hold no session and no key (a code is bound to its PKCE verifier), and a
+      // client may make them from its own page: any origin may send them.
+      // /mcp takes a bearer token only (no cookie rides along), so Claude's own web origins may call it too.
+      const anyOrigin = url.pathname === "/oauth/token" || url.pathname === "/oauth/register" || (url.pathname === "/mcp" && CLAUDE_ORIGINS.has(from ?? ""));
+      if (from !== null && from !== env.origin && !anyOrigin) return err(403, "this request came from another site");
       // The hands-on demo's start and renewal are a browser's only: they must say they come from this site (the admin's
       // controls are a program's, with the platform token, and are not held to it).
       if (from === null && (url.pathname === "/v1/try/start" || url.pathname === "/v1/try/session")) return tryError(json, 403, "forbidden", "this request must come from the hands-on demo's own page");
@@ -619,7 +630,9 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     // other proxy this header must not be trusted (docs/cloud.md).
     const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
     if (hit.r.need === "public") {
-      if (hit.r.path.startsWith("/v1/auth/") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return err(429, "too many sign-in attempts; wait a minute");
+      // The consent page, where a person pastes a token, is held to the sign-in limit per address. OAuth's registration and
+      // token requests come from a client's servers (claude.ai's share addresses) and carry nothing guessable.
+      if ((hit.r.path.startsWith("/v1/auth/") || hit.r.path === "/oauth/authorize") && !(await withinRate(env.sql, `ip:${ip}`, now, { windowSec: 60, max: rate.signInPerMinute }))) return err(429, "too many sign-in attempts; wait a minute");
     } else if (hit.r.need === "platform") {
       if (!(await isPlatformAdmin(env.adminTokenSha256, req.headers.get("authorization")))) return err(401, "platform admin only");
     } else {
@@ -635,7 +648,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           const tryTenant = await signedTrySession(env.sessionSecret, req.headers.get("authorization"));
           if (tryTenant) {
             if ((await noteTryFail(env.sql, tryTenant, now)) > DEAD_SESSIONS_PER_MINUTE) return tryError(json, 429, "limit", "This test company's old session was sent too often; renew the session, or wait a minute.");
-          } else await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
+          } else if (!(hit.r.path === "/mcp" && !req.headers.get("authorization"))) await noteFailedAuth(env.sql, ip, keyIdOf(/^Bearer (\S+)$/.exec(req.headers.get("authorization") ?? "")?.[1]), now);
         }
         throw e;
       }
@@ -654,6 +667,10 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       if (caller.purpose === "recovery") {
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "a recovery key only enrols the owner it was issued for; sign in with the new passkey to do the rest");
+      }
+      // A Claude connector token works at /mcp only, and /mcp takes only connector tokens (cloud/src/claude/routes.ts).
+      if (isConnector(caller.purpose) !== (hit.r.path === "/mcp")) {
+        return err(403, isConnector(caller.purpose) ? "a Claude connector token works at /mcp only" : "/mcp takes a Claude connector token (made in Purser Cloud: Settings, Connect Claude)");
       }
       if (caller.purpose === "first-owner") {
         const ok = (req.method === "GET" && hit.r.path === "/v1/me") || (req.method === "POST" && hit.r.path === "/v1/company")
@@ -674,7 +691,11 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
     if (env.engine && ctx.caller && isEngineWrite(req.method, hit.r.path)) await noteEngineCompany(env.sql, ctx.caller.tenantId, now);
     return await hit.r.run(ctx);
   } catch (e) {
-    if (e instanceof AuthError) return err(e.status, e.message);
+    if (e instanceof AuthError) {
+      const r = err(e.status, e.message);
+      if (e.status === 401 && url.pathname === "/mcp") r.headers.set("www-authenticate", mcpChallenge(env.origin));
+      return r;
+    }
     if (e instanceof SyncRefused) return err(e.status, e.message);
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);

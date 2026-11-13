@@ -8,6 +8,16 @@ import type { Sql } from "./store.js";
 import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
 export type Scope = "read" | "sync" | "admin";
+/**
+ * A Claude connector token (cloud/src/claude/): an API key with the read scope that works at /mcp only. 'claude' reads;
+ * 'claude-propose' also files an invoice's payment for the CFO's approval, which only the CFO's passkey (Face ID) can
+ * give. 'claude-demo' is the demo company's public token (no key row).
+ */
+export type ConnectorPurpose = "claude" | "claude-propose";
+export const isConnector = (purpose: string | null | undefined): boolean => purpose === "claude" || purpose === "claude-propose" || purpose === "claude-demo";
+/** The demo company's connector token: public on purpose (read only, made-up data); kept apart from guest.ts so auth needs no seed. */
+export const DEMO_CONNECTOR_TOKEN = "purser-demo-read-only";
+export const DEMO_CONNECTOR_TENANT = "t_demo_company";
 export type Role = "owner" | "cfo" | "accountant" | "viewer";
 export const ROLES: Role[] = ["owner", "cfo", "accountant", "viewer"];
 export const SCOPES: Scope[] = ["read", "sync", "admin"];
@@ -48,7 +58,7 @@ export const KEY_MAX_DAYS = 365;
  * key made a year-long read+sync+admin key that outlived its revoke). The insert commits only while the caller is still
  * live (a key minted while its person was being erased outlived the erasure).
  */
-export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; caller: Caller; expiresInDays?: number; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
+export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]; caller: Caller; expiresInDays?: number; purpose?: ConnectorPurpose; now: Date }): Promise<{ id: string; key: string; expires_at: string }> {
   if (!a.scopes.length || a.scopes.some((s) => !SCOPES.includes(s))) throw new AuthError(403, `scopes must be some of ${SCOPES.join(", ")}`);
   const days = a.expiresInDays ?? KEY_DEFAULT_DAYS;
   let expires_at = new Date(a.now.getTime() + days * 86_400_000).toISOString();
@@ -66,7 +76,7 @@ export async function newApiKey(db: TenantDb, a: { name: string; scopes: Scope[]
   try {
     await db.apply([db.callerGuard(a.caller, iso), db.insert("api_keys", {
       id, name: a.name.slice(0, 80), scopes: a.scopes.join(" "), secret_sha256: await sha256Hex(secret), created_by: a.caller.principal, created_by_user: a.caller.user,
-      parent_key: parent, created_at: iso, expires_at,
+      parent_key: parent, purpose: a.purpose ?? null, created_at: iso, expires_at,
     })]);
   } catch (e) {
     if (e instanceof WriteConflict) throw new AuthError(401, "the key or person asking was revoked or erased meanwhile; no key was made");
@@ -108,10 +118,20 @@ export function keyIdOf(token: string | undefined): string | null {
 async function fromApiKey(sql: Sql, token: string, now: Date): Promise<Caller> {
   const m = /^pck_(k[A-Za-z0-9]{12})_([A-Za-z0-9_-]{43})$/.exec(token);
   if (!m) throw new AuthError(401, "not a Purser API key");
+  return liveKey(sql, m[1]!, m[2]!, now);
+}
+
+/**
+ * A key by its id, with every check a key's use goes through (revoked, expired, its person erased, a key up its chain
+ * dead, the company closed). With a secret, the secret must hash to the stored hash; without one (null), the caller
+ * already proved the key some other way: an access token Purser signed for this key after its owner pasted it on the
+ * consent page (cloud/src/claude/oauth.ts). Either way a revoke ends it at once.
+ */
+export async function liveKey(sql: Sql, keyId: string, secret: string | null, now: Date): Promise<Caller> {
   const row = await sql.first<{ tenant_id: string; scopes: string; secret_sha256: string; revoked_at: string | null; expires_at: string | null; created_by_user: string | null; parent_key: string | null; purpose: string | null }>(
-    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user, parent_key, purpose FROM api_keys WHERE id = ?", [m[1]!]);
-  const digest = await sha256Hex(m[2]!);
-  if (!row || !sameString(row.secret_sha256, digest)) throw new AuthError(401, "unknown API key");
+    "SELECT tenant_id, scopes, secret_sha256, revoked_at, expires_at, created_by_user, parent_key, purpose FROM api_keys WHERE id = ?", [keyId]);
+  if (!row) throw new AuthError(401, "unknown API key");
+  if (secret !== null && !sameString(row.secret_sha256, await sha256Hex(secret))) throw new AuthError(401, "unknown API key");
   if (row.revoked_at) throw new AuthError(401, "this API key was revoked");
   if (!row.expires_at || row.expires_at <= now.toISOString()) throw new AuthError(401, "this API key expired; make a new one");
   // The person behind it erased, or a key up its chain revoked or expired: it is dead too (red team round 4).
@@ -127,8 +147,8 @@ async function fromApiKey(sql: Sql, token: string, now: Date): Promise<Caller> {
   }
   const tenant = await sql.first<{ closed_at: string | null }>("SELECT closed_at FROM tenants WHERE id = ?", [row.tenant_id]);
   if (!tenant || tenant.closed_at) throw new AuthError(401, "this company's account is closed");
-  await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), m[1]!]);
-  return { tenantId: row.tenant_id, kind: "key", principal: m[1]!, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose };
+  await sql.run("UPDATE api_keys SET last_used_at = ? WHERE id = ?", [now.toISOString(), keyId]);
+  return { tenantId: row.tenant_id, kind: "key", principal: keyId, scopes: new Set(row.scopes.split(" ") as Scope[]), user: row.created_by_user, purpose: row.purpose };
 }
 
 const scopesOf = (role: Role): Set<Scope> => new Set<Scope>(role === "owner" ? ["read", "admin"] : ["read"]);
@@ -155,6 +175,34 @@ async function fromSession(sql: Sql, secret: string, token: string, now: Date): 
   return { tenantId: p.t, kind: "session", principal: p.u, scopes: scopesOf(p.r), role: p.r, user: p.u };
 }
 
+/** How long an access token Purser signs for a connector key lasts (never past the key's own expiry). */
+export const ACCESS_TOKEN_TTL_MS = 30 * 86_400_000;
+
+/**
+ * An OAuth access token for a Claude connector key (cloud/src/claude/oauth.ts): signed by Purser, naming the key and
+ * the client it was issued to, never holding the key's secret. Every use checks the key as a key's own use does, so
+ * revoking the key in Purser Cloud ends the token at once.
+ */
+export async function accessToken(secret: string, a: { keyId: string; clientId: string; expiresAt: number }): Promise<string> {
+  const body = toB64u(new TextEncoder().encode(JSON.stringify({ k: a.keyId, c: a.clientId, exp: a.expiresAt })));
+  return `pca.${body}.${await hmacB64u(`access:${secret}`, body)}`;
+}
+
+async function fromAccessToken(sql: Sql, secret: string, token: string, now: Date): Promise<Caller> {
+  const [, body, sig] = token.split(".");
+  if (!body || !sig || !(await hmacValid(`access:${secret}`, body, sig))) throw new AuthError(401, "bad access token");
+  let p: { k: string; c: string; exp: number };
+  try {
+    p = JSON.parse(new TextDecoder().decode(fromB64(body))) as typeof p;
+  } catch {
+    throw new AuthError(401, "bad access token");
+  }
+  if (typeof p.exp !== "number" || p.exp <= now.getTime() || typeof p.k !== "string") throw new AuthError(401, "the access token expired; connect again");
+  const c = await liveKey(sql, p.k, null, now);
+  if (!isConnector(c.purpose)) throw new AuthError(401, "bad access token");
+  return c;
+}
+
 /** Ends every session of one person (sign-out; erasure and closing a company end them too, see privacy.ts). */
 export async function endSessions(sql: Sql, tenantId: string, userId: string): Promise<void> {
   await sql.run("UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ? AND id = ?", [tenantId, userId]);
@@ -163,7 +211,12 @@ export async function endSessions(sql: Sql, tenantId: string, userId: string): P
 export async function callerOf(sql: Sql, sessionSecret: string, authorization: string | null, now: Date): Promise<Caller> {
   const token = /^Bearer (\S+)$/.exec(authorization ?? "")?.[1];
   if (!token) throw new AuthError(401, "sign in, or send an API key as Authorization: Bearer");
-  return token.startsWith("pck_") ? fromApiKey(sql, token, now) : token.startsWith("pcs.") ? fromSession(sql, sessionSecret, token, now) : Promise.reject(new AuthError(401, "unknown token type"));
+  if (token.startsWith("pck_")) return fromApiKey(sql, token, now);
+  if (token.startsWith("pcs.")) return fromSession(sql, sessionSecret, token, now);
+  if (token.startsWith("pca.")) return fromAccessToken(sql, sessionSecret, token, now);
+  // The demo company's public connector token: read only, demo data, the same for everyone (docs/connect-claude.md).
+  if (token === DEMO_CONNECTOR_TOKEN) return { tenantId: DEMO_CONNECTOR_TENANT, kind: "key", principal: "demo-connector", scopes: new Set<Scope>(["read"]), user: null, purpose: "claude-demo" };
+  throw new AuthError(401, "unknown token type");
 }
 
 export function need(c: Caller, scope: Scope): void {

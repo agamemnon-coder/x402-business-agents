@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "purser": {
+      "type": "http",
+      "url": "${PURSER_MCP_URL:-https://purser-try.max-31b.workers.dev/mcp}",
+      "headers": { "Authorization": "Bearer ${PURSER_CONNECTOR_TOKEN:-purser-demo-read-only}" }
+    }
+  }
+}

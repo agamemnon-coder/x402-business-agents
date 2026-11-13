@@ -434,3 +434,17 @@ CREATE TABLE IF NOT EXISTS oauth_states (
   verifier_sealed TEXT,
   expires_at INTEGER NOT NULL
 );
+
+-- Connect Claude (cloud/src/claude/oauth.ts): one authorization code, from the consent page to the token request (five
+-- minutes, good once). Only the code's hash is kept, with the connector key it was issued for (its id, never its
+-- secret), the client, the redirect address and the PKCE challenge (S256) the token request must answer.
+CREATE TABLE IF NOT EXISTS oauth_codes (
+  code_sha256 TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL,
+  key_id TEXT NOT NULL,
+  client_id_sha256 TEXT NOT NULL,
+  redirect_uri TEXT NOT NULL,
+  code_challenge TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at INTEGER
+);
