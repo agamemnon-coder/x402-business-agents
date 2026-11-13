@@ -15,7 +15,7 @@
 //    counted once (by its hash, or its event, time and subject).
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { isLive, liveRuns } from "./runs.js";
+import { liveRunCount } from "./runs.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
@@ -92,7 +92,7 @@ export function scaleFigures(): ScaleFigures {
     Object.values(o).forEach(walk);
   };
   for (const f of records) walk(json(f));
-  return { tests: testSummary(), liveRuns: liveRuns().filter(isLive).length, airwallexCalls: { calls, records: callRecords }, metalTx: tx.size, claudeCalls: req.size, refusals: rows.size };
+  return { tests: testSummary(), liveRuns: liveRunCount(), airwallexCalls: { calls, records: callRecords }, metalTx: tx.size, claudeCalls: req.size, refusals: rows.size };
 }
 
 /** A figure: its few words in sight, and in its link's title what exactly it counts and where. */

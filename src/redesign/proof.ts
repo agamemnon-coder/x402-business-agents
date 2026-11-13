@@ -475,11 +475,12 @@ const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPRO
  * figure, a one-line title, its context (scope and day), and one link to where its record is shown, "Record".
  */
 /**
- * The strip on /proof: the band's figures, its run count the rows /proof lists below (proofRunCount, the same array),
- * linked to that list (the orchestrator, 13 Nov: a judge who counts the rows gets the strip's figure).
+ * The strip on /proof: the band's figures, its run count the site's one count (liveRunCount, as on /home and /runs;
+ * judge panel, 13 Nov), linked to the list below, whose title says that the TAP run is the one told on /visa.
  */
 export function proofScaleStats(): ScaleStat[] {
-  return scaleStats({ ...scaleFigures(), liveRuns: proofRunCount() }).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: "Every live run listed below, by partner" } : s));
+  // The site's one live-run count (the same as /home and /runs); the rows below are all of them but the TAP run, on /visa.
+  return scaleStats(scaleFigures()).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: `Every live run: ${proofRunCount()} listed below, the Visa TAP run on /visa` } : s));
 }
 
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */

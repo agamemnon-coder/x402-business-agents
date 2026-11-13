@@ -5,7 +5,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { proofPage, proofScaleStats } from "../src/redesign/proof.js";
 import { elsewhereRuns, proofRunCount, proofRuns, TAP_LINK } from "../src/redesign/proofRuns.js";
-import { isLive, liveRuns } from "../src/redesign/runs.js";
+import { isLive, liveRunCount, liveRuns, runsPage } from "../src/redesign/runs.js";
+import { scaleFigures } from "../src/redesign/scale.js";
 
 const main = /<main[\s\S]*<\/main>/.exec(proofPage())![0];
 const runs = /<section class="pruns"[\s\S]*?<\/section>/.exec(main)![0];
@@ -21,18 +22,25 @@ describe("/proof: the live runs and the strip's count", () => {
     expect(proofRuns().flatMap((g) => g.runs.map((r) => r.key))).toEqual(rows);
   });
 
-  it("says the same count in the strip as the rows below it, and links the strip's figure to them", () => {
+  // Judge panel, 13 Nov: /proof said 23 runs while /home and /runs said 24. All three read liveRunCount() now; /proof's
+  // strip says that the rows below it are every one but the TAP run, which /visa tells.
+  it("says the site's one live-run count in the strip, the same as /home and /runs, and says which run is told on /visa", () => {
     const stat = proofScaleStats().find((s) => s.label === "sandbox and testnet runs")!;
-    expect(stat.n).toBe(proofRunCount());
+    expect(stat.n).toBe(liveRunCount());
+    expect(stat.n).toBe(proofRunCount() + elsewhereRuns().length);
     expect(stat.href).toBe("#live-runs");
+    expect(stat.title).toBe(`Every live run: ${proofRunCount()} listed below, the Visa TAP run on /visa`);
     const strip = /<ul class="scale"[\s\S]*?<\/ul>/.exec(main)![0];
     expect(strip).toContain(`<a href="#live-runs"`);
-    expect(strip).toContain(`data-count="${proofRunCount()}"`);
+    expect(strip).toContain(`data-count="${liveRunCount()}"`);
+    expect(scaleFigures().liveRuns).toBe(liveRunCount());
+    expect(runsPage()).toContain(`All <b>${liveRunCount()}</b>`);
   });
 
   it("links the TAP run to /visa, once, under the list", () => {
     expect(runs).toContain(`<p class="pr-more"><a href="visa#visa-tap">${TAP_LINK.replaceAll(">", "&gt;")}</a></p>`);
-    expect(main.match(/\bTAP\b/g)).toHaveLength(1);
+    // Linked once; the strip's title also names it, to say why its count is one more than the rows (judge panel, 13 Nov).
+    expect(main.match(/href="visa#visa-tap"/g)).toHaveLength(1);
   });
 
   it("lists the anchor run of 13 Nov as Live · testnet, linking its transaction on the explorer and its record", () => {

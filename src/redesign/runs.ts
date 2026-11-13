@@ -502,6 +502,8 @@ export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): R
 const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
 /** Counted as a live run: neither a rehearsal nor a control test, nor a run that stopped short (PARTIAL_RUNS). */
 export const isLive = (r: RunRow) => !isRehearsal(r) && !r.partial;
+/** The site's one count of live runs: /home's band, /proof's strip and /runs all say this number (judge panel, 13 Nov). */
+export const liveRunCount = (rows: RunRow[] = liveRuns()) => rows.filter(isLive).length;
 const nameOf = (r: RunRow) => r.name ?? r.title;
 /** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
 const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
