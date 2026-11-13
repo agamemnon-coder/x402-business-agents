@@ -222,6 +222,8 @@ details.real { position: relative; }
 details.real > summary { list-style: none; cursor: pointer; border: solid transparent; border-width: 10px 0; background-clip: padding-box; } details.real > summary::-webkit-details-marker { display: none; }
 details.real { flex-basis: 100%; }
 footer.foot a.flink { color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
+/* Record and source links (a.pf on every page, the footer's .flink elsewhere): at least 24 px tall to tap (review, 13 Nov). */
+a.pf, a.flink { display: inline-flex; align-items: center; min-height: 24px; vertical-align: middle; }
 footer.foot .builton { flex-basis: 100%; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; color: var(--muted); }
 footer.foot .builton li { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 /* The dot after an item, not before the next (jury, 13 Nov): a wrapped line starts with a name, never with "·". */

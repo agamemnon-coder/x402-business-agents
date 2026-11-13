@@ -624,10 +624,11 @@ function invoiceRing(D){
   const lg=el('ul','rlegend',parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))])));
   return el('div','ringwrap',[g,el('div','',[lg,I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
 // Spend by who started it: one bar each, its amount and how many payments; Airwallex's declines said, never counted.
+// The demo company's declines are its demo data's, so a guest reads "declined (simulated)" (judge run, 13 Nov).
 function spendBars(D){
   const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
   return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t('cs.dash.declined',{n:s.declined})):null])])}))}
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null])])}))}
 function feedList(D){
   return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
 function dashBlock(D){
