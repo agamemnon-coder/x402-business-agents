@@ -14,8 +14,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
-- [in-depth.md](in-depth.md): the README's sections in full: where each judging criterion is proven, the three live runs with every id, Try step by step, what is real and what is mock.
-- [runs/](runs/): every run log, dated, including awx-1 and the Airi run of 7 November.
+- [in-depth.md](in-depth.md): the README's sections in full: what ran live with one id per rail, where each judging criterion is proven, the Kit 11 runs with every id, Try step by step, what is real and what is mock.
+- [runs/](runs/): every run log, dated, newest first in [runs/README.md](runs/README.md).
 - [requirements-matrix.md](requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof.
 - [idea-vs-build.md](idea-vs-build.md): the idea as submitted on 24 October, promise by promise, against what is built.
 - [airwallex.md](airwallex.md): Airwallex in Purser: the APIs it calls, and why.
@@ -24,9 +24,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [/claude](https://kit11.max-31b.workers.dev/claude), measured, not asserted: the 40 simulated worlds ([night batch](runs/2026-11-02-night-batch.md)), the [blind holdouts](runs/holdouts/2026-11-03-blind/results.md), each model on each agent ([evals/agents.json](evals/agents.json)) and the agent interface over MCP ([one session](runs/2026-11-12-mcp-transcript.json)).
 - [t0.md](t0.md) and [/t0](https://kit11.max-31b.workers.dev/t0): Purser's books in T:0's ledger; the posting of 10 November is [runs/2026-11-10-t0-journal-sandbox.md](runs/2026-11-10-t0-journal-sandbox.md).
 - [metal-review.md](metal-review.md): a review: does Purser use metal-agent and metal-pay the way Metal intends?
-- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the Airi run (Visa Intelligent Commerce) is in [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
+- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the latest Airi run (Visa Intelligent Commerce, 13 November) is [runs/2026-11-13-vic-4.md](runs/2026-11-13-vic-4.md), the first [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
 - [claude.md](claude.md): how Purser uses Claude.
-- [t0.md](t0.md): Purser's books in a real general ledger (T:0).
 - [feedback-for-metal-and-airwallex.md](feedback-for-metal-and-airwallex.md): feedback for Metal and Airwallex.
 - [agents.md](agents.md): the Kit 11 agents: Claude decides inside the mandate, the rails enforce it.
 - [agent-evals.md](agent-evals.md) and [model-benchmark.md](model-benchmark.md): the three agents with real models, and which Claude model for which job.

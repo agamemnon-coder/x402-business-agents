@@ -141,7 +141,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(Number(fact("metal.mandates"))).toBe(budgets.agents.length + 1 + byEvent("mandate.replaced").filter((e) => e.payload.tx).length);
     expect([fact("metal.mandates"), fact("metal.chainRefusals")]).toEqual(["6", "1"]);
     expect(screen("06-metal")).toEqual({ big: "86", label: "payments", line: "each its own transaction on Metal testnet · no emulator", small: "+ 6 mandate transactions · 1 refusal on chain" });
-    expect(README).toContain("86 test-USD payments, each its own transaction");
+    expect(read("docs/in-depth.md")).toContain("86 test-USD payments, each its own transaction"); // the table of one id per rail, moved from the README (13 Nov)
     const broken = raw();
     for (const f of broken.snapshot.flows as { rail?: string }[]) if (f.rail === "metal") f.rail = "elsewhere";
     expect(() => buildPremiere(broken, README)).toThrow(/payment on Metal/);
