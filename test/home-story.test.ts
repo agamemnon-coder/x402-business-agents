@@ -8,9 +8,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, JUDGE_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
+import { scaleStats } from "../src/redesign/scale.js";
 import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
-import { agentRun, split } from "../src/redesign/run.js";
-import { metalStory } from "../src/redesign/metalStory.js";
+import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
@@ -125,24 +125,24 @@ describe("Home, the enterprise pass", () => {
       ["Metal", "Metal refused it on chain", "Over its cap."],
       ["Visa", "Visa: hash read back", "Equal at Airi and Airwallex."],
     ]);
+    // The rows' figures stay held to their records (Airwallex's decline over its card's limit, the Visa read-backs).
     const decline = AWX.card_transactions.find((t) => !t.approved && t.decline_code === "LIMIT_EXCEEDED")!;
-    const limit = AWX.cards.find((c) => c.agent === decline.agent)!.read_back.per_tx;
-    const sp = split(run.record);
+    expect(rows[0]!.text).toBe(`${decline.currency} ${decline.amount} over a ${AWX.cards.find((c) => c.agent === decline.agent)!.read_back.per_tx} limit.`);
     const vic3 = JSON.parse(read("docs/runs/2026-11-12-vic-3.json")) as { purchases: { step: string; read_back: { mandate: { equal: boolean } | null; payment_intent: { equal: boolean } | null } }[] };
     const b = vic3.purchases.find((p) => p.step === "B")!;
     expect([b.read_back.mandate?.equal, b.read_back.payment_intent?.equal]).toEqual([true, true]);
-    // First: Face ID verified on chain (the passkey account's record), its co-signer labelled a test key.
-    const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { threshold: number; owners: { virtual: boolean }[] };
+    // First: Face ID verified on chain (the passkey account's record), its strongest number the limit changes the account
+    // ran, each only after every passkey signed; its co-signer labelled a test key (the owner, 13 Nov).
+    const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
-    expect(homeStats(run)[0]).toMatchObject({ n: owners.threshold, suf: ` of ${owners.owners.length}` });
-    expect(homeStats(run, proofRows(), null).map((s) => s.label)).not.toContain("Face ID verified on chain; co-signer a test key");
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([
-      [owners.threshold, "Face ID verified on chain; co-signer a test key"],
-      [sp.byClaude, `Claude decisions in the main run, ${sp.fallbacks} fallbacks`],
-      [metalStory(run.record).payments.total, "Metal payments, each its own transaction"],
-      [Number(decline.amount), `declined by Airwallex over a ${decline.currency} ${limit} card limit`],
-      [2, "Visa: signed hash read back equal at Airi and Airwallex"],
-    ]);
+    const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, Face ID verified on chain: ${owners.threshold} of ${owners.owners.length} passkeys each (co-signer a test key)`]]);
+    expect(homeStats(run, [], null)).toEqual([]);
+    // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
+    const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
+    expect(band).not.toBe("");
+    expect(mainOf(ON).indexOf('<article class="e-statrec"')).toBeLessThan(mainOf(ON).indexOf('<ul class="scale"'));
+    expect([...band.matchAll(/data-count="(\d+)"/g)].map((m) => Number(m[1]))).toEqual(scaleStats().map((x) => x.n));
     for (const html of [ON, OFF]) expect(mainOf(html)).toContain(`<article class="e-statrec" data-rec="${STAT_RECORDS}">`);
     expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Metal"]);
     expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(ON)![0])).toBe(LOCKS_HEAD);

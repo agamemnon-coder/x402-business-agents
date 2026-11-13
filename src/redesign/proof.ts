@@ -10,6 +10,7 @@ import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } fro
 import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, summaryHtml, type SummaryCard } from "./summary.js";
+import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
@@ -467,13 +468,21 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
     const steps = ownersSteps(owners.rec), at = steps.findIndex((x) => x.key === "refused");
     const refused = steps[at], paid = steps.slice(at + 1).find((x) => x.key === "paid");
     const virtual = owners.rec.owners.some((x) => x.virtual);
-    if (refused && paid) out.push({ icon: "scan-face", fig: `${owners.rec.threshold} of ${owners.rec.owners.length}`, title: "Face ID verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
-      text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change ran only after both passkeys signed${virtual ? " (co-signer a test key)" : ""}. ${refused.label.replace(/^Refused /, "")} over the cap refused, then paid after the raise.` });
+    // Its strongest number (the owner, 13 Nov): the limit changes the account ran, each only after every passkey signed.
+    const changes = steps.filter((x) => x.key === "bind" || x.key === "replace" || x.key === "revoke").length;
+    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Face ID verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
+      text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change ran only after ${owners.rec.threshold} of ${owners.rec.owners.length} passkeys signed${virtual ? " (co-signer a test key)" : ""}. ${refused.label.replace(/^Refused /, "")} over the cap refused, then paid after the raise.` });
   }
   const hold = airwallexHold(), ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
-  if (hold && ended) out.push({ icon: "landmark", fig: ended, title: "Airwallex held it for a person", tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record}`, text: `${hold.short.replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.` });
+  // Its strongest number: the amount Airwallex held for a person, then paid.
+  const held = hold ? /\((EUR [\d,]+\.\d\d)\)/.exec(hold.short)?.[1] : undefined;
+  if (hold && ended) out.push({ icon: "landmark", fig: held ?? ended, title: `Airwallex held it, then ${ended}`, tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record}`, text: `${hold.short.replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.` });
   const v3 = o.vic3 === undefined ? vic3Run() : o.vic3;
-  if (v3) out.push({ icon: "credit-card", fig: `${vic3Summary(v3).paid} paid`, title: "Visa via Airwallex's Airi", href: "visa", rec: VIC3_RUN_FILE, text: `${vic3Lead(v3)}.` });
+  // Its strongest number: the amount paid above the CFO's limit, only after Face ID (the run's other outcomes in the line).
+  if (v3) {
+    const s3 = vic3Summary(v3), fid = s3.paidFaceId[0]?.request;
+    out.push({ icon: "credit-card", fig: fid ? `${fid.currency} ${fid.amount}` : `${s3.paid} paid`, title: "Visa via Airwallex's Airi: paid after Face ID", href: "visa", rec: VIC3_RUN_FILE, text: `${vic3Lead(v3)}.` });
+  }
   const sp = split(run.record);
   if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; Purser's code holds the limits.` });
   return out;
@@ -503,8 +512,10 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ];
   const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
   // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text).
+  // The owner, 13 Nov: the scale first, a band of figures computed from the records (src/redesign/scale.ts).
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
+  ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
   ${summaryHtml(proofSummary(run), "Proof in four cards")}
   ${detailsFold("details", "All the proof: guarantees, partners, numbers and every check", `${guaranteesHtml()}
   ${lifeVisual("wide")}
@@ -526,7 +537,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

@@ -17,7 +17,7 @@ import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml } from "./heroFlow.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
-import { split } from "./run.js";
+import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 
@@ -168,7 +168,7 @@ export const FEATURES = [
 ] as const;
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
 export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
-export const STAT_NOTE = "Each figure from a sandbox or testnet record.";
+export const STAT_NOTE = "Each figure computed from the records when the site was built.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -240,8 +240,10 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   const raised = steps.findIndex((s, i) => i > refused && s.key === "replace");
   if (refused < 0 || raised < 0) return [];
   const all = owners.rec.owners.length, virtual = owners.rec.owners.filter((o) => o.virtual).length;
-  // The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
-  return [{ n: owners.rec.threshold, suf: ` of ${all}`, label: `Face ID verified on chain${virtual ? "; co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+  // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
+  // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
+  const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
+  return [{ n: changes, label: `limit changes, Face ID verified on chain: ${owners.rec.threshold} of ${all} passkeys each${virtual ? " (co-signer a test key)" : ""}`, icon: "scan-face", tone: "ok" }];
 }
 
 /**
@@ -249,16 +251,11 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
  * run (its agent_stats), Metal payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
  * run) and the Visa read-backs (vic-3). A figure whose record lacks it drops out.
  */
-export function homeStats(run: AgentRun, rows: ProofRow[] = proofRows(run), owners: OwnersRun | null = ownersRun()): Stat[] {
-  const sp = split(run.record), pay = metalStory(run.record).payments;
-  const awx = rows.find((r) => r.partner === "Airwallex"), m = awx ? /^(\w+) ([\d.]+) over a ([\d.]+) limit/.exec(awx.text) : null;
-  return [
-    ...faceIdTile(owners),
-    ...(sp.decisions ? [{ n: sp.byClaude, label: `Claude decisions in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}`, icon: "bot" }] : []),
-    ...(pay.total ? [{ n: pay.total, label: "Metal payments, each its own transaction", icon: "link-2", tone: "ok" as const }] : []),
-    ...(m ? [{ n: Number(m[2]), dec: 2, pre: `${m[1]} `, label: `declined by Airwallex over a ${m[1]} ${m[3]} card limit`, icon: "ban", tone: "bad" as const }] : []),
-    ...(rows.some((r) => r.partner === "Visa") ? [{ n: 2, suf: " of 2", label: "Visa: signed hash read back equal at Airi and Airwallex", icon: "credit-card", tone: "ok" as const }] : []),
-  ];
+export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: OwnersRun | null = ownersRun()): Stat[] {
+  // The owner, 13 Nov ("feels small"): the scale band under it (src/redesign/scale.ts) carries the figures of every run,
+  // so the row keeps the one lock that leads: Face ID verified on chain. The main run's 24 decisions, its Metal
+  // payments, Airwallex's decline and the Visa read-backs are on /proof, each from its record.
+  return faceIdTile(owners);
 }
 
 /** The product for small companies, as docs/after-the-kit.md says it: its code in this repository, not live. */
@@ -306,6 +303,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
+  ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
@@ -323,7 +321,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
     // The judge's tour: one quiet footer link, only where /judge exists.
     links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
     real,
