@@ -400,3 +400,29 @@ describe("/connect-ai: a tab per client, exact configs, one-click links", () => 
     expect(tabs.find((t) => t.id === "gemini")!.snippets[1]!.code).toContain('"httpUrl"');
   });
 });
+
+describe("the consent page says where the browser goes back to (code review, 13 Nov)", () => {
+  const challenge = createHash("sha256").update(randomBytes(32).toString("base64url")).digest("base64url");
+  const page = async (redirect: string, name: string) => {
+    const reg = await c.fetch(`${ORIGIN}/oauth/register`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ client_name: name, redirect_uris: [redirect] }) });
+    const id = ((await reg.json()) as { client_id: string }).client_id;
+    const r = await c.fetch(`${ORIGIN}/oauth/authorize?${new URLSearchParams({ response_type: "code", code_challenge_method: "S256", client_id: id, redirect_uri: redirect, state: "s", code_challenge: challenge })}`);
+    expect(r.status).toBe(200);
+    return r.text();
+  };
+  it("names the host for Claude, ChatGPT and this computer without a warning", async () => {
+    for (const [redirect, host] of [["https://claude.ai/api/mcp/auth_callback", "claude.ai"], ["https://claude.com/api/mcp/auth_callback", "claude.com"], ["https://chatgpt.com/connector_platform_oauth_redirect", "chatgpt.com"], ["http://127.0.0.1:33418/callback", "127.0.0.1:33418"], ["http://localhost:8787/callback", "localhost:8787"]] as const) {
+      const html = await page(redirect, "Claude");
+      expect(html).toContain(`After you allow, you go back to <b>${host}</b>`);
+      expect(html).not.toMatch(/class="warn"/);
+    }
+  });
+  it("warns, by name, when a client calling itself Claude sends the browser anywhere else", async () => {
+    for (const redirect of ["https://evil.example/cb", "https://claude.ai.evil.example/cb", "https://notclaude.ai/cb"]) {
+      const html = await page(redirect, "Claude");
+      const host = new URL(redirect).host;
+      expect(html).toContain(`After you allow, you go back to <b>${host}</b>`);
+      expect(html).toMatch(new RegExp(`<div class="warn" role="alert"><b>Check this address\\.</b> Purser does not know ${host.replace(/\./g, "\\.")}`));
+    }
+  });
+});

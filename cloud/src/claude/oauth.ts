@@ -191,9 +191,20 @@ async function spendConsentToken(sql: Sql, secret: string, ask: AuthorizeAsk, to
   return spent.changes === 1;
 }
 
+/** Hosts whose sign-in callbacks Purser recognises: Claude's, ChatGPT's, and this machine (a desktop or CLI client). */
+export const KNOWN_REDIRECT_HOSTS = ["claude.ai", "claude.com", "chatgpt.com"] as const;
+/** Where the browser goes back to after consent, and whether Purser knows that host (code review, 13 Nov: a client names itself). */
+export function redirectHost(redirectUri: string): { host: string; known: boolean; loopback: boolean } {
+  const u = new URL(redirectUri);
+  const loopback = u.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
+  const known = loopback || (u.protocol === "https:" && (KNOWN_REDIRECT_HOSTS as readonly string[]).some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`)));
+  return { host: u.host, known, loopback };
+}
+
 /** The consent page (no script; one form). Its CSP lets the form go to this page and, after it, to the client's address. */
 export async function consentPage(secret: string, ask: AuthorizeAsk, client: Client, origin: string, now: Date, error = "", status = 401): Promise<Response> {
   const nonce = randomToken(12);
+  const dest = redirectHost(ask.redirect_uri);
   const form = await consentToken(secret, ask, now);
   const hidden = [...(Object.entries(ask) as [string, string][]), ["consent", form] as [string, string]].map(([k, v]) => `<input type="hidden" name="${k}" value="${esc(v)}">`).join("");
   const check = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -214,11 +225,15 @@ button{display:block;width:100%;min-height:48px;margin-top:12px;border-radius:12
 button.demo{background:#fff;color:var(--ink);border:1.5px solid var(--ink);text-align:left;display:grid;gap:2px;padding:12px 16px}button.demo small{font:500 13.5px Inter,system-ui,sans-serif;color:var(--muted)}
 button.plain{background:none;border:0;color:var(--muted);font-weight:550;min-height:44px}
 .or{display:flex;align-items:center;gap:10px;color:#8a93a3;margin:20px 0 4px;font-size:13px}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.dest{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 14px;color:var(--ink)}.dest b{font-weight:700;word-break:break-all}
+.warn{background:#fffbeb;border:1px solid #f59e0b;color:#78350f;border-radius:12px;padding:10px 12px;margin:0 0 14px}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px 12px;margin:0 0 14px}
 .small{font-size:13px;color:var(--muted);margin:16px 0 0;text-align:center}
 </style></head><body><main><div class="brand"><img src="/favicon.svg" alt="" width="32" height="32">Purser</div><div class="card">
 <h1>Connect your AI to Purser</h1>
 <p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. ${client.h ? `Purser fetched its details from <span class="who">${esc(client.h)}</span>.` : "Purser cannot check a client's name."}</p>
+${dest.loopback ? `<p class="dest">After you allow, you go back to <b>${esc(dest.host)}</b>: an app on this computer.</p>` : `<p class="dest">After you allow, you go back to <b>${esc(dest.host)}</b>.</p>`}
+${dest.known ? "" : `<div class="warn" role="alert"><b>Check this address.</b> Purser does not know ${esc(dest.host)}. A client can call itself anything; connect only if you started this from an app at ${esc(dest.host)}.</div>`}
 <ul class="can"><li>${check}<span>It reads your books: invoices, money movements, reports and what your agents decided.</span></li>
 <li>${check}<span>With a token that may propose, it can file an invoice's payment for approval. It can never approve or pay: each payment needs the CFO's Face ID.</span></li>
 <li>${check}<span>Revoke the token in Purser Cloud and the connection ends at once.</span></li></ul>

@@ -175,6 +175,9 @@ demo company's public token. `PURSER_MCP_URL` points it at another Purser Cloud.
 - **Rate limits.** Each token has its own per-minute limit, and so does each network for the demo token. Wrong tokens
   are counted per address, but a client's first call without a token is not: that call is how it finds the sign-in.
   The consent page is held to the sign-in limit per address.
+- **Where you go back to.** The consent page names the host the browser returns to after you allow ("After you allow,
+  you go back to claude.ai"). claude.ai, claude.com, chatgpt.com and this computer (localhost) are known; any other host
+  gets a warning, since a client can call itself anything.
 - **Proposals only.** With a token that may propose, your AI files the payment exactly as the Pay button in Purser
   Cloud does. The CFO reads the terms on their phone and approves with Face ID, or the proposal expires.
 
