@@ -441,7 +441,7 @@ function shell(){
       co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
-  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
+  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on);$('#foot').textContent=on?t('cs.demo.line'):t('cs.foot')}
   // An invoice belongs to the Books tab (Invoices & books, 13 Nov): the old Invoices route and an invoice's page light it.
   const tab0=(location.hash.split('/')[1]||'').split('?')[0];const tab=tab0==='invoices'?'books':tab0;
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
@@ -720,7 +720,7 @@ function engineStatus(){
   return ENG.p}
 const engineStale=()=>{ENG.p=null};
 // The header's one test-money chip says the engine is there, and in its title what that means.
-function engineChip(on){const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=on?t('cs.eng.foot'):t('cs.foot')}
+function engineChip(on){const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=document.body.classList.contains('demo')?t('cs.demo.line'):on?t('cs.eng.foot'):t('cs.foot')}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
