@@ -81,6 +81,7 @@
     "video": "tsx src/cli/video.ts",
     "capture": "tsx src/cli/capture.ts",
     "cut": "tsx src/cli/cut.ts",
+    "promo": "tsx src/cli/promo.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
     "ap-hostile-eval": "tsx src/cli/apHostile.ts",

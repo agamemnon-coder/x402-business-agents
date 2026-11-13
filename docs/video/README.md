@@ -16,6 +16,48 @@ Studio, written from the same times. The script with every picture, line and sou
 Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-script.md](narrator-script.md),
 [premiere-script-v5.md](premiere-script-v5.md), [script-v5.md](script-v5.md), `scenes-v5.json` and `subtitles-v5.srt`.
 
+## Promo film (13 Nov)
+
+A 1:12 promo, separate from the walkthrough: dark, fast cuts, bold type, in the style of a premium launch ad. The
+problem (agents spend company money; a limit in a prompt is only a request), the answer (agents propose, the CFO signs
+the exact terms with Face ID or a passkey, the rails enforce the limit again), the proof, and "Try it yourself" with
+`kit11.max-31b.workers.dev/try`. Nothing in it was recorded by Max.
+
+- **Code:** `src/film/promo.ts` (the lines, the scenes, every figure with its record), `src/film/promo.html` (the
+  frames; no figure is typed in it), `src/cli/promo.ts` (`npm run promo`), `test/film-promo.test.ts`.
+- **Every figure is read from its record** and checked before a frame is drawn (`npm run promo -- --check`): one cent
+  changed and refused (the live /try page, recorded frame by frame from its own 16-second loop); Airwallex declining a
+  simulated EUR 45.00 charge over the 30.00 card limit, `LIMIT_EXCEEDED` (awx-1, 7 Nov); payout `4074d684…` held
+  `IN_APPROVAL` (10 Nov) until the owner approved it at Airwallex, then `PAID`, settlement simulated (12 Nov); Metal
+  refusing 0.06 test USD over the 0.05 mandate cap on chain, `mandate_cap_exceeded` (12 Nov); the audit chain's
+  anchor `aaaf56a1…` on Metal testnet (13 Nov); the zero-trust attack count and money moved (read from
+  `docs/zero-trust/report.json`: 52 attacks, 0 moved; the brief's 53 was not what the report holds); the hostile-model
+  eval (read from `docs/evals/ap-hostile.json`: 380 hostile tool calls, 370 refused by code, 0 unsafe). No fractions.
+- **Small type** on every proof shot says what is simulated ("Test money · sandbox/testnet", and per shot: test world,
+  Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no marks (the Home
+  page's "Works with" logos are never in frame); the end card says "No endorsement implied".
+- **Live captures** (read only): the /try loop, and Purser Cloud's read-only guest view of the demo company. No /try
+  company was made.
+- **Voice:** "Lily", a premade voice from ElevenLabs' library (`eleven_multilingual_v2`), one take per line, 127 words;
+  no clone, no imitation of anyone. **Music:** one ElevenLabs music take, 72 s, instrumental, placed 1 s in so its hits
+  land on "money" and on "Purser.". Credits used: 284 (voice) + 900 (music) = 1,184. The end card credits both as
+  AI-generated.
+- **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, two-pass loudnorm to
+  -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.
+
+```sh
+npm run promo -- --check              # every figure against its record, the timing, the words
+npm run promo -- capture              # out/promo/live/: the /try loop (660 frames, seeked) and the Cloud guest view
+npm run promo -- vo                   # the narration (skips takes in out/promo/vo/; checks the credits first)
+npm run promo -- render [--vertical]  # out/promo/picture-{h,v}.mp4: 1920x1080 or 1080x1920, 60 fps, silent
+npm run promo -- mix [--vertical]     # out/promo/purser-promo-1080p.mp4 / purser-promo-vertical.mp4 and the .srt
+npm run promo -- stills               # out/promo/still-1-sign.png, still-2-metal.png, still-3-end.png
+```
+
+The music take is `out/promo/music.mp3` (not in git; regenerate with ElevenLabs' music API from the prompt in
+[promo-script.md](promo-script.md)). The MP4s and the SRT are on the orphan branch `promo-asset` under `video/`.
+The script with every line, time and source, and the YouTube title and description: [promo-script.md](promo-script.md).
+
 ## Film v8 (7 November, night): 3:58, every scene long enough to read
 
 Max: the film may run up to five minutes, so it can be slower and better. Every scene is longer (the table below);
