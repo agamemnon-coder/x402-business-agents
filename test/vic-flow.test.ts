@@ -1,5 +1,5 @@
 // The VIC flow on /visa (7 Nov; the page's drawing, right under its heading and entry line, since 12 Nov): how a purchase
-// with a single-use Visa credential from Airwallex's Airi runs, in seven steps, as an ordered list a screen reader reads
+// with a Visa credential (bound by Purser to one purchase) from Airwallex's Airi runs, in seven steps, as an ordered list a screen reader reads
 // in order. Breaks if a step is missing or
 // out of order, if a step is marked as someone else's (Purser 2 and 7, Airi and Visa 3 to 5, Airwallex 6), if an id or
 // value is not purchase B's from the record, if C's branch is not "refused by Purser, 0 Airi calls", if the label is
@@ -50,7 +50,7 @@ describe("the VIC flow on /visa", () => {
     expect(s.map((x) => x.owner)).toEqual(["agent", "purser", "airi", "airi", "airi", "airwallex", "purser"]);
     // Step 1 is the script's while purchase B was not asked for inside a Claude call (the record of 7 Nov: scripted).
     expect(s.map((x) => x.text.split(" ")[0])).toEqual(["Script", "Purser", "Airi", "Airi", "Airi", "Airwallex", "Purser"]);
-    for (const [i, title] of ["Asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Single-use Visa credential (VIC)", "Airwallex hosted checkout", "Result read back"].entries())
+    for (const [i, title] of ["Asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Visa credential (VIC)", "Airwallex hosted checkout", "Result read back"].entries())
       expect({ i, has: s[i]!.text.includes(title) }).toEqual({ i, has: true });
   });
 

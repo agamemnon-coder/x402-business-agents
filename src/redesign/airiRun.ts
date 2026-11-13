@@ -1,4 +1,4 @@
-// The Airi run on the site (7 Nov): the Sourcing agent pays with a single-use Visa credential from Airwallex's Airi
+// The Airi run on the site (7 Nov): the Sourcing agent pays with a Visa credential (bound by Purser to one purchase) from Airwallex's Airi
 // wallet (Visa Intelligent Commerce, VIC), in a separate world on the Airwallex sandbox with Airi's test card and test
 // money. Shown on /airwallex below awx-1 (in full, its ids folded), on /visa (in full, under the page's heading, drawing
 // and overview, above the TAP section) and on /proof under the partners (short, linking to the ids on /airwallex). Everything
@@ -33,7 +33,7 @@ export const AIRI_RUN_STEPS_ID = "airi-run-steps";
 /** The label every showing of the run carries: a date, and sandbox, test card, test money. */
 export const AIRI_RUN_LABEL = "Airwallex sandbox, test card, test money";
 /** The credential, in the plan's words. */
-export const AIRI_CREDENTIAL = "a single-use card credential from Airwallex's Airi wallet";
+export const AIRI_CREDENTIAL = "a card credential from Airwallex's Airi wallet, bound by Purser to one purchase";
 /** The run log's checks section on GitHub, where the record's five checks are listed with their results. */
 export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-checks`;
 /** The heading (owner's copy, 7 Nov), with the run's date from the record ("7 Nov"). */
@@ -46,7 +46,7 @@ export const AIRI_NO_CLAUDE = AIRI_SCRIPTED.replace(/^scripted, /, "");
  * What was paid and how, after who asked (airiSummaryLine). Within the limit "with no Purser approval" (12 Nov; it read
  * "without the CFO", but the person who was the CFO still confirmed it in Airi, as the cardholder).
  */
-export const AIRI_SUMMARY = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+export const AIRI_SUMMARY = "paid with a Visa (VIC) credential from Airi that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 /** The Claude request ids of the rail choices in a record: one per purchase asked for inside an agent's Claude call that returned an id. */
 export const airiClaudeChoices = (rec: AiriRunRecord): string[] => rec.purchases.flatMap((p) => (p.rail_choice?.by === "claude" && p.rail_choice.request_id ? [p.rail_choice.request_id] : []));
 

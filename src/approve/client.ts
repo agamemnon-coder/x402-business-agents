@@ -508,7 +508,7 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     const agent = str(t.agent);
     return {
       approvable: true, title: "Airi purchase",
-      sentence: `Let the ${agent} agent pay ${str(t.currency)} ${money(t.amount)} to ${str(m.name)} (${str(m.url)}) with a single-use card credential from Airi, for: ${str(t.description)}.`,
+      sentence: `Let the ${agent} agent pay ${str(t.currency)} ${money(t.amount)} to ${str(m.name)} (${str(m.url)}) with a card credential from Airi for this one purchase, for: ${str(t.description)}.`,
       amount: `${str(t.currency)} ${money(t.amount)}`, margin: null, recipient: `${str(m.name)}, ${str(m.country)}`,
       rows: [["Agent", agent], ["Amount", `${str(t.currency)} ${money(t.amount)}`], ["Merchant", `${str(m.name)} (${str(m.url)})`], ["Items", items], ["For", str(t.description)]],
       short: "this Airi purchase",

@@ -37,7 +37,7 @@ export const GUARANTEES: readonly Guarantee[] = [
   },
   {
     id: "g-visa", promise: "A Visa card purchase above the limit waits for the CFO's Face ID.", by: "Purser's code + the CFO",
-    how: "Visa Intelligent Commerce through Airwallex's Airi: Purser asks Airi for a single-use Visa credential only after the CFO signed the exact terms, and refuses a merchant the CFO does not allow before Airi is asked.",
+    how: "Visa Intelligent Commerce through Airwallex's Airi: Purser asks Airi for a Visa credential for one purchase only after the CFO signed the exact terms, and refuses a merchant the CFO does not allow before Airi is asked.",
     source: "src/airi/purchase.ts", test: "test/airi-purchase.test.ts",
     evidence: { label: "The Airi run (Airwallex sandbox, test card): paid after Face ID", href: "visa" },
   },

@@ -240,9 +240,9 @@ export function liveRuns(): RunRow[] {
   const ai = airiRun() as unknown as { started_at: string; checks: Record<string, { ok: boolean }>; purchases: { step: string; outcome?: string; payment_intent_id?: string; amount: string; currency: string }[] } | null;
   if (ai) rows.push({
     key: "vic-1", iso: ai.started_at, date: day(ai.started_at), title: "Visa Intelligent Commerce through Airwallex's Airi", rails: "Airi wallet, Airwallex sandbox, test card",
-    name: "An agent buys with a single-use Visa card; above the limit, only after Face ID", kind: "sandbox", rate: checkRate(ai.checks),
+    name: "An agent buys with a Visa credential for one purchase; above the limit, after Face ID", kind: "sandbox", rate: checkRate(ai.checks),
     line: `${ai.purchases.filter((x) => x.outcome === "SUCCEEDED").length} purchases through Airwallex's Airi wallet, one after Face ID; a disallowed merchant was refused. Test card.`,
-    what: `${ai.purchases.filter((x) => x.outcome === "SUCCEEDED").length} purchases with a single-use Visa credential (one within the limit, one after the CFO's Face ID); one disallowed merchant refused by Purser before Airi was asked.`,
+    what: `${ai.purchases.filter((x) => x.outcome === "SUCCEEDED").length} purchases with a Visa credential Purser binds to one purchase (one within the limit, one after the CFO's Face ID); one disallowed merchant refused by Purser before Airi was asked. In the sandbox Airi and Airwallex did not refuse a reused credential or a higher amount; Purser's own check did, in a later run.`,
     checks: `${okOf(ai.checks)}.`, money: "Test card · test money",
     ids: ai.purchases.filter((x) => x.payment_intent_id).map((x) => ({ label: `Payment intent, ${x.currency} ${x.amount}`, value: x.payment_intent_id! })),
     files: [{ label: "record (JSON)", href: blob(AIRI_RUN_FILE) }, { label: "run log", href: blob(AIRI_RUN_LOG) }],

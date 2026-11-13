@@ -105,7 +105,7 @@ describe("/visa: one summary of the paid run", () => {
     const html = visaPage(), paid = airiCard(airiRun()!)!;
     const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(html)![0];
     expect(visaOverviewHeading([paid])).toBe(VISA_SUMMARY_HEADING);
-    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Single-use Visa credential EUR 45\.00 paid after the CFO's Face ID/);
+    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Visa credential for one purchase EUR 45\.00 paid after the CFO's Face ID/);
     expect([...overview.matchAll(/<a class="vo-run" href="#([^"]+)"/g)].map((m) => m[1]!)).toEqual(["airi-run"]);
     expect(html.indexOf(`id="${VISA_OVERVIEW_ID}"`)).toBeLessThan(html.indexOf('id="airi-run"'));
     expect(overview).not.toMatch(TAP);
