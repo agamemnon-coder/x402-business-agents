@@ -19,10 +19,10 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Film v10 (13 Nov): enterprise hand-in
 
-**Purser: the enterprise hand-in**, 4:53, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
+**Purser: the enterprise hand-in**, 4:56, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
 It shows what Purser is today, at a company's scale: Purser Cloud as the place where a company runs Purser (its demo
 company: the Agents tab, Invoices & books, the Tokenisation tab), the approval alerts (WhatsApp, e-mail, Slack, Teams:
-built and tested, not live), the hands-on demo recorded from the live page, the layers of security with the zero-trust
+built, live once Twilio keys are set), the hands-on demo recorded from the live page, the layers of security with the zero-trust
 report and the hostile-model eval, Claude's decisions checked by code, the partners' runs (Airwallex, Metal, Visa via
 Airi, T:0), the proof page, and what is not done. Film v8's look: dark, large and slow, letterboxed to 2.39:1 (black
 bars of 138 px), the captions in the bar below and the badges in the bar above.
@@ -30,8 +30,9 @@ bars of 138 px), the captions in the bar below and the badges in the bar above.
 Nobody is on camera and nobody recorded anything by hand. Every line is read by an **AI narrator** (ElevenLabs; the
 voice is “Ian” from ElevenLabs' voice library, `src/film/narrator10.ts`: the repository does not record which stock voice
 v6/v8 used, so this is a calm, warm, neutral English narrator), over **AI-generated music** (ElevenLabs), mixed with
-`src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.3 LUFS integrated, true peak -1.2 dB),
-the music about 21 dB under the voice. The end card
+`src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.3 LUFS integrated, true peak -1.0 dB),
+the music about 21 dB under the voice (one 293 s track; a second take for 4:56 was refused by ElevenLabs with a 429, so the
+track ends with its own fade and the end card's last seconds are silent). The end card
 says so: “Voice-over and music: AI-generated (ElevenLabs)”, and “Test money only”.
 
 The hand-in script's placeholders (`handin-script.md`: M1, M2, P2a–c, S1) are gone:
@@ -51,7 +52,7 @@ script table with claim ids), [film-v10-shots.md](film-v10-shots.md) (the shot l
 chapters and the description. Six stills are in [stills-v10/](stills-v10/).
 
 **The file** (not in git, as every film before: `out/` is ignored): `out/video/v10/purser-v10.mp4`, 1920×1080, 60 fps,
-H.264 (CRF 16) with AAC 320 kb/s, 4:53 (293.0 s), 44 MB, and `out/video/v10/purser-v10.srt` next to it (the same as
+H.264 (CRF 16) with AAC 320 kb/s, 4:56 (296.0 s), about 44 MB, and `out/video/v10/purser-v10.srt` next to it (the same as
 [film-v10.srt](film-v10.srt)). Made again with:
 
 ```sh
@@ -69,7 +70,7 @@ for api.elevenlabs.io (it calls the API through curl). It stops when a line is l
 `npm run cut -- handin-10 --draft` burns the narration in as a line at the bottom, so the picture can be checked.
 
 What is labelled on screen: “Simulated bank · test money” and “Recorded from the live page · virtual test passkey” on
-/try; “Demo company · made-up data · test money” on Cloud; “Built and tested · not live yet” on the alerts; “Test harness
+/try; “Demo company · made-up data · test money” on Cloud; “Built · live once Twilio keys are set” on the alerts; “Test harness
 · stand-in rails” on the attacks and “Test data · no network” on the hostile-model eval; “Airwallex sandbox · test
 money”, “Metal testnet · test USD”, “Airi test card · test money” and “Sandbox · test data” on the partners' runs; the
 narration says “simulated settlement” for every payout PAID in the Airwallex sandbox. No N/N fraction is said or shown
