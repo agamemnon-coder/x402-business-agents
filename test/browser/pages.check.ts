@@ -880,7 +880,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 530; // /security 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 555; // /security 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -889,8 +889,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
       const cards = await page.locator("main article.pc.card").count();
       {
-        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
-        if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
+        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55), and the optional second key (13 Nov): eleven
+        // cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 11 || (await page.locator("main article.pc.card details.fold").count()) !== 12 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not eleven cards, each with its detail folded`);
         // 12 Nov (jury check): "not prevented (detected after)".
         if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
