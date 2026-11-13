@@ -64,6 +64,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/alerts` | admin | Approval alerts: the targets (masked), which channels this cloud can send on, the latest deliveries and their status. |
 | `POST /v1/alerts/targets` | admin | Add an alert target `{ channel: whatsapp \| email \| slack \| teams, target }`. A signed-in owner with a fresh passkey check (step-up); never a key. |
 | `DELETE /v1/alerts/targets/{id}` | admin | Remove an alert target (a signed-in owner, step-up). |
+| `GET /v1/security/settings` | admin | The company's security settings: `step_up`, whether sensitive settings ask for the passkey again after five minutes ("Ask again before sensitive changes"; off by default). |
+| `POST /v1/security/settings` | admin | Switch it on or off: `{ step_up: boolean }`. A signed-in owner after a fresh passkey check, whatever the setting; never a key. A security event records each switch. |
 | `GET /v1/airwallex/account` | admin | The company's Airwallex account opened through Purser as a platform: its id and onboarding status; `switched_on: false` when the cloud does not offer it ([airwallex-platform.md](airwallex-platform.md)). |
 | `POST /v1/airwallex/account` | admin | Open that account (a signed-in owner only, after agreeing to Airwallex's terms): `business_name`, `country_code`, `email`, `agreed: true`. One per company; 404 when not switched on. |
 | `POST /v1/airwallex/onboarding-link` | admin | Airwallex's hosted onboarding link for the company's checks (a signed-in owner only); short-lived and never stored. |
@@ -156,6 +158,9 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/proposals/{id}` | read | One proposal: the hash of its exact terms, the challenge a passkey signs, the facts a person reads; `{ proposal }`. |
 | `POST /v1/engine/passkey/start` | admin | A session only, never a key. Start the signed-in person's approval passkey: `{ challenge, code, rp, user, exclude }`. |
 | `POST /v1/engine/passkey/finish` | admin | A session only. `{ code, credential }`: the new passkey, labelled with the signed-in person's name; answers `{ credential_id }`, or 409 with the engine's reason when refused. |
+| `POST /v1/engine/security-key/start` | admin | A session only. Start registering a security key (USB or NFC, such as a YubiKey) for the signed-in person, beside their approval passkey: the second key of high-risk payments. Answers the challenge, user, relying party and credentials to exclude. |
+| `POST /v1/engine/security-key/finish` | admin | A session only. `{ credential }`: refused when the browser reports a platform authenticator (Face ID, Touch ID) or the credential is already registered; answers `{ credential_id }`. |
+| `POST /v1/engine/policy/second-key` | admin | `{ changes: [{ key, to }] }` of `approval.second_key_eur`, `approval.second_key_new_payee`, `approval.second_key_bank_changed`, `approval.second_key_new_country`: a policy change the CFO then approves with Face ID; nothing changes before that. |
 | `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. For a test company of the hands-on demo the approval is stored and the payment held (`{ status: "approved", message, settled: null, held: true }`): it is paid through `POST /v1/engine/proposals/{id}/pay`. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
@@ -499,11 +504,16 @@ company chose in Settings, Alerts (`cloud/src/alerts.ts`). Every channel sits be
   latest deliveries.
 - **Masked:** a phone number shows as `+31*******78`, an address as `c***@example.com`, a Slack or Teams webhook as its
   host. The whole value is kept only to send to: never returned by the API, never logged, never exported.
-- **Who sets them:** a signed-in owner, after a fresh passkey check (below). A key cannot.
+- **Who sets them:** a signed-in owner (with a fresh passkey check when the company asks again before sensitive
+  changes, below). A key cannot.
 
 ## Step-up for sensitive settings
 
-A console session is a bearer token that lives 15 minutes in the browser tab. On sensitive settings a session must also
+**Off by default** (13 Nov): signing in is already a passkey, so the sign-in itself is the strong factor. An owner
+switches it on in Settings, Security ("Ask again before sensitive changes", `POST /v1/security/settings`); switching it
+on or off always needs a fresh passkey check, from a signed-in owner, never a key, and each switch is a security event.
+
+A console session is a bearer token that lives 15 minutes in the browser tab. With the setting on, on sensitive settings a session must also
 show a fresh passkey check (`cloud/src/stepUp.ts`): it was signed in with the passkey less than five minutes ago, or it
 carries a step-up token (`x-purser-step-up`) from the person's own passkey, made less than five minutes ago with
 `POST /v1/auth/step-up`. The step-up token is bound to the session it was made for: next to another session, or after
@@ -522,6 +532,29 @@ once and sends the request again.
   without one, or when a write to alert targets, the webhook, connector tokens, keys or team members is not a step-up
   route. `test/cloud-step-up.test.ts` tests the step-up itself, and the zero-trust matrix's `stolen-session-settings`
   attack tries a stolen owner session on these settings.
+
+## A second key for high-risk payments
+
+Optional, off by default (13 Nov, `src/policy/secondKey.ts`). The CFO's rule "High-risk payments need Face ID and a
+security key" has four triggers, each off until set: an amount at or above X (`approval.second_key_eur`), a payee first
+paid less than 30 days ago or never (`approval.second_key_new_payee`), bank details changed since the payee's last
+payment (`approval.second_key_bank_changed`), and a country no earlier payment went to (`approval.second_key_new_country`).
+Setting them is a policy change the CFO approves with Face ID (`POST /v1/engine/policy/second-key` in Purser Cloud; on the
+runner like any policy key). Switching a trigger off loosens the policy.
+
+When a payment matches, it is approved only when the same person has signed its exact terms hash with two different
+WebAuthn credentials: their platform passkey (Face ID or Touch ID) and a security key registered as cross-platform (USB or
+NFC, such as a YubiKey; Settings, Security, "Add a security key"). Both sign the same challenge, derived from the terms
+hash as every approval does. With either alone the payment keeps waiting, and the approval page says why ("High-risk:
+bank details changed. Touch your security key."). The same key twice, a signature over other terms, and a security key
+on its own are refused. A security key never approves a payment that is not high-risk.
+
+- **Where:** registering a security key and signing with it are in Purser Cloud's console (the engine). On a runner the
+  triggers are CFO policy keys like any other; its phone page shows a high-risk payment as "1 of 2 keys" and it waits.
+- **What the browser says:** that a key is cross-platform is what the browser reports (`authenticatorAttachment`); with
+  attestation "none", as for passkeys, it is not an attested statement of the key's make.
+- **Tested** in `test/second-key.test.ts` and `test/cloud-second-key.test.ts` with software authenticators, and in the
+  console check with Chromium's virtual authenticators (one internal, one USB). No physical YubiKey was tested live.
 
 ## Cloudflare's platform (`cloud/src/edge`)
 

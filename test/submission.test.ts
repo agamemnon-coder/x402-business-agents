@@ -134,7 +134,8 @@ describe("the submission pack", () => {
     expect(long).toContain(`by \`npm run verify\`), ${rt.inconclusive} inconclusive`);
     for (const t of [pack, long]) expect(t).not.toContain(`${rt.failed} of ${rt.attempts} attacks failed`);
     expect(rt.before + rt.after + rt.inconclusive).toBeLessThanOrEqual(rt.attempts);
-    expect(long).toContain(`Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected`);
+    // A whole count reads "all N" (no N/N fraction, 13 Nov); a partial one keeps "N of M".
+    expect(long).toContain(f.lab.passed === f.lab.total ? `Scenario Lab: all ${f.lab.total} stories as expected` : `Scenario Lab: ${f.lab.passed} of ${f.lab.total} stories as expected`);
   });
 
   it("does not claim what was not shown live", () => {
@@ -166,7 +167,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     // 12 Nov: the two-locks payout was approved by the owner at Airwallex and went PAID with simulated settlement
     // (docs/runs/2026-11-12-airwallex-two-locks-paid.md), so the sentence about it says so, in the same 74 characters.
     // 12 Nov (jury check): one statement on Purser Cloud everywhere (docs/cloud.md): a public test preview at purser-try.
-    expect(flat).toContain("After the kit. Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank).");
+    expect(flat).toContain("After the kit. Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank; Agents and Tokenisation tabs).");
     expect("Airwallex held a test-passkey payout; a person approved; PAID (simulated).").toHaveLength(74);
     expect(flat).not.toMatch(/now pays supplier|runs on the Airwallex sandbox|not public|unpaid/);
     expect(flat).toContain("The CFO signed option A, a higher cap for Sourcing (P-0002).");
@@ -199,7 +200,7 @@ describe("the short Description (Max, 5 Nov)", () => {
   it("goes problem, solution (the three sentences), proof, Airwallex and Metal, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
     expect(flat.startsWith("The problem. AI agents are starting to spend company money.")).toBe(true);
-    const order = [at("The problem."), at("The solution."), at(DIFFERENTIATORS[0]), at(`${DIFFERENTIATORS[0]} ${TRY_IT} https://kit11.max-31b.workers.dev/try/sign`), at(DIFFERENTIATORS[1]), at(DIFFERENTIATORS[2]), at("The proof."), at(KIT11_RUN_LINE), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
+    const order = [at("The problem."), at("The solution."), at(DIFFERENTIATORS[0]), at(`${DIFFERENTIATORS[0]} ${TRY_IT} https://kit11.max-31b.workers.dev/try`), at(DIFFERENTIATORS[1]), at(DIFFERENTIATORS[2]), at("The proof."), at(KIT11_RUN_LINE), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
       at(f.main.stop_line), at("Airwallex, Metal and Claude."), ...PROOF_SENTENCES.map((p) => at(p.text)), at("The business (not validated with customers yet)."), at(WHY_COMPANY[2]!.text),
       at("What's real."), at(`${CAVEAT_LINE} Details →`), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
@@ -223,11 +224,12 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(read("README.md")).toContain("## Who does what");
   });
 
-  it("links /try/sign, /proof, the film, the repo and the long text; the Instructions go /try/sign, then /proof and the film, then the repo", () => {
-    for (const l of ["https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/kCUsFHrxE-o",
+  // /try since 13 Nov (judge panel): /try/sign answers 301 to it (#283).
+  it("links /try, /proof, the film, the repo and the long text; the Instructions go /try, then /proof and the film, then the repo", () => {
+    for (const l of ["https://kit11.max-31b.workers.dev/try ", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/kCUsFHrxE-o",
       "https://github.com/agamemnon-coder/x402-business-agents", "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md"]) expect(flat).toContain(l);
     const ins = raw.split("<!-- instructions -->")[1]!.split("<!-- /instructions -->")[0]!;
-    const order = ["https://kit11.max-31b.workers.dev/try/sign", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/kCUsFHrxE-o", "`npm ci`", "`npm test`", "`npm run judge -- --check`"].map((l) => ins.indexOf(l));
+    const order = ["https://kit11.max-31b.workers.dev/try>", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/kCUsFHrxE-o", "`npm ci`", "`npm test`", "`npm run judge -- --check`"].map((l) => ins.indexOf(l));
     expect(order.every((i) => i >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(read("src/cli/judge.ts")).toContain('args.includes("--check")');

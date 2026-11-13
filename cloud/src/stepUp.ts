@@ -1,6 +1,9 @@
-// Step-up for sensitive settings (13 Nov, zero-trust hardening of the console). A session is a bearer token that lives
-// 15 minutes in the browser tab; a stolen one could otherwise change who hears about payments, make a connector token,
-// add a person or a key. On the routes listed here a session must also show a FRESH passkey check: either it was
+// Step-up for sensitive settings (13 Nov, zero-trust hardening of the console), an owner's choice: OFF by default
+// (Max's decision of 13 Nov: signing in is already a passkey, so the sign-in itself is the strong factor). Switched on
+// in Settings, Security ("Ask again before sensitive changes"), it guards against a stolen session: a session is a
+// bearer token that lives 15 minutes in the browser tab, and a stolen one could change who hears about payments, make a
+// connector token, add a person or a key. With it on, on the routes listed here a session must also show a FRESH
+// passkey check: either it was
 // signed in with the passkey less than five minutes ago, or it carries a step-up token from a passkey assertion made
 // less than five minutes ago. The step-up token is bound to the session it was made for (the hash of that session
 // token, the person and the company): copied next to any other session it is refused, and it ends with its session.
@@ -13,6 +16,7 @@
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { AuthError, SESSION_TTL_MS, type Caller } from "./auth.js";
 import { hmacB64u, sha256Hex, signedPayload, toB64u } from "./crypto.js";
+import { randomToken } from "./crypto.js";
 import type { Sql } from "./store.js";
 import { TenantDb } from "./tenant.js";
 
@@ -36,9 +40,30 @@ export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/users", "POST /v1/users/{id}/enrolment", "DELETE /v1/users/{id}/passkeys/{credential}", "POST /v1/users/{id}/erase",
   "POST /v1/export/staged", "POST /v1/close",
   "POST /v1/airwallex/account", "POST /v1/airwallex/onboarding-link", "POST /v1/company",
+  "POST /v1/engine/security-key/start", "POST /v1/engine/security-key/finish",
 ]);
 /** Step-up routes a key may not call at all: a signed-in owner only. */
-export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}"]);
+export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/security/settings"]);
+/** Routes that need a fresh passkey check whatever the setting says: the setting itself. */
+export const ALWAYS_STEP_UP_ROUTES: ReadonlySet<string> = new Set(["POST /v1/security/settings"]);
+
+/** Whether the company asks for the passkey again before sensitive changes (off unless an owner switched it on). */
+export async function stepUpOn(sql: Sql, tenantId: string): Promise<boolean> {
+  const r = await new TenantDb(sql, tenantId).one<{ step_up: number }>("security_settings", { id: "main" });
+  return r?.step_up === 1;
+}
+
+/** An owner switches it on or off; the change is a security event. */
+export async function setStepUp(sql: Sql, tenantId: string, on: boolean, by: string, now: Date): Promise<{ step_up: boolean }> {
+  const db = new TenantDb(sql, tenantId);
+  const iso = now.toISOString();
+  const had = await db.one("security_settings", { id: "main" });
+  await db.apply([
+    had ? db.update("security_settings", { id: "main" }, { step_up: on ? 1 : 0, updated_at: iso, updated_by: by }) : db.insert("security_settings", { id: "main", step_up: on ? 1 : 0, updated_at: iso, updated_by: by }),
+    db.insert("security_events", { id: `se_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}`, at: iso, kind: on ? "security.step_up_on" : "security.step_up_off", actor: by, detail_json: JSON.stringify({ setting: "Ask again before sensitive changes", on }) }),
+  ]);
+  return { step_up: on };
+}
 
 export class StepUpRequired extends Error {
   readonly code = "step_up_required";
@@ -75,13 +100,19 @@ export async function freshPasskey(secret: string, req: Request, caller: Caller,
   return p.t === caller.tenantId && p.u === caller.principal && p.s === (await bindingOf(session));
 }
 
-/** The gate the router runs on a step-up route, after the route's scope check. */
-export async function requireStepUp(secret: string, routeKey: string, req: Request, caller: Caller, now: Date): Promise<void> {
-  if (!STEP_UP_ROUTES.has(routeKey)) return;
+/**
+ * The gate the router runs on a step-up route, after the route's scope check. A key never calls a session-only route;
+ * a session needs a fresh passkey check on the setting itself always, and on the other sensitive routes when the
+ * company switched "Ask again before sensitive changes" on.
+ */
+export async function requireStepUp(sql: Sql, secret: string, routeKey: string, req: Request, caller: Caller, now: Date): Promise<void> {
+  const always = ALWAYS_STEP_UP_ROUTES.has(routeKey);
+  if (!STEP_UP_ROUTES.has(routeKey) && !always) return;
   if (caller.kind === "key") {
-    if (SESSION_ONLY_ROUTES.has(routeKey)) throw new AuthError(403, "only a signed-in owner changes who hears about payments, after a fresh passkey check; a key cannot");
+    if (SESSION_ONLY_ROUTES.has(routeKey)) throw new AuthError(403, "only a signed-in owner changes this, with their passkey; a key cannot");
     return;
   }
+  if (!always && !(await stepUpOn(sql, caller.tenantId))) return;
   if (!(await freshPasskey(secret, req, caller, now))) throw new StepUpRequired();
 }
 

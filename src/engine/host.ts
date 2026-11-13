@@ -28,6 +28,10 @@ import { syncLedger } from "../ledger/feed.js";
 import { fromCents } from "../lib/money.js";
 import { confirmPasskey, activePasskey, openEnrolment, pendingPasskeys } from "../passkey/ledger.js";
 import { processAssertion, processRegistration, type InboxItem } from "../passkey/process.js";
+import { finishSecurityKey, startSecurityKey } from "../passkey/securityKey.js";
+import { ensureSecondKeyTables, SECOND_KEY_KEYS, secondKeyMessage, secondKeyReasons } from "../policy/secondKey.js";
+import { proposePolicyChange } from "../executors/policyChange.js";
+import { policyValue } from "../policy/rules.js";
 import { challengeFor, verifyApprovalSignature } from "../passkey/webauthn.js";
 import { phonePhrases, t } from "../ui/i18n.js";
 import { syncVault, type YearIndex } from "../vault/build.js";
@@ -108,6 +112,11 @@ export interface ProposalView {
   facts: [string, string][];
   /** What the phone's approval page warns about (a payee that is not the supplier, an amount that is not on the invoice). */
   warnings: string[];
+  /**
+   * A high-risk payment (src/policy/secondKey.ts), while it waits: why, what the page says, which security keys may sign
+   * (their credential ids, for allowCredentials), and which of the two keys have signed these terms so far.
+   */
+  second_key?: { reasons: string[]; message: string; security_keys: string[]; signed: { passkey: boolean; security_key: boolean } };
 }
 
 export interface InvoiceView {
@@ -425,7 +434,49 @@ export class EngineHost {
       { proposal_id: string; kind: string; status: string; terms_sha256: string; terms_json: string } | undefined;
     if (!p) return null;
     const { facts, warnings } = termsFacts(JSON.parse(p.terms_json) as Record<string, unknown>, this.deps.company.lang);
-    return { id: p.proposal_id, kind: p.kind, status: p.status, terms_sha256: p.terms_sha256, challenge: challengeFor(p.terms_sha256), facts, warnings };
+    const reasons = p.status === "PENDING_APPROVAL" ? secondKeyReasons(this.deps.db, p, this.now()) : [];
+    let second_key: ProposalView["second_key"];
+    if (reasons.length) {
+      ensureSecondKeyTables(this.deps.db);
+      const rows = this.deps.db.prepare("SELECT factor FROM second_factors WHERE proposal_id = ? AND terms_sha256 = ?").all(p.proposal_id, p.terms_sha256) as { factor: string }[];
+      const signed = { passkey: rows.some((r) => r.factor === "passkey"), security_key: rows.some((r) => r.factor === "security_key") };
+      const keys = (this.deps.db.prepare("SELECT credential_id FROM security_keys WHERE status = 'ACTIVE' ORDER BY enrolled_at").all() as { credential_id: string }[]).map((r) => r.credential_id);
+      second_key = { reasons, message: secondKeyMessage(reasons, { passkey: signed.passkey, securityKey: signed.security_key }), security_keys: keys, signed };
+    }
+    return { id: p.proposal_id, kind: p.kind, status: p.status, terms_sha256: p.terms_sha256, challenge: challengeFor(p.terms_sha256), facts, warnings, ...(second_key ? { second_key } : {}) };
+  }
+
+  /**
+   * The CFO's rule for high-risk payments (src/policy/secondKey.ts): a policy_change proposal of its keys only, which the
+   * CFO then approves with Face ID like any proposal (POST /v1/engine/proposals/{id}/approve); approved, it is applied.
+   */
+  proposeSecondKey(changes: { key: string; to: string }[]): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      if (!changes.length || changes.some((c) => !(SECOND_KEY_KEYS as readonly string[]).includes(c.key))) return { ok: false as const, reason: `only these settings: ${SECOND_KEY_KEYS.join(", ")}` };
+      // Only what changes: the page sends every trigger as it stands on screen.
+      const real = changes.filter((c) => policyValue(this.deps.db, c.key) !== c.to);
+      if (!real.length) return { ok: false as const, reason: "nothing changes: the rule already says this" };
+      try {
+        const p = proposePolicyChange(this.deps.db, { changes: real, reason: "The CFO's rule for high-risk payments: Face ID and a security key" }, "human", this.now());
+        return { ok: true as const, proposal: this.proposal(p.proposal_id)! };
+      } catch (e) { return { ok: false as const, reason: message(e) }; }
+    });
+  }
+
+  /**
+   * Opens the registration of a security key (a second key for high-risk payments, src/passkey/securityKey.ts) for the
+   * person whose passkey is labelled `label`; `relying` as for passkeyStart.
+   */
+  securityKeyStart(a: { label: string; rp?: { rpId: string; origin: string } }): Promise<{ ok: true; challenge: string; user_id: string; exclude: string[] } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      const rp = a.rp ?? this.deps.rp;
+      try { return { ok: true as const, ...startSecurityKey(this.deps.db, { label: a.label, rpId: rp.rpId, origin: rp.origin }, this.now()) }; } catch (e) { return { ok: false as const, reason: message(e) }; }
+    });
+  }
+
+  /** The new security key, verified against the open registration; reported as cross-platform, never a passkey already. */
+  securityKeyFinish(a: { label: string; credential: unknown }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }> {
+    return this.act(async () => finishSecurityKey(this.deps.db, a, this.now()));
   }
 
   /**

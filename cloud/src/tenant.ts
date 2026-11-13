@@ -25,6 +25,7 @@ const COLUMNS = {
   webhooks: ["id", "url", "secret", "created_at", "created_by", "consecutive_failures", "last_attempt_at", "last_status", "disabled_at"],
   security_events: ["id", "at", "kind", "actor", "detail_json"],
   exports: ["id", "status", "created_at", "expires_at", "created_by", "parts_json", "bytes", "downloaded_at"],
+  security_settings: ["id", "step_up", "updated_at", "updated_by"],
   alert_targets: ["id", "channel", "target", "created_at", "created_by"],
   alert_deliveries: ["id", "event_key", "invoice_id", "channel", "target_id", "target_mask", "status", "attempts", "http_status", "provider_ref", "created_at", "updated_at"],
   awx_accounts: ["id", "account_id", "status", "business_name", "country_code", "created_at", "created_by", "updated_at", "event_at", "request_id", "attempt", "consent_by", "consent_at", "consent_terms"],

@@ -34,6 +34,11 @@ export interface EngineApi {
   passkeyStart(rp?: { rpId: string; origin: string }): Promise<{ challenge: string; code: string; exclude: string[] }>;
   /** label: the person's name, shown; person: the cloud's id for them, by which forgetPasskey finds the passkey. */
   passkeyFinish(a: { code: string; credential: unknown; label: string; person: string }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
+  /** A security key (the second key of high-risk payments) for the person whose passkey has this label; `rp` as for passkeyStart. */
+  securityKeyStart(a: { label: string; rp?: { rpId: string; origin: string } }): Promise<{ ok: true; challenge: string; user_id: string; exclude: string[] } | { ok: false; reason: string }>;
+  securityKeyFinish(a: { label: string; credential: unknown }): Promise<{ ok: true; credential_id: string } | { ok: false; reason: string }>;
+  /** The CFO's rule for high-risk payments as a policy change to approve with Face ID (its keys only). */
+  proposeSecondKey(changes: { key: string; to: string }[]): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
   /** A passkey's signature over a proposal's exact terms; only an approval pays, and what follows is in settled. */
   approve(a: { proposal_id: string; terms_sha256: string; credential: unknown; hold?: boolean }): Promise<{ status: string; message: string; settled: Settled | null; held?: true }>;
   /**
@@ -82,4 +87,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch"] as const);

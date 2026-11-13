@@ -24,13 +24,16 @@ describe("what Purser Cloud does with money", () => {
 
 describe("the hands-on link", () => {
   // The README's first lines are pinned by their own tests: its line is added when the link goes live (after G5).
-  it("says coming, and names no address, until it is switched live", () => {
+  it("says coming, and names no address, until it is switched live; then links /try", () => {
     for (const f of ["llms.txt"]) {
       const line = readFileSync(f, "utf8").split("\n").find((l) => l.includes("Hands-on on Purser's real engine"));
       expect(line, f).toBeDefined();
       if (!HANDS_ON_LIVE) {
         expect(line, f).toMatch(/coming/);
         expect(line, f).not.toMatch(/purser-try|https?:/);
+      } else {
+        expect(line, f).toContain("https://kit11.max-31b.workers.dev/try");
+        expect(line, f).not.toMatch(/coming/);
       }
     }
   });

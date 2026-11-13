@@ -4,5 +4,5 @@
 // once the owner deleted the key, and the documents follow.
 export const HOLDS_SANDBOX_KEY = false;
 export const MONEY_SENTENCE = `Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank${HOLDS_SANDBOX_KEY ? ", and holds one Airwallex sandbox key" : ""}.`;
-/** The hands-on link in the README and llms.txt: "coming" until the orchestrator flips it after gate G5. */
-export const HANDS_ON_LIVE = false;
+/** The hands-on link in the README and llms.txt: "coming" until the orchestrator flips it after gate G5 (flipped 13 Nov: /try is live). */
+export const HANDS_ON_LIVE = true;

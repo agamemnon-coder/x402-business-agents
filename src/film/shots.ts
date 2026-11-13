@@ -158,7 +158,7 @@ export const OWN_FOOTAGE = {
   P2a: "Phone recording: /try on purser-try, start a test company, the invoice is read and checked",
   P2b: "Phone recording: /try, sign the exact terms with Face ID, paid on the simulated bank",
   P2c: "Phone recording: /try, change one cent, refused",
-  S1: "Screen recording: the test company's console (Overview, Invoices, Transactions, Books)",
+  S1: "Screen recording: the test company's console (Overview, Agents, Invoices & books, Transactions, Tokenisation)",
 } as const;
 export type OwnShot = keyof typeof OWN_FOOTAGE;
 
@@ -171,9 +171,9 @@ export const OWN_HOW: Record<OwnShot, { device: string; where: string; steps: st
   P1c: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["\"Try to cheat\", + 1 cent, \"Refused by Purser\""] },
   P1d: { device: "iPhone screen recording", where: `${LIVE}/try/sign`, steps: ["\"Trick the agent\", the blocked IBAN"] },
   P2a: { device: "iPhone screen recording (Control Centre), dark mode, Do Not Disturb on", where: "https://purser-try.max-31b.workers.dev/try", steps: ["Start a test company", "Pick the clean sample invoice (Bergtex Textil GmbH, EUR 1,850.00)", "Let the screen show who read it and what the checks found; hold 2 s"] },
-  P2b: { device: "iPhone screen recording, plus 2–3 s of a second camera at the Face ID moment", where: "the same test company", steps: ["Open the terms", "Sign with Face ID", "Hold on Paid (simulated bank) 2 s"] },
+  P2b: { device: "iPhone screen recording, plus 2–3 s of a second camera at the Face ID moment", where: "the same test company", steps: ["Open the terms (the card shows the conversion, the bank fee cap and the deadline)", "Sign with Face ID", "Hold on Paid (simulated bank) 2 s"] },
   P2c: { device: "iPhone screen recording", where: "the same test company", steps: ["Change the amount by one cent", "Hold on the refusal 2 s"] },
-  S1: { device: "Laptop screen recording, 1440 px wide, dark mode", where: "Purser Cloud's console for the test company of P2 (purser-try.max-31b.workers.dev)", steps: ["Overview, 4 s", "Invoices: the paid invoice, 6 s", "Transactions, 5 s", "Books: the journal, 6 s", "No e-mail, keys or personal data on screen"] },
+  S1: { device: "Laptop screen recording, 1440 px wide, dark mode", where: "Purser Cloud's console for the test company of P2 (purser-try.max-31b.workers.dev)", steps: ["Overview, 4 s", "Agents, 4 s", "Invoices & books: the paid invoice, then the journal, 6 s", "Transactions, 4 s", "Tokenisation, 4 s", "No e-mail, keys or personal data on screen"] },
 };
 
 export const shot = (id: string): Shot => {

@@ -26,12 +26,12 @@ and pays its suppliers. It has Kit 11's three agents, the Sourcing, Support and 
 Airwallex card and its own Metal mandate. The CFO in this demo is Max, the builder, on his own phone.
 
 **In one line:** Claude explains and proposes, the rules in code hold every limit, and a person signs before money
-moves beyond them. Sign one yourself: https://kit11.max-31b.workers.dev/try/sign
+moves beyond them. Sign one yourself: https://kit11.max-31b.workers.dev/try
 
 ### The main run (3 November)
 
 One live run, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, real Claude decisions and
-Max's passkey (Face ID on his phone); Max plays the CFO. The second approval (four eyes, 2 of 2) came from a labelled virtual test passkey on the runner
+Max's passkey (Face ID on his phone); Max plays the CFO. The second approval (four eyes, both signatures) came from a labelled virtual test passkey on the runner
 machine, pressed by our build tool, Claude Code, on Max's go; in production the second approver is a second person. The
 three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-03-main-run.md`.
 
@@ -40,7 +40,7 @@ three runtime agents hold no owner key and no passkey. Log: `docs/runs/2026-11-0
   The run's own label: "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved."
   The refusal is recorded on chain (`mandate_cap_exceeded`, tx `0x2e92f9cb…1871`). Treasury's options 40 s after the
   refusal, within the same 20.00: option A raises Sourcing's cap to 0.04 and keeps our price at 0.05; option B takes the
-  same cap and raises our price to 0.07. The CFO signed A with Face ID (1 of 2), then the second approver, the labelled test passkey (2 of 2), and both mandates
+  same cap and raises our price to 0.07. The CFO signed A with Face ID (the first of two signatures), then the second approver, the labelled test passkey (the second), and both mandates
   were replaced on chain.
 - **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID.
 - **The euro bill.** The Treasury agent planned the EUR 240.00 licence itself (P-0005). After the CFO's Face ID,
@@ -134,10 +134,10 @@ sandbox). Second approver: a labelled test passkey in this demo. In production t
   and no clearing in this run. The EUR licence and the card buy ran on the Airwallex sandbox; the other 13 refused
   purchases (12 stopped by the buy rule the agent set, applied by code; #37, refused by Metal against its just-revoked mandate, with no
   transaction of its own) are in the ledger, not as transactions on chain;
-- 24 of 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO (P-0001, P-0002, P-0004,
+- all 24 decisions by Claude, 0 fallbacks; 5 decisions signed with Face ID by the CFO (P-0001, P-0002, P-0004,
   P-0005, P-0006), +1 co-signature (the second approver's, on P-0002);
 - the books match the chain and Airwallex: `verify` passes; `reconcile` checked 88 (the 86 Metal payments, the SWIFT
-  transfer and the card buy), 0 differences; `data-qa` 217 of 217 checks; 110 money movements, 0 without an origin;
+  transfer and the card buy), 0 differences; `data-qa` passed all 217 checks; 110 money movements, 0 without an origin;
 - 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
   the buy rule's 12: stock checks #25–#36 (the Sourcing agent, Claude, set its buy rule; code applied it to each check
   over the cap); Metal's 2: 1 over the
@@ -193,7 +193,7 @@ with its own date.
     that payee, amount and moment. Eleven attacks reverted on chain, among them a replay, a redirect to the attacker
     and a self-made decision for a sanctioned stand-in. Agents' mandate payments do not pass through it (Metal's
     design).
-  - **Clearing under load.** 2,000 of 2,000 pay-per-call payments in 471.8 s (4.24 a second, p50 1.4 s, p95 8.1 s), at
+  - **Clearing under load.** All 2,000 pay-per-call payments in 471.8 s (4.24 a second, p50 1.4 s, p95 8.1 s), at
     about $0.0007 of RPC calls per payment (an estimate from Metal's published rates, not a bill). A first run paid
     1,879 before one wallet was held by a lost answer; resending the same request fixed it.
   - **Receive policy (30 October, its own test world):** the sweep wallet accepts money only from the business
@@ -212,4 +212,4 @@ These ran against stand-ins for Airwallex, Metal, the phone or Claude, not on th
   October (120 attacks): 112 stopped, 6 detected afterwards (the same two kinds in each run), 2 inconclusive (nothing
   was paid or changed). On 2 November Claude Opus wrote 119 more tests: code judged 111 stopped, 5 got through and 3
   inconclusive; all 5 were checked by hand and none is a breach (two reading bugs on Try were filed).
-- Scenario Lab: 18 of 18 stories as expected (stand-ins for Airwallex, Metal and Claude).
+- Scenario Lab: all 18 stories as expected (stand-ins for Airwallex, Metal and Claude).

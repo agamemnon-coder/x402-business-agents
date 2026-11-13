@@ -134,8 +134,7 @@ describe("Verify it yourself in 3 commands", () => {
 
   it("says honestly what needs the network", () => {
     expect(SECTION).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
-    // Judge panel, 13 Nov: /try/sign is in a build with TRY_SIGN_ENABLED only; the live site sends it to /try.
-    expect(SECTION).toContain("(that page is in a build with `TRY_SIGN_ENABLED=on`; the live site sends it to the\n[hands-on demo](https://kit11.max-31b.workers.dev/try), and it needs your own passkey)");
+    expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`\nchecks any receipt of the same format."); // /try/sign's receipt went with it (13 Nov)
   });
 
   it("the tests badge links to this section", () => {
