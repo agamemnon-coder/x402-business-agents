@@ -415,7 +415,7 @@ describe("the two pages on the site", () => {
     }
     expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
     expect(menuItemOf("runs")).toBeNull();
-    expect(menuItemOf("judge")).toBe("judge");
+    expect(menuItemOf("tour")).toBeNull();
     expect(menuItemOf("pricing")).toBe("more");
     expect(menuItemOf("proof")).toBe("proof");
     expect(menuItemOf(null)).toBeNull();

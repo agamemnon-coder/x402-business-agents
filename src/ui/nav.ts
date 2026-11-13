@@ -7,7 +7,7 @@ import { MORE_CSS, moreHtml } from "./more.js";
 
 import { WATCH_IN_MENU } from "../config/film.js";
 
-export type NavKey = "home" | "watch" | "try" | "proof" | "judge" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
+export type NavKey = "home" | "watch" | "try" | "proof" | "tour" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
 
 /** The four tabs (redesign, Max 2 Nov); the fifth item, "More", follows them in navHtml (12 Nov). */
 export const NAV_MAIN: [NavKey, string, string][] = ([
@@ -15,8 +15,6 @@ export const NAV_MAIN: [NavKey, string, string][] = ([
   // The hands-on demo at the site's own /try (src/redesign/ui.ts TRY_URL), not purser-try's address (owner, 12 Nov).
   ["try", "Try", "/try"],
   ["proof", "Proof", "proof"],
-  // Jury, 13 Nov: the tour for the jury, after Proof, as in the redesign's header.
-  ["judge", "Judge", "judge"],
 ] as [NavKey, string, string][]).filter(([k]) => k !== "watch" || WATCH_IN_MENU);
 
 /** Which tab a page belongs to: the detail pages and the dashboard sit under Proof. */

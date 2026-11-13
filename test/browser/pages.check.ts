@@ -32,7 +32,7 @@ const shots = args[0] && !args[0].startsWith("--") ? args[0] : "test-results/pag
 mkdirSync(shots, { recursive: true });
 const judge = liveAt >= 0 ? null : await startJudge(0);
 const base = liveAt >= 0 ? args[liveAt + 1]!.replace(/\/$/, "") : judge!.url;
-// /judge ("Judge it in 3 minutes", item 5.1) is in either bundle since 13 Nov; with /try/sign its footer line too: locally a
+// /tour (the 3-minute product tour, 13 Nov; /judge before) is in either bundle; with /try/sign: locally a
 // relay of our own built with TRY_SIGN_ENABLED on serves it (and the Home that links to it); live, the hosted relay,
 // once it is deployed there.
 const relay = liveAt >= 0 ? null : await (async () => {
@@ -41,10 +41,8 @@ const relay = liveAt >= 0 ? null : await (async () => {
   const { startLocalRelay } = await import("../../src/relay/local.js");
   try { return await startLocalRelay({ port: 0, token: "pages-check" }); } finally { if (was === undefined) delete process.env.TRY_SIGN_ENABLED; else process.env.TRY_SIGN_ENABLED = was; }
 })();
-const judgeBase = relay ? relay.url : (await fetch(`${base}/judge`, { redirect: "manual" })).status === 200 ? base : null;
-if (!judgeBase) console.log(`SKIP  ${base}/judge is not served there yet: /judge not checked`);
-/** The tour's ticks in localStorage (src/redesign/judge.ts). */
-const JUDGE_KEY = "purser.judge.v1";
+const judgeBase = relay ? relay.url : (await fetch(`${base}/tour`, { redirect: "manual" })).status === 200 ? base : null;
+if (!judgeBase) console.log(`SKIP  ${base}/tour is not served there yet: /tour not checked`);
 
 /** The agent API's tools, as the code defines them (/docs lists exactly these). */
 const DOCS_TOOLS = agentTools().map((t) => t.name);
@@ -61,8 +59,8 @@ const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
 // Watch is a tab only once the film is set (src/config/film.ts WATCH_IN_MENU).
-// Jury, 13 Nov: "Judge" after Proof.
-const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), "Judge", MORE_LABEL], more: moreLinks().map((l) => l.label) });
+// 13 Nov (owner): "Judge" is out of the menu again; the product tour (/tour) is reached from Home's footer.
+const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try", "Proof"] : ["Home", "Try", "Proof"]), MORE_LABEL], more: moreLinks().map((l) => l.label) });
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
@@ -248,7 +246,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
     // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
-    // header is no taller for it (test/browser/tapTargets.ts; the whole of /judge below).
+    // header is no taller for it (test/browser/tapTargets.ts; the whole of /tour below).
     if (w <= 430) {
       for (const path of ["/home", "/try", "/proof", "/replay?autoplay=0"]) {
         await page.goto(`${base}${path}`, { waitUntil: "load" });
@@ -1079,7 +1077,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
       await page.goto(`${base}/proof`, { waitUntil: "load" });
     }
-    // Links into Proof (other pages, the README, /judge) land on their target with every fold around it open, also a
+    // Links into Proof (other pages, the README) land on their target with every fold around it open, also a
     // fold inside a fold, and the target in view under the header: #faceid and #stops sit in "Every check", #airi-run
     // in the first closed line, since 12 Nov. Then a tile's own link (#stops) on the page itself. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
@@ -1167,21 +1165,19 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((await page.locator("main a.btn").count()) !== (WATCH_IN_MENU ? 4 : 3)) fail(`404 ${tag}: not the menu's tabs`);
     }
 
-    // /judge, "Judge it in 3 minutes" (item 5.1): six steps since the jury of 13 Nov (Purser Cloud as a guest, with
-    // Claude), each with a checkbox and a time, three minutes in all; the
-    // ticks survive a reload; the page asks nothing of any server (no request but the page, its font and its icon);
-    // and with /try/sign on, Home's first button leads to it and one quiet footer link opens the tour (home-story, 12 Nov:
-    // Home has two buttons and no third call to action).
+    // /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge, which answers 301 to it): four cards, each
+    // with its screenshot (loaded, not broken) and one link; no script, so the page asks nothing but its font, its icon
+    // and its four images. Home's one quiet footer link opens it; "Judge" is in no menu. On a phone every target is 44 px.
     if (judgeBase) {
       const asked: string[] = [];
-      const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
+      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
+      const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !own.includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
       if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
-      const top = page.locator('footer a.flink[href="judge"]');
+      const top = page.locator('footer a.flink[href="tour"]');
       const box = await top.boundingBox();
-      // The tab in the menu (jury, 13 Nov) and one quiet line in the footer.
-      if ((await page.locator('header nav a[href="judge"]').count()) !== 1 || (await page.locator('a[href="judge"]').count()) !== 2 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
+      if ((await page.locator('a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || (await top.innerText()).trim() !== "Take the 3-minute product tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: not one "Take the 3-minute product tour" link in the footer, inside the page's gutter, and none to /judge`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
@@ -1189,50 +1185,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
       await page.screenshot({ path: join(shots, `home-trysign-${tag}.png`) });
       await top.click();
-      await page.waitForURL(/\/judge$/);
-      await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
+      await page.waitForURL(/\/tour$/);
       page.on("request", onRequest);
       await page.reload({ waitUntil: "load" });
-      await look(page, `/judge ${tag}`, w);
-      const steps = await page.locator("ol.steps > li").evaluateAll((lis) => lis.map((li) => ({
-        box: !!li.querySelector('input[type="checkbox"]'), secs: Number((li.querySelector(".secs")?.textContent ?? "").replace(/\D/g, "")), links: li.querySelectorAll(".go a").length,
+      for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
+      await look(page, `/tour ${tag}`, w);
+      const steps = await page.locator("ol.tour > li").evaluateAll((lis) => lis.map((li) => ({
+        img: (li.querySelector("img") as HTMLImageElement | null)?.naturalWidth ?? 0, alt: li.querySelector("img")?.getAttribute("alt") ?? "", links: li.querySelectorAll(".go a").length, title: li.querySelector("h2")?.textContent ?? "",
       })));
-      if (steps.length !== 6 || steps.some((s) => !s.box || !s.secs || !s.links)) fail(`/judge ${tag}: not six steps, each with a checkbox, a time and a link (${JSON.stringify(steps)})`);
-      if (steps.reduce((t, s) => t + s.secs, 0) !== 180) fail(`/judge ${tag}: the times do not add up to 3 minutes`);
-      if (!(await page.isVisible("text=Want the code?")) || !(await page.isVisible("section.more >> text=How it works in 5 files"))) fail(`/judge ${tag}: no "Want the code? How it works in 5 files" at the bottom`);
-      // The tour starts on Home, not on the replay, and on a phone the whole page is 44 px targets: every box, title,
-      // button and link, the menu and the footer.
-      if ((await page.locator("ol.steps > li").first().locator(".go a").getAttribute("href")) !== "/home" || (await page.locator('a[href*="watch"]').count())) fail(`/judge ${tag}: the tour does not start on Home, or links to the replay`);
-      if (w <= 430) await checkTaps(page, { name: `/judge ${tag}`, scopes: ["body"], fail });
-      // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
-      await page.locator("#step-sign").check();
-      await page.locator('label[for="step-trick"]').click();
-      if ((await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the count does not follow the ticks`);
-      await page.reload({ waitUntil: "load" });
-      const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
-      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
-      await look(page, `/judge ticked ${tag}`, w);
-      await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
+      if (steps.length !== 4 || steps.some((s) => s.img !== 1200 || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not four cards, each with a loaded screenshot, its alt text, a title and one link (${JSON.stringify(steps)})`);
+      if ((await page.locator("h1").innerText()).trim() !== "Product tour · 3 minutes") fail(`/tour ${tag}: the title is not "Product tour · 3 minutes"`);
+      if (await page.locator('header nav a[aria-current="page"], header nav a[href*="judge"]').count()) fail(`/tour ${tag}: the menu marks a tab, or has Judge`);
+      if (await page.locator('main a[href*="judge"], main a[href*="watch"], main a[href*="try/sign"]').count()) fail(`/tour ${tag}: links to an old page`);
+      if (w <= 430) await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
+      await page.screenshot({ path: join(shots, `tour-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
-      if (asked.length) fail(`/judge ${tag}: asked a server for ${asked.join(", ")}`);
-      await page.evaluate((key) => { try { localStorage.removeItem(key); } catch { /* blocked */ } }, JUDGE_KEY);
-      // With localStorage throwing (blocked site data): no error, and the boxes still tick for as long as the page is open.
-      // Emulated by replacing window.localStorage with a throwing getter, which Firefox's page load does not survive (the
-      // load never ends), so this one emulation runs in Chromium and WebKit only, and says so.
-      if (BROWSER === "firefox") console.log(`info  /judge (storage blocked) ${tag}: not emulated in Firefox`);
-      else {
-      const blocked = await browser.newContext({ viewport: { width: w, height: h }, colorScheme: scheme, isMobile: w < 500, hasTouch: w < 500 });
-      await blocked.addInitScript(() => { Object.defineProperty(window, "localStorage", { get() { throw new DOMException("The operation is insecure.", "SecurityError"); } }); });
-      const bp = await blocked.newPage();
-      bp.on("console", (m) => { if (m.type() === "error") fail(`${tag} /judge (storage blocked): console error: ${m.text()}`); });
-      bp.on("pageerror", (e) => fail(`${tag} /judge (storage blocked): page error: ${e.message}`));
-      await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
-      if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
-      await bp.locator("#step-proof").check();
-      if ((await bp.locator("#prog").innerText()) !== "1 of 6 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
-      await look(bp, `/judge (storage blocked) ${tag}`, w);
-      await blocked.close();
-      }
+      if (asked.length) fail(`/tour ${tag}: asked a server for ${asked.join(", ")}`);
+      // The old address: /judge lands on /tour (301), so a link in an old form or message keeps working.
+      await page.goto(`${judgeBase}/judge`, { waitUntil: "load" });
+      if (!/\/tour$/.test(page.url())) fail(`/judge ${tag}: did not land on /tour (${page.url()})`);
     }
 
     // The film: a moment from each scene draws without an error and without spilling over (it scales to fit).
@@ -1286,4 +1258,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? `, /judge (ticks kept across a reload${BROWSER === "firefox" ? "; storage blocked not emulated in Firefox" : ", and with storage blocked"}) and Home's link to it` : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /pricing, /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", /tour (four cards with their screenshots, /judge's 301 to it) and Home's link to it" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

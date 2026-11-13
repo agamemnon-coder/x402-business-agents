@@ -477,7 +477,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
   it("has a target on /airwallex for every link into it, from every page the site serves", () => {
     const ids = new Set([...awx.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]!));
     const wanted = new Map<string, string>();
-    // Every page of the site, with the hands-on demo off and on (the judge's tour is served with it on), agents' pages too.
+    // Every page of the site, with the hands-on demo off and on, agents' pages too.
     const strings = (v: unknown, name: string): [string, string][] => typeof v === "string" ? [[name, v]] : v && typeof v === "object" ? Object.entries(v).flatMap(([k, x]) => strings(x, `${name}.${k}`)) : [];
     for (const [variant, env] of [["off", {}], ["on", { TRY_SIGN_ENABLED: "on" }]] as const) {
       const built = buildPages(env as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
@@ -485,7 +485,9 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
       expect([...String(built.airwallex).matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])).toEqual([...ids]);
       for (const [name, html] of strings(built, variant)) for (const m of html.matchAll(/["'(/]airwallex#([A-Za-z0-9_-]+)/g)) wanted.set(m[1]!, name);
     }
-    for (const id of ["controls", "card-sourcing", "awx-1", "awx-1-steps", "airi-run-steps", "awx-hash"]) expect({ id, linked: wanted.has(id) }).toEqual({ id, linked: true });
+    // awx-1 is linked from the README, llms.txt and the form (the old /judge linked it too, until 13 Nov); it stays a target here.
+    expect(ids.has("awx-1")).toBe(true);
+    for (const id of ["controls", "card-sourcing", "awx-1-steps", "airi-run-steps", "awx-hash"]) expect({ id, linked: wanted.has(id) }).toEqual({ id, linked: true });
     for (const [id, from] of wanted) expect({ id, from, on: ids.has(id) }).toEqual({ id, from, on: true });
     // And the page's own links into itself.
     for (const m of main(awx).matchAll(/href="#([^"]+)"/g)) expect({ id: m[1], on: ids.has(m[1]!) }).toEqual({ id: m[1], on: true });

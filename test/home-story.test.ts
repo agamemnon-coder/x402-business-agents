@@ -6,7 +6,7 @@
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, JUDGE_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, TOUR_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { scaleStats } from "../src/redesign/scale.js";
 import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
@@ -61,9 +61,10 @@ describe("Home, the enterprise pass", () => {
     expect(OFF).not.toContain('href="try/sign"');
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
     expect(buildPages({} as NodeJS.ProcessEnv).home).toBe(OFF);
-    expect(ON).toContain(`<a class="flink" href="judge">${JUDGE_LINE}</a>`);
-    expect(mainOf(ON)).not.toContain('href="judge"');
-    expect(OFF).not.toContain('<a class="flink" href="judge">');
+    expect(ON).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
+    expect(OFF).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
+    expect(mainOf(ON)).not.toContain('href="tour"');
+    for (const html of [ON, OFF]) expect(html).not.toMatch(/href="\/?judge"/);
   });
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {

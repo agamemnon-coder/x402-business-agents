@@ -25,13 +25,13 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Metal testne
 ## Verify in two minutes
 
 - Sign with your own Face ID, then try to change one cent: https://kit11.max-31b.workers.dev/try/sign
-- The judge's tour (3 minutes): https://kit11.max-31b.workers.dev/judge
+- The 3-minute product tour: https://kit11.max-31b.workers.dev/tour
 - Offline, no keys: git clone https://github.com/agamemnon-coder/x402-business-agents && cd x402-business-agents && npm ci && npm run judge; then npm run verify-approval checks that real signature of 7 November with Node's own crypto
 
 ## Judging criteria and where each is proven
 
 - Airwallex use: https://kit11.max-31b.workers.dev/airwallex (cards per agent with the CFO policy as Airwallex's controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only)
-- Agentic: https://kit11.max-31b.workers.dev/claude (three Claude tool-use agents; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying); the replay of the main run of 3 November: https://kit11.max-31b.workers.dev/watch
+- Agentic: https://kit11.max-31b.workers.dev/claude (three Claude tool-use agents; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying); the replay of the main run of 3 November: https://kit11.max-31b.workers.dev/replay
 - Technical: https://kit11.max-31b.workers.dev/proof#guarantees (what Purser guarantees, each with its code, its test and where it ran); docs/controls-matrix.md
 - Finance value: https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/business (a hypothesis; 2 finance conversations, quoted, anonymous; more in progress; no customers yet)
 - Metal: https://kit11.max-31b.workers.dev/metal and docs/metal-award.md; the mandates read live, read-only: https://kit11.max-31b.workers.dev/api/metal/mandates

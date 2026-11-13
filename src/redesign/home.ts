@@ -7,7 +7,7 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, TOUR_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -331,8 +331,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
-    // The judge's tour: one quiet footer link, only where /judge exists.
-    links: opts.trySign ? [["judge", JUDGE_LINE]] : [],
+    // The product tour: one quiet footer link (/tour is in either bundle).
+    links: [["tour", TOUR_LINE]],
     real,
     source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
   });

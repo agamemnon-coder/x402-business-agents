@@ -1,6 +1,6 @@
-// Tap targets on a phone (jury review, 12 Nov: menu links 37 px, /judge's checkboxes 26 px): every visible link, button,
+// Tap targets on a phone (jury review, 12 Nov: menu links 37 px, the old /judge's checkboxes 26 px): every visible link, button,
 // input, checkbox label and fold header inside the given parts of the page is at least 44 px high. Used by
-// pages.check.ts for the shared header and footer of /home, /try, /proof and /watch and for the whole of /judge, at
+// pages.check.ts for the shared header and footer of /home, /try, /proof and /watch and for the whole of /tour, at
 // 360 and 390 px; Home's own content has its check in homeStory.ts.
 import type { Page } from "playwright";
 

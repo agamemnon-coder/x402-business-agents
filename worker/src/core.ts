@@ -79,10 +79,12 @@ export interface Pages {
   trySign?: string;
   /** /try/verify: a receipt.json checked in the browser (src/try/verify.ts); with /try/sign only. */
   tryVerify?: string;
-  /** /judge: "Judge it in 3 minutes", six steps with ticks kept in the browser (src/redesign/judge.ts); in either bundle since 13 Nov. */
-  judge?: string;
-  /** Old public addresses folded into the four tabs, and where they now go. */
+  /** /tour: "Product tour · 3 minutes", four steps with a screenshot each (src/redesign/tour.ts); it replaced /judge on 13 Nov. */
+  tour?: string;
+  /** Old public addresses folded into the four tabs, and where they now go (302). */
   redirects?: Record<string, string>;
+  /** Addresses retired for good (301, query kept): /judge → /tour. */
+  moved?: Record<string, string>;
   approve: string;
   enrol: string;
   /** The CFO policy editor. */
@@ -94,7 +96,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; judge?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; tour?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -176,6 +178,8 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (agent && pages.agents && Object.hasOwn(pages.agents, agent)) return page(pages.agents[agent]!.page, pages.agents[agent]!.csp);
   const moved = pages.redirects && Object.hasOwn(pages.redirects, path) ? pages.redirects[path] : undefined;
   if (moved) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: moved } });
+  const gone = pages.moved && Object.hasOwn(pages.moved, path) ? pages.moved[path] : undefined;
+  if (gone) return new Response(null, { status: 301, headers: { ...COMMON_HEADERS, location: gone + new URL(req.url).search } });
   if (path === "/month") return page(pages.month, pages.csp.month);
   if (path === "/demo") return page(pages.demo, pages.csp.demo);
   if (path === "/live") return page(pages.live, pages.csp.live);
@@ -183,7 +187,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/try") return page(pages.try, pages.csp.try);
   if (path === "/try/sign" && pages.trySign && pages.csp.trySign) return page(pages.trySign, pages.csp.trySign);
   if (path === "/try/verify" && pages.tryVerify && pages.csp.tryVerify) return page(pages.tryVerify, pages.csp.tryVerify);
-  if (path === "/judge" && pages.judge && pages.csp.judge) return page(pages.judge, pages.csp.judge);
+  if (path === "/tour" && pages.tour && pages.csp.tour) return page(pages.tour, pages.csp.tour);
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
   if (path === "/metal") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
@@ -217,7 +221,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
     });
   }
   if (path === "/assets/approve.css") return new Response(pages.css, { headers: { ...COMMON_HEADERS, "content-type": "text/css; charset=utf-8" } });
-  // A link pasted with the sentence's full stop or comma on it ("…/judge." in a form, jury review, 7 Nov, #18) goes to
+  // A link pasted with the sentence's full stop or comma on it ("…/tour." in a form, jury review, 7 Nov, #18) goes to
   // the same path without it, its query kept. Only a trailing "." or ","; the page itself is then answered as usual.
   const trimmed = path.replace(/[.,]+$/, "");
   if (trimmed !== path && trimmed.startsWith("/")) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: trimmed + new URL(req.url).search } });
