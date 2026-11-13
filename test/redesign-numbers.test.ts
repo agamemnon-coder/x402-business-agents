@@ -53,7 +53,8 @@ function recount(r: RunRecord): string[] {
     // The cost per agent, as /proof writes it (USD to four places), and the dispute's valid orders (checked minus refunded).
     ...s.map((a) => (a.cost_usd_micros / 1e6).toFixed(4)), String(checked - refunded),
     // D3 and the one Face ID number, counted by their own functions (test/site-v4.test.ts counts them again).
-    String(split(r).routine), String(faceIdDecisions(r)), String(s.reduce((n, a) => n + a.claude_calls, 0)), String(onChain), String(atAirwallex), ...calls].filter(Boolean);
+    // /claude's phone figures (final jury, 13 Nov): the payment requests in all, routine plus exceptions, from the same split.
+    String(split(r).routine), String(split(r).routine + split(r).decisions), String(faceIdDecisions(r)), String(s.reduce((n, a) => n + a.claude_calls, 0)), String(onChain), String(atAirwallex), ...calls].filter(Boolean);
 }
 const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord)]);
 

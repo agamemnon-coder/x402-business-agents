@@ -1,4 +1,4 @@
-// The Airi run on the site (7 Nov): the Sourcing agent pays with a single-use Visa credential from Airwallex's Airi
+// The Airi run on the site (7 Nov): the Sourcing agent pays with a Visa credential (bound by Purser to one purchase) from Airwallex's Airi
 // wallet (Visa Intelligent Commerce, VIC), in a separate world on the Airwallex sandbox with Airi's test card and test
 // money. Shown on /airwallex below awx-1 (in full, its ids folded), on /visa (in full, under the page's heading, drawing
 // and overview, above the TAP section) and on /proof under the partners (short, linking to the ids on /airwallex). Everything
@@ -33,7 +33,7 @@ export const AIRI_RUN_STEPS_ID = "airi-run-steps";
 /** The label every showing of the run carries: a date, and sandbox, test card, test money. */
 export const AIRI_RUN_LABEL = "Airwallex sandbox, test card, test money";
 /** The credential, in the plan's words. */
-export const AIRI_CREDENTIAL = "a single-use card credential from Airwallex's Airi wallet";
+export const AIRI_CREDENTIAL = "a card credential from Airwallex's Airi wallet, bound by Purser to one purchase";
 /** The run log's checks section on GitHub, where the record's five checks are listed with their results. */
 export const AIRI_CHECKS_URL = `${REPO_BLOB}${AIRI_RUN_LOG}#checks-the-records-checks`;
 /** The heading (owner's copy, 7 Nov), with the run's date from the record ("7 Nov"). */
@@ -46,7 +46,7 @@ export const AIRI_NO_CLAUDE = AIRI_SCRIPTED.replace(/^scripted, /, "");
  * What was paid and how, after who asked (airiSummaryLine). Within the limit "with no Purser approval" (12 Nov; it read
  * "without the CFO", but the person who was the CFO still confirmed it in Airi, as the cardholder).
  */
-export const AIRI_SUMMARY = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+export const AIRI_SUMMARY = "paid with a Visa (VIC) credential from Airi that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 /** The Claude request ids of the rail choices in a record: one per purchase asked for inside an agent's Claude call that returned an id. */
 export const airiClaudeChoices = (rec: AiriRunRecord): string[] => rec.purchases.flatMap((p) => (p.rail_choice?.by === "claude" && p.rail_choice.request_id ? [p.rail_choice.request_id] : []));
 
@@ -71,9 +71,16 @@ export function airiAsker(rec: AiriRunRecord): AiriAsker {
     sentence: capital([...each, ...scripted].join("; ")),
   };
 }
-/** The one summary sentence: who asked (airiAsker), then AIRI_SUMMARY. */
-export function airiSummaryLine(rec: AiriRunRecord): string {
-  return `${airiAsker(rec).sentence}: ${AIRI_SUMMARY}`;
+/**
+ * The summary as the published film shows it (scene 13c, rendered 7 to 13 Nov): its words stay as recorded, so the film's
+ * script and subtitles in docs/video describe the film as it is. The site says AIRI_SUMMARY (final jury, 13 Nov: the
+ * credential is bound to one purchase by Purser; the sandbox did not refuse a reuse, vic-3).
+ */
+export const AIRI_SUMMARY_FILM = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+
+/** The one summary sentence: who asked (airiAsker), then AIRI_SUMMARY (the film: AIRI_SUMMARY_FILM). */
+export function airiSummaryLine(rec: AiriRunRecord, o: { film?: boolean } = {}): string {
+  return `${airiAsker(rec).sentence}: ${o.film ? AIRI_SUMMARY_FILM : AIRI_SUMMARY}`;
 }
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";

@@ -20,6 +20,7 @@ import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
 import { homeScaleStats, SCALE_CSS, scaleBandHtml } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
+import { SITE_URL } from "../ui/meta.js";
 
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
 main.ent .wrap { max-width: 1120px; }
@@ -358,7 +359,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ...MAIN_RUN_REAL,
   ];
   return page({
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
+    // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS, body, js: JS + COUNT_JS, stage: false,
     links: [],
     real,
     source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,
