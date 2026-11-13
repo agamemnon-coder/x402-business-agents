@@ -12,6 +12,7 @@ import { DEMO_CONNECTOR_TOKEN } from "../cloud/src/auth.js";
 import { clientTabs } from "../cloud/src/claude/connectPage.js";
 import { MODERN_VERSIONS, PAGE_SIZE, PROTOCOL_VERSIONS } from "../cloud/src/claude/mcp.js";
 import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
+import { ICON_VERSION } from "../src/ui/brand/mark.js";
 
 let c: TestCloud;
 let A: TestTenant;
@@ -49,7 +50,7 @@ describe("protocol 2026-07-28 (stateless, per-request _meta)", () => {
     expect(res).toMatchObject({ resultType: "complete", supportedVersions: [...PROTOCOL_VERSIONS], capabilities: { tools: {}, prompts: {}, resources: {} }, cacheScope: "private" });
     expect(res.ttlMs).toBeGreaterThan(0);
     expect(res.supportedVersions[0]).toBe(MODERN_VERSIONS[0]);
-    expect(res._meta["io.modelcontextprotocol/serverInfo"]).toMatchObject({ name: "purser", title: "Purser", icons: [{ src: `${ORIGIN}/icon.png` }, { src: `${ORIGIN}/favicon.svg` }] });
+    expect(res._meta["io.modelcontextprotocol/serverInfo"]).toMatchObject({ name: "purser", title: "Purser", icons: [{ src: `${ORIGIN}/icon.png?v=${ICON_VERSION}` }, { src: `${ORIGIN}/favicon.svg?v=${ICON_VERSION}` }] });
     expect(res.instructions).toMatch(/cannot approve, pay.*Face ID/);
   });
 

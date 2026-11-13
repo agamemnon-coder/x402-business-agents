@@ -13,7 +13,7 @@
 import { z } from "zod";
 import type { Caller } from "../auth.js";
 import { iconsOf } from "../brand.js";
-import { dashboard, feedLine } from "../dashboard.js";
+import { dashboard, decisionLog } from "../dashboard.js";
 import { BadRequest, insights, listInvoices, listTransactions, oneInvoice, report } from "../read.js";
 import { auditTrail, cashPosition, cfoPolicy, explain, findPayment, pendingApprovals, quarterOf, spendBy } from "./insight.js";
 import type { TenantDb } from "../tenant.js";
@@ -224,14 +224,17 @@ const READ_TOOLS: Tool[] = [
     name: "agent_decisions",
     title: "What the agents decided",
     description: "The newest decisions in the company's audit trail, in words, newest first: who decided (an agent, the CFO, or Purser's code), what, and when. A decision code made when no model answered says so; it is never called Claude's.",
-    inputSchema: obj({ limit: limitProp }),
-    outputSchema: shape({ items: arr(shape({ at: S, who: S, text: S, by: S })) }),
+    inputSchema: obj({ limit: { ...limitProp, description: "How many entries at most (default 20, short enough for a phone)" } }),
+    outputSchema: shape({ agent_decisions: I, by_fallback: I, entries_total: I, items: arr(shape({ at: S, who: S, text: S, by: S })) }),
     args: z.object({ limit: LIMIT.optional() }).strict(),
     readOnly: true,
     run: async (c, a) => {
       const rows = await c.db.select<{ seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }>("audit_rows", {}, { order: ["seq"] });
-      const items = rows.map(feedLine).filter((x) => x !== null).reverse().slice(0, (a.limit as number | undefined) ?? 25);
-      return answer(`${plural(items.length, "decision")}, newest first.`, { items }, items.map((f) => `- ${dayWords(f.at)} · ${f.who}: ${f.text}`));
+      // The same counts as the Overview (decisionLog): the agents' decisions in all, then the newest entries shown.
+      const log = decisionLog(rows);
+      const items = log.entries.slice(0, (a.limit as number | undefined) ?? 20);
+      const fallback = log.by_fallback ? `, ${log.by_fallback} of them by code's fallback (no model)` : "";
+      return answer(`${plural(log.agent_decisions, "decision")} by agents in all${fallback}. The newest ${items.length} of ${log.entries.length} audit entries:`, { agent_decisions: log.agent_decisions, by_fallback: log.by_fallback, entries_total: log.entries.length, items }, items.map((f) => `- ${dayWords(f.at)} · ${f.who}: ${f.text}`));
     },
   },
   {
