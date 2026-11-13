@@ -269,18 +269,19 @@ describe("the site after v4", () => {
       expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
-      // /visa's picture is the VIC flow (12 Nov).
-      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'id="vic3-run"' : 'class="card vicflow"') : 'class="flow card"';
+      // /visa's picture is the VIC flow (12 Nov); since the jury pass (13 Nov) the latest run's four cards lead, the rest folded.
+      const first = name === "airwallex" ? '<section class="awp"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'class="sumc"' : 'class="card vicflow"') : 'class="flow card"';
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
       // 12 Nov (wire-in): partner marks as images (docs/evidence/logo-permissions.md); Visa's only as its official file.
       expect(html.replace(/<img src="assets\/logo-visa\.png" alt="Visa" width="46" height="15">/g, "")).not.toMatch(/<img[^>]*visa/i);
-      // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it) and
+      // No script, but /airwallex's one (src/redesign/ui.ts OPEN_TARGET_JS: a link into its cards' fold opens it; /visa's
+      // too since the jury pass, 13 Nov: its cards link into the details fold) and
       // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
       // Since 12 Nov the partner pages' figures count up once in view (src/redesign/stats.ts COUNT_JS; nothing moves with
       // reduced motion), so /airwallex, /metal and /visa add that script.
-      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}${COUNT_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}${COUNT_JS}</script>`] : name === "visa" ? [`<script>\n${COUNT_JS}</script>`] : []);
+      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}${COUNT_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}${COUNT_JS}</script>`] : name === "visa" ? [`<script>\n${COUNT_JS}\n${OPEN_TARGET_JS}</script>`] : []);
       // Each page is labelled with the run it shows: the main run; on /visa that label sits inside the TAP fold, with
       // the main run's own TAP-signed card buy (the separate TAP run of 2 Nov is named there too, under its own label).
       // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)

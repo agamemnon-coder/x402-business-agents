@@ -155,3 +155,30 @@ describe("what the cut writes", () => {
     for (const c of ["C01", "C09", "C12", "C13", "C15", "C16", "C18", "C19"]) expect(md).toContain(c);
   });
 });
+
+describe("the hand-in film (13 Nov): under 4:45, every line from a record, its docs written by the code", () => {
+  it("passes its check and stays under 4:45 (the owner's limit for the hand-in)", async () => {
+    const { HANDIN, shotListMarkdown } = await import("../src/film/cuts.js");
+    expect(checkCut(HANDIN)).toEqual([]);
+    expect(total(resolveCut(HANDIN))).toBeLessThan(285);
+    // The scenes the owner asked for, in order.
+    expect(resolveCut(HANDIN).map((p) => p.row.chapter).filter(Boolean)).toEqual(["The problem", "Kit 11's core", "Try it: your own test company", "Face ID, checked on chain", "Refused on chain", "Airwallex: the card limit", "Visa via Airi", "Two locks, then PAID", "The books, coded by Claude", "Purser Cloud", "The proof", "What is not done", "Close"]);
+    const placed = resolveCut(HANDIN);
+    // The docs in docs/video/ are what the code writes (npm run cut -- --docs handin-5).
+    expect(readFileSync(resolve(ROOT, "docs/video/handin-script.md"), "utf8")).toBe(scriptMarkdown(HANDIN, placed));
+    expect(readFileSync(resolve(ROOT, "docs/video/handin-shots.md"), "utf8")).toBe(shotListMarkdown(HANDIN, placed));
+    expect(readFileSync(resolve(ROOT, "docs/video/handin.srt"), "utf8")).toBe(srt(placed));
+  });
+
+  it("says a test passkey where one signed, and never that the Visa sandbox refused what it did not", async () => {
+    const { HANDIN } = await import("../src/film/cuts.js");
+    const words = (id: string) => HANDIN.rows.find((r) => r.id === id)!.words;
+    expect(words("h04")).toContain("a labelled test passkey");
+    expect(words("h08")).toContain("signed with a test passkey");
+    expect(words("h08")).toContain("simulated settlement");
+    expect(words("h12")).toContain("was not refused");
+    expect(words("h07")).not.toMatch(/refus|enforc/);
+    // The hands-on demo names no reader: the screen says who read the invoice (no record shows /try with Claude on).
+    expect(words("h03")).toContain("The screen says who read it");
+  });
+});

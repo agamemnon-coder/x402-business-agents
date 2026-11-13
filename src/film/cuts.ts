@@ -9,7 +9,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CLAIMS, claim } from "./claims.js";
-import { OWN_FOOTAGE, SHOTS, type OwnShot } from "./shots.js";
+import { OWN_FOOTAGE, OWN_HOW, SHOTS, seconds as shotSeconds, type Action, type OwnShot } from "./shots.js";
 
 export const ROOT = resolve(import.meta.dirname, "../..");
 export const SITE_URL = "kit11.max-31b.workers.dev";
@@ -24,6 +24,8 @@ export const BADGES = {
   standinRail: "Stand-in rail · no money moved",
   harness: "Test harness · stand-in rails",
   books: "Sandbox · test data",
+  simbank: "Simulated bank · test money",
+  testco: "Test company · test money",
 } as const;
 export type Badge = keyof typeof BADGES;
 
@@ -57,7 +59,7 @@ export interface Row {
   give?: Record<string, number>;
 }
 
-export interface Cut { id: "submission-3" | "walkthrough-5"; title: string; file: string; rows: Row[]; limit: number }
+export interface Cut { id: "submission-3" | "walkthrough-5" | "handin-5"; title: string; file: string; rows: Row[]; limit: number }
 
 const s = (shot: string | string[], seconds: number, caption?: Seg["caption"], badge?: Badge): Seg => ({ shot: Array.isArray(shot) ? shot : [shot], seconds, caption, badge });
 const own = (o: OwnShot, seconds: number, caption?: Seg["caption"], badge?: Badge): Seg => ({ own: o, seconds, caption, badge });
@@ -133,7 +135,33 @@ export const WALKTHROUGH: Cut = {
   ],
 };
 
-export const CUTS: Record<Cut["id"], Cut> = { "submission-3": SUBMISSION, "walkthrough-5": WALKTHROUGH };
+/**
+ * The hand-in film (the owner, 13 Nov: "the hand-in video, under 5 minutes, is now the most important thing"), under
+ * 4:45: the problem, Kit 11's core, the hands-on demo on Max's phone, Face ID checked on chain and a refusal on chain
+ * (Metal, 12 Nov), Airwallex's card limit, Visa via Airi (12 Nov), two locks PAID, the books Claude codes, Purser Cloud,
+ * the proof page, what is not done, the close. Each line rests on the runs of 3, 7, 10 and 12 November.
+ */
+export const HANDIN: Cut = {
+  id: "handin-5", title: "Purser: the hand-in film", file: "purser-handin", limit: 284,
+  rows: [
+    { id: "h01", kind: "cam", chapter: "The problem", words: "Hi, I'm Max. Purser lets AI agents pay company bills, but only within limits the CFO signs with Face ID. A limit in a prompt is only a request. Here the agent proposes, the CFO signs, and the payment rails enforce it.", segs: [own("M1", 20, OPENING_CAPTION)], claims: ["C01"] },
+    { id: "h02", kind: "vo", chapter: "Kit 11's core", words: "In the main run on 3 November, three Claude agents made 24 decisions. Past a limit, an agent only proposes. The CFO signs the exact terms. Airwallex and Metal each hold the limit again, on their own side.", segs: [s(["D1a", "T14"], 8), s("T3", 14, "Main run · 3 Nov · 24 decisions · USD 0.3170")], claims: ["C22", "C02", "C19"] },
+    { id: "h03", kind: "vo", chapter: "Try it: your own test company", words: "This is the hands-on demo: your own test company, gone after 24 hours, with test money on a simulated bank. An invoice for 1,850 euros comes in. The screen says who read it and what the checks found. The CFO signs the exact terms with Face ID. Change one cent, and it is refused.", segs: [own("P2a", 16, "Your own test company · 24 hours", "simbank"), own("P2b", 17, "The CFO signs the exact terms", "simbank"), own("P2c", 13, "One cent changed → refused", "simbank")], claims: ["C44", "C05"] },
+    { id: "h04", kind: "vo", chapter: "Face ID, checked on chain", words: "On Metal, the agent's limit now lives in a passkey account. The account checks the signatures itself, on chain: the CFO's passkey, on an iPhone with Face ID, and a second approver, here a labelled test passkey.", segs: [s("F0", 13, "Two passkeys · checked on chain · 12 Nov", "metal"), s("F1", 11, "Second approver: a labelled test passkey", "metal")], claims: ["C40"] },
+    { id: "h05", kind: "vo", chapter: "Refused on chain", words: "The agent paid 5 cents inside its mandate. Then 6 cents, over the cap: refused on chain. Both owners signed a higher cap, and the same 6 cents went through.", segs: [s("F2", 8, "0.06 over the 0.05 cap · refused on chain", "metal"), s("F1b", 12, "Both owners signed · cap 0.10 · paid", "metal")], claims: ["C40r"], rounded: [["5", "0.05", 0.01], ["6", "0.06", 0.01]] },
+    { id: "h06", kind: "vo", chapter: "Airwallex: the card limit", words: "On Airwallex, each agent has its own card. Airwallex itself declined a simulated 45 euro charge, over the limit.", segs: [s("T9a", 12, "LIMIT_EXCEEDED · card ····2441 · 7 Nov", "awx")], claims: ["C12"] },
+    { id: "h07", kind: "vo", chapter: "Visa via Airi", words: "Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail. A 45 euro purchase above the limit waited for Face ID. The signed terms' hash sits in Airi's mandate and in Airwallex's payment record.", segs: [s("V3", 18, "Visa via Airi · 12 Nov · hash read back", "airi")], claims: ["C42"] },
+    { id: "h08", kind: "vo", chapter: "Two locks, then PAID", words: "Two locks on one payout. Purser's, signed with a test passkey, and Airwallex's own approval. The payout waited at Airwallex until the owner approved it there. Then it was paid, with simulated settlement.", segs: [s("D3", 11, "Two locks · PAID 12 Nov · settlement simulated", "awx"), s("T5f", 10, "Approved in Airwallex's web app · 12 Nov", "awx")], claims: ["C26", "C41", "C10"] },
+    { id: "h09", kind: "vo", chapter: "The books, coded by Claude", words: "The books keep themselves. In a month of a test company's 20 invoices, Claude read each one live and chose its account, VAT code and cost centre. Code checked every choice before it was booked, and the books balance.", segs: [s("B1", 23, "Coded by Claude · checked by code", "testco")], claims: ["C43"] },
+    { id: "h10", kind: "vo", chapter: "Purser Cloud", words: "This is Purser Cloud's console for a test company: the overview, invoices, transactions and books. It reads and manages, and it never pays. Payments are approved on the CFO's phone with Face ID.", segs: [own("S1", 22, "Purser Cloud · a test company", "testco")], claims: ["C45"] },
+    { id: "h11", kind: "vo", chapter: "The proof", words: "Every line of this film has its record. The proof page lists what Purser guarantees, who enforces it, and the evidence.", segs: [s("PR1", 18)], claims: ["C46"] },
+    { id: "h12", kind: "vo", chapter: "What is not done", words: "What is not done: in the Visa sandbox, a credential reused on a bigger payment was not refused. There, only Purser holds the limit. Settlement is simulated.", segs: [s("V3n", 14, "Sandbox did not refuse · only Purser held", "airi")], claims: ["C42n", "C10"] },
+    { id: "h13", kind: "cam", chapter: "Close", words: CLOSE, segs: [own("M2", 15)], claims: ["C19", "C34"] },
+    { id: "h14", kind: "card", words: "", segs: [{ card: [SITE_URL, "Try it yourself", CREDITS], seconds: 3 }], claims: [] },
+  ],
+};
+
+export const CUTS: Record<Cut["id"], Cut> = { "submission-3": SUBMISSION, "walkthrough-5": WALKTHROUGH, "handin-5": HANDIN };
 
 // ---- Which rows hold today -------------------------------------------------------------------------------------------
 
@@ -245,6 +273,9 @@ export function inText(n: string, src: string): boolean {
   return [n, n.replace(/,/g, "")].some((v) => new RegExp(`(?<![0-9a-z])${esc(v)}(?![0-9a-z]|,[0-9])`, "i").test(src));
 }
 
+/** The claims of a payout PAID in the Airwallex sandbox, whose settlement the sandbox simulates. */
+const AIRWALLEX_PAID = new Set(["C09", "C25", "C26", "C26p", "C32", "C41"]);
+
 /** Every problem of a cut as it will be made today: timing, captions, badges, and each number against its records. */
 export function checkCut(cut: Cut, o: { demoDay?: boolean } = {}): string[] {
   const out: string[] = [];
@@ -257,7 +288,8 @@ export function checkCut(cut: Cut, o: { demoDay?: boolean } = {}): string[] {
     if (r.kind === "cam" && p.seconds > 20) out.push(`${r.id}: Max on camera longer than 20 s`);
     for (const c of r.claims) if (!CLAIMS.some((x) => x.id === c)) out.push(`${r.id}: unknown claim ${c}`);
     for (const c of r.claims) if (!claimHolds(c)) out.push(`${r.id}: claim ${c} does not hold in its record`);
-    if (/\bPAID\b|\bpaid\b/.test(r.words + r.segs.map((g) => (typeof g.caption === "string" ? g.caption : "")).join(" ")) && r.kind === "vo" && !/simulat/i.test(r.words + JSON.stringify(r.segs)) && !r.claims.includes("C10") && !r.claims.includes("C21")) out.push(`${r.id}: PAID without "settlement simulated"`);
+    // PAID in the Airwallex sandbox is said with its simulated settlement (rule 2); a Metal testnet payment settles on chain.
+    if (/\bPAID\b|\bpaid\b/.test(r.words + r.segs.map((g) => (typeof g.caption === "string" ? g.caption : "")).join(" ")) && r.kind === "vo" && r.claims.some((c) => AIRWALLEX_PAID.has(c)) && !/simulat/i.test(r.words + JSON.stringify(r.segs)) && !r.claims.includes("C10")) out.push(`${r.id}: PAID without "settlement simulated"`);
     for (const g of p.segs) {
       if (g.shot && !g.shot.some((id) => SHOTS.some((x) => x.id === id))) out.push(`${r.id}: no shot ${g.shot.join("/")}`);
       if (g.own && !(g.own in OWN_FOOTAGE)) out.push(`${r.id}: no own footage ${g.own}`);
@@ -342,4 +374,31 @@ export function scriptMarkdown(cut: Cut, placed: Placed[]): string {
   });
   const ch = chapters(placed).map((c) => `${clock(c.at)} ${c.title}`).join("\n");
   return `# ${cut.title} (${clock(total(placed))})\n\nMade by \`npm run cut -- ${cut.id}\` from src/film/cuts.ts. Spoken words: ${placed.reduce((k, p) => k + spokenWords(p.row.words), 0)} at ${WPM} a minute.\n\n| Time | Shot | Narration | Caption | Claims |\n|---|---|---|---|---|\n${rows.join("\n")}\n\n## Chapters (for the YouTube description)\n\n${ch}\n`;
+}
+
+/** What a shot's actions do, in words, for the shot list. */
+const doing = (a: Action) => ("hold" in a ? `hold ${a.hold} s` : "scroll" in a ? `scroll to "${a.scroll}" (${a.s} s)` : "click" in a ? `click "${a.click}"` : "pick" in a ? `pick ${a.pick}` : `highlight "${a.highlight.join("\", \"")}"`);
+
+/** The shot list per scene: time, shot, who records it and how, the exact address or screen, what is done, caption, badge. */
+export function shotListMarkdown(cut: Cut, placed: Placed[]): string {
+  const lines: string[] = [`# ${cut.title}: the shot list (${clock(total(placed))})`, "", `Made by \`npm run cut -- --docs ${cut.id}\` from src/film/cuts.ts and src/film/shots.ts. Who records: **Max (iPhone)** or **Max (screen)** for his own footage; **capture** for a page shot (\`npm run capture -- <id>\`: Playwright, dark, 1440x900, frame by frame, GETs only).`, ""];
+  for (const p of placed) {
+    lines.push(`## ${clock(p.start)}–${clock(p.start + p.seconds)} · ${p.row.chapter ?? (p.row.kind === "card" ? "End card" : p.row.id)} (${p.row.id})`, "");
+    for (const g of p.segs) {
+      const cap = typeof g.caption === "string" ? g.caption : (g.caption ?? []).map((c) => c.text).join(" → ");
+      const tail = [cap ? `caption "${cap}"` : "", g.badge ? `badge "${BADGES[g.badge]}"` : ""].filter(Boolean).join("; ");
+      if (g.own) {
+        const how = OWN_HOW[g.own];
+        lines.push(`- **${g.own}**, ${g.seconds} s · **Max (${/screen recording|Laptop/.test(how.device) && !/iPhone/.test(how.device) ? "screen" : "iPhone"})** · ${how.device}`, `  - Where: ${how.where}`, `  - Do: ${how.steps.join("; ")}`, ...(tail ? [`  - On screen: ${tail}`] : []));
+      } else if (g.card) {
+        lines.push(`- End card, ${g.seconds} s: ${g.card.join(" · ")} (drawn by the cut)`);
+      } else {
+        const shot = g.shot!.map((id) => SHOTS.find((x) => x.id === id)).find((x) => x !== undefined)!;
+        const alt = g.shot!.length > 1 ? ` (or ${g.shot!.filter((x) => x !== shot.id).join(", ")})` : "";
+        lines.push(`- **${shot.id}**${alt}, ${g.seconds} s · **capture** · ${shot.what}`, `  - Where: ${shot.still ?? (shot.urls ?? []).join(" or ")}`, `  - Do: ${shot.actions.map(doing).join(", then ")} (${shotSeconds(shot)} s)`, ...(shot.must.length ? [`  - Must show: ${shot.must.map((m) => `"${m}"`).join(", ")}`] : []), ...(tail ? [`  - On screen: ${tail}`] : []));
+      }
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
 }

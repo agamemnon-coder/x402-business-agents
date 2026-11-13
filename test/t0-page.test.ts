@@ -107,7 +107,9 @@ describe("the Built on strip", () => {
     const strip = builtOnHtml(run);
     expect(strip).not.toMatch(/<img|<svg/);
     const lis = (h: string) => [...h.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => text(m[1]!).trim());
-    expect(lis(strip)).toEqual(["Built on", ...items.map((i) => `${i.name}: ${i.proof}`), ICC_LINE]);
+    // Jury pass, 13 Nov: Intelligent Commerce Connect is not used, so no footer lists it under Built on.
+    expect(lis(strip)).toEqual(["Built on", ...items.map((i) => `${i.name}: ${i.proof}`)]);
+    expect(strip).not.toContain(ICC_LINE);
     expect(lis(builtOnHtml(run, false))).toEqual(["Built on", ...items.map((i) => `${i.name}: ${i.proof}`)]);
     for (const [name, html] of Object.entries({ metal: METAL_PAGE, airwallex: AIRWALLEX_PAGE, claude: CLAUDE_PAGE, t0: T0_PAGE })) {
       const foot = /<footer[\s\S]*<\/footer>/.exec(html)![0];

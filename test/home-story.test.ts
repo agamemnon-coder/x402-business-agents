@@ -101,8 +101,8 @@ describe("Home, the enterprise pass", () => {
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
 
-  it("the product card shows one /try run as its record holds it, names it, and says the reader was code in that run", () => {
-    expect([SAMPLE.mode.reader, SAMPLE.mode.bank, SAMPLE.mode.money]).toEqual(["code", "simulated", "test"]);
+  it("the product card shows one /try run as its record holds it, names it, and says Claude read that run's invoice", () => {
+    expect([SAMPLE.mode.reader, SAMPLE.mode.bank, SAMPLE.mode.money]).toEqual(["claude", "simulated", "test"]);
     const money = (a: string) => `${SAMPLE.invoice.currency} ${Number(a).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
     expect(FLOW.supplier).toBe(SAMPLE.invoice.supplier);
     expect(FLOW.amount).toBe(money(SAMPLE.invoice.total));
@@ -111,9 +111,10 @@ describe("Home, the enterprise pass", () => {
       expect(card).toContain(`data-rec="${TRY_SAMPLE_RECORD}"`);
       const t = text(card);
       for (const v of [SAMPLE.invoice.supplier, `Invoice ${SAMPLE.invoice.number}`, money(SAMPLE.invoice.total), SAMPLE.invoice.due, `…${SAMPLE.invoice.account_ending}`, `${SAMPLE.signed.terms_hash_prefix}…`, ...SAMPLE.booked.map((b) => `${b.account}`), ...SAMPLE.booked.map((b) => money((b.debit ?? b.credit)!))]) expect({ v, found: t.includes(v) }).toEqual({ v, found: true });
-      // The check in /try is Purser's code, and the chip says so; the fold says Purser's code read this run's invoice.
+      // Claude read this run's invoice, and the chip says so only because the record does; code holds the limits.
+      expect(t).toContain("Claude reader");
       expect(t).toContain("Purser's code holds the limits");
-      expect(text(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0])).toContain("so Purser's code read that invoice");
+      expect(text(/<details class="real"[\s\S]*?<\/details>/.exec(html)![0])).toContain("Claude Haiku 5.5 read that invoice");
     }
   });
 
@@ -130,7 +131,13 @@ describe("Home, the enterprise pass", () => {
     const vic3 = JSON.parse(read("docs/runs/2026-11-12-vic-3.json")) as { purchases: { step: string; read_back: { mandate: { equal: boolean } | null; payment_intent: { equal: boolean } | null } }[] };
     const b = vic3.purchases.find((p) => p.step === "B")!;
     expect([b.read_back.mandate?.equal, b.read_back.payment_intent?.equal]).toEqual([true, true]);
+    // First: Face ID verified on chain (the passkey account's record), its co-signer labelled a test key.
+    const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { threshold: number; owners: { virtual: boolean }[] };
+    expect(owners.owners.some((o) => o.virtual)).toBe(true);
+    expect(homeStats(run)[0]).toMatchObject({ n: owners.threshold, suf: ` of ${owners.owners.length}` });
+    expect(homeStats(run, proofRows(), null).map((s) => s.label)).not.toContain("Face ID verified on chain; co-signer a test key");
     expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([
+      [owners.threshold, "Face ID verified on chain; co-signer a test key"],
       [sp.byClaude, `Claude decisions in the main run, ${sp.fallbacks} fallbacks`],
       [metalStory(run.record).payments.total, "Metal payments, each its own transaction"],
       [Number(decline.amount), `declined by Airwallex over a ${decline.currency} ${limit} card limit`],
