@@ -36,7 +36,7 @@ function recordHref(r: RunRow): string {
 }
 
 /** The newest runs of /runs' list (it is sorted newest first): the day without the year, and the title up to its first colon or bracket. */
-export function latestRuns(rows: RunRow[] = liveRuns(), n = STATUS_RUNS): LatestRun[] {
+export function latestRuns(rows: RunRow[] = liveRuns().filter((r) => !r.partial), n = STATUS_RUNS): LatestRun[] {
   return rows.slice(0, n).map((r) => ({ key: r.key, iso: r.iso, day: r.date.replace(/ \d{4}$/, ""), title: r.title, short: r.title.split(/: | \(/)[0]!, href: recordHref(r) }));
 }
 
@@ -130,7 +130,8 @@ ul.pl li.grp { border-left: 0; padding-left: 0; color: var(--muted); font-weight
 const line = (label: string, id: string, rowId = "") => `<div${rowId ? ` id="${rowId}" hidden` : ""}><dt>${esc(label)}</dt><dd id="${id}">—</dd></div>`;
 
 export function statusPage(mode: StatusMode = "hosted"): string {
-  const rows = liveRuns().slice(0, STATUS_RUNS), runs = latestRuns(rows), { pill, groups } = runLabels(rows);
+  // A partial run (runs.ts PARTIAL_RUNS) is not a live run here either.
+  const rows = liveRuns().filter((r) => !r.partial).slice(0, STATUS_RUNS), runs = latestRuns(rows), { pill, groups } = runLabels(rows);
   const now = mode === "hosted"
     ? `<article class="pc card" id="now" aria-live="polite"><h2><span class="ic">${icon("circle-dot", 19)}</span><span id="st-head">Live status not read yet</span></h2>
     <dl class="kv">${line("Site", "st-site")}${line("Runner", "st-runner")}${line("Last sync", "st-sync")}${line("Alarms", "st-alarms")}${line("Try agents today", "st-agents", "st-agents-row")}</dl>

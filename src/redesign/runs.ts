@@ -19,6 +19,7 @@ import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
 import { AWX_RUN_FILE, AWX_RUN_LOG, awxRun } from "./awxRun.js";
 import { REPO_BLOB, separateRuns } from "./metalStory.js";
 import { runTimes, secs, type RunTimes } from "./runTimes.js";
+import { SUMMARY_CSS, summaryHtml, type SummaryCard } from "./summary.js";
 import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } from "./verifyTerms.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
@@ -61,7 +62,18 @@ export interface RunRow {
    * (without it: railsOf). A partner's chip, filter class and count follow it.
    */
   partners?: RunPartner[];
+  /** Why the run counts as partial, not live (jury pass, 13 Nov): it stopped short of what it set out to show. */
+  partial?: string;
 }
+
+/**
+ * The runs that stopped short (jury pass, 13 Nov), listed apart from the live count: the new company's hosted onboarding
+ * answered 400, and the passkey owners on chain were software passkeys, not a phone.
+ */
+export const PARTIAL_RUNS: Record<string, string> = {
+  "real-customers-1": "Partial: the account opened, but hosted onboarding answered 400 (it needs a template).",
+  "metal-passkey-owners": "Partial: software passkeys, not a phone.",
+};
 
 const readJson = <T>(file: string): T => JSON.parse(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")) as T;
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(iso));
@@ -400,7 +412,7 @@ function extraRuns(): RunRow[] {
       files: [{ label: "run record", href: m.record.href ?? blob("docs/runs") }],
     });
   }
-  return out;
+  return out.map((r) => (PARTIAL_RUNS[r.key] ? { ...r, partial: PARTIAL_RUNS[r.key] } : r));
 }
 
 /** What each top-level field of docs/demo/main-run.json holds (test/runs-page.test.ts checks each is in the record). */
@@ -453,6 +465,8 @@ export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): R
 }
 // A local control test (no partner called) sits with the rehearsals, outside the live runs (review 12 Nov).
 const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
+/** Counted as a live run: neither a rehearsal nor a control test, nor a run that stopped short (PARTIAL_RUNS). */
+export const isLive = (r: RunRow) => !isRehearsal(r) && !r.partial;
 const nameOf = (r: RunRow) => r.name ?? r.title;
 /** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
 const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
@@ -663,7 +677,7 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
     : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
-  return `<details class="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
+  return `<details class="ftp" id="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
 }
 
 /**
@@ -701,15 +715,33 @@ ${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip a:nth-of-type(${i + 1})
 }
 @keyframes rd-in { from { opacity: 0; transform: translateY(14px) scale(.6); } to { opacity: 1; transform: none; } }`;
 
+/**
+ * The four cards at the top of /runs (jury pass, 13 Nov): the live count and its span, the newest live run, Face ID to
+ * paid, and what is not counted as live (partial runs, rehearsals). Every value from the rows and the run times.
+ */
+export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRow[], t: RunTimes): SummaryCard[] {
+  const newest = live[0], first = live[live.length - 1];
+  const short = (r: RunRow) => r.date.replace(/ \d{4}$/, "");
+  return [
+    ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
+    ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
+    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex.` }] : []),
+    ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
+  ];
+}
+
 export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes()): string {
-  const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
+  const rows = newestFirst(all), live = rows.filter(isLive), rehearsals = rows.filter(isRehearsal), partial = rows.filter((r) => !isRehearsal(r) && !!r.partial);
   const last = lastLive(live);
   const filters = FILTERS.map((f) => ({ ...f, n: live.filter(f.has).length })).filter((f) => f.n > 0);
   const chevron = icon("chevron-down", 16);
   // Verify per approval and payment (master list 686): the signed approvals of each run, read from its records.
   const signed = signedByRun();
+  // Jury pass, 13 Nov: four cards, then the strip, the filters and every run in one fold (far less visible text).
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
+${summaryHtml(runsSummary(live, partial, rehearsals, times), "The runs in four cards")}
+<details class="deep sumd" id="runs-all"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
 ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}
@@ -718,6 +750,12 @@ ${faceIdToPaid(times)}
 <ol class="tl">
 ${live.map((r, i) => entry(r, { newest: i === 0, folded: true, signed: signed[r.key] })).join("\n")}
 </ol>
+</details>
+${partial.length ? `<details class="rehs" id="partial"><summary>Partial runs, not counted as live · ${partial.length}${chevron}</summary>
+<ul class="q">${partial.map((r) => `<li>${esc(`${nameOf(r)} (${r.date}): ${r.partial}`)}</li>`).join("")}</ul>
+<ol class="tl">
+${partial.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
+</ol></details>` : ""}
 ${rehearsals.length ? `<details class="rehs" id="rehearsals"><summary>Rehearsals, dry runs and control tests · ${rehearsals.length}${chevron}</summary>
 <ol class="tl">
 ${rehearsals.map((r) => entry(r, { folded: false, signed: signed[r.key] })).join("\n")}
@@ -729,7 +767,7 @@ ${MAIN_RUN_GLOSSARY.map(([k, v]) => `<dt><code>${esc(k)}</code></dt><dd>${esc(v)
 <p class="more-links">Per agent: <a href="agents/sourcing">Sourcing</a><a href="agents/support">Support</a><a href="agents/treasury">Treasury</a><a href="trace">Trace any payment</a><a href="proof">Proof</a></p>
 </main>`;
   return page({
-    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}\n${STRIP_CSS}`, body,
+    title: `Purser · ${RUNS_TITLE}`, description: `Every live run of Purser, newest first, with its ids, checks and records. Last live run: ${last.date}.`, tab: "runs", css: `${CSS}\n${VERIFY_CSS}\n${FTP_CSS}\n${STRIP_CSS}\n${SUMMARY_CSS}`, body,
     js: `${COPY_JS}\n${OPEN_TARGET_JS}\n${FILTER_JS}\n${VERIFY_TERMS_JS}`, stage: false,
     source: "Source: each run's record in docs/demo and docs/runs (listed per run).",
   });
@@ -740,7 +778,7 @@ export const mdCell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\
 
 /** docs/runs/README.md, generated from the same rows (npx tsx src/cli/runs-readme.ts). */
 export function runsReadme(all: RunRow[] = liveRuns()): string {
-  const rows = newestFirst(all), live = rows.filter((r) => !isRehearsal(r)), rehearsals = rows.filter(isRehearsal);
+  const rows = newestFirst(all), live = rows.filter(isLive), rehearsals = rows.filter(isRehearsal), partial = rows.filter((r) => !isRehearsal(r) && !!r.partial);
   const cell = mdCell;
   const idCell = (i: RunId) => `${i.label}: ${i.href?.startsWith("http") ? `[\`${i.value}\`](${i.href})` : `\`${i.value}\``}`;
   // What the entry's one line says was simulated, where what ran does not already say it in the same words.
@@ -762,6 +800,14 @@ said per run. The other files in this folder are build notes, dry runs and rehea
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|
 ${live.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.rails)} | ${cell(whatRan(r))} | ${cell(r.checks)} | ${ids(r)} | ${files(r)} |`).join("\n")}
+
+## Partial runs
+
+Not counted as live runs: each stopped short of what it set out to show.
+
+| Date | Run | Why partial | Files |
+|---|---|---|---|
+${partial.map((r) => `| ${r.date} | ${run(r)} | ${cell(r.partial ?? "")} | ${files(r)} |`).join("\n")}
 
 ## Rehearsals and dry runs
 

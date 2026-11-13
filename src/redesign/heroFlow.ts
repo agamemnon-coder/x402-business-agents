@@ -2,11 +2,11 @@
 // card, playing on a 12 s loop. An invoice slides in, the reader reads it and its fields tick, the check says ready to
 // pay, a Face ID ring closes and the signed hash shows, then it is paid and the ledger lines slide in.
 //
-// Every value is from one /try run of the sample invoice "A clean invoice from a supplier on file", captured on this
-// repository's engine by test/browser/try.check.ts (12 Nov): the supplier, number, amount, due date, account ending,
-// the signed terms' hash and the three booking lines. In that capture no API key was set, so Purser's code read the
-// invoice; /try's reader is Claude when it runs live (cloud/src/engine/tryClaude.ts), which is what the chip names.
-// The check that says "ready to pay" in /try is Purser's code, and the chip says so. Test money, a simulated bank.
+// Every value is from one /try run of the sample invoice "A clean invoice from a supplier on file" on the live
+// deployment with Claude on (13 Nov, docs/runs/2026-11-13-try-sample.json): the supplier, number, amount, due date,
+// account ending, the signed terms' hash and the three booking lines. Claude Haiku 5.5 read that invoice (read_by
+// claude:claude-haiku-5-5), which is what the chip names; Purser's code holds the limits, and the chip says so.
+// Test money, a simulated bank.
 //
 // CSS only. The final state is the default: with reduced motion (or no animation support) the whole flow stands.
 
@@ -14,8 +14,8 @@ import { readFileSync } from "node:fs";
 import { esc, icon } from "./ui.js";
 
 /** The record of that run: every value the card shows is read from it. */
-export const TRY_SAMPLE_RECORD = "docs/runs/2026-11-12-try-sample.json";
-interface TrySample { invoice: { supplier: string; number: string; currency: string; total: string; due: string; account_ending: string }; signed: { terms_hash_prefix: string }; booked: { account: string; name: string; debit: string | null; credit: string | null }[] }
+export const TRY_SAMPLE_RECORD = "docs/runs/2026-11-13-try-sample.json";
+interface TrySample { mode: { reader: string; reader_model?: string }; invoice: { supplier: string; number: string; currency: string; total: string; due: string; account_ending: string }; signed: { terms_hash_prefix: string }; booked: { account: string; name: string; debit: string | null; credit: string | null }[] }
 const rec = JSON.parse(readFileSync(new URL(`../../${TRY_SAMPLE_RECORD}`, import.meta.url), "utf8")) as TrySample;
 const money = (a: string) => Number(a).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur = rec.invoice.currency;
@@ -31,6 +31,9 @@ export const FLOW_NOTE = "A /try run of its sample invoice, test money.";
 
 const LOOP = 12;
 
+/** The reader chip names who read the recorded invoice: Claude only when the record says Claude read it. */
+export const READER_CHIP = rec.mode.reader === "claude" ? "Claude reader" : "Reader: Purser's code";
+
 export function heroFlowHtml(): string {
   const f = FLOW;
   const field = (k: string, v: string, i: number) => `<div class="hf-row hf-t${i}"><dt>${esc(k)}</dt><dd>${esc(v)}<span class="hf-tick">${icon("check", 14)}</span></dd></div>`;
@@ -43,7 +46,7 @@ export function heroFlowHtml(): string {
       <dl>${field("Payee", f.supplier, 0)}${field("Amount", f.amount, 1)}${field("Due", f.due, 2)}${field("Account", f.account, 3)}</dl>
     </div>
     <div class="hf-side">
-      <p class="hf-chip hf-reader"><span class="hf-dot"></span><b>Claude reader</b><small>Payee, amount, account</small></p>
+      <p class="hf-chip hf-reader"><span class="hf-dot"></span><b>${esc(READER_CHIP)}</b><small>Payee, amount, account</small></p>
       <p class="hf-chip hf-check">${icon("shield-check", 16)}<b>Checker: ready to pay</b><small>Purser's code holds the limits</small></p>
       <div class="hf-sign">
         <svg class="hf-ring" viewBox="0 0 48 48" width="48" height="48"><circle class="hf-ring-bg" cx="24" cy="24" r="21"/><circle class="hf-ring-fg" cx="24" cy="24" r="21"/></svg>

@@ -564,7 +564,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const count = WORDS[tiles.length] ?? String(tiles.length);
   const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${count[0]!.toUpperCase()}${count.slice(1)} Airwallex products in the product${flagged.length ? `, ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${count[0]!.toUpperCase()}${count.slice(1)} Airwallex products in use${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
   ${tilesHtml(tiles)}
   ${flaggedHtml()}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}

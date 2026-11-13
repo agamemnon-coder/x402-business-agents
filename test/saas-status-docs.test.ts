@@ -487,7 +487,8 @@ describe("/status when /health fails or answers something unexpected", () => {
 
 describe("/status: the latest live runs", () => {
   const html = statusPage(), runs = card(html, "runs");
-  const all = liveRuns();
+  // Jury pass, 13 Nov: a partial run (runs.ts PARTIAL_RUNS) is not a live run on /status either.
+  const all = liveRuns().filter((r) => !r.partial);
 
   it("lists the five newest runs of /runs' own list, newest first, each with its day and the start of its title", () => {
     expect(STATUS_RUNS).toBe(5);

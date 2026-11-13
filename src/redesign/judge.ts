@@ -34,7 +34,7 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
     {
       id: "home", title: "One payment on Home", seconds: 40,
       see: `Home's card plays one payment from a /try run: ${FLOW_STEPS.join(", ")}. The reader, the check, the Face ID signature over the exact terms, then the books.`,
-      links: [{ label: "Open /home", href: "/home" }],
+      links: [{ label: "Open Home", href: "/home" }],
     },
     {
       id: "sign", title: "Sign, then try to cheat", seconds: 40,
@@ -55,7 +55,7 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
       id: "proof", title: "See the proof", seconds: 40,
       see: "What Purser guarantees, with the code and the test for each; every id of the main run; the Airwallex-only run of 7 November, every check passed, and Airwallex's own decline; Metal's refusal on chain.",
       links: [
-        { label: "Open /proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open /metal", href: "/metal" },
+        { label: "Open Proof", href: "/proof" }, { label: "The Airwallex-only run", href: "/airwallex#awx-1" }, { label: "Open Metal", href: "/metal" },
         // The Visa entry (12 Nov, jury panel): the Airi run, Visa Intelligent Commerce via Airwallex's Airi.
         { label: "The Visa run (VIC via Airi)", href: "/visa" },
         ...(refusal ? [{ label: "The refusal on the explorer", href: refusal }] : []),

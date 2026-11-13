@@ -61,7 +61,7 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     }
     // The heading counts the tiles; the page is no longer the replay of one run.
     // Review 12 Nov: the seven products, then the three tested live behind flags.
-    expect(awx).toContain("<h1>Seven Airwallex products in the product, three more tested live on 12 Nov</h1>");
+    expect(awx).toContain("<h1>Seven Airwallex products in use; three more tested live on 12 Nov</h1>");
     expect(text(main(awx))).not.toMatch(/Replay of the main run/);
     expect(awx).toMatch(/<span class="pill run">[\s\S]*?Airwallex sandbox · test money · each run dated<\/span>/);
   });

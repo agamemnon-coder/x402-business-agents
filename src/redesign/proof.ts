@@ -7,7 +7,10 @@
 
 import { COUNT_JS } from "./stats.js";
 import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
-import { railRefusals } from "../visuals/facts.js";
+import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
+import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
+import { SUMMARY_CSS, detailsFold, summaryHtml, type SummaryCard } from "./summary.js";
+import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
 import { REPO_BLOB } from "./metalStory.js";
@@ -447,6 +450,33 @@ const PROOF_VISUAL_CSS = `.proofp .pvis { margin: 18px 0 22px; } .proofp .pvis.p
 @media (max-width: 999px) { .proofp .pvis.pv-wide { display: none; } .proofp .pvis.pv-tall { display: block; max-width: 420px; margin: 18px auto; } }
 .proofp .vault img { display: block; max-width: 100%; height: auto; margin: 8px 0; }`;
 
+const dayShortUtc = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
+
+/**
+ * The four cards at the top of /proof (jury pass, 13 Nov), each from its record; a card whose record is missing drops
+ * out. First, Face ID verified on chain: the passkey account on Metal testnet, its co-signer a labelled test key. Then
+ * Airwallex's own hold, approved by a person and PAID (12 Nov); the Visa run as it ended for each purchase; and Claude's
+ * decisions in the main run.
+ */
+export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3?: Vic3Record | null } = {}): SummaryCard[] {
+  const out: SummaryCard[] = [];
+  const owners = o.owners === undefined ? ownersRun() : o.owners;
+  if (owners) {
+    const steps = ownersSteps(owners.rec), at = steps.findIndex((x) => x.key === "refused");
+    const refused = steps[at], paid = steps.slice(at + 1).find((x) => x.key === "paid");
+    const virtual = owners.rec.owners.some((x) => x.virtual);
+    if (refused && paid) out.push({ icon: "scan-face", fig: `${owners.rec.threshold} of ${owners.rec.owners.length}`, title: "Face ID verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
+      text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change ran only after both passkeys signed${virtual ? " (co-signer a test key)" : ""}. ${refused.label.replace(/^Refused /, "")} over the cap refused, then paid after the raise.` });
+  }
+  const hold = airwallexHold(), ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
+  if (hold && ended) out.push({ icon: "landmark", fig: ended, title: "Airwallex held it for a person", tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record}`, text: `${hold.short.replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.` });
+  const v3 = o.vic3 === undefined ? vic3Run() : o.vic3;
+  if (v3) out.push({ icon: "credit-card", fig: `${vic3Summary(v3).paid} paid`, title: "Visa via Airwallex's Airi", href: "visa", rec: VIC3_RUN_FILE, text: `${vic3Lead(v3)}.` });
+  const sp = split(run.record);
+  if (sp.decisions) out.push({ icon: "bot", fig: `${sp.byClaude}/${sp.decisions}`, title: "Claude decides, code enforces", href: "#claude", rec: run.file, text: `Decisions by Claude in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; Purser's code holds the limits.` });
+  return out;
+}
+
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   // The Airi runs (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, short: its outcomes and checks, then a link
@@ -470,9 +500,11 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "stop", value: stopFigure(story), label: stopSub(story), explain: "", href: "#stops", parts: stopBreakdown(story).map((x) => ({ value: String(x.value), label: x.label })) },
   ];
   const tile = (n: Tile & { cls: string }) => `<a class="num card ${n.cls}" href="${esc(n.href)}"><span class="v">${countUpValue(n.value)}</span><span class="l">${esc(n.label)}</span>${noteHtml(n.note, "span")}${n.parts?.length ? `<span class="parts">${n.parts.map((x) => `<span><b>${esc(x.value)}</b> ${esc(x.label)}</span>`).join("")}</span>` : ""}</a>`;
+  // Jury pass, 13 Nov: four cards, then everything else in one fold (far less visible text).
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
-  ${guaranteesHtml()}
+  ${summaryHtml(proofSummary(run), "Proof in four cards")}
+  ${detailsFold("details", "All the proof: guarantees, partners, numbers and every check", `${guaranteesHtml()}
   ${lifeVisual("wide")}
   ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
@@ -486,13 +518,13 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <details class="deep"><summary>Why this is a company</summary>${vaultTree()}${whyCompanyHtml()}</details>
   ${archiveFold(run)}
   ${lifeVisual("tall")}
-  ${railsVisual("tall")}
+  ${railsVisual("tall")}`)}
   <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

@@ -26,12 +26,14 @@ describe("What Purser guarantees", () => {
     expect(GUARANTEES.find((g) => g.id === "g-chain")!.evidence.label).toContain("our own check switched off once");
   });
 
-  it("is the first thing on /proof, directly under the heading, above the partners and the numbers (jury, 12 Nov)", () => {
+  // Jury pass, 13 Nov: the four summary cards come first; the guarantees open the one details fold under them.
+  it("is the first thing in /proof's details fold, under the four cards, above the partners and the numbers", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
-    expect(proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim()).toBe("");
+    const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
+    expect(between).toMatch(/^<ul class="sumc"[\s\S]*<\/ul>\s*<details class="deep sumd" id="details"><summary>[^<]+<\/summary>$/);
   });
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {
