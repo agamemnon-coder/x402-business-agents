@@ -622,7 +622,7 @@ describe("/status on the site", () => {
   it("carries the site's icon and link-preview image like the other pages, and says what is real in its own words", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE, DOCS_PAGE]) {
       expect(html).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
-      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png">/);
+      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
     }
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(STATUS_PAGE)?.[1] ?? "");
     expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");

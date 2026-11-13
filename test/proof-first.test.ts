@@ -18,7 +18,7 @@ import { agentRun, faceIdDecisions, loadRecord, split, stopFigure, stopStory } f
 import { TRACE_LINK, TRACE_URL } from "../src/redesign/trace.js";
 import { VIC2_RUN_ID } from "../src/redesign/vic2Run.js";
 import { buildPages } from "../src/relay/assets.js";
-import { ogTitle } from "../src/ui/meta.js";
+import { OG_TITLE } from "../src/ui/meta.js";
 import { visibleWords } from "./support/visibleWords.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 
@@ -274,8 +274,8 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
 
   it("is titled \"Purser · Proof\", the name not doubled in the link preview, and describes what it opens with, no number typed", () => {
     expect(html).toContain("<title>Purser · Proof</title>");
-    expect(ogTitle("Purser · Proof")).toBe("Purser · Proof");
-    expect(html).toContain('<meta property="og:title" content="Purser · Proof">');
+    // The link preview says the site's one title on every page (the owner, 13 Nov: src/ui/meta.ts OG_TITLE).
+    expect(html).toContain(`<meta property="og:title" content="${OG_TITLE}">`);
     const d = /<meta name="description" content="([^"]+)">/.exec(html)![1]!;
     expect(d.startsWith("What Purser guarantees")).toBe(true);
     expect(d).not.toMatch(/\d/);

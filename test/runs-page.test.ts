@@ -12,6 +12,7 @@ import { loadTrace } from "../src/redesign/trace.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
 import { visibleWords } from "./support/visibleWords.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
+import { OG_TITLE } from "../src/ui/meta.js";
 
 const pages = buildPages({ ...process.env, TRY_SIGN_ENABLED: "on" }) as Pages;
 const text = (html: string) => html.replace(/<style>[\s\S]*?<\/style>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
@@ -615,7 +616,8 @@ describe("/runs as a timeline", () => {
 
   it("starts its title with Purser, once", () => {
     expect(html).toContain("<title>Purser · Every live run</title>");
-    expect(html).toContain('<meta property="og:title" content="Purser · Every live run">');
+    // The link preview says the site's one title on every page (the owner, 13 Nov: src/ui/meta.ts OG_TITLE).
+    expect(html).toContain(`<meta property="og:title" content="${OG_TITLE}">`);
     expect(html).toContain("<h1>Every live run</h1>");
   });
 

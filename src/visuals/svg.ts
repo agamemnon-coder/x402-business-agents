@@ -320,35 +320,33 @@ export function refusalsSvg(items: RailRefusal[], href: (path: string) => string
 // ---------------------------------------------------------------------------------------------------------------------
 // 4. The social preview (GitHub's repository settings, 1280×640), dark: the sentence and the three layers in one strip.
 
-export const SOCIAL_SIZE = { width: 1280, height: 640 } as const;
+export const SOCIAL_SIZE = { width: 1200, height: 630 } as const;
 export const SOCIAL_SENTENCE = "AI agents spend company money only within limits the CFO signs with Face ID.";
-export const SOCIAL_FOOT = "Airwallex · Metal · Visa Intelligent Commerce via Airi · sandbox and testnet runs, test money only";
+/** The one line on the link preview (the owner, 13 Nov: the mark, the name and this line, nothing else). */
+export const SOCIAL_LINE = "AI agents spend. You sign off.";
+/** Purser's mark (a feather, the favicon's), as 24-unit paths. */
+const MARK_PATHS = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z", "M16 8 2 22", "M17.5 15H9"];
 
-export function socialSvg(site: string): string {
-  const { width: W, height: H } = SOCIAL_SIZE, out: string[] = [];
-  out.push(`<rect class="s-bar" x="0" y="0" width="${W}" height="6"/>`);
-  out.push(text(80, 104, ["Purser"], "s-brand", 30), text(80, 186, wrap(SOCIAL_SENTENCE, 30), "s-hero", 66));
-  const chips = [
-    { t: "AI agents", s: "propose", cls: "pv-claude", tc: "t-claude" },
-    { t: "Purser's checks", s: "code", cls: "pv-box", tc: "" },
-    { t: "CFO's Face ID", s: "signature", cls: "pv-box", tc: "" },
-    { t: "The rail", s: "its own controls", cls: "pv-box", tc: "" },
-    { t: "Ledger", s: "audit log", cls: "pv-box", tc: "" },
+/**
+ * The link preview and the repository's social preview (the owner, 13 Nov: "clean, enterprise"): 1200×630, the mark,
+ * the name and the one line, centred, nothing small. The mark and the name sit in the middle 630 px, so a square crop
+ * (WhatsApp, Telegram) still shows both. `site` is kept for callers; nothing on the image names an address.
+ */
+export function socialSvg(_site?: string): string {
+  const { width: W, height: H } = SOCIAL_SIZE, cx = W / 2, m = 132, my = 112;
+  const out = [
+    `<rect class="s-glow" x="0" y="0" width="${W}" height="${H}"/>`,
+    `<rect class="s-mark" x="${cx - m / 2}" y="${my}" width="${m}" height="${m}" rx="34"/>`,
+    `<g class="s-feather" transform="translate(${cx - 42} ${my + 24}) scale(3.5)">${MARK_PATHS.map((d) => `<path d="${d}"/>`).join("")}</g>`,
+    text(cx, 382, ["Purser"], "s-name", 0, "middle"),
+    text(cx, 468, [SOCIAL_LINE], "s-line", 0, "middle"),
   ];
-  const y = 430, w = 190, gap = 28;
-  chips.forEach((c, i) => {
-    const x = 80 + i * (w + gap);
-    out.push(rect(x, y, w, 86, c.cls, 18), text(x + 20, y + 38, [c.t], `s-chip ${c.tc}`, 24), text(x + 20, y + 66, [c.s], "s-sub", 20));
-    if (i < chips.length - 1) out.push(arrow(x + w + 4, y + 43, x + w + gap - 4, y + 43, "pv-still"));
-  });
-  const bx = 80 + (w + gap) - 10, bw = 3 * w + 2 * gap + 20;
-  out.push(rect(bx, y - 14, bw, 114, "pv-layer", 24), text(bx + bw / 2, y - 26, ["three layers that do not trust each other"], "s-cap", 20, "middle"));
-  out.push(text(80, H - 50, [SOCIAL_FOOT], "s-foot", 20), text(W - 80, H - 50, [site], "s-site", 20).replace('<text class', '<text text-anchor="end" class'));
-  const css = `.pv .s-bar { fill: var(--accent); }
-.pv .s-brand { font-size: 30px; font-weight: 800; letter-spacing: -.02em; }
-.pv .s-hero { font-size: 56px; font-weight: 780; letter-spacing: -.03em; }
-.pv .s-chip { font-size: 20px; font-weight: 720; } .pv .s-sub { font-size: 17px; fill: var(--muted); }
-.pv .s-cap { font-size: 17px; font-weight: 650; fill: var(--accent); letter-spacing: .02em; }
-.pv .s-foot { font-size: 17px; fill: var(--faint); } .pv .s-site { font-size: 17px; font-weight: 650; fill: var(--accent); }`;
-  return svg({ w: W, h: H, id: "social", title: "Purser", desc: SOCIAL_SENTENCE, body: out.join("\n"), standalone: "dark" }).replace("</style>", `\n${css}</style>`);
+  const css = `.pv .s-glow { fill: url(#s-grad); }
+.pv .s-mark { fill: #f5f7fb; }
+.pv .s-feather path { fill: none; stroke: #0b1220; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pv .s-name { font-size: 104px; font-weight: 780; letter-spacing: -.035em; fill: #f5f7fb; }
+.pv .s-line { font-size: 42px; font-weight: 560; letter-spacing: -.01em; fill: #aab4c5; }`;
+  const grad = `<defs><radialGradient id="s-grad" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#1b2a4a"/><stop offset="1" stop-color="#0b1220"/></radialGradient></defs>`;
+  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE}`, body: `${grad}
+${out.join("\n")}`, standalone: "dark" }).replace("</style>", `\n${css}</style>`);
 }

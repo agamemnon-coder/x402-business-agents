@@ -7,7 +7,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FILM_URL, HERO } from "../src/config/brand.js";
 import { buildPages } from "../src/relay/assets.js";
-import { OG_IMAGE, withMeta } from "../src/ui/meta.js";
+import { OG_DESCRIPTION, OG_IMAGE, OG_IMAGE_SIZE, OG_TITLE, previewTags, withMeta } from "../src/ui/meta.js";
+import { tryPage } from "../cloud/src/tryPage.js";
+import { consolePage } from "../cloud/src/console.js";
 /** Escapes every regular-expression metacharacter, backslash included. */
 const reEscape = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
@@ -29,7 +31,26 @@ describe("every page's head (Q5)", () => {
       expect({ name, missing }).toEqual({ name, missing: [] });
       expect({ name, relative: /og:image" content="(?!https:)/.test(h) }).toEqual({ name, relative: false });
     }
-    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og.png");
+    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og.png?v=1113");
+  });
+
+  // The owner, 13 Nov: the preview in a chat looked messy (a cropped image, a long description). Every page of the site
+  // and Purser Cloud's shareable pages now say the same: one title, one short sentence, one clean image.
+  it("is one clean preview on every page of the site and of Purser Cloud: the title, one short sentence, the 1200×630 image", () => {
+    expect(OG_TITLE).toBe("Purser — AI agents spend. You sign off.");
+    expect(OG_DESCRIPTION.length).toBeLessThanOrEqual(110);
+    expect(OG_DESCRIPTION.split(/[.!?](?:\s|$)/).filter(Boolean).length).toBeLessThanOrEqual(2);
+    const n = "bm9uY2U=";
+    const cloud = [["cloud /try", tryPage(n, { origin: "https://x.test", rpId: "x.test" })], ["cloud console", consolePage(n, { origin: "https://x.test", rpId: "x.test", mailDomain: "x.test" })]] as const;
+    for (const [name, page] of [...html, ...cloud]) {
+      const h = head(page);
+      for (const tag of previewTags()) expect({ name, tag, has: h.includes(tag) }).toEqual({ name, tag, has: true });
+      expect({ name, ogTitles: (h.match(/property="og:title"/g) ?? []).length, ogDescs: (h.match(/property="og:description"/g) ?? []).length }).toEqual({ name, ogTitles: 1, ogDescs: 1 });
+    }
+    // The image: a PNG of 1200×630, the same file as the repository's social preview.
+    const og = readFileSync(new URL("../src/ui/brand/og.png", import.meta.url));
+    expect([og.readUInt32BE(16), og.readUInt32BE(20)]).toEqual([OG_IMAGE_SIZE.width, OG_IMAGE_SIZE.height]);
+    expect(og.equals(readFileSync(new URL("../docs/assets/social-preview.png", import.meta.url)))).toBe(true);
   });
 
   it("links the favicon wherever the page's CSP allows an image, and never where it refuses one (img-src 'none')", () => {
@@ -44,7 +65,7 @@ describe("every page's head (Q5)", () => {
     const out = withMeta(page);
     expect(out.match(/name="description"/g)).toHaveLength(1);
     expect(out).toContain('content="own"');
-    expect(out).toContain('<meta property="og:title" content="X · Purser">');
+    expect(out).toContain(`<meta property="og:title" content="${OG_TITLE}">`);
     expect(out.replace(/<meta[^>]*>\n?|<link[^>]*>\n?/g, "").replace("</title>\n", "</title>")).toBe(page.replace(/<meta[^>]*>/, ""));
     expect(withMeta(out)).toBe(out);
   });
@@ -53,7 +74,7 @@ describe("every page's head (Q5)", () => {
 describe("one tagline (Q8)", () => {
   it("is \"AI agents spend. You sign off.\": Home's og:title, the README's title, the form's title, the deck's first slide, /film", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
-    expect(head(pages.home!)).toContain(`<meta property="og:title" content="Purser · ${HERO}">`);
+    expect(head(pages.home!)).toContain(`<meta property="og:title" content="Purser — ${HERO}">`);
     // The README's title, under the Purser mark in the owner's centred top (13 Nov): the first heading.
     expect(read("README.md").split("\n").find((l) => l.startsWith("# "))).toBe(`# Purser · ${HERO}`);
     expect(read("docs/submission/README.md")).toMatch(new RegExp(`## Title\\n\\nPurser · ${reEscape(HERO)}\\n`));
