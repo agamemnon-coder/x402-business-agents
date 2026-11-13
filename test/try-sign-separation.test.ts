@@ -178,7 +178,8 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(on.home).toContain('href="/try"');
     // Owner, 13 Nov: the primary button is the 3-minute tour; "Try it" beside it opens the hands-on demo.
-    expect(on.home).toContain('<a class="btn big ghost" href="/try">Try it</a>');
+    // Judges, 13 Nov (#7): "Try it" opens /try/sign ("Sign in 60 seconds") in this bundle.
+    expect(on.home).toContain('<a class="btn big ghost" href="/try/sign">Try it</a>');
   });
 
   it("the local relay: off, /try/sign and its API are 404; on, the whole visit works", async () => {

@@ -133,6 +133,9 @@ code.idc { font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; ba
 .pft td .pill + .sub { margin-top: 5px; }
 @media (max-width: 900px) { .co .aw .aww { display: none; } .co .aw { padding-left: 6px; } }
 @media (max-width: 640px) { .co { max-width: 50vw; padding-left: 10px; } .co .av { display: none; } .tiles.pf .tile:last-child { grid-column: auto; } }
+/* Below 420 px the chip drops the name's bracketed part ("Northwind Outdoor (demo company)" → "Northwind Outdoor"; the
+   ribbon under it says it is the demo), so the company's own name is read whole (review, 13 Nov). */
+@media (max-width: 419px) { .co .cn .cx { display: none; } .co { max-width: 62vw; } }
 /* A rail's name wraps rather than end in an ellipsis. */
 .trow > .rail { white-space: normal; overflow-wrap: anywhere; line-height: 1.35; }
 /* The platform's companies as cards on a phone: name and payouts, account and fees, last sync. */
@@ -225,9 +228,10 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .appbar .test .tl { display: none; }
   .who-am-i #who { max-width: 52vw; }
   .who-am-i #who .wc { display: none; }
-  /* Five pages do not fit one row on a phone: they wrap, never run off the edge. */
-  .appbar nav.apptabs { display: flex; flex-wrap: wrap; gap: 2px; }
-  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; }
+  /* Five pages do not fit one row on a phone: the row scrolls sideways (review, 13 Nov: "Settings" wrapped onto a line of
+     its own), the current page scrolled into view. */
+  .appbar nav.apptabs { display: flex; flex-wrap: nowrap; gap: 2px; overflow-x: auto; overscroll-behavior-x: contain; scroll-padding-inline: 12px; margin-right: calc(-1 * var(--gut, 16px)); padding-right: 16px; }
+  .appbar nav.apptabs a { padding: 6px 9px; font-size: 13.5px; flex: none; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -413,7 +417,7 @@ function shell(){
     // Who, the company and the session's time left; a narrow header drops the company, then the time (both stay in the title).
     w.replaceChildren(el('span','wn',n),el('span','we',(n?' · ':'')+e));w.title=[n,c,e].filter(Boolean).join(' · ');
     // The company this session is in, and its Airwallex account as Airwallex last reported it (a platform runs several).
-    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
+    const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){const cx=/^(.+?)(\s+\([^)]*\))$/.exec(c);co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',cx?[cx[1],el('span','cx',cx[2])]:c));
       // The demo company has no account of its own: its chip says what its rows are (jury, 13 Nov: "No Airwallex account
       // yet" read against rows paid on Airwallex rails).
       co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
@@ -421,7 +425,7 @@ function shell(){
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
-  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+  for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
 }
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
 // browser and load the page again when it is not the page's. Signed in, the person's own language decides (langOf).

@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
+export type MoreKey = "tour" | "cloud" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
 
 export interface MoreLink {
   key: MoreKey;
@@ -29,6 +29,8 @@ export const DEMO_CONNECTOR_TOKEN = "purser-demo-read-only";
 
 /** The whole menu, in its order: the product pages first, then the partner pages (names as text, never a logo). */
 export const MORE_LINKS: readonly MoreLink[] = [
+  // 13 Nov (Max): the 3-minute product tour, first under "More" (the top menu keeps its four tabs). Not in the footer.
+  { key: "tour", label: "Product tour", href: "tour", group: "product" },
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
   { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product" },
   { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
@@ -46,13 +48,13 @@ export const MORE_LINKS: readonly MoreLink[] = [
 /** The links the pages show: every page of the list that the site serves. */
 export const moreLinks = (): MoreLink[] => MORE_LINKS.filter((l) => l.built !== false);
 /** The footer repeats the product pages only; the partner pages are reached from Proof and from "More". */
-export const footerLinks = (): MoreLink[] => moreLinks().filter((l) => l.group === "product");
+export const footerLinks = (): MoreLink[] => moreLinks().filter((l) => l.group === "product" && l.key !== "tour");
 export const isMoreKey = (key: string | null): key is MoreKey => MORE_LINKS.some((l) => l.key === key);
 
 /** A page's own key, as it tells the navigation where it is: one of the four tabs, a page under "More", or a page that sits under a tab. */
-export type PageKey = "home" | "watch" | "try" | "proof" | "tour" | "runs" | MoreKey;
+export type PageKey = "home" | "watch" | "try" | "proof" | "runs" | MoreKey;
 /** The menu item a page marks (12 Nov): a tab marks itself, a page listed under "More" marks "More", /runs sits under Proof. The one mapping both navigations use. */
-// Jury, 13 Nov: /runs is not Proof; it marks no tab. Nor does the product tour (/tour, owner 13 Nov: out of the menu).
+// Jury, 13 Nov: /runs is not Proof; it marks no tab. The product tour (/tour) is under More since 13 Nov, so it marks More.
 const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof">> = { home: "home", watch: "watch", try: "try", proof: "proof" };
 export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "more" | null {
   if (!page) return null;

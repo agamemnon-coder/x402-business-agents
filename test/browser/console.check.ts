@@ -801,6 +801,14 @@ async function guestPass() {
     ok(hidden === 0, `${tag}: no empty band: every card is shown without scrolling (${hidden} hidden)`);
     // The console is not one of the site's pages: its header marks no item ("More" was marked on every page).
     ok(await p.locator('header.top summary.on, header.top a[aria-current="page"]').count() === 0, `${tag}: the site header marks no menu item on the console`);
+    // Review, 13 Nov, at 390 px: the five pages stay on one row that scrolls sideways ("Settings" wrapped), and below
+    // 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
+    const tabs = await p.locator("#tabs a").evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
+    ok(new Set(tabs).size === 1, `${tag}: the pages are one row (${tabs.join(", ")})`);
+    if (width < 420) {
+      const chip = await p.evaluate(() => { const cn = document.querySelector("#co .cn") as HTMLElement | null; return cn ? { text: cn.innerText.trim(), cut: cn.scrollWidth > cn.clientWidth + 1 } : null; });
+      ok(chip?.text === "Northwind Outdoor" && !chip.cut, `${tag}: the company chip reads "Northwind Outdoor", whole (${JSON.stringify(chip)})`);
+    }
     for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);

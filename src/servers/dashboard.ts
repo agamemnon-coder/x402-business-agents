@@ -101,7 +101,7 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   // Home's hero walkthrough (src/redesign/walk.ts): the hands-on demo's own screens, captured by test/browser/try.check.ts.
   ...Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`try-walk-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/try-walk/walk-${n}.webp`, import.meta.url)) }])),
   // /tour's four screenshots (src/redesign/tour.ts; docs/assets/tour/README.md says where each was taken).
-  ...Object.fromEntries(["try", "proof", "cloud", "connect"].map((n) => [`tour-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/tour/tour-${n}.webp`, import.meta.url)) }])),
+  ...Object.fromEntries(["sign", "try", "proof", "cloud", "connect"].map((n) => [`tour-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/tour/tour-${n}.webp`, import.meta.url)) }])),
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   // 13 Nov (owner): every icon is the header's mark (src/ui/brand/mark.ts), the same bytes Purser Cloud serves.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },

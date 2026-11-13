@@ -83,7 +83,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (since 13 Nov the tour, then Try it),
     // the reassurance line; the first
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Take the 3-minute tour Try it No sign-up; test companies deleted after 24 hours.`)).toBe(true);
+    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Take the 3-minute tour Try it No sign-up, about a minute; nothing real moves.`)).toBe(true);
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);

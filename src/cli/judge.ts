@@ -66,7 +66,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/security", page(SECURITY_CSP, () => SECURITY_PAGE));
   app.get("/docs", page(DOCS_CSP, () => DOCS_PAGE));
   // The 3-minute product tour (13 Nov); /judge, its old address, answers 301 to it (MOVED, above).
-  app.get("/tour", page(TOUR_CSP, () => TOUR_PAGE));
+  // This server has no /try/sign: the tour's first step leads to /try here, as in a bundle without it (flowLinks).
+  app.get("/tour", page(TOUR_CSP, () => TOUR_PAGE.replace(/href="\/try\/sign"/g, 'href="/try"')));
   // /status, the offline copy: this server has no /health and no runner, so the page says so (no script, no request).
   app.get("/status", page(STATUS_OFFLINE_CSP, () => STATUS_PAGE_OFFLINE));
   app.get("/t0", page(T0_CSP, () => T0_PAGE));

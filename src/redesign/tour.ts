@@ -13,32 +13,43 @@ import { esc, icon, page, TRY_URL } from "./ui.js";
 export const TOUR_LINK = "3-minute product tour";
 export const TOUR_URL = "https://kit11.max-31b.workers.dev/tour";
 export const TOUR_TITLE = "Product tour · 3 minutes";
+/** The two demos' names, the same on Home and the tour (judges, 13 Nov, #7). */
+export const SIGN_NAME = "Sign in 60 seconds";
+export const INBOX_NAME = "Run the payables inbox";
 
 export interface TourStep { id: string; title: string; seconds: number; text: string; link: { label: string; href: string }; image: string; alt: string }
 
-/** The four steps, three minutes in all. Each link is a page the site serves today (test/tour.test.ts checks them). */
+/** The five steps, three minutes in all. Each link is a page the site serves today (test/tour.test.ts checks them). */
 export const TOUR_STEPS: readonly TourStep[] = [
   // Owner, 13 Nov: each card says in one plain sentence what you will see, for a visitor who is not technical; no jargon.
+  // Judges, 13 Nov (#7): one hero demo first, "Sign in 60 seconds" (/try/sign); then the hands-on demo as "Run the
+  // payables inbox" (/try). The same two names on Home and here.
   {
-    id: "try", title: "Try it", seconds: 60,
-    text: "You'll pay a sample invoice for a pretend company: AI checks it, you approve with Face ID or your fingerprint, and if you change one number Purser refuses to pay.",
-    link: { label: "Try it", href: TRY_URL },
-    image: "tour-try.webp", alt: "The start screen of the demo: a sample invoice and the button \"Start with a test company\".",
+    id: "sign", title: SIGN_NAME, seconds: 60,
+    text: "You'll approve a supplier payment with your own Face ID or fingerprint, then change one cent and see Purser refuse to pay it.",
+    link: { label: SIGN_NAME, href: "/try/sign" },
+    image: "tour-sign.webp", alt: "The start of the 60-second demo: \"You're the CFO\", and the CFO's one policy with its three locks.",
   },
   {
-    id: "proof", title: "See the proof", seconds: 40,
+    id: "try", title: INBOX_NAME, seconds: 40,
+    text: "You'll run a pretend company's payables: AI agents read and check each invoice, and you approve what is above their limit.",
+    link: { label: INBOX_NAME, href: TRY_URL },
+    image: "tour-try.webp", alt: "The start screen of the payables inbox: a sample invoice and the button \"Start with a test company\".",
+  },
+  {
+    id: "proof", title: "See the proof", seconds: 30,
     text: "You'll see each promise Purser makes, next to the real test run that shows it was kept.",
     link: { label: "See the proof", href: "/proof" },
     image: "tour-proof.webp", alt: "The Proof page: four results at the top, then the full list of promises and checks.",
   },
   {
-    id: "cloud", title: "Look around a sample company", seconds: 40,
+    id: "cloud", title: "Look around a sample company", seconds: 25,
     text: "You'll see a sample company's money in and out, its invoices and its books, with made-up numbers and nothing to sign up for.",
     link: { label: "Open the sample company", href: PURSER_CLOUD_URL },
     image: "tour-cloud.webp", alt: "The sample company's overview in Purser Cloud: money in and out, cash over time and invoices.",
   },
   {
-    id: "connect", title: "Connect your AI", seconds: 40,
+    id: "connect", title: "Connect your AI", seconds: 25,
     text: "You'll see how your own AI assistant, such as Claude, can read your books and suggest a payment, while only you can approve one.",
     link: { label: "Connect your AI", href: "/docs#connect-ai" },
     image: "tour-connect.webp", alt: "The \"Connect your AI\" instructions, step by step.",
@@ -54,6 +65,8 @@ ol.tour { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 20
 .stop { display: flex; flex-direction: column; overflow: hidden; }
 .stop .shot { display: block; aspect-ratio: 16 / 10; background: var(--sunken); border-bottom: 1px solid var(--border); overflow: hidden; }
 .stop .shot img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+/* Review, 13 Nov: at phone width a desktop screenshot is a thumbnail nobody can read; below 600 px the cards are words and a button. */
+@media (max-width: 599px) { .stop .shot { display: none; } }
 .stop .body { display: grid; gap: 10px; padding: 20px 20px 22px; flex: 1; align-content: start; }
 @media (min-width: 720px) { .stop .body { padding: 24px 26px 26px; } }
 .stop .meta { display: flex; align-items: center; gap: 10px; font: 650 14px/1 Inter, system-ui, sans-serif; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -78,7 +91,7 @@ export function tourPage(steps: readonly TourStep[] = TOUR_STEPS): string {
 <section class="intro">
   <p class="eyebrow">Product tour</p>
   <h1 class="h-hero">Product tour · ${minutes} minutes</h1>
-  <p class="lead">Purser lets AI agents pay a company's bills within the limits you set; anything above them waits for your Face ID. Start at step 1: each step takes about a minute.</p>
+  <p class="lead">Purser lets AI agents pay a company's bills, and above an agent's limit, only the CFO's Face ID moves money. Start at step 1: each step takes a minute or less.</p>
 </section>
 <ol class="tour">
 ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">
@@ -95,7 +108,7 @@ ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">
 </div></main>`;
   return page({
     title: TOUR_TITLE,
-    description: "Four steps, three minutes: try it, see the proof, look around a sample company, connect your AI.",
+    description: "Five steps, three minutes: sign in 60 seconds, run the payables inbox, see the proof, look around a sample company, connect your AI.",
     tab: "tour", css: CSS, body, stage: false,
     source: "Source: src/redesign/tour.ts.",
     real: [

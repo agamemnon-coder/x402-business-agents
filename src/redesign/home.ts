@@ -155,7 +155,10 @@ export function homeHeadingHtml(): string {
  * to look): the 3-minute product tour, /tour, is the one place to start. "Try it" (TRY_BUTTON) is the second button.
  */
 export const START = "Take the 3-minute tour";
-/** Home's second button: the hands-on demo, where the Try tab goes. */
+/**
+ * Home's second button (judges, 13 Nov, #7: one hero demo): "Sign in 60 seconds", /try/sign, where the bundle serves it,
+ * the tour's step 1; the hands-on demo (TRY_URL, "Run the payables inbox", the Try tab) where it does not.
+ */
 export const TRY_BUTTON = "Try it";
 /** The hero's one sentence under the heading (the owner, 12 Nov: one sentence). WHAT_IT_IS stays the README's and the form's. */
 export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms with Face ID.";
@@ -165,7 +168,7 @@ export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms
  * "Test money · deleted after 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
 export const REASSURE = {
-  sign: "No sign-up; test companies deleted after 24 hours.",
+  sign: "No sign-up, about a minute; nothing real moves.",
   world: "No sign-up; test companies deleted after 24 hours.",
 } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
@@ -292,7 +295,7 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
   // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
-  const tryHref = TRY_URL;
+  const tryHref = opts.trySign ? "/try/sign" : TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
   const logos = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, ""], ["logo-metal.svg", "Metal", 114, 36, ""], ["logo-claude.png", "Claude", 330, 72, "tall"]] as const;

@@ -44,7 +44,7 @@ describe("Home, the enterprise pass", () => {
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       const at = [
-        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<a class="btn primary big start" href="tour">', `<a class="btn big ghost" href="${TRY_URL}">`, '<p class="reassure">', '<div class="trust">',
+        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<a class="btn primary big start" href="tour">', html === ON ? '<a class="btn big ghost" href="/try/sign">' : `<a class="btn big ghost" href="${TRY_URL}">`, '<p class="reassure">', '<div class="trust">',
         '<figure class="hf"', '<p class="hf-note">', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
@@ -59,18 +59,22 @@ describe("Home, the enterprise pass", () => {
   it("has two buttons in the hero (the 3-minute tour, primary; Try it, to the hands-on demo), and the proof button with Books at the end", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, TRY_BUTTON, PROOF_BUTTON]).toEqual(["Take the 3-minute tour", "Try it", "See the proof"]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([["tour", START], [TRY_URL, TRY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    // Judges, 13 Nov (#7): "Try it" opens the one hero demo, /try/sign ("Sign in 60 seconds"), where the bundle serves it.
+    expect(buttons(ON)).toEqual([["tour", START], ["/try/sign", TRY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    expect(buttons(OFF)).toEqual([["tour", START], [TRY_URL, TRY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(OFF).not.toContain('href="try/sign"');
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
     expect(buildPages({} as NodeJS.ProcessEnv).home).toBe(OFF);
-    // The hero's button is the one way to the tour: no second link to it in the footer.
-    for (const html of [ON, OFF]) expect(html.match(/href="tour"/g)).toHaveLength(1);
+    // The hero's button and "Product tour" under More (Max, 13 Nov); none in the footer.
+    for (const html of [ON, OFF]) expect(html.match(/href="tour"/g)).toHaveLength(2);
+    for (const html of [ON, OFF]) expect(/<footer[\s\S]*<\/footer>/.exec(html)![0]).not.toContain('href="tour"');
     for (const html of [ON, OFF]) expect(html).not.toMatch(/href="\/?judge"/);
   });
 
   it("A6: one reassurance line under the buttons, saying only what the pages behind them are", () => {
-    expect(REASSURE).toEqual({ sign: "No sign-up; test companies deleted after 24 hours.", world: "No sign-up; test companies deleted after 24 hours." });
+    // With /try/sign, "Try it" is the 60-second test world; without, the hands-on demo's test company.
+    expect(REASSURE).toEqual({ sign: "No sign-up, about a minute; nothing real moves.", world: "No sign-up; test companies deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
     expect(ON).toMatch(new RegExp(`${TRY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });

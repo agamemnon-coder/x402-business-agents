@@ -114,6 +114,9 @@ ${LIT.map((_, i) => `  .hf .hf-s${i} { animation: hf-lit${i} ${LOOP}s linear inf
 ${Object.entries(AT).map(([sel, at]) => `@keyframes hf-${key(sel)} { 0%, ${at}% { opacity: 0; transform: translateY(8px); } ${at + 4}%, 94% { opacity: 1; transform: none; } 99%, 100% { opacity: 0; transform: none; } }`).join("\n")}
 @keyframes hf-ring { 0%, 50% { stroke-dashoffset: 132; } 60%, 94% { stroke-dashoffset: 0; } 99%, 100% { stroke-dashoffset: 132; } }
 ${LIT.map(([a, b], i) => `@keyframes hf-lit${i} { 0%, ${Math.max(0, a - 0.5)}% { color: var(--faint); border-color: var(--border); } ${a}%, ${b - 0.5}% { color: var(--accent); border-color: var(--accent); } ${b}%, 100% { color: var(--faint); border-color: var(--border); } }`).join("\n")}
+/* Review, 13 Nov: on a phone the card stacks, and its later parts waited invisible for their turn, leaving a large empty
+   block under "Claude reader". Below 600 px the card shows its final state, still. */
+@media (max-width: 600px) { .hf .hf-card *, .hf .hf-steps li { animation: none !important; } }
 p.hf-note { margin: 10px 0 0; font-size: 14px; color: var(--muted); }
 p.hf-note a { color: var(--accent); font-weight: 650; display: inline-flex; align-items: center; min-height: 44px; }
 `;
