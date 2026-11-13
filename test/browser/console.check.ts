@@ -399,7 +399,30 @@ async function enginePass() {
   await engineClaude(E);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
+  await engineGuestArchive(origin);
   serverE.close();
+}
+
+/**
+ * Review, 13 Nov (the live purser-try runs an engine): a guest, who has none, opened #/archive and read "Could not load
+ * this page: no such route", GET /v1/engine/vault having answered 404 with an error in the console. The page now asks
+ * the engine first: the guest reads why there is no archive, with a way back, and the vault is never asked.
+ */
+async function engineGuestArchive(origin: string) {
+  const c = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const p = await c.newPage();
+  const errors: string[] = [], vault: string[] = [];
+  p.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+  p.on("request", (r) => { if (r.url().includes("/v1/engine/vault")) vault.push(r.url()); });
+  await p.goto(`${origin}/#/sign-in`);
+  await p.waitForSelector("#guest");
+  await p.click("#guest");
+  await p.waitForSelector(".dash", { timeout: 20_000 });
+  await p.goto(`${origin}/#/archive`);
+  await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
+  const text = (await p.textContent("main")) ?? "";
+  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+  await c.close();
 }
 
 /** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
@@ -817,12 +840,6 @@ async function guestPass() {
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
-    // Review, 13 Nov: #/archive as a guest says calmly why there is none, and asks /v1/engine/vault nothing (it answered
-    // 404 and logged an error); the "no console errors" check below covers the request.
-    const vault: string[] = [];
-    p.on("request", (r) => { if (r.url().includes("/v1/engine/vault")) vault.push(r.url()); });
-    await p.goto(`${ORIGIN}/#/archive`); await p.waitForTimeout(900);
-    ok(/kept by Purser's engine/.test((await p.textContent("main")) ?? "") && !/Could not load/.test((await p.textContent("main")) ?? "") && vault.length === 0, `${tag}: #/archive says the archive needs the engine, and asks the vault nothing`);
     // Settings, Connect Claude: the demo company's public read-only token and the steps; no way to make a token.
     await p.waitForSelector("#claude");
     ok(/purser-demo-read-only/.test((await p.textContent("#claude")) ?? "") && await p.locator("#claude-make").count() === 0, `${tag}: Connect Claude shows the demo's read-only token and makes none`);
