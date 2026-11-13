@@ -6,7 +6,7 @@
 // Changed bank details are how invoice fraud works: a new IBAN is paid only after all three steps (E3).
 
 import { openDb } from "../db/open.js";
-import { proposePayeeChange, recordVerification, requestPayeeChange, type PayeeChangeRow } from "../policy/payeeChange.js";
+import { checkThenProposePayeeChange, recordVerification, requestPayeeChange, type PayeeChangeRow } from "../policy/payeeChange.js";
 import { approvalHint } from "./hint.js";
 
 const args = process.argv.slice(2);
@@ -45,7 +45,8 @@ if (cmd === "list") {
     console.error("usage: npm run payee -- propose <id>");
     process.exit(2);
   }
-  const p = proposePayeeChange(db, id, "treasury");
+  const { payeeVerifierFromEnv } = await import("../airwallex/payeeName.js");
+  const p = await checkThenProposePayeeChange(db, await payeeVerifierFromEnv(), id, "treasury");
   console.log(`${p.proposal_id} bank-detail change, hash ${p.terms_sha256.slice(0, 8)}; ${approvalHint(db, p.proposal_id, p.terms_sha256.slice(0, 8))}`);
 } else {
   console.error("usage: npm run payee [-- request | verified | propose]");

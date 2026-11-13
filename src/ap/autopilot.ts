@@ -34,7 +34,8 @@ import { apAgentsOn, ensureCoded } from "./coderAgent.js";
 import { bookAccrual, ingestDocument, MAX_DOCUMENT_BYTES, recheck, type InboxDeps, type IngestResult, type Source } from "./inbox.js";
 import { payApInvoice, syncPayments } from "./pay.js";
 import { apInvoice, apInvoices, type ApInvoiceRow } from "./store.js";
-import { proposePayeeAdd, requestPayeeAddForInvoice } from "./vendors.js";
+import { checkThenProposePayeeAdd, requestPayeeAddForInvoice } from "./vendors.js";
+import { PayeeNameRefused, type PayeeNameVerifier } from "../airwallex/payeeName.js";
 
 /**
  * What lets a payment run without the CFO's signature. limit: the most one payment may be, in one currency, or null
@@ -56,6 +57,8 @@ export interface AutopilotDeps {
   folders: string[];
   /** Airwallex (sandbox), or null: payments are then not planned, and say so once. */
   rail: (AirwallexRail & PayoutRail) | null;
+  /** The payee's bank, asked through Airwallex before a new supplier is filed for the CFO; null: nothing is filed. */
+  payeeNames?: PayeeNameVerifier | null;
   /** Runs an approved proposal (src/executors/index.ts execute). */
   execute: (db: DB, proposalId: string) => Promise<void>;
   vault?: VaultSink | null;
@@ -202,7 +205,8 @@ function failed(ctx: Ctx, item: string, name: string, e: unknown, ms: number): v
   ctx.db.transaction(() => {
     const r = ctx.db.prepare("SELECT attempts FROM autopilot_items WHERE item = ? AND state = 'retrying'").get(item) as { attempts: number } | undefined;
     const attempts = (r?.attempts ?? 0) + 1;
-    const parked = attempts >= MAX_ATTEMPTS;
+    // A payee the bank check refused is parked at once for the CFO to see: asking again changes nothing.
+    const parked = attempts >= MAX_ATTEMPTS || e instanceof PayeeNameRefused;
     const next = parked ? null : new Date(now.getTime() + BACKOFF_MS[attempts - 1]!).toISOString();
     ctx.db.prepare(`INSERT INTO autopilot_items (item, step, state, attempts, next_try, reason, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(item) DO UPDATE SET step = excluded.step, state = excluded.state, attempts = excluded.attempts, next_try = excluded.next_try, reason = excluded.reason, updated_at = excluded.updated_at`)
@@ -433,7 +437,7 @@ async function invoices(ctx: Ctx): Promise<number> {
         });
       } else if (add.status === "VERIFIED") {
         moved += await step(ctx, add.add_id, "file the supplier for the CFO", async () => {
-          const p = proposePayeeAdd(db, add.add_id, "treasury", ctx.now());
+          const p = await checkThenProposePayeeAdd(db, ctx.deps.payeeNames ?? null, add.add_id, "treasury", ctx.now());
           return { outcome: "waiting for the CFO", detail: `${p.proposal_id}: the new supplier waits for the CFO's Face ID` };
         });
       }

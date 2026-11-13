@@ -12,7 +12,8 @@ import { payApInvoice, syncPayments } from "../../src/ap/pay.js";
 import type { Asker } from "../../src/ap/read.js";
 import { apInvoice } from "../../src/ap/store.js";
 import { matchReceipt, openReceivable } from "../../src/agents/receivables.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../../src/ap/vendors.js";
+import { FakePayeeNames } from "../../src/airwallex/payeeName.js";
+import { checkThenProposePayeeAdd, executePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../../src/ap/vendors.js";
 import { runAwx1 } from "../../src/awx/scenario.js";
 import { approveWithVirtualPasskey, executeOnStandIns, standInDeps } from "../../src/awx/standIn.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
@@ -72,6 +73,8 @@ const SALES = [
 
 const dir = mkdtempSync(join(tmpdir(), "guest-seed-"));
 const inbox: InboxDeps = { dir, reader: parserOnly, now };
+// The demo's fictional suppliers have no bank to ask: a labelled stand-in answers the payee check.
+const standInBank = Object.assign(new FakePayeeNames(), { confirmAll: true });
 const HOW = "called the supplier's accounts team on the number in the signed purchase contract; they confirmed the account";
 const ADDRESS = { street: "1 Supplier Street", city: "Supplier City", postcode: "12345" };
 async function file(text: string, name: string) {
@@ -83,7 +86,7 @@ async function addSupplier(id: string) {
   if (apInvoice(db, id)!.status !== "needs_vendor") return;
   const req = requestPayeeAddForInvoice(db, id, "treasury", now());
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now());
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now());
+  const p = await checkThenProposePayeeAdd(db, standInBank, req.add_id, "treasury", now());
   await approve(p.proposal_id);
   await executePayeeAdd(db, w.awx, p.proposal_id, { now, reader: parserOnly }, now());
 }

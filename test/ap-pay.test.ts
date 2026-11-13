@@ -1,6 +1,7 @@
 // Payables, part 3: a new supplier is added only after a person verified its account with the supplier and the CFO
 // approved with Face ID (no invoice is paid before); a ready invoice is paid through the existing invoice payment
 // (reserve floors, FX for the shortfall, the fee reserve), approved with Face ID, and marked paid from the ledger.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -10,7 +11,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
 import { decide } from "../src/policy/approvals.js";
@@ -62,7 +63,7 @@ describe("a new supplier", () => {
     expect(() => recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: "ok", actor: "human", address: ADDRESS }, now)).toThrow(/how it was verified/);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
 
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     expect(JSON.parse(p.terms_json)).toMatchObject({ kind: "payee_add", vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", address: ADDRESS, verification: { by: "the CFO" } });
     // Still waiting until the CFO approves and the executor adds it.
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
@@ -78,7 +79,7 @@ describe("a new supplier", () => {
     const req = requestPayeeAddForInvoice(db, id, "treasury", now);
     db.prepare("UPDATE payee_adds SET details_json = NULL WHERE add_id = ?").run(req.add_id);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     expect(JSON.parse(p.terms_json).bank).toMatchObject({ country: "DE", currency: "EUR", method: "LOCAL" });
     approve(p.proposal_id);
     await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
@@ -108,11 +109,11 @@ describe("a new supplier", () => {
     expect(() => requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE02120300000000202052", bic: "BYLADEM1001", source: null }, "treasury", now)).toThrow(/checksum/);
   });
 
-  it("asks for two people when four eyes is on, like a change of bank details", () => {
+  it("asks for two people when four eyes is on, like a change of bank details", async () => {
     setSetting(db, "human", "approval.four_eyes_eur", "1000.00");
     const req = requestPayeeAdd(db, { vendor: "Lagerhaus Nord GmbH", iban: "DE75512108001245126199", bic: "BYLADEM1001", source: null }, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     expect(fourEyes(db, p)).toBe(true);
   });
 });

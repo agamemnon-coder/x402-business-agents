@@ -2,7 +2,8 @@
 // verify-a-beneficiary-account, read 12 November 2026): the payee's bank says whether the account exists and whether
 // the name on it matches the name we would pay (Verification of Payee for SEPA, Confirmation of Payee in the UK).
 //
-// Purser asks it before the CFO is asked (AIRWALLEX_PAYEE_CHECK=on; off by default): between a person's call-back to
+// Purser asks it before the CFO is asked (on by default since 13 November; AIRWALLEX_PAYEE_CHECK=off is an emergency stop
+// only, never a setting a run uses): between a person's call-back to
 // the supplier and the payee_add / payee_change proposal. A mismatch, a closed account or an unanswered check refuses
 // the proposal outright, so the CFO's phone never shows it; the answer the CFO does see goes into the signed terms.
 // It never moves money and never creates a beneficiary.
@@ -18,7 +19,13 @@ import { sha256Hex } from "../lib/terms.js";
 import type { Airwallex } from "./client.js";
 
 export const PAYEE_CHECK_FLAG = "AIRWALLEX_PAYEE_CHECK";
-export const payeeCheckOn = (env: Record<string, string | undefined> = process.env): boolean => env[PAYEE_CHECK_FLAG] === "on";
+/** On unless a person stopped it with AIRWALLEX_PAYEE_CHECK=off (13 November: switched on in the flow). */
+export const payeeCheckOn = (env: Record<string, string | undefined> = process.env): boolean => env[PAYEE_CHECK_FLAG] !== "off";
+
+/** Refused by the payee's bank check: the proposal is never made, and the reason is shown to the CFO (parked, not retried). */
+export class PayeeNameRefused extends Error {
+  constructor(message: string) { super(message); this.name = "PayeeNameRefused"; }
+}
 
 /** The account to check, as Purser holds it (src/payouts/routes.ts BankDetails). */
 export interface AccountToCheck {
@@ -41,11 +48,20 @@ export interface NameCheck {
 
 export interface PayeeNameVerifier {
   verifyAccount(a: AccountToCheck): Promise<NameCheck>;
+  /** "stand-in" for a test world's in-memory bank: its answers are labelled so in the ledger and the signed terms. */
+  readonly source?: "airwallex" | "stand-in";
 }
+
+/** The words a stand-in's answer carries everywhere it is shown: no bank was asked. */
+export const STAND_IN_LABEL = "stand-in, test world: no bank was asked";
 
 /** What a check means for the proposal. Only VERIFIED with FULL_MATCH, or a bank that cannot verify (labelled), proceeds. */
 export function nameCheckVerdict(c: NameCheck, name: string): { proceed: boolean; label: string } {
   if (c.code === "VERIFIED" && c.match === "FULL_MATCH") return { proceed: true, label: "the payee's bank confirmed the account and the name" };
+  if (c.code === "VERIFIED" && c.match?.endsWith("_INCORRECT_TYPE")) {
+    // The name matches, the kind of holder does not (13 November, live: a personal account asked for as a company's).
+    return { proceed: false, label: `the payee's bank holds this account${c.resolvedName ? ` as "${c.resolvedName}"` : ""} for another kind of holder than a company (${c.match}); confirm with the supplier on a known contact before it is proposed` };
+  }
   if (c.code === "VERIFIED" && c.match) {
     const held = c.resolvedName ? ` as "${c.resolvedName}"` : "";
     return { proceed: false, label: `the payee's bank holds this account${held}, not as "${name}" (${c.match}); confirm with the supplier on a known contact before it is proposed` };
@@ -67,6 +83,7 @@ export function verifyBody(a: AccountToCheck): Record<string, unknown> {
 }
 
 export class AirwallexPayeeNameRest implements PayeeNameVerifier {
+  readonly source = "airwallex" as const;
   constructor(private readonly api: Airwallex) {}
   async verifyAccount(a: AccountToCheck): Promise<NameCheck> {
     const r = await this.api.call<{ code?: string; details?: { account_name_match_result?: string; resolved_account_name?: string; resolved_bank_name?: string } | null }>("POST", "/beneficiaries/verify_account", verifyBody(a));
@@ -78,6 +95,9 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
 /** In memory, for tests: accounts by IBAN with the name the bank holds. Never a live run. */
 export class FakePayeeNames implements PayeeNameVerifier {
+  readonly source = "stand-in" as const;
+  /** A test world's bank that holds every account under the name asked (labelled as a stand-in wherever shown). */
+  confirmAll = false;
   accounts = new Map<string, { name: string; entity: "COMPANY" | "PERSONAL"; bank: string }>();
   calls = 0;
   /** The next answer is this code (CANNOT_VERIFY, EXTERNAL_SERVICE_UNAVAILABLE). */
@@ -85,7 +105,7 @@ export class FakePayeeNames implements PayeeNameVerifier {
   async verifyAccount(a: AccountToCheck): Promise<NameCheck> {
     this.calls++;
     if (this.nextCode) { const code = this.nextCode; this.nextCode = null; return { code, match: null, resolvedName: null, resolvedBank: null }; }
-    const acct = this.accounts.get((a.iban ?? a.accountNumber ?? "").replace(/\s+/g, "").toUpperCase());
+    const acct = this.accounts.get((a.iban ?? a.accountNumber ?? "").replace(/\s+/g, "").toUpperCase()) ?? (this.confirmAll ? { name: a.name, entity: a.entity, bank: "stand-in" } : undefined);
     if (!acct) return { code: "INVALID", match: null, resolvedName: null, resolvedBank: null };
     const same = norm(acct.name) === norm(a.name);
     const partial = !same && (norm(acct.name).includes(norm(a.name)) || norm(a.name).includes(norm(acct.name)));
@@ -104,21 +124,40 @@ export interface NameCheckRow { check_key: string; vendor: string; code: string;
 
 /** Asks Airwallex and records the answer in the ledger (once per call; the latest answer counts). */
 export async function runNameCheck(db: DB, v: PayeeNameVerifier, a: AccountToCheck & { accountKey: string }, by: Actor, now = new Date()): Promise<NameCheckRow> {
-  const c = await v.verifyAccount(a);
-  const verdict = nameCheckVerdict(c, a.name);
+  return recordNameCheck(db, await v.verifyAccount(a), { name: a.name, accountKey: a.accountKey }, v.source ?? "airwallex", by, now);
+}
+
+/** Records one answer of the payee's bank for this name and account (the latest answer counts). */
+export function recordNameCheck(db: DB, c: NameCheck, a: { name: string; accountKey: string }, source: "airwallex" | "stand-in", by: Actor, now = new Date()): NameCheckRow {
+  const v = { source };
+  const v0 = nameCheckVerdict(c, a.name);
+  const verdict = v.source === "stand-in" ? { ...v0, label: `${STAND_IN_LABEL}; ${v0.label}` } : v0;
   const key = checkKey(a.name, a.accountKey);
   db.prepare(`INSERT INTO payee_name_checks (check_key, vendor, code, match, resolved_name, proceed, label, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(check_key) DO UPDATE SET code = excluded.code, match = excluded.match, resolved_name = excluded.resolved_name, proceed = excluded.proceed, label = excluded.label, checked_at = excluded.checked_at`)
     .run(key, a.name, c.code, c.match, c.resolvedName, verdict.proceed ? 1 : 0, verdict.label, now.toISOString());
-  audit(db, by, verdict.proceed ? "payee.name_checked" : "payee.name_check_refused", a.name, { code: c.code, match: c.match, proceed: verdict.proceed, label: verdict.label }, now);
+  audit(db, by, verdict.proceed ? "payee.name_checked" : "payee.name_check_refused", a.name, { code: c.code, match: c.match, proceed: verdict.proceed, label: verdict.label, source: v.source ?? "airwallex" }, now);
   return db.prepare("SELECT * FROM payee_name_checks WHERE check_key = ?").get(key) as NameCheckRow;
 }
 
 /** How long a check stands before the proposal must ask again. */
 export const NAME_CHECK_TTL_MS = 24 * 60 * 60 * 1000;
 
+/** A recorded check of exactly this name and account from the last day (proceeding or not), or undefined. */
+export function freshCheck(db: DB, name: string, accountKey: string, now = new Date()): NameCheckRow | undefined {
+  const r = db.prepare("SELECT * FROM payee_name_checks WHERE check_key = ?").get(checkKey(name, accountKey)) as NameCheckRow | undefined;
+  return r && Date.parse(r.checked_at) + NAME_CHECK_TTL_MS > now.getTime() ? r : undefined;
+}
+
+/** The live verifier when the sandbox keys are set, else null (then a payee is never proposed: the bank cannot be asked). */
+export async function payeeVerifierFromEnv(): Promise<PayeeNameVerifier | null> {
+  const { fromEnv, Airwallex } = await import("./client.js");
+  const cfg = fromEnv();
+  return cfg ? new AirwallexPayeeNameRest(new Airwallex(cfg)) : null;
+}
+
 /**
- * The gate a payee proposal passes with AIRWALLEX_PAYEE_CHECK=on: a recorded check of exactly this name and account,
+ * The gate a payee proposal passes (on by default): a recorded check of exactly this name and account,
  * from the last day, that proceeds. Returns what goes into the signed terms, or throws why nothing is proposed. With
  * the flag off it returns null and the terms are as before (their hash unchanged).
  */
@@ -127,6 +166,6 @@ export function nameCheckGate(db: DB, name: string, accountKey: string, now = ne
   const r = db.prepare("SELECT * FROM payee_name_checks WHERE check_key = ?").get(checkKey(name, accountKey)) as NameCheckRow | undefined;
   if (!r) throw new Error(`the account of ${name} was not checked with the payee's bank yet (Airwallex account verification); nothing is proposed`);
   if (Date.parse(r.checked_at) + NAME_CHECK_TTL_MS <= now.getTime()) throw new Error(`the bank check of ${name}'s account is older than a day; check again before it is proposed`);
-  if (!r.proceed) throw new Error(`${r.label}`);
+  if (!r.proceed) throw new PayeeNameRefused(`${r.label}`);
   return { name: name.trim(), code: r.code, match: r.match, label: r.label, checked_at: r.checked_at };
 }

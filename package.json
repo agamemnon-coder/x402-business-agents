@@ -159,6 +159,7 @@
     "cloud": "tsx src/cli/cloud.ts",
     "two-locks": "tsx src/cli/twoLocks.ts",
     "awx-depth": "tsx src/cli/awxDepth.ts",
+    "awx-switch-on": "tsx src/cli/awxSwitchOn.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
     "contracts:tokenize": "tsx src/tokenize/compile.ts"
   },

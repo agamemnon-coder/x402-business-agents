@@ -9,14 +9,15 @@
 // request_id Airwallex has seen is rejected, so a lost answer is resolved by listing batches by that request_id; an item
 // sent again under its request_id is ignored by Airwallex (safe to replay).
 //
-// Behind AIRWALLEX_BATCH_TRANSFER=on (off by default). Amounts are converted to integer cents here and nowhere else.
+// On by default since 13 November (AIRWALLEX_BATCH_TRANSFER=off is an emergency stop only: the batch then runs line by
+// line, as before). Amounts are converted to integer cents here and nowhere else.
 
 import { cents } from "./adapter.js";
 import type { Airwallex } from "./client.js";
 import { fromCents } from "../lib/money.js";
 
 export const BATCH_TRANSFER_FLAG = "AIRWALLEX_BATCH_TRANSFER";
-export const batchTransferOn = (env: Record<string, string | undefined> = process.env): boolean => env[BATCH_TRANSFER_FLAG] === "on";
+export const batchTransferOn = (env: Record<string, string | undefined> = process.env): boolean => env[BATCH_TRANSFER_FLAG] !== "off";
 
 /** The batch statuses Airwallex documents (batch-transfer-statuses). */
 export const BATCH_STATUSES = ["DRAFTING", "IN_APPROVAL", "APPROVAL_RECALLED", "APPROVAL_REJECTED", "APPROVAL_BLOCKED", "SCHEDULED", "OVERDUE", "BOOKING", "PARTIALLY_BOOKED", "BOOKED", "FAILED", "CANCELLED", "CANCELLATION_REQUESTED"] as const;

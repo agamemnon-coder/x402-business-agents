@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CardTransaction } from "../src/airwallex/issuing.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { lastReconciliation, reconcile } from "../src/finance/reconcile.js";
+import { BOOKING_GRACE_MS, type FinancialTx } from "../src/finance/awxFinancialTx.js";
 
 const now = new Date("2026-11-03T10:00:00Z");
 const ago = (min: number) => new Date(now.getTime() - min * 60_000).toISOString();
@@ -32,7 +33,7 @@ describe("daily reconciliation", () => {
   it("finds no difference when every flow matches, and says so in the audit log", async () => {
     const db = ledger();
     const r = await reconcile(db, good, now);
-    expect(r).toMatchObject({ checked: 3, differences: [], skipped: [] });
+    expect(r).toMatchObject({ checked: 3, differences: [], skipped: ["Airwallex's ledger (no Airwallex keys)"] });
     expect(lastReconciliation(db)).toMatchObject({ at: now.toISOString(), checked: 3, differences: 0 });
   });
 
@@ -62,6 +63,51 @@ describe("daily reconciliation", () => {
 
   it("says which areas it could not check", async () => {
     const r = await reconcile(ledger(), {}, now);
-    expect(r.skipped).toEqual(["Airwallex transfers (no Airwallex keys)", "card transactions (no Airwallex keys)", "Metal payments (no RPC)"]);
+    expect(r.skipped).toEqual(["Airwallex transfers (no Airwallex keys)", "Airwallex's ledger (no Airwallex keys)", "card transactions (no Airwallex keys)", "Metal payments (no RPC)"]);
+  });
+});
+
+// Airwallex's own ledger in the hourly run (switched on 13 November, src/finance/awxFinancialTx.ts): tr-1 (EUR 1850.00,
+// PAID; its fee in the ledger as fee_actual) against the financial transactions booked under it.
+describe("Airwallex's own ledger, in the hourly reconciliation", () => {
+  const ft = (o: Partial<FinancialTx>): FinancialTx => ({ id: "ft", sourceId: "tr-1", sourceType: "PAYOUT", transactionType: "PAYOUT", currency: "EUR", amountCents: -185000, feeCents: 0, netCents: -185000, status: "SETTLED", createdAt: ago(50), settledAt: null, ...o });
+  const booked = [ft({ id: "ft-1" }), ft({ id: "ft-2", sourceType: "FEE", transactionType: "FEE", amountCents: -1350, netCents: -1350 })];
+  const withFee = () => { const db = ledger(); db.prepare("UPDATE transfers SET fee_actual = 'EUR 13.50' WHERE transfer_id = 'tr-1'").run(); return db; };
+
+  it("agrees to the cent, once: a movement that agreed is not asked again", async () => {
+    const db = withFee();
+    let asked = 0;
+    const r = await reconcile(db, { ...good, financialTransactions: async (id) => { asked++; return id === "tr-1" ? booked : []; } }, now);
+    expect(r).toMatchObject({ checked: 4, differences: [] });
+    expect(db.prepare("SELECT subject FROM audit_log WHERE event = 'awx_ft.agreed'").all()).toEqual([{ subject: "tr-1" }]);
+    await reconcile(db, { ...good, financialTransactions: async () => { asked++; return booked; } }, now);
+    expect(asked).toBe(1);
+  });
+
+  it("flags one cent off as a difference, with both sides", async () => {
+    const off = [booked[0]!, { ...booked[1]!, amountCents: -1351 }];
+    const r = await reconcile(withFee(), { ...good, financialTransactions: async () => off }, now);
+    expect(r.differences).toEqual([expect.objectContaining({ area: "airwallex ledger", ref: "tr-1" })]);
+    expect(r.differences[0]!.outside).toMatch(/fee row\(s\) EUR -13.51/);
+  });
+
+  it("not booked yet is pending, not a difference, for two hours from the first look; then it is flagged", async () => {
+    const db = withFee();
+    const none = { ...good, financialTransactions: async () => [] };
+    expect((await reconcile(db, none, now)).differences).toEqual([]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE event = 'awx_ft.pending'").get()).toEqual({ n: 1 });
+    const later = new Date(now.getTime() + BOOKING_GRACE_MS + 1000);
+    expect((await reconcile(db, none, later)).differences).toEqual([expect.objectContaining({ area: "airwallex ledger", ref: "tr-1" })]);
+  });
+
+  it("is skipped, and says so, with its emergency stop set", async () => {
+    const was = process.env.AIRWALLEX_FINANCIAL_TX;
+    process.env.AIRWALLEX_FINANCIAL_TX = "off";
+    try {
+      const r = await reconcile(withFee(), { ...good, financialTransactions: async () => booked }, now);
+      expect(r.skipped).toContain("Airwallex's ledger (AIRWALLEX_FINANCIAL_TX=off)");
+    } finally {
+      if (was === undefined) delete process.env.AIRWALLEX_FINANCIAL_TX; else process.env.AIRWALLEX_FINANCIAL_TX = was;
+    }
   });
 });

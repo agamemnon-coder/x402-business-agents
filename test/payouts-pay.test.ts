@@ -2,6 +2,7 @@
 // steps (request, a person's verification, the CFO's Face ID) and paid in the invoice's own currency on its route; a
 // shortfall bought from EUR on a locked quote; a dear quote, a broken floor, a bad account number and changed bank
 // details stopped before anything moves. All against the in-memory Airwallex stand-in: no outside call, test money.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,7 +13,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
 import { decide } from "../src/policy/approvals.js";
@@ -56,7 +57,7 @@ const add = async (text: string, name: string) => {
 const addSupplier = async (id: string) => {
   const req = requestPayeeAddForInvoice(db, id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+  const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
   approve(p.proposal_id);
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   return apInvoice(db, id)!;
@@ -190,7 +191,7 @@ describe("stopped before anything moves", () => {
     const id = await add(UK, "uk.pdf");
     const req = requestPayeeAddForInvoice(db, id, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     const add_ = describeTerms(JSON.parse(p.terms_json), {});
     expect(add_.sentence).toContain("account 31926819 (sort code 60-16-13, GB)");
     expect(add_.warnings[0]).toMatch(/invoice fraud/);

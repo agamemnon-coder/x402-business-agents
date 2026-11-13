@@ -20,7 +20,8 @@ import { acceptCreditNote } from "../ap/credits.js";
 import { payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
 import { publicInvoice } from "../ap/public.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
-import { proposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { payeeVerifierFromEnv, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { checkThenProposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { DB } from "../db/open.js";
 import { filterRows, registerCsv, transactionRegister, type RegisterFilter } from "../money/register.js";
 import { FONT, PDFJS, detailPage, overviewPage } from "./payablesPage.js";
@@ -36,6 +37,8 @@ export interface PayablesOptions {
   inbox: InboxDeps;
   /** The Airwallex sandbox; null without keys (paying and adding a supplier then answer 503). */
   rail: (AirwallexRail & PayoutRail) | null;
+  /** The payee's bank (Airwallex account verification), asked before a supplier is proposed; defaults to the env's keys. */
+  payeeNames?: PayeeNameVerifier | null;
   /** Requests per window per client; the default suits one person working on the page. */
   rateLimit?: { windowMs: number; limit: number };
   /**
@@ -361,8 +364,11 @@ export function payablesApp(db: DB, opts: PayablesOptions) {
       res.json(await clearPossibleDuplicate(db, opts.inbox, id, { by: s(b.by), note: s(b.note), actor: "human" }));
     } catch (e) { fail(res, e); }
   });
-  app.post("/api/payables/suppliers/:addId/propose", (req, res) => {
-    try { res.json(proposePayeeAdd(db, String(req.params.addId), "human")); } catch (e) { fail(res, e); }
+  app.post("/api/payables/suppliers/:addId/propose", async (req, res) => {
+    try {
+      const names = opts.payeeNames !== undefined ? opts.payeeNames : await payeeVerifierFromEnv();
+      res.json(await checkThenProposePayeeAdd(db, names, String(req.params.addId), "human"));
+    } catch (e) { fail(res, e); }
   });
   app.post("/api/payables/sync", async (_req, res) => {
     try {

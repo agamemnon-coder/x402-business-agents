@@ -1,6 +1,7 @@
 // Purser as an Airwallex platform (docs/airwallex-platform.md), behind AIRWALLEX_PLATFORM=on: a company's payouts run
 // on behalf of its own connected account, the CFO's signed terms name that account and any Purser fee, and the fee is
 // collected only after the payout is paid, once, booked and in the register. All against fakes: no call to Airwallex.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { AirwallexRest } from "../src/airwallex/adapter.js";
 import { Airwallex } from "../src/airwallex/client.js";
 import { AirwallexPlatformRest, platformFeeOn, platformOn, statusFromWebhook } from "../src/airwallex/platform.js";
@@ -160,7 +161,7 @@ const usInvoice = async () => {
   if (out.kind !== "invoice") throw new Error(out.kind);
   const req = requestPayeeAddForInvoice(db, out.invoice.id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+  const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
   approve(p.proposal_id);
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   return out.invoice.id;

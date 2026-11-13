@@ -7,6 +7,7 @@
 // The stand-in rails refuse as the live rails did; RAIL_REFUSALS in the model names each stand-in and the run record its
 // behaviour comes from. Then the depth test: every combination of failed layers on every way money leaves.
 // No network, no keys: the suite's guard (test/support/noNetwork.ts) holds here too.
+import { standInBank } from "./support/standInBank.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
@@ -154,7 +155,7 @@ const { ingestDocument, ingestEmail } = await import("../src/ap/inbox.js");
 const { payApInvoice, syncPayments } = await import("../src/ap/pay.js");
 const { apInvoice, setStatus } = await import("../src/ap/store.js");
 const { ledgerInvoiceNo } = await import("../src/ap/ledgerKey.js");
-const { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } = await import("../src/ap/vendors.js");
+const { checkThenProposePayeeAdd, executePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } = await import("../src/ap/vendors.js");
 const { executeSupplierPayment } = await import("../src/executors/supplierPayment.js");
 const { executePaymentBatch } = await import("../src/executors/paymentBatch.js");
 const { payApInvoices } = await import("../src/ap/batchPay.js");
@@ -1512,7 +1513,7 @@ async function supplierWorld(o: Parameters<typeof bankWorld>[0] = {}, text = NL_
   const inv = await w.add(text, "supplier.pdf");
   const req = requestPayeeAddForInvoice(w.db, inv.id, "treasury", w.now);
   recordPayeeAddVerification(w.db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: SUPPLIER_ADDRESS }, w.now);
-  const add = proposePayeeAdd(w.db, req.add_id, "treasury", w.now);
+  const add = await checkThenProposePayeeAdd(w.db, standInBank(), req.add_id, "treasury", w.now);
   await signAll(w, add.proposal_id);
   await executePayeeAdd(w.db, w.awx, add.proposal_id, { now: () => w.now, reader: parserOnly }, w.now);
   if (apInvoice(w.db, inv.id)!.status !== "ready") throw new Error(`the supplier's invoice is ${apInvoice(w.db, inv.id)!.status}, not ready`);
@@ -1659,7 +1660,7 @@ SCENARIOS["supplier-invoice-forced-past-signatures"] = async () => {
   forced.pay = true;
   const req = requestPayeeAddForInvoice(w.db, inv.id, "treasury", w.now);
   recordPayeeAddVerification(w.db, req.add_id, { by: "nobody", how: "forced: no person called anyone, the code wrote this line itself to get past the check", actor: "human", address: SUPPLIER_ADDRESS }, w.now);
-  const add = proposePayeeAdd(w.db, req.add_id, "treasury", w.now);
+  const add = await checkThenProposePayeeAdd(w.db, standInBank(), req.add_id, "treasury", w.now);
   await executePayeeAdd(w.db, w.awx, add.proposal_id, { now: () => w.now, reader: parserOnly }, w.now);
   const out = await payApInvoice(w.db, w.awx, inv.id, w.now);
   if (out.kind !== "proposed") throw new Error(out.reason);

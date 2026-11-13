@@ -47,6 +47,7 @@ async function main(): Promise<number> {
     inbox: { dir, reader: new ClaudeReader(db), sink: payablesSink() },
     folders: folders.length ? folders : [join(dir, "inbox")],
     rail: awx?.rail ?? null,
+    payeeNames: await (await import("../airwallex/payeeName.js")).payeeVerifierFromEnv(),
     execute: (d, id) => execute(d, id),
     vault: process.env.KIT11_VAULT === "off" ? null : new LocalSink(process.env.KIT11_VAULT_DIR ?? "data/vault"),
     erp: erpName ? liveConnector(erpName as ConnectorName, process.env) : null,

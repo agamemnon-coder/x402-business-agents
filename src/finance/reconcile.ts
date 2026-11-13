@@ -13,6 +13,7 @@ import { audit } from "../audit/log.js";
 import type { CardTransaction } from "../airwallex/issuing.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
+import { financialTxOn, reconcileLedgerAtAirwallex, type FtBySource } from "./awxFinancialTx.js";
 import { resolveSettlements, type AuthorizationUsed, type ResolvedSettlement, type SettlementLookup } from "./settlements.js";
 
 /** A payout row closed with no transfer id is looked up at Airwallex for this many days after its close. */
@@ -31,10 +32,12 @@ export interface ReconcileSources {
   settlementByNonce?: SettlementLookup;
   /** The token's ERC-3009 authorizationState for a payer's nonce (read-only chain call). */
   authorizationUsed?: AuthorizationUsed;
+  /** Airwallex's own ledger: the financial transactions booked for one source (src/finance/awxFinancialTx.ts). */
+  financialTransactions?: FtBySource;
 }
 
 export interface Difference {
-  area: "airwallex transfer" | "card" | "metal";
+  area: "airwallex transfer" | "airwallex ledger" | "card" | "metal";
   ref: string;
   ledger: string;
   outside: string;
@@ -98,6 +101,14 @@ export async function reconcile(db: DB, src: ReconcileSources, now = new Date())
       }
     }
   } else skipped.push("Airwallex transfers (no Airwallex keys)");
+
+  // Airwallex's own ledger (on since 13 November): each payout and conversion against the financial transactions
+  // Airwallex booked for it, to the cent, until it agrees once. Not booked yet is pending for two hours, then flagged.
+  if (src.financialTransactions && financialTxOn()) {
+    const l = await reconcileLedgerAtAirwallex(db, src.financialTransactions, { now });
+    checked += l.checked;
+    for (const d of l.differences) differences.push({ area: "airwallex ledger", ref: d.sourceId, ledger: `${d.label}: ${d.ledger}`, outside: `${d.airwallex} (${d.how})` });
+  } else skipped.push(src.financialTransactions ? "Airwallex's ledger (AIRWALLEX_FINANCIAL_TX=off)" : "Airwallex's ledger (no Airwallex keys)");
 
   // Card transactions, both ways. A transaction can be known by two ids (src/policy/cards.ts).
   if (src.cardTransactions) {

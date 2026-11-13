@@ -24,7 +24,8 @@ import { ingestDocument, ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, type ApInvoiceRow } from "../ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { FakePayeeNames, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { checkThenProposePayeeAdd, executePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { Posting } from "../accounting/books.js";
 import { buildEntries, functionalCurrency, pushBooks, resolveAccounts, type T0Client, type T0Entry, type T0Rate } from "../accounting/t0.js";
 import { T0_SANDBOX_MAP } from "../config/t0Map.js";
@@ -85,6 +86,8 @@ export interface PlatformE2EDeps {
   log: (line: string) => void;
   /** "dry run" or "live": written into every record so no reader mistakes one for the other. */
   mode: "dry run" | "live";
+  /** The payee check's bank. The world's suppliers are fictional, so by default a labelled stand-in answers it. */
+  payeeNames?: PayeeNameVerifier;
 }
 
 export interface PaymentResult {
@@ -215,7 +218,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
     if (apInvoice(db, id)!.status !== "needs_vendor") continue;
     const req = requestPayeeAddForInvoice(db, id, "treasury", now());
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO (test world)", how: "test world: the fictional supplier's bank details as on its own invoice; no real supplier exists to call", actor: "human", address: { street: "Teststraat 2", city: "Amsterdam", postcode: "1011 AB" } }, now());
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now());
+    const p = await checkThenProposePayeeAdd(db, d.payeeNames ?? Object.assign(new FakePayeeNames(), { confirmAll: true }), req.add_id, "treasury", now());
     await sign(p.proposal_id, p.terms_sha256);
     await executePayeeAdd(db, rail, p.proposal_id, { now, reader }, now());
     steps.get(id)!.push({ kind: "supplier_approved", at: at(), data: { payee_add: p.proposal_id, terms_sha256: p.terms_sha256, beneficiary: str((db.prepare("SELECT beneficiary_id FROM beneficiaries WHERE name = ? ORDER BY rowid DESC").get(apInvoice(db, id)!.vendor) as { beneficiary_id?: string } | undefined)?.beneficiary_id), approved_with: TEST_PASSKEY } });

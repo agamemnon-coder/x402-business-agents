@@ -2,6 +2,7 @@
 // payable twice, a re-run that skipped the floor, two payments executed at once that both broke the EUR floor, payout
 // settings outside EUR and USD that no Face ID guarded, a route's per-payout limit found only at Airwallex, and a new
 // supplier created twice after a lost answer. All against the in-memory Airwallex stand-in: no outside call, test money.
+import { standInBank, standInCheckedAdd } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -11,7 +12,7 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { executePolicyChange, proposePolicyChange } from "../src/executors/policyChange.js";
 import { executeSupplierPayment } from "../src/executors/supplierPayment.js";
@@ -58,6 +59,7 @@ const add = async (text: string, name: string) => {
 const proposeAdd = (id: string) => {
   const req = requestPayeeAddForInvoice(db, id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
+  standInCheckedAdd(db, req.add_id, now);
   const p = proposePayeeAdd(db, req.add_id, "treasury", now);
   approve(p.proposal_id);
   return p.proposal_id;
@@ -242,14 +244,14 @@ describe("the phone page for a new supplier paid to an IBAN", () => {
     const id = await add(TR, "tr.pdf");
     const req = requestPayeeAddForInvoice(db, id, "treasury", now);
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+    const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
     const d = describeTerms(JSON.parse(p.terms_json), {});
     expect(d.sentence).toMatch(/paid in TRY by LOCAL to IBAN TR33/);
     expect(d.rows).toContainEqual(["Paid in", "TRY by LOCAL"]);
     const nl = await add(NL, "nl.pdf");
     const req2 = requestPayeeAddForInvoice(db, nl, "treasury", now);
     recordPayeeAddVerification(db, req2.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-    const d2 = describeTerms(JSON.parse(proposePayeeAdd(db, req2.add_id, "treasury", now).terms_json), {});
+    const d2 = describeTerms(JSON.parse((await checkThenProposePayeeAdd(db, standInBank(), req2.add_id, "treasury", now)).terms_json), {});
     expect(d2.sentence).toMatch(/paid in EUR by LOCAL to IBAN NL91/);
   });
 });

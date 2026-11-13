@@ -1,11 +1,12 @@
 // A supplier's new bank details (E3): requested (by an agent or a person) changes nothing; only a person can record
 // that the supplier confirmed them on a number we already had; only then can it be proposed; and only after the CFO's
 // approval is the new IBAN the one invoices are paid to. The old one stays in the history.
+import { standInBank } from "./support/standInBank.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { checkInvoice, ibanSha, type Invoice } from "../src/agents/invoice.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { decide } from "../src/policy/approvals.js";
-import { executePayeeChange, proposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
+import { executePayeeChange, checkThenProposePayeeChange, proposePayeeChange, recordVerification, requestPayeeChange } from "../src/policy/payeeChange.js";
 import { rules } from "../src/policy/rules.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 
@@ -33,7 +34,7 @@ describe("changing a supplier's bank details", () => {
     expect(() => recordVerification(db, c.change_id, { by: "treasury", how: "the invoice says so", actor: "treasury" }, now)).toThrow(/only a person/);
     expect(() => recordVerification(db, c.change_id, { by: "max", how: "ok", actor: "human" }, now)).toThrow(/how it was verified/);
     recordVerification(db, c.change_id, { by: "max", how: "called Bergtex on +49 30 0000000 from our 2025 contract; Frau Beispiel confirmed the new account", actor: "human" }, now);
-    const p = proposePayeeChange(db, c.change_id, "treasury", now);
+    const p = await checkThenProposePayeeChange(db, standInBank(), c.change_id, "treasury", now);
     const terms = JSON.parse(p.terms_json);
     expect(terms).toMatchObject({ kind: "payee_change", vendor: "Bergtex Textil GmbH", old_iban_last4: "3000", new_iban: NEW, new_bic: "PBNKDEFFXXX" });
     expect(terms.verification.how).toMatch(/from our 2025 contract/);
@@ -63,7 +64,7 @@ describe("changing a supplier's bank details", () => {
   it("does not apply a change whose payee changed meanwhile", async () => {
     const c = requestPayeeChange(db, { vendor: "Bergtex Textil GmbH", iban: NEW, bic: "PBNKDEFFXXX", source: null }, "human", now);
     recordVerification(db, c.change_id, { by: "max", how: "called the number on our contract and confirmed", actor: "human" }, now);
-    const p = proposePayeeChange(db, c.change_id, "human", now);
+    const p = await checkThenProposePayeeChange(db, standInBank(), c.change_id, "human", now);
     db.prepare("UPDATE beneficiaries SET iban_last4 = '9999' WHERE beneficiary_id = 'ben_old'").run();
     decide(db, { proposalId: p.proposal_id, decision: "APPROVED", typedPrefix: p.terms_sha256.slice(0, 8), approver: "max", method: "cli" }, now);
     await expect(executePayeeChange(db, awx, p.proposal_id, now)).rejects.toThrow(/on file is now …9999/);

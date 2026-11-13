@@ -8,6 +8,7 @@ import { executeMandateReplace } from "./mandateReplace.js";
 import { executeRefundBatch } from "./refundBatch.js";
 import { executeInvoicePayment } from "./invoicePayment.js";
 import { airwallexFromEnv } from "../airwallex/adapter.js";
+import { audit } from "../audit/log.js";
 import { executeDevTest } from "./devTest.js";
 import { executePolicyChange, touchesPause, type PolicyChangeTerms } from "./policyChange.js";
 import { executePauseChange, pausedCredential } from "../policy/pause.js";
@@ -25,7 +26,10 @@ import { t0SinkFor } from "../accounting/t0Sink.js";
  * The Airwallex rails a payment runs on, handed in by a host that holds them (the engine in a Durable Object, with a
  * client of its own or a stand-in bank). Without them, as before: the rails made from this process's environment.
  */
-export type Rails = NonNullable<Awaited<ReturnType<typeof airwallexFromEnv>>>;
+export type Rails = NonNullable<Awaited<ReturnType<typeof airwallexFromEnv>>> & {
+  /** Airwallex batch transfers, when the host holds them; a host without them runs a batch line by line. */
+  batches?: import("../airwallex/batchTransfers.js").BatchTransferRail;
+};
 
 /** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
 export function approvalOrigin(db: DB, proposalId: string): Origin | null {
@@ -153,27 +157,38 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
     case "invoice_payment":
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       await executeInvoicePayment(db, awx.rail, awx.sim, proposalId);
+      if (!rails) await reconcileAfterPayout(db, proposalId);
       return;
     case "supplier_payment": {
       // Payables: a supplier paid in the invoice's own currency on its route (src/payouts/plan.ts).
       if (!awx) throw new Error("Airwallex sandbox keys are not set; the payment cannot run");
       const { executeSupplierPayment } = await import("./supplierPayment.js");
       await executeSupplierPayment(db, awx.rail, awx.sim, proposalId);
+      if (!rails) await reconcileAfterPayout(db, proposalId);
       return;
     }
     case "payment_batch": {
-      // AIRWALLEX_BATCH_TRANSFER=on: the signed batch goes to Airwallex as ONE batch transfer, read back item by item
-      // before it is submitted (src/executors/airwallexBatch.ts). Off (the default): line by line, as below.
+      // On by default (13 November): the signed batch goes to Airwallex as ONE batch transfer, read back item by item
+      // before it is submitted (src/executors/airwallexBatch.ts). A batch whose lines do not all fit one Airwallex batch
+      // (another kind, a conversion, a Purser fee, a connected account), or a host without a batch rail, runs line by line.
       const { batchTransferOn, AirwallexBatchRest } = await import("../airwallex/batchTransfers.js");
-      if (batchTransferOn() && awx) {
+      const { executeAsOneAirwallexBatch, oneBatchRefusal } = await import("./airwallexBatch.js");
+      const { awxBatchOf } = await import("../policy/awxBatchLink.js");
+      let batches = rails?.batches ?? null;
+      if (!rails && awx) {
         const { fromEnv, Airwallex } = await import("../airwallex/client.js");
         const cfg = fromEnv();
-        if (!cfg) throw new Error("Airwallex sandbox keys are not set; the batch cannot run");
-        const { executeAsOneAirwallexBatch } = await import("./airwallexBatch.js");
-        const r = await executeAsOneAirwallexBatch(db, { batches: new AirwallexBatchRest(new Airwallex(cfg)), rail: awx.rail }, proposalId);
+        batches = cfg ? new AirwallexBatchRest(new Airwallex(cfg)) : null;
+      }
+      // Once at Airwallex (a resume, or a refusal), always this path: a batch is never also run line by line.
+      const atAirwallex = !!awxBatchOf(db, proposalId);
+      const notFit = atAirwallex ? null : oneBatchRefusal(db, proposalId);
+      if (batchTransferOn() && awx && batches && (atAirwallex || !notFit)) {
+        const r = await executeAsOneAirwallexBatch(db, { batches, rail: awx.rail }, proposalId);
         if (r.outcome !== "SUBMITTED") throw new Error(`the Airwallex batch was refused at the read-back and deleted: ${r.differences.join("; ").slice(0, 280)}`);
         return;
       }
+      if (batchTransferOn() && awx && notFit) audit(db, "system", "awx_batch.line_by_line", proposalId, { why: notFit });
       // One Face ID for many payments: each line runs as its own payment, with its own checks and idempotency.
       const { executePaymentBatch } = await import("./paymentBatch.js");
       const r = await executePaymentBatch(db, proposalId, (id) => executeApproved(db, id, rails));
@@ -183,5 +198,32 @@ async function executeApproved(db: DB, proposalId: string, rails?: Rails): Promi
     }
     default:
       throw new Error(`no executor for ${row.kind} yet`);
+  }
+}
+
+/**
+ * After each payout (switched on 13 November): the payout and its conversion, if any, against Airwallex's own ledger
+ * (financial transactions), to the cent. A difference is flagged in the ledger (awx_ft.difference) and by the hourly
+ * reconciliation; not booked yet is pending. It never fails the payment it follows: the payment already ran.
+ */
+export async function reconcileAfterPayout(db: DB, proposalId: string, now = new Date(), bySource?: import("../finance/awxFinancialTx.js").FtBySource): Promise<void> {
+  const { financialTxOn, ftBySourceVia, reconcileLedgerAtAirwallex } = await import("../finance/awxFinancialTx.js");
+  if (!financialTxOn()) return;
+  const terms = JSON.parse((db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(proposalId) as { terms_json: string } | undefined)?.terms_json ?? "{}") as { transfer_request_id?: string; conversion?: { request_id?: string } };
+  const t = terms.transfer_request_id ? db.prepare("SELECT transfer_id FROM transfers WHERE request_id = ? AND transfer_id IS NOT NULL").get(terms.transfer_request_id) as { transfer_id: string } | undefined : undefined;
+  const c = terms.conversion?.request_id ? db.prepare("SELECT conversion_id FROM fx_conversions WHERE request_id = ?").get(terms.conversion.request_id) as { conversion_id: string } | undefined : undefined;
+  const only = [t?.transfer_id, c?.conversion_id].filter((x): x is string => !!x);
+  if (!only.length) return;
+  let read = bySource;
+  if (!read) {
+    const { fromEnv, Airwallex } = await import("../airwallex/client.js");
+    const cfg = fromEnv();
+    if (!cfg) return;
+    read = ftBySourceVia(new Airwallex(cfg));
+  }
+  try {
+    await reconcileLedgerAtAirwallex(db, read, { only, now });
+  } catch (e) {
+    audit(db, "system", "awx_ft.read_error", proposalId, { after: "payout", error: (e as Error).message.slice(0, 200) }, now);
   }
 }
