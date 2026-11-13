@@ -11,6 +11,7 @@
 //   - Home and /proof no longer carry "Extra, not an award entry"; "Visa (VIC via Airi)" is in Home's "Built on"; /judge
 //     links the Visa run; the 7 November run is called scripted wherever it appears.
 // The page build fails when any of it is lost (assertVicFirst).
+import { countOf } from "../src/redesign/ui.js";
 import { vic3Run } from "../src/redesign/vic3Run.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -91,7 +92,7 @@ describe("/visa: one summary of the paid run", () => {
     const yes = steps.find((s) => s.airwallex.approved)!, no = steps.find((s) => !s.airwallex.approved)!;
     expect(c.kind).toBe("tap");
     expect(c.stats).toEqual([
-      { v: `${ok}/${steps.length}`, l: "signatures accepted" },
+      { v: countOf(ok, steps.length), l: "signatures accepted" },
       // "EUR 45.00" everywhere (the review at 390 px, 12 Nov), never "€".
       { v: `EUR ${yes.airwallex.confirmed_by_get.amount}`, l: "approved" },
       { v: `EUR ${no.airwallex.confirmed_by_get.amount}`, l: `declined (${no.airwallex.failure_reason})` },

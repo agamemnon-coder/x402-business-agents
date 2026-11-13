@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE } from "./airwallexProducts.js";
 import { REPO_BLOB } from "./metalStory.js";
-import { esc } from "./ui.js";
+import { countOf, esc } from "./ui.js";
 
 export const T0_JOURNAL_RECORD = "docs/runs/2026-11-10-t0-journal-sandbox.md";
 export const T0_FIRST_RECORD = "docs/runs/2026-11-03-t0-sandbox.md";
@@ -103,7 +103,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
     li("Test money on Metal (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
     `<li>${link(T0_DOC, "How it works, and the account map")}</li>`,
   ];
-  const diffs = j ? `<details class="fold"><summary>${esc(`Our books against T:0's, per account (${j.day})`)}</summary><table class="t0a"><thead><tr><th scope="col">T:0 account (ours)</th><th scope="col">Ours, net debit</th><th scope="col">T:0</th></tr></thead><tbody>${j.accounts.map((a) => `<tr><td>${esc(a.account)}</td><td>${esc(a.ours)}</td><td>${esc(a.t0)}</td></tr>`).join("")}</tbody></table><ul class="pl">${li(`${j.posted} of ${j.built} entries match; debits and credits ${j.debits} USD each, the same as our books.`)}${j.secondPush ? li(`A second push posted ${j.secondPush.posted} and skipped ${j.secondPush.skipped}: re-running is safe.`) : ""}${j.statements ? li(`Balance sheet: ${j.statements.assets} = ${j.statements.liabilities} + ${j.statements.equity} USD, difference ${j.statements.difference}. Cash flow, financing: ${j.statements.financing} USD, exactly our owner funding. The entity is shared with other teams, so these totals hold their entries too.`) : ""}</ul></details>` : "";
+  const diffs = j ? `<details class="fold"><summary>${esc(`Our books against T:0's, per account (${j.day})`)}</summary><table class="t0a"><thead><tr><th scope="col">T:0 account (ours)</th><th scope="col">Ours, net debit</th><th scope="col">T:0</th></tr></thead><tbody>${j.accounts.map((a) => `<tr><td>${esc(a.account)}</td><td>${esc(a.ours)}</td><td>${esc(a.t0)}</td></tr>`).join("")}</tbody></table><ul class="pl">${li(`${countOf(j.posted, j.built)} entries match; debits and credits ${j.debits} USD each, the same as our books.`)}${j.secondPush ? li(`A second push posted ${j.secondPush.posted} and skipped ${j.secondPush.skipped}: re-running is safe.`) : ""}${j.statements ? li(`Balance sheet: ${j.statements.assets} = ${j.statements.liabilities} + ${j.statements.equity} USD, difference ${j.statements.difference}. Cash flow, financing: ${j.statements.financing} USD, exactly our owner funding. The entity is shared with other teams, so these totals hold their entries too.`) : ""}</ul></details>` : "";
   const ids = [j ? li(`First entry: ${j.firstId}.`) : "", ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>

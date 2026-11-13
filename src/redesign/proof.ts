@@ -27,7 +27,7 @@ import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controls
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
 import { awxRunBlock } from "./awxRun.js";
-import { esc, icon, page } from "./ui.js";
+import { countOf, esc, icon, page } from "./ui.js";
 import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
 import { LEAD_CSS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
@@ -240,7 +240,7 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
         `${tap.label}: ${x.model ? `the Sourcing agent (${family(x.model)}) picked the card rail` : "code tried one purchase over the card's limit"}: Visa's reference proxy answered ${x.proxyStatus}, our layer verified both signatures (${x.sig1}, ${x.sig2}); the Airwallex card (brand as Airwallex returns it: ${x.brand}) was ${x.approved ? "approved" : `declined by Airwallex (${x.reason})`}, EUR ${x.amount}`,
         x.approved ? "ok" : "no", { label: `Airwallex ${x.txId.slice(0, 8)}… · read back with GET: ${x.getStatus}`, href: null })) : []),
     ],
-    claude: s.agent_stats.map((a) => li(`${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} agent on ${family(a.models[0])}: ${a.by_claude} of ${a.decisions} decisions by Claude, ${a.fallback} ${a.fallback === 1 ? "fallback" : "fallbacks"}, ${a.claude_calls} calls, USD ${(a.cost_usd_micros / 1e6).toFixed(4)}`, "ok")),
+    claude: s.agent_stats.map((a) => li(`${a.agent[0]!.toUpperCase()}${a.agent.slice(1)} agent on ${family(a.models[0])}: ${countOf(a.by_claude, a.decisions, true)} decisions by Claude, ${a.fallback} ${a.fallback === 1 ? "fallback" : "fallbacks"}, ${a.claude_calls} calls, USD ${(a.cost_usd_micros / 1e6).toFixed(4)}`, "ok")),
   };
 }
 
@@ -307,7 +307,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
     const [first, ...rest] = leads[id] ?? [];
     return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
   };
-  const cardsMatch = /^(\d+ of \d+) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
+  const cardsMatch = /^((?:\d+ of \d+|All \d+|Both)) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
   // Owner, 12 Nov: Airwallex, Visa, Metal, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Metal, Claude). (The signed hash was the Airwallex card's
   // first chip since 7 Nov, #12; it is the card's main link now, from the same two read-backs.)
   return `<div class="partners">
@@ -336,7 +336,7 @@ function moreCards(run: AgentRun): string {
     ...s.refusals.filter((x) => /planted instruction/i.test(x.what)).map((x) => li(plantedLine(x.reason), "no")),
   ];
   // One Face ID number from one source (faceIdDecisions): the proposals the CFO decided with the CFO's passkey, from the run's ledger.
-  const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${f.signers.length} of ${f.signers.length} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
+  const faceItems = faces.map((f) => li(`${f.id} · ${f.title}: ${f.status === "COSIGNED" ? `1 of 2 signatures, by ${f.signers[0]}` : `${f.status === "REJECTED" ? "rejected" : "approved"} by ${f.signers.join(" and ")}${f.signers.length > 1 ? ` (${countOf(f.signers.length, f.signers.length, true)} signatures)` : ""}`}`, "face", null, f.signers.length > 1 ? SECOND_APPROVER : undefined));
   const earlier = money.filter((e) => e.earlier);
   // The red team (final review, 4 Nov: "39/39 attacks failed" read as all prevented): those stopped before anything
   // moved, apart from those found only afterwards; the later run Proof summarises with its scope, the latest linked.
@@ -356,7 +356,7 @@ ${box("faceid", "scan-face", faceIdLine(faceIdDecisions(r), faces.length).label,
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
 ${box("redteam", "shield-check", "attacks stopped", `${stoppedBefore}/${red.attempts}`, `${after.length ? `${after.length} more detected afterwards, not prevented (${after.join("; ")}). ` : ""}${dayLong(red.ran_at)}, a test world on simulated rails.`, fold("Later runs", [
-  li(`${dayLong(rt.ran_at)}, against the agent loop: ${rt.summary.held} of ${rt.summary.runs} runs held (${new Set(rt.results.map((x) => x.id)).size} attacks, ${rt.runs_per_case} runs each; the Sourcing agent on ${family(rt.model)}, simulated rails).`, rt.summary.held === rt.summary.runs ? "ok" : "no"),
+  li(`${dayLong(rt.ran_at)}, against the agent loop: ${countOf(rt.summary.held, rt.summary.runs, true)} runs held (${new Set(rt.results.map((x) => x.id)).size} attacks, ${rt.runs_per_case} runs each; the Sourcing agent on ${family(rt.model)}, simulated rails).`, rt.summary.held === rt.summary.runs ? "ok" : "no"),
   `<li>${esc(`${dayLong(night.ran_at)}, Claude ${family(night.model)} as the attacker:`)} <a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md#5-red-team-opus-as-the-attacker" target="_blank" rel="noopener">the night batch's report, with what got through ↗</a></li>`,
 ]))}
 ${box("health", "database", "audit rows", String(s.audit.rows), `Hash chain ${s.audit.intact ? "intact" : "broken"} (${runName(r)}).`, "", ["Open the CFO dashboard", "./?autonomy"])}
@@ -544,7 +544,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
     { cls: "claude", value: String(sp.byClaude), label: `decisions by Claude (${sp.fallbacks} fallbacks)`, explain: "", href: "#claude" },
     // Second, so that on a phone the two short tiles share a row and the two with lines under them share the next.
     rows.length
-      ? { cls: "awx", value: `${rows.filter((x) => x.match).length} of ${rows.length}`, label: "cards carry the CFO's policy as Airwallex's own controls", explain: "", href: `airwallex#${AWX_CONTROLS_ID}` }
+      ? { cls: "awx", value: countOf(rows.filter((x) => x.match).length, rows.length), label: "cards carry the CFO's policy as Airwallex's own controls", explain: "", href: `airwallex#${AWX_CONTROLS_ID}` }
       : { cls: "awx", value: String(moved), label: "movements at Airwallex", explain: "", href: "#airwallex" },
     // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", never 82 or 87 beside it.
     { cls: "code", value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: "", href: "#metal", ...(pay.sums ? { note: `${pay.metalParts} on Metal, all inside the limits.` } : {}) },

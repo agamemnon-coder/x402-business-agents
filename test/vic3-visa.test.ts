@@ -1,6 +1,7 @@
 // /visa leads with the latest live run (vic-4 since 13 Nov; vic-3 on 12 Nov): every number, code and id in its block is
 // read from that record or counted from it; F1/F2 are said as a finding, word for word from one of three templates; the
 // first run (7 Nov) follows below; /runs lists both.
+import { countOf } from "../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { visaPage } from "../src/redesign/partners.js";
@@ -41,7 +42,7 @@ describe("/visa's lead: the latest live run", () => {
     const matched = [b.read_back.mandate, b.read_back.payment_intent].filter((x) => x?.equal).length;
     // Redesign, 13 Nov: on /visa the hash is the hero's read-back (src/redesign/visaHero.ts); the block keeps its tiles
     // when shown on its own.
-    expect(text(html)).toContain(`${matched} of 2 read-backs equal to the signed hash`);
+    expect(text(html)).toContain(`${countOf(matched, 2)} read-backs equal to the signed hash`);
     expect(text(vic3RunHtml(raw))).toContain(`${matched} of 2 hash matched at Airi and Airwallex`);
     expect(text(block)).toContain(`mandate read-back ${w(b.read_back.mandate)}`);
     expect(text(block)).toContain(`PaymentIntent read-back ${w(b.read_back.payment_intent)}`);

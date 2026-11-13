@@ -24,7 +24,7 @@ import type { Awx1Record } from "../awx/scenario.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { liveRuns, type RunRow } from "./runs.js";
 import type { AgentRun, RunRecord } from "./run.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 
 // 13 Nov: the payee check, the batch transfer and the ledger reconciliation joined once the switch-on run showed them
@@ -446,7 +446,7 @@ export function ledgerTile(r: { audit: { ts: string; event: string; payload: { a
   const id = read0?.payload.items?.[0]?.id;
   if (!rec || rec.payload.checked === undefined || !id) return null;
   return {
-    key: "ledger", name: "Ledger reconciliation", value: `${rec.payload.agree} of ${rec.payload.checked}`,
+    key: "ledger", name: "Ledger reconciliation", value: countOf(Number(rec.payload.agree), Number(rec.payload.checked)),
     what: `movements agree with Airwallex's ledger to the cent.`, why: "Airwallex books each movement.",
     id, idLabel: "Airwallex financial transaction", href: `${REPO_BLOB}${FT_FILE.replace(/\.json$/, ".md")}`, iso: rec.ts, files: [FT_FILE],
   };
