@@ -77,7 +77,7 @@ describe("/docs: docs and API", () => {
     expect(html).toContain("<h1>Docs and API</h1>");
     expect(html).toContain("<title>Purser · Docs and API</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "connect-ai", "connections", "offline"]);
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "connect-ai", "offline"]);
   });
 
   it("lists exactly the tools the code defines, in the code's order, each with its own title; every description is in the fold, word for word", async () => {

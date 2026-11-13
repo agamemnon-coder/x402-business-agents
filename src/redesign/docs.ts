@@ -124,13 +124,11 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
       `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
-    ])}</article>
-  <article class="pc card wide" id="connections">${head("arrow-left-right", "Connections")}
-    <div class="links">${outLink(repoHref(CONNECTIONS_DOC), "Every connection: read or export only")}</div>
-    ${foldHtml("Live, and format exports", [
+    ])}
+    ${foldHtml("Connections: read or export only", [
       `Live: the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.`,
       "Format exports, not live integrations: Xero, QuickBooks Online and Exact Online CSV, Slack and Teams messages, an ISO payment message.",
-      "From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live).",
+      `From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live). ${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}`,
     ])}</article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
