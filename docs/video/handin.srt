@@ -31,141 +31,149 @@ The CFO signs the exact terms.
 Airwallex and Metal each hold the limit again, on their own side.
 
 9
-00:00:42,400 --> 00:00:50,400
-This is the hands-on demo: your own test company, gone after 24 hours, with test money on a simulated bank.
+00:00:40,400 --> 00:00:48,800
+This is the hands-on demo, live: your own test company, gone after 24 hours, with test money on a simulated bank.
 
 10
-00:00:50,400 --> 00:00:54,800
+00:00:48,800 --> 00:00:53,200
 An invoice for 1,850 euros comes in.
 
 11
-00:00:54,800 --> 00:00:59,200
-The screen says who read it and what the checks found.
+00:00:53,200 --> 00:00:58,800
+Claude reads it, and Claude agents check it, code it and plan the payment.
 
 12
-00:00:59,200 --> 00:01:02,800
-The CFO signs the exact terms with Face ID.
+00:00:58,800 --> 00:01:00,800
+Purser's code holds every limit.
 
 13
-00:01:02,800 --> 00:01:05,600
-Change one cent, and it is refused.
+00:01:00,800 --> 00:01:03,200
+The CFO signs the exact terms.
 
 14
-00:01:28,400 --> 00:01:32,800
-On Metal, the agent's limit now lives in a passkey account.
+00:01:03,200 --> 00:01:06,000
+Change one cent, and it is refused.
 
 15
-00:01:32,800 --> 00:01:43,200
-The account checks the signatures itself, on chain: the CFO's passkey, on an iPhone with Face ID, and a second approver, here a labelled test passkey.
+00:01:22,400 --> 00:01:26,800
+On Metal, the agent's limit now lives in a passkey account.
 
 16
-00:01:52,400 --> 00:01:55,600
-The agent paid 5 cents inside its mandate.
+00:01:26,800 --> 00:01:37,200
+The account checks the signatures itself, on chain: the CFO's passkey, on an iPhone with Face ID, and a second approver, here a labelled test passkey.
 
 17
-00:01:55,600 --> 00:01:59,200
-Then 6 cents, over the cap: refused on chain.
+00:01:46,400 --> 00:01:49,600
+The agent paid 5 cents inside its mandate.
 
 18
-00:01:59,200 --> 00:02:04,400
-Both owners signed a higher cap, and the same 6 cents went through.
+00:01:49,600 --> 00:01:53,200
+Then 6 cents, over the cap: refused on chain.
 
 19
-00:02:12,400 --> 00:02:15,600
-On Airwallex, each agent has its own card.
+00:01:53,200 --> 00:01:58,400
+Both owners signed a higher cap, and the same 6 cents went through.
 
 20
-00:02:15,600 --> 00:02:20,000
-Airwallex itself declined a simulated 45 euro charge, over the limit.
+00:02:04,400 --> 00:02:07,600
+On Airwallex, each agent has its own card.
 
 21
-00:02:24,400 --> 00:02:28,800
-Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail.
+00:02:07,600 --> 00:02:12,000
+Airwallex itself declined a simulated 45 euro charge, over the limit.
 
 22
-00:02:28,800 --> 00:02:33,200
-A 45 euro purchase above the limit waited for Face ID.
+00:02:16,400 --> 00:02:20,800
+Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail.
 
 23
-00:02:33,200 --> 00:02:38,400
-The signed terms' hash sits in Airi's mandate and in Airwallex's payment record.
+00:02:20,800 --> 00:02:24,800
+A 12 euro purchase within the limit took one tap.
 
 24
+00:02:24,800 --> 00:02:34,400
+A 45 euro purchase above it waited for Face ID, and the signed terms' hash sits in Airi's mandate and in Airwallex's payment record.
+
+25
+00:02:34,400 --> 00:02:39,200
+A credential reused, or shown for another amount, was refused by Purser.
+
+26
 00:02:42,400 --> 00:02:44,400
 Two locks on one payout.
 
-25
-00:02:44,400 --> 00:02:48,400
-Purser's, signed with a test passkey, and Airwallex's own approval.
-
-26
-00:02:48,400 --> 00:02:52,800
-The payout waited at Airwallex until the owner approved it there.
-
 27
-00:02:52,800 --> 00:02:55,600
-Then it was paid, with simulated settlement.
+00:02:44,400 --> 00:02:53,600
+On 13 November, Face ID on Max's own iPhone opened Purser's lock, and Airwallex's own approval workflow held the payout for a person.
 
 28
-00:03:03,400 --> 00:03:05,000
-The books keep themselves.
+00:02:53,600 --> 00:03:01,200
+On 12 November, a payout signed with a test passkey waited there until the owner approved it in Airwallex.
 
 29
-00:03:05,000 --> 00:03:13,000
-For each test invoice, Claude's Coder agent chose the account, the VAT code and the cost centre, and wrote why.
+00:03:01,200 --> 00:03:04,000
+Then it was paid, with simulated settlement.
 
 30
-00:03:13,000 --> 00:03:16,200
-Code checks every choice before it is booked.
+00:03:09,400 --> 00:03:11,000
+The books keep themselves.
 
 31
-00:03:26,400 --> 00:03:32,400
-This is Purser Cloud's console for a test company: the overview, invoices, transactions and books.
+00:03:11,000 --> 00:03:20,200
+In a month of a test company's 20 invoices, Claude read each one live and chose its account, VAT code and cost centre.
 
 32
-00:03:32,400 --> 00:03:35,600
-It reads and manages, and it never pays.
+00:03:20,200 --> 00:03:25,000
+Code checked every choice before it was booked, and the books balance.
 
 33
-00:03:35,600 --> 00:03:39,600
-Payments are approved on the CFO's phone with Face ID.
+00:03:29,400 --> 00:03:35,400
+This is Purser Cloud's console for a test company: the overview, invoices, transactions and books.
 
 34
-00:03:48,400 --> 00:03:51,600
-Every line of this film has its record.
+00:03:35,400 --> 00:03:38,600
+It reads and manages, and it never pays.
 
 35
-00:03:51,600 --> 00:03:56,800
-The proof page lists what Purser guarantees, who enforces it, and the evidence.
+00:03:38,600 --> 00:03:42,600
+Payments are approved on the CFO's phone with Face ID.
 
 36
-00:04:06,400 --> 00:04:13,600
-What is not done: in the Visa sandbox, a credential reused on a bigger payment was not refused.
+00:03:49,400 --> 00:03:52,600
+Every line of this film has its record.
 
 37
-00:04:13,600 --> 00:04:16,000
-There, only Purser holds the limit.
+00:03:52,600 --> 00:03:57,800
+The proof page lists what Purser guarantees, who enforces it, and the evidence.
 
 38
-00:04:16,000 --> 00:04:17,200
-Settlement is simulated.
+00:04:04,400 --> 00:04:11,600
+What is not done: the payout Max approved with Face ID on 13 November still waits at Airwallex.
 
 39
+00:04:11,600 --> 00:04:16,400
+The path to PAID ran on 12 November, with a test passkey.
+
+40
+00:04:16,400 --> 00:04:18,800
+Settlement in the sandbox is simulated.
+
+41
 00:04:20,200 --> 00:04:22,058
 Agents do the work.
 
-40
+42
 00:04:22,058 --> 00:04:24,845
 The CFO signs only the exceptions.
 
-41
+43
 00:04:24,845 --> 00:04:31,348
 Card limits, payouts and mandates: our code checks them, and the rail checks again.
 
-42
+44
 00:04:31,348 --> 00:04:33,206
 Purser, for Kit 11.
 
-43
+45
 00:04:33,206 --> 00:04:34,600
 Try it yourself.

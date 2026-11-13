@@ -61,9 +61,11 @@ page; what is not done; the close.
   capture tool), the exact address or screen, and what is done there.
 - [handin.srt](handin.srt): the captions (narration) draft for YouTube.
 
-All three are written by `npm run cut -- --docs handin-5` and a test holds them to the code. Two lines follow what the
-records show, not what was hoped: the hands-on demo's line says the screen names who read the invoice (no record shows
-the deployed demo with Claude switched on; with Claude on, keep the take whose screen says so), and the Visa scene says
-the signed hash travels with the payment, while "what is not done" says the sandbox did not refuse a reused credential.
-Finalise after today's site fixes: capture the page shots (`npm run capture -- D1a T3 F0 F1 F1b F2 T9a V3 D3 T5f B1 PR1 V3n`),
+All three are written by `npm run cut -- --docs handin-5` and a test holds them to the code. Updated on 13 November
+from that day's records: the hands-on demo with Claude on (`2026-11-13-try-sample.json`), the books month read and
+booked by Claude live (`2026-11-13-books-month.json`), vic-4 (Purser refuses a reused credential and one shown for
+another amount) and the Airwallex payout approved with Face ID on Max's own iPhone (`2026-11-13-airwallex-faceid.md`).
+That payout is still held at Airwallex, so PAID stays the 12 November run, signed with a test passkey, and "what is not
+done" says so.
+Finalise after today's site fixes: capture the page shots (`npm run capture -- D1a T3 F0 F1 F1b F2 T9a V4 V4n AF1 D3 T5f B1 PR1 AF1b`),
 then `npm run cut -- handin-5 --vo <dir> --own M1=… --own P2a=… --own S1=…`.
