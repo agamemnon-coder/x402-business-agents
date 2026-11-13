@@ -1156,7 +1156,7 @@ async function booksView(){
 async function claudeCard(m,owner){
   const card=el('div','card panel claude');card.id='claude';
   const url=location.origin+'/mcp';
-  const copyBtn=(text)=>{const b=btn(t('cs.copy_link'),'','copy');b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){}};return b};
+  const copyBtn=(text)=>{const b=btn(t('cs.claude.copy'),'','copy');b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){}};return b};
   const codeCmd=(token)=>'claude mcp add --transport http purser '+url+' --header "Authorization: Bearer '+token+'"';
   const steps=el('ol','steps',[el('li','',t('cs.claude.step1')),el('li','',t('cs.claude.step2')),el('li','',t('cs.claude.step3'))]);
   const urlRow=el('div','once',[el('b','',t('cs.claude.url')),el('code','cmd',url),el('div','row2',[copyBtn(url)])]);

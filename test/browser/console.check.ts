@@ -314,7 +314,7 @@ const nlText = await page.innerText("main");
 ok(nlText.includes(tr("nl", "cs.nav.overview")) && !/\b(Overview|Invoices|Waits for|Supplier|Overdue|Blocked|Sign out)\b/.test(nlText), "the Dutch overview has no English words");
 ok(/€\s?\d{1,3}(\.\d{3})*,\d{2}/.test(nlText), "amounts are written the Dutch way (€ 1.309,00)");
 // No raw message keys on a Dutch page (the console once showed nav.invoices, ov.tile.open and test.label as words).
-const rawKeys = await page.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((w) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(w) && !/\.(js|pdf|csv|json|eml|com|nl|io|test)$/.test(w)));
+const rawKeys = await page.evaluate(() => (document.body.textContent ?? "").split(/\s+/).filter((w) => /^[a-z]+(\.[a-z0-9_]+)+$/.test(w) && !/\.(js|pdf|csv|json|eml|com|nl|io|ai|test)$/.test(w)));
 ok(rawKeys.length === 0, `no raw message keys on the Dutch console${rawKeys.length ? ` (found ${rawKeys.slice(0, 5).join(", ")})` : ""}`);
 await shot("19-overzicht-nederlands");
 // The Dutch books and settings (screenshot pass, 9 November): no English left in the journal, the VAT overview or the
