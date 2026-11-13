@@ -719,7 +719,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 495 : 445) /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 260 /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 495 : 445) /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 280 /* +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -761,7 +761,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path !== "/airwallex" && path !== "/metal" && path !== "/claude" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if (path === "/claude") {
         const c = await page.evaluate(`(() => {
-          const shown = [...document.querySelectorAll("#split svg")].filter((s) => s.getBoundingClientRect().width > 0);
+          // The wide drawing, or on phones the plain figures (final jury, 13 Nov), whichever shows: one of them.
+          const shown = [...document.querySelectorAll("#split > svg, #split > .sbars")].filter((s) => s.getBoundingClientRect().width > 0);
           const r = shown[0] ? shown[0].getBoundingClientRect() : null, h1 = document.querySelector("h1").getBoundingClientRect();
           return { drawings: shown.length, width: r ? Math.round(r.width) : 0, below: r ? r.top >= h1.bottom : false, top: r ? Math.round(r.top + window.scrollY) : -1,
             agents: document.querySelectorAll("main .cag").length, tiles: document.querySelectorAll("main .ctile").length, bars: document.querySelectorAll("main .cmr svg.bar").length };
@@ -844,7 +845,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airiText)
         || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/Every check passes/.test(airiText)
         || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
-        || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
+        || !/card credential from Airwallex's Airi wallet, bound by Purser to one purchase[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
       // On /visa above the TAP fold: the block before the fold's own flow.
       if (path === "/visa" && !(await page.evaluate(() => { const a = document.querySelector("#airi-run"), f = document.querySelector(".flow.card"); return !!a && !!f && !!(a.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/visa ${tag}: the Airi run is not above the TAP run`);
