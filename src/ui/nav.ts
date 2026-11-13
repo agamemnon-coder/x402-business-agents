@@ -7,7 +7,7 @@ import { MORE_CSS, moreHtml } from "./more.js";
 
 import { WATCH_IN_MENU } from "../config/film.js";
 
-export type NavKey = "home" | "watch" | "try" | "proof" | "tour" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
+export type NavKey = "home" | "watch" | "try" | "proof" | "overview" | "metal" | "dashboard" | "live" | "demo" | "month" | "lab" | "visa" | "airwallex" | "claude";
 
 /** The four tabs (redesign, Max 2 Nov); the fifth item, "More", follows them in navHtml (12 Nov). */
 export const NAV_MAIN: [NavKey, string, string][] = ([

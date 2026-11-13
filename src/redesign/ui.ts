@@ -46,7 +46,7 @@ export const TRY_URL = "/try";
 
 export type Tab = "home" | "watch" | "try" | "proof";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
-// 13 Nov (owner): "Judge" is out of the top menu again; the 3-minute product tour (/tour) is linked from Home's footer.
+// 13 Nov (owner): "Judge" is out of the top menu again (its page, then the product tour that replaced it, are gone).
 const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */

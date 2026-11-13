@@ -60,7 +60,8 @@ describe("the cloud pages carry the site's header", () => {
     // /try is served on the site's host too (kit11's TRY_ENGINE): Purser Cloud is absolute there, never "/".
     expect(t).toContain(`<a href="${CLOUD}">Purser Cloud</a>`);
     expect(hrefs(t)).not.toContain("/");
-    expect(t).toContain(`<a href="${SITE_ORIGIN}/pricing">Pricing</a>`);
+    expect(t).toContain(`<a href="${SITE_ORIGIN}/security">Security</a>`);
+    expect(t).not.toMatch(/\/(pricing|tour)"/);
     const c = siteHeader("cloud");
     expect(c).toContain('<a href="/" aria-current="page">Purser Cloud</a>');
     expect(c).toContain('<summary class="on">More</summary>');

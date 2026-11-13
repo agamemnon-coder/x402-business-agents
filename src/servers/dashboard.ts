@@ -35,11 +35,9 @@ import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
 import { filmId } from "../config/film.js";
 import { filmStills } from "../film/stills.js";
 import { proofPage } from "../redesign/proof.js";
-import { tourPage } from "../redesign/tour.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512 } from "../ui/brand/icons.gen.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
-import { pricingPage } from "../redesign/pricing.js";
 import { securityPage } from "../redesign/security.js";
 import { docsPage } from "../redesign/docs.js";
 import { statusPage } from "../redesign/status.js";
@@ -100,8 +98,6 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
   // Home's hero walkthrough (src/redesign/walk.ts): the hands-on demo's own screens, captured by test/browser/try.check.ts.
   ...Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`try-walk-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/try-walk/walk-${n}.webp`, import.meta.url)) }])),
-  // /tour's four screenshots (src/redesign/tour.ts; docs/assets/tour/README.md says where each was taken).
-  ...Object.fromEntries(["sign", "try", "proof", "cloud", "connect"].map((n) => [`tour-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/tour/tour-${n}.webp`, import.meta.url)) }])),
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   // 13 Nov (owner): every icon is the header's mark (src/ui/brand/mark.ts), the same bytes Purser Cloud serves.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
@@ -283,9 +279,7 @@ const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src $
 export const VISA_CSP = VISA_PAGE.includes("<script>") ? styleAndScriptCsp(VISA_PAGE) : styleOnlyCsp(VISA_PAGE);
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
-/** /pricing and /security (12 Nov), the product pages under "More" (src/ui/more.ts): no script, so a style-only policy. */
-export const PRICING_PAGE = pricingPage();
-export const PRICING_CSP = styleOnlyCsp(PRICING_PAGE);
+/** /security (12 Nov), the product page under "More" (src/ui/more.ts): no script, so a style-only policy. /pricing went on 13 Nov (owner). */
 export const SECURITY_PAGE = securityPage();
 export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
 /** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
@@ -331,12 +325,6 @@ export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
 /** /try/verify checks a receipt in the browser and calls no server: its CSP allows no connection at all. */
 export const TRY_VERIFY_PAGE = tryVerifyPage();
 export const TRY_VERIFY_CSP = cspFor(TRY_VERIFY_PAGE).replace("connect-src 'self'", "connect-src 'none'");
-/** /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge): four cards, its own style and images, no script. */
-export const TOUR_PAGE = tourPage();
-export const TOUR_CSP = [
-  "default-src 'none'", "script-src 'none'", `style-src ${inlineHash(TOUR_PAGE, "style")}`, "connect-src 'none'",
-  "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
-].join("; ");
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });
@@ -352,9 +340,9 @@ export const FILM_WATCH_PAGE = filmWatchPage();
 export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, cspFor, styleOnlyCsp);
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
-export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home" };
-/** Addresses retired for good, answered 301 so old links keep working: /judge became the product tour (owner, 13 Nov). */
-export const MOVED: Record<string, string> = { "/judge": "/tour" };
+export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": "/home" };
+/** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
+export const MOVED: Record<string, string> = { "/judge": "/home" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
@@ -471,10 +459,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", CLAUDE_CSP);
     res.type("html").send(CLAUDE_PAGE);
   });
-  app.get("/pricing", (_req, res) => {
-    res.setHeader("Content-Security-Policy", PRICING_CSP);
-    res.type("html").send(PRICING_PAGE);
-  });
+  // 13 Nov (owner): /pricing and /tour are gone; old links land on Home.
+  for (const from of ["/pricing", "/tour"]) app.get(from, (_req, res) => { res.redirect(302, "/home"); });
   app.get("/security", (_req, res) => {
     res.setHeader("Content-Security-Policy", SECURITY_CSP);
     res.type("html").send(SECURITY_PAGE);

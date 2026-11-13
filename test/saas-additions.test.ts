@@ -3,7 +3,7 @@
 // 1. One pricing model with reconciled numbers. The panel saw EUR 49 a month beside a second, unsettled fee per
 //    payment, test fees that did not match the stated percentage, and a 48% margin in the model's own table. Now: one
 //    model (src/config/pricing.ts), said in the same sentence on the README, in docs/business/model.md and in
-//    docs/after-the-kit.md, with /pricing showing the same figures; one line that fits the two fixed test fees to the
+//    docs/after-the-kit.md, with the pricing module's page showing the same figures (/pricing itself went on 13 Nov); one line that fits the two fixed test fees to the
 //    percentage, worked out from the run records and the paying code's own figures; and the unit economics restated for
 //    that model by its own generator (test/unit-economics-hypothesis.test.ts checks its arithmetic).
 // 2. Security answers the buyer's first two questions, and "four eyes" is worded exactly (further down).
@@ -394,9 +394,9 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     // /visa left the list in the 12 Nov merge: main's /visa says what is real of the Airi run (no second approver there).
     for (const name of ["home", "watch", "proof", "metal", "airwallex", "claude", "trace", "runs"]) expect({ name, says: text(pages[name]!).includes(SECOND_APPROVER) }).toEqual({ name, says: true });
     // On the public pages a reader reaches, every "four eyes" in the text is the on-chain run with its note, a name or
-    // the control as it works; /pricing's "Four-eyes approval" is a feature of the Business plan, not a claim.
+    // the control as it works (/pricing, with the Business plan's "Four-eyes approval", went on 13 Nov, evening).
     const bare: string[] = [];
-    for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude", "trace", "runs", "notFound"]) {
+    for (const name of ["home", "watch", "proof", "security", "metal", "airwallex", "visa", "claude", "trace", "runs", "notFound"]) {
       const t = text(pages[name]!);
       for (const m of t.matchAll(/four[- ]eyes/gi)) {
         const near = t.slice(Math.max(0, m.index - 160), m.index + 200);
