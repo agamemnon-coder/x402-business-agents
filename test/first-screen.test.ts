@@ -46,7 +46,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     // one-line diagram under "How it works" and the judges' 3 minutes.
     const buttons = `<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/tour"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the 3-minute product tour"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>`;
     expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", buttons, ""]);
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(11); // CI, CodeQL, tests, MIT, Node, TypeScript, MCP, four partners
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(12); // CI, CodeQL, tests, MIT, Node, TypeScript, MCP, four partners and T:0
     expect(lines.slice(badges + 1, badges + 4)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", ""]);
     expect(lines[badges + 4]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/try\/sign">/);
     expect(lines.slice(badges + 5, badges + 10)).toEqual(["", "</div>", "", "## How it works", ""]);

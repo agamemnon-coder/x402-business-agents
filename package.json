@@ -113,6 +113,7 @@
     "visuals": "tsx src/cli/visuals.ts",
     "site-shots": "tsx src/cli/siteShots.ts",
     "readme-draft": "tsx src/cli/readmeDraft.ts",
+    "readme:shots": "tsx scripts/readme-shots.ts",
     "four-eyes": "tsx src/cli/fourEyes.ts",
     "passkey-owners": "tsx src/cli/passkeyOwners.ts",
     "owners": "tsx src/cli/ownersExecute.ts",
