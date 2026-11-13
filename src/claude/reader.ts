@@ -6,6 +6,7 @@
 // Every output is checked by code before use. Without KIT11_ANTHROPIC_API_KEY, or when a call fails or is
 // refused, the deterministic parsers take over, so the demo makes the same decisions either way.
 
+import { untagged } from "../lib/untagged.js";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import type { z } from "zod";
@@ -97,7 +98,8 @@ export class ClaudeReader {
       return { value, source: "fallback", model: null, note };
     };
     if (!this.client) return useFallback("no KIT11_ANTHROPIC_API_KEY");
-    const content = `${a.instruction}\n\n<document>\n${a.document}\n</document>`;
+    // The document's own tags are taken out (src/lib/untagged.ts): it cannot end its block early.
+    const content = `${a.instruction}\n\n<document>\n${untagged(a.document)}\n</document>`;
     // The prompt as sent: the system text, the user turn, and room for the answer's schema.
     const go = this.before(a, model, SYSTEM.length + content.length + JSON.stringify(a.schema).length);
     if ("refused" in go) return useFallback(go.refused);

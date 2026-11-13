@@ -3,6 +3,7 @@
 // phone submits, and shows the runner's verdict. It holds no key and approves nothing: the runner verifies every
 // signature itself. Its own checks (origin, hash, queue and rate limits, the enrolment code) only refuse early.
 
+import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
@@ -163,6 +164,8 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (req.method !== "GET" && req.method !== "HEAD") return null;
   const path = new URL(req.url).pathname;
   const page = (body: string, csp: string) => new Response(body, { headers: { ...PAGE_HEADERS, "content-security-policy": csp } });
+  // How to report a vulnerability (RFC 9116; src/lib/securityTxt.ts).
+  if (path === "/.well-known/security.txt") return new Response(SECURITY_TXT, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
   // "/" is Home itself, so a reader without script (a link preview, a fetch) sees it too. With a query (?recorded,
   // ?autonomy, ?signin, ?dashboard…) it is the CFO dashboard's page. The CFO's viewer link keeps its key after the "#",
   // which never reaches a server: Home's script hands a device with a key to ?dashboard (src/redesign/home.ts).

@@ -74,8 +74,21 @@ describe("step-up", () => {
     const body = { challenge_id: ch.json.challenge_id, credential_id: t.ownerPasskey.credential_id, assertion: assertion(ch.json.challenge as string) };
     expect((await c.req("POST", "/v1/auth/step-up", { key: t.session, body })).status).toBe(200);
     expect((await c.req("POST", "/v1/auth/step-up", { key: t.session, body })).status).toBe(401);
+    // A sign-in challenge is not a step-up challenge, nor the other way round (final review S6).
+    const signInCh = await c.req("POST", "/v1/auth/challenge", { body: { tenant: "acme" } });
+    expect((await c.req("POST", "/v1/auth/step-up", { key: t.session, body: { challenge_id: signInCh.json.challenge_id, credential_id: t.ownerPasskey.credential_id, assertion: assertion(signInCh.json.challenge as string) } })).status).toBe(401);
+    const upCh = await c.req("POST", "/v1/auth/step-up/start", { key: t.session });
+    expect((await c.req("POST", "/v1/auth/login", { body: { tenant: "acme", challenge_id: upCh.json.challenge_id, credential_id: t.ownerPasskey.credential_id, assertion: assertion(upCh.json.challenge as string) } })).status).toBe(401);
     // A key has no passkey to step up with.
     expect((await c.req("POST", "/v1/auth/step-up/start", { key: t.key })).status).toBe(403);
+  });
+
+  it("covers the company's name and language and its Airwallex account (final review S1)", async () => {
+    later(6);
+    expect((await c.req("POST", "/v1/company", { key: t.session, body: { name: "Renamed" } })).json.code).toBe("step_up_required");
+    for (const path of ["/v1/airwallex/account", "/v1/airwallex/onboarding-link"]) expect((await c.req("POST", path, { key: t.session, body: {} })).json.code, path).toBe("step_up_required");
+    const up = await stepUp(t.session);
+    expect((await c.req("POST", "/v1/company", { key: t.session, headers: { [STEP_UP_HEADER]: up.token }, body: { name: "Renamed" } })).status).toBe(200);
   });
 
   it("lets an admin key keep its routes, but never set or remove alert targets", async () => {
