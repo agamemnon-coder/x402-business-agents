@@ -250,7 +250,7 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
 // ── Visa and T:0 on /proof (owner, 12 Nov: "T:0 and Visa are missing"), each from its own dated run record. ──
 
 /** Visa Intelligent Commerce via Airwallex's Airi, the run of 12 Nov (vic-3): its purchase above the limit, in the record's words. */
-export const VIC3_RECORD = "docs/runs/2026-11-12-vic-3.json";
+export const VIC3_RECORD = VIC3_RUN_FILE;
 interface Vic3 { mode: string; label: string; started_at: string; purchases: { step: string; what: string; request?: { amount: string; currency: string }; outcome?: { status?: string; code?: string; by?: string } }[] }
 export function vic3(): Vic3 | null {
   try { const r = JSON.parse(readFileSync(new URL(`../../${VIC3_RECORD}`, import.meta.url), "utf8")) as Vic3; return r.mode === "live" ? r : null; } catch { return null; }
@@ -258,16 +258,18 @@ export function vic3(): Vic3 | null {
 function visaCardParts(r: Vic3 | null): { lead: Lead[]; what: string; facts: string; items: string[] } | null {
   const b = r?.purchases.find((x) => x.step === "B" && x.outcome?.status === "succeeded" && x.request);
   if (!r || !b?.request) return null;
-  const refused = r.purchases.filter((x) => x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "") && x.step !== "A");
+  const refused = r.purchases.filter((x) => x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "") && x.outcome.code !== "PURSER_NO_TAP");
   const neg = r.purchases.filter((x) => /^F\d$/.test(x.step));
+  const guarded = neg.filter((x) => /^PURSER_CREDENTIAL_/.test(x.outcome?.code ?? ""));
   return {
     // One line in sight (owner, 12 Nov); the record's own words for the purchase in the fold.
     lead: [{ text: `${b.request.currency} ${b.request.amount} above the CFO's limit, paid after Face ID`, href: "visa" }],
     what: `Visa Intelligent Commerce via Airwallex's Airi, ${dayOf(r.started_at)}: ${b.request.currency} ${b.request.amount} ${b.what}. ${r.label[0]!.toUpperCase()}${r.label.slice(1)}.`,
     facts: fact(`${b.request.currency} ${b.request.amount}`, "paid after Face ID") + (refused.length ? fact(String(refused.length), "refused by Purser before any Airi call") : ""),
     items: [
-      ...(neg.length ? [li(`Negative test, our own planted misuse (${neg.map((x) => x.step).join(", ")}): not refused by the Airi/Airwallex sandbox; only Purser enforces the binding here`, "no")] : []),
-      li("The run record", "", { label: "docs/runs/2026-11-12-vic-3.md", href: `${REPO_BLOB}${VIC3_RECORD.replace(/\.json$/, ".md")}` }),
+      ...(guarded.length ? [li(`A reused credential, our own planted misuse (${guarded.map((x) => x.step).join(", ")}): refused by Purser's credential check before any call to Airi or Airwallex`, "ok")]
+        : neg.length ? [li(`Negative test, our own planted misuse (${neg.map((x) => x.step).join(", ")}): not refused by the Airi/Airwallex sandbox; only Purser enforces the binding here`, "no")] : []),
+      li("The run record", "", { label: VIC3_RECORD.replace(/\.json$/, ".md"), href: `${REPO_BLOB}${VIC3_RECORD.replace(/\.json$/, ".md")}` }),
     ],
   };
 }

@@ -24,7 +24,7 @@ import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } fro
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
-import { VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
+import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
@@ -133,6 +133,19 @@ const TYPED_STATS: Record<string, RunStat[]> = {};
 export function liveRuns(): RunRow[] {
   const rows: RunRow[] = [];
 
+  // 13 Nov: the owner's own iPhone Face ID opened Purser's lock on one Airwallex payout (awx-1 step f1 only;
+  // docs/runs/2026-11-13-airwallex-faceid.md). Created once, held IN_APPROVAL by Airwallex; not taken to PAID that day.
+  rows.push({
+    key: "awx-faceid-1", iso: "2026-11-13T05:44:43.000Z", date: day("2026-11-13T05:44:43.000Z"), kind: "sandbox",
+    name: "A payout approved with the owner's own iPhone Face ID",
+    line: "The owner's Face ID on his own iPhone approved EUR 240.00; Airwallex holds it IN_APPROVAL. Not PAID yet.",
+    title: "Lock 1 opened by a person's real Face ID, not a test passkey", rails: "Airwallex sandbox (SWIFT transfer, approval workflow), the owner's iPhone passkey",
+    what: "Claude read invoice SLL-2026-11 (Stockline Data GmbH, EUR 240.00); proposal P-0001 opened. The owner enrolled a passkey on his own iPhone and approved P-0001 with Face ID. Only then did Purser create the SWIFT transfer at Airwallex, once. A read-back showed IN_APPROVAL: Airwallex's own approval workflow holds it for a person.",
+    checks: "One create (POST /transfers/create), read back IN_APPROVAL. The step to PAID was not done that day: the pending approval was not found in the sandbox web app on the phone. The full two-lock path to PAID is the 12 Nov run. 15 Airwallex calls, within the budget of 25 the owner approved.", money: "Sandbox · test money",
+    ids: [{ label: "Transfer", value: "d0353daf-515f-464f-bf8e-9fb99e6cca00" }, { label: "Purser proposal", value: "P-0001" }, { label: "Passkey fingerprint", value: "BFA1-44B0-273F-DFEC" }],
+    files: [{ label: "run log", href: "../../docs/runs/2026-11-13-airwallex-faceid.md" }],
+  });
+
   // 10 and 12 Nov: two locks on one payout, created 10 Nov and PAID 12 Nov (docs/runs/2026-11-10-airwallex-two-locks.md,
   // docs/runs/2026-11-12-airwallex-two-locks-paid.md). The row is dated at the moment it ended PAID.
   rows.push({
@@ -183,21 +196,27 @@ export function liveRuns(): RunRow[] {
   });
 
   // 12 Nov: vic-3, the Sourcing agent (Claude Haiku) chooses the Airi rail; the signed hash read back twice; F1/F2 the
-  // negative test (docs/runs/2026-11-12-vic-3.json). Every figure from the record.
-  const v3 = vic3Run();
-  if (v3) {
-    const s = vic3Summary(v3);
+  // negative test (docs/runs/2026-11-12-vic-3.json). 13 Nov: vic-4, the same run with the owner tapping in Airi himself,
+  // a third purchase, and F1/F2 refused by Purser's credential check (docs/runs/2026-11-13-vic-4.json). Every figure
+  // from its record.
+  for (const [key, file, log, title, name] of [
+    ["vic-3", VIC3_PREV_FILE, VIC3_PREV_LOG, "Airi, third run: the agent chooses the rail; the signed hash read back twice", "Claude chooses the Airi rail; the CFO's signed hash read back from Airi and Airwallex"],
+    ["vic-4", VIC3_RUN_FILE, VIC3_RUN_LOG, "Airi, fourth run: two paid; a reused credential refused by Purser's own check", "Two paid, one after Face ID; Purser refuses a reused credential before any call"],
+  ] as const) {
+    const v = vic3Run(file);
+    if (!v) continue;
+    const s = vic3Summary(v);
     rows.push({
-      key: "vic-3", iso: v3.started_at, date: day(v3.started_at), kind: "sandbox", partners: ["Airwallex", "Visa", "Claude"],
-      title: "Airi, third run: the agent chooses the rail; the signed hash read back twice", rails: "Airi wallet, Airwallex sandbox, Claude, test card",
-      name: "Claude chooses the Airi rail; the CFO's signed hash read back from Airi and Airwallex", rate: { done: s.paid, of: s.of, what: "purchases paid" },
+      key, iso: v.started_at, date: day(v.started_at), kind: "sandbox", partners: ["Airwallex", "Visa", "Claude"],
+      title, rails: "Airi wallet, Airwallex sandbox, Claude, test card",
+      name, rate: { done: s.paid, of: s.of, what: "purchases paid" },
       // Jury pass, 13 Nov: as /visa leads, what happened to each purchase, not "1 of 5 paid" (the rest were stopped on purpose).
-      line: `${vic3Lead(v3)}. Test card.`,
-      what: `${s.paid} of ${s.of} purchases paid. The rail was chosen by ${s.model ?? "Claude"} from ${s.menu}. ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. ${vic3Finding(v3)}`,
-      checks: `${okOf(v3.checks)}.`, money: "Test card · test money",
-      // The paid one only (review 12 Nov): the others (A unpaid, F1 and F2 our planted misuse) stay in the record.
-      ids: v3.purchases.filter((p) => p.step === "B" && p.payment_intent_id).map((p) => ({ label: `Paid PaymentIntent (${p.step})`, value: p.payment_intent_id! })),
-      files: [{ label: "record (JSON)", href: blob(VIC3_RUN_FILE) }, { label: "run log", href: blob(VIC3_RUN_LOG) }],
+      line: `${vic3Lead(v)}. Test card.`,
+      what: `${s.paid} of ${s.of} purchases paid. The rail was chosen by ${s.model ?? "Claude"} from ${s.menu}. ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. ${vic3Finding(v)}`,
+      checks: `${okOf(v.checks)}.`, money: "Test card · test money",
+      // The paid ones only (review 12 Nov): the others (unpaid, refused, our planted misuse) stay in the record.
+      ids: s.paidSteps.filter((p) => p.payment_intent_id).map((p) => ({ label: `Paid PaymentIntent (${p.step})`, value: p.payment_intent_id! })),
+      files: [{ label: "record (JSON)", href: blob(file) }, { label: "run log", href: blob(log) }],
     });
   }
 
