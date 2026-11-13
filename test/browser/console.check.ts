@@ -67,8 +67,9 @@ const caller = (origin: string) => async (method: string, path: string, key: str
   const r = await fetch(`${origin}${path}`, { method, headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
   return { status: r.status, json: await r.json() as Record<string, unknown> };
 };
-// The cloud of the walk below runs no engine.
-const env = cloudEnv(ORIGIN, join(dir, "blobs"));
+// The cloud of the walk below runs no engine. Its clock can be moved forward (the step-up walk below).
+let skewMs = 0;
+const env = { ...cloudEnv(ORIGIN, join(dir, "blobs")), now: () => new Date(Date.now() + skewMs) };
 const server = await serve(env, PORT);
 const call = caller(ORIGIN);
 const made = await call("POST", "/v1/admin/tenants", ADMIN, { slug: "northwind", name: "Northwind Outdoor (test company)", owner: { display_name: "The CFO" } });
@@ -277,6 +278,25 @@ ok((await page.$$("#passkeys li")).length === 1, "Settings lists the owner's one
 await page.click("#passkeys >> text=Remove");
 await page.waitForSelector("text=last owner passkey");
 ok(true, "the company's last owner passkey cannot be removed");
+// Alerts (Settings, Alerts): a WhatsApp number added is shown masked, never whole. Then, six minutes on by the cloud's
+// clock, the sign-in no longer counts as a fresh passkey check: adding an address asks the passkey again (the virtual
+// authenticator answers), and the console sends the request once more with the step-up token.
+await page.waitForSelector("#alerts");
+await page.selectOption("#alert-channel", "whatsapp");
+await page.fill("#alert-target", "+31612345678");
+await page.click("#alert-add");
+await page.waitForSelector("#alerts >> text=+31*******78");
+ok(!((await page.textContent("#alerts")) ?? "").includes("+31612345678"), "Settings, Alerts shows a WhatsApp number masked, never whole");
+skewMs = 6 * 60_000;
+const stepUps: string[] = [];
+page.on("request", (r) => { if (r.url().includes("/v1/auth/step-up")) stepUps.push(r.url()); });
+await page.selectOption("#alert-channel", "email");
+await page.fill("#alert-target", "cfo@example.com");
+await page.click("#alert-add");
+await page.waitForSelector("#alerts >> text=c***@example.com");
+ok(stepUps.length === 2, `a sensitive setting after five minutes asks for the passkey again, and then goes through (${stepUps.length} step-up calls)`);
+skewMs = 0;
+await page.evaluate(() => window.scrollTo(0, 0));
 
 // The phone.
 await page.setViewportSize({ width: 390, height: 844 });
@@ -367,7 +387,8 @@ ok(true, "a session the cloud no longer takes goes back to sign-in, saying why")
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 // 401 (an ended session) and 409 (the last owner passkey refused) are answers the check asks for, not errors.
-ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+// A 403 is the step-up walk's own first answer (step_up_required), which the console turns into a passkey check.
+ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e) && !(stepUps.length && /403 \(Forbidden\)/.test(e))).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
 ok(urls.length > 0 && !urls.some((u) => new URL(u).pathname.startsWith("/v1/engine")), "a cloud with no engine: its console never asked for one (no /v1/engine request)");
 await ctx.close();
 server.close();

@@ -24,7 +24,7 @@ describe("awx-1 on the site", () => {
     for (const name of ["airwallex", "proof"]) {
       const t = text(block(pages[name]!));
       expect({ name, t }).toEqual({ name, t: expect.stringContaining(`7 November, awx-1: a separate run · ${AWX_RUN_LABEL}`) });
-      expect(t).toContain("7 of 7 checks pass");
+      expect(t).toContain("every check passes");
     }
     // On Proof, under the "Airwallex, read back" heading, short: no decline code on /proof (test/proof-first.test.ts),
     // a link to every step on /airwallex, whose fold opens on arrival.
@@ -84,7 +84,7 @@ describe("awx-1 on the site", () => {
     expect(awxRunSummary({ ...rec, invoices: [] })).toBeNull();
     // A failed check shows as such, never as passed.
     const failed = awxRunHtml(awxRunSummary({ ...rec, checks: { ...rec.checks, c: { ok: false, detail: "x" } } }));
-    expect(text(failed)).toContain("6 of 7 checks pass");
+    expect(text(failed)).toContain("not every check passes");
     expect(failed).toContain('class="awm bad"');
   });
 });

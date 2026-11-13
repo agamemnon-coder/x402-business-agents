@@ -54,33 +54,65 @@ export function pathHtml(inUse: ProductTile[], flagged: ProductTile[]): string {
 export function timelineSvg(inUse: ProductTile[], flagged: ProductTile[], layout: "wide" | "narrow" = "wide"): string {
   const rows = [...inUse.map((t) => ({ t, on: true })), ...flagged.map((t) => ({ t, on: false }))];
   if (rows.length < 2) return "";
-  const day = (iso: string) => Date.parse(`${iso.slice(0, 10)}T12:00:00Z`);
-  const t0 = Math.min(...rows.map((r) => day(r.t.iso))), t1 = Math.max(...rows.map((r) => day(r.t.iso)));
-  // Drawn at the size it shows: wide on a laptop (names left of the track), narrow on a phone (each name above its
-  // track, the middle days by their number), so its text stays 12.5 to 14 px and nothing is cut. The dots sit inside a
-  // padded plot (PAD from the track's ends, more on the right for the last day's label), so none touches an edge; every
-  // dot and its day's label sit on that day's gridline, the same x.
-  const wide = layout === "wide";
-  const W = wide ? 860 : 340, L = wide ? 200 : 14, R = wide ? 8 : 4, TOP = wide ? 8 : 4, ROW = wide ? 30 : 38, H = TOP + rows.length * ROW + 34;
-  const PAD_L = wide ? 16 : 20, PAD_R = wide ? 28 : 24;
-  const x0 = L + PAD_L, x1 = W - R - PAD_R;
-  const x = (iso: string) => t1 === t0 ? x0 : Math.round(x0 + ((day(iso) - t0) / (t1 - t0)) * (x1 - x0));
+  return layout === "wide" ? wideTimeline(rows) : narrowTimeline(rows);
+}
+
+type Row = { t: ProductTile; on: boolean };
+const dayOf = (iso: string) => Date.parse(`${iso.slice(0, 10)}T12:00:00Z`);
+const span = (rows: Row[]) => ({ t0: Math.min(...rows.map((r) => dayOf(r.t.iso))), t1: Math.max(...rows.map((r) => dayOf(r.t.iso))) });
+const rowTitle = (r: Row) => `<title>${esc(`${r.t.name}: ran live ${dayShort(r.t.iso)}${r.on ? ", in use" : ", not yet switched on"}`)}</title>`;
+const svgTitle = (layout: string, t0: number, t1: number) => `<title id="awtl-${layout}">${esc(`When each Airwallex product ran live, ${dayShort(new Date(t0).toISOString())} to ${dayShort(new Date(t1).toISOString())}`)}</title>`;
+// One dot size per layout: both reach DOT from their centre, a filled dot, or a ring whose stroke ends at the same radius.
+const RING = 2.5;
+const dotSvg = (r: Row, cx: number, cy: number, DOT: number) => r.on ? `<circle class="on" cx="${cx}" cy="${cy}" r="${DOT}"/>` : `<circle class="off" cx="${cx}" cy="${cy}" r="${DOT - RING / 2}" stroke-width="${RING}"/>`;
+
+/** On a laptop: names left of the track, the days on one axis under it (as built on 13 Nov; unchanged). */
+function wideTimeline(rows: Row[]): string {
+  const { t0, t1 } = span(rows);
+  // The wide drawing shows at about 1.09x (860 wide in a ~940 px card). The dots sit inside a padded plot (PAD from the
+  // track's ends, more on the right for the last day's label), so none touches an edge; every dot and its day's label sit
+  // on that day's gridline, the same x.
+  const W = 860, L = 200, R = 8, TOP = 8, ROW = 30, H = TOP + rows.length * ROW + 34;
+  const x0 = L + 16, x1 = W - R - 28;
+  const x = (iso: string) => t1 === t0 ? x0 : Math.round(x0 + ((dayOf(iso) - t0) / (t1 - t0)) * (x1 - x0));
   const ticks = [...new Set(rows.map((r) => r.t.iso.slice(0, 10)))].sort();
   const grid = ticks.map((d) => `<line class="g" x1="${x(d)}" y1="${TOP}" x2="${x(d)}" y2="${TOP + rows.length * ROW}"/>`).join("");
-  const tickText = (d: string, i: number) => wide || i === 0 || i === ticks.length - 1 ? dayShort(`${d}T12:00:00Z`) : String(Number(d.slice(8, 10)));
-  const labels = ticks.map((d, i) => `<text class="ax" x="${x(d)}" y="${TOP + rows.length * ROW + 22}" text-anchor="middle">${esc(tickText(d, i))}</text>`).join("");
-  // One dot size: both reach DOT from their centre, a filled dot, or a ring whose stroke ends at the same radius.
-  // The wide drawing shows at about 1.09x (860 wide in a ~940 px card), the narrow one at 0.86 to 0.95x (340 wide on a
-  // 360 to 390 px phone): radii chosen so a dot is about 12 px across on screen in both, the size of the legend swatch.
-  const DOT = wide ? 5.5 : 6.5, RING = 2.5;
+  const labels = ticks.map((d) => `<text class="ax" x="${x(d)}" y="${TOP + rows.length * ROW + 22}" text-anchor="middle">${esc(dayShort(`${d}T12:00:00Z`))}</text>`).join("");
+  const DOT = 5.5;
   const marks = rows.map((r, i) => {
-    const y = TOP + i * ROW + (wide ? ROW / 2 : ROW - 10);
-    const name = wide ? `<text class="rl" x="${L - 12}" y="${y + 5}" text-anchor="end">${esc(r.t.name)}</text>` : `<text class="rl n" x="${L}" y="${y - 10}">${esc(r.t.name)}</text>`;
-    const dot = r.on ? `<circle class="on" cx="${x(r.t.iso)}" cy="${y}" r="${DOT}"/>` : `<circle class="off" cx="${x(r.t.iso)}" cy="${y}" r="${DOT - RING / 2}" stroke-width="${RING}"/>`;
-    return `<g><title>${esc(`${r.t.name}: ran live ${dayShort(r.t.iso)}${r.on ? ", in use" : ", not yet switched on"}`)}</title>${name}<line class="rr" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/>${dot}</g>`;
+    const y = TOP + i * ROW + ROW / 2;
+    return `<g>${rowTitle(r)}<text class="rl" x="${L - 12}" y="${y + 5}" text-anchor="end">${esc(r.t.name)}</text><line class="rr" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/>${dotSvg(r, x(r.t.iso), y, DOT)}</g>`;
   }).join("");
-  const id = `awtl-${layout}`;
-  return `<svg class="awtl ${layout}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="${id}"><title id="${id}">${esc(`When each Airwallex product ran live, ${dayShort(new Date(t0).toISOString())} to ${dayShort(new Date(t1).toISOString())}`)}</title>${grid}${marks}${labels}</svg>`;
+  return `<svg class="awtl wide" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="awtl-wide">${svgTitle("wide", t0, t1)}${grid}${marks}${labels}</svg>`;
+}
+
+/**
+ * On a phone (owner, 13 Nov, iPhone at 390 px: the names sat above their dot's row, so each dot read as the next name's;
+ * the first day's gridline ran through the names; the axis read "3 Nov · 7 · 10 · 12 Nov"): each name in its own left
+ * column, on the same line as its dot (both centred on the row); the gridlines only in the plot right of the names; and
+ * no squeezed axis: each dot carries its full date beside it ("12 Nov"), on a halo so a gridline never cuts it. Drawn 340
+ * wide, it shows at about 0.9x on a 360 to 390 px phone: names 12.5 px, a dot about 12 px across.
+ */
+function narrowTimeline(rows: Row[]): string {
+  const { t0, t1 } = span(rows);
+  const W = 340, NAMES = 146, TOP = 6, ROW = 30, H = TOP + rows.length * ROW + 6;
+  // The plot: from just right of the names to where the last day's date still fits right of its dot.
+  const DOT = 6.5, DATE_W = 40;
+  const x0 = NAMES + 14, x1 = W - 4 - DATE_W - DOT - 6;
+  const x = (iso: string) => t1 === t0 ? x0 : Math.round(x0 + ((dayOf(iso) - t0) / (t1 - t0)) * (x1 - x0));
+  const ticks = [...new Set(rows.map((r) => r.t.iso.slice(0, 10)))].sort();
+  const grid = ticks.map((d) => `<line class="g" x1="${x(d)}" y1="${TOP}" x2="${x(d)}" y2="${TOP + rows.length * ROW}"/>`).join("");
+  const marks = rows.map((r, i) => {
+    const y = TOP + i * ROW + ROW / 2, cx = x(r.t.iso);
+    return `<g>${rowTitle(r)}<text class="rl n" x="${NAMES - 6}" y="${y}" dominant-baseline="central" text-anchor="end">${esc(r.t.name)}</text><line class="rr" x1="${x0 - 8}" y1="${y}" x2="${W - 4}" y2="${y}"/>${dotSvg(r, cx, y, DOT)}<text class="dt" x="${cx + DOT + 5}" y="${y}" dominant-baseline="central">${esc(dayShort(r.t.iso))}</text></g>`;
+  }).join("");
+  return `<svg class="awtl narrow" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="awtl-narrow">${svgTitle("narrow", t0, t1)}${grid}${marks}</svg>`;
+}
+
+/** The legend of the time axis: only the marks a dot uses (13 Nov: "Built, not yet switched on" showed with no ring). */
+export function timelineKey(inUse: ProductTile[], flagged: ProductTile[]): string {
+  const items = [...(inUse.length ? [`<li><span class="sw on" aria-hidden="true"></span>In use</li>`] : []), ...(flagged.length ? [`<li><span class="sw off" aria-hidden="true"></span>Built, not yet switched on</li>`] : [])];
+  return `<ul class="awkey">${items.join("")}</ul>`;
 }
 
 export interface OnePayment { invoice: string; amount: number; need: number; free: number; fx: number; fxSell: string; feeMax: number; fee: number; status: string; paidAt: string }
@@ -139,7 +171,7 @@ export function visualsHtml(inUse: ProductTile[], flagged: ProductTile[]): strin
   const tl = timelineSvg(inUse, flagged), pay = paymentChart(), meters = metersHtml([...inUse, ...flagged]);
   return `${pathHtml(inUse, flagged)}
 <div class="awviz">
-${tl ? `<article class="awv card wide" data-rec="${esc(files([...inUse, ...flagged].map((t) => t.key)))}"><h2>When each product ran live</h2>${tl}${timelineSvg(inUse, flagged, "narrow")}<ul class="awkey"><li><span class="sw on" aria-hidden="true"></span>In use</li><li><span class="sw off" aria-hidden="true"></span>Built, not yet switched on</li></ul></article>` : ""}
+${tl ? `<article class="awv card wide" data-rec="${esc(files([...inUse, ...flagged].map((t) => t.key)))}"><h2>When each product ran live</h2>${tl}${timelineSvg(inUse, flagged, "narrow")}${timelineKey(inUse, flagged)}</article>` : ""}
 ${pay ? `<article class="awv card" data-rec="${AWX_RUN_FILE}"><h2>One payment, paid after Face ID</h2>${pay}</article>` : ""}
 ${meters ? `<article class="awv card" data-rec="${esc(files(["ledger", "payee-check"]))}"><h2>Checks that ran live</h2>${meters}</article>` : ""}
 </div>`;
@@ -175,6 +207,7 @@ export const VISUAL_CSS = `
 .awtl .g { stroke: var(--border); stroke-width: 1; } .awtl .rr { stroke: var(--sunken); stroke-width: 1; }
 .awtl .rl { fill: var(--text); font: 500 14px Inter, system-ui, sans-serif; } .awtl .rl.n { font-size: 12.5px; }
 .awtl .ax { fill: var(--muted); font: 600 13px Inter, system-ui, sans-serif; }
+.awtl .dt { fill: var(--muted); font: 600 12px Inter, system-ui, sans-serif; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
 .awtl circle.on { fill: var(--awx); } .awtl circle.off { fill: var(--surface); stroke: var(--awx); }
 .awtl line { shape-rendering: crispEdges; }
 .awpay .free { fill: color-mix(in srgb, var(--awx) 35%, var(--surface)); } .awpay .fx { fill: var(--awx); }

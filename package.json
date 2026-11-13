@@ -56,6 +56,7 @@
     "anchor": "tsx src/cli/anchor.ts",
     "verify-anchor": "tsx src/cli/verifyAnchor.ts",
     "e2e:live": "tsx src/cli/e2eLive.ts",
+    "alerts:live": "tsx scripts/approval-alert-live.ts",
     "passkey": "tsx src/cli/passkey.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
     "dashboard": "tsx src/cli/dashboard.ts",

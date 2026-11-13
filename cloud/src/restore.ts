@@ -16,7 +16,7 @@ export class RestoreRefused extends Error {}
  * or (awx_accounts) only the platform links an Airwallex account to a company, never an uploaded file, or (exports)
  * they point at parts that were not restored.
  */
-const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks", "awx_accounts", "exports"]);
+const NOT_RESTORED = new Set<Table>(["api_keys", "enrolments", "webhooks", "alert_targets", "awx_accounts", "exports"]);
 /** The bookkeeping tables: the target must hold none of these yet. */
 const BOOKS: Table[] = ["vendors", "invoices", "payments", "transactions", "documents", "ledger_entries", "audit_rows"];
 

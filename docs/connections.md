@@ -49,9 +49,12 @@ carry ids, amounts and days, never a supplier's or a person's name.
 
 ## Slack and Microsoft Teams (format)
 
-Purser posts to no chat service. A team that wants the events in chat relays its webhook (after checking the signature)
+A team that wants every event in chat relays its webhook (after checking the signature)
 to a Slack incoming webhook or a Teams workflow, with the message `chatMessage(event, "slack" | "teams")` in
 `cloud/src/connections.ts` builds. The buttons only open Purser Cloud; there is nothing to approve in chat.
+Approval alerts (docs/cloud.md, Approval alerts) post the same formats straight to a Slack or Teams incoming webhook an
+owner sets in Settings, Alerts, with the payee and why the payment waits added; built and tested with stand-ins, not
+yet sent live.
 
 Slack (Block Kit, for an incoming webhook):
 

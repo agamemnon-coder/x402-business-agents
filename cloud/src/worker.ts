@@ -15,6 +15,7 @@ import { sweepTry } from "./try/sweep.js";
 import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
+import { resendEmail, type AlertProviders } from "./alerts.js";
 import { forRequest } from "./hostOrigin.js";
 
 export interface Bindings {
@@ -59,6 +60,28 @@ export interface Bindings {
   AIRWALLEX_PARTNER_WEBHOOK_SECRET?: string;
   MONEYBIRD_OAUTH_CLIENT_ID?: string;
   MONEYBIRD_OAUTH_CLIENT_SECRET?: string;
+  /**
+   * Approval alerts (cloud/src/alerts.ts). WhatsApp through Twilio: the account SID and auth token (secrets) and the
+   * WhatsApp sender (the sandbox's number in a demo). E-mail through Resend: its API key (a secret) and the From address.
+   * Unset: those channels record no_provider; Slack, Teams and the signed webhook need nothing here.
+   * ALERTS_LIVE_MONEY "on" drops the [TEST MONEY] mark, for a company that pays with real money (none does yet).
+   */
+  TWILIO_ACCOUNT_SID?: string;
+  TWILIO_AUTH_TOKEN?: string;
+  TWILIO_WHATSAPP_FROM?: string;
+  RESEND_API_KEY?: string;
+  ALERT_EMAIL_FROM?: string;
+  ALERTS_LIVE_MONEY?: string;
+}
+
+/** What approval alerts are sent with: Twilio for WhatsApp and Resend for e-mail, each only when all its settings are there. */
+export function alertsOf(b: Bindings): AlertProviders {
+  const out = (url: string, init: RequestInit) => fetch(url, init);
+  return {
+    ...(b.TWILIO_ACCOUNT_SID && b.TWILIO_AUTH_TOKEN && b.TWILIO_WHATSAPP_FROM ? { twilio: { accountSid: b.TWILIO_ACCOUNT_SID, authToken: b.TWILIO_AUTH_TOKEN, whatsappFrom: b.TWILIO_WHATSAPP_FROM } } : {}),
+    ...(b.RESEND_API_KEY && b.ALERT_EMAIL_FROM ? { email: resendEmail({ apiKey: b.RESEND_API_KEY, from: b.ALERT_EMAIL_FROM }, out) } : {}),
+    testMoney: b.ALERTS_LIVE_MONEY !== "on",
+  };
 }
 
 /** The OAuth connection configuration, or none (the default: the /v1/connect routes answer 404). */
@@ -84,7 +107,7 @@ function envOf(b: Bindings): CloudEnv {
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}) } } : {}) } : {}),
-    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}) };
+    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b) };
 }
 
 export default {

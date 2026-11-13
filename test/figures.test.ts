@@ -77,7 +77,8 @@ function expected(): Record<string, string | string[]> {
     "card declines by Airwallex (TAP run and awx-1)": String(tapDeclines + (JSON.parse(read("docs/demo/airwallex-run.json")) as { declines_met: unknown[] }).declines_met.length),
     "signed checkouts (TAP run)": String(TAP.steps.length),
     "reference commit": TAP.reference.commit.slice(0, 7),
-    "decisions by Claude": `${byClaude}/${decisions}`,
+    // Since the judge run of 13 Nov, /proof's Claude card writes the count (no pass-rate fraction); /claude the ratio.
+    "decisions by Claude": [String(byClaude), `${byClaude}/${decisions}`],
     "calls, each with a request id": String(sum((a) => a.claude_calls)),
     "Claude calls, each with a request id": String(sum((a) => a.claude_calls)),
     "Face ID decisions by the CFO": String(faceIds),

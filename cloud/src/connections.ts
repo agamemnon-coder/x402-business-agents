@@ -4,7 +4,8 @@
 //              payment.paid (an invoice became paid), approval.needed (an invoice was filed for the CFO's Face ID),
 //              books.closed (a year-end closing entry reached the ledger). Ids, amounts and days only; never a name.
 //   chat       an event as a Slack (Block Kit) or Microsoft Teams (Adaptive Card) message: a FORMAT, for a team that
-//              relays its webhook into chat itself. Purser posts to no chat service.
+//              relays its webhook into chat itself; approval alerts (./alerts.ts) post the same formats to a Slack or
+//              Teams incoming webhook an owner sets.
 //   csv        supplier invoices and ledger journals as files Xero, QuickBooks Online and Exact Online import: FORMAT
 //              EXPORTS, built from each product's published import columns (read 13 Nov), not live integrations.
 
@@ -49,7 +50,12 @@ export async function eventsOf(db: TenantDb, batch: SyncBatch, before: Map<strin
 
 const WORDS: Record<BusinessEvent["type"], (d: Record<string, string>) => { title: string; text: string; button: string; url: string }> = {
   "payment.paid": (d) => ({ title: "Payment paid", text: `Invoice ${d.invoice_id} was paid: ${d.currency} ${d.amount}${d.proposal_id ? ` (approved by the CFO as ${d.proposal_id})` : ""}.`, button: "Open in Purser", url: d.link ?? "" }),
-  "approval.needed": (d) => ({ title: "Waiting for the CFO's Face ID", text: `Invoice ${d.invoice_id}, ${d.currency} ${d.amount}, due ${d.due_date}, waits for the CFO's approval. Only the CFO approves, in Purser Cloud, with Face ID.`, button: "Review in Purser Cloud", url: d.approve_in ?? "" }),
+  // An approval alert (./alerts.ts) adds the payee and why it waits; the signed webhook's event carries neither (no names).
+  "approval.needed": (d) => ({ title: `${d.test_money ? "[TEST MONEY] " : ""}Waiting for the CFO's Face ID`,
+    text: d.payee
+      ? `${d.currency} ${d.amount} to ${d.payee} (invoice ${d.invoice_id}${d.due_date ? `, due ${d.due_date}` : ""}) waits for the CFO's approval. Why: ${d.why ?? ""} This message cannot approve anything: only the CFO's passkey (Face ID), in Purser Cloud, can.`
+      : `Invoice ${d.invoice_id}, ${d.currency} ${d.amount}, due ${d.due_date}, waits for the CFO's approval. Only the CFO approves, in Purser Cloud, with Face ID.`,
+    button: "Review in Purser Cloud", url: d.approve_in ?? "" }),
   "books.closed": (d) => ({ title: `Books closed for ${d.year}`, text: `The year-end closing entry for ${d.year} is in the ledger (entry ${d.entry_id}, ${d.posting_date}).`, button: "Open the books", url: d.link ?? "" }),
 };
 
@@ -149,7 +155,8 @@ export function connectionsCatalogue(origin: string): { rule: string; connection
       { name: "MCP server (Connect any AI)", kind: "live", direction: "read", where: `${origin}/mcp`, what: "Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf and any MCP client read the books: 14 read tools, resources, prompts. OAuth 2.1 or a connector token." },
       { name: "Read API (REST) and its OpenAPI", kind: "live", direction: "read", where: `${origin}/v1/openapi.read.json`, what: "Invoices, documents, suppliers, payments, the transactions register, the ledger and its reports, for a read-scoped key." },
       { name: "Webhooks", kind: "live", direction: "notify", where: `${origin}/v1/webhook`, what: `Signed POSTs (x-purser-signature: t=<seconds>,v1=<HMAC-SHA256 of t.body>) for ${BUSINESS_EVENTS.join(", ")}, the runner's alerts and security events.` },
-      { name: "Slack and Microsoft Teams messages", kind: "format export", direction: "notify", where: "docs/connections.md", what: "Each webhook event as a Slack Block Kit or Teams Adaptive Card message, for a team that relays the webhook into chat. Purser posts to no chat service." },
+      { name: "Slack and Microsoft Teams messages", kind: "format export", direction: "notify", where: "docs/connections.md", what: "Each webhook event as a Slack Block Kit or Teams Adaptive Card message, for a team that relays the webhook into chat." },
+      { name: "Approval alerts (WhatsApp, e-mail, Slack, Teams)", kind: "built, not tested live", direction: "notify", where: `${origin}/v1/alerts`, what: "When a payment waits for the CFO's Face ID: the amount, the payee, why and a link to Purser Cloud, by WhatsApp (Twilio), e-mail (Resend), or a Slack or Teams incoming webhook an owner sets. Nothing in an alert approves. Tested with stand-ins; not yet sent live." },
       { name: "Xero", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/xero/bills`, what: "Bills and manual journals as CSV in Xero's import columns." },
       { name: "QuickBooks Online", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/quickbooks/bills`, what: "Bills as CSV with QuickBooks' required import columns." },
       { name: "Exact Online (CSV)", kind: "format export", direction: "export", where: `${origin}/v1/export/csv/exact/bills`, what: "Purchase entries (Inkoopboekingen) and journals (Memoriaalboekingen) as CSV in Exact's import template columns." },

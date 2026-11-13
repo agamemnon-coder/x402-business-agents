@@ -38,6 +38,8 @@ import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.j
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
+import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
+import { requireStepUp, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
@@ -64,6 +66,11 @@ export interface CloudEnv {
   outbound?: Outbound;
   /** The pause before a webhook's second and third attempt, times the attempt (default 500 ms). */
   retryDelayMs?: number;
+  /**
+   * What approval alerts are sent with (cloud/src/alerts.ts): Twilio for WhatsApp, an e-mail provider; Slack, Teams and
+   * the signed webhook need nothing more than `outbound`. Absent: those two channels record no_provider.
+   */
+  alerts?: AlertProviders;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
@@ -194,6 +201,12 @@ export const ROUTES: Route[] = [
     return json(200, { ...(await setWebhook(c.env.sql, c.caller!.tenantId, b.url, c.caller!.principal, c.now)), note: "the secret is shown once" });
   } },
   { method: "DELETE", path: "/v1/webhook", summary: "Remove the alert webhook.", need: "admin", run: async (c) => json(200, { removed: await removeWebhook(c.env.sql, c.caller!.tenantId) }) },
+  { method: "GET", path: "/v1/alerts", summary: "Approval alerts (Settings, Alerts): who hears that a payment waits for the CFO's Face ID and on which channel (WhatsApp, e-mail, Slack, Teams, the signed webhook), targets masked, and the latest deliveries with their status. An alert only tells; nothing in it approves.", need: "admin", run: async (c) => json(200, await alertSettings(c.env.sql, c.caller!.tenantId, c.env.alerts)) },
+  { method: "POST", path: "/v1/alerts/targets", summary: "Add an alert target: { channel: whatsapp | email | slack | teams, target } (a number like +31612345678, an address, or a Slack or Teams webhook URL). A signed-in owner after a fresh passkey check (step-up); never a key. Answers the target masked.", need: "admin", run: async (c) => {
+    const b = await body(c, NewTarget, 4_000);
+    return json(201, await addTarget(c.env.sql, c.caller!.tenantId, b, c.caller!.principal, c.now));
+  } },
+  { method: "DELETE", path: "/v1/alerts/targets/{id}", summary: "Remove an alert target (a signed-in owner after a fresh passkey check).", need: "admin", run: async (c) => json(200, await removeTarget(c.env.sql, c.caller!.tenantId, c.params[0]!, c.caller!.principal, c.now)) },
   { method: "GET", path: "/v1/airwallex/account", summary: "The company's Airwallex account opened through Purser as a platform: its id and onboarding status (created, pending, action_required, active, refused, dormant, closed); whether the cloud offers it at all.", need: "admin", run: async (c) =>
     json(200, { switched_on: Boolean(c.env.awxPlatform), account: c.env.awxPlatform ? await accountOf(c.env.sql, c.caller!.tenantId) : null }) },
   { method: "POST", path: "/v1/airwallex/account", summary: "Open the company's Airwallex account through Purser (a signed-in owner, who agreed to Airwallex's terms first). One per company.", need: "admin", run: async (c) => {
@@ -365,6 +378,18 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/auth/guest", summary: "Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail.", need: "public", run: async (c) => {
     return json(200, await guestSession(c.env.sql, c.env.blobs, c.env.sessionSecret, c.now));
   } },
+  { method: "POST", path: "/v1/auth/step-up/start", summary: "Start a fresh passkey check for sensitive settings (a signed-in person only): a one-time challenge for five minutes.", need: "read", run: async (c) => {
+    if (c.caller!.kind !== "session") return err(403, "a step-up is a signed-in person's passkey check; a key has none");
+    return json(200, await newChallenge(c.env.sql, c.caller!.tenantId, c.now));
+  } },
+  { method: "POST", path: "/v1/auth/step-up", summary: "Finish the passkey check: { challenge_id, credential_id, assertion } signed with the signed-in person's own passkey. Answers a step-up token for five minutes, bound to this session; send it as x-purser-step-up on sensitive settings.", need: "read", run: async (c) => {
+    const b = await body(c, z.object({ challenge_id: z.string().max(80), credential_id: z.string().max(400),
+      assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
+    await stepUpAssertion(c.env.sql, { caller: c.caller!, challengeId: b.challenge_id, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now });
+    const session = /^Bearer (\S+)$/.exec(c.req.headers.get("authorization") ?? "")?.[1] ?? "";
+    const up = await stepUpToken(c.env.sessionSecret, session, c.caller!, c.now);
+    return json(200, { step_up: up.token, expires_at: up.expires_at, expires_in: STEP_UP_TTL_MS / 1000, header: STEP_UP_HEADER });
+  } },
   { method: "POST", path: "/v1/auth/logout", summary: "Sign out: every session of the signed-in person ends.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(400, "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}");
     // The demo company's guests share one viewer: one guest signing out must not end the others' sessions.
@@ -443,7 +468,12 @@ export const ROUTES: Route[] = [
     const before = await statusesBefore(db(c), b);
     const head = (await syncState(db(c))).ledger.entry_id;
     const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
-    for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
+    // approval.needed also tells the people the company chose (Settings, Alerts) that a payment waits for the CFO's Face
+    // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
+    for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) {
+      if (e.type === "approval.needed") await dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data);
+      else await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
+    }
     return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
@@ -706,6 +736,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
           || (req.method === "POST" && hit.r.path === "/v1/users/{id}/enrolment" && hit.p![0] === caller.user);
         if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
       }
+      // Sensitive settings need a fresh passkey check of the signed-in person (cloud/src/stepUp.ts).
+      await requireStepUp(env.sessionSecret, `${req.method} ${hit.r.path}`, req, caller, now);
       // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
       const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
       // The demo company's guests share one viewer: each network gets its own bucket, so one busy room never locks out the rest.
@@ -728,6 +760,8 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       if (e.status === 401 && url.pathname === "/mcp") r.headers.set("www-authenticate", mcpChallenge(env.origin));
       return r;
     }
+    if (e instanceof StepUpRequired) return json(403, { error: e.message, code: e.code });
+    if (e instanceof AlertRefused) return err(e.status, e.message);
     if (e instanceof SyncRefused) return err(e.status, e.message);
     if (e instanceof BadRequest) return err(400, e.message);
     if (e instanceof PrivacyRefused) return err(409, e.message);
@@ -761,6 +795,7 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       ...(params.length ? { parameters: params } : {}),
       security: r.need === "public" ? [] : r.need === "platform" ? [{ platformAdmin: [] }] : [{ bearer: [r.need] }],
       "x-purser-needs": r.need,
+      ...(STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": SESSION_ONLY_ROUTES.has(`${r.method} ${r.path}`) ? "a signed-in owner, passkey checked in the last five minutes" : "a session: passkey checked in the last five minutes" } : {}),
       responses: { 200: { description: "OK" }, 400: ERROR("A request that does not fit"), 401: ERROR("Not signed in"), 403: ERROR("Not allowed"), 404: ERROR("Not found (also: another company's object)"), 429: ERROR("Rate limited") },
     };
   }
@@ -770,7 +805,7 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       ? { title: "Purser Cloud read API", version: "1.0.0", description: "The read-only part of Purser Cloud's API: invoices, documents, suppliers, payments, the transactions register, the ledger, its reports and the accounting exports. Every route is a GET a read-scoped key may call; none moves money, approves or writes." }
       : { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
-    components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: Object.values(CODES), description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
+    components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: [...Object.values(CODES), "step_up_required"], description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,
   };
 }
