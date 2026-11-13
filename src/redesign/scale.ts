@@ -112,6 +112,13 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   return out;
 }
 
+/**
+ * Home's "On record" band (judge panel, 13 Nov: six figures read as number soup): the three strongest, each with its
+ * link: the tests CI runs, the live runs and the refusals on record. /proof's strip keeps every figure.
+ */
+const HOME_SCALE: readonly string[] = ["tests passing", "sandbox and testnet runs", "refusals on record"];
+export const homeScaleStats = (stats: ScaleStat[] = scaleStats()): ScaleStat[] => stats.filter((s) => HOME_SCALE.includes(s.label));
+
 const fmt = (n: number) => n.toLocaleString("en-GB");
 
 /** The band: big figures that count up when in view (src/redesign/stats.ts COUNT_JS), each a link to its source. */

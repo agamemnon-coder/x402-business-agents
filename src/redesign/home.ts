@@ -17,7 +17,7 @@ import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml } from "./heroFlow.js";
 import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
-import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
+import { homeScaleStats, SCALE_CSS, scaleBandHtml } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 
@@ -347,7 +347,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
-  ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
+  ${scaleBandHtml(homeScaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
