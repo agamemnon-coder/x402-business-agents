@@ -717,7 +717,9 @@ export function runsStrip(live: RunRow[]): string {
   const dots = [...live].sort((a, b) => a.iso.localeCompare(b.iso)).map((r) => {
     const d = dayOf(r), n = stack.get(d) ?? 0;
     stack.set(d, n + 1);
-    return `<a href="#${esc(r.key)}"><title>${esc(`${r.date}: ${nameOf(r)}`)}</title><circle class="rd k-${kindOf(r)}" cx="${x(d)}" cy="${BASE - 18 - n * STEP}" r="8"/></a>`;
+    // A picture, not links (13 Nov): inside role="img" a link reaches no screen reader, and on a phone each dot is a few
+    // pixels wide, far under a thumb. The entries right below link to every run; each dot names its run on hover.
+    return `<g class="rg"><title>${esc(`${r.date}: ${nameOf(r)}`)}</title><circle class="rd k-${kindOf(r)}" cx="${x(d)}" cy="${BASE - 18 - n * STEP}" r="8"/></g>`;
   });
   const top = Math.min(...[...stack.values()].map((n) => BASE - 18 - (n - 1) * STEP)) - 14;
   const label = (d: string, anchor: string, xx: number) => `<text x="${xx}" y="${BASE + 22}" text-anchor="${anchor}">${esc(day(`${d}T12:00:00Z`).replace(/ \d{4}$/, ""))}</text>`;
@@ -728,10 +730,10 @@ const STRIP_CSS = `.runsp .rstrip { display: block; width: 100%; max-width: 760p
 .runsp .rstrip text { fill: var(--muted); font: 600 22px Inter, system-ui, sans-serif; }
 .runsp .rstrip .rd { fill: var(--accent); stroke: var(--surface); stroke-width: 3; }
 .runsp .rstrip .rd.k-testnet { fill: var(--metal); } .runsp .rstrip .rd.k-sandbox { fill: var(--awx); } .runsp .rstrip .rd.k-nothing { fill: var(--muted); }
-.runsp .rstrip a:hover .rd, .runsp .rstrip a:focus-visible .rd { stroke: var(--text); }
+.runsp .rstrip .rg:hover .rd { stroke: var(--text); }
 @media (prefers-reduced-motion: no-preference) {
   .runsp .rstrip .rd { animation: rd-in .4s ease-out both; transform-box: fill-box; transform-origin: center; }
-${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip a:nth-of-type(${i + 1}) .rd { animation-delay: ${(i * 0.05).toFixed(2)}s; }`).join("\n")}
+${Array.from({ length: 30 }, (_, i) => `  .runsp .rstrip .rg:nth-of-type(${i + 1}) .rd { animation-delay: ${(i * 0.05).toFixed(2)}s; }`).join("\n")}
 }
 @keyframes rd-in { from { opacity: 0; transform: translateY(14px) scale(.6); } to { opacity: 1; transform: none; } }`;
 

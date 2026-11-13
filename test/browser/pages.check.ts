@@ -7,10 +7,12 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { REASSURE } from "../../src/redesign/home.js";
-import { TRY_URL } from "../../src/redesign/ui.js";
+import { pageTitle, TRY_URL } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
+import { vic3Run, visaSummary } from "../../src/redesign/vic3Run.js";
+import { statusPage } from "../../src/redesign/status.js";
 import { AWX_PAGE_LABEL } from "../../src/redesign/airwallexProducts.js";
 import { MORE_LABEL, moreLinks } from "../../src/ui/more.js";
 import { agentTools } from "../../src/redesign/docs.js";
@@ -64,6 +66,24 @@ const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
+
+/**
+ * The summary pages (/proof, /runs and /visa since the jury pass of 13 Nov): its cards on top, then one closed fold with
+ * every detail. Checks that, then opens the fold by its summary as a reader does, so the page's own checks read inside.
+ */
+async function openDetails(page: Page, name: string, cards: number): Promise<void> {
+  const s = await page.evaluate(`({ cards: (document.querySelector("main ul.sumc") || { children: [] }).children.length, folds: [...document.querySelectorAll("main details.sumd")].map((d) => d.open) })`) as { cards: number; folds: boolean[] };
+  if (s.cards !== cards || s.folds.length !== 1 || s.folds[0]) fail(`${name}: not ${cards} cards over one closed fold of the details (${JSON.stringify(s)})`);
+  for (const sum of await page.locator("main details.sumd:not([open]) > summary").all()) await sum.click();
+  if (await page.locator("main details.sumd:not([open])").count()) fail(`${name}: the details' fold does not open from its summary`);
+}
+
+/**
+ * /status's word budget in a state the page read from /health: 90 words as served (test/saas-status-docs.test.ts), plus
+ * the words of the answer the script wrote into its "now" card in place of the served placeholders, and only those.
+ */
+const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -440,6 +460,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const res = await page.goto(`${base}${path}`, { waitUntil: "load" });
       if (!res || res.status() !== 200) { fail(`${path} ${tag}: status ${res?.status()}`); continue; }
       await look(page, `${path} ${tag}`, w);
+      if (path === "/runs") await openDetails(page, `/runs ${tag}`, 4);
       const t = await page.evaluate(() => document.body.innerText);
       if (path === "/runs" && !/Last live run: \d{1,2} \w{3} \d{4}/.test(t)) fail(`/runs ${tag}: no "Last live run" date`);
       // On a phone every id and its label can be read in full in its entry (review 12 Nov, DC-2): with every fold open, no
@@ -457,32 +478,38 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           return out;
         })`) as string[];
         for (const c of cut) fail(`/runs ${tag}: ${c}`);
-        await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = false; })`);
+        // Closed again as they were, but for the details' fold, which a reader opened (openDetails above).
+        await page.evaluate(`document.querySelectorAll("main details:not(.sumd)").forEach((d) => { d.open = false; })`);
       }
       // /runs as a timeline (jury, 12 Nov): filters that keep the newest run, by Tab and Enter too; the rehearsals closed
       // and opened by their summary or a link to one of them; 44 px tap targets and a short page on a phone.
       if (path === "/runs" && (w === 390 || w === 1440)) {
         // As strings: tsx would wrap named functions in a helper the page does not have.
-        const rowsNow = async () => page.evaluate(`[...document.querySelectorAll("ol.tl > li.run")].filter((li) => !li.closest("details")).map((li) => ({ key: li.id, cls: li.className.split(" "), shown: !!li.offsetParent }))`) as Promise<{ key: string; cls: string[]; shown: boolean }[]>;
+        const rowsNow = async () => page.evaluate(`[...document.querySelectorAll("ol.tl > li.run")].filter((li) => !li.closest("details:not(.sumd)")).map((li) => ({ key: li.id, cls: li.className.split(" "), shown: !!li.offsetParent }))`) as Promise<{ key: string; cls: string[]; shown: boolean }[]>;
         const small = async () => page.evaluate(`[...document.querySelector("main").querySelectorAll("a, button, summary")].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && e.checkVisibility({ visibilityProperty: true }); }).filter((e) => e.getBoundingClientRect().height < 44).map((e) => Math.round(e.getBoundingClientRect().height) + "px " + (e.getAttribute("aria-label") || e.textContent || "").trim().slice(0, 30))`) as Promise<string[]>;
         const live = await rowsNow();
         const newest = live[0];
         if (!newest || !newest.cls.includes("newest") || live.filter((r) => r.cls.includes("newest")).length !== 1) fail(`/runs ${tag}: the first live run is not the one marked newest`);
         if (live.some((r) => !r.shown)) fail(`/runs ${tag}: not every live run shows on load`);
-        if (await page.evaluate(`document.querySelector("details.rehs").open`)) fail(`/runs ${tag}: the rehearsals group is open on load`);
+        // Two groups since 13 Nov: the partial runs (#partial), then the rehearsals (#rehearsals); both closed on load.
+        if (await page.evaluate(`[...document.querySelectorAll("details.rehs")].some((d) => d.open)`)) fail(`/runs ${tag}: the partial runs or the rehearsals are open on load`);
         if (w === 390) {
           // Per entry and for the frame around the entries, not for the whole page (review 12 Nov, DC-5: a page pin of 2,700 px
           // went red at the next row added). As built after the review: entries 193 to 263 px, the frame 418 px (the page
           // 2,657 px; 5,386 before the timeline). The frame's pin leaves room for one more line of filters.
-          const m = await page.evaluate(`(() => { const main = document.querySelector("main"); const lis = [...main.querySelectorAll(":scope > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
+          // Since the jury pass (13 Nov) the entries are in the details' fold under four cards: the cards are measured apart.
+          const m = await page.evaluate(`(() => { const main = document.querySelector("main"), cards = main.querySelector("ul.sumc"); const lis = [...main.querySelectorAll("details.sumd > ol.tl > li.run")]; const hs = lis.map((li) => ({ key: li.id, h: li.getBoundingClientRect().height })); return { entries: hs, frame: main.getBoundingClientRect().height - hs.reduce((n, x) => n + x.h, 0) - (cards ? cards.getBoundingClientRect().height : 0) }; })()`) as { entries: { key: string; h: number }[]; frame: number };
+          if (!m.entries.length) fail(`/runs ${tag}: no entries found to measure in the details' fold`);
           for (const e of m.entries.filter((x) => x.h > 270)) fail(`/runs ${tag}: the entry ${e.key} is ${Math.round(e.h)}px tall with its fold closed (at most 270)`);
           // +14 px, 12 Nov wire-in: the one "Face ID to paid" line, a 44 px tap target (master list 81); +100 px, 12 Nov
           // (owner: "showing works better"): the strip of the live runs under the heading.
-          if (m.frame > 584) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 584)`);
+          // 770 since the jury pass (13 Nov): the details' fold's own line and the partial runs' line (718 px as built),
+          // with the same room for one more line of filters; the four cards are measured apart.
+          if (m.frame > 770) fail(`/runs ${tag}: the frame around the entries (heading, line, filters, closed groups, last links) is ${Math.round(m.frame)}px tall (at most 770)`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, folds closed: ${s}`);
           await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = true; })`);
           for (const s of await small()) fail(`/runs ${tag}: a tap target under 44px, every fold open: ${s}`);
-          await page.evaluate(`document.querySelectorAll("main details").forEach((d) => { d.open = false; })`);
+          await page.evaluate(`document.querySelectorAll("main details:not(.sumd)").forEach((d) => { d.open = false; })`);
         }
         const filters = await page.$$eval("nav.flt a", (els) => els.map((a) => (a.getAttribute("href") ?? "").slice(1)));
         if (filters[0] !== "all" || filters.length < 5) fail(`/runs ${tag}: the filters are not All and the partners (${filters.join(", ")})`);
@@ -492,9 +519,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           // page's CSP allows (waitForFunction evaluates a string in the page, which its CSP refuses as eval).
           for (let i = 0; i < 40 && !(await page.evaluate(`location.hash === "#${id}" && document.querySelector('nav.flt a[href="#${id}"]').getAttribute("aria-current") === "true"`)); i++) await page.waitForTimeout(50);
           const seen = await rowsNow();
-          const wrong = seen.filter((r) => r.shown !== (r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
+          // A filter hides the newest run too when it is not of that filter (review 12 Nov; test/runs-page.test.ts).
+          const wrong = seen.filter((r) => r.shown !== r.cls.includes(`f-${id}`));
           if (wrong.length) fail(`/runs#${id} ${tag}: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
-          if (!seen[0]?.shown) fail(`/runs#${id} ${tag}: the newest run is hidden`);
           if (!seen.some((r) => r.shown && r.cls.includes(`f-${id}`))) fail(`/runs#${id} ${tag}: no run left`);
           if (await page.getAttribute(`nav.flt a[href="#${id}"]`, "aria-current") !== "true") fail(`/runs#${id} ${tag}: the active filter is not marked`);
         }
@@ -518,7 +545,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           await page.keyboard.press("Enter");
           await page.waitForTimeout(100);
           const seen = await rowsNow();
-          if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== (r.cls.includes("f-metal") || r.cls.includes("newest")))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
+          if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== r.cls.includes("f-metal"))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
           // The next Tab goes on after the activated filter, not back to "All" (review 12 Nov, DC-6).
           await page.keyboard.press("Tab");
           const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#metal"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
@@ -526,14 +553,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         }
         // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
         await page.goto(`${base}/runs`, { waitUntil: "load" });
-        await page.click("details.rehs > summary");
-        if (!(await page.evaluate(`document.querySelector("details.rehs").open`)) || !(await page.isVisible("#agent-1"))) fail(`/runs ${tag}: the rehearsals do not open by their summary`);
+        await page.click("main details.sumd > summary");
+        await page.click("#rehearsals > summary");
+        if (!(await page.evaluate(`document.getElementById("rehearsals").open`)) || !(await page.isVisible("#agent-1"))) fail(`/runs ${tag}: the rehearsals do not open by their summary`);
         await page.goto("about:blank");
         await page.goto(`${base}/runs#agent-1`, { waitUntil: "load" });
         await page.waitForTimeout(200);
-        const at = await page.evaluate(`(() => { const r = document.getElementById("agent-1").getBoundingClientRect(); return { open: document.querySelector("details.rehs").open, top: r.top, h: innerHeight }; })()`) as { open: boolean; top: number; h: number };
+        const at = await page.evaluate(`(() => { const r = document.getElementById("agent-1").getBoundingClientRect(); return { open: document.getElementById("rehearsals").open, top: r.top, h: innerHeight }; })()`) as { open: boolean; top: number; h: number };
         if (!at.open || at.top < 0 || at.top > at.h - 60) fail(`/runs#agent-1 ${tag}: the rehearsal is not opened and in view (${JSON.stringify(at)})`);
-        // Without JavaScript the filters still work (they are links and CSS) and keep the newest run.
+        // Without JavaScript the filters still work (they are links and CSS; a filter's link opens the details' fold, as the
+        // browser opens a fold around the target of a link).
         if (scheme === "light") {
           const off = await browser.newContext({ viewport: { width: w, height: h }, javaScriptEnabled: false });
           const p2 = await off.newPage();
@@ -541,11 +570,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
             await p2.goto(`${base}/runs#${id}`, { waitUntil: "load" });
             const keys = live.map((r) => r.key);
             const shown = await Promise.all(keys.map((k) => p2.isVisible(`li.run#${k}`)));
-            const wrong = live.filter((r, i) => shown[i] !== (id === "all" || r.cls.includes(`f-${id}`) || r.cls.includes("newest")));
+            const wrong = live.filter((r, i) => shown[i] !== (id === "all" || r.cls.includes(`f-${id}`)));
             if (wrong.length) fail(`/runs#${id} ${tag}, JavaScript off: shows or hides the wrong runs (${wrong.map((r) => r.key).join(", ")})`);
           }
           // Without the script a tap lands on the filter row (its anchors sit at it), in view under the header, not at the top.
           await p2.goto(`${base}/runs`, { waitUntil: "load" });
+          // The details' fold opens by its summary without a script, as any <details> does.
+          await p2.click("main details.sumd > summary");
           await p2.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
           await p2.click('nav.flt a[href="#metal"]');
           await p2.waitForTimeout(150);
@@ -618,11 +649,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /visa opens with VIC (12 Nov): at most one screen of text before the first proof, so the drawing (purchase B's
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
-        // Since 12 Nov the first proof is the latest live run's card (vic-3, with its ids), above the 7 Nov drawing.
-        const top = await page.evaluate(() => Math.round(((document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        // Since the jury pass (13 Nov) the first proof is the latest run's cards, over the fold that holds the rest.
+        const top = await page.evaluate(() => Math.round((document.querySelector("main ul.sumc")?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
         if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
+      // /visa since the jury pass (13 Nov): its details are in one fold under the cards; read with that fold open.
+      let pd = pt;
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
       const strip = await page.locator("footer .builton").innerText().catch(() => "");
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
@@ -656,22 +689,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
       // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
       if (path === "/visa") {
+        await openDetails(page, `/visa ${tag}`, visaSummary(vic3Run()!).length);
+        // The Airi run of 7 Nov, the first Visa run, is in its own fold inside since 13 Nov: opened by its summary too.
+        if (await page.locator("#visa-first-run:not([open]) > summary").count()) await page.locator("#visa-first-run > summary").click();
+        pd = await page.evaluate(() => document.body.innerText);
         const c = await page.evaluate(`(() => {
           const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
           const main = document.querySelector("main"), last = [...main.querySelectorAll("details")].pop();
           const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
           return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? main.innerText.split(sum.innerText).pop().trim() : "?",
-            title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => li.offsetParent !== null && !li.closest("details")).length,
+            title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => li.offsetParent !== null && !li.closest("details:not(.sumd)")).length,
             amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
         })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
-        if (c.title !== VISA_TITLE) fail(`/visa ${tag}: the title is "${c.title}"`);
+        if (c.title !== pageTitle(VISA_TITLE)) fail(`/visa ${tag}: the title is "${c.title}"`);
         if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
         if ((pt.match(/\bTAP\b|Trusted Agent Protocol/g) ?? []).length !== 1 || !pt.includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: TAP is named outside the closed fold's own line`);
         if (!(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
         if (!pt.includes(VISA_ENTRY_LINE) || (!iccRecordIn() && !pt.includes(VISA_ICC_LINE)) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
         if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts in sight under the drawing, not five`);
         if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
-        if (!/A scripted run, no Claude call/.test(pt) || /Agents paid with a single-use Visa|three live runs/.test(pt)) fail(`/visa ${tag}: the run is not called scripted`);
+        if (!/A scripted run, no Claude call/.test(pd) || /Agents paid with a single-use Visa|three live runs/.test(pd)) fail(`/visa ${tag}: the run is not called scripted`);
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
       // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
@@ -713,11 +750,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // 5 of 5 checks (a link to the run log's checks) in sight, every step and id in its "Details" fold; never an Airi
       // link or a card number.
       // On /airwallex the whole block sits in a fold since 12 Nov (the Airi tile leads to it): there it is read with the folds open.
-      const airiText = path === "/airwallex" ? open : pt;
+      const airiText = path === "/airwallex" ? open : pd;
       if (path === "/airwallex" && /Visa Intelligent Commerce via Airwallex's Airi: a live run/.test(pt)) fail(`/airwallex ${tag}: the Airi run's block is in sight, not in its fold`);
       if ((path === "/airwallex" || path === "/visa") && (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airiText)
         || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser/.test(airiText) || !/5 of 5 checks pass/.test(airiText)
-        || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pt)
+        || (await page.locator('#airi-run a[href$="2026-11-07-vic-1.md#checks-the-records-checks"]').count()) !== 1 || /int_sgpvzc9hjhnxvpblt2r/.test(pd)
         || !/single-use card credential from Airwallex's Airi wallet[\s\S]*int_sgpvzc9hjhnxvpblt2r[\s\S]*P-0002[\s\S]*int_sgpvzc9hjhnxvxc26ie[\s\S]*PURSER_MERCHANT_NOT_ALLOWED/.test(open)
         || /airi\.com\/|\b\d{13,19}\b/.test(open))) fail(`${path} ${tag}: the Airi run is not shown, dated and labelled, with its badges, checks and steps`);
       // On /visa above the TAP fold: the block before the fold's own flow.
@@ -784,6 +821,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
       await page.goto(`${base}/proof`, { waitUntil: "load" });
+      // The guarantees are in the details' fold under the cards since 13 Nov: opened first, by its summary.
+      await page.locator("main details.sumd > summary").click();
       await page.locator("#g-terms details > summary").click();
       await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
       await page.waitForURL(/\/security#unavailable$/);
@@ -809,10 +848,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/docs" ? 200 : 90;
+      const budget = path === "/docs" ? 210 /* +10, review of 12 Nov (test/saas-status-docs.test.ts) */ : 90;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
-      if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
+      // /status left the menu and the footer on 12 Nov (owner; src/ui/more.ts) and still answers: nothing in the menu is marked there.
+      if (path === "/status" ? here.more || here.link !== null || here.tabs : !here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: ${path === "/status" ? "the menu marks a place for /status, which is off the menu" : '"More" and the page\'s own link are not marked as where the reader is'} (${JSON.stringify(here)})`);
       const small = await page.evaluate(`[...document.querySelectorAll("main .card *, main .lead")].filter((e) => (e.offsetParent || getComputedStyle(e).position === "fixed") && [...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && parseFloat(getComputedStyle(e).fontSize) < 14).map((e) => (e.textContent || "").trim().slice(0, 30))`) as string[];
       for (const t of small.slice(0, 5)) fail(`${path} ${tag}: text under 14 px: ${t}`);
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
@@ -847,8 +887,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
-      const quietWords = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-      if (quietWords > 90) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget 90`);
+      // The quiet state adds the words of the answer it read (dashes become "Up", "Off between runs", ...), and only those.
+      const quietWords = wordsOf(await page.locator("main").innerText()), quietBudget = statusBudget(now);
+      if (quietWords > quietBudget) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget ${quietBudget} (90 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
       // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
       const broken = await context.newPage();
@@ -893,7 +934,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (words > 380 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 380 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
-      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Face value divided by 100\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
+      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
       // The page's folds only: "More" in the menu is a <details> too (12 Nov) and stays closed, as a reader leaves it.
@@ -917,16 +958,18 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { h: number; t: string }[];
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
-        return { guarantees: top(document.getElementById("guarantees")), fold: top(document.querySelector("main details.deep")), next: h1 && h1.nextElementSibling ? h1.nextElementSibling.id : "", open: document.querySelectorAll("main details[open]").length };
-      })()`)) as { guarantees: number; fold: number; next: string; open: number };
-      if (first.next !== "guarantees" || first.open) fail(`/proof ${tag}: "What Purser guarantees" is not directly under the heading (${first.next || "something else"} is), or a fold is open on load (${first.open})`);
+        const sumc = document.querySelector("main ul.sumc"), fold = document.querySelector("main details.sumd");
+        return { cards: top(sumc), fold: top(fold), next: h1 && h1.nextElementSibling ? h1.nextElementSibling.className : "", inFold: !!fold && fold.contains(document.getElementById("guarantees")), open: document.querySelectorAll("main details[open]").length };
+      })()`)) as { cards: number; fold: number; next: string; inFold: boolean; open: number };
+      // Since the jury pass (13 Nov): four cards right under the heading, then one closed fold that opens on "What Purser
+      // guarantees" (test/guarantees.test.ts, test/proof-first.test.ts).
+      if (first.next !== "sumc" || !first.inFold || first.open) fail(`/proof ${tag}: not the four cards under the heading and the guarantees in the closed fold (${JSON.stringify(first)})`);
       if (w === 390) {
-        if (first.guarantees < 0 || first.guarantees >= 780) fail(`/proof ${tag}: the guarantees start at ${first.guarantees} px, not on the first screen (under 780 px)`);
-        // +200 px, 12 Nov (owner): the Visa and T:0 partner cards, a name and one line each (2,427 px as built at 390).
-        if (first.fold < 0 || first.fold > 2449) fail(`/proof ${tag}: the first closed line starts at ${first.fold} px, over 2,449 px (half of the 4,499 px before, plus the two cards)`);
+        if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
+        if (first.fold < 0 || first.fold >= 2 * 780) fail(`/proof ${tag}: the fold with every detail starts at ${first.fold} px, not within two screens`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
-        if (closed.length < 30) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
+        if (closed.length < 5) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight (four cards and the fold's line), the check is not looking at the page`);
       }
       await page.evaluate(() => document.querySelectorAll("main details").forEach((d) => { (d as HTMLDetailsElement).open = true; }));
       const over = (await page.evaluate(() => document.documentElement.scrollWidth)) - w;
@@ -942,6 +985,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The Airi run (7 Nov): behind the first closed line since 12 Nov (in sight under the partners before). Closed on
       // load; opened as a reader does, by its summary: the owner's copy, the badges, the checks, a link to its ids.
       if (await page.locator("#airi-run").isVisible()) fail(`/proof ${tag}: the Airi run is in sight before its line is opened`);
+      await openDetails(page, `/proof ${tag}`, 4);
       await page.locator("main details.deep > summary", { hasText: "Visa Intelligent Commerce via Airwallex's Airi" }).click();
       const airi = await page.locator("#airi-run").innerText().catch(() => "");
       if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*5 of 5 checks pass/.test(airi)
@@ -961,7 +1005,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const main = first && first.matches("ul.lead") ? [...first.querySelectorAll("a.c")] : [];
         const facts = fold ? fold.querySelectorAll(":scope > .facts .fact > b").length : 0;
         const inSight = main.length === 1 && main[0].getBoundingClientRect().height >= 20 && main[0].checkVisibility();
-        return { id: c.id, lead: inSight && facts >= 2 && facts <= 3 && !c.querySelector("img") && !!ul && !fold.open, claims: [...main, ...(ul ? ul.querySelectorAll("a.c") : [])].map((a) => a.textContent.trim()) };
+        // Its only picture is the partner's own mark in its head (12 Nov, on recorded permission: docs/evidence/logo-permissions.md).
+        const marks = c.querySelectorAll(":scope > .ph > .logo > img").length;
+        return { id: c.id, lead: inSight && facts >= 2 && facts <= 3 && c.querySelectorAll("img").length === marks && marks <= 1 && !!ul && !fold.open, claims: [...main, ...(ul ? ul.querySelectorAll("a.c") : [])].map((a) => a.textContent.trim()) };
       })`)) as { id: string; lead: boolean; claims: string[] }[];
       const want: Record<string, RegExp[]> = {
         airwallex: [/^The hash the CFO signed is in Airwallex's own record of the SWIFT payment$/, /^3 of 3 cards carry the CFO's policy$/],
@@ -976,7 +1022,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
       // 12 Nov (merge of #148 into #157): the footer link to /visa went from Proof too; Visa is a section of its own.
       if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
-      // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure.
+      // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure. Their figures
+      // count up when they come into view (inside the details' fold since 13 Nov): read once they have.
+      await page.locator(".nums").first().scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1500);
       const tiles = (await page.evaluate(`[...document.querySelectorAll(".nums a.num")].map((a) => ({ cls: a.className, v: a.querySelector(".v").textContent, parts: [...a.querySelectorAll(".parts b")].map((b) => Number(b.textContent)) }))`)) as { cls: string; v: string; parts: number[] }[];
       const stop = tiles.find((t) => / stop$/.test(t.cls));
       if (tiles.length !== 4 || !tiles.some((t) => / awx$/.test(t.cls) && /^\d+ of \d+$/.test(t.v)) || !stop || stop.parts.length < 2 || stop.parts.reduce((k, x) => k + x, 0) !== Number(/^\d+/.exec(stop.v)?.[0])) fail(`/proof ${tag}: not four tiles with Airwallex's figure, or the stops' parts do not sum to their figure (${JSON.stringify(tiles)})`);
@@ -1008,6 +1057,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // The first claim is the card's link in sight (12 Nov): followed without opening anything; the others in its fold.
       for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["3 of 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
+        // The partner cards are in the details' fold under the four cards since 13 Nov: opened first, by its summary.
+        await page.locator("main details.sumd > summary").click();
         if (inFold) await page.locator("#airwallex details.fold > summary").click();
         await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
         await page.waitForURL(new RegExp(`/airwallex#${id}$`));
@@ -1046,6 +1097,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(250);
       if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
+      // The tiles are in the details' fold since 13 Nov: opened first, by its summary.
+      await page.locator("main details.sumd > summary").click();
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);
       const s = await landed("stops");
@@ -1060,7 +1113,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         const head = document.querySelector("header.top").getBoundingClientRect().bottom, r = t.getBoundingClientRect();
         return { open: d.open, cards: [...d.querySelectorAll(".awcard")].filter((c) => c.getClientRects().length > 0 && c.getBoundingClientRect().height > 0).length, top: Math.round(r.top), head: Math.round(head), inView: r.top >= head - 2 && r.top < innerHeight / 2 };
       })()`)) as { open: boolean; cards: number; top: number; head: number; inView: boolean };
-      // The read-back sits in a fold on Proof (one flow, Max 7 Nov): open it as a reader does, by its summary.
+      // The read-back sits in a fold on Proof (one flow, Max 7 Nov), inside the details' fold since 13 Nov: open both as
+      // a reader does, by their summaries.
+      await page.locator("main details.sumd > summary").click();
       await page.locator("details.deep > summary", { hasText: "Airwallex, read back" }).click();
       const link = page.locator("a.open", { hasText: "Policy and card side by side" });
       if ((await link.getAttribute("href")) !== "airwallex#controls") fail(`/proof ${tag}: "Policy and card side by side" does not point at airwallex#controls`);
@@ -1115,7 +1170,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !["/judge", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico"].includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
       // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
-      if ((await page.locator("main a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
+      if ((await page.locator(".e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
       const top = page.locator('footer a.flink[href="judge"]');
       const box = await top.boundingBox();
       if ((await page.locator('a[href="judge"]').count()) !== 1 || (await top.innerText()).trim() !== "Judging? Take the 3-minute tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: no one "Judging? Take the 3-minute tour" link in the footer, inside the page's gutter`);
@@ -1208,8 +1263,8 @@ if (relay) {
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
-      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-      if (words > 90) fail(`/status live ${tag}: ${words} words in sight, budget 90`);
+      const words = wordsOf(await page.locator("main").innerText()), budget = statusBudget(now);
+      if (words > budget) fail(`/status live ${tag}: ${words} words in sight, budget ${budget} (90 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
       await context.close();
     }
