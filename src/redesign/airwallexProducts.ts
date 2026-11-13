@@ -542,8 +542,7 @@ export const FACEID_KEY = "awx-faceid-1";
 /** That run as a fold on /airwallex, in its row's words: held IN_APPROVAL, not PAID that day. */
 export function faceIdFoldHtml(row: RunRow | null | undefined): string {
   if (!row) return "";
-  const ids = row.ids.map((i) => liPlain(`${i.label}: ${i.value}`)).join("");
-  return foldHtml(`A payout approved with the owner's own Face ID (${dayShort(row.iso)})`, `<ul class="pl">${liPlain(row.what)}${liPlain(row.checks)}${ids}</ul><p class="src"><a class="pf" href="runs#${FACEID_KEY}">${esc("The run on /runs")}</a></p>`, ` id="faceid-run"`);
+  return foldHtml(`Approved with the owner's own Face ID (${dayShort(row.iso)})`, `<ul class="pl">${liPlain(row.line)}</ul><p class="src"><a class="pf" href="runs#${FACEID_KEY}">${esc("Every id on /runs")}</a></p>`, ` id="faceid-run"`);
 }
 
 /** /airwallex's body: the tiles first, the hash block under them, everything else folded. */

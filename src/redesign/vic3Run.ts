@@ -96,22 +96,6 @@ export function vic3Lead(r: Vic3Record): string {
 }
 
 /**
- * The run's own checks, counted from the record: "14 of 15 checks passed; the other (G paid) needed a tap in Airi that
- * did not go through, so nothing was charged". A failed check that is not a no-tap purchase is named as it is.
- */
-export function vic3Checks(r: Vic3Record): string {
-  const all = Object.entries(r.checks), failed = all.filter(([, c]) => !c.ok);
-  const line = `${all.length - failed.length} of ${all.length} checks passed`;
-  if (!failed.length) return line;
-  const noTap = new Set(r.purchases.filter((p) => codeOf(p) === "PURSER_NO_TAP").map((p) => p.step.toLowerCase()));
-  const said = failed.map(([k]) => {
-    const step = /^([a-z]\d?)_paid$/.exec(k)?.[1];
-    return step && noTap.has(step) ? `${step.toUpperCase()} paid: it needed a tap in Airi that did not go through, so nothing was charged` : k.replaceAll("_", " ");
-  });
-  return `${line}; ${failed.length === 1 ? "the other" : "the others"} (${said.join("; ")})`;
-}
-
-/**
  * The four cards at the top of /visa (jury pass, 13 Nov), from the record: the purchase paid after Face ID, those
  * Purser refused before any call, the one not tapped in Airi, and the signed hash read back at Airi and Airwallex.
  */
@@ -123,7 +107,7 @@ export function visaSummary(r: Vic3Record): SummaryCard[] {
     ...(lead?.request ? [{ icon: "scan-face", fig: String(s.paidFaceId.length), title: "Paid after Face ID", tone: "ok" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_RUN_ID}`, text: `Purchase ${lead.step}, ${lead.request.currency} ${lead.request.amount}, above the CFO's limit: paid only after the CFO's Face ID.` }] : []),
     ...(s.paidAlone.length ? [{ icon: "credit-card", fig: String(s.paidAlone.length), title: "Paid within the limit", tone: "ok" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${s.paidAlone.map((p) => `${p.step}, ${p.request?.currency} ${p.request?.amount}`).join("; ")}: within the CFO's limit, the agent alone; one tap in Airi.` }] : []),
     ...(s.byPurser.length ? [{ icon: "ban", fig: String(s.byPurser.length), title: "Refused by Purser", tone: "bad" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${s.byPurser.map((p) => p.step).join(", ")}: stopped before any call to Airi or Airwallex; nothing charged.${s.credentialRefused.length ? ` ${s.credentialRefused.map((p) => p.step).join(" and ")}: a credential reused, refused by Purser's credential check.` : ""}` }] : []),
-    ...(noTap.length ? [{ icon: "clock", fig: String(noTap.length), title: "Not tapped", tone: "bad" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${noTap.map((p) => p.step).join(", ")}: the cardholder did not confirm in Airi in time; nothing charged.` }] : []),
+    ...(noTap.length ? [{ icon: "clock", fig: String(noTap.length), title: "Not tapped", tone: "bad" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_PURCHASES_ID}`, text: `${noTap.map((p) => `${p.step} (${p.request?.currency} ${p.request?.amount})`).join(", ")}: not tapped; the tap in Airi did not come within the 5 minutes, so nothing was charged.` }] : []),
     ...(lead ? [{ icon: "file-check", fig: `${equal} of 2`, title: "Signed hash read back", tone: "ok" as const, rec: VIC3_RUN_FILE, href: `#${VIC3_RUN_ID}`, text: "The hash the CFO signed, equal in Airi's mandate and in Airwallex's PaymentIntent." }] : []),
   ];
 }
@@ -142,7 +126,7 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
   const lead = s.paidSteps[0];
   const short = (id: string) => (id.length > 18 ? `${id.slice(0, 16)}…` : id);
   const paidLine = `${paidOf(r).map((p) => `${p.step}: ${p.request?.currency} ${p.request?.amount}${p.proposal_id ? " after the CFO's Face ID" : ""}`).join("; ")}. ${s.paid} of ${s.of} purchases paid`;
-  const refusedLine = [s.byPurser.length ? `${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls` : "", ...s.other.map((p) => `${p.step}: ${codeOf(p) === "PURSER_NO_TAP" ? "the cardholder did not tap in time; nothing was charged" : `refused (${codeOf(p)})`}`)].filter(Boolean).join(". ");
+  const refusedLine = [s.byPurser.length ? `${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls` : "", ...s.other.map((p) => `${p.step}: ${codeOf(p) === "PURSER_NO_TAP" ? `not tapped: the tap in Airi did not come within the 5 minutes; nothing charged` : `refused (${codeOf(p)})`}`)].filter(Boolean).join(". ");
   const rows = r.purchases.map((p) => `<li><b>${esc(p.step)}</b> · ${esc(p.request ? `${p.request.currency} ${p.request.amount}` : "")} · ${esc(outcomeText(p))}${p.rail_choice?.request_id ? ` · ${esc(`rail chosen by ${p.rail_choice.by}, request ${p.rail_choice.request_id}`)}` : ""}${p.mandate_id ? ` · ${esc(`mandate ${p.mandate_id}`)}` : ""}${p.payment_intent_id ? ` · ${esc(`PaymentIntent ${p.payment_intent_id}`)}` : ""}${p.read_back.mandate ? ` · ${esc(`mandate read-back ${eq(p.read_back.mandate)}`)}` : ""}${p.read_back.payment_intent ? ` · ${esc(`PaymentIntent read-back ${eq(p.read_back.payment_intent)}`)}` : ""} · ${esc(`calls: Anthropic ${p.calls.anthropic}, Airwallex ${p.calls.airwallex}, Airi ${p.calls.airi}`)}</li>`).join("");
   const record = `${REPO_BLOB}${VIC3_RUN_FILE}`;
   // The purchases whose rail Claude chose (the others went straight to Purser's rules), from the record.
@@ -161,8 +145,7 @@ export function vic3RunHtml(r: Vic3Record | null = vic3Run(), o: { first?: strin
   ];
   return `<div class="card airi" id="${VIC3_RUN_ID}"><h2>${esc(`Latest live run, ${s.date}`)}</h2>
 ${o.summarised ? "" : `<p class="vlead">${esc(vic3Lead(r))}</p>
-${statsHtml(stats)}
-<p class="airi-finding">${esc(`${vic3Checks(r)}.`)}</p>`}
+${statsHtml(stats)}`}
 ${chosen.length ? `<p class="airi-finding">${esc(`Claude picked the Airi rail for each purchase it was asked about (${chosen.join(", ")}); Purser's code enforced the limit.`)}</p>` : ""}
 <p class="airi-finding">${esc(s.finding)}</p>
 <details class="fold" id="${VIC3_PURCHASES_ID}"><summary>${esc("Each purchase, with its ids")}</summary>

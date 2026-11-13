@@ -136,11 +136,11 @@ export function liveRuns(): RunRow[] {
   // 13 Nov: the owner's own iPhone Face ID opened Purser's lock on one Airwallex payout (awx-1 step f1 only;
   // docs/runs/2026-11-13-airwallex-faceid.md). Created once, held IN_APPROVAL by Airwallex; not taken to PAID that day.
   rows.push({
-    key: "awx-faceid-1", iso: "2026-11-13T05:44:43.000Z", date: day("2026-11-13T05:44:43.000Z"), kind: "sandbox",
+    key: "awx-faceid-1", iso: "2026-11-13T05:44:43.000Z", date: day("2026-11-13T05:44:43.000Z"), kind: "sandbox", partners: ["Airwallex", "Claude"],
     name: "A payout approved with the owner's own iPhone Face ID",
-    line: "The owner's Face ID on his own iPhone approved EUR 240.00; Airwallex holds it IN_APPROVAL. Not PAID yet.",
+    line: "The owner's Face ID, on the owner's own iPhone, approved EUR 240.00; Airwallex holds it IN_APPROVAL. Not PAID yet.",
     title: "Lock 1 opened by a person's real Face ID, not a test passkey", rails: "Airwallex sandbox (SWIFT transfer, approval workflow), the owner's iPhone passkey",
-    what: "Claude read invoice SLL-2026-11 (Stockline Data GmbH, EUR 240.00); proposal P-0001 opened. The owner enrolled a passkey on his own iPhone and approved P-0001 with Face ID. Only then did Purser create the SWIFT transfer at Airwallex, once. A read-back showed IN_APPROVAL: Airwallex's own approval workflow holds it for a person.",
+    what: "Claude read invoice SLL-2026-11 (Stockline Data GmbH, EUR 240.00); proposal P-0001 opened. The owner enrolled a passkey on the owner's own iPhone and approved P-0001 with Face ID. Only then did Purser create the SWIFT transfer at Airwallex, once. A read-back showed IN_APPROVAL: Airwallex's own approval workflow holds it for a person.",
     checks: "One create (POST /transfers/create), read back IN_APPROVAL. The step to PAID was not done that day: the pending approval was not found in the sandbox web app on the phone. The full two-lock path to PAID is the 12 Nov run. 15 Airwallex calls, within the budget of 25 the owner approved.", money: "Sandbox · test money",
     ids: [{ label: "Transfer", value: "d0353daf-515f-464f-bf8e-9fb99e6cca00" }, { label: "Purser proposal", value: "P-0001" }],
     files: [{ label: "run log", href: "../../docs/runs/2026-11-13-airwallex-faceid.md" }],
