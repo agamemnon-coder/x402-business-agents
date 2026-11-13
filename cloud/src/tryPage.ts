@@ -263,6 +263,42 @@ a.file .fn { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 ul.runs a { display: grid; padding: 8px 0; text-decoration: none; }
 ul.runs .rt { color: var(--text); font-weight: 600; }
 ul.runs .rd { font-size: 13px; color: var(--muted); }
+/* try-fixes, 13 Nov. Screen 5's blocks while they load: a skeleton each, never an empty space. */
+.blk.sk-blk { display: grid; gap: 10px; }
+.blk.sk-blk .sk { display: block; height: .95em; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.blk.sk-blk .w1 { width: 55%; } .blk.sk-blk .w2 { width: 80%; height: 1.8em; } .blk.sk-blk .w3 { width: 40%; }
+.cloudl { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cloudl .hint { margin-top: 6px; font-size: 13px; }
+.confirm { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--sunken); }
+.confirm .acts { margin-top: 8px; }
+/* The ledger: amounts right-aligned in tabular figures; the side's word only on a phone, where each line stacks. */
+table.lines td.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.lines .side { display: none; color: var(--muted); font-size: 12px; font-weight: 600; }
+@media (max-width: 560px) {
+  table.lines, table.lines tbody { display: block; width: 100%; }
+  table.lines thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.lines tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: baseline; border-top: 1px solid var(--border); }
+  table.lines tr:has(> td.en) { border-top: 0; }
+  table.lines td { border-top: 0; padding: 5px 0; }
+  table.lines td.en { grid-column: 1 / -1; }
+  table.lines td.acct { white-space: normal; overflow-wrap: anywhere; }
+  table.lines td.r { padding-left: 0; }
+  table.lines td.r.none { display: none; }
+  table.lines .side { display: inline; }
+}
+/* The answer first, then the steps that led to it (try-fixes, 13 Nov: on a phone the button sat under the steps). */
+.screen.work { display: flex; flex-direction: column; }
+.screen.work > .result { order: -1; margin-top: 0; }
+.screen.work > .card { margin-top: 16px; }
+/* A wide screen uses its width (try-fixes, 13 Nov): the answer and its button on the left, the steps beside them. */
+@media (min-width: 1024px) {
+  body:has(.screen.work > .card:not([hidden])) main, body:has(.screen.approve > .card:not([hidden])) main, body:has(.screen.pay > .card:not([hidden])) main { max-width: 1000px; }
+  .screen.work:has(> .card:not([hidden])), .screen.approve:has(> .card:not([hidden])), .screen.pay:has(> .card:not([hidden])) { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .screen.work > *, .screen.approve > *, .screen.pay > * { grid-column: 1; }
+  .screen.work > .card, .screen.approve > .card, .screen.pay > .card { grid-column: 2; grid-row: 1 / span 6; margin-top: 0; }
+  .screen.work > .result { margin-top: 0; }
+  .screen.approve > .btn, .screen.pay > .btn { justify-self: start; }
+}
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) { .btn.big { width: 100%; } h1 { font-size: 26px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
@@ -410,6 +446,11 @@ const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className
 const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),label);b.type='button';return b};
 const fill=(s,v)=>s.replace(/\{(\w+)\}/g,(_,k)=>String(v[k]??''));
 const secs=(ms)=>(Math.max(0,ms)/1000).toFixed(1);
+// Dates and amounts as the whole page writes them (try-fixes, 13 Nov): 30 Nov 2026, EUR 1,850.00.
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const dateOf=(v)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m&&+m[2]>=1&&+m[2]<=12?Number(m[3])+' '+MON[+m[2]-1]+' '+m[1]:String(v||'')};
+const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return String(v||'');const l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return dateOf(l)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const cash=(cur,amt)=>booksKit.money(cur,amt);
 const say=(text)=>{$('#say').textContent=text};
 const note=(text)=>el('p','note',text);
 const words=(j,fallback)=>typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;
@@ -529,12 +570,29 @@ function steps(name){
 }
 // The rail moved on without a new screen (screen 3 lights Pay when its pay call starts).
 function rail(name){const o=$('#main .progw'),n=steps(name);if(o&&n)o.replaceWith(n)}
-function show(name,arg){
+// The browser's Back: one history entry per step (try-fixes, 13 Nov). An entry holds only what redraws the screen
+// without repeating its action: a filed invoice comes back as its result, never filed again.
+const histArg=(name,arg)=>name==='work'?{kind:'reload',invoice:arg&&arg.invoice||null}:name==='approve'?{invoice:arg&&arg.invoice||null}:name==='books'?{settled:S.settled}:null;
+function remember(name,arg,how){if(how==='pop')return;const st={screen:name,arg:histArg(name,arg)};
+  try{if(how==='replace'||!history.state||!history.state.screen)history.replaceState(st,'');else history.pushState(st,'')}catch(e){}}
+window.addEventListener('popstate',(ev)=>{
+  const st=ev.state;if(!st||typeof st.screen!=='string'||!SCREENS[st.screen])return;
+  if(!S.session&&st.screen!=='start'){show('start',null,'pop');return}
+  const a=st.arg||null;
+  if(st.screen==='work'){
+    if(a&&a.invoice){show('work',a,'pop');return}
+    api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];const last=items[items.length-1];if(last)show('work',{kind:'reload',invoice:last},'pop');else show('invoice',null,'pop')});return}
+  // Paid already: Back to the approval shows the payment, never a second approval.
+  if(st.screen==='approve'&&S.settled){show('books',{settled:S.settled},'pop');return}
+  if(st.screen==='books'){show('books',{settled:S.settled},'pop');return}
+  show(st.screen,a,'pop');
+});
+function show(name,arg,how){
   const d=SCREENS[name];if(!d)return false;
   pollStop();askCloseAll();revokeAll();
-  S.screen=name;save();
+  S.screen=name;save();remember(name,arg,how);
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
-  const box=el('div','screen');
+  const box=el('div','screen '+name);
   const top=d.band===false||!S.session?[]:[steps(name),band()].filter(Boolean);
   $('#main').replaceChildren(...top,h,box);
   d.draw(box,arg);
@@ -693,11 +751,20 @@ function livePanel(){
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
   more.addEventListener('click',()=>{const open=!list.classList.contains('open');list.classList.toggle('open',open);more.setAttribute('aria-expanded',String(open))});
   const node=el('div','card',[list,more]);node.hidden=true;
+  // One clock (try-fixes, 13 Nov): once the answer is in, each row's time is the engine's own spacing between rows,
+  // anchored at the answer's round trip as the browser measured it, so the last row and "Answered in" agree.
+  const rows=[];const shown=new Set();let done=null;
+  function settle(ms){done=ms;const ts=rows.map((r)=>r.ts).filter((n)=>n!==null);if(!ts.length)return;const last=Math.max(...ts);
+    for(const r of rows)if(r.ts!==null)r.t.textContent=fill(W.at,{s:secs(Math.max(0,ms-(last-r.ts)))})}
   function add(items,t0){
     for(const e of items){
       if(agentRow(e))askClose(keyOf(e));
       const l=lineOf(e);
+      // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
+      if(!l.lead&&l.text===W.step)continue;
+      const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
       const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
+      if(t0!==undefined)rows.push({t,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
       const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
       list.append(el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]));
       if(l.asking)askOpen(keyOf(e),t);
@@ -707,14 +774,15 @@ function livePanel(){
     let seen=0;
     for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>3)}
     node.hidden=!list.children.length;more.hidden=!list.querySelector('.fold,.past');
+    if(done!==null)settle(done);
   }
-  return {node,add};
+  return {node,add,settle};
 }
 // The invoice as the answer has it, in a card whose rows light one by one (CSS, drawn only once the answer is in), and a
 // slot for the chip that says Claude read it (filled only from a claude.read event whose source is Claude).
 function invoiceCard(inv){
   const d=el('dl','rows');
-  for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,[inv.currency,inv.total].filter(Boolean).join(' ')],[C.fields.due,inv.due_date],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('div','',[el('dt','',k),el('dd','',String(v))]))}
+  for(const [k,v] of [[C.fields.vendor,inv.vendor],[C.fields.number,inv.invoice_no],[C.fields.total,inv.total?cash(inv.currency,inv.total):''],[C.fields.due,inv.due_date?dateOf(inv.due_date):''],[C.fields.status,inv.status_words]]){if(v===null||v===undefined||v==='')continue;d.append(el('div','',[el('dt','',k),el('dd','',String(v))]))}
   const chip=el('span','slot');
   return {node:el('section','card inv',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold),chip]),d]),chip};
 }
@@ -741,9 +809,16 @@ function drawResult(box,r,ms){
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
-    if(r.json.kind==='duplicate_document')box.append(el('p','big',C.work.duplicate));
-    if(inv.payable===true){
+    if(r.json.kind==='duplicate_document'){
+      // The same file again (the test company starts with this invoice already paid): caught, nothing added.
+      box.append(el('p','big bad',C.work.duplicate),el('p','muted',fill(C.work.duplicateOf,{no:String(inv.invoice_no||''),status:String(inv.status_words||inv.status||'').toLowerCase()})));
+      main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
+    // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
+    }else if(inv.payable===true||(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')){
       box.append(el('p','big ok',C.work.ready),el('p','muted',C.work.readySub));
+      // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
+      // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
+      if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
       main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     }else{
       box.append(el('p','big bad',[C.work.notReady,' ',String(inv.status_words||inv.status||'')]));
@@ -766,7 +841,9 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   box.append(live.node,result);
   if(arg&&arg.kind==='reload'){
     // After a reload: the newest invoice as the server has it, and its steps so far (no times: they were not measured here).
-    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){live.add(r.json.items);claudeSeen(r.json.items)}});
+    // Only this invoice's rows (the company starts with a paid invoice of its own: its rows are not this one's).
+    const mine=(e)=>!(typeof e.subject==='string'&&/^AP-\d+$/.test(e.subject)&&arg.invoice&&e.subject!==arg.invoice.id);
+    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it)}});
     drawResult(result,{status:200,json:{invoice:arg.invoice}},null);
     return;
   }
@@ -776,11 +853,13 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
-    pollDone();askClose('skeleton');
+    pollDone();askClose('skeleton');live.settle(ms);
     if(S.screen!=='work')return;
     // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
     result.replaceChildren();drawResult(result,r,ms);
+    // Back from the next step returns to this answer, never files the invoice again.
+    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed},'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
 }});
@@ -805,8 +884,10 @@ function mainButton(){
   return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false;b.disabled=false},off(label){b.textContent=label;act=null;b.disabled=true}};
 }
 
+// The terms being prepared for an invoice (started from screen 2's answer), taken once by screen 3.
+const PREP=new Map();
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
-function factRows(p,inv){
+function factRows(p,inv,terms){
   const facts=Array.isArray(p.facts)?p.facts.filter((f)=>Array.isArray(f)&&f.length===2):[];
   const amount=facts[0]?String(facts[0][1]):'';
   const payee=facts.find((f)=>f[0]==='Payee')||facts[1];
@@ -814,38 +895,49 @@ function factRows(p,inv){
   const pairs=[];
   if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
   if(m)pairs.push([C.proposal.account,'…'+m[2]]);
-  if(inv&&inv.due_date)pairs.push([C.proposal.due,String(inv.due_date)]);
+  if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
+  // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
+  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
+  if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:String(cv.client_rate||'')})]);
+  if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
+  if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
   const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
   return {amount,list:d};
 }
-function termsFold(p){
-  const pre=el('pre','terms mono');const f=el('details','',[el('summary','',C.approve.terms),pre]);
+// The full terms, pretty-printed (the passkey signs the SHA-256 of their canonical JSON, the same fields).
+function termsFold(p,terms){
+  const pre=el('pre','terms mono');const f=el('details','',[el('summary','',C.approve.terms),el('p','hint',C.approve.termsNote),pre]);
+  if(terms&&typeof terms==='object'){pre.textContent=JSON.stringify(terms,null,2);return f}
   let asked=false;
   f.addEventListener('toggle',()=>{if(!f.open||asked)return;asked=true;
     api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms').then((r)=>{
-      if(r.status===200&&typeof r.json.canonical==='string')pre.textContent=r.json.canonical;else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
+      if(r.status===200&&r.json.terms&&typeof r.json.terms==='object')pre.textContent=JSON.stringify(r.json.terms,null,2);else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
   return f;
 }
 screen('approve',{heading:C.approve.heading,draw(box,arg){
   const A=C.approve;const inv=arg&&arg.invoice||null;
   const top=el('div','');const said=el('div','');said.setAttribute('role','status');
-  const main=mainButton();main.off(A.filing);
+  const filing=fill(A.filing,{method:method()});
+  const main=mainButton();main.off(filing);
   const live=livePanel();
   box.append(top,said,main.node,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
   // A request still out after 30 s: one calm line under the button (from the poller's tick), gone when it returns.
   const slow=el('p','hint',A.slow);
-  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)said.append(slow)});return req.then((r)=>{pollDone();slow.remove();return r})};
+  const track=(req)=>{const t0=performance.now();pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)said.append(slow)});return req.then((r)=>{pollDone();live.settle(performance.now()-t0);slow.remove();return r})};
   // The button while a step runs: its own label, and the ring.
   const busy=(label)=>{main.node.textContent=label;main.node.classList.add('asking')};
   const idle=()=>main.node.classList.remove('asking');
   async function file(){
-    said.replaceChildren();main.off(A.filing);
+    said.replaceChildren();main.off(filing);
     const ready=inv&&inv.proposal&&inv.proposal.status==='PENDING_APPROVAL'&&!arg.again?inv.proposal:null;
+    // Terms already being prepared from screen 2: that request's answer, not a second one.
+    const pre=!ready&&!arg.again&&inv&&inv.id&&PREP.has(inv.id)?PREP.get(inv.id):null;if(inv&&inv.id)PREP.delete(inv.id);
     // The engine's status (is there a passkey?) is read beside the proposal, not after it.
     const stq=api('GET','/v1/engine');
     const r=ready?{status:200,json:{proposal:ready}}
+      :pre?await track(pre)
       :inv&&inv.id?await track(api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'))
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
@@ -853,9 +945,13 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
-    const f=factRows(p,inv);
+    // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
+    const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
+    if(S.screen!=='approve')return;
+    const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
+    const f=factRows(p,inv,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      termsFold(p),el('p','muted',[A.signs,saves]));
+      termsFold(p,terms),el('p','muted',[A.signs,saves]));
     stage();
   }
   function stage(){
@@ -993,7 +1089,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     pollStart((items)=>live.add(items,t0),()=>{if(!slow.isConnected)out.append(slow)});
     const r=await payCall(pid,body);
     const ms=performance.now()-t0;
-    pollDone();main.node.classList.remove('asking');slow.remove();
+    pollDone();live.settle(ms);main.node.classList.remove('asking');slow.remove();
     if(S.screen!=='pay')return;
     main.set(Y.button,()=>send(intro));
     outcome(r,ms,body.terms,intro);
@@ -1081,28 +1177,44 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     box.append(said,el('div','acts',[main.node,next]));
     return;
   }
-  // The main step on: Purser Cloud's guest dashboard, in a new tab (a link, so its address is there to read); this visit's
-  // own record (screen 5b) one quiet button below.
+  // The main step on: another invoice in this same test company. Beside it this visit's own record (screen 5b); then
+  // Purser Cloud's guest dashboard, which is a sample company and not this one, said so under the link (try-fixes,
+  // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
-  const cloud=el('a','btn primary big go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
+  const another=btn(B.another,true);another.addEventListener('click',()=>show('invoice'));
+  const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
-  const slot=()=>el('div','slot');
-  const paid=slot(),booked=slot(),filed=slot();
+  // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
+  const skel=(name)=>{const k=el('section','card blk sk-blk '+name,[el('span','sk w1'),el('span','sk w2'),el('span','sk w3')]);k.setAttribute('aria-busy','true');k.setAttribute('aria-label',B.loading);return k};
+  const slot=(name)=>el('div','slot',skel(name));
+  const paid=slot('paid'),booked=slot('booked'),filed=slot('filed');
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
   const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,el('div','acts',[cloud,what]),...(cheat?[el('p','',cheat)]:[]));
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,el('div','acts',[another,what]),
+    ...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)]));
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
   const failedOf=(r)=>note(words(r.json||{},B.failed));
   const inv=api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];return {r,items,i:items.find((x)=>x&&x.id===invId)||null}});
+  // A read that failed outright says so; one that came back without this invoice's part is read again a few times
+  // (the read model may be a moment behind the engine) before the block says it is not there yet.
+  const later=(ms)=>new Promise((ok)=>setTimeout(ok,ms));
+  const settledReads=(p)=>p.catch(()=>({status:0,items:null,json:{}}));
   if(s.fed===false){
     // The read model is fed by the engine during pay: not fed, nothing of the books is shown.
-    paid.replaceChildren(wait(B.notIn));
+    paid.replaceChildren(wait(B.notIn));booked.replaceChildren();
   }else{
-    const reads=Promise.all([inv,everyPage('/v1/payments'),everyPage('/v1/transactions')]);
+    const readAll=async()=>{let out=null;
+      for(let k=0;k<4;k++){if(k)await later(1200);if(S.screen!=='books')break;
+        out=await Promise.all([inv,settledReads(everyPage('/v1/payments')),settledReads(everyPage('/v1/transactions')),settledReads(everyPage('/v1/ledger/entries'))]);
+        const [v,ps,txs,es]=out;if(ps.status!==200||es.status!==200)break;
+        const p=v.i?paymentOf(v.i,ps.items,txs.items||[]):null;if(p&&v.i&&entriesOf(v.i,p,txs.items||[],es.items).length)break}
+      return out||[{i:null,items:[]},{status:0,items:null,json:{}},{status:0,items:null,json:{}},{status:0,items:null,json:{}}]};
+    const all=readAll();
+    const reads=all.then((o)=>o.slice(0,3));
     reads.then(([v,ps,txs])=>{
       if(S.screen!=='books')return;
       if(ps.status!==200){paid.replaceChildren(failedOf(ps));return}
@@ -1112,7 +1224,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?[money(fee.currency,fee.amount),' ',el('small','muted',B.feeWhy)]:'—'));
       paid.replaceChildren(block('paid',ok?B.paid:B.payment,[el('p','amount',money(p.currency,p.amount)),el('p','',el('span','pill'+(ok?' ok':' bad'),String(p.status||''))),d],ok?'ok':'bad'));
     });
-    Promise.all([reads,everyPage('/v1/ledger/entries')]).then(([[v,ps,txs],es])=>{
+    all.then(([v,ps,txs,es])=>{
       if(S.screen!=='books')return;
       if(es.status!==200){booked.replaceChildren(failedOf(es));return}
       const p=v.i&&ps.items?paymentOf(v.i,ps.items,txs.items||[]):null;
@@ -1123,14 +1235,16 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       for(const e of mine){const h=el('td','en',String(e.description||''));h.colSpan=3;tb.append(el('tr','',[h]));
         // Each account with its role (expense, VAT, creditors, bank: the chart's, cloud/src/try/books.ts), so the VAT line reads as the invoice's VAT line.
         for(const l of e.lines||[]){const ac=DIDACC[String(l.account||'')]||{};const role=ac.role?DIDC.roles[ac.role]:(ac.name||'');
-          tb.append(el('tr',ac.role==='vat'?'vatl':'',[el('td','',[el('span','mono',String(l.account||'')),role?el('span','role',' · '+role):null]),el('td','r',l.debit_cents?money(l.currency,fromCents(l.debit_cents)):''),el('td','r',l.credit_cents?money(l.currency,fromCents(l.credit_cents)):'')]))}}
+          // Each amount right-aligned in tabular figures; on a phone each line stacks, its side named (Dr or Cr).
+          const amt=(cents,side)=>{const d=el('td','r');if(cents){d.append(el('span','side',side+' '),money(l.currency,fromCents(cents)))}else d.className='r none';return d};
+          tb.append(el('tr',ac.role==='vat'?'vatl':'',[el('td','acct',[el('span','mono',String(l.account||'')),role?el('span','role',' · '+role):null]),amt(l.debit_cents,B.dr),amt(l.credit_cents,B.cr)]))}}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
     });
   }
   // The archive is the engine's own (not the read model): read whether or not the books are in.
-  Promise.all([inv,api('GET','/v1/engine/vault')]).then(async ([v,r])=>{
+  Promise.all([inv,api('GET','/v1/engine/vault')]).catch(()=>[{i:null,items:[]},{status:0,json:{}}]).then(async ([v,r])=>{
     if(S.screen!=='books')return;
     if(r.status!==200||!Array.isArray(r.json.files)){filed.replaceChildren(failedOf(r));return}
     const fs=v.i?filesOf(v.i,r.json.files,v.items):{original:null,receipts:[]};
@@ -1153,13 +1267,19 @@ screen('company',{heading:C.company.heading,draw(box){
   const Y=C.company;const main=mainButton();main.set(Y.download,download);
   const line=el('p','muted',Y.line);
   // A new company: this one is forgotten in this tab (the server deletes it after 24 hours), and the start shown.
-  const again=btn(Y.again);again.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
+  // Start again asks first (try-fixes, 13 Nov): one tap must not lose the company in this tab.
+  const again=btn(Y.again);
+  const ask=el('div','confirm',[el('p','',Y.againAsk)]);ask.hidden=true;ask.setAttribute('role','alertdialog');
+  const yes=btn(Y.againYes),no=btn(Y.againNo);ask.append(el('div','acts',[yes,no]));
+  again.addEventListener('click',()=>{ask.hidden=false;again.hidden=true;no.focus()});
+  no.addEventListener('click',()=>{ask.hidden=true;again.hidden=false;again.focus()});
+  yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
   // What this visit did: filed, signed, paid (three icons, named for screen readers as one list).
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const proof=el('a','proofl',[el('span','',Y.proof),icon('external-link',14)]);proof.href=PROOF;proof.rel='noopener';proof.target='_blank';
-  box.append(did,line,el('div','acts',[main.node,again,proof]),el('details','',[el('summary','',Y.runs),runs]));
+  box.append(did,line,el('div','acts',[main.node,again,proof]),ask,el('details','',[el('summary','',Y.runs),runs]));
   async function download(){
     main.off(Y.downloading);
     const g=await fetchFile('/v1/engine/export');
@@ -1195,6 +1315,7 @@ async function boot(){
   if(S.screen==='books'&&S.settled){show('books',{settled:S.settled});return}
   if(S.screen==='pay'&&S.proposal){show('pay');return}
   if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
+  if(S.screen==='invoice'||S.screen==='start'){show('invoice');return}
   if(last)show('work',{kind:'reload',invoice:last});else show('invoice');
 }
 boot();

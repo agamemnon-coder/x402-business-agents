@@ -53,7 +53,11 @@ export function masked(v: unknown, max: number): string | undefined {
     .replace(/\b\d(?:[\s.-]*\d){7,}\b/g, (m) => (/^(\d{4}-\d{2}-\d{2}|\d{2}[.-]\d{2}[.-]\d{4})$/.test(m) ? m : last4(m)))
     .replace(/\bsk-[A-Za-z0-9_-]{8,}/g, "[redacted]")
     .replace(/\b(Bearer)\s+\S+/gi, "$1 [redacted]");
-  return out.length > max ? `${out.slice(0, max - 1)}…` : out;
+  if (out.length <= max) return out;
+  // Cut at the last word boundary that fits, never inside a word (try-fixes, 13 Nov: quotes ended mid-word).
+  const cut = out.slice(0, max - 1);
+  const space = cut.search(/\s\S*$/);
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s.,;:]+$/, "")}…`;
 }
 /** The first sentence of a text, masked, at most `max` characters. */
 const firstSentence = (v: unknown, max: number): string | undefined => {

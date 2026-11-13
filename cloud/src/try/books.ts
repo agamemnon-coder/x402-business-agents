@@ -22,12 +22,14 @@ export const DID = {
   balanced: "Balances: debits = credits",
   debit: "Debit",
   credit: "Credit",
+  dr: "Dr", cr: "Cr",
   vat: "VAT",
   invoice: "Invoice",
   payment: "Payment",
   roles: { expense: "expense", vat: "VAT", creditors: "creditors", bank: "bank" },
   notIn: "Not in yet.",
-  cloud: "See Purser Cloud",
+  /** A sample company, read only: never the visitor's own test company (try-fixes, 13 Nov). */
+  cloud: "See a sample company in Purser Cloud",
   runs: "See the live runs",
   safe: "How it stays safe",
   company: "Your company",
@@ -110,7 +112,9 @@ screen('did',{heading:DIDC.heading,draw(box){
       for(const e of didKit.lines(mine,DIDACC)){
         const h=el('td','en',(e.kind==='invoice'?D.invoice:D.payment)+' · '+e.description);h.colSpan=3;tb.append(el('tr','',[h]));
         for(const l of e.lines){const role=l.role?D.roles[l.role]:l.name;
-          tb.append(el('tr',l.role==='vat'?'vatl':'',[el('td','',[el('span','mono',l.account),' ',el('span','role',role)]),el('td','r',l.debit?booksKit.money(l.currency,booksKit.fromCents(l.debit)):''),el('td','r',l.credit?booksKit.money(l.currency,booksKit.fromCents(l.credit)):'')]))}}
+          // Right-aligned tabular amounts; on a phone each line stacks with its side named (the try page's CSS, table.lines).
+          const amt=(c,side)=>{const d=el('td','r');if(c)d.append(el('span','side',side+' '),booksKit.money(l.currency,booksKit.fromCents(c)));else d.className='r none';return d};
+          tb.append(el('tr',l.role==='vat'?'vatl':'',[el('td','acct',[el('span','mono',l.account),' ',el('span','role',role)]),amt(l.debit,D.dr),amt(l.credit,D.cr)]))}}
       const ok=didKit.even(mine);
       booked.replaceChildren(head('database',D.booked),el('div','scroll',el('table','lines did-lines',[el('thead','',el('tr','',[el('th','',''),el('th','r',D.debit),el('th','r',D.credit)])),tb])),ok?el('p','bal ok',[icon('check',16),el('span','',D.balanced)]):null);
     }

@@ -53,7 +53,7 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(env.blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS } : {}),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true } : {}),
   });
   await host.seed();
   return { db, host };

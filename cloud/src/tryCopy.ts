@@ -79,7 +79,9 @@ export const WORK = {
   readySub: "Nothing is paid until you sign the exact terms.",
   /** Above the engine's own words when the invoice cannot be paid as it is. */
   notReady: "Not ready to pay:",
-  duplicate: "This file was filed before. Nothing was added.",
+  duplicate: "Caught: a copy of an invoice already on file.",
+  /** Under it: the original as the engine holds it ({no}: its number; {status}: its status in words). */
+  duplicateOf: "The same file was filed before as {no}, now {status}. Nothing was added and nothing will be paid.",
   noInvoice: "No invoice was found in it.",
   failed: "Purser could not file this invoice.",
   /** The request's round trip, measured in the browser ({s}: seconds). */
@@ -113,8 +115,11 @@ export const STEPS = {
  */
 export const APPROVE = {
   heading: "Approve the payment.",
-  filing: "Filing the payment…",
+  /** While the terms are prepared ({method}: the device's word for its passkey). Nothing is signed or paid yet. */
+  filing: "Preparing the terms for {method}…",
   terms: "Show the exact terms",
+  /** In the fold, above the terms (pretty-printed): what the passkey signs. */
+  termsNote: "Your passkey signs the SHA-256 of these fields, written as canonical JSON.",
   /** Before the passkey exists, both sentences; once it exists, the first only. */
   signs: "Your passkey signs exactly these terms.",
   saves: "This saves a test passkey for {host} on this device; you can delete it afterwards.",
@@ -138,7 +143,11 @@ export const APPROVE = {
  * The terms' own labels: screen 3's rows beside the engine's facts, and screen 4's three fields (the terms: outside the
  * word budget, as the invoice's fields are).
  */
-export const PROPOSAL_FIELDS = { account: "Account ending", due: "Due", amount: "Amount", payee: "Payee" };
+export const PROPOSAL_FIELDS = {
+  account: "Account ending", due: "Due", amount: "Amount", payee: "Payee",
+  /** try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap. */
+  fx: "Conversion", fxLine: "{sell} → {buy} at {rate}", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
+};
 
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
@@ -224,8 +233,18 @@ export const BOOKS = {
   noFiles: "Not in the archive yet.",
   failed: "Purser could not read this.",
   retry: "Try the payment again",
-  /** The main link: Purser Cloud's guest dashboard, a demo company read only (cloud/src/try/books.ts CLOUD_URL). */
-  next: "Open Purser Cloud",
+  /**
+   * A quiet link: Purser Cloud's guest dashboard, a sample company read only (cloud/src/try/books.ts CLOUD_URL), never
+   * the visitor's own test company (a try company cannot sign in to Purser Cloud), and the note under it says so.
+   */
+  next: "See a sample company in Purser Cloud",
+  cloudNote: "A demo company, read only. Your test company stays on this page.",
+  /** The main button: another invoice, in this same test company. */
+  another: "File another invoice",
+  /** For screen readers, on a block's skeleton while its reads run. */
+  loading: "Loading",
+  /** On a phone each ledger line stacks: its side in a word before the amount. */
+  dr: "Dr", cr: "Cr",
   /** Under it: this visit's own record, screen 5b ("What Purser did with it"). */
   what: "What Purser did",
   /** A quiet link under the main button, to screen 4's fields. */
@@ -238,12 +257,16 @@ export const BOOKS = {
  */
 export const COMPANY = {
   heading: "Your company.",
-  download: "Download your company (SyncBatch)",
-  line: "Purser Cloud's own sync format: your test company's invoices with their documents, payments, ledger and audit log.",
+  download: "Download your test company's records",
+  line: "One JSON file: your invoices with their documents, payments, ledger and audit log.",
   downloading: "Downloading…",
   /** In the line's place when the export did not come back. */
   failed: "Purser could not export your company.",
   again: "Start again",
+  /** Start again asks first. */
+  againAsk: "Start again with a new test company? This tab forgets this one.",
+  againYes: "Yes, start again",
+  againNo: "Keep this company",
   runs: "Recorded real runs",
   recorded: "recorded {date}",
   /** What the visit did: three icons with a word each, named for screen readers by `did` (not shown: the word budget). */
@@ -392,13 +415,22 @@ export const LIVE = {
   who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser" },
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
-  noVat: "none (a person books it)",
+  /**
+   * The Coder picked no VAT code: the accrual then books the invoice's own VAT by Purser's code (src/ap/books.ts
+   * accrualEntries), which is the VAT line the ledger shows. Said so, so the two agree (try-fixes, 13 Nov).
+   */
+  noVat: "from the invoice, booked by Purser's code",
+  /** VAT codes in words (P21 reads as 21% by itself). */
+  vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
+  /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */
+  actions: { pay: "pay", ask_cfo: "ask the CFO", hold: "hold for a person", reject: "reject", pay_later: "pay later", file_for_cfo: "file for the CFO" } as Record<string, string>,
+  rails: { bank_swift: "a SWIFT bank transfer", bank_local: "a local bank transfer" } as Record<string, string>,
   /** An agent's decision on the page: its lead (with a reason, then without), its reason marked as its own words, and
    *  what Purser's code enforced, on a muted line under it. */
   lead: {
     "ap.checker_decided": "Decided: {action}, because", "ap.checker_decided_plain": "Decided: {action}.",
     "ap.coded": "{account} expense, VAT {vat}:", "ap.coded_plain": "{account} expense, VAT {vat}.",
-    "ap.payer_proposed": "Proposed: pay on {pay_on} via {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} via {rail} from {currency}.",
+    "ap.payer_proposed": "Proposed: pay on {pay_on} by {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} by {rail} from {currency}.",
   } as Record<string, string>,
   ownWords: "its own words",
   enforced: "Purser's code enforced: {enforced}",
