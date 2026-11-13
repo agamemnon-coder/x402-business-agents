@@ -62,23 +62,21 @@ async function capture() {
   writeFileSync(resolve(LIVE, "captured.json"), JSON.stringify({ at: new Date().toISOString(), try: `https://${TRY_URL}`, cloud: "https://purser-try.max-31b.workers.dev/ (Try as guest)" }, null, 2));
 }
 
-/** The narration, one take per line (ElevenLabs; the proxy injects the key). Checks the credits first. */
-async function vo() {
+/** The narration, one take per line (ElevenLabs; the proxy injects the key, so curl, which uses it). Checks the credits first. */
+function vo() {
   mkdirSync(resolve(OUT, "vo"), { recursive: true });
   const todo = LINES.filter((l) => !existsSync(resolve(OUT, "vo", `${l.id}.mp3`)));
   const need = todo.reduce((n, l) => n + l.words.length, 0);
-  const sub = await (await fetch("https://api.elevenlabs.io/v1/user/subscription", { headers: { "xi-api-key": "proxy" } })).json() as { character_count: number; character_limit: number };
+  const curl = (url: string, extra: string[] = []) => execFileSync("curl", ["-sS", "--fail-with-body", "-H", "xi-api-key: proxy", ...extra, url], { maxBuffer: 1 << 26 });
+  const sub = JSON.parse(curl("https://api.elevenlabs.io/v1/user/subscription").toString()) as { character_count: number; character_limit: number };
   const left = sub.character_limit - sub.character_count;
+  if (!Number.isFinite(left)) throw new Error("promo: could not read the ElevenLabs credits");
   console.log(`${todo.length} takes, about ${need} credits; ${left} left`);
   if (need > left - 250) throw new Error("promo: not enough credits (250 are kept for another session)");
   for (const [i, l] of LINES.entries()) {
     if (!todo.includes(l)) continue;
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE.id}?output_format=mp3_44100_128`, {
-      method: "POST", headers: { "xi-api-key": "proxy", "content-type": "application/json" },
-      body: JSON.stringify({ text: l.words, model_id: VOICE.model, previous_text: LINES[i - 1]?.words, next_text: LINES[i + 1]?.words, voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.3, use_speaker_boost: true } }),
-    });
-    if (!r.ok) throw new Error(`promo: ElevenLabs ${r.status} for ${l.id}`);
-    writeFileSync(resolve(OUT, "vo", `${l.id}.mp3`), Buffer.from(await r.arrayBuffer()));
+    const body = JSON.stringify({ text: l.words, model_id: VOICE.model, previous_text: LINES[i - 1]?.words, next_text: LINES[i + 1]?.words, voice_settings: { stability: 0.5, similarity_boost: 0.8, style: 0.3, use_speaker_boost: true } });
+    writeFileSync(resolve(OUT, "vo", `${l.id}.mp3`), curl(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE.id}?output_format=mp3_44100_128`, ["-X", "POST", "-H", "content-type: application/json", "--data-binary", body]));
     console.log(l.id);
   }
 }
@@ -147,7 +145,7 @@ if (args.includes("--check") && !cmd) {
   process.exit(p.length ? 1 : 0);
 }
 if (cmd === "capture") await capture();
-else if (cmd === "vo") await vo();
+else if (cmd === "vo") vo();
 else if (cmd === "render") await render();
 else if (cmd === "mix") mix();
 else if (cmd === "stills") stills();

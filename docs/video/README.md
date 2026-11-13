@@ -31,7 +31,7 @@ the exact terms with Face ID or a passkey, the rails enforce the limit again), t
   `IN_APPROVAL` (10 Nov) until the owner approved it at Airwallex, then `PAID`, settlement simulated (12 Nov); Metal
   refusing 0.06 test USD over the 0.05 mandate cap on chain, `mandate_cap_exceeded` (12 Nov); the audit chain's
   anchor `aaaf56a1…` on Metal testnet (13 Nov); the zero-trust attack count and money moved (read from
-  `docs/zero-trust/report.json`: 52 attacks, 0 moved; the brief's 53 was not what the report holds); the hostile-model
+  `docs/zero-trust/report.json`: 53 attacks, 0 moved); the hostile-model
   eval (read from `docs/evals/ap-hostile.json`: 380 hostile tool calls, 370 refused by code, 0 unsafe). No fractions.
 - **Small type** on every proof shot says what is simulated ("Test money · sandbox/testnet", and per shot: test world,
   Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no marks (the Home
@@ -40,7 +40,7 @@ the exact terms with Face ID or a passkey, the rails enforce the limit again), t
   company was made.
 - **Voice:** "Lily", a premade voice from ElevenLabs' library (`eleven_multilingual_v2`), one take per line, 127 words;
   no clone, no imitation of anyone. **Music:** one ElevenLabs music take, 72 s, instrumental, placed 1 s in so its hits
-  land on "money" and on "Purser.". Credits used: 284 (voice) + 900 (music) = 1,184. The end card credits both as
+  land on "money" and on "Purser.". Credits used: 284 (voice) + 900 (music) + 39 (the attack line again, when the report went from 52 to 53) = 1,223. The end card credits both as
   AI-generated.
 - **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, two-pass loudnorm to
   -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.

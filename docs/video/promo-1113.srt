@@ -51,8 +51,8 @@ Over the agent's cap? Metal refused it. On chain.
 The audit chain, anchored on chain.
 
 14
-00:00:49,700 --> 00:00:53,090
-Fifty-two attacks. Money moved: zero.
+00:00:49,600 --> 00:00:53,430
+Fifty-three attacks. Money moved: zero.
 
 15
 00:00:53,500 --> 00:00:59,340

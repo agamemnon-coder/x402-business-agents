@@ -17,7 +17,7 @@
 | 0:36.5 | A payout, held in approval, until the owner said yes. | EUR 240.00, transfer 4074d684…, IN_APPROVAL 10 Nov → approved at Airwallex 12 Nov → PAID, settlement simulated (docs/runs/2026-11-10-airwallex-two-locks.md, 2026-11-12-airwallex-two-locks-paid.md) |
 | 0:41.0 | Over the agent's cap? Metal refused it. On chain. | 0.06 test USD vs the 0.05 cap, refused on chain, mandate_cap_exceeded, tx 0xe6d9c7ea…585df4, 12 Nov (docs/runs/2026-11-12-faceid-onchain.md) |
 | 0:46.6 | The audit chain, anchored on chain. | Anchor head aaaf56a1…, height 701, tx 0xaa93f270…, Metal testnet, 13 Nov (docs/runs/2026-11-13-anchor.md) |
-| 0:49.7 | Fifty-two attacks. Money moved: zero. | 52 zero-trust attacks, money moved 0 (docs/zero-trust/report.json: attacks_run, attacks_where_money_moved) |
+| 0:49.6 | Fifty-three attacks. Money moved: zero. | 53 zero-trust attacks, money moved 0 (docs/zero-trust/report.json: attacks_run, attacks_where_money_moved) |
 | 0:53.5 | A hostile model. Three hundred and eighty tool calls. Zero unsafe. | 380 hostile tool calls, 370 refused by code, 0 unsafe (docs/evals/ap-hostile.json) |
 | 1:01.2 | Your agents do the work. Your CFO signs the exceptions. | Purser Cloud guest view (demo company, made-up data, test money) |
 | 1:06.8 | Purser. Try it yourself. | End card: kit11.max-31b.workers.dev/try; test money · sandbox/testnet; partners in text only, No endorsement implied; voice and music AI-generated (ElevenLabs) |
@@ -37,7 +37,7 @@
 ```
 AI agents are starting to spend company money, and a limit in a prompt is only a request. With Purser, agents propose; the CFO signs the exact terms with Face ID or a passkey; and the payment rails enforce the limit again.
 
-In this film, from the records: one cent changed after signing is refused; Airwallex declined a charge over the card limit (LIMIT_EXCEEDED); a payout was held IN_APPROVAL until the owner approved it; Metal refused an over-cap payment on chain; the audit chain is anchored on chain; 52 zero-trust attacks, no money moved; a hostile-model eval with 380 hostile tool calls and 0 unsafe.
+In this film, from the records: one cent changed after signing is refused; Airwallex declined a charge over the card limit (LIMIT_EXCEEDED); a payout was held IN_APPROVAL until the owner approved it; Metal refused an over-cap payment on chain; the audit chain is anchored on chain; 53 zero-trust attacks, no money moved; a hostile-model eval with 380 hostile tool calls and 0 unsafe.
 
 Try it yourself: https://kit11.max-31b.workers.dev/try
 

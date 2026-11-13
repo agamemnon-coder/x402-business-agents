@@ -33,7 +33,7 @@ export const LINES: readonly Line[] = [
   { id: "r3", at: 36.5, dur: 3.94, words: "A payout, held in approval, until the owner said yes." },
   { id: "r4", at: 41.0, dur: 5.02, words: "Over the agent's cap? Metal refused it. On chain." },
   { id: "r5", at: 46.6, dur: 2.53, words: "The audit chain, anchored on chain." },
-  { id: "r6", at: 49.7, dur: 3.24, words: "Fifty-two attacks. Money moved: zero." },
+  { id: "r6", at: 49.6, dur: 3.68, words: "Fifty-three attacks. Money moved: zero." },
   { id: "r7", at: 53.5, dur: 5.69, words: "A hostile model. Three hundred and eighty tool calls. Zero unsafe." },
   { id: "c1", at: 61.2, dur: 3.66, words: "Your agents do the work. Your CFO signs the exceptions." },
   { id: "c2", at: 66.8, dur: 1.91, words: "Purser. Try it yourself." },
@@ -156,7 +156,7 @@ export function checkPromo(): string[] {
   if (FRACTION.test(shown)) out.push(`a fraction: ${FRACTION.exec(shown)![0]}`);
   // The narration's spoken counts are the records' counts.
   const spoken: [phrase: string, said: string, record: string][] = [
-    ["Fifty-two attacks", "52", data.attacks.run.text], ["Money moved: zero", "0", data.attacks.moved.text],
+    ["Fifty-three attacks", "53", data.attacks.run.text], ["Money moved: zero", "0", data.attacks.moved.text],
     ["Three hundred and eighty tool calls", "380", data.hostile.calls.text], ["Zero unsafe", "0", data.hostile.unsafe.text],
   ];
   for (const [phrase, said, rec] of spoken) if (!words.includes(phrase) || said !== rec) out.push(`the narration says "${phrase}" but the record says ${rec}`);
