@@ -39,6 +39,7 @@ import { finishStep, startStep, stepDone } from "../policy/saga.js";
 import { stopped } from "../policy/velocity.js";
 import { currentOrigin, withOrigin, type Origin } from "../provenance/origin.js";
 import { CREDENTIAL_DIR_MODE, CREDENTIAL_FILE_NAME } from "./cardData.js";
+import { credentialUseRefusal } from "./credentialGuard.js";
 import { AIRI_TEXT_MAX, AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type AiriMandateRecord, type AiriMandateRequest, type CheckoutAnswer } from "./client.js";
 import { airiPolicy, type AiriPolicy } from "./policy.js";
 
@@ -436,7 +437,14 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
     audit(db, "system", "airi.credential_received", subject, { ...ids, mandate_id: mandate.mandateId, status: safe(receipt.status), token_type: safe(receipt.tokenType), token_expiration: safe(receipt.tokenExpiration) }, now);
     say(`AIRI TAPPED ${row.action_id}: credential received (kept in a private file for this checkout only)`);
 
-    // 5. The checkout pays. STARTED first: after a crash the payment is looked up by its reference, never resent.
+    // 5. Purser's check that this credential pays this purchase only, at its amount, once (src/airi/credentialGuard.ts).
+    const misuse = credentialUseRefusal(db, { mandateId: mandate.mandateId, actionId: row.action_id, amount: terms.amount, currency: terms.currency });
+    if (misuse) {
+      await cancelQuietly(deps, db, row, mandate.mandateId, misuse.reason, now);
+      return refuse(db, row, "purser", misuse.code, `${misuse.reason}; the mandate was cancelled and the checkout not asked`, now, mandate.mandateId);
+    }
+
+    // 6. The checkout pays. STARTED first: after a crash the payment is looked up by its reference, never resent.
     setRow(db, row.action_id, { status: "PAYING" }, now);
     startStep(db, row.action_id, 3, "airi.checkout_pay", prepared.reference, now);
     let answer: CheckoutAnswer;

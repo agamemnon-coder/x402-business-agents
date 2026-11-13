@@ -90,13 +90,14 @@ describe("the Built on strip", () => {
     expect(items.map((i) => i.name)).toEqual(["Airwallex", "Metal", "Visa (VIC through Airwallex's Airi)", "Claude", "T:0", "x402"]);
     const st = metalStory(run.record);
     // Paid across both live Airi runs, as /visa counts them (the jury check, 12 Nov): 7 Nov SETTLED plus vic-3's paid.
-    const v3 = vic3Run()!;
-    const settled = airiRun()!.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length + v3.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length;
+    // 13 Nov: and vic-4's paid, three live runs in all.
+    const later = [vic3Run("docs/runs/2026-11-12-vic-3.json")!, vic3Run()!];
+    const settled = airiRun()!.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length + later.reduce((n, v) => n + v.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length, 0);
     expect(items.map((i) => i.proof)).toEqual([
-      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet`, `${settled} purchases paid in 2 live runs`,
+      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet`, `${settled} purchases paid in 3 live runs`,
       `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions`, `${t0Data().journal!.posted} journal entries`, `${st.payments.sales} paid requests`,
     ]);
-    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "3 purchases paid in 2 live runs", "24 decisions", "95 journal entries", "41 paid requests"]);
+    expect(items.map((i) => i.proof)).toEqual(["7 products, each run dated", "86 payments on testnet", "5 purchases paid in 3 live runs", "24 decisions", "95 journal entries", "41 paid requests"]);
     // #216 (12 Nov): ICC spelled out in the footer.
     expect(ICC_LINE).toBe("Visa Intelligent Commerce Connect (access requested)");
   });

@@ -16,6 +16,7 @@
   "scripts": {
     "books:statement": "tsx scripts/books-statement.ts",
     "books:month": "tsx scripts/books-month.ts",
+    "media:record": "tsx scripts/media-record.ts",
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:guest-seed": "tsx cloud/scripts/guestSeed.ts",
@@ -140,6 +141,7 @@
     "icc": "tsx src/cli/icc.ts",
     "airi:vic-2": "tsx src/cli/airiVic2.ts",
     "airi:vic-3": "tsx src/cli/airiVic3.ts",
+    "airi:vic-4": "tsx src/cli/airiVic3.ts --vic-4",
     "vic-readback": "tsx src/cli/vicReadback.ts",
     "demo-tower": "tsx src/cli/demoTower.ts",
     "autonomy-record": "tsx src/cli/autonomyRecord.ts",

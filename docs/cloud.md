@@ -110,6 +110,17 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/keys` | admin | The company's API keys (never their secrets); paginated (limit, cursor). |
 | `POST /v1/keys` | admin | A new API key; returned once. A key made by a key never has more scope or a later expiry than it. |
 | `DELETE /v1/keys/{id}` | admin | Revoke an API key, and every key it made down the chain (`also_revoked`). |
+| `GET /v1/claude/connectors` | admin | The company's Claude connector tokens (never their secrets): name, whether it may propose payments, when made, expires, last used, revoked. With the MCP address. See [connect-claude.md](connect-claude.md). |
+| `POST /v1/claude/connectors` | admin | Make a Claude connector token (a signed-in owner only): `{ name, propose?, expires_in_days? }`. It reads the books at `/mcp`. With `propose`, it can also file an invoice's payment for the CFO's approval, which only the CFO's passkey gives. Returned once; only its hash is kept. It works at `/mcp` only. |
+| `DELETE /v1/claude/connectors/{id}` | admin | Revoke a Claude connector token (a signed-in owner only): Claude's connection with it, and every access token signed for it, ends at once. |
+| `POST /mcp` | read | Purser as a remote MCP server for Claude (Streamable HTTP; JSON answers, no session): `initialize`, `ping`, `tools/list`, `tools/call`. It reads the books. With a token made to propose, it can also file an invoice's payment for the CFO. It never approves or pays. It takes a connector token, an access token from `/oauth/token`, or the demo company's public token (`purser-demo-read-only`). A 401 names the protected resource metadata. |
+| `GET /.well-known/oauth-protected-resource` | anyone | OAuth protected resource metadata (RFC 9728) for `/mcp`: this cloud is its authorization server. |
+| `GET /.well-known/oauth-protected-resource/mcp` | anyone | The same, at the path RFC 9728 derives from `/mcp`. |
+| `GET /.well-known/oauth-authorization-server` | anyone | OAuth authorization server metadata (RFC 8414): registration, the consent page, the token endpoint; PKCE S256; public clients. |
+| `POST /oauth/register` | anyone | Dynamic client registration (RFC 7591), public clients: `{ redirect_uris, client_name? }` (https, or http on localhost). The client's id is signed; nothing is stored. |
+| `GET /oauth/authorize` | anyone | The consent page: paste a connector token made in Purser Cloud, or open the demo company (read only). PKCE S256 required. No script; its form may go only to this page and the client's own address. |
+| `POST /oauth/authorize` | anyone | The consent page's answer. It takes a live connector token (no other key) or the demo, then sends the browser back to the client with a one-time code (five minutes, kept as its hash). |
+| `POST /oauth/token` | anyone | `authorization_code` with the PKCE verifier, for an access token. The code is spent on the first try, right or wrong. The token names the connector token it was issued for, never its secret, and lasts 30 days at most (never past the connector token). Revoking the connector token ends it. |
 | `GET /v1/users` | admin | The company's people and their roles; paginated (limit, cursor). |
 | `GET /v1/users/{id}/passkeys` | admin | A person's passkeys (their ids and when each was enrolled). |
 | `DELETE /v1/users/{id}/passkeys/{credential}` | admin | Remove a passkey (a signed-in owner only): it signs in no more, and the person's sessions end. Never the last owner passkey. |

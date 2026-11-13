@@ -1,0 +1,8 @@
+{
+  "name": "purser",
+  "version": "1.0.0",
+  "description": "Connect Claude to Purser: read your company's books, see what your agents decided, and propose an invoice's payment. Claude can never approve or pay: every payment needs the CFO's Face ID in Purser Cloud.",
+  "author": { "name": "Purser" },
+  "homepage": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
+  "keywords": ["finance", "accounts-payable", "bookkeeping", "mcp"]
+}
