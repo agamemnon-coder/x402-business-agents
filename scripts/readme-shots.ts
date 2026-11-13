@@ -3,7 +3,8 @@
 //   - Purser Cloud's console as a guest ("Try as guest": the demo company, made-up data, test money), served on this
 //     machine by its own request handler over SQLite in memory, as test/browser/console.check.ts does.
 // Light theme, 1440 x 900, the first screen of each page; written as WebP, 960 px wide, to docs/assets/readme/.
-//   - the two /try/sign tiles: from the screenshots test/browser/trysign.check.ts takes of its local relay (a test world,
+//   - the banner: Home's first screen, light and dark;
+//   - the /try/sign GIF and the two /try/sign tiles: from the screenshots test/browser/trysign.check.ts takes of its local relay (a test world,
 //     a stand-in agent, Chromium's virtual passkey), at 390 px light, the first 1300 px, 520 px wide.
 //   npx tsx test/browser/trysign.check.ts <dir> && npm run readme:shots -- --try-sign <dir>
 //   npm run readme:shots                        (the site and the console only)
@@ -24,17 +25,20 @@ const ROOT = resolve(import.meta.dirname, "..");
 export const OUT = join(ROOT, "docs/assets/readme");
 /** Each shot: its file name, the page, and what the README's tile says it is. */
 export const SITE_SHOTS: { file: string; path: string; label: string }[] = [
-  { file: "home.webp", path: "/", label: "Home" },
   { file: "proof.webp", path: "/proof", label: "Proof" },
   { file: "airwallex.webp", path: "/airwallex", label: "Airwallex" },
   { file: "metal.webp", path: "/metal", label: "Metal" },
   { file: "visa.webp", path: "/visa", label: "Visa" },
   { file: "claude.webp", path: "/claude", label: "Claude" },
+  { file: "books.webp", path: "/books", label: "Books" },
 ];
+/** The README's banner: Home's first screen, 1440 x 600, once light and once dark (the README picks by the reader's theme). */
+export const HERO_SHOTS = [{ file: "hero-light.webp", scheme: "light" as const }, { file: "hero-dark.webp", scheme: "dark" as const }];
+/** The /try/sign GIF: the local relay's screens in the story's order, 1.6 s each, 360 px wide. */
+export const TRY_SIGN_GIF = { file: "try-sign.gif", frames: ["390-light-1-ask.png", "390-light-2-signed.png", "390-light-3-cheat-refused.png", "390-light-5-rule.png", "390-light-6-paid-alone.png"] };
 export const CLOUD_SHOT = { file: "cloud-guest.webp", label: "Purser Cloud as a guest" };
 /** The /try/sign tiles: the check's screenshot each is cut from. */
 export const TRY_SIGN_SHOTS: { file: string; from: string }[] = [
-  { file: "try-sign.webp", from: "390-light-1-ask.png" },
   { file: "tamper-refused.webp", from: "390-light-3-cheat-refused.png" },
 ];
 
@@ -46,8 +50,8 @@ async function main() {
   const require = createRequire(import.meta.url);
   const { chromium } = require("playwright") as typeof import("playwright");
   const browser = await chromium.launch();
-  const shoot = async (url: string, file: string, before?: (p: import("playwright").Page) => Promise<void>) => {
-    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, colorScheme: "light", locale: "en-GB" });
+  const shoot = async (url: string, file: string, before?: (p: import("playwright").Page) => Promise<void>, o: { scheme?: "light" | "dark"; height?: number } = {}) => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: o.height ?? 900 }, deviceScaleFactor: 1, colorScheme: o.scheme ?? "light", locale: "en-GB" });
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
     if (before) await before(page);
@@ -62,6 +66,7 @@ async function main() {
   // The site, offline, from the committed record.
   const judge = await startJudge(0);
   for (const s of SITE_SHOTS) await shoot(`${judge.url}${s.path}`, s.file);
+  for (const h of HERO_SHOTS) await shoot(`${judge.url}/`, h.file, undefined, { scheme: h.scheme, height: 600 });
   judge.server.close();
 
   // Purser Cloud on this machine; the guest opens the demo company from its committed seed (cloud/src/guest/seed.gen.ts).
@@ -88,9 +93,19 @@ async function main() {
   await browser.close();
 
   const i = process.argv.indexOf("--try-sign");
-  if (i > 0) for (const t of TRY_SIGN_SHOTS) {
-    execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", join(process.argv[i + 1]!, t.from), "-vf", "crop=780:1300:0:0,scale=520:-1:flags=lanczos", "-quality", "82", join(OUT, t.file)]);
-    console.log(`wrote docs/assets/readme/${t.file} from ${t.from}`);
+  if (i > 0) {
+    const dir = process.argv[i + 1]!;
+    for (const t of TRY_SIGN_SHOTS) {
+      execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", join(dir, t.from), "-vf", "crop=780:1300:0:0,scale=520:-1:flags=lanczos", "-quality", "82", join(OUT, t.file)]);
+      console.log(`wrote docs/assets/readme/${t.file} from ${t.from}`);
+    }
+    // The GIF: each screen cut the same way, held 1.6 s, one palette for all of them.
+    const inputs = TRY_SIGN_GIF.frames.flatMap((f) => ["-loop", "1", "-t", "1.6", "-i", join(dir, f)]);
+    const n = TRY_SIGN_GIF.frames.length;
+    const chain = TRY_SIGN_GIF.frames.map((_, k) => `[${k}:v]crop=780:1300:0:0,scale=360:-1:flags=lanczos,fps=5[f${k}]`).join(";");
+    const filter = `${chain};${TRY_SIGN_GIF.frames.map((_, k) => `[f${k}]`).join("")}concat=n=${n}:v=1:a=0,split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=4`;
+    execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-loop", "0", join(OUT, TRY_SIGN_GIF.file)]);
+    console.log(`wrote docs/assets/readme/${TRY_SIGN_GIF.file} from ${n} screens`);
   }
   rmSync(tmp, { recursive: true, force: true });
 }

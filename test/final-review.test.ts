@@ -64,7 +64,7 @@ describe("the final review (13 Nov)", () => {
 
   it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
     const readme = read("README.md");
-    const shots = [...readme.matchAll(/src="docs\/assets\/readme\/([\w-]+\.webp)"/g)].map((m) => m[1]!);
+    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(9);
     for (const f of shots) {

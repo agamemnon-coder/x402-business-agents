@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">
+<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp" alt="Purser's Home page: AI agents spend. You sign off. One sample invoice from Read to Paid (a local build of this repository)" width="100%"></picture></a>
 
 # Purser · AI agents spend. You sign off.
 
@@ -10,11 +10,13 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 <a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Metal: testnet](https://img.shields.io/badge/Metal-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![MCP Registry: io.github.agamemnon-coder/purser](https://img.shields.io/badge/MCP_Registry-io.github.agamemnon--coder%2Fpurser-0b1220)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.agamemnon-coder/purser) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Metal: testnet](https://img.shields.io/badge/Metal-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0)
 
 Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.
 
-<table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/try-sign.webp" alt="/try/sign at 390 px: the Treasury agent asks to pay an invoice above its limit, one button, Sign with Face ID (a local build, a test world, a stand-in agent)"></a><br><b>/try/sign: the agent asks</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/tamper-refused.webp" alt="/try/sign: one cent changed, EUR 1,850.01 sent against EUR 1,850.00 signed; refused by Purser"></a><br><b>One cent changed, refused</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/"><img src="docs/assets/readme/home.webp" alt="Home: AI agents spend, you sign off; one sample invoice from Read to Paid"></a><br><b>Home</b></td><td width="25%"><a href="https://purser-try.max-31b.workers.dev/"><img src="docs/assets/readme/cloud-guest.webp" alt="Purser Cloud as a guest: the demo company's overview, made-up data from a simulated month, test money"></a><br><b>Purser Cloud as a guest</b></td></tr></table>
+**Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))
+
+<table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/try-sign.gif" alt="/try/sign at 390 px, five screens: the agent asks, signed and verified, one cent changed and refused, a looser rule signed, the next invoice paid alone (a local build: a test world, a stand-in agent, a test passkey)"></a><br><b>/try/sign in 8 seconds</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/tamper-refused.webp" alt="/try/sign: one cent changed, EUR 1,850.01 sent against EUR 1,850.00 signed; refused by Purser"></a><br><b>One cent changed, refused</b></td><td width="25%"><a href="https://purser-try.max-31b.workers.dev/"><img src="docs/assets/readme/cloud-guest.webp" alt="Purser Cloud as a guest: the demo company's overview, made-up data from a simulated month, test money"></a><br><b>Purser Cloud as a guest</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/books"><img src="docs/assets/readme/books.webp" alt="/books: a test company's month, read and booked by Claude, test money"></a><br><b>/books</b></td></tr></table>
 
 </div>
 
@@ -31,7 +33,8 @@ flowchart LR
   P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
   P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
   F --> R
-  R --> B["Books and the hash-chained audit log<br/>posted to T:0 and Moneybird (sandboxes)"]
+  R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
+  B --> L["Hash-chained audit log"] --> N["Its head anchored on Metal testnet<br/>npm run verify-anchor"]
 ```
 
 ## For judges: 3 minutes
@@ -119,8 +122,6 @@ beyond them, with a passkey (Face ID on iPhone) on the exact terms.
 **Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**
 
 ![Agent, then policy. Within the limits the agent pays under its own mandate or card limit; beyond them the CFO's passkey signs the SHA-256 of the exact terms, the executor re-checks the hash, then Airwallex or Metal. Every step goes into the hash-chained audit log.](docs/assets/how-it-works.svg)
-
-Who holds which limit, rail by rail, and the mandate on Metal are drawn in [docs/diagrams.md](docs/diagrams.md#1-architecture-who-holds-which-limit) with all five diagrams.
 
 <details><summary>One payment beyond the limit, end to end</summary>
 
@@ -233,8 +234,7 @@ CI runs these checks on every push; the CI badge at the top shows the result of 
 
 ## Proof in numbers
 
-<img src="docs/assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, from the run records" width="49%"> <img src="docs/assets/charts/main-run-claude.svg" alt="Main run: Claude's decisions and cost per agent, from its record" width="49%">
-<img src="docs/assets/charts/main-run-refusals.svg" alt="Main run: what was refused, from its record" width="49%"> <img src="docs/assets/charts/tests-over-time.svg" alt="Tests in the suite over time, from the README's own history" width="49%">
+<img src="docs/assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, from the run records" width="49%"> <img src="docs/assets/charts/main-run-claude.svg" alt="Main run: Claude's decisions and cost per agent, from its record" width="49%"> <img src="docs/assets/charts/main-run-refusals.svg" alt="Main run: what was refused, from its record" width="49%"> <img src="docs/assets/charts/tests-over-time.svg" alt="Tests in the suite over time, from the README's own history" width="49%">
 
 Drawn from the run records and git history by `npm run charts` (scripts/repo-charts.ts); `test/repo-charts.test.ts` redraws them. Every id behind them is on [/proof](https://kit11.max-31b.workers.dev/proof) and in [docs/runs/](docs/runs/README.md).
 

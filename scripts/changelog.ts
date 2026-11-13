@@ -28,12 +28,15 @@ export function groupOf(m: Merged): string {
   return GROUPS.find((g) => g.rule.test(text))?.name ?? "Other";
 }
 
-/** Parses `git log --merges --first-parent --format=%cs%x09%s%x09%b` lines of GitHub merge commits. */
+/** Parses `git log --first-parent --format=%cs%x09%s%x09%b` lines: GitHub's merge commits ("Merge pull request #N from
+ *  owner/branch", the PR title in the body) and its squash merges (the PR title as the subject, ending " (#N)"). */
 export function parseMerges(log: string): Merged[] {
   const out: Merged[] = [];
   for (const line of log.split("\n")) {
     const m = /^(\d{4}-\d{2}-\d{2})\tMerge pull request #(\d+) from [^/\s]+\/([^\s:\t]+)[^\t]*\t(.*)$/.exec(line);
-    if (m) out.push({ date: m[1]!, pr: Number(m[2]), branch: m[3]!, title: m[4]!.trim() || m[3]! });
+    if (m) { out.push({ date: m[1]!, pr: Number(m[2]), branch: m[3]!, title: m[4]!.trim() || m[3]! }); continue; }
+    const q = /^(\d{4}-\d{2}-\d{2})\t(?!Merge )(.+) \(#(\d+)\)\t/.exec(line);
+    if (q) out.push({ date: q[1]!, pr: Number(q[3]), branch: "", title: q[2]!.trim() });
   }
   return out;
 }
@@ -50,8 +53,19 @@ export function changelog(merged: Merged[], since: string, repo: string): string
     "releases and their notes are in [docs/releases/](docs/releases/). Test money only throughout: the Airwallex sandbox and",
     "Metal testnet. Titles are kept as merged: a title that says \"green\" names what that pull request set out to fix when it",
     "merged, not the state of CI now; the CI badge in the [README](README.md) shows the latest run on main.", "",
+    ...latestDay(merged, repo),
     ...order.flatMap((g) => [`## ${g}`, "", ...byGroup.get(g)!.map((m) => `- ${m.date} · [#${m.pr}](${repo}/pull/${m.pr}) ${m.title}`), ""]),
   ].join("\n");
+}
+
+const DAY = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T00:00:00Z`));
+
+/** The latest day's merges first, newest first, as one short list (an h3, so the groups below still count each PR once). */
+export function latestDay(merged: Merged[], repo: string): string[] {
+  const day = merged[0]?.date;
+  if (!day) return [];
+  const that = merged.filter((m) => m.date === day);
+  return [`### Merged on ${DAY(day)}, the latest day (${that.length})`, "", ...that.map((m) => `- [#${m.pr}](${repo}/pull/${m.pr}) ${m.title}`), "", "Every pull request since the tag, by area:", ""];
 }
 
 function hasRef(ref: string): boolean {
@@ -63,7 +77,7 @@ function main(argv: string[]): void {
   const since = i >= 0 ? argv[i + 1]! : "v1.0-submission";
   const r = argv.indexOf("--ref");
   const ref = r >= 0 ? argv[r + 1]! : hasRef("origin/main") ? "origin/main" : "HEAD";
-  const log = execFileSync("git", ["log", "--merges", "--first-parent", "--format=%cs%x09%s%x09%b", `${since}..${ref}`], { encoding: "utf8" });
+  const log = execFileSync("git", ["log", "--first-parent", "--format=%cs%x09%s%x09%b", `${since}..${ref}`], { encoding: "utf8" });
   // %b can run over several lines; keep only each merge's first body line, which GitHub fills with the PR title.
   const lines = log.split("\n").filter((l) => /^\d{4}-\d{2}-\d{2}\t/.test(l));
   const md = changelog(parseMerges(lines.join("\n")), since, "https://github.com/agamemnon-coder/x402-business-agents");
