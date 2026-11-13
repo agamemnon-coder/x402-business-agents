@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="src/ui/brand/favicon.svg" alt="Purser" width="72" height="72">
+<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">
 
 # Purser · AI agents spend. You sign off.
 

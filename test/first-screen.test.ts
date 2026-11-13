@@ -37,7 +37,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     const lines = README.split("\n");
     // The owner's centred top (13 Nov): the Purser mark, the title, the pitch in bold, the sentence every juror
     // repeated, one line of links with Try it first, the badges, then the reviewers' block.
-    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", '<img src="src/ui/brand/favicon.svg" alt="Purser" width="72" height="72">', ""]);
+    // Since 13 Nov (owner): the mark is the site header's own, black and white (docs/assets/brand/purser-mark.svg, test/brand-mark.test.ts).
+    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">', ""]);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
     // Since 12 Nov (one Try everywhere): Try opens the hands-on demo; the /try/sign story is the last link, "The 60-second story".
