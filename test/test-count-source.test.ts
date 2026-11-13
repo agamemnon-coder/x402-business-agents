@@ -19,8 +19,8 @@ describe("the test count, from one source", () => {
   it("is the same number in the README's badge and test line, docs/claims.md and the Demo Day table", () => {
     const readme = read("README.md");
     expect(/tests-(\d+)%20passing/.exec(readme)?.[1]).toBe(String(s.passed));
-    expect(/\*\*(\d+) tests in \d+ files, all passing\*\*/.exec(readme)?.[1]).toBe(String(s.passed));
-    expect(/^\| Tests \| (\d+) in \d+ files, all passing/m.exec(read("docs/claims.md"))?.[1]).toBe(String(s.passed));
+    expect(/\*\*(\d+) tests passing\*\*/.exec(readme)?.[1]).toBe(String(s.passed));
+    expect(/^\| Tests \| (\d+) passing/m.exec(read("docs/claims.md"))?.[1]).toBe(String(s.passed));
     expect(/`npm run verify`; (\d+) tests \|/.exec(read("docs/submission/demo-day.md"))?.[1]).toBe(String(s.passed));
   });
 });

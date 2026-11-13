@@ -183,7 +183,7 @@ export function appendRunRecord(file: string, record: RunRecord): RunRecord[] {
 
 export interface AcceptanceRow { item: string; ok: boolean; evidence: string }
 
-/** The main run's acceptance list (docs/runs/dry-run-acceptatie.md §1, the Kit 11 flow, §2), row by row, from the record. */
+/** The main run's acceptance list (docs/archive/runs/dry-run-acceptatie.md §1, the Kit 11 flow, §2), row by row, from the record. */
 export function acceptance(m: Measured, x: { checks: Record<string, number | null>; secondApproverLabel: boolean }): AcceptanceRow[] {
   const rows: AcceptanceRow[] = [];
   const add = (item: string, ok: boolean, evidence: string) => rows.push({ item, ok, evidence });

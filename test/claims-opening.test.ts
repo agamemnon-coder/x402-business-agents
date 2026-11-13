@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { NAV_MAIN } from "../src/ui/nav.js";
-import { JUDGE_STEPS } from "../src/redesign/judge.js";
+import { TOUR_STEPS } from "../src/redesign/tour.js";
 import { loadRecord, stopStory, stopsLine } from "../src/redesign/run.js";
 import { worstCaseWords } from "../src/policy/exposureSources.js";
 
@@ -60,8 +60,8 @@ describe("docs/claims.md opens with the main run", () => {
       // A bare "README" is not a place: every README citation names its section.
       expect({ claim: r[0], bare: /\bREADME(?![,"]| ")(;|$)/.test(r[3]!) || /\bREADME;/.test(r[3]!) }).toEqual({ claim: r[0], bare: false });
     }
-    // The ids the README's reviewers' table gives are the ones this table traces.
-    const readme = read("README.md");
+    // The ids of the reviewers' table (in docs/in-depth.md since the final review, 13 Nov) are the ones this table traces.
+    const readme = read("docs/in-depth.md");
     for (const id of ["0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871", "01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38"]) {
       expect(readme).toContain(id);
       expect(flat).toContain(id);
@@ -127,9 +127,9 @@ describe("the opening table's numbers are the records' and the code's", () => {
     expect(read("docs/in-depth.md")).toContain(out.proof.ref);
   });
 
-  it("Metal's refusal on chain, as Home and the README give it", () => {
+  it("Metal's refusal on chain, as Home and the README's table of one id per rail (docs/in-depth.md) give it", () => {
     const tx = /tx `(0x[0-9a-f]{64})`/.exec(row("Metal refused on chain").value)![1]!;
-    expect(read("README.md")).toContain(tx);
+    expect(read("docs/in-depth.md")).toContain(tx);
     expect(JSON.stringify(main)).toContain(tx);
     expect(main.proof.chain_refusals).toBeGreaterThanOrEqual(1);
   });
@@ -155,7 +155,7 @@ describe("the opening table's numbers are the records' and the code's", () => {
   it("the menu and the tour, from the code", () => {
     const v = row("The menu and the tour").value;
     expect(v.startsWith(`The menu: ${NAV_MAIN.map(([, label]) => label).join(", ")}.`)).toBe(true);
-    expect(v).toContain(`The tour, /judge: ${JUDGE_STEPS.length} steps in ${JUDGE_STEPS.reduce((n, s) => n + s.seconds, 0)} s`);
+    expect(v).toContain(`The product tour, /tour: ${TOUR_STEPS.length} steps in ${TOUR_STEPS.reduce((n, s) => n + s.seconds, 0)} s`);
   });
 
   it("the audit log's rows", () => {

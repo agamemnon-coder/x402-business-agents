@@ -145,7 +145,7 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
     figure,
     /** In sight, one short line. */
     tasks: counted
-      ? `Task cards without Face ID: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`
+      ? `Task cards under a CFO-signed limit: ${moneyShort("EUR", tasks.dayEurCents)} a day.`
       : invoices
         ? `Plus the Treasury agent's task cards: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`
         : `Task cards the Treasury agent may issue alone: up to ${moneyShort("EUR", tasks.dayEurCents)} a day.`,
@@ -165,7 +165,7 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
           ? `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}: a card or a mandate can go in one day, payments alone ${p.invoicesAlonePerDay ?? 0} a day.`
           : `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}, the same as a month: neither a card nor a mandate has a daily limit.`,
       ...(invoices ? [`Payments alone: up to each agent's limit, at most ${p.invoicesAlonePerDay ?? 0} a day per agent, ${MONTH_DAYS} days a month, counted above.`] : []),
-      `Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue without Face ID: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day${counted ? ` (${moneyShort("EUR", tasks.dayEurCents)}), ${MONTH_DAYS} days a month (${moneyShort("EUR", tasks.monthEurCents)}), counted above` : ", not counted above"}.`,
+      `Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue on its own within the limit the CFO signed with Face ID: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day${counted ? ` (${moneyShort("EUR", tasks.dayEurCents)}), ${MONTH_DAYS} days a month (${moneyShort("EUR", tasks.monthEurCents)}), counted above` : ", not counted above"}.`,
       approx,
       EXPOSURE_COMPARISON,
     ],

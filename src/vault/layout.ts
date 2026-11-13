@@ -1,4 +1,4 @@
-// The vault's folder layout (docs/superpowers/specs/2026-11-08-vault-design.md): one fixed tree, the same on a laptop,
+// The vault's folder layout (docs/archive/superpowers/specs/2026-11-08-vault-design.md): one fixed tree, the same on a laptop,
 // in the cloud and in a customer's Drive, readable without Purser. Every segment is made safe here: an invoice's own
 // words (a supplier name, an invoice number) can never climb out of its folder or break a file system.
 

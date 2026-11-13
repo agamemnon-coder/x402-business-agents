@@ -184,7 +184,7 @@ describe("/docs: docs and API", () => {
     expect(plain(off)).toContain("no keys");
   });
 
-  // 210 since the review of 12 Nov: "(KIT is Purser's internal project name)" next to the variable names (6 words).
+  // 210 since the review of 12 Nov: an aside on the project name next to the variable names (6 words; removed again in the final review, 13 Nov).
   // 245 since 13 Nov (owner): the "Connect your AI" card, its sentence, the demo token and its link (35 words). 280 since
   // the jury the same day: Purser Cloud as a guest in the card, its link, and its steps with Claude folded (274 as built).
   it("stays within 280 words in sight, the folds closed", () => {

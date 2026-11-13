@@ -106,7 +106,7 @@ geldige uitkomst), en Claude meldt het.
     refused by Airwallex … the payout is closed". Er is niets betaald.
 
   Max tikt niet opnieuw. Dezelfde request_id kan niet twee keer betalen. Daarna mag Treasury de factuur opnieuw
-  voorstellen: een nieuw voorstel, een nieuwe Face ID. Zie [../runbook.md](../runbook.md), "`fee_unknown` on a payout".
+  voorstellen: een nieuw voorstel, een nieuwe Face ID. Zie [../runbook.md](../../runbook.md), "`fee_unknown` on a payout".
 - **Treasury plant de licentie zonder FX** (vrije EUR blijkt toch genoeg): dan is er op de sandbox geld binnengekomen.
   Niet bijsturen; Claude meldt het en noemt het in het verslag.
 

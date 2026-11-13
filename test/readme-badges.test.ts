@@ -18,7 +18,7 @@ describe("README badges", () => {
   });
 
   it("states the same test count as the README's test line", () => {
-    const line = readme.match(/\*\*(\d+) tests in \d+ files, all passing\*\*/);
+    const line = readme.match(/\*\*(\d+) tests passing\*\*/); // written by npm run test-count from docs/assets/test-summary.json (13 Nov)
     const badge = badgeLine.match(/badge\/tests-(\d+)%20passing/);
     expect(line).not.toBeNull();
     expect(badge).not.toBeNull();

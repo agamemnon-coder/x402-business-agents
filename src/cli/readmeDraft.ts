@@ -1,4 +1,4 @@
-// npm run readme-draft: writes docs/readme-v2-draft.md, the README's next structure for an enterprise reader (12 Nov),
+// npm run readme-draft: writes docs/archive/readme-v2-draft.md, the README's next structure for an enterprise reader (12 Nov),
 // not README.md itself (the orchestrator integrates it). Every number is read from a run record or computed here:
 // the refusals and the main run's counts from their records, the test counts from a vitest JSON report
 // (`npx vitest run --reporter=json --outputFile.json=<file>`, then `npm run readme-draft -- --tests <file>`), the CI
@@ -16,7 +16,7 @@ import { AIRI_RUN_FILE, AIRI_RUN_LOG } from "../redesign/airiRun.js";
 import { SOCIAL_SENTENCE } from "../visuals/svg.js";
 import { BUILT_WITH, BUILT_WITH_PNG, LEFT_OUT } from "../visuals/logos.js";
 
-const OUT = "docs/readme-v2-draft.md";
+const OUT = "docs/archive/readme-v2-draft.md";
 const LIVE = "https://kit11.max-31b.workers.dev";
 const read = (p: string) => readFileSync(p, "utf8");
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i > 0 ? process.argv[i + 1] : undefined; };
@@ -72,7 +72,7 @@ const testsLine = summary
   ? `**${summary.passed} of ${summary.total} tests passed** in ${summary.files} files${summary.failed ? `, ${summary.failed} failed` : ""}${summary.skipped ? `, ${summary.skipped} skipped` : ""}, on commit \`${summary.commit}\` ([summary](assets/test-summary.json)); CI runs them on every push.`
   : `The test count is not in this build: run \`npx vitest run --reporter=json --outputFile.json=vitest.json\`, then \`npm run readme-draft -- --tests vitest.json\`.`;
 
-const md = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
+const body = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
      Not README.md yet: the orchestrator integrates it. Every number below is read from a run record or computed;
      regenerate rather than edit. Image paths are relative to docs/. -->
 
@@ -190,6 +190,9 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 Screenshots and short loops of the live site: [assets/screens/](assets/screens/README.md).
 `;
+// The draft lives in docs/archive/ since the final review (13 Nov); its links are written from docs/, so each relative
+// one gets one "../" more.
+const md = body.replace(/\]\((?![a-z]+:|#|\/)([^)]+)\)/g, "](../$1)");
 
 if (check) {
   if (read(OUT) !== md) { console.error(`${OUT} differs from what the records give now: npm run readme-draft`); process.exit(1); }

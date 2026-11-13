@@ -35,7 +35,7 @@ import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
 import { filmId } from "../config/film.js";
 import { filmStills } from "../film/stills.js";
 import { proofPage } from "../redesign/proof.js";
-import { judgePage } from "../redesign/judge.js";
+import { tourPage } from "../redesign/tour.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
 import { pricingPage } from "../redesign/pricing.js";
@@ -99,6 +99,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
   // Home's hero walkthrough (src/redesign/walk.ts): the hands-on demo's own screens, captured by test/browser/try.check.ts.
   ...Object.fromEntries([1, 2, 3, 4, 5].map((n) => [`try-walk-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/try-walk/walk-${n}.webp`, import.meta.url)) }])),
+  // /tour's four screenshots (src/redesign/tour.ts; docs/assets/tour/README.md says where each was taken).
+  ...Object.fromEntries(["try", "proof", "cloud", "connect"].map((n) => [`tour-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/tour/tour-${n}.webp`, import.meta.url)) }])),
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
@@ -324,9 +326,12 @@ export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
 /** /try/verify checks a receipt in the browser and calls no server: its CSP allows no connection at all. */
 export const TRY_VERIFY_PAGE = tryVerifyPage();
 export const TRY_VERIFY_CSP = cspFor(TRY_VERIFY_PAGE).replace("connect-src 'self'", "connect-src 'none'");
-/** /judge (with /try/sign only: three of its five steps go there): ticks kept in the browser, no fetch, so no connection. */
-export const JUDGE_PAGE = judgePage();
-export const JUDGE_CSP = cspFor(JUDGE_PAGE).replace("connect-src 'self'", "connect-src 'none'");
+/** /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge): four cards, its own style and images, no script. */
+export const TOUR_PAGE = tourPage();
+export const TOUR_CSP = [
+  "default-src 'none'", "script-src 'none'", `style-src ${inlineHash(TOUR_PAGE, "style")}`, "connect-src 'none'",
+  "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
+].join("; ");
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });
@@ -343,6 +348,8 @@ export const FILM_WATCH_CSP = filmWatchCsp(FILM_WATCH_PAGE, filmId() !== null, c
 export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
 export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home" };
+/** Addresses retired for good, answered 301 so old links keep working: /judge became the product tour (owner, 13 Nov). */
+export const MOVED: Record<string, string> = { "/judge": "/tour" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */

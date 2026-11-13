@@ -1,4 +1,4 @@
-// The stored general ledger (docs/superpowers/specs/2026-11-08-bookkeeping-core-design.md, part 1): balanced or
+// The stored general ledger (docs/archive/superpowers/specs/2026-11-08-bookkeeping-core-design.md, part 1): balanced or
 // refused, immutable, hash-chained, idempotent by source key, and closed months stay closed.
 import { describe, expect, it } from "vitest";
 import { AP_CHART, CHART } from "../src/config/gl.js";

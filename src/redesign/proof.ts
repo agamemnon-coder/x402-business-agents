@@ -543,7 +543,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
-  // section of its own now ("Built on", the Airi run's fold) and /judge links the Visa run; Home drops it too.
+  // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
     title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,

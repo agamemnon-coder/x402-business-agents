@@ -159,7 +159,7 @@ export const TRY_POLICY = {
   open: TRY_SIGN_SCREENS.rule.all,
   /** Beside the agent's sentence on a payment that ran alone after a policy change: it was said before that change. */
   saidBefore: "said before your policy change",
-  /** 1.1: the worst case block's heading, "Worst case" word for word (the /judge tour looks for it). */
+  /** 1.1: the worst case block's heading, "Worst case" word for word. */
   worstCase: "Worst case, set by policy",
   /** 1.1, decision B1: what the block counts on chain, since the policy here does not change Purser's mandates. */
   worstCaseChain: STEP0_CHAIN === "purser" ? "Here: the card limits you set; on chain, Purser's own mandates, which this page does not change." : "Here: the card limits you set; on chain, your test world's mandate as panel 3 shows it.",

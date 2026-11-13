@@ -25,8 +25,8 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 
 /** The menu: exactly the four tabs, then "More" (closed) with exactly the pages under it, in order (src/ui/more.ts). */
 // Watch is a tab only once the film is on /watch (src/config/film.ts WATCH_IN_MENU), as the menu itself decides.
-// Jury, 13 Nov: "Judge" after Proof.
-const MENU = JSON.stringify({ items: ["Home", ...(WATCH_IN_MENU ? ["Watch"] : []), "Try", "Proof", "Judge", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
+// 13 Nov (owner): "Judge" is out of the menu again.
+const MENU = JSON.stringify({ items: ["Home", ...(WATCH_IN_MENU ? ["Watch"] : []), "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
 async function menu(page: Page, name: string): Promise<void> {
   const seen = await page.evaluate(`(() => {
     const n = document.querySelector('nav[aria-label="Main"]'), d = n && n.querySelector(":scope > details.pmore");
@@ -100,7 +100,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The hero's one primary button (Try); since the enterprise pass the stat row ends in "See the proof" as a second one.
     if ((await page.locator("main .e-hero a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button in the hero`);
     if (await page.locator("main figure.hf").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
-    // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header): Judge and More after them.
+    // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header): More after them.
     const tabs = (await page.locator("nav.tabs > a, nav.tabs summary").allInnerTexts()).map((t) => t.trim());
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
       await menu(page, `/home ${tag}`);

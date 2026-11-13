@@ -160,7 +160,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const eur = (h: string) => Number(/EUR ([\d,]+) (?:on cards|incl\.)/.exec(h)![1]!.replace(/,/g, ""));
     expect(eur(w.exposure.headline)).toBe(eur(start.headline) + 500 * ALONE_PER_DAY * MONTH_DAYS);
     expect(w.exposure.above).toBe(start.above);
-    expect(w.exposure.tasks).toBe(`Task cards without Face ID: up to ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
+    expect(w.exposure.tasks).toBe(`Task cards under a CFO-signed limit: ${moneyShort("EUR", startPolicy().taskCardEurCents * startPolicy().taskCardsPerDay)} a day.`);
   });
   it("the CFO's view: the same figure as the README and step 0", () => {
     const p = exposurePolicyFromRecord(record);
@@ -174,7 +174,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     const p = startPolicy();
     const cardsAndTasks = AGENTS.reduce((n, a) => n + p.cardMonthlyCents[a], 0) + p.taskCardEurCents * p.taskCardsPerDay * MONTH_DAYS;
     expect(start.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", cardsAndTasks)} on cards and task cards + ${moneyShort("USD", exposureOf(p).total.month.usdCents)} on chain a month.`);
-    expect(start.tasks).toBe(`Task cards without Face ID: up to ${moneyShort("EUR", p.taskCardEurCents * p.taskCardsPerDay)} a day.`);
+    expect(start.tasks).toBe(`Task cards under a CFO-signed limit: ${moneyShort("EUR", p.taskCardEurCents * p.taskCardsPerDay)} a day.`);
     expect(start.above).toBe("Everything above waits for the CFO.");
   });
   it("whole euros where the cents are .00, cents otherwise", () => {
@@ -198,7 +198,7 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
     expect(counted.headline).toBe(`Worst case, set by policy: ${moneyShort("EUR", x.total.month.eurCents)} on cards and task cards + ${moneyShort("USD", x.total.month.usdCents)} on chain a month.`);
     expect(apart.headline).toContain(`${moneyShort("EUR", x.total.month.eurCents - tasks)} on cards +`);
     expect(apart.tasks.startsWith("Task cards the Treasury agent may issue alone")).toBe(true);
-    expect(counted.tasks.startsWith("Task cards without Face ID")).toBe(true);
+    expect(counted.tasks.startsWith("Task cards under a CFO-signed limit")).toBe(true);
     // The form's sentence, with the task cards in its figure.
     expect(counted.form).toBe(`Worst case, set by policy: the agents together can spend at most ${moneyShort("EUR", x.total.month.eurCents)} (cards and task cards) and ${moneyShort("USD", x.total.month.usdCents)} (test USD) a month; everything above waits for the CFO.`);
     expect(counted.form).toBe(worstCaseWords(record).form);

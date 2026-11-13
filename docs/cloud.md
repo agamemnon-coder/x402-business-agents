@@ -2,7 +2,7 @@
 
 One place for everything a company's finance runs on: supplier invoices and their documents, suppliers, payments, the
 ledger, its reports and the audit log. The company's apps, its accountant and its ERP read it through one JSON API, so
-nobody exports a CSV. Design: [the spec](superpowers/specs/2026-11-08-backend-design.md). **Purser Cloud runs publicly as a test preview at
+nobody exports a CSV. Design: [the spec](archive/superpowers/specs/2026-11-08-backend-design.md). **Purser Cloud runs publicly as a test preview at
 purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an access key); no customer uses it. Not ready for real money: test money only.** What is missing
 before real money: [go-live.md](go-live.md).
 

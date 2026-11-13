@@ -3,7 +3,7 @@
 Every document the books hold, filed by itself in one clear folder tree that anyone can open without Purser: the
 supplier's original invoices, a receipt for every payment, the month report, the quarter's VAT overview, the year
 report and the suppliers list. No CSV to sort in Excel. Test money only: this build talks to the Airwallex sandbox, and
-every page with a payment figure says so. Design: [the spec](superpowers/specs/2026-11-08-vault-design.md).
+every page with a payment figure says so. Design: [the spec](archive/superpowers/specs/2026-11-08-vault-design.md).
 
 ## The tree
 

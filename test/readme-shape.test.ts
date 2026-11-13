@@ -25,8 +25,19 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     for (const code of ["awx-1", "vic-2", "rel-1", "main-1"]) expect({ code, found: README.includes(code) }).toEqual({ code, found: false });
   });
 
-  it("gives one id per rail in 'For reviewers in 30 seconds', each read from its run record", () => {
-    const block = README.slice(README.indexOf("## For reviewers in 30 seconds"), README.indexOf("\n## ", README.indexOf("## For reviewers in 30 seconds") + 5));
+  // The final review (13 Nov): "For reviewers in 30 seconds" under 120 words, its table of one id per rail moved to
+  // docs/in-depth.md, "What ran live, one id per rail", which the block links.
+  it("keeps 'For reviewers in 30 seconds' under 120 words, linking the table of one id per rail", () => {
+    const start = README.indexOf("## For reviewers in 30 seconds");
+    const block = README.slice(start + "## For reviewers in 30 seconds".length, README.indexOf("\n## ", start + 5)).split("<picture>")[0]!;
+    const words = block.replace(/\]\([^)]*\)/g, "]").replace(/<[^>]+>/g, " ").replace(/\\/g, " ").split(/\s+/).filter(Boolean);
+    expect(words.length).toBeLessThan(120);
+    expect(block).toContain("](docs/in-depth.md#what-ran-live-one-id-per-rail)");
+  });
+
+  it("gives one id per rail in docs/in-depth.md, 'What ran live, one id per rail', each read from its run record", () => {
+    const DEPTH = read("docs/in-depth.md");
+    const block = DEPTH.slice(DEPTH.indexOf("## What ran live, one id per rail"), DEPTH.indexOf("\n## ", DEPTH.indexOf("## What ran live, one id per rail") + 5));
     const rows = block.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| Rail") && !l.startsWith("|---"));
     expect(rows.map((r) => r.split("|")[1]!.trim())).toEqual(["Airwallex", "Metal", "Visa", "Claude", "x402"]);
     const row = (rail: string) => rows.find((r) => r.split("|")[1]!.trim() === rail)!;

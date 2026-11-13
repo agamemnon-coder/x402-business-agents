@@ -14,8 +14,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
-- [in-depth.md](in-depth.md): the README's sections in full: where each judging criterion is proven, the three live runs with every id, Try step by step, what is real and what is mock.
-- [runs/](runs/): every run log, dated, including awx-1 and the Airi run of 7 November.
+- [in-depth.md](in-depth.md): the README's sections in full: what ran live with one id per rail, where each judging criterion is proven, the Kit 11 runs with every id, Try step by step, what is real and what is mock.
+- [runs/](runs/): every run log, dated, newest first in [runs/README.md](runs/README.md).
 - [requirements-matrix.md](requirements-matrix.md): what the hackathon asks for, where Purser does it, and the proof.
 - [idea-vs-build.md](idea-vs-build.md): the idea as submitted on 24 October, promise by promise, against what is built.
 - [airwallex.md](airwallex.md): Airwallex in Purser: the APIs it calls, and why.
@@ -24,9 +24,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [/claude](https://kit11.max-31b.workers.dev/claude), measured, not asserted: the 40 simulated worlds ([night batch](runs/2026-11-02-night-batch.md)), the [blind holdouts](runs/holdouts/2026-11-03-blind/results.md), each model on each agent ([evals/agents.json](evals/agents.json)) and the agent interface over MCP ([one session](runs/2026-11-12-mcp-transcript.json)).
 - [t0.md](t0.md) and [/t0](https://kit11.max-31b.workers.dev/t0): Purser's books in T:0's ledger; the posting of 10 November is [runs/2026-11-10-t0-journal-sandbox.md](runs/2026-11-10-t0-journal-sandbox.md).
 - [metal-review.md](metal-review.md): a review: does Purser use metal-agent and metal-pay the way Metal intends?
-- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the Airi run (Visa Intelligent Commerce) is in [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
+- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the latest Airi run (Visa Intelligent Commerce, 13 November) is [runs/2026-11-13-vic-4.md](runs/2026-11-13-vic-4.md), the first [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
 - [claude.md](claude.md): how Purser uses Claude.
-- [t0.md](t0.md): Purser's books in a real general ledger (T:0).
 - [feedback-for-metal-and-airwallex.md](feedback-for-metal-and-airwallex.md): feedback for Metal and Airwallex.
 - [agents.md](agents.md): the Kit 11 agents: Claude decides inside the mandate, the rails enforce it.
 - [agent-evals.md](agent-evals.md) and [model-benchmark.md](model-benchmark.md): the three agents with real models, and which Claude model for which job.
@@ -65,8 +64,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
   [agent-evals-ledger.md](agent-evals-ledger.md) (evals of the ledger agents, generated),
   [engine-events.md](engine-events.md) (the engine's events for the hands-on page; the code wins) and
   [visa-icc.md](visa-icc.md) (Visa Intelligent Commerce Connect from public docs; access not granted, not used).
-- [readme-v2-draft.md](readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
-- [superpowers/specs/](superpowers/specs/): the design specs of 8 November for what was built after the kit. [plans/](plans/): design notes and research (Visa TAP, Airi, one source for the books).
+- [plans/](plans/): design notes and research (Visa TAP, Airi, one source for the books).
 - Dated records, kept where other documents cite them: [data-qa.md](data-qa.md) (the data check of the recorded run of 30 October; the main run's is [runs/2026-11-03-main-run-data-qa.md](runs/2026-11-03-main-run-data-qa.md)) and [metal-qa-2026-11-01-week.md](metal-qa-2026-11-01-week.md) (the Metal QA of 1 November).
 
 ## Video
@@ -76,8 +74,10 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 
 ## History
 
-- [archive/](archive/): kept for history; each file says what replaced it.
-
-Not part of the submission: `internal/` holds only the working notes a test, a script or another document still cites
-(two runbooks, a restart plan, a requirements audit and a cheat sheet, in Dutch; the Demo Day card; the
-after-submission list).
+- [archive/](archive/): kept for history; each file says what replaced it. Working files moved out of the docs root on
+  13 November, kept as evidence because a test, a script or a run log still cites them:
+  - [archive/internal/](archive/internal/): the working notes, in Dutch (two runbooks, a restart plan, a requirements
+    audit, a cheat sheet), the Demo Day card and the after-submission list. Not part of the submission.
+  - [archive/superpowers/specs/](archive/superpowers/specs/): the design specs of 8 November for what was built after the kit.
+  - [archive/readme-v2-draft.md](archive/readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
+  - [archive/runs/](archive/runs/): two notes of the dry runs: the acceptance list (in Dutch) and the recycling of test money.

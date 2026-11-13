@@ -115,7 +115,7 @@ describe("partner logos", async () => {
     for (const l of LEFT_OUT) expect(sources).toContain(`| ${l.name} |`);
   });
   it("never claims more than 'built with'", () => {
-    const draft = read("docs/readme-v2-draft.md");
+    const draft = read("docs/archive/readme-v2-draft.md");
     expect(draft).toMatch(/Built with/);
     expect(`${draft}\n${sources.replace(/never with "certified", "endorsed",\n"approved by" or "partner of"/, "")}`).not.toMatch(/certified|endorsed by|approved by|partner of/i);
   });

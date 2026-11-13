@@ -1,6 +1,6 @@
 # Blind holdout scenarios: Northwind Outdoor (Kit 11)
 
-Written blind. The author read only README.md, the Kit 11 brief, docs/internal/draaiboek-wereld-donderdag.md, src/cli/world.ts
+Written blind. The author read only README.md, the Kit 11 brief, docs/archive/internal/draaiboek-wereld-donderdag.md, src/cli/world.ts
 and src/world/*.ts. No agent, prompt, profile or eval file was opened. The scenarios therefore test the *world* and the
 *ledger*, not any known instruction.
 

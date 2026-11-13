@@ -19,7 +19,6 @@ import { VISA_BUILT_ON, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS, VISA_VIC_BUI
 import { buildPages } from "../src/relay/assets.js";
 import { AIRI_RUN_FILE, AIRI_SCRIPTED, AIRI_SUMMARY, airiAsker, airiRun, airiSummaryLine } from "../src/redesign/airiRun.js";
 import { homePage } from "../src/redesign/home.js";
-import { judgePage, judgeSteps } from "../src/redesign/judge.js";
 import { ICC_LINE, VISA_ENTRY_LINE, VISA_H1, VISA_LEAD, VISA_TAP_HEADING, VISA_TITLE, airwallexPage, assertVicFirst, visaLatestLabel, visaPage, visaRunLabel } from "../src/redesign/partners.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { loadRecord, ownTap, tapRun } from "../src/redesign/run.js";
@@ -295,19 +294,14 @@ describe("the Visa entry on the rest of the site", () => {
     expect(built).not.toMatch(/TAP|<img[^>]*visa/i);
   });
 
-  it("links the Visa run from /judge", () => {
-    const step = judgeSteps().find((s) => s.id === "proof")!;
-    expect(step.links).toContainEqual({ label: "The Visa run (VIC via Airi)", href: "/visa" });
-    expect(judgePage()).toMatch(/<a class="btn" href="\/visa">The Visa run \(VIC via Airi\)/);
-  });
-
   it("calls the 7 November run scripted wherever it appears: /visa, /airwallex, /proof and the README; nowhere \"Agents paid with a single-use Visa\"", () => {
     const line = airiSummaryLine(airiRun()!);
     for (const [name, html] of Object.entries({ visa, airwallex, proof })) expect({ name, scripted: text(html).includes(line) }).toEqual({ name, scripted: true });
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8").replace(/\s+/g, " ");
     // The README of 12 Nov (#185) names the 7 November Airi run in one table row: it says the purchase was scripted, with
     // no model call. Any README line that names that run says so.
-    const lines = readFileSync(new URL("../README.md", import.meta.url), "utf8").split("\n").filter((l) => /7 November/.test(l) && /Airi/.test(l));
+    // Since the final review (13 Nov) that row is in docs/in-depth.md, "What ran live, one id per rail", which the README links.
+    const lines = ["../README.md", "../docs/in-depth.md"].flatMap((f) => readFileSync(new URL(f, import.meta.url), "utf8").split("\n")).filter((l) => /7 November/.test(l) && /Airi/.test(l));
     expect(lines.length).toBeGreaterThanOrEqual(1);
     for (const l of lines) expect({ l: l.slice(0, 80), scripted: /scripted (?:run, no Claude call|purchase with no model call)/.test(l) }).toEqual({ l: l.slice(0, 80), scripted: true });
     expect(readme).not.toMatch(/a second live run|second run \(vic-2\)/i);
