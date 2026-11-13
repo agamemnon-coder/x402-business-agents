@@ -663,7 +663,7 @@ function dashBlock(D){
     kpi(D,t('cs.dash.in'),'arrow-down-left',toCents(D.money.in),t('cs.dash.in_sub'),'pos'),
     kpi(D,t('cs.dash.out'),'arrow-up-right',toCents(D.money.out),t('cs.dash.out_sub')),
     kpi(D,t('cs.dash.net'),'wallet',toCents(D.money.net),t('cs.dash.net_sub',{date:dday(D.since)}),toCents(D.money.net)>=0?'pos':'neg'),
-    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t('cs.dash.decisions_fallback',{n:D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
+    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
   const g1=el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
     dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]);
   const g2=el('div','dgrid g2',[dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),spendBars(D)),
@@ -985,7 +985,7 @@ function proofCard(i0){
     const even=Object.keys({...dr,...cr}).every((c)=>(dr[c]||0)===(cr[c]||0));
     const tb=el('tbody','');
     for(const e of mine){const h=el('td','','#'+e.entry_id+' · '+day(e.posting_date)+' · '+data('journal',e.description||''));h.colSpan=3;tb.append(el('tr','en',[h]));
-      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.eng.account')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])]),tb]);
     // The head of the ledger chain: the newest entry's own hash, as the read model holds it (a session may not ask /v1/sync/state).
     const head=es.v[es.v.length-1];
@@ -1193,13 +1193,15 @@ async function booksView(q){
   const j=await api('/v1/ledger/entries?limit=30');
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
   await drawVat();
 }
 
 // --- Shared pieces of the enterprise pass (13 Nov) -------------------------------------------------------------------
+// A VAT code in words where Purser knows it (cloud/src/tryCopy.ts vat), else the code itself.
+const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
 // What Purser Cloud is, in one line, on the sign-in and at the top of the overview; the demo company says what its data is.
 function whatCloud(m){return el('div','what-cloud',[el('p','',t('cs.what_cloud')),m&&m.demo?el('p','demo-label',[ic('flask'),' '+t('cs.demo.label')]):null])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
@@ -1207,7 +1209,7 @@ function journalTable(items,empty){
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
@@ -1237,7 +1239,7 @@ async function agentsView(){
       el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
     const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','feed',a.decisions.map((d)=>el('li','',[el('span','when num',day(d.at)),el('span','',[d.text,d.decided_by&&!/fallback/.test(d.text)?el('small','by',' · '+t('cs.agents.decided_by',{who:d.decided_by})):null])]))):el('p','sub',t('cs.agents.no_decisions'))]);
     return el('section','card agent',[hd,facts,dec])});
-  view().replaceChildren(...[whatCloud(m),head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
+  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
     cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls'))]);
 }
 
@@ -1260,7 +1262,7 @@ async function tokensView(){
   const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
     el('ul','viclist',v.purchases.map((p)=>el('li','',[el('b','',p.step),el('span','',' '+p.what+' · '+p.amount),p.outcome?el('span',p.outcome==='succeeded'?'ok':'sub',' · '+p.outcome+(p.reason?': '+p.reason:'')):null]))),
     v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
-  view().replaceChildren(whatCloud(m),head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
+  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
@@ -1821,7 +1823,7 @@ export const consoleCsp = (n: string) =>
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
   "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
-  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
 /** Paths people type for the console, and the console route each one opens. */
@@ -1843,7 +1845,7 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   if (url.pathname === "/pdfview") {
     const n = nonce();
-    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": pdfViewCsp(n, env.origin) } });
+    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "x-frame-options": "SAMEORIGIN", "content-security-policy": pdfViewCsp(n, env.origin) } });
   }
   if (url.pathname === "/assets/inter.woff2") {
     font ??= fromB64(INTER_WOFF2_B64);
