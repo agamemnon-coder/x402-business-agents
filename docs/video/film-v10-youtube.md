@@ -1,6 +1,6 @@
 # Film v10 on YouTube: title, description, chapters
 
-Upload `out/video/v10/purser-v10.mp4` (4:56), visibility **Unlisted**, and add `out/video/v10/purser-v10.srt` (the same
+Upload `out/video/v10/purser-v10.mp4` (4:58), visibility **Unlisted**, and add `out/video/v10/purser-v10.srt` (the same
 as [film-v10.srt](film-v10.srt)) as English captions.
 
 **Title:** Purser: AI agents pay company bills, only within limits the CFO signs (Kit 11 hand-in)
@@ -26,14 +26,14 @@ Chapters
 0:47 Approval alerts
 1:06 Try it: your own test company
 1:48 Security in layers
-2:23 Claude decides, code checks
-2:49 Airwallex
-3:15 Metal
-3:42 Visa via Airi
-3:59 T:0
-4:09 The proof
-4:20 What is not done
-4:37 Close
+2:25 Claude decides, code checks
+2:51 Airwallex
+3:17 Metal
+3:44 Visa via Airi
+4:01 T:0
+4:11 The proof
+4:22 What is not done
+4:39 Close
 ```
 
 The chapters are the cut's own (`npm run cut -- --docs handin-10` writes them into [film-v10-script.md](film-v10-script.md));

@@ -19,7 +19,7 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Film v10 (13 Nov): enterprise hand-in
 
-**Purser: the enterprise hand-in**, 4:56, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
+**Purser: the enterprise hand-in**, 4:58, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
 It shows what Purser is today, at a company's scale: Purser Cloud as the place where a company runs Purser (its demo
 company: the Agents tab, Invoices & books, the Tokenisation tab), the approval alerts (WhatsApp, e-mail, Slack, Teams:
 built, live once Twilio keys are set), the hands-on demo recorded from the live page, the layers of security with the zero-trust
@@ -30,8 +30,8 @@ bars of 138 px), the captions in the bar below and the badges in the bar above.
 Nobody is on camera and nobody recorded anything by hand. Every line is read by an **AI narrator** (ElevenLabs; the
 voice is “Ian” from ElevenLabs' voice library, `src/film/narrator10.ts`: the repository does not record which stock voice
 v6/v8 used, so this is a calm, warm, neutral English narrator), over **AI-generated music** (ElevenLabs), mixed with
-`src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.3 LUFS integrated, true peak -1.0 dB),
-the music about 21 dB under the voice. The music is one 293 s ElevenLabs track; for 4:56 its own soft opening is
+`src/film/mix.ts` to -14 LUFS (two-pass loudnorm, then a limiter: measured -14.4 LUFS integrated, true peak -1.2 dB),
+the music about 21 dB under the voice. The music is one 293 s ElevenLabs track; for 4:58 its own soft opening is
 crossfaded onto its end (ffmpeg, 3 s), as a new take of that length was over the account's remaining credits. The end card
 says so: “Voice-over and music: AI-generated (ElevenLabs)”, and “Test money only”.
 
@@ -53,7 +53,7 @@ script table with claim ids), [film-v10-shots.md](film-v10-shots.md) (the shot l
 chapters and the description. Six stills are in [stills-v10/](stills-v10/).
 
 **The file** (not in git, as every film before: `out/` is ignored): `out/video/v10/purser-v10.mp4`, 1920×1080, 60 fps,
-H.264 (CRF 16) with AAC 320 kb/s, 4:56 (296.0 s), about 44 MB, and `out/video/v10/purser-v10.srt` next to it (the same as
+H.264 (CRF 16) with AAC 320 kb/s, 4:58 (298.0 s), about 44 MB, and `out/video/v10/purser-v10.srt` next to it (the same as
 [film-v10.srt](film-v10.srt)). Made again with:
 
 ```sh

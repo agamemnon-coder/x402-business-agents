@@ -1,4 +1,4 @@
-# Purser: the enterprise hand-in (film v10): the shot list (4:56)
+# Purser: the enterprise hand-in (film v10): the shot list (4:58)
 
 Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/shots.ts. Who records: **Max (iPhone)** or **Max (screen)** for his own footage; **capture** for a page shot (`npm run capture -- <id>`: Playwright, dark, 1440x900, frame by frame, GETs only).
 
@@ -52,20 +52,20 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
 - **try-cent**, 8 s · **recorded by code** (`npm run record-try10`, headless Chromium at phone size, a CDP virtual test passkey) · /try: the amount changed by one cent, the same signature refused
   - On screen: caption "One cent changed → refused"; badge "Simulated bank · test money"
 
-## 1:48–2:11 · Security in layers (x06)
+## 1:48–2:13 · Security in layers (x06)
 
-- **X-security**, 13 s · **capture** · /security: the layers a payment must pass
+- **X-security**, 14 s · **capture** · /security: the layers a payment must pass
   - Where: https://kit11.max-31b.workers.dev/security
   - Do: hold 1 s, then scroll to "The layers a payment must pass" (2.5 s), then hold 10 s (13.5 s)
-  - Must show: "The layers a payment must pass", "52 attacks, all stopped"
+  - Must show: "The layers a payment must pass", "53 attacks, all stopped"
   - On screen: caption "Six layers · each stops on its own"; badge "Test harness · stand-in rails"
-- **X-attacks**, 10 s · **capture** · /security: where each attack was stopped
+- **X-attacks**, 11 s · **capture** · /security: where each attack was stopped
   - Where: https://kit11.max-31b.workers.dev/security
   - Do: hold 0.5 s, then scroll to "Where each attack was stopped" (2.5 s), then hold 9 s (12 s)
   - Must show: "Where each attack was stopped"
-  - On screen: caption "All 52 attacks stopped · test harness"; badge "Test harness · stand-in rails"
+  - On screen: caption "All 53 attacks stopped · test harness"; badge "Test harness · stand-in rails"
 
-## 2:11–2:23 · x07 (x07)
+## 2:13–2:25 · x07 (x07)
 
 - **X-hostile**, 12 s · **capture** · /security: a hostile model, against the code
   - Where: https://kit11.max-31b.workers.dev/security
@@ -73,7 +73,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "A hostile model, against the code", "380"
   - On screen: caption "Hostile-model eval · none unsafe"; badge "Test data · no network"
 
-## 2:23–2:49 · Claude decides, code checks (x08)
+## 2:25–2:51 · Claude decides, code checks (x08)
 
 - **X-claude**, 11 s · **capture** · /claude: the three agents and their decisions
   - Where: https://kit11.max-31b.workers.dev/claude
@@ -86,7 +86,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "Invoices, sorted by Claude", "chose its account, VAT code and cost centre"
   - On screen: caption "Coded by Claude · checked by code"; badge "Test company · test money"
 
-## 2:49–3:15 · Airwallex (x09)
+## 2:51–3:17 · Airwallex (x09)
 
 - **X-awx-card**, 8 s · **capture** · /airwallex: LIMIT_EXCEEDED
   - Where: https://kit11.max-31b.workers.dev/airwallex
@@ -104,7 +104,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "The payee's bank checks the name before the CFO is asked", "FULL_MATCH"
   - On screen: caption "Payee check · the bank checks the name"; badge "Airwallex sandbox · test money"
 
-## 3:15–3:42 · Metal (x10)
+## 3:17–3:44 · Metal (x10)
 
 - **X-faceid-chain**, 9 s · **capture** · /runs: passkeys sign on chain, two owners
   - Where: https://kit11.max-31b.workers.dev/runs
@@ -122,7 +122,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "Height: 701"
   - On screen: caption "Audit chain anchored · 13 Nov"; badge "Metal testnet · test USD"
 
-## 3:42–3:59 · Visa via Airi (x11)
+## 3:44–4:01 · Visa via Airi (x11)
 
 - **X-visa**, 17 s · **capture** · The vic-3 record on GitHub: 45.00 EUR after Face ID, both read-backs
   - Where: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-vic-3.md
@@ -130,7 +130,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "above the CFO's limit: Face ID"
   - On screen: caption "Visa via Airi · 12 Nov · hash read back"; badge "Airi test card · test money"
 
-## 3:59–4:09 · T:0 (x12)
+## 4:01–4:11 · T:0 (x12)
 
 - **X-t0**, 10 s · **capture** · The T:0 record on GitHub: 95 journal entries, matched line by line
   - Where: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-t0-journal-sandbox.md
@@ -138,14 +138,14 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "matches our books line by line"
   - On screen: caption "T:0 sandbox · 10 Nov · all 95 entries"; badge "Sandbox · test data"
 
-## 4:09–4:20 · The proof (x13)
+## 4:11–4:22 · The proof (x13)
 
 - **X-proof**, 11 s · **capture** · /proof: what Purser guarantees, who enforces it, the evidence
   - Where: https://kit11.max-31b.workers.dev/proof
   - Do: hold 3 s, then scroll to "What Purser guarantees" (2 s), then hold 7 s (12 s)
   - Must show: "What Purser guarantees"
 
-## 4:20–4:37 · What is not done (x14)
+## 4:22–4:39 · What is not done (x14)
 
 - **X-visa-n**, 17 s · **capture** · The vic-3 record: the negative tests, only Purser enforces the binding
   - Where: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-vic-3.md
@@ -153,10 +153,10 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "only Purser enforces the binding here"
   - On screen: caption "Sandbox did not refuse · only Purser held"; badge "Airi test card · test money"
 
-## 4:37–4:50 · Close (x15)
+## 4:39–4:52 · Close (x15)
 
 - Title card, 13 s: “Agents do the work. / The CFO signs only the exceptions. / Purser · Kit 11” (drawn by the cut)
 
-## 4:50–4:56 · End card (x16)
+## 4:52–4:58 · End card (x16)
 
 - End card, 6 s: kit11.max-31b.workers.dev · Try it yourself · Test money only: Airwallex sandbox · Metal testnet · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs). (drawn by the cut)
