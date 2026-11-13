@@ -49,7 +49,7 @@ describe("the Airi run on the site", () => {
       // In sight, in this order: the heading, the label, the summary, A, B, C with their badges, the checks.
       const order = [HEADING, `A separate run · ${AIRI_RUN_LABEL}`, SUMMARY, `${BADGES[0]} EUR ${buy("A").amount} (Purser's limit: EUR ${rec.policy.alone_max_eur}). ${A_SENTENCE}`,
         `${BADGES[1]} EUR ${buy("B").amount}, above the limit: Purser asked Airi only after the CFO's Face ID on the exact terms.`,
-        `${BADGES[2]} EUR ${buy("C").amount} at a merchant the CFO does not allow: refused before Airi was asked (0 Airi calls).`, "5 of 5 checks pass"].map((x) => ({ x, at: t.indexOf(x) }));
+        `${BADGES[2]} EUR ${buy("C").amount} at a merchant the CFO does not allow: refused before Airi was asked (0 Airi calls).`, "All 5 checks pass"].map((x) => ({ x, at: t.indexOf(x) }));
       for (const o of order) expect({ name, x: o.x, shown: o.at >= 0 }).toEqual({ name, x: o.x, shown: true });
       expect(order.map((o) => o.at)).toEqual([...order.map((o) => o.at)].sort((x, y) => x - y));
       // The checks link to the run log's checks section on GitHub, which lists all five.

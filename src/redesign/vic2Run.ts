@@ -7,7 +7,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 export const VIC2_RUN_FILE = "docs/demo/vic-2-run.json";
 export const VIC2_RUN_LOG = "docs/runs/2026-11-07-vic-2.md";
@@ -63,7 +63,7 @@ export function vic2Lines(rec: Vic2Record): Vic2Line[] {
 const checksUrl = `${REPO_BLOB}${VIC2_RUN_LOG}#checks`;
 
 /**
- * The block. Full (/airwallex): heading, label, the three outcomes, "7 of 7 checks pass", the checks in a fold.
+ * The block. Full (/airwallex): heading, label, the three outcomes, "All 7 checks pass", the checks in a fold.
  * fold: false (/visa, where nothing is folded above the TAP picture): the same without the fold, the run log linked.
  * short (/airwallex, /proof): heading and the checks, a link to the outcomes on /visa.
  */
@@ -73,7 +73,7 @@ export function vic2RunHtml(rec: Vic2Record | null, o: { short?: boolean; fold?:
   const ok = checks.filter(([, c]) => c.ok).length;
   const h = `<div class="card airi" id="${VIC2_RUN_ID}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>
 <p class="airi-label">${esc(VIC2_LABEL)}</p>`;
-  const link = `<a class="awm ok" href="${esc(checksUrl)}" target="_blank" rel="noopener">${icon("circle-check", 16)}${esc(`${ok} of ${checks.length} checks pass`)} ↗</a>`;
+  const link = `<a class="awm ok" href="${esc(checksUrl)}" target="_blank" rel="noopener">${icon("circle-check", 16)}${esc(`${countOf(ok, checks.length)} checks pass`)} ↗</a>`;
   // The text budgets of /airwallex and /proof (test/site-v4.test.ts) leave room for the heading and the checks only; the rest is a link away.
   if (o.short) return `<div class="card airi" id="${VIC2_RUN_ID}"><h3 class="airi-h">${icon("shield-check", 18)}${esc(`${VIC2_HEADING} (${day(rec.started_at)})`)}</h3>\n${link}\n<a class="open" href="visa#${VIC2_RUN_ID}">${esc("Details")} ${icon("arrow-right", 14)}</a></div>`;
   const out = `<ul class="airi-out">${vic2Lines(rec).map((l) => `<li class="${l.ok ? "ok" : "no"}"><span class="awm ${l.ok ? "ok" : "bad"}">${esc(l.badge)}</span> ${esc(l.text)}</li>`).join("")}</ul>`;

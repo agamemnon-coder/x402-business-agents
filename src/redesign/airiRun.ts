@@ -20,7 +20,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 export const AIRI_RUN_FILE = "docs/demo/airi-run.json";
 export const AIRI_RUN_LOG = "docs/runs/2026-11-07-vic-1.md";
@@ -200,10 +200,10 @@ const heading = (s: AiriRunSummary, h: "h2" | "h3") => `<${h} class="airi-h">${i
 <p class="airi-label">${esc(`A separate run · ${AIRI_RUN_LABEL}`)}</p>
 <p class="airi-sum">${esc(s.summary)}</p>`;
 const outcomes = (s: AiriRunSummary) => `<ul class="airi-out">${s.outcomes.map((o) => `<li class="${o.ok ? "ok" : "no"}"><span class="awm ${o.ok ? "ok" : "bad"}">${esc(o.badge)}</span> ${esc(o.text)}</li>`).join("")}</ul>`;
-/** "5 of 5 checks pass", a link to the run log's checks section (the five named there and in the fold). */
+/** "All 5 checks pass" (or "4 of 5"), a link to the run log's checks section (the five named there and in the fold). */
 const checksLink = (s: AiriRunSummary) => {
   const ok = s.checksOk === s.checksAll;
-  return `<a class="awm ${ok ? "ok" : "bad"}" href="${esc(AIRI_CHECKS_URL)}" target="_blank" rel="noopener">${icon(ok ? "circle-check" : "octagon-x", 16)}${esc(`${s.checksOk} of ${s.checksAll} checks pass`)} ↗</a>`;
+  return `<a class="awm ${ok ? "ok" : "bad"}" href="${esc(AIRI_CHECKS_URL)}" target="_blank" rel="noopener">${icon(ok ? "circle-check" : "octagon-x", 16)}${esc(`${countOf(s.checksOk, s.checksAll)} checks pass`)} ↗</a>`;
 };
 
 /** The block: heading, label, summary, the three outcomes, the checks; every check, step and id folded. */

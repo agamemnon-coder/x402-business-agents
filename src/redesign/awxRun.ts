@@ -10,7 +10,7 @@ import type { Awx1Record } from "../awx/scenario.js";
 import { moneyForPeople } from "../../worker/src/agentLine.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { family } from "./run.js";
-import { esc, icon } from "./ui.js";
+import { countOf, esc, icon } from "./ui.js";
 
 export const AWX_RUN_FILE = "docs/demo/airwallex-run.json";
 export const AWX_RUN_LOG = "docs/runs/2026-11-07-awx-1.md";
@@ -81,7 +81,7 @@ const badge = (ok: boolean, text: string) => `<span class="awm ${ok ? "ok" : "ba
 export function awxRunHtml(s: AwxRunSummary | null): string {
   if (!s) return "";
   return `<div class="card" id="${AWX_RUN_ID}"><h3>${icon("credit-card", 18)}${esc(`${s.date}, ${s.run}: a separate run · ${AWX_RUN_LABEL}`)}</h3>
-${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass`)}
+${badge(s.checksOk === s.checksAll, `${countOf(s.checksOk, s.checksAll)} checks pass`)}
 <details class="fold" id="${AWX_RUN_STEPS_ID}"><summary>${esc("Every step and id")}</summary><ul class="awc">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
 <p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AWX_RUN_LOG}`)}" target="_blank" rel="noopener">run\u00a0log\u00a0↗</a></p></details></div>`;
 }
@@ -93,7 +93,7 @@ ${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass
 export function awxRunShortHtml(s: AwxRunSummary | null): string {
   if (!s) return "";
   return `<div class="card" id="${AWX_RUN_ID}"><h3>${icon("credit-card", 18)}${esc(`${s.date}, ${s.run}: a separate run · ${AWX_RUN_LABEL}`)}</h3>
-${badge(s.checksOk === s.checksAll, `${s.checksOk} of ${s.checksAll} checks pass`)}
+${badge(s.checksOk === s.checksAll, `${countOf(s.checksOk, s.checksAll)} checks pass`)}
 <p>${esc(s.short)}</p>
 <p class="src">${esc(s.source)}</p>
 <a class="open" href="airwallex#${AWX_RUN_STEPS_ID}">${esc("Every step and id")} ${icon("arrow-right", 14)}</a></div>`;
