@@ -88,7 +88,7 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
  * passkey authenticator (the platform kind: user verification, discoverable credentials). Both clouds use the relying
  * party "localhost", so each company's passkey lives in its own context's authenticator.
  */
-async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[]; cdp: CDPSession }> {
+async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[]; cdp: CDPSession; internal: string }> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: shots ? 2 : 1 });
   const urls: string[] = [];
   ctx.on("request", (r) => urls.push(r.url()));
@@ -98,8 +98,8 @@ async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; erro
   page.on("pageerror", (e) => errors.push(String(e)));
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
-  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-  return { ctx, page, errors, urls, cdp };
+  const { authenticatorId: internal } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  return { ctx, page, errors, urls, cdp, internal };
 }
 /** A company's first run in the console, from its starter key to the owner's passkey made and signed in (the first run's last step on screen). */
 async function firstRun(p: Page, origin: string, slug: string, key: string, snap: (name: string) => Promise<void> = async () => {}) {
@@ -412,7 +412,7 @@ async function enginePass() {
   const callE = caller(origin);
   const madeE = await callE("POST", "/v1/admin/tenants", ADMIN, { slug: "harbour", name: "Harbour Tools (test company)", owner: { display_name: "The CFO" } });
   ok(madeE.status === 201 && (await callE("POST", "/v1/company", madeE.json.api_key as string, { language: "en" })).status === 200, "engine pass: a company of its own on a cloud that runs an engine, in English");
-  const { ctx: ctxE, page: p, errors: errs, cdp: cdpE } = await passkeyContext();
+  const { ctx: ctxE, page: p, errors: errs, cdp: cdpE, internal: internalE } = await passkeyContext();
   await firstRun(p, origin, "harbour", madeE.json.api_key as string);
   const E: EnginePass = { origin, page: p, errors: errs, settle: () => settleOn(p), invoiceId: "", pdf: await pdfOf(EN) };
   await engineUpload(E);
@@ -422,7 +422,7 @@ async function enginePass() {
   await engineProof(E);
   await engineArchive(E);
   await engineClaude(E);
-  await engineSecondKey(E, cdpE);
+  await engineSecondKey(E, cdpE, internalE);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
   await engineGuestArchive(origin);
@@ -457,9 +457,16 @@ async function engineGuestArchive(origin: string) {
  * security key in Settings, Security; sets the rule (at or above EUR 1000.00) with Face ID; then a EUR 1,309.00 invoice
  * waits on Face ID alone, the page says why and asks for the key, and it is approved once the key signs the same terms.
  */
-async function engineSecondKey(E: EnginePass, cdp: CDPSession) {
+async function engineSecondKey(E: EnginePass, cdp: CDPSession, internal: string) {
   const p = E.page;
   const { authenticatorId: usb } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "usb", hasResidentKey: false, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  // A person touches one authenticator at a time: Face ID on the phone, or the key in the USB port. Only the one in use
+  // answers (with two answering at once, Chromium's virtual environment ends the request).
+  const touch = async (which: "face" | "key") => {
+    await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId: internal, enabled: which === "face" });
+    await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId: usb, enabled: which === "key" });
+  };
+  await touch("key");
   await p.goto(`${E.origin}/#/settings`);
   await p.waitForSelector("#add-key");
   ok(!(await p.isChecked("#step-up")), "second key: Settings, Security shows \"Ask again before sensitive changes\" off by default");
@@ -467,6 +474,7 @@ async function engineSecondKey(E: EnginePass, cdp: CDPSession) {
   await p.waitForSelector("#security .note-ok", { timeout: 20_000 });
   const onUsb = (await cdp.send("WebAuthn.getCredentials", { authenticatorId: usb })).credentials;
   ok(onUsb.length === 1 && /Security key added/.test((await p.textContent("#security")) ?? ""), `second key: "Add a security key" registers a credential on the USB authenticator (${onUsb.length})`);
+  await touch("face");
   await p.fill("#second-key-eur", "1000.00");
   await p.click("#second-key-save");
   await p.waitForSelector("#second-key-save:not([disabled])", { timeout: 20_000 });
@@ -490,10 +498,12 @@ async function engineSecondKey(E: EnginePass, cdp: CDPSession) {
   await p.waitForSelector("#pay >> text=Touch your security key", { timeout: 20_000 });
   ok(/Touch your security key\./.test((await p.textContent("#pay")) ?? "") && await p.locator(".dhead .st.paid").count() === 0, "second key: on Face ID alone the payment keeps waiting, and the page asks for the security key");
   ok(await signs(usb) === usbBefore, "second key: the security key has not signed yet");
+  await touch("key");
   await p.click("#pay .btn");
   await p.waitForSelector("#pay .note-ok", { timeout: 30_000 });
   ok(/approved/.test((await p.textContent("#pay .note-ok")) ?? "") && await signs(usb) > usbBefore, "second key: approved once the security key on the USB authenticator signed the same terms");
   await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId: usb });
+  await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId: internal, enabled: true });
 }
 
 /** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
