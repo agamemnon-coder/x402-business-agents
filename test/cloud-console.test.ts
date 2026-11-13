@@ -285,10 +285,12 @@ describe("the console's language, mark and first run", () => {
     expect(brand).not.toMatch(/<span class="mk">P<\/span>/);
     expect(brand).toMatch(/<span class="mk"><svg [^>]*aria-hidden="true">/);
     // 12 Nov (owner): the site's own brand (src/redesign/ui.ts header), not a lockup of the console's: its feather, its
-    // word Purser; "Purser Cloud" is the current item under the site's "More".
+    // word Purser. Since the review of 13 Nov the console marks no menu item ("More" was marked on every page): "Purser
+    // Cloud" under the site's "More" leads here, unmarked.
     expect(brand).toContain(icon("feather", 17));
     expect(brand).toMatch(/<span class="nm">Purser<\/span><\/a>/);
-    expect(markup).toContain('<a href="/" aria-current="page">Purser Cloud</a>');
+    expect(markup).toContain('<a href="/">Purser Cloud</a>');
+    expect(markup).not.toContain('<summary class="on">More</summary>');
     expect(svg("feather", 17)).toContain("<path");
     // Inline, through the page's own icons: the policy stays what it was.
     expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");

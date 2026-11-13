@@ -794,6 +794,13 @@ async function guestPass() {
     await p.waitForSelector("#guest");
     await p.click("#guest");
     await p.waitForSelector(".dash", { timeout: 20_000 });
+    // Review, 13 Nov: no empty band below the first screen. Without any scroll (a page read whole, or a full-page
+    // screenshot), every card has risen in, the ones below the first screen too.
+    await p.waitForTimeout(600);
+    const hidden = await p.evaluate(() => [...document.querySelectorAll(".dash .rise")].filter((n) => getComputedStyle(n).opacity !== "1").length);
+    ok(hidden === 0, `${tag}: no empty band: every card is shown without scrolling (${hidden} hidden)`);
+    // The console is not one of the site's pages: its header marks no item ("More" was marked on every page).
+    ok(await p.locator('header.top summary.on, header.top a[aria-current="page"]').count() === 0, `${tag}: the site header marks no menu item on the console`);
     for (let y = 0; y < 6000; y += 500) { await p.mouse.wheel(0, 500); await p.waitForTimeout(120); }
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);

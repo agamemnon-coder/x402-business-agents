@@ -341,7 +341,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
-${siteHeader("cloud")}
+${siteHeader(null)}
 <div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
@@ -645,8 +645,10 @@ function dashBlock(D){
     dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,weekW)]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))]);
   const g3=dcard('feedc',t('cs.dash.feed_title'),t('cs.dash.feed_sub'),feedList(D));
   const box=el('div','dash',[k,g1,g2,g3]);
-  // Rise in once in view (in order); bars grow and the line draws itself. Reduced motion: all shown at once.
-  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))whenSeen(n,()=>n.classList.add('in'))});
+  // Every card rises in on the next frame (bars grow, the line draws itself), whether or not it is on the screen yet
+  // (review, 13 Nov: cards waiting to be scrolled to left an empty band of about 850 px between the charts and "Next" at
+  // 1440 px, in a page read whole). Reduced motion: the CSS shows all at once.
+  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))n.classList.add('in')});
   return box}
 async function overviewView(){
   title(t('cs.nav.overview'));
