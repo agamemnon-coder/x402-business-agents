@@ -34,6 +34,7 @@ describe("/try's first screen", () => {
     const { START } = await import("../cloud/src/tryCopy.js");
     expect(START.what).toBe("About 2 minutes: read an invoice, sign it with your passkey, see it booked.");
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
-    expect(html).toContain("box.append(text,b,el('p','fine',C.start.what),el('p','fine',C.start.fine));");
+    // Then the walkthrough on YouTube (13 Nov, owner): one small link, its address FILM_URL.
+    expect(html).toContain("box.append(text,b,el('p','fine',C.start.what),el('p','fine',C.start.fine),el('p','walkl',walk));");
   });
 });
