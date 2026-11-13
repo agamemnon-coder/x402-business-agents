@@ -197,7 +197,7 @@ npm run judge -- --check
 - `npm run judge -- --check` (about 3 s): builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record, offline, and fetches each once.
 - `npm run verify-approval` (under 1 s): checks the receipt of the owner's real passkey approval of 7 November, published on 12 November, offline with Node's own crypto: the passkey signed exactly those terms; change one cent and it says NOT VALID. `npm run verify-receipt -- receipt.json` does the same for the receipt you get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign). Getting the receipt needs the live site and your own passkey.
 
-CI runs the same on every push.
+CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
 ## Proof in numbers
 
@@ -235,8 +235,11 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.
 - **Airwallex (sandbox):** the agents' cards and card limits, FX, the SWIFT euro payout, webhooks.
 - **Metal (testnet):** the on-chain mandates and the agents' payments; it refuses what is over a mandate.
-- **Claude by Anthropic:** the three agents' decisions: Sourcing on Claude Haiku, Support on Claude Sonnet, Treasury
-  on Claude Opus.
+- **Claude by Anthropic:** two sets of agents. The Kit 11 agents pay for the company's own running costs (cards, x402
+  on Metal), the three agents' decisions: Sourcing on Claude Haiku, Support on Claude Sonnet, Treasury on Claude Opus.
+  The payables agents handle supplier invoices (Home, /try, Purser Cloud): the Reader reads an invoice, the Checker
+  checks it, the Coder books account and VAT, the Payer proposes the payment; code enforces the limits and the CFO
+  signs with Face ID.
 - **Face ID and passkeys (WebAuthn on the CFO's phone):** the CFO's passkey, unlocked with Face ID, signs the hash of
   the exact terms.
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a single-use card credential.
