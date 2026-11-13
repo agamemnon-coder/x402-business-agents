@@ -43,9 +43,11 @@ export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
  */
 export const TRY_URL = "/try";
 
-export type Tab = "home" | "watch" | "try" | "proof";
+export type Tab = "home" | "watch" | "try" | "proof" | "judge";
 /** The four tabs; the menu's fifth item, "More", and the pages under it are in src/ui/more.ts (shared with src/ui/nav.ts). */
-const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
+// Jury, 13 Nov: "Judge" in the top menu, after Proof. A bundle without /judge (TRY_SIGN_ENABLED off) drops the tab where
+// it is built (src/relay/assets.ts flowLinks), so no page links to a 404.
+const TABS: [Tab, string, string][] = ([["home", "Home", "home"], ["watch", "Watch", "watch"], ["try", "Try", TRY_URL], ["proof", "Proof", "proof"], ["judge", "Judge", "judge"]] as [Tab, string, string][]).filter(([t]) => t !== "watch" || WATCH_IN_MENU);
 
 /** The design tokens, light and dark: the same on every page. */
 export const TOKENS = `@font-face { font-family: Inter; src: url(assets/inter.woff2) format("woff2"); font-weight: 100 900; font-display: swap; }
@@ -223,9 +225,10 @@ details.real { flex-basis: 100%; }
 footer.foot a.flink { color: var(--muted); display: inline-flex; align-items: center; min-height: 44px; }
 footer.foot .builton { flex-basis: 100%; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; color: var(--muted); }
 footer.foot .builton li { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
-footer.foot .builton li + li:not(:nth-child(2))::before { content: "·"; margin-right: 8px; color: var(--faint); }
+/* The dot after an item, not before the next (jury, 13 Nov): a wrapped line starts with a name, never with "·". */
+footer.foot .builton li:not(:first-child):not(:last-child)::after { content: "·"; margin-left: 8px; color: var(--faint); }
 footer.foot .builton b { color: var(--text); font-weight: 650; }
-@media (max-width: 520px) { footer.foot .builton { flex-direction: column; align-items: flex-start; } footer.foot .builton li { white-space: normal; min-height: 36px; } footer.foot .builton li + li::before { content: none; } }
+@media (max-width: 520px) { footer.foot .builton { flex-direction: column; align-items: flex-start; } footer.foot .builton li { white-space: normal; min-height: 36px; } footer.foot .builton li:not(:first-child):not(:last-child)::after { content: none; } }
 details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font-size: 15px; color: var(--text); }
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;

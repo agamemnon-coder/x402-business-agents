@@ -9,17 +9,19 @@
 // three booking lines), in its own style, inside the screen, the same size while it plays; with reduced motion it is
 // one still frame with the payment and its last booking line in sight. "What's real?" opens the footer's fold. The stat
 // row: one tile per figure homeStats() reads from the records, Face ID on chain first, each figure ending at its record
-// value. Home makes no request after it has loaded. Every link, button, fold header and field in <main> is at least
+// value; then the scale band, each figure as src/redesign/scale.ts computes it, each a link to its source. Home makes no request after it has loaded. Every link, button, fold header and field in <main> is at least
 // 44 px high. On a phone the first two screens show one date, the card's due date, and say "test money". On a wide
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
 import { homeStats, PROOF_BUTTON, START, WHATS_REAL } from "../../src/redesign/home.js";
 import { agentRun } from "../../src/redesign/run.js";
+import { scaleStats } from "../../src/redesign/scale.js";
 
 /** A figure as the stat row writes it (src/redesign/stats.ts): grouped, with its decimals. */
 const fmt = (n: number, dec = 0) => n.toLocaleString("en-GB", { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const STATS = homeStats(agentRun());
+const SCALE = scaleStats();
 
 /** The text in sight above a line of the page (document px): no hidden step, no closed fold, no script. */
 const SEEN_ABOVE = (limit: number) => `(() => {
@@ -85,7 +87,11 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const tiles = await row.locator("li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), label: (l.querySelector("small")?.textContent ?? "").trim() })));
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
-  if (!/^Face ID verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not Face ID verified on chain (${tiles[0]?.label})`);
+  if (!/Face ID verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not Face ID verified on chain (${tiles[0]?.label})`);
+  // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link.
+  const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));
+  const wantBand = SCALE.map((x) => ({ figure: fmt(x.n), href: x.href }));
+  if (JSON.stringify(band) !== JSON.stringify(wantBand)) fail(`the scale band is ${JSON.stringify(band)}, not the records' ${JSON.stringify(wantBand)}`);
   page.off("request", onRequest);
   if (asked.length) fail(`Home made ${asked.length} request(s) after it loaded: ${asked.slice(0, 3).join(", ")}`);
 

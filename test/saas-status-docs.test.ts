@@ -154,7 +154,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(245);
+    expect(visibleWords(set)).toBeLessThanOrEqual(280);
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -185,9 +185,10 @@ describe("/docs: docs and API", () => {
   });
 
   // 210 since the review of 12 Nov: "(KIT is Purser's internal project name)" next to the variable names (6 words).
-  // 245 since 13 Nov (owner): the "Connect your AI" card, its sentence, the demo token and its link (35 words).
-  it("stays within 245 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(245);
+  // 245 since 13 Nov (owner): the "Connect your AI" card, its sentence, the demo token and its link (35 words). 280 since
+  // the jury the same day: Purser Cloud as a guest in the card, its link, and its steps with Claude folded (274 as built).
+  it("stays within 280 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(280);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });
@@ -195,7 +196,7 @@ describe("/docs: docs and API", () => {
   it("shows no number of its own: only the names the code and the docs use", () => {
     // Names with digits in them are names (x402, the KIT11_ variables, the OpenAPI document's path), and the tools'
     // descriptions are the code's own words (held to the server's answer above): nothing else carries a figure.
-    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+/g, " ");
+    const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+|\bhttps:\/\/[\w.-]+\/[\w/.-]*/g, " ");
     expect(numbers(ours(text))).toEqual([]);
     expect(numbers(ours(`${text} over 40 customers`))).toEqual(["40"]);
   });

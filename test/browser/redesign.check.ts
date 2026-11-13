@@ -25,7 +25,8 @@ const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}
 
 /** The menu: exactly the four tabs, then "More" (closed) with exactly the pages under it, in order (src/ui/more.ts). */
 // Watch is a tab only once the film is on /watch (src/config/film.ts WATCH_IN_MENU), as the menu itself decides.
-const MENU = JSON.stringify({ items: ["Home", ...(WATCH_IN_MENU ? ["Watch"] : []), "Try", "Proof", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
+// Jury, 13 Nov: "Judge" after Proof.
+const MENU = JSON.stringify({ items: ["Home", ...(WATCH_IN_MENU ? ["Watch"] : []), "Try", "Proof", "Judge", MORE_LABEL], more: moreLinks().map((l) => l.label), open: false });
 async function menu(page: Page, name: string): Promise<void> {
   const seen = await page.evaluate(`(() => {
     const n = document.querySelector('nav[aria-label="Main"]'), d = n && n.querySelector(":scope > details.pmore");
@@ -99,7 +100,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The hero's one primary button (Try); since the enterprise pass the stat row ends in "See the proof" as a second one.
     if ((await page.locator("main .e-hero a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button in the hero`);
     if (await page.locator("main figure.hf").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
-    // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header).
+    // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header): Judge and More after them.
     const tabs = (await page.locator("nav.tabs > a, nav.tabs summary").allInnerTexts()).map((t) => t.trim());
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
       await menu(page, `/home ${tag}`);
@@ -173,22 +174,24 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
     // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Metal, T:0, Claude.
     if ((await page.locator(".pcard").count()) !== 5) fail(`/proof ${tag}: not five partner cards`);
-    // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then one closed fold that opens
-    // with the seven guarantees; with it open, each partner card with one claim to tap in sight; four tiles; every closed
+    // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then the seven guarantees (in
+    // sight again since the jury's second round), then one closed fold; with it open, each partner card with one claim to tap in sight; four tiles; every closed
     // line inside still closed; the utility links last.
-    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ul.sumc"), d = document.querySelector("main details.sumd"); return { first: !!h1 && h1.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; closed: boolean };
-    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || !sum.closed) fail(`/proof ${tag}: not four cards directly under the heading on the first screen, with the details fold closed (${JSON.stringify(sum)})`);
+    // Since the owner's word (13 Nov) the scale band sits between the heading and the four cards.
+    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ul.sumc"), d = document.querySelector("main details.sumd"), b = h1 && h1.nextElementSibling; return { first: !!b && b.matches("ul.scale") && b.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; closed: boolean };
+    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || !sum.closed) fail(`/proof ${tag}: not the scale band and four cards under the heading on the first screen, with the details fold closed (${JSON.stringify(sum)})`);
     await page.locator("main details.sumd > summary").click();
     const order = (await page.evaluate(`(() => {
-      const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util");
+      const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util"), c = document.querySelector("main ul.sumc");
       const shown = (e) => e.getBoundingClientRect().height > 0 && e.checkVisibility();
       return {
-        first: !!d && d.querySelector(":scope > summary").nextElementSibling === g, top: 0, promises: g ? g.querySelectorAll("li .by").length : 0,
+        // Jury, 13 Nov (second round): the guarantees in sight under the four cards, the fold right after them.
+        first: !!c && !!d && c.nextElementSibling === g && g.nextElementSibling === d && !d.contains(g), top: 0, promises: g ? g.querySelectorAll("li .by").length : 0,
         claims: [...document.querySelectorAll(".pcard > ul.lead a.c")].filter(shown).length, tiles: document.querySelectorAll(".nums a.num").length,
         closed: [...document.querySelectorAll("main details.deep")].filter((d) => !d.open).length, last: !!u && !u.nextElementSibling && u.querySelectorAll("a").length,
       };
     })()`)) as { first: boolean; top: number; promises: number; claims: number; tiles: number; closed: number; last: number | false };
-    if (!order.first || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees do not open the details fold (${order.promises} promises)`);
+    if (!order.first || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not in sight between the four cards and the details fold (${order.promises} promises)`);
     if (order.claims !== 5 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not five claims in sight (one per partner card), four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.

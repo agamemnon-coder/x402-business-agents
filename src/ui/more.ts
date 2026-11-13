@@ -21,10 +21,16 @@ export interface MoreLink {
 
 export const MORE_LABEL = "More";
 
+/** Purser Cloud's test-money deployment (12 Nov), its MCP address for Claude, and the demo company's public, read-only
+ * connector token (cloud/src/auth.ts DEMO_CONNECTOR_TOKEN; test/judge-tour.test.ts keeps the two the same). */
+export const PURSER_CLOUD_URL = "https://purser-try.max-31b.workers.dev/";
+export const PURSER_CLOUD_MCP = `${PURSER_CLOUD_URL}mcp`;
+export const DEMO_CONNECTOR_TOKEN = "purser-demo-read-only";
+
 /** The whole menu, in its order: the product pages first, then the partner pages (names as text, never a logo). */
 export const MORE_LINKS: readonly MoreLink[] = [
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
-  { key: "cloud", label: "Purser Cloud", href: "https://purser-try.max-31b.workers.dev/", group: "product" },
+  { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product" },
   { key: "pricing", label: "Pricing", href: "pricing", group: "product" },
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },
@@ -44,10 +50,11 @@ export const footerLinks = (): MoreLink[] => moreLinks().filter((l) => l.group =
 export const isMoreKey = (key: string | null): key is MoreKey => MORE_LINKS.some((l) => l.key === key);
 
 /** A page's own key, as it tells the navigation where it is: one of the four tabs, a page under "More", or a page that sits under a tab. */
-export type PageKey = "home" | "watch" | "try" | "proof" | "runs" | MoreKey;
+export type PageKey = "home" | "watch" | "try" | "proof" | "judge" | "runs" | MoreKey;
 /** The menu item a page marks (12 Nov): a tab marks itself, a page listed under "More" marks "More", /runs sits under Proof. The one mapping both navigations use. */
-const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof">> = { home: "home", watch: "watch", try: "try", proof: "proof", runs: "proof" };
-export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "more" | null {
+// Jury, 13 Nov: /runs is not Proof; it marks no tab. Judge is a tab of its own.
+const UNDER_TAB: Readonly<Record<string, "home" | "watch" | "try" | "proof" | "judge">> = { home: "home", watch: "watch", try: "try", proof: "proof", judge: "judge" };
+export function menuItemOf(page: string | null): "home" | "watch" | "try" | "proof" | "judge" | "more" | null {
   if (!page) return null;
   if (isMoreKey(page)) return "more";
   return UNDER_TAB[page] ?? null;

@@ -249,11 +249,14 @@ const main = html.slice(html.indexOf("<main"), html.indexOf("</main>"));
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 
 describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners, numbers, folds, utility links", () => {
-  // Jury pass, 13 Nov: the heading, the four summary cards, then the one details fold, which opens with the guarantees.
-  it("has the heading, the four cards and the details fold's line above \"What Purser guarantees\": no run label", () => {
+  // Jury pass, 13 Nov: the heading, the scale band (the owner, 13 Nov), the four summary cards, then the one details
+  // fold, which opens with the guarantees.
+  // Jury, 13 Nov (second round): the guarantees in sight again, under the band and the four cards; the fold after them.
+  it("has the heading, the band and the four cards above \"What Purser guarantees\", the fold after it: no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> <details class="sumd" id="details"><summary>[^<]+<\/summary>$/);
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> $/);
+    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
 
@@ -417,8 +420,11 @@ describe("/proof's words in sight", () => {
     // +12, 12 Nov: the rail cards went to one line each and their full account into a fold, whose header ("What each
     // rail did, in full") counts once per drawing (wide and tall).
     // Jury pass, 13 Nov ("far less visible text"): four cards in sight, everything else in one fold: 123 words as built,
-    // counted with folds inside folds (wordsOutsideFolds), a margin of 12.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(135);
+    // counted with folds inside folds (wordsOutsideFolds). +27, the owner the same day: the scale band above the cards
+    // (six figures, a few words each; 162 as built after the cards led with their strongest numbers). A margin of 8.
+    // Jury, 13 Nov (second round): "the first screen is too thin", so the seven guarantees are in sight again under the
+    // cards (each promise, who enforces it and its evidence; how folded), and the cards name their run: 322 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(330);
     expect(visibleWords(html)).toBeLessThanOrEqual(720);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);

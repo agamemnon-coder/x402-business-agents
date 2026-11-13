@@ -215,7 +215,7 @@ ${checksLink(s)}
 <details class="fold" id="${AIRI_RUN_STEPS_ID}"><summary>${esc("Details")}</summary>
 <p><b>${esc("The five checks")}</b></p><ul class="awc">${s.checks.map((c) => `<li class="${c.ok ? "" : "no"}" title="${esc(c.name)}">${esc(c.ok ? "✓" : "✕")} ${esc(c.detail)}</li>`).join("")}</ul>
 <p><b>${esc("Every step and id")}</b></p><ul class="awc">${s.lines.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
-<p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">${esc("run log")} ↗</a></p></details></div>`;
+<p class="src">${esc(s.source)} · <a class="pf" href="${esc(`${REPO_BLOB}${AIRI_RUN_LOG}`)}" target="_blank" rel="noopener">run\u00a0log\u00a0↗</a></p></details></div>`;
 }
 
 /** Proof's version: the same heading, label, summary, outcomes and checks, then a link to every id on /airwallex and one to the VIC flow on /visa. */

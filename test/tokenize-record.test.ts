@@ -257,7 +257,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     if (!tokenizeRunFile()) { expect(tokenizeRun()).toBeNull(); expect(METAL_PAGE).toBe(without()); }
     else expect(METAL_PAGE).toBe(metalPage(run, tokenizeRun()));
     // 275 without the block since the jury panel of 12 Nov (the four mandates in one table; test/site-v4.test.ts). +50, 12 Nov wire-in: "Face ID signs on chain".
-    expect(visibleWords(without())).toBeLessThanOrEqual(330); // +5, jury check 12 Nov: "Since 12 Nov it does"
+    expect(visibleWords(without())).toBeLessThanOrEqual(335); // +5, jury check 12 Nov: "Since 12 Nov it does"; +5, jury 13 Nov: "the cap at the time" (333 as built)
   });
 
   it("with a record it shows one short block: the title, one sentence from the record, the verify badge, and the transactions folded", () => {
@@ -274,7 +274,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // panel of 12 Nov; +50 each, 12 Nov wire-in: "Face ID signs on chain", 49 words as built).
     // 55 since 12 Nov (review): "Amounts are scaled down 100× for testnet" says it in plain words (2 more).
     expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(55);
-    expect(visibleWords(html)).toBeLessThanOrEqual(380);
+    expect(visibleWords(html)).toBeLessThanOrEqual(385); // +5, jury 13 Nov: "the cap at the time"
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
     expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(55); // 55 since 12 Nov (review): the scaling said in plain words
