@@ -127,7 +127,9 @@ describe("the core line", () => {
     // the first 16 lines.
     const top = words(SOURCES.README!.split("\n").slice(0, 16).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
     expect(top).toContain(DIFFERENTIATORS[0]);
-    expect(SOURCES.README!.split("\n").slice(0, 16).join("\n")).toContain("https://kit11.max-31b.workers.dev/try/sign");
+    // Since 13 Nov (second review) the README's top links Try, the product tour and Proof; /try/sign stays in the README.
+    expect(SOURCES.README!.split("\n").slice(0, 16).join("\n")).toContain("https://kit11.max-31b.workers.dev/tour");
+    expect(SOURCES.README!).toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });
 
