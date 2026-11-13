@@ -4,6 +4,7 @@
 // (who decides, who enforces); one stat row, every figure from a run record; the last buttons. The honesty rules of the
 // jury panel (A1 to A10) still hold: no recorded run called live, simulated and test money said once each outside the
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
+import { FILM_LINK, FILM_URL } from "../src/config/brand.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
@@ -189,7 +190,9 @@ describe("Home, the enterprise pass", () => {
 
   it("names no TAP, no Watch block, no awards on Home", () => {
     for (const html of [ON, OFF]) {
-      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ");
+      // The walkthrough on YouTube (13 Nov) is the one "Watch" on Home: its own link, to FILM_URL; no Watch block or tab.
+      expect(html).toContain(`<a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
+      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_LINK, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
       expect(html).not.toMatch(/Extra, not an award entry|What comes next/);

@@ -8,6 +8,7 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
 import { REASSURE } from "../../src/redesign/home.js";
+import { FILM_LINK } from "../../src/config/brand.js";
 import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
@@ -1141,7 +1142,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // And beside it, "Trace any payment" and "Download the month-end pack" (Max's last round, 1.2 and 1.3).
       if (!(await page.locator('.util a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
       if (!(await page.locator(".util a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
-      if (!(await page.locator(".util a", { hasText: "Watch the film (4 min)" }).isVisible())) fail(`/proof ${tag}: no visible "Watch the film (4 min)"`);
+      if (!(await page.locator(".util a", { hasText: FILM_LINK }).isVisible())) fail(`/proof ${tag}: no visible "${FILM_LINK}"`);
       if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy among the utility links`);
       // The utility links end the page: nothing of <main> comes after them.
       if (!(await page.evaluate(`(() => { const u = document.querySelector("main .util"); return !!u && !u.nextElementSibling && !u.parentElement.nextElementSibling; })()`))) fail(`/proof ${tag}: the utility links are not the last thing on the page`);

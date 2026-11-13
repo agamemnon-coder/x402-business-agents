@@ -57,7 +57,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
-    expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
+    expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
     expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(110); // after the Visa and Metal Award sections (13 Nov)
   });
 
