@@ -13,7 +13,6 @@
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
 // for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
-import { VISUAL_CSS as AWX_VISUAL_CSS } from "./airwallexVisual.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
 import { SANDBOX_SETTLED, SPLIT_LINE, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
@@ -186,7 +185,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}\n${AWX_VISUAL_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**

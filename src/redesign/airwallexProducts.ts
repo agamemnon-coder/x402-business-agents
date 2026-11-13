@@ -25,7 +25,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { liveRuns, type RunRow } from "./runs.js";
 import type { AgentRun, RunRecord } from "./run.js";
 import { esc, icon } from "./ui.js";
-import { visualsHtml } from "./airwallexVisual.js";
+import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
 
 export const PRODUCT_ORDER = ["issuing", "payouts", "fx", "approvals", "connected", "acceptance", "airi"] as const;
 export type ProductKey = (typeof PRODUCT_ORDER)[number];
@@ -624,4 +624,5 @@ details#${PLATFORM_FOLD_ID}, details#${MAIN_RUN_FOLD_ID}, li#${MAIN_RUN_FX_ID}, 
    links stand in a list, one row of 44 px each, so no link's padding covers the one above it (review, 12 Nov). */
 @media (max-width: 700px) { .awxp a.pf, .awxp .awswift a { padding: 14px 0; } .awxp a.open { min-height: 44px; }
   .awxp ul.awd a.pf { display: flex; align-items: center; min-height: 44px; padding: 0; } .awxp ul.awd .sep { display: none; }
-  .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }`;
+  .awxp a.awm { border: 9px solid transparent; background-clip: padding-box; margin: -9px; } }
+${VISUAL_CSS}`;
