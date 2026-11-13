@@ -24,7 +24,7 @@
       "name": "x402-business-agents",
       "version": "0.1.0",
       "scope": "required",
-      "description": "For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.",
+      "description": "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).",
       "purl": "pkg:npm/x402-business-agents@0.1.0",
       "properties": [
         {

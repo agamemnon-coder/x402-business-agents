@@ -69,7 +69,10 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
-    expect(lines.slice(0, 16).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof); /try/sign stays
+    // linked from the README (the "Approve with Face ID" picture), not from the top.
+    expect(lines.slice(0, 16).join("\n")).toContain("(https://kit11.max-31b.workers.dev/tour)");
+    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });

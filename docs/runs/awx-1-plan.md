@@ -67,19 +67,21 @@ Claude Code fills in the three placeholders from the runner's own output after s
 prints the viewer link and the code) and sends the text as it stands. The viewer link carries the view key: it goes to
 Max only, in one private tab, never into a run log or a commit.
 
-> **awx-1 begint over 10 minuten (alleen Airwallex sandbox, testgeld).** Duur ongeveer 45 minuten; houd je telefoon bij de hand.
+> **awx-1 starts in 10 minutes (Airwallex sandbox only, test money).** It takes about 45 minutes; keep your phone at hand.
 >
-> 1. **Inschrijven (nu).** Open op je telefoon, in één privé-tabblad: `<VIEWER_LINK>`. Ga naar `/enrol`, typ code
->    `<CODE>` (10 minuten geldig) en bevestig met Face ID. Stuur mij daarna in de chat: "Bevestig passkey `<FINGERPRINT>`"
->    — alleen als die vingerafdruk ook op je telefoon staat.
-> 2. **Kaartlimiet (stap c, na ongeveer 5 minuten).** De Sourcing-agent vraagt een hogere limiet per aankoop, nadat
->    Airwallex 45,00 EUR weigerde (`LIMIT_EXCEEDED`). Keur goed of af met Face ID; je hebt een uur.
-> 3. **Licentie Stockline, EUR 240,00 (stap f1).** Betaald uit EUR, zonder FX. Face ID binnen 20 minuten.
-> 4. **Bergtex, EUR 1.850,00 (stap f2), direct daarna.** Met FX voor alleen het tekort, op een verse quote: Face ID
->    binnen 14,5 minuten, anders vervalt de quote.
+> 1. **Enrol (now).** On your phone, in one private tab, open `<VIEWER_LINK>`. Go to `/enrol`, type the code
+>    `<CODE>` (valid for 10 minutes) and confirm with Face ID. Then send me in the chat: "Confirm passkey `<FINGERPRINT>`",
+>    only if that fingerprint is also on your phone.
+> 2. **Card limit (step c, after about 5 minutes).** The Sourcing agent asks for a higher limit per purchase, after
+>    Airwallex declined EUR 45.00 (`LIMIT_EXCEEDED`). Approve or reject with Face ID; you have an hour.
+> 3. **Stockline licence, EUR 240.00 (step f1).** Paid from EUR, no FX. Face ID within 20 minutes.
+> 4. **Bergtex, EUR 1,850.00 (step f2), right after.** With FX for only the shortfall, on a fresh quote: Face ID
+>    within 14.5 minutes, or the quote expires.
 >
-> Ik keur zelf niets goed en start geen tweede poging zonder jouw go. Lukt het tijdslot niet, dan tekent een gelabelde
-> testpasskey, alleen als jij daar in de chat "go" op zegt.
+> I approve nothing myself and start no second attempt without your go. If the slot does not work out, a labelled
+> test passkey signs, only if you say "go" to that in the chat.
+
+(Sent in Dutch on the day; English here.)
 
 ## Steps
 
