@@ -103,7 +103,9 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     notFound: flow(NOT_FOUND_PAGE),
     ...(trySign ? { trySign: flow(TRY_SIGN_PAGE), tryVerify: flow(TRY_VERIFY_PAGE) } : {}),
     redirects: REDIRECTS,
-    moved: MOVED,
+    // Without /try/sign in the bundle (the deployed site), its address answers 301 to the hands-on demo at /try, so the
+    // README's badge, old screenshots and the film's links never land on a 404 (judge panel, 13 Nov).
+    moved: trySign ? MOVED : { ...MOVED, "/try/sign": "/try", "/try/sign/": "/try" },
     // The CFO's own pages are private and reference nothing outside the relay (test/relay-assets.test.ts): no
     // link-preview tags with an absolute image there.
     approve: read("../approve/page.html"),

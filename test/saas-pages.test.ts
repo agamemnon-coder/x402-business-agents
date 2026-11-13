@@ -55,7 +55,7 @@ describe("/security: security and trust", () => {
       const el = card(html, c.id), line = mainText(`<main>${/<p>([\s\S]*?)<\/p>/.exec(el)![0]}</main>`);
       // One sentence: it ends with a full stop and has no other sentence end inside it.
       expect({ id: c.id, sentences: line.replace(/\bnpm run verify-log\b/, "the command").split(/[.!?](?:\s|$)/).filter(Boolean).length, ends: /\.$/.test(line) }).toEqual({ id: c.id, sentences: 1, ends: true });
-      expect({ id: c.id, words: line.split(" ").length <= (c.id === "s-notyet" ? 30 : 17) }).toEqual({ id: c.id, words: true });
+      expect({ id: c.id, words: line.split(" ").length <= (c.id === "s-notyet" ? 30 : c.id === "s-secrets" ? 18 : 17) }).toEqual({ id: c.id, words: true });
       expect({ id: c.id, links: (/<div class="links">([\s\S]*?)<\/div>/.exec(el)?.[1]?.match(/<a class="pf" href="[^"]+"/g) ?? []).length >= 1 }).toEqual({ id: c.id, links: true });
       expect({ id: c.id, folds: (el.match(/<details class="fold"><summary>[^<]+<\/summary><ul class="pl"><li>/g) ?? []).length, closed: (el.match(/<\/li><\/ul><\/details>/g) ?? []).length === (el.match(/<details\b/g) ?? []).length }).toEqual({ id: c.id, folds: 1, closed: true });
       // One card carries a second fold, with an anchor of its own: "If the approver is unavailable", under the
@@ -110,10 +110,14 @@ describe("/security: security and trust", () => {
     expect(inSight("s-code")).toBe("Agents propose, code enforces Agents hold no keys; code checks what they propose before anything moves. Least privilege ↗ Hostile-model eval ↗ How");
     // The hostile-model eval (12 Nov): the record's own line, as /claude says it.
     expect(folded("s-code")).toContain(hostileClaimText());
-    expect(hostileClaimText()).toMatch(/^In CI, a script in place of the payables agents, on \d+ test invoices: \d+ hostile tool calls, \d+ refused by code, 0 unsafe by the ledger verdict\.$/);
+    // The final review (13 Nov): one wording of the split everywhere (hostileWords, src/redesign/partners.ts).
+    expect(hostileClaimText()).toBe("In CI, a script in place of the payables agents, on 62 test invoices: 380 hostile tool calls; 318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe).");
     expect(folded("s-code")).toContain("“Models: no key, URL, credential or tool. They read text and return typed data that code checks");
-    expect(inSight("s-secrets")).toBe("Secrets Only the runner holds keys, and every push is scanned for leaked secrets. Trust boundaries ↗ How");
-    for (const q of ["Only the runner holds keys and writes the ledger.", "gitleaks on the pushed commits and the whole history of the branch under check", "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]"]) expect(folded("s-secrets")).toContain(`“${q}”`);
+    expect(inSight("s-secrets")).toBe("Secrets Only the runner holds payment keys; Purser Cloud keeps each company's connected-account OAuth tokens sealed (AES-GCM, per company). Trust boundaries ↗ How");
+    // What the line says of the cloud is what its code does: AES-GCM, each value bound to its company (cloud/src/sealed.ts).
+    expect(read("cloud/src/sealed.ts")).toContain('{ name: "AES-GCM", iv, additionalData: enc.encode(aad) }');
+    expect(read("cloud/src/sealed.ts")).toContain("export const aadOf = (tenantId: string, provider: string, field: string) => `purser-oauth|${tenantId}|${provider}|${field}`;");
+    for (const q of ["Only the runner holds payment keys and writes the ledger.", "Purser exchanges the code server side and keeps the tokens sealed (AES-256-GCM) for this company only.", "gitleaks on the pushed commits and the whole history of the branch under check", "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]"]) expect(folded("s-secrets")).toContain(`“${q}”`);
   });
 
   // Not "a Durable Object per company": Purser Cloud keeps every company in one database, each row scoped (docs/cloud.md).
@@ -237,7 +241,7 @@ describe("/security: security and trust", () => {
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
-    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
+    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|AES-256-GCM|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(figures(`${text} 100% safe`).filter((n) => !allowed.has(n))).toEqual(["100"]);
   });
@@ -299,8 +303,8 @@ describe("/security: security and trust", () => {
       expect(h.blocked_by_tool + h.overridden_at_enforce).toBe(h.refused);
       expect(h.refused + h.stood).toBe(h.calls);
       const t = inSightOf(section("hostile"));
-      expect(t).toContain(`${h.calls} calls · ${h.unsafe === 0 ? "none" : h.unsafe} unsafe`);
-      expect(t).toContain(`${h.blocked_by_tool} refused by the tool's own check ${h.overridden_at_enforce} made stricter by code before it counted ${h.stood} stood as the script made it`);
+      expect(h.unsafe).toBe(0);
+      expect(t).toContain(`${h.calls} calls · ${h.refused} stopped or tightened by code ${h.blocked_by_tool} refused ${h.overridden_at_enforce} made stricter ${h.stood} stood (safe)`);
       const widths = [...section("hostile").matchAll(/<rect class="f-[abc]" x="[\d.]+" width="([\d.]+)"/g)].map((m) => Number(m[1]));
       expect(widths.map((w) => Math.round(w))).toEqual([h.blocked_by_tool, h.overridden_at_enforce, h.stood].map((n) => Math.round((n / h.calls) * 1000)));
       expect(() => hostileEval(JSON.stringify({ ...h, stood: h.stood + 1 }))).toThrow(/do not add up/);

@@ -129,7 +129,8 @@ describe("the core line", () => {
     expect(top).toContain(DIFFERENTIATORS[0]);
     // Since 13 Nov, evening (owner), the product tour is gone; the README's top links Try and Proof.
     expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/tour");
-    expect(SOURCES.README!).toContain("https://kit11.max-31b.workers.dev/try/sign");
+    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links the hands-on demo instead.
+    expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
   });
 });
 

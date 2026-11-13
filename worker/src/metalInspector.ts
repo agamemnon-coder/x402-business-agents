@@ -35,6 +35,11 @@ export interface InspectorMandate { agent: string; ref: string; bound: boolean; 
 export interface MetalRecorded { account: string; recorded_on: string; block: number; read_at: string; mandates: InspectorMandate[] }
 export interface InspectorAnswer {
   source: "chain" | "recorded";
+  /**
+   * What this answer is, in plain words (the final review, 13 Nov: a recorded answer must never read as a live one):
+   * "A recorded snapshot from 12 Nov (block …), not a live read: <reason>." or "Read live from Metal testnet at …".
+   */
+  says: string;
   reason: string | null;
   network: "Metal testnet";
   account: string;
@@ -48,6 +53,13 @@ export interface InspectorAnswer {
   /** The exact read, so anyone with a Metal testnet RPC can make it: eth_call to the account at the block. */
   check: { method: "eth_call"; to: string; block: string; data: Record<string, string> };
 }
+
+/** "12 Nov" from "2026-11-12". */
+const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
+/** The words of a recorded answer: the snapshot's day and block, and why it is not live. */
+export const recordedSays = (recordedOn: string, block: number, reason: string) => `A recorded snapshot from ${shortDay(recordedOn)} (block ${block}), not a live read: ${reason}.`;
+/** The words of a live answer: when and at which block the chain was read. */
+export const liveSays = (readAt: string, block: number) => `Read live from Metal testnet at ${readAt.slice(11, 16)} UTC, block ${block}.`;
 
 /** "off" in any case, with spaces around it, turns the inspector off; anything else, or nothing, leaves it on. */
 export const inspectorOff = (v: string | undefined): boolean => (v ?? "").trim().toLowerCase() === "off";
@@ -193,7 +205,7 @@ export class MetalInspector {
   private recordedAnswer(reason: string, now: Date): InspectorAnswer {
     const rec = this.opts.recorded!;
     return {
-      source: "recorded", reason, network: "Metal testnet", account: rec.account, block: rec.block, read_at: rec.read_at, recorded_on: rec.recorded_on,
+      source: "recorded", says: recordedSays(rec.recorded_on, rec.block, reason), reason, network: "Metal testnet", account: rec.account, block: rec.block, read_at: rec.read_at, recorded_on: rec.recorded_on,
       mandates: rec.mandates, cache_seconds: this.ttl, calls_today: this.callsToday(now), ceiling: this.ceiling, check: this.check(rec, `0x${rec.block.toString(16)}`),
     };
   }
@@ -210,7 +222,7 @@ export class MetalInspector {
         mandates.push({ agent: m.agent, ref: m.ref, bound: d.principal.toLowerCase() === rec.account.toLowerCase(), revoked: d.revoked, spent: amountOf(d.spent), payments: Number(d.occurrences), bound_block: Number(d.boundBlock) });
       }
       answer = {
-        source: "chain", reason: null, network: "Metal testnet", account: rec.account, block: Number(BigInt(blockHex)), read_at: started.toISOString(),
+        source: "chain", says: liveSays(started.toISOString(), Number(BigInt(blockHex))), reason: null, network: "Metal testnet", account: rec.account, block: Number(BigInt(blockHex)), read_at: started.toISOString(),
         mandates, cache_seconds: this.ttl, calls_today: 0, ceiling: this.ceiling, check: this.check(rec, blockHex.toLowerCase()),
       };
     } catch (e) {

@@ -69,15 +69,25 @@ export interface Notifier {
 // --- The words -------------------------------------------------------------------------------------------------------
 
 const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
-/** A payee's name as it goes into a message: one line, no markup a chat app would act on, at most 80 characters. */
-const plain = (s: string) => clip(s.replace(/[\r\n\t]+/g, " ").replace(/[<>*_~`|[\]]/g, "").trim(), 80);
+/**
+ * No link of anyone else's reaches a message (final review S3): a payee's name and the reason come from an invoice, which
+ * anyone can send, and a link in them would sit beside Purser's own. Web addresses, e-mail addresses and anything shaped
+ * like a domain are taken out; the only link an alert carries is the approval page's.
+ */
+export function noLinks(s: string): string {
+  return s.replace(/\b(?:https?|ftp):\/\/\S+/gi, "(link removed)").replace(/\bwww\.\S+/gi, "(link removed)")
+    .replace(/\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "(link removed)")
+    .replace(/\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}\b(?:\/\S*)?/gi, "(link removed)");
+}
+/** Words from an invoice as they go into a message: no links, one line, no markup a chat app would act on, at most `n` characters. */
+const plain = (s: string, n = 80) => clip(noLinks(s).replace(/[\r\n\t]+/g, " ").replace(/[<>*_~`|[\]]/g, "").trim(), n);
 
 /** The alert as plain text (WhatsApp, the e-mail's text part): five short lines. */
 export function alertText(a: ApprovalAlert): string {
   return [
     `${a.test_money ? "[TEST MONEY] " : ""}Purser: a payment waits for your Face ID.`,
     `${a.currency} ${a.amount} to ${plain(a.payee)} (invoice ${a.invoice_id}${a.due_date ? `, due ${a.due_date}` : ""}).`,
-    `Why: ${clip(a.why, 200)}`,
+    `Why: ${plain(a.why, 200)}`,
     `Review it in Purser Cloud: ${a.link}`,
     "This message cannot approve anything. Only your passkey (Face ID), in Purser Cloud, can.",
   ].join("\n");
@@ -90,7 +100,7 @@ export function alertSubject(a: ApprovalAlert): string {
 /** The alert as the business event the chat formats already speak (./connections.ts chatMessage), with payee and why. */
 export function alertEvent(a: ApprovalAlert): BusinessEvent {
   return { type: "approval.needed", data: { invoice_id: a.invoice_id, amount: a.amount, currency: a.currency, due_date: a.due_date, ...(a.proposal_id ? { proposal_id: a.proposal_id } : {}),
-    payee: plain(a.payee), why: clip(a.why, 200), approve_in: a.link, ...(a.test_money ? { test_money: "yes" } : {}) } };
+    payee: plain(a.payee), why: plain(a.why, 200), approve_in: a.link, ...(a.test_money ? { test_money: "yes" } : {}) } };
 }
 
 // --- Masking ---------------------------------------------------------------------------------------------------------

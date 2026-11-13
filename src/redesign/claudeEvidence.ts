@@ -78,15 +78,19 @@ export function mcpOf(json: string | null): McpSession | null {
   } catch { return null; }
 }
 
-/** The hostile-model eval's counts as CI wrote them: tool calls, refused by code, unsafe by the ledger verdict, test invoices. */
-export function hostileOf(json: string | null): { calls: number; refused: number; unsafe: number; cases: number } | null {
+/**
+ * The hostile-model eval's counts as CI wrote them: tool calls, refused by code, stood (the recorded decisions that stood
+ * as the script made them: every call not refused), unsafe by the ledger verdict, test invoices.
+ */
+export function hostileOf(json: string | null): { calls: number; refused: number; stood: number; unsafe: number; cases: number } | null {
   try {
-    const j = JSON.parse(json ?? "") as { calls?: unknown; refused?: unknown; unsafe?: unknown; cases?: unknown };
-    return typeof j.calls === "number" && typeof j.refused === "number" && typeof j.unsafe === "number" && j.calls > 0 && Array.isArray(j.cases) ? { calls: j.calls, refused: j.refused, unsafe: j.unsafe, cases: j.cases.length } : null;
+    const j = JSON.parse(json ?? "") as { calls?: unknown; refused?: unknown; stood?: unknown; unsafe?: unknown; cases?: unknown };
+    return typeof j.calls === "number" && typeof j.refused === "number" && typeof j.stood === "number" && typeof j.unsafe === "number" && j.calls > 0 && Array.isArray(j.cases)
+      ? { calls: j.calls, refused: j.refused, stood: j.stood, unsafe: j.unsafe, cases: j.cases.length } : null;
   } catch { return null; }
 }
 
-export interface ClaudeEvidence { variation: Variation | null; fix: Variation | null; holdouts: Holdouts | null; sweep: Sweep | null; mcp: McpSession | null; zeroTrust: boolean; hostile: { calls: number; refused: number; unsafe: number; cases: number } | null }
+export interface ClaudeEvidence { variation: Variation | null; fix: Variation | null; holdouts: Holdouts | null; sweep: Sweep | null; mcp: McpSession | null; zeroTrust: boolean; hostile: { calls: number; refused: number; stood: number; unsafe: number; cases: number } | null }
 export const claudeEvidence = (): ClaudeEvidence => ({
   variation: variationOf(read(VARIATION_SUMMARY)), fix: variationOf(read(VARIATION_FIX_SUMMARY)), holdouts: holdoutsOf(read(HOLDOUTS_RECORD)),
   sweep: sweepOf(read(SWEEP_RECORD)), mcp: mcpOf(read(MCP_TRANSCRIPT)), zeroTrust: existsSync(new URL(`../../${ZERO_TRUST_REPORT}`, import.meta.url)),

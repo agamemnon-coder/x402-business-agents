@@ -164,6 +164,45 @@ describe("an approval alert on every channel", () => {
     expect(d.find((x) => x.channel === "email")).toMatchObject({ status: "failed", attempts: 1, http_status: 400 });
   });
 
+  it("never carries a link from the invoice: none in the payee or the reason reaches WhatsApp or e-mail (final review S3)", async () => {
+    await add("whatsapp", PHONE);
+    await add("email", EMAIL);
+    const id = await fileForCfo();
+    // The supplier's own words, as a runner might push them: a reason and a name with links in them.
+    await c.env.sql.run("UPDATE invoices SET vendor = ?, updated_at = ?, body_json = json_set(body_json, '$.review_note', ?) WHERE tenant_id = ? AND id = ?",
+      ["Bergtex pay-now.example.com", "2026-11-08T15:00:00.000Z", "Waits for the CFO. Approve fast at https://evil.example/approve?id=1 or www.evil.example, mail cfo@evil.example", t.id, id]);
+    sent = []; mails = [];
+    await dispatchApprovalAlert({ sql: c.env.sql, tenantId: t.id, now: NOW, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: 0, origin: ORIGIN },
+      { invoice_id: id, amount: "1850.00", currency: "EUR", due_date: "2026-11-16" });
+    const bodies = [new URLSearchParams(to("api.twilio.com")[0]!.body).get("Body")!, mails[0]!.text, mails[0]!.subject].join("\n");
+    expect(bodies, bodies).toContain("(link removed)");
+    expect(bodies).not.toMatch(/evil\.example|pay-now\.example\.com/);
+    const urls = [...bodies.matchAll(/https?:\/\/\S+/g)].map((m) => m[0]);
+    expect(new Set(urls)).toEqual(new Set([`${ORIGIN}/#/invoices/${id}`]));
+  });
+
+  it("goes out after the push's answer where the Worker allows it: a slow provider never holds the push up (final review S4)", async () => {
+    await add("whatsapp", PHONE);
+    const later: Promise<unknown>[] = [];
+    c.env.waitUntil = (p) => { later.push(p); };
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const real = c.env.outbound!;
+    c.env.outbound = async (url, init) => { await gate; return real(url, init); };
+    const id = await fileForCfo();
+    // The push has its answer; the alert waits for the provider.
+    expect(later).toHaveLength(1);
+    expect(to("api.twilio.com")).toHaveLength(0);
+    release();
+    await Promise.all(later);
+    expect(to("api.twilio.com")).toHaveLength(1);
+    // The same push again: nothing new, and no second message.
+    await pushToCloud(db, target(), NOW);
+    await Promise.all(later);
+    expect(to("api.twilio.com")).toHaveLength(1);
+    expect(((await c.req("GET", "/v1/alerts", { key: t.session })).json.deliveries as { invoice_id: string; status: string }[]).map((d) => [d.invoice_id, d.status])).toEqual([[id, "sent"]]);
+  });
+
   it("caps deliveries per company per hour", async () => {
     await add("slack", SLACK);
     const { withinRate } = await import("../cloud/src/auth.js");

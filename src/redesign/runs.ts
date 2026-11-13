@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
 import { AWX_RUN_FILE, AWX_RUN_LOG, awxRun } from "./awxRun.js";
 import { REPO_BLOB, separateRuns } from "./metalStory.js";
-import { runTimes, secs, type RunTimes } from "./runTimes.js";
+import { runTimes, secs, SETTLEMENT_SIMULATED, type RunTimes } from "./runTimes.js";
 import { SUMMARY_CSS, summaryHtml, type SummaryCard } from "./summary.js";
 import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } from "./verifyTerms.js";
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
@@ -505,6 +505,8 @@ export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): R
 const isRehearsal = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
 /** Counted as a live run: neither a rehearsal nor a control test, nor a run that stopped short (PARTIAL_RUNS). */
 export const isLive = (r: RunRow) => !isRehearsal(r) && !r.partial;
+/** The site's one count of live runs: /home's band, /proof's strip and /runs all say this number (judge panel, 13 Nov). */
+export const liveRunCount = (rows: RunRow[] = liveRuns()) => rows.filter(isLive).length;
 const nameOf = (r: RunRow) => r.name ?? r.title;
 /** Words whose point does not end a sentence: a month ("12 Nov. at 09:00"), "e.g.", "i.e." and their like. */
 const ABBREV = /(?:\b(?:Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec|etc|vs|approx|incl|No|Nr|cf|Inc|Ltd|Co)|\be\.g|\bi\.e)$/;
@@ -711,8 +713,8 @@ export function faceIdToPaid(t: RunTimes = runTimes()): string {
   const days = [...new Set(t.payouts.map((p) => p.approvedAt.slice(0, 10)))].map((d) => day(`${d}T12:00:00Z`).replace(/ \d{4}$/, ""));
   const each = t.payouts.map((p) => n(p.ms));
   const line = t.n <= 3
-    ? `Face ID to paid: ${each.length > 1 ? `${each.slice(0, -1).join(", ")} and ${each[each.length - 1]}` : each[0]} (${esc(pl(t.n, "payout"))}, ${esc(days.join(", "))})`
-    : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}`;
+    ? `Face ID to paid: ${each.length > 1 ? `${each.slice(0, -1).join(", ")} and ${each[each.length - 1]}` : each[0]} (${esc(pl(t.n, "payout"))}, ${esc(days.join(", "))}; ${SETTLEMENT_SIMULATED})`
+    : `Face ID to paid: median ${n(t.medianMs)} (${n(t.minMs)}–${n(t.maxMs)}), ${esc(pl(t.n, "payout"))}; ${SETTLEMENT_SIMULATED}`;
   const rows = t.payouts.map((p) => `<li>${esc(`${p.proposal}: ${secs(p.ms)} (Face ID ${p.approvedAt.slice(11, 19)}, PAID ${p.paidAt.slice(11, 19)} UTC, ${p.approvedAt.slice(0, 10)})`)} <a class="f" href="${esc(blob(p.record))}" target="_blank" rel="noopener">Log ↗</a></li>`).join("");
   const out = t.leftOut.map((l) => `<li class="q">${esc(`Left out: ${l.record.replace(/^docs\/runs\//, "")}, ${l.why}.`)}</li>`).join("");
   return `<details class="ftp" id="ftp"><summary>${icon("scan-face", 16)}<span>${line}</span></summary><ul>${rows}${out}</ul></details>`;
@@ -764,7 +766,7 @@ export function runsSummary(live: RunRow[], partial: RunRow[], rehearsals: RunRo
   return [
     ...(newest && first ? [{ icon: "calendar-range", fig: String(live.length), title: "Live runs", href: "#all", text: `${short(first)} to ${short(newest)}; sandbox and testnet, test money, every id from its own record.` }] : []),
     ...(newest ? [{ icon: "circle-check", fig: short(newest), title: `Newest: ${nameOf(newest)}`, href: `#${newest.key}`, tone: "ok" as const, text: firstSentence(lineOf(newest)) }] : []),
-    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex.` }] : []),
+    ...(t.n && t.minMs !== null && t.maxMs !== null ? [{ icon: "scan-face", fig: t.minMs === t.maxMs ? secs(t.minMs) : `${secs(t.minMs)}–${secs(t.maxMs)}`, title: "Face ID to paid", href: "#ftp", tone: "ok" as const, text: `${pl(t.n, "payout")}, from the CFO's Face ID to PAID at Airwallex (${SETTLEMENT_SIMULATED}).` }] : []),
     ...(partial.length || rehearsals.length ? [{ icon: "info", fig: String(partial.length + rehearsals.length), title: "Not counted as live", href: partial.length ? "#partial" : "#rehearsals", text: `${pl(partial.length, "partial run")} and ${pl(rehearsals.length, "rehearsal or dry run")}, listed apart.` }] : []),
   ];
 }
