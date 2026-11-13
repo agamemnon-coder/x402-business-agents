@@ -101,6 +101,12 @@ export function runTimes(files: readonly string[] = Object.values(RUN_TIME_RECOR
   return { payouts, leftOut, n: payouts.length, medianMs: median(ms), minMs: ms.length ? Math.min(...ms) : null, maxMs: ms.length ? Math.max(...ms) : null };
 }
 
+/**
+ * Said next to every Face ID to paid figure (judge panel, 13 Nov): the PAID that ends each timing came from the sandbox's
+ * simulated settlement (the awx-1 record: "each payout's SENT and PAID come from POST /simulation/transfers/{id}/transition").
+ */
+export const SETTLEMENT_SIMULATED = "settlement simulated by the sandbox";
+
 /** Seconds with one decimal, as the records write them ("6.3 s"). */
 export const secs = (ms: number) => `${(Math.round(ms / 100) / 10).toFixed(1)} s`;
 
@@ -108,5 +114,5 @@ export const secs = (ms: number) => `${(Math.round(ms / 100) / 10).toFixed(1)} s
 export function runTimesLine(t: RunTimes = runTimes()): string | null {
   if (!t.n || t.medianMs === null || t.minMs === null || t.maxMs === null) return null;
   const spread = t.n > 1 ? `, from ${secs(t.minMs)} to ${secs(t.maxMs)}` : "";
-  return `Face ID to paid: median ${secs(t.medianMs)}${spread}, over ${t.n} payout${t.n === 1 ? "" : "s"}.`;
+  return `Face ID to paid: median ${secs(t.medianMs)}${spread}, over ${t.n} payout${t.n === 1 ? "" : "s"} (${SETTLEMENT_SIMULATED}).`;
 }
