@@ -15,7 +15,6 @@ import { VAT_CODES, vatOn } from "../ledger/vat.js";
 import { signedTermsRefusal } from "../ledger/termsLock.js";
 import type { ApInvoiceRow, StoredCoding } from "./store.js";
 import { apInvoices } from "./store.js";
-import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { paymentDay } from "../vault/data.js";
 
 export const AP_ACCOUNTS = { inputVat: "1510", foreignVat: "1515", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
@@ -174,8 +173,11 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
  * currency through money in transit (1590), so every entry balances per currency.
  */
 export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
-  const t = db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE invoice_no = ? AND status = 'PAID' ORDER BY updated_at DESC").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as
-    { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined;
+  // The payout the invoice's signed proposal names, by its request id (code review 13 Nov: by invoice number it could
+  // miss the payout, or find another one under the same number).
+  const requestId = inv.proposal_id ? (db.prepare("SELECT json_extract(terms_json, '$.transfer_request_id') AS request_id FROM proposals WHERE proposal_id = ?").get(inv.proposal_id) as { request_id: string | null } | undefined)?.request_id : null;
+  const t = requestId ? db.prepare("SELECT transfer_id, amount, fee_actual, updated_at FROM transfers WHERE request_id = ? AND status = 'PAID'").get(requestId) as
+    { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined : undefined;
   if (!t) return [];
   // Dated as the ledger dates the payment (a month closed before it was posted is never posted into: red team round 3).
   const date = inv.paid_at ? paymentDay(db, inv) : t.updated_at.slice(0, 10);
