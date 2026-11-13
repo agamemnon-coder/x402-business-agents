@@ -95,6 +95,7 @@ describe("the Metal inspector's limits, with a stand-in RPC", () => {
     const first = (await (await get(d)).json()) as InspectorAnswer;
     expect(first).toMatchObject({ source: "chain", reason: null, block: RECORD.read.block, account: ACCOUNT, calls_today: 4, ceiling: INSPECTOR_DAILY_CEILING, cache_seconds: INSPECTOR_TTL_SECONDS });
     expect(first.read_at).toBe(c.now().toISOString());
+    expect(first.says).toBe(`Read live from Metal testnet at ${first.read_at.slice(11, 16)} UTC, block ${RECORD.read.block}.`);
     expect(first.mandates.map((m) => [m.agent, m.bound, m.revoked, m.spent, m.payments])).toEqual([["sourcing", true, false, "1.18", 41], ["support", true, false, "0.15", 3], ["treasury", true, false, "0.69", 1]]);
     expect(first.check).toMatchObject({ method: "eth_call", to: ACCOUNT, block: RECORD.read.block_hex });
     expect(rpc.calls.map((x) => x.method)).toEqual(["eth_blockNumber", "eth_call", "eth_call", "eth_call"]);
@@ -159,6 +160,8 @@ describe("the Metal inspector's limits, with a stand-in RPC", () => {
       const a = (await (await get(d)).json()) as InspectorAnswer;
       expect(rpc.calls).toHaveLength(0);
       expect(a).toMatchObject({ source: "recorded", reason, block: RECORD.read.block, read_at: RECORD.read.read_at, recorded_on: "2026-11-12", calls_today: 0 });
+      // The final review (13 Nov): a recorded answer says plainly that it is one.
+      expect(a.says).toBe(`A recorded snapshot from 12 Nov (block ${RECORD.read.block}), not a live read: ${reason}.`);
       expect(a.mandates.map((m) => m.spent)).toEqual(["1.18", "0.15", "0.69"]);
     }
   });

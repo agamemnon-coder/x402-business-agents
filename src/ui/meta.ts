@@ -13,15 +13,15 @@ export const SITE_URL = "https://kit11.max-31b.workers.dev";
  * The link preview's image, absolute (the Worker serves it at /assets/og.png): 1200×630, the same file as
  * docs/assets/social-preview.png (`npm run visuals`, src/visuals/svg.ts socialSvg). Since 13 Nov (the owner: the dark
  * square with a tiny line read poorly in chats) the one line large, one small line, the payment's path to Face ID and
- * the "Built with" row. The query only gives the new image a new address, so the previews that cached the old one
+ * the "Built with" line in words (no partner marks, the final partner review). The query only gives the new image a new address, so the previews that cached the old one
  * fetch it again. No square version: the tags name this one image.
  */
-export const OG_IMAGE = `${SITE_URL}/assets/og.png?v=1113b`;
+export const OG_IMAGE = `${SITE_URL}/assets/og.png?v=1113c`;
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
 /** Every page's preview says the same (the owner, 13 Nov: a long, page-by-page description looked messy in a chat). */
 export const OG_TITLE = `Purser — ${HERO}`;
 export const OG_DESCRIPTION = "Your AI agents pay suppliers. Every payment above their limit needs your Face ID.";
-export const OG_ALT = `Purser. ${HERO} Every payment above its limit waits for your Face ID.`;
+export const OG_ALT = `Purser. ${HERO} Every payment above its limit waits for your Face ID or a passkey.`;
 /** The one tagline (Q8): the film's line and Home's heading. */
 export const TAGLINE_LINE = HERO;
 /** What a page says about itself when it says nothing of its own. */
