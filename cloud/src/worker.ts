@@ -114,6 +114,8 @@ export default {
   async fetch(req: Request, b: Bindings, ctx?: Waits): Promise<Response> {
     // The passkeys' relying party and the same-origin check follow the request's host when it is allowed (./hostOrigin.ts).
     const env = forRequest(envOf(b), req);
+    // Work that may finish after the answer (approval alerts after a runner's push, final review S4).
+    if (ctx) env.waitUntil = (p) => ctx.waitUntil(p);
     const res = await handle(req, env);
     // The day's counters, after the answer is sent (cloud/src/edge/stats.ts); a counter that fails never fails the request.
     if (env.edge?.stats && ctx) {

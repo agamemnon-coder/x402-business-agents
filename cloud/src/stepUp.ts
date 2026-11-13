@@ -22,7 +22,8 @@ export const STEP_UP_HEADER = "x-purser-step-up";
 
 /**
  * Sensitive settings: alert targets, the signed webhook, connector tokens (Claude and OAuth connections), API keys, team
- * members and their passkeys, the company's export and closing. "METHOD path" as in the route table.
+ * members and their passkeys, the company's export and closing, its Airwallex account and onboarding link, and its name
+ * and language. "METHOD path" as in the route table.
  * Spending limits are not set in Purser Cloud (they live in the CFO's policy on the runner, changed with the CFO's own
  * passkey there): when a route that changes a limit is added here, it belongs on this list.
  */
@@ -34,6 +35,7 @@ export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/keys", "DELETE /v1/keys/{id}",
   "POST /v1/users", "POST /v1/users/{id}/enrolment", "DELETE /v1/users/{id}/passkeys/{credential}", "POST /v1/users/{id}/erase",
   "POST /v1/export/staged", "POST /v1/close",
+  "POST /v1/airwallex/account", "POST /v1/airwallex/onboarding-link", "POST /v1/company",
 ]);
 /** Step-up routes a key may not call at all: a signed-in owner only. */
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}"]);
@@ -90,6 +92,8 @@ export async function requireStepUp(secret: string, routeKey: string, req: Reque
 export async function stepUpAssertion(sql: Sql, a: { caller: Caller; challengeId: string; credentialId: string; assertion: AssertionB64; rpId: string; origin: string; now: Date }): Promise<void> {
   if (a.caller.kind !== "session") throw new AuthError(403, "a step-up is a signed-in person's passkey check; a key has none");
   const iso = a.now.toISOString();
+  // Only a step-up challenge ("u…", cloud/src/auth.ts newChallenge): a sign-in challenge is never taken here.
+  if (!a.challengeId.startsWith("u")) throw new AuthError(401, "the passkey challenge is unknown, used or expired");
   const taken = await sql.run("UPDATE challenges SET used_at = ? WHERE id = ? AND tenant_id = ? AND used_at IS NULL AND expires_at > ?", [iso, a.challengeId, a.caller.tenantId, iso]);
   if (taken.changes !== 1) throw new AuthError(401, "the passkey challenge is unknown, used or expired");
   const ch = (await sql.first<{ challenge: string }>("SELECT challenge FROM challenges WHERE id = ? AND tenant_id = ?", [a.challengeId, a.caller.tenantId]))!;

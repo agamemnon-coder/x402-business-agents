@@ -93,7 +93,8 @@ describe("sensitive settings need a fresh passkey check", () => {
 
   it("covers every write to alert targets, the webhook, connector tokens, keys and team members", () => {
     const sensitive = ROUTES.filter((r) => r.method !== "GET" && r.need === "admin" && (
-      /^\/v1\/(alerts|webhook|keys|users|claude\/connectors)(\/|$)/.test(r.path) || r.path === "/v1/connect/{provider}/start" || (r.path === "/v1/connect/{provider}" && r.method === "DELETE")));
+      /^\/v1\/(alerts|webhook|keys|users|claude\/connectors)(\/|$)/.test(r.path) || r.path === "/v1/connect/{provider}/start" || (r.path === "/v1/connect/{provider}" && r.method === "DELETE")
+      || r.path === "/v1/company" || r.path === "/v1/airwallex/account" || r.path === "/v1/airwallex/onboarding-link"));
     expect(sensitive.length).toBeGreaterThan(10);
     expect(sensitive.map(key).filter((k) => !STEP_UP_ROUTES.has(k))).toEqual([]);
   });

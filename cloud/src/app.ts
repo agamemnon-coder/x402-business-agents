@@ -3,6 +3,7 @@
 // TenantDb; a route never names a tenant itself.
 
 import { z } from "zod";
+import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
 import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
@@ -71,6 +72,11 @@ export interface CloudEnv {
    * the signed webhook need nothing more than `outbound`. Absent: those two channels record no_provider.
    */
   alerts?: AlertProviders;
+  /**
+   * Work that may finish after the answer is sent (the Worker's ctx.waitUntil). Approval alerts after a runner's push go
+   * here, so a slow provider never holds the push up (final review S4); absent (tests, local runs): they are awaited.
+   */
+  waitUntil?: (p: Promise<unknown>) => void;
   /** Requests per minute per key or session; per address on the sign-in routes; failed authentications per address. */
   rate?: { perMinute: number; signInPerMinute: number; failedAuthPerMinute?: number };
   /** A staged export's rows per part (default 2000) and its size limit in bytes (default 512 MB). */
@@ -380,7 +386,7 @@ export const ROUTES: Route[] = [
   } },
   { method: "POST", path: "/v1/auth/step-up/start", summary: "Start a fresh passkey check for sensitive settings (a signed-in person only): a one-time challenge for five minutes.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(403, "a step-up is a signed-in person's passkey check; a key has none");
-    return json(200, await newChallenge(c.env.sql, c.caller!.tenantId, c.now));
+    return json(200, await newChallenge(c.env.sql, c.caller!.tenantId, c.now, "step-up"));
   } },
   { method: "POST", path: "/v1/auth/step-up", summary: "Finish the passkey check: { challenge_id, credential_id, assertion } signed with the signed-in person's own passkey. Answers a step-up token for five minutes, bound to this session; send it as x-purser-step-up on sensitive settings.", need: "read", run: async (c) => {
     const b = await body(c, z.object({ challenge_id: z.string().max(80), credential_id: z.string().max(400),
@@ -470,10 +476,15 @@ export const ROUTES: Route[] = [
     const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
     // approval.needed also tells the people the company chose (Settings, Alerts) that a payment waits for the CFO's Face
     // ID; its webhook delivery is one of those channels (cloud/src/alerts.ts). An alert never approves anything.
+    // The alerts go out after the answer where the Worker allows it: each delivery's row makes it idempotent either way.
+    const alerts: Promise<unknown>[] = [];
     for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) {
-      if (e.type === "approval.needed") await dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data);
+      if (e.type === "approval.needed") alerts.push(dispatchApprovalAlert({ sql: c.env.sql, tenantId: c.caller!.tenantId, now: c.now, out: c.env.outbound, providers: c.env.alerts, retryDelayMs: c.env.retryDelayMs ?? 500, origin: c.env.origin }, e.data)
+        .catch((x: unknown) => logEvent("warn", "alert.dispatch_failed", { tenant: c.caller!.tenantId, error: x instanceof Error ? x.message.slice(0, 200) : "unknown" })));
       else await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
     }
+    if (c.env.waitUntil) for (const p of alerts) c.env.waitUntil(p);
+    else await Promise.all(alerts);
     return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
@@ -660,6 +671,10 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
   const now = (env.now ?? (() => new Date()))();
   const url = new URL(req.url);
   try {
+    // How to report a vulnerability (RFC 9116; src/lib/securityTxt.ts).
+    if (url.pathname === "/.well-known/security.txt" && (req.method === "GET" || req.method === "HEAD")) {
+      return new Response(SECURITY_TXT, { status: 200, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "max-age=3600", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
+    }
     // The console (cloud/src/console.ts): the browser pages, everything outside /v1.
     if (!url.pathname.startsWith("/v1/") && !isClaudePath(url.pathname)) return consoleResponse(req, url, env);
     // A browser request that changes something must come from the console's own origin: a page elsewhere cannot make a
