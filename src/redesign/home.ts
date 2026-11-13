@@ -274,11 +274,13 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   const refused = steps.findIndex((s) => s.key === "refused");
   const raised = steps.findIndex((s, i) => i > refused && s.key === "replace");
   if (refused < 0 || raised < 0) return [];
-  const all = owners.rec.owners.length, virtual = owners.rec.owners.filter((o) => o.virtual).length;
+  const virtual = owners.rec.owners.filter((o) => o.virtual).length;
   // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
   // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
-  return [{ n: changes, label: `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${countOf(owners.rec.threshold, all, true)} passkeys${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+  // Plain words for a CFO (jury review, 13 Nov): how many passkeys signed each change, and which one is a test key.
+  const words = ["no", "one", "two", "three", "four", "five"], w = (n: number) => words[n] ?? String(n);
+  return [{ n: changes, label: `limit changes, each signed by ${w(owners.rec.threshold)} passkeys on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}${virtual ? `; ${w(virtual)} a test key` : ""})`, icon: "scan-face", tone: "ok" }];
 }
 
 /**

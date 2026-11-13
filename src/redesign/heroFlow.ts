@@ -52,7 +52,7 @@ export function heroFlowHtml(): string {
       <div class="hf-sign">
         <svg class="hf-ring" viewBox="0 0 48 48" width="48" height="48"><circle class="hf-ring-bg" cx="24" cy="24" r="21"/><circle class="hf-ring-fg" cx="24" cy="24" r="21"/></svg>
         <span class="hf-face">${icon("scan-face", 22)}</span>
-        <p class="hf-pill"><b>Signed</b> · <code>${esc(`hash ${f.hash}`)}</code></p>
+        <p class="hf-pill"><b>Signed with a passkey</b> · <span title="${esc(`SHA-256 of the signed terms: ${f.hash}`)}">fingerprint of the terms</span></p>
       </div>
       <div class="hf-paid">
         <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank</small></p>
