@@ -29,3 +29,15 @@ describe("the Visa credential is never called single-use", () => {
     }
   });
 });
+
+// Jury review, 13 Nov: the footer said "3 Visa runs" on some pages and "3 live Visa runs" on others. One string now.
+describe("the Visa runs, in one phrase everywhere", () => {
+  it("reads the same in the linked footer, the plain footer and the README", async () => {
+    const { visaRunsLine } = await import("../src/redesign/partners.js");
+    const line = visaRunsLine()!;
+    expect(line).not.toMatch(/\blive\b/);
+    const pages = buildPages({} as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
+    for (const [name, html] of Object.entries(pages)) if (typeof html === "string" && html.includes("Visa (VIC through Airwallex's Airi): ")) expect(html, name).toContain(`Visa (VIC through Airwallex's Airi): ${line.replace(/'/g, "&#39;")}`);
+    expect(read("README.md")).not.toMatch(/live Visa runs?\b/);
+  });
+});

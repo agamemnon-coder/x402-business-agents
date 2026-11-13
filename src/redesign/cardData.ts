@@ -21,7 +21,7 @@ export const CARD_DATA_SUMMARY = "Card data: not a network-tokenised checkout, n
 /** The three plain statements, word for word, that open the block. */
 export const CARD_DATA_NOT: readonly string[] = [
   "This is not a network-tokenised checkout.",
-  "A headless browser types Airi's Visa credential into Airwallex's hosted payment page.",
+  "A headless browser types Airi's Visa credential into Airwallex's hosted payment page, as Airi's instructions say: like a normal card. How that credential relates to a Visa network token is not documented.",
   "There is no PCI attestation.",
 ];
 /** The code that handles the credential, and the test that holds this block. */

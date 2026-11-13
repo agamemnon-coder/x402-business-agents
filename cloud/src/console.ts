@@ -236,6 +236,9 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   /* try-fixes (13 Nov): at 390 px the row still cut "Settings" off at the edge; the five pages share the row instead. */
   .appbar nav.apptabs { justify-content: space-between; margin-left: -6px; }
   .appbar nav.apptabs a { padding: 6px 5px; font-size: 13px; }
+  /* Jury review, 13 Nov: at 390 px "Tokenisation" was cut to "Token…" with no sign the row scrolls; a fade at the right
+     edge says there is more, and the row scrolls on as before. */
+  .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -441,7 +444,7 @@ function shell(){
       co.append(ME&&ME.demo?el('span','aw demo',[el('i',''),el('span','aww',t('cs.demo.chip'))]):aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
-  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
+  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
   // An invoice belongs to the Books tab (Invoices & books, 13 Nov): the old Invoices route and an invoice's page light it.
   const tab0=(location.hash.split('/')[1]||'').split('?')[0];const tab=tab0==='invoices'?'books':tab0;
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
@@ -598,13 +601,15 @@ const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.w
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
 // --- The start screen's dashboard (GET /v1/dashboard): every figure counted by the cloud from the company's own rows.
 // Charts are SVG and DOM built here (no library, no inline style markup: the page's nonce policy), drawn at the card's
-// own width so their words stay legible on a phone. Numbers count up and parts rise in once they are in view; with
+// own width so their words stay legible on a phone. Numbers stand at their final value; parts rise in once in view; with
 // reduced motion everything simply stands.
 const SVGNS='http://www.w3.org/2000/svg';
 const sv=(tag,attrs,kids)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs||{})e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[]))if(c)e.append(c);return e};
 const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
 function whenSeen(node,fn){if(RM()||!('IntersectionObserver' in window)){fn(true);return}const io=new IntersectionObserver((es)=>{if(es.some(e=>e.isIntersecting)){io.disconnect();fn(false)}},{threshold:.25});io.observe(node)}
-function countUp(node,target,fmt){node.textContent=fmt(target);whenSeen(node,(still)=>{if(still)return;const t0=performance.now();const step=(now)=>{const k=Math.min(1,(now-t0)/700);node.textContent=fmt(k<1?target*(1-Math.pow(1-k,3)):target);if(k<1)requestAnimationFrame(step)};node.textContent=fmt(0);requestAnimationFrame(step)})}
+// Jury review, 13 Nov: the count-up showed totals that were not yet the real ones (a hidden tab holds the animation for
+// seconds). Every figure is written once, final, at once; only the cards' rise moves.
+function countUp(node,target,fmt){node.textContent=fmt(target)}
 const dday=(iso)=>new Date(String(iso).slice(0,10)+'T12:00:00Z').toLocaleDateString(L.lang==='nl'?'nl-NL':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
 const kfmt=(c)=>{const a=Math.abs(c)/100;return (c<0?'-':'')+(a>=1000?(a/1000).toFixed(a>=10000?0:1).replace('.',L.lang==='nl'?',':'.')+'k':String(Math.round(a)))};
 const amt=(D,c)=>cur(D.currency)+' '+cents(Math.round(c));
@@ -652,7 +657,7 @@ function invoiceRing(D){
 function spendBars(D){
   const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
   return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
-    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null])])}))}
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t(S&&S.guest?'cs.dash.declined_sim':'cs.dash.declined',{n:s.declined})):null]),s.parts?el('span','ss sp',t('cs.dash.spend_parts',{inbox:s.parts.inbox.count,inbox_amt:amt(D,toCents(s.parts.inbox.amount)),outside:s.parts.outside.count,outside_amt:amt(D,toCents(s.parts.outside.amount)),fees:amt(D,toCents(s.parts.fees))})):null])}))}
 function feedList(D){
   return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
 function dashBlock(D){
@@ -720,7 +725,11 @@ function engineStatus(){
   return ENG.p}
 const engineStale=()=>{ENG.p=null};
 // The header's one test-money chip says the engine is there, and in its title what that means.
-function engineChip(on){const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');$('#foot').textContent=on?t('cs.eng.foot'):t('cs.foot')}
+// The footer's one line: the engine's own when it runs (it pays, on a stand-in bank), else the demo company's (jury review,
+// 13 Nov), else the console's.
+var ENG_ON=false;
+function footLine(){$('#foot').textContent=ENG_ON?t('cs.eng.foot'):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}
+function engineChip(on){ENG_ON=!!on;const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');footLine()}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
@@ -1600,7 +1609,8 @@ async function route(){
       history.replaceState(null,'','#/settings');
       try{await api('/v1/connect/'+p+'/finish',{method:'POST',body:{code:q.get('code'),state:q.get('state')}});connNote=[t('cs.conn.done'),'ok']}catch(e){if(e instanceof Expired)return;connNote=[e.message,'bad']}
       return route()}
-    view().replaceChildren(el('p','lede',t('loading')));
+    // Jury review, 13 Nov: a skeleton of the page while it loads, not a blank "Loading …" (still said to a screen reader).
+    view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),el('i','sk-h'),el('i','sk-l'),el('div','sk-cards',[el('i',''),el('i',''),el('i','')]),el('i','sk-b')]));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // The Invoices tab is part of Books now (13 Nov): its old route keeps its filter and lands there.
@@ -1623,6 +1633,13 @@ route();
  * page, calmer type and spacing, square-ish corners. Last in the one style, so it settles what the shared kit leaves.
  */
 const CLOUD_CSS = `
+.skel { display: grid; gap: 14px; padding-top: 4px; } .skel[hidden] { display: none; }
+.skel .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.skel i { display: block; border-radius: 10px; background: var(--sunken); }
+.skel .sk-h { height: 30px; width: 40%; } .skel .sk-l { height: 16px; width: 65%; } .skel .sk-b { height: 220px; }
+.skel .sk-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } .skel .sk-cards i { height: 96px; }
+@media (prefers-reduced-motion: no-preference) { .skel i { animation: skp 1.4s ease-in-out infinite; } }
+@keyframes skp { 50% { opacity: .55; } }
 :root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #8a93a1; --r: 12px; }
 body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
 header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }

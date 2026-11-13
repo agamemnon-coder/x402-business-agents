@@ -31,13 +31,14 @@ describe("About Purser on Home", () => {
     }
   });
 
-  it("shows the partners' logos in the hero, each an image the site serves, named in its alt text", () => {
+  // Jury review, 13 Nov: the hero's logos were recoloured (brightness(0), opacity, invert in dark mode), against the
+  // "never altered" rule and Visa's brand rules. The partners are named in text, with no image and no filter.
+  it("names the partners in the hero as text, no logo and no recoloured image", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
     const trust = /<div class="trust">[\s\S]*?<\/div>/.exec(hero)![0];
-    expect(text(trust)).toBe(`${WORKS_WITH} ${NO_ENDORSEMENT}`);
-    expect([...trust.matchAll(/<img(?: class="[^"]+")? src="assets\/([^"]+)" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([
-      ["logo-airwallex.png", "Airwallex"], ["logo-visa.png", "Visa"], ["logo-metal.svg", "Metal"], ["logo-claude.png", "Claude"],
-    ]);
+    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} Airwallex Visa Metal Claude ${NO_ENDORSEMENT}`);
+    expect(trust).not.toMatch(/<img/);
+    expect(ON).not.toMatch(/\.trust img|filter: brightness\(0\)/);
     // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).
     expect(MARKS_NOTE).toBe("Partner names and marks only say which services Purser uses; no endorsement implied.");
     expect(ON).toContain(`<li>${MARKS_NOTE}</li>`);

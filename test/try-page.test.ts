@@ -238,7 +238,8 @@ describe("the copy", () => {
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3"]);
+    // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
