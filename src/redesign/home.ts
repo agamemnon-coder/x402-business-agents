@@ -7,7 +7,7 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
-import { FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { FILM_LINK, FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -38,6 +38,8 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .btn.ghost { background: transparent; }
 .btn.ghost:hover { border-color: var(--text); }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
+.walk { margin: 4px 0 0; font-size: 15px; }
+.walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 .trust img { height: 20px; width: auto; filter: brightness(0); opacity: .45; }
@@ -191,7 +193,7 @@ export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud a
  * record; then the 3:58 film.
  */
 /** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
-export const FILM_HOME = "The film, 3:58";
+export const FILM_HOME = "The walkthrough, 4:58";
 export function kit11Html(run: AgentRun = agentRun()): string {
   const st = metalStory(run.record), sp = split(run.record), r = st.refusal;
   const company = (run.record as { company?: unknown }).company;
@@ -322,6 +324,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="what">${esc(HOME_SUB)}</p>
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
+    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}

@@ -171,9 +171,12 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
   { label: "Why now", text: "Airwallex wrote on 5 October 2026 that agents moving money need limits enforced \"through underlying infrastructure rather than prompts\" (\"Agentic banking starts with governance\", source S1).", page: "problem.md#why-now-sourced" },
   { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];
-/** The film (v8, 3:58, YouTube, 8 Nov), linked from Home and Proof (jury QA, 6 Nov, Q3). /film is the earlier animation. */
-export const FILM_URL = "https://youtu.be/kCUsFHrxE-o";
-export const FILM_LINK = "Watch the film (4 min)";
+/**
+ * The walkthrough (film v10, 4:58, YouTube, 13 Nov; AI voice and music: ElevenLabs), linked from Home and Proof and in
+ * llms.txt. /film is the earlier animation.
+ */
+export const FILM_URL = "https://youtu.be/mp9fmOYfBWc";
+export const FILM_LINK = "Watch the walkthrough (4:58)";
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**

@@ -85,7 +85,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
-**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/kCUsFHrxE-o · https://github.com/agamemnon-coder/x402-business-agents
+**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/mp9fmOYfBWc · https://github.com/agamemnon-coder/x402-business-agents
 <!-- /description -->
 
 ## Instructions
@@ -100,8 +100,8 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
      booked and filed. Change what you signed: refused.
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
-     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; every check passes). The film
-     (3:58): <https://youtu.be/kCUsFHrxE-o>. The replay of the main run of 3 November (three Claude agents, a price
+     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; every check passes). The walkthrough
+     (4:58; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
      data, test money) with its Agents and Tokenisation tabs, and Invoices & books in one tab. Approval alerts by
@@ -116,7 +116,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 
 ## Links
 
-- Video (3:58; voice-over: an AI-generated voice, music: AI-generated, both ElevenLabs): <https://youtu.be/kCUsFHrxE-o>
+- Video, the walkthrough (4:58; an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.
