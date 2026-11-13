@@ -387,7 +387,8 @@ ok(true, "a session the cloud no longer takes goes back to sign-in, saying why")
 await page.setViewportSize({ width: 1440, height: 1000 });
 
 // 401 (an ended session) and 409 (the last owner passkey refused) are answers the check asks for, not errors.
-ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e)).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+// A 403 is the step-up walk's own first answer (step_up_required), which the console turns into a passkey check.
+ok(errors.filter((e) => !/(401 \(Unauthorized\)|409 \(Conflict\))/.test(e) && !(stepUps.length && /403 \(Forbidden\)/.test(e))).length === 0, `no console or CSP errors${errors.length ? ` (${errors.join(" | ")})` : ""}`);
 ok(urls.length > 0 && !urls.some((u) => new URL(u).pathname.startsWith("/v1/engine")), "a cloud with no engine: its console never asked for one (no /v1/engine request)");
 await ctx.close();
 server.close();
