@@ -10,8 +10,7 @@ import { buildPages } from "../src/relay/assets.js";
 import { OG_DESCRIPTION, OG_IMAGE, OG_IMAGE_SIZE, OG_TITLE, previewTags, withMeta } from "../src/ui/meta.js";
 import { tryPage } from "../cloud/src/tryPage.js";
 import { consolePage } from "../cloud/src/console.js";
-import { SOCIAL_LOGOS } from "../src/visuals/svg.js";
-import { BUILT_WITH } from "../src/visuals/logos.js";
+import { SOCIAL_BUILT_WITH } from "../src/visuals/svg.js";
 /** Escapes every regular-expression metacharacter, backslash included. */
 const reEscape = (s: string) => s.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 
@@ -33,7 +32,7 @@ describe("every page's head (Q5)", () => {
       expect({ name, missing }).toEqual({ name, missing: [] });
       expect({ name, relative: /og:image" content="(?!https:)/.test(h) }).toEqual({ name, relative: false });
     }
-    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og.png?v=1113b");
+    expect(OG_IMAGE).toBe("https://kit11.max-31b.workers.dev/assets/og.png?v=1113c");
   });
 
   // The owner, 13 Nov: the preview in a chat looked messy (a cropped image, a long description). Every page of the site
@@ -62,16 +61,16 @@ describe("every page's head (Q5)", () => {
       '<meta property="og:site_name" content="Purser">',
       '<meta property="og:title" content="Purser — AI agents spend. You sign off.">',
       '<meta property="og:description" content="Your AI agents pay suppliers. Every payment above their limit needs your Face ID.">',
-      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og.png?v=1113b">',
+      '<meta property="og:image" content="https://kit11.max-31b.workers.dev/assets/og.png?v=1113c">',
       '<meta property="og:image:type" content="image/png">',
       '<meta property="og:image:width" content="1200">',
       '<meta property="og:image:height" content="630">',
-      '<meta property="og:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID.">',
+      '<meta property="og:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey.">',
       '<meta name="twitter:card" content="summary_large_image">',
       '<meta name="twitter:title" content="Purser — AI agents spend. You sign off.">',
       '<meta name="twitter:description" content="Your AI agents pay suppliers. Every payment above their limit needs your Face ID.">',
-      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og.png?v=1113b">',
-      '<meta name="twitter:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID.">',
+      '<meta name="twitter:image" content="https://kit11.max-31b.workers.dev/assets/og.png?v=1113c">',
+      '<meta name="twitter:image:alt" content="Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey.">',
     ]);
     expect(previewTags({ url: "https://kit11.max-31b.workers.dev/home" })).toContain('<meta property="og:url" content="https://kit11.max-31b.workers.dev/home">');
     for (const t of previewTags()) { const c = /content="([^"]*)"/.exec(t)![1]!; if (/\.png|assets\//.test(c)) expect({ t, absolute: c.startsWith("https://") }).toEqual({ t, absolute: true }); }
@@ -80,9 +79,10 @@ describe("every page's head (Q5)", () => {
     expect(og.length).toBeLessThan(300 * 1024);
     // What the card says, in the site's words: the one line large, the small line, the payment's path and the row.
     const svg = readFileSync(new URL("../docs/assets/social-preview.svg", import.meta.url), "utf8");
-    for (const words of ["AI agents spend.", "You sign off.", "Every payment above its limit", "waits for your Face ID.", "Built with", "Your Face ID", "Never paid"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
-    expect(SOCIAL_LOGOS).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
-    for (const name of SOCIAL_LOGOS) expect(BUILT_WITH.map((l) => l.name)).toContain(name);
+    for (const words of ["AI agents spend.", "You sign off.", "Every payment above its limit", "waits for your Face ID or a passkey.", "Face ID or a passkey", "Never paid", "Airwallex · Metal · Visa Intelligent Commerce · Claude"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
+    // The final partner review (13 Nov): the partners in words, no marks on the card, no "(Airi)" beside Visa.
+    expect(SOCIAL_BUILT_WITH.names).toEqual(["Airwallex", "Metal", "Visa Intelligent Commerce", "Claude"]);
+    expect(svg).not.toMatch(/<image\b|data:image|\(Airi\)/);
     // docs/security.md is what the small line says: nothing above the limits is paid until it is signed.
     expect(readFileSync(new URL("../docs/security.md", import.meta.url), "utf8")).toContain("nothing above the limits is paid");
   });
