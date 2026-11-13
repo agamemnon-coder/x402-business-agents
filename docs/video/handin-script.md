@@ -1,6 +1,6 @@
 # Purser: the hand-in film (4:38)
 
-Made by `npm run cut -- handin-5` from src/film/cuts.ts. Spoken words: 436 at 150 a minute.
+Made by `npm run cut -- handin-5` from src/film/cuts.ts. Spoken words: 443 at 150 a minute.
 
 | Time | Shot | Narration | Caption | Claims |
 |---|---|---|---|---|
@@ -12,7 +12,7 @@ Made by `npm run cut -- handin-5` from src/film/cuts.ts. Spoken words: 436 at 15
 | 2:12–2:24 | T9a | VO: On Airwallex, each agent has its own card. Airwallex itself declined a simulated 45 euro charge, over the limit. | LIMIT_EXCEEDED · card ····2441 · 7 Nov + badge Airwallex sandbox · test money | C12 |
 | 2:24–2:42 | V3 | VO: Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail. A 45 euro purchase above the limit waited for Face ID. The signed terms' hash sits in Airi's mandate and in Airwallex's payment record. | Visa via Airi · 12 Nov · hash read back + badge Airi test card · test money | C42 |
 | 2:42–3:03 | D3 → T5f | VO: Two locks on one payout. Purser's, signed with a test passkey, and Airwallex's own approval. The payout waited at Airwallex until the owner approved it there. Then it was paid, with simulated settlement. | Two locks · PAID 12 Nov · settlement simulated → Approved in Airwallex's web app · 12 Nov + badge Airwallex sandbox · test money | C26, C41, C10 |
-| 3:03–3:26 | B1 | VO: The books keep themselves. For each test invoice, Claude's Coder agent chose the account, the VAT code and the cost centre, and wrote why. Code checks every choice before it is booked. | Coded by Claude · checked by code + badge Test company · test money | C43 |
+| 3:03–3:26 | B1 | VO: The books keep themselves. In a month of a test company's 20 invoices, Claude read each one live and chose its account, VAT code and cost centre. Code checked every choice before it was booked, and the books balance. | Coded by Claude · checked by code + badge Test company · test money | C43 |
 | 3:26–3:48 | **S1** (placeholder: Screen recording: the test company's console (Overview, Invoices, Transactions, Books)) | VO: This is Purser Cloud's console for a test company: the overview, invoices, transactions and books. It reads and manages, and it never pays. Payments are approved on the CFO's phone with Face ID. | Purser Cloud · a test company + badge Test company · test money | C45 |
 | 3:48–4:06 | PR1 | VO: Every line of this film has its record. The proof page lists what Purser guarantees, who enforces it, and the evidence. | — | C46 |
 | 4:06–4:20 | V3n | VO: What is not done: in the Visa sandbox, a credential reused on a bigger payment was not refused. There, only Purser holds the limit. Settlement is simulated. | Sandbox did not refuse · only Purser held + badge Airi test card · test money | C42n, C10 |
