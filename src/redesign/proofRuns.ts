@@ -122,7 +122,7 @@ ol.pchain .pc-ic { width: 36px; height: 36px; border-radius: 10px; display: grid
 ol.pchain b { font-size: 15.5px; font-weight: 680; }
 ol.pchain small { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
 ol.pchain .pc-arr { position: absolute; right: -16px; top: 24px; z-index: 1; color: var(--faint); background: var(--bg); border-radius: 50%; }
-@media (max-width: 760px) { ol.pchain { grid-template-columns: 1fr; gap: 18px; } ol.pchain li { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; align-items: center; } ol.pchain small { grid-column: 2; } ol.pchain .pc-arr { right: auto; left: 24px; top: auto; bottom: -19px; transform: rotate(90deg); } }
+@media (max-width: 760px) { ol.pchain { grid-template-columns: 1fr; gap: 16px; } ol.pchain li { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 2px; align-items: center; padding: 12px 14px; } ol.pchain .pc-ic { grid-row: 1 / span 2; width: 32px; height: 32px; } ol.pchain small { grid-column: 2; } ol.pchain .pc-arr { right: auto; left: 24px; top: auto; bottom: -19px; transform: rotate(90deg); } }
 /* The receipt anyone can check offline. */
 aside.pverify { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 28px; padding: 16px 18px; border: 1px solid var(--accent); border-radius: 14px; background: var(--accent-soft); }
 aside.pverify > svg { flex: none; color: var(--accent); margin-top: 2px; }

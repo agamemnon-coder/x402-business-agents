@@ -19,6 +19,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
+import { proofRuns } from "../../src/redesign/proofRuns.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
@@ -55,6 +56,8 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
   try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
 })();
+/** /proof's live runs, one row each (src/redesign/proofRuns.ts). */
+const PROOF_RUN_ROWS = proofRuns().reduce((n, g) => n + g.runs.length, 0);
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -956,22 +959,18 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { h: number; t: string }[];
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
-        const fold = document.querySelector("main details.sumd"), cards = document.querySelector("main ul.sumc");
-        // The scale band (the owner, 13 Nov) between the heading and the cards.
-        const band = h1 && h1.nextElementSibling && h1.nextElementSibling.matches("ul.scale") ? h1.nextElementSibling : null;
-        const g = document.getElementById("guarantees");
-        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), gtee: top(g), next: band && band.nextElementSibling ? band.nextElementSibling.className : "no scale band", between: !!cards && !!g && !!fold && cards.nextElementSibling === g && g.nextElementSibling === fold, open: document.querySelectorAll("main details[open]").length };
-      })()`)) as { cards: number; n: number; fold: number; gtee: number; next: string; between: boolean; open: number };
-      // The jury pass (13 Nov): four cards directly under the heading; since the jury's second round the seven guarantees
-      // in sight under them (the first screen was too thin), then the one fold, closed on load.
-      if (first.next !== "sumc" || first.n !== 4 || !first.between || first.open) fail(`/proof ${tag}: not the scale band, then four cards, under the heading, then the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
+        const fold = document.querySelector("main details.sumd"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
+        // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs,
+        // then the guarantees and the one fold.
+        const order = [];
+        for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
+        return { order: order.slice(0, 8).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
+      })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
+      if (first.order !== "h1 p.plead ol.pchain ul.scale aside.pverify section.pruns section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
-        // The guarantees start within the first screen and a half (1,249 px as built at 390 since the light redesign of
-        // 13 Nov, the strip, four equal cards, each guarantee a row with its pill and evidence stacked), the fold's line
-        // under them (2,768 px as built; 4,062 before the jury's order of 12 Nov).
-        if (first.gtee < 0 || first.gtee > 1350) fail(`/proof ${tag}: the guarantees start at ${first.gtee} px, over 1,350 px`);
-        if (first.fold < 0 || first.fold > 2950) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 2,950 px`);
+        // The chain and the band on the first screen and a half (the band at 1,1xx px as built at 390).
+        if (first.chain < 0 || first.chain >= 400) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, not on the first screen`);
+        if (first.band < 0 || first.band > 1300) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,300 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
