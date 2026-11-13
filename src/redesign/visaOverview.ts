@@ -38,7 +38,7 @@ export function airiCard(rec: AiriRunRecord): RunCard | null {
   // The paid purchase leads (the jury check, 12 Nov): purchase B's amount, paid after the CFO's Face ID. The day's
   // attempts, "N of M paid", are counted in their fold lower on the page (vicAttemptsHtml), not on this card.
   return {
-    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: "Single-use Visa credential",
+    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: "Visa credential for one purchase",
     stats: [{ v: `${b.currency} ${b.amount}`, l: "paid after the CFO's Face ID" }],
     ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...claude.map((id) => ["Claude request", id] as [string, string])],
     label: "Airwallex sandbox · test card · cardholder confirmed each purchase in Airi", href: `#${AIRI_RUN_ID}`,

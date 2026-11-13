@@ -18,6 +18,13 @@ export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --c
 .csplit { margin: 0; padding: 18px 20px 14px; display: grid; gap: 10px; }
 .csplit svg { display: block; width: 100%; height: auto; overflow: visible; }
 .csplit .nar { display: none; }
+.sbars ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 12px; }
+.sbars li { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: baseline; }
+.sbars .sb-n { color: var(--text); font: 780 26px/1.1 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.sbars .sb-l { color: var(--text); font-size: 15.5px; line-height: 1.35; }
+.sbars .sb-tot { margin: 0; }
+.sbars svg { grid-column: 1 / -1; display: block; width: 100%; height: 10px; margin-top: 4px; }
+.sbars .sb-trk { fill: var(--border); }
 @media (max-width: 860px) { .csplit { padding: 14px 14px 12px; } .csplit .wid { display: none; } .csplit .nar { display: block; max-width: 420px; } }
 .csplit figcaption { font-size: 15px; color: var(--muted); line-height: 1.45; border-top: 1px solid var(--border); padding-top: 10px; font-variant-numeric: tabular-nums; }
 .csplit figcaption b { color: var(--text); }
@@ -73,10 +80,6 @@ const ribbonH = (x0: number, y0: number, x1: number, y1: number, h0: number, h1:
   const m = r1((x0 + x1) / 2);
   return `M${x0},${r1(y0)} C${m},${r1(y0)} ${m},${r1(y1)} ${x1},${r1(y1)} L${x1},${r1(y1 + h1)} C${m},${r1(y1 + h1)} ${m},${r1(y0 + h0)} ${x0},${r1(y0 + h0)} Z`;
 };
-const ribbonV = (x0: number, y0: number, x1: number, y1: number, w0: number, w1: number) => {
-  const m = r1((y0 + y1) / 2);
-  return `M${r1(x0)},${y0} C${r1(x0)},${m} ${r1(x1)},${m} ${r1(x1)},${y1} L${r1(x1 + w1)},${y1} C${r1(x1 + w1)},${m} ${r1(x0 + w0)},${m} ${r1(x0 + w0)},${y0} Z`;
-};
 const tip = (t: string) => `<title>${esc(t)}</title>`;
 
 /** The split, drawn wide (from 861 px) and tall (phones): each band's thickness is its count. */
@@ -100,21 +103,15 @@ export function splitFigure(f: SplitFigures): string {
 <text x="${nx + 28}" y="${r1(ly - 14)}"><tspan class="sk-n">${f.decisions}</tspan><tspan class="sk-l" dx="12">exceptions, decided by Claude</tspan></text>
 <text x="${fx + 28}" y="${r1(fy + hf / 2 + 12)}"><tspan class="sk-n">${f.faceId}</tspan><tspan class="sk-l" dx="12">high-risk: the CFO's Face ID</tspan></text>
 </svg>`;
-  // Tall: top to bottom, for phones.
-  const W = 344, wc = W * f.routine / total, wl = W * f.decisions / total, wf = Math.max(6, wl * f.faceId / f.decisions), lx = wc + 16;
-  const nar = `<svg class="nar" viewBox="0 0 360 336" role="img" aria-label="${esc(splitSentence(f))}">
-<text class="sk-t" x="0" y="16">Payment requests</text>
-<rect class="sk-src" x="0" y="28" width="${W}" height="10" rx="3"/>
-<path class="sk-code sk-rib" d="${ribbonV(0, 38, 0, 96, wc, wc)}">${tip(tCode)}</path>
-<path class="sk-claude sk-rib" d="${ribbonV(wc, 38, lx, 196, wl, wl)}">${tip(tClaude)}</path>
-<path class="sk-face sk-rib" d="${ribbonV(lx + wl - wf, 206, lx + wl - wf, 286, wf, wf)}">${tip(tFace)}</path>
-<rect class="sk-code" x="0" y="96" width="${r1(wc)}" height="10" rx="3">${tip(tCode)}</rect>
-<rect class="sk-claude" x="${r1(lx)}" y="196" width="${r1(wl)}" height="10" rx="3">${tip(tClaude)}</rect>
-<rect class="sk-face" x="${r1(lx + wl - wf)}" y="286" width="${r1(wf)}" height="10" rx="3">${tip(tFace)}</rect>
-<text x="0" y="146"><tspan class="sk-n">${f.routine}</tspan><tspan class="sk-l" x="0" dy="24">routine payments by code</tspan></text>
-<text x="${r1(lx - 14)}" y="222" text-anchor="end"><tspan class="sk-n">${f.decisions}</tspan><tspan class="sk-l" x="${r1(lx - 14)}" dy="24">exceptions, decided by Claude</tspan></text>
-<text x="${r1(lx + wl - wf - 14)}" y="296" text-anchor="end"><tspan class="sk-n">${f.faceId}</tspan><tspan class="sk-l" x="${r1(lx + wl - wf - 14)}" dy="24">high-risk: the CFO's Face ID</tspan></text>
-</svg>`;
+  // Phones (final jury, 13 Nov: the tall flow was unreadable at 390 px, dark mode the worst): plain figures, the total
+  // first, then one bar per part on the same scale (of all requests), each with its count and words in the text colour.
+  const pct = (n: number) => String(Math.round((n / total) * 1000) / 10);
+  const bar = (cls: string, n: number, words: string) => `<li><span class="sb-n">${n}</span> <span class="sb-l">${esc(words)}</span><svg viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><rect class="sb-trk" width="100" height="8"/><rect class="${cls}" width="${pct(n)}" height="8"/></svg></li>`;
+  const nar = `<div class="nar sbars" role="img" aria-label="${esc(splitSentence(f))}"><p class="sb-tot"><span class="sb-n">${total}</span> <span class="sb-l">payment requests</span></p><ul>
+${bar("sk-code", f.routine, "routine payments by code")}
+${bar("sk-claude", f.decisions, "exceptions, decided by Claude")}
+${bar("sk-face", f.faceId, "of those, high-risk: the CFO's Face ID")}
+</ul></div>`;
   // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
   const cap = `${f.byClaude === f.decisions ? `<b>All ${f.decisions}</b>` : `<b>${f.byClaude} of ${f.decisions}</b>`} decisions by Claude, holds included; <b>${f.fallbacks}</b> fallbacks · <b>${f.calls}</b> Claude calls, each logged`;
   return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}</figcaption></figure>`;

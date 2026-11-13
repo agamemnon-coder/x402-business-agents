@@ -262,6 +262,19 @@ export const SECURITY_VIZ_CSS = `.sec { --c-a: #2a78d6; --c-b: #eb6834; --c-c: #
 .zp.s2 { --to: 20%; animation-delay: 1.75s; } .zp.s3 { --to: 40%; animation-delay: 3.5s; } .zp.s5 { --to: 80%; animation-delay: 5.25s; }
 @keyframes zy { 0% { top: 0; opacity: 0; transform: scale(1); } 6% { opacity: 1; } 60% { top: var(--to); opacity: 1; transform: scale(1); } 72% { top: var(--to); transform: scale(1.5); } 92% { top: var(--to); opacity: 1; } 100% { top: var(--to); opacity: 0; transform: scale(1); } }
 @keyframes zx { 0% { left: 0; opacity: 0; transform: scale(1); } 6% { opacity: 1; } 60% { left: var(--to); opacity: 1; transform: scale(1); } 72% { left: var(--to); transform: scale(1.5); } 92% { left: var(--to); opacity: 1; } 100% { left: var(--to); opacity: 0; transform: scale(1); } }
+/* One column (final jury, 13 Nov: the L1 card stood as tall as the others, mostly empty, at 390 px): L1, which counts
+   nothing, gets its own 64 px row and the five layers below share the rest equally. The track then runs from L1's middle
+   (32 px) to L6's, and each dot and pulse is put at its card's middle from that row height R: with the 8 px gaps the
+   column is 104 px + 5R high, the track 72 px + 4.5R long, so R = (100% - 72px) / 4.5 of the track. */
+@media (max-width: 899px) {
+  .zlayers { grid-template-rows: 64px; grid-auto-rows: 1fr; }
+  .zlayers > li.untrusted { overflow: hidden; }
+  .ztrack { top: 32px; bottom: calc((100% - 104px) / 10); }
+  .zt.t2, .zp.s2 { --at: calc(40px + (100% - 72px) / 9); --to: calc(40px + (100% - 72px) / 9); }
+  .zt.t3, .zp.s3 { --at: calc(48px + (100% - 72px) / 3); --to: calc(48px + (100% - 72px) / 3); }
+  .zt.t4 { --at: calc(56px + (100% - 72px) * 5 / 9); }
+  .zt.t5, .zp.s5 { --at: calc(64px + (100% - 72px) * 7 / 9); --to: calc(64px + (100% - 72px) * 7 / 9); }
+}
 @media (min-width: 900px) {
   .zlayers { grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-rows: auto; }
   .zlayers > li { padding: 12px; grid-template-columns: minmax(0, 1fr) auto; }
@@ -467,11 +480,19 @@ const cardHtml = (c: SecurityCard) => `<article class="pc card fd${c.wide ? " wi
     <p>${c.line}</p><div class="links">${c.links.join("")}</div>
     ${foldHtml(c.fold.summary, c.fold.lines)}${c.more ? `\n    ${foldHtml(c.more.summary, c.more.lines).replace('<details class="fold">', `<details class="fold" id="${c.more.id}">`)}` : ""}</article>`;
 
+/**
+ * The line under /security's heading (final jury, 13 Nov): the three attack tests, each with its total from its record,
+ * and the red team's two not prevented (detected after) said there, beside the headline, not only in its card.
+ */
+export function securityLead(zt: ZeroTrust = zeroTrust(), he: HostileEval = hostileEval(), rt: RedTeamRound = redTeamRound([REDTEAM_REPORT])): string {
+  return `Three attack tests: zero trust, ${zt.run} attacks, ${zt.stopped === zt.run ? "all" : zt.stopped} stopped; a hostile model, ${he.calls} tool calls, ${he.unsafe === 0 ? "none" : he.unsafe} unsafe by the ledger verdict; the red team, ${rt.attempts} attacks, ${rt.after ?? 0} not prevented (detected after).`;
+}
+
 export function securityPage(): string {
   const cards = securityCards();
   return productPage({
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
-    lead: "Each control below, with its proof.",
+    lead: securityLead(),
     description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
     css: SECURITY_VIZ_CSS,
     body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
