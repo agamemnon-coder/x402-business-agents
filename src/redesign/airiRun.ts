@@ -71,9 +71,16 @@ export function airiAsker(rec: AiriRunRecord): AiriAsker {
     sentence: capital([...each, ...scripted].join("; ")),
   };
 }
-/** The one summary sentence: who asked (airiAsker), then AIRI_SUMMARY. */
-export function airiSummaryLine(rec: AiriRunRecord): string {
-  return `${airiAsker(rec).sentence}: ${AIRI_SUMMARY}`;
+/**
+ * The summary as the published film shows it (scene 13c, rendered 7 to 13 Nov): its words stay as recorded, so the film's
+ * script and subtitles in docs/video describe the film as it is. The site says AIRI_SUMMARY (final jury, 13 Nov: the
+ * credential is bound to one purchase by Purser; the sandbox did not refuse a reuse, vic-3).
+ */
+export const AIRI_SUMMARY_FILM = "paid with a single-use Visa (VIC) credential from Airi, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+
+/** The one summary sentence: who asked (airiAsker), then AIRI_SUMMARY (the film: AIRI_SUMMARY_FILM). */
+export function airiSummaryLine(rec: AiriRunRecord, o: { film?: boolean } = {}): string {
+  return `${airiAsker(rec).sentence}: ${o.film ? AIRI_SUMMARY_FILM : AIRI_SUMMARY}`;
 }
 /** Purchase A's two sentences (owner's copy, 7 Nov): within Purser's limit no Purser approval, Airi's own passkey step. */
 export const AIRI_A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
