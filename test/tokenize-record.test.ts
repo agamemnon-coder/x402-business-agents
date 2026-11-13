@@ -257,7 +257,7 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     if (!tokenizeRunFile()) { expect(tokenizeRun()).toBeNull(); expect(METAL_PAGE).toBe(without()); }
     else expect(METAL_PAGE).toBe(metalPage(run, tokenizeRun()));
     // 275 without the block since the jury panel of 12 Nov (the four mandates in one table; test/site-v4.test.ts). +50, 12 Nov wire-in: "Face ID signs on chain".
-    expect(visibleWords(without())).toBeLessThanOrEqual(335); // +5, jury check 12 Nov: "Since 12 Nov it does"; +5, jury 13 Nov: "the cap at the time" (333 as built)
+    expect(visibleWords(without())).toBeLessThanOrEqual(430); // +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +5, jury check 12 Nov: "Since 12 Nov it does"; +5, jury 13 Nov: "the cap at the time" (333 as built)
   });
 
   it("with a record it shows one short block: the title, one sentence from the record, the verify badge, and the transactions folded", () => {
@@ -274,11 +274,11 @@ describe("/metal: the invoice-token block, only with a run record", () => {
     // panel of 12 Nov; +50 each, 12 Nov wire-in: "Face ID signs on chain", 49 words as built).
     // 55 since 12 Nov (review): "Amounts are scaled down 100× for testnet" says it in plain words (2 more).
     expect(visibleWords(html) - visibleWords(without())).toBeLessThanOrEqual(55);
-    expect(visibleWords(html)).toBeLessThanOrEqual(385); // +5, jury 13 Nov: "the cap at the time"
+    expect(visibleWords(html)).toBeLessThanOrEqual(480); // +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +5, jury 13 Nov: "the cap at the time"
     // The longest form of the block (a person's approval on an earlier day, named) stays within both budgets too.
     const longest = metalPage(run, { file: FILE, rec: person() });
     expect(visibleWords(longest) - visibleWords(without())).toBeLessThanOrEqual(55); // 55 since 12 Nov (review): the scaling said in plain words
-    expect(visibleWords(longest)).toBeLessThanOrEqual(385); // +5, 12 Nov review: the scaling in plain words
+    expect(visibleWords(longest)).toBeLessThanOrEqual(485); // +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +5, 12 Nov review: the scaling in plain words
     // Every label a public mention of the run carries.
     const sight = textOf(block.replace(/<details[\s\S]*<\/details>/, ""));
     for (const label of [/\(prototype\)/, /Metal testnet/, /simulated financier/, /Amounts are scaled down 100× for testnet/, /test USD/, /a separate Metal testnet run/]) expect(sight).toMatch(label);

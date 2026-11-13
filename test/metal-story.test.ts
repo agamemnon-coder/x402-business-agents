@@ -1,5 +1,6 @@
-// /metal as one story (jury panel, 12 Nov; src/redesign/metalMandates.ts), every figure and link from a record: the four
-// mandates in one table, each cap linking the transaction that set it (the trace of the main run's ledger, and Metal's
+// /metal as one story (jury panel, 12 Nov; pictures first since the owner's redesign, 13 Nov; src/redesign/metalMandates.ts),
+// every figure and link from a record: one picture of a paid and a refused payment under the same mandate; the charts
+// (budget and spend per mandate, the payments by kind, the refusals); the four mandates as cards, the table folded, each cap linking the transaction that set it (the trace of the main run's ledger, and Metal's
 // own MandateBound events in the check of 12 November); the spend from that read-only check, labelled as recorded until a
 // live read answers; the 86 payments recomputed from the main run's record and its payment-by-payment check; #24's
 // refusal as it ran; who signed the replaces on chain (one owner key, held by the runner: the chain did not check Face
@@ -26,11 +27,14 @@ const trace = JSON.parse(traceRaw) as { mandates: { event: "mandate.bound" | "ma
 const record = loadRecord().record;
 const story = metalStory(record);
 const insp = inspectorRecord();
-const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&amp;/g, "&").replace(/\s+/g, " ");
+const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const main = /<main[\s\S]*<\/main>/.exec(METAL_PAGE)![0];
 const top = main.slice(0, main.indexOf('<div class="folds card">'));
-const table = /<section class="mt card"[\s\S]*?<\/section>/.exec(main)![0];
-const grid = main.slice(main.indexOf('<div class="mgrid">'), main.indexOf('<div class="folds card">'));
+const hero = /<section class="mhero card"[\s\S]*?<\/section>/.exec(main)![0];
+const table = /<section class="mt"[\s\S]*?<\/section>/.exec(main)![0];
+// The mandate cards with their spend's source and the read to repeat, the table inside their "Details" fold.
+const cards = main.slice(main.indexOf('<section class="mmand card"'), main.indexOf('<section class="mrep card"'));
+const grid = main.slice(main.indexOf('<div class="mcharts">'), main.indexOf('<div class="folds card">'));
 const also = /<details class="fold" id="also"[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const decoded = /<details class="fold" id="refusals"[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
 const simulated = /<details class="fold"><summary>What is simulated<\/summary>[\s\S]*?<\/details>/.exec(main)?.[0] ?? "";
@@ -38,13 +42,37 @@ const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((m) =>
 const link = (href: string, label: string) => new RegExp(`href="${href.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}"[^>]*>${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} ↗</a>`);
 
 describe("/metal plays the main run's record", () => {
-  it("is labelled with the main run, and opens on its four mandates", () => {
+  it("is labelled with the main run, and opens on one picture: a payment paid and one refused, under the same mandate", () => {
     expect(loadRecord().file).toBe(MAIN);
     expect(METAL_PAGE).toMatch(/Replay of the main run, 3 Nov/);
-    // Since 12 Nov the four mandates lead as a count-up stat above the table (src/redesign/stats.ts).
-    const stats = /<ul class="stats">[\s\S]*?<\/ul>/.exec(main)![0];
-    expect(text(stats)).toContain("4 mandates on chain, one per agent");
-    expect(main.indexOf(stats)).toBeLessThan(main.indexOf(table));
+    // The owner's redesign (13 Nov): the picture first, then the charts, then the mandate cards, the table folded.
+    expect(main.indexOf(hero)).toBeLessThan(main.indexOf('<div class="mcharts">'));
+    expect(main.indexOf('<div class="mcharts">')).toBeLessThan(main.indexOf('<section class="mmand card"'));
+    expect(main.indexOf(hero)).toBeLessThan(main.indexOf("<details"));
+    expect(table).toBe(/<details class="fold" id="mandates"><summary>Details: every mandate<\/summary>(<section class="mt"[\s\S]*?<\/section>)<\/details>/.exec(main)![1]);
+    // Both paths are the Sourcing agent under the mandate in force at #24, its first bind: #23 paid within the cap, the
+    // payment just before #24, and #24 refused on chain; each with the transaction from the trace or the record.
+    const t = text(hero), first = trace.mandates.find((m) => m.agent === "sourcing" && m.event === "mandate.bound")!;
+    const p23 = (JSON.parse(traceRaw) as { payments: { kind: string; ref: string; amount: string; rail_id: string }[] }).payments.find((p) => p.kind === "purchase" && p.ref === "23")!;
+    expect(t).toContain(`cap ${first.cap} a payment · budget ${first.budget} · payee Stockline bind`);
+    expect(hero).toMatch(link(`${EXPLORER}/tx/${first.tx}`, "bind"));
+    expect(t).toContain(`Within the cap: paid #23 · ${p23.amount} *USDZ Under the ${first.cap} cap.`);
+    expect(hero).toContain(`href="${EXPLORER}/tx/${p23.rail_id}"`);
+    expect(t).toContain(`Over the cap: refused on chain #24 · ${story.refusal!.amount} *USDZ Over the ${story.refusal!.cap} cap: MandateRefused on chain, nothing moved.`);
+    expect(hero).toContain(`href="${story.refusal!.proof.href}"`);
+  });
+
+  it("draws budget and spend per mandate on one scale, each bar's length the record's figure", () => {
+    const rows = mandateRows(record, trace), max = Math.max(...rows.map((r) => Number(r.budget)));
+    const chart = /<section class="mchart card" aria-labelledby="mb-h">[\s\S]*?<\/section>/.exec(main)![0];
+    for (const r of rows) {
+      expect(text(chart)).toContain(`spent ${r.spent} of ${r.budget} · cap ${r.cap}`);
+      const bar = new RegExp(`<rect class="f-track" x="0" y="0" width="([\\d.]+)"[^>]*/><rect class="f-${r.agent}" data-fill="${r.agent}" data-max="${max.toFixed(2)}" data-w="1000" x="0" y="0" width="([\\d.]+)"`).exec(chart)!;
+      expect(Number(bar[1])).toBeCloseTo((Number(r.budget) / max) * 1000, 0);
+      expect(Number(bar[2])).toBeCloseTo((Number(r.spent) / max) * 1000, 0);
+    }
+    // No inline style: the page's CSP allows its one <style> block by hash, so a bar's length is an SVG attribute.
+    expect(main).not.toMatch(/\sstyle="/);
   });
 });
 
@@ -83,20 +111,22 @@ describe("the four mandates, one table", () => {
   it("shows the spend of the check of 12 November, labelled as recorded, and the customer's as the main run recorded it", () => {
     const live = insp.recorded!;
     expect(live.recorded_on).toBe("2026-11-12");
-    expect(text(table)).toContain(`Spent: recorded on 12 Nov at block ${live.block}, a read-only check.`);
-    expect(table).toContain(`data-rec="${METAL_INSPECTOR_RECORD}"`);
+    expect(text(cards)).toContain(`Spent: recorded on 12 Nov at block ${live.block}, a read-only check.`);
+    expect(cards).toContain(`data-rec="${METAL_INSPECTOR_RECORD}"`);
     for (const m of live.mandates) {
       expect(table).toContain(`<span data-spent="${m.agent}">${m.spent}</span>`);
       expect(table).toContain(`<span class="sub" data-pays="${m.agent}">${m.payments} ${m.payments === 1 ? "payment" : "payments"}</span>`);
       expect(table).toContain(`<span data-revoked="${m.agent}">${m.revoked ? "yes" : "no"}</span>`);
+      // Its card: the spend as figure and bar, both of its own budget.
+      expect(cards).toMatch(new RegExp(`<b><span data-spent="${m.agent}">${m.spent}</span></b> of [\\d.]+</span><svg class="bar"`));
       // The chain's spend on 12 November is the spend the main run recorded on 3 November.
       expect(rec.snapshot.budgets.agents.find((b) => b.agent === m.agent)!.spent).toBe(m.spent);
     }
     expect(table).toContain(`<span data-spent="customer">${rec.snapshot.budgets.counterparty.spent}</span><span class="sub">recorded 3 Nov</span>`);
     // The read anyone can repeat: the hosted inspector, and the eth_call itself.
-    expect(text(table)).toContain(`curl -s ${INSPECTOR_URL}`);
-    expect(text(table)).toContain(`eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}`);
-    expect(text(table)).toContain("npm run metal-inspect");
+    expect(text(cards)).toContain(`curl -s ${INSPECTOR_URL}`);
+    expect(text(cards)).toContain(`eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}`);
+    expect(text(cards)).toContain("npm run metal-inspect");
   });
 
   it("says live only what the chain answered: the page's script asks its own origin and writes text, never markup", () => {
@@ -105,7 +135,10 @@ describe("the four mandates, one table", () => {
     expect(METAL_INSPECT_JS).toContain('fetch("api/metal/mandates"');
     expect(METAL_INSPECT_JS).toContain('a.source === "chain"');
     expect(METAL_INSPECT_JS).toContain("Spent: read live from Metal testnet at ");
-    expect(METAL_INSPECT_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(/);
+    expect(METAL_INSPECT_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|\.style\b/);
+    // Every place an agent's spend shows (its card, its bars, the table) is updated; a bar's length only as an attribute.
+    expect(METAL_INSPECT_JS).toContain(`all('[data-spent="' + m.agent + '"]')`);
+    expect(METAL_INSPECT_JS).toContain(`r.setAttribute("width"`);
     expect(METAL_CSP).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
   });
 });
@@ -118,7 +151,12 @@ describe("the payments, the refusal and the replace", () => {
     expect(story.payments.total).toBe(n("sale") + n("upstream") + n("refund") + n("sweep"));
     expect(story.payments.total).toBe(86);
     expect(text(grid)).toContain(`${story.payments.total} Metal payments, each its own transaction`);
-    expect(text(grid)).toContain(`${n("sale")} sales, ${n("upstream")} supplier purchases, ${n("refund")} refunds and ${n("sweep")} sweep, in *USDZ.`);
+    // One stacked bar, its four parts in proportion, each with its count beside its colour in the legend.
+    expect(grid).toContain(`aria-label="${n("sale")} sales, ${n("upstream")} supplier purchases, ${n("refund")} refunds and ${n("sweep")} sweep"`);
+    expect(text(/<ul class="mlegend">[\s\S]*?<\/ul>/.exec(grid)![0]).trim()).toBe(`${n("sale")} sales ${n("upstream")} supplier purchases ${n("refund")} refunds ${n("sweep")} sweep`);
+    const widths = [...grid.matchAll(/<rect class="f-(customer|sourcing|support|treasury)" x="[\d.]+" y="0" width="([\d.]+)" height="30"/g)].map((m) => Number(m[2]));
+    expect(widths).toHaveLength(4);
+    expect(widths[0]! / widths[1]!).toBeCloseTo(n("sale") / n("upstream"), 1);
   });
 
   it("matches the run's payment-by-payment check against the chain: every Metal payment matched, none skipped", () => {
@@ -139,7 +177,7 @@ describe("the payments, the refusal and the replace", () => {
     expect(story.refusal).toEqual({ seq: "24", amount: String(onChain.payload.amount), cap: String(let1.payload.bound_cap), code: "mandate_cap_exceeded", proof: { label: expect.any(String), href: `${EXPLORER}/tx/${String(onChain.payload.tx)}` },
       agent: "sourcing", mandate: String(onChain.payload.mandate) });
     const t = text(grid);
-    expect(t).toContain("#24 refused on chain");
+    expect(t).toContain(`#24: ${story.refusal!.amount} > cap ${story.refusal!.cap}`);
     // The card says it in one line (12 Nov); the 402 and the record call, word for word, are in the decoded fold.
     expect(t).toContain("Our own check was off for this test. Metal refused it on chain; nothing moved.");
     expect(text(decoded)).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the cap at the time, 0.03. Nothing moved.");
@@ -162,7 +200,12 @@ describe("the payments, the refusal and the replace", () => {
     expect(story.replace?.signers).toEqual(["max", "test-controller"]);
     expect(story.replace?.steps.map((s) => s.proof.href)).toEqual(replaced.map((e) => `${EXPLORER}/tx/${String(e.payload.tx)}`));
     const t = text(grid);
-    expect(t).toContain("P-0002: the CFO's Face ID and a test passkey approved it in Purser; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID.");
+    // Three steps (13 Nov): Face ID in Purser, the new mandates on chain (who signed them), the old one refused.
+    const steps = [...grid.matchAll(/<li( class="no")?><span class="st">[\s\S]*?<\/li>/g)].map((m) => text(m[0]).trim());
+    expect(steps).toHaveLength(3);
+    expect(steps[0]).toBe("Face ID P-0002: the CFO's Face ID and a test passkey approved it in Purser.");
+    expect(steps[1]).toMatch(/^New mandates on chain Treasury 2\.00 ↗ Sourcing 0\.04 ↗ One owner key, held by Purser's runner, signed on chain\. The chain did not check Face ID\./);
+    expect(steps[2]).toBe("Old mandate refused #37 on the old mandate: refused by Metal's facilitator (mandate_revoked), no transaction.");
     for (const e of replaced) expect(grid).toContain(`href="${EXPLORER}/tx/${String(e.payload.tx)}"`);
     expect(rec.snapshot.refusals.some((r) => /#37 .*revoked by a replacement/.test(r.reason))).toBe(true);
     expect(t).toContain("#37 on the old mandate: refused by Metal's facilitator (mandate_revoked), no transaction.");
@@ -182,8 +225,9 @@ describe("the payments, the refusal and the replace", () => {
     const links = hrefs(top);
     expect(links.length).toBeGreaterThanOrEqual(10);
     for (const h of links) {
-      // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page.
-      if ([`${REPO_BLOB}${MAIN_RUN_CHECK}`, `${REPO_BLOB}docs/runs/2026-11-12-metal-inspector.md`, "#faceid-onchain"].includes(h)) continue;
+      // 12 Nov (jury check): "Since 12 Nov it does" leads to the Face ID on chain section on this page; 13 Nov: the
+      // refusal moment's "decoded" leads to both refusals, decoded, in the folds below.
+      if ([`${REPO_BLOB}${MAIN_RUN_CHECK}`, `${REPO_BLOB}docs/runs/2026-11-12-metal-inspector.md`, "#faceid-onchain", "#refusals"].includes(h)) continue;
       const l = explorerLink(h);
       expect(l, h).not.toBeNull();
       expect(raw.includes(l!.id) || traceRaw.includes(l!.id), h).toBe(true);
