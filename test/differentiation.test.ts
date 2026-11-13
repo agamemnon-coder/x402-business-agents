@@ -62,7 +62,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const lines = readme.split("\n");
     // The one tagline in the title (jury QA, 6 Nov, Q8).
     // Since 13 Nov (the owner) the title sits in the centred top, under the logo, within the first 6 lines.
-    expect(lines.slice(0, 6)).toContain("# Purser · AI agents spend. You sign off.");
+    expect(lines.slice(0, 8)).toContain("# Purser · AI agents spend. You sign off.");
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
     // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.

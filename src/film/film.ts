@@ -1,4 +1,4 @@
-// The earlier film (30 October; not the submission video, which is the 3:58 premiere (v8), src/film/premiere.ts): Purser in
+// The earlier film (30 October; not the walkthrough (film v10, 4:58, FILM_URL on YouTube; src/film/cuts.ts HANDIN10)): Purser in
 // about three minutes, one continuous animation (src/film/film.html, served at
 // /film and recorded by npm run video). Things happen on screen: a card is declined and then pays after Face ID, a
 // euro bill is converted and paid, payments bounce off a mandate on chain, twelve orders are checked one by one.

@@ -13,9 +13,10 @@ const lines = README.split("\n");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
 
 describe("the README's shape (jury panel, 12 Nov)", () => {
-  it("is at most 300 lines, with one badge row and 'The business hypothesis' in the first 110 lines", () => {
-    // 150 lines until 13 Nov; the owner then asked for the diagrams and the charts inline, so the cap is 300.
-    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(300);
+  it("is at most 305 lines, with one badge row and 'The business hypothesis' in the first 110 lines", () => {
+    // 150 lines until 13 Nov; the owner then asked for the diagrams and the charts inline, so the cap was 300; the
+    // restored header (the mark and the three buttons, 13 Nov, evening) adds four lines: 305.
+    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(305);
     expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(1);
     expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
     // Within the first 60 lines until 13 Nov; the README upgrade put the one-line diagram, the judges' 3 minutes and the

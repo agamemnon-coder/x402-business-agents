@@ -1,5 +1,7 @@
 // The README's screenshots, light theme, 1440 x 900, the first screen of each page; WebP, 960 px wide, in
-// docs/assets/readme/. The README's hero is the site's link-preview card (docs/assets/social-preview.png), not a shot.
+// docs/assets/readme/. The README's hero is Home's first screen, light and dark (hero-light.webp, hero-dark.webp; restored
+// 13 Nov, evening, owner), 1440 x 600.
+//   npm run readme:shots -- --hero  the two hero shots only, from a local build
 //   npm run readme:shots            a local build of this checkout (nothing from the deployed site):
 //     - the site's pages, served offline by the judge server (src/cli/judge.ts, the main run's committed record);
 //     - Purser Cloud's console as a guest ("Try as guest": the demo company, made-up data, test money), served on this
@@ -34,6 +36,8 @@ export const SITE_SHOTS: { file: string; path: string; label: string }[] = [
 /** The deployed site and Purser Cloud's public preview, for --live. */
 export const LIVE = { site: "https://kit11.max-31b.workers.dev", cloud: "https://purser-try.max-31b.workers.dev" };
 export const CLOUD_SHOT = { file: "cloud-guest.webp", label: "Purser Cloud as a guest" };
+/** The README's hero: Home's first screen, light and dark (a <picture> in the README). */
+export const HERO_SHOTS = [{ file: "hero-light.webp", scheme: "light" as const }, { file: "hero-dark.webp", scheme: "dark" as const }];
 
 const tmp = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "readme-shots-"));
 const webp = (png: string, file: string) => execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", png, "-vf", "scale=960:-1:flags=lanczos", "-quality", "82", join(OUT, file)]);
@@ -43,8 +47,8 @@ async function main() {
   const require = createRequire(import.meta.url);
   const { chromium } = require("playwright") as typeof import("playwright");
   const browser = await chromium.launch();
-  const shoot = async (url: string, file: string, before?: (p: import("playwright").Page) => Promise<void>) => {
-    const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1, colorScheme: "light", locale: "en-GB" });
+  const shoot = async (url: string, file: string, before?: (p: import("playwright").Page) => Promise<void>, o: { scheme?: "light" | "dark"; height?: number } = {}) => {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: o.height ?? 900 }, deviceScaleFactor: 1, colorScheme: o.scheme ?? "light", locale: "en-GB" });
     const page = await ctx.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
     if (before) await before(page);
@@ -70,6 +74,8 @@ async function main() {
 
   // The site, offline, from the committed record.
   const judge = await startJudge(0);
+  for (const h of HERO_SHOTS) await shoot(`${judge.url}/`, h.file, undefined, { scheme: h.scheme, height: 600 });
+  if (process.argv.includes("--hero")) { judge.server.close(); await browser.close(); rmSync(tmp, { recursive: true, force: true }); return; }
   for (const s of SITE_SHOTS) await shoot(`${judge.url}${s.path}`, s.file);
   judge.server.close();
 

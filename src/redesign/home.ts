@@ -189,7 +189,7 @@ export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud a
 /**
  * The Kit 11 core run in one line (review, 13 Nov: Home told only the payables story): the main run of 3 Nov, its
  * company, its Metal payments, Claude's decisions and the purchase Metal refused on chain, each from the main run's
- * record; then the 3:58 film.
+ * record; then the walkthrough (4:58, FILM_URL, FILM_LINK).
  */
 /** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
 export const FILM_HOME = "The walkthrough, 4:58";
