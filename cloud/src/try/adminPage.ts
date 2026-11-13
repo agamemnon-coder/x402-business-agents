@@ -4,6 +4,7 @@
 // and no figure. Everything shown is an aggregate: starts and finishes, errors by kind, latency, Claude spend against
 // its caps, who read the invoices, the switches, and the feedback box. No address, no company id, no visitor.
 // It changes nothing: the switches are still set with POST /v1/try/admin.
+import { ICON_LINKS } from "../brand.js";
 import type { Sql } from "../store.js";
 import { tallySince } from "./counter.js";
 import { feedbackSummary } from "./feedback.js";
@@ -55,7 +56,7 @@ export async function adminStats(sql: Sql, now: Date): Promise<Record<string, un
 export function adminPageHtml(nonce: string): string {
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex"><title>Purser try: owner's view</title>
+<meta name="robots" content="noindex"><title>Purser try: owner's view</title>${ICON_LINKS}
 <style nonce="${nonce}">
 :root{color-scheme:light dark;--bg:#fbfaf7;--fg:#1d1c1a;--muted:#6b675f;--line:#e4e0d8;--bad:#a8321e}
 @media (prefers-color-scheme:dark){:root{--bg:#161513;--fg:#ece9e2;--muted:#a19c92;--line:#34312c;--bad:#f08a76}}
@@ -113,7 +114,7 @@ button{font:inherit;padding:8px 14px;border-radius:6px;border:1px solid var(--fg
 export function adminPageHeaders(nonce: string): Record<string, string> {
   return {
     "content-type": "text/html; charset=utf-8",
-    "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+    "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "cache-control": "no-store", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff", "x-robots-tag": "noindex",
   };
 }

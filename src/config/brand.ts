@@ -248,5 +248,3 @@ export const CFO_VIEW_LINE = "This is what the CFO opens: what the agents did, w
 /** The heading over PROOF_SENTENCES wherever they are listed. */
 export const PROOF_HEADING = "The proof, one sentence per partner";
 
-/** Home's one quiet way to the product tour (/tour, 13 Nov; /judge before): a footer text link, not a second button. */
-export const TOUR_LINE = "Take the 3-minute product tour";

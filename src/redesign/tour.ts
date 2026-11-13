@@ -18,29 +18,30 @@ export interface TourStep { id: string; title: string; seconds: number; text: st
 
 /** The four steps, three minutes in all. Each link is a page the site serves today (test/tour.test.ts checks them). */
 export const TOUR_STEPS: readonly TourStep[] = [
+  // Owner, 13 Nov: each card says in one plain sentence what you will see, for a visitor who is not technical; no jargon.
   {
     id: "try", title: "Try it", seconds: 60,
-    text: "Start a test company and file an invoice. AI agents read and check it; you approve the exact terms with your passkey. Change one term and Purser refuses to pay.",
-    link: { label: "Open the hands-on demo", href: TRY_URL },
-    image: "tour-try.webp", alt: "The hands-on demo's start screen: an invoice card and \"Start with a test company\".",
+    text: "You'll pay a sample invoice for a pretend company: AI checks it, you approve with Face ID or your fingerprint, and if you change one number Purser refuses to pay.",
+    link: { label: "Try it", href: TRY_URL },
+    image: "tour-try.webp", alt: "The start screen of the demo: a sample invoice and the button \"Start with a test company\".",
   },
   {
     id: "proof", title: "See the proof", seconds: 40,
-    text: "What Purser guarantees, each with the dated run that shows it: on Airwallex's sandbox, Metal's testnet, Visa via Airwallex Airi (sandbox) and Claude's decisions.",
-    link: { label: "Open Proof", href: "/proof" },
-    image: "tour-proof.webp", alt: "The Proof page: four result cards above the full list of guarantees and checks.",
+    text: "You'll see each promise Purser makes, next to the real test run that shows it was kept.",
+    link: { label: "See the proof", href: "/proof" },
+    image: "tour-proof.webp", alt: "The Proof page: four results at the top, then the full list of promises and checks.",
   },
   {
-    id: "cloud", title: "Open Purser Cloud as a guest", seconds: 40,
-    text: "Try as guest opens a demo company, read only: its dashboard, invoices, transactions and books. Made-up data, test money.",
-    link: { label: "Open Purser Cloud", href: PURSER_CLOUD_URL },
-    image: "tour-cloud.webp", alt: "Purser Cloud's overview for the demo company: money in and out, net cash and invoices.",
+    id: "cloud", title: "Look around a sample company", seconds: 40,
+    text: "You'll see a sample company's money in and out, its invoices and its books, with made-up numbers and nothing to sign up for.",
+    link: { label: "Open the sample company", href: PURSER_CLOUD_URL },
+    image: "tour-cloud.webp", alt: "The sample company's overview in Purser Cloud: money in and out, cash over time and invoices.",
   },
   {
     id: "connect", title: "Connect your AI", seconds: 40,
-    text: "Add Purser to Claude, Cursor, VS Code or Gemini CLI over MCP. Your AI reads the books and can propose a payment; only the CFO's Face ID approves one.",
-    link: { label: "Read the setup", href: "/docs#connect-ai" },
-    image: "tour-connect.webp", alt: "The docs' \"Connect your AI\" card, with the demo token and the setup links.",
+    text: "You'll see how your own AI assistant, such as Claude, can read your books and suggest a payment, while only you can approve one.",
+    link: { label: "Connect your AI", href: "/docs#connect-ai" },
+    image: "tour-connect.webp", alt: "The \"Connect your AI\" instructions, step by step.",
   },
 ];
 
@@ -60,14 +61,15 @@ ol.tour { list-style: none; margin: 32px 0 0; padding: 0; display: grid; gap: 20
 .stop h2 { margin: 0; font-size: 21px; line-height: 1.3; letter-spacing: -.01em; font-weight: 720; }
 .stop p { margin: 0; color: var(--muted); font-size: 16.5px; line-height: 1.5; }
 .stop .go { margin-top: 6px; }
-.stop .go .btn { height: 44px; padding: 0 18px; font-size: 15px; }
+.stop .go .btn { height: 52px; padding: 0 24px; font-size: 16.5px; width: 100%; justify-content: center; }
+@media (min-width: 560px) { .stop .go .btn { width: auto; min-width: 220px; } }
 .after { margin: 36px 0 0; color: var(--muted); font-size: 16px; }
 .after a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 .after a:hover { text-decoration: underline; }`;
 
-const linkHtml = (l: TourStep["link"]) => {
+const linkHtml = (l: TourStep["link"], first = false) => {
   const out = /^https:\/\//.test(l.href);
-  return `<a class="btn" href="${esc(l.href)}"${out ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${out ? "\u00a0↗" : `\u00a0${icon("arrow-right", 16)}`}</a>`;
+  return `<a class="btn${first ? " primary" : ""}" href="${esc(l.href)}"${out ? ' target="_blank" rel="noopener"' : ""}>${esc(l.label)}${out ? "\u00a0↗" : `\u00a0${icon("arrow-right", 16)}`}</a>`;
 };
 
 export function tourPage(steps: readonly TourStep[] = TOUR_STEPS): string {
@@ -76,7 +78,7 @@ export function tourPage(steps: readonly TourStep[] = TOUR_STEPS): string {
 <section class="intro">
   <p class="eyebrow">Product tour</p>
   <h1 class="h-hero">Product tour · ${minutes} minutes</h1>
-  <p class="lead">Purser runs a company's payables with AI agents, and only the CFO's Face ID moves money. ${["No", "One", "Two", "Three", "Four", "Five", "Six"][steps.length] ?? steps.length} steps show it end to end.</p>
+  <p class="lead">Purser lets AI agents pay a company's bills within the limits you set; anything above them waits for your Face ID. Start at step 1: each step takes about a minute.</p>
 </section>
 <ol class="tour">
 ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">
@@ -85,7 +87,7 @@ ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">
     <div class="meta"><span class="n">${i + 1}</span><span>${s.seconds < 60 ? `${s.seconds} seconds` : `${Math.round(s.seconds / 60)} minute${s.seconds >= 120 ? "s" : ""}`}</span></div>
     <h2>${esc(s.title)}</h2>
     <p>${esc(s.text)}</p>
-    <div class="go">${linkHtml(s.link)}</div>
+    <div class="go">${linkHtml(s.link, i === 0)}</div>
   </div>
 </li>`).join("\n")}
 </ol>
@@ -93,7 +95,7 @@ ${steps.map((s, i) => `<li class="stop card" id="${esc(s.id)}">
 </div></main>`;
   return page({
     title: TOUR_TITLE,
-    description: "Four steps, three minutes: try the hands-on demo, see the proof, open Purser Cloud as a guest, connect your AI.",
+    description: "Four steps, three minutes: try it, see the proof, look around a sample company, connect your AI.",
     tab: "tour", css: CSS, body, stage: false,
     source: "Source: src/redesign/tour.ts.",
     real: [

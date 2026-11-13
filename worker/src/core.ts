@@ -159,6 +159,9 @@ function json(status: number, body: unknown): Response {
 }
 const error = (status: number, message: string, extra: Record<string, unknown> = {}) => json(status, { error: message, ...extra });
 
+/** The icons a browser or a home screen asks for at the root (src/ui/brand/mark.ts). */
+const ROOT_ICONS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
+
 /** The pages; anything else is not ours. Ids in paths are checked, so nothing odd reaches the page script. */
 export function pageResponse(req: Request, pages: Pages): Response | null {
   if (req.method !== "GET" && req.method !== "HEAD") return null;
@@ -212,8 +215,10 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
       headers: { ...COMMON_HEADERS, "content-type": "font/woff2", "cache-control": "public, max-age=86400" },
     });
   }
-  // /favicon.ico is Purser's mark (an SVG; browsers go by its type), so a page with no icon link asks for nothing missing.
-  const imageName = path === "/favicon.ico" ? "favicon.svg" : path.startsWith("/assets/") ? path.slice("/assets/".length) : "";
+  // Purser's icons at the root too (/favicon.ico, /favicon.svg, /apple-touch-icon.png, /icon.png): a page with no icon
+  // link, a home-screen shortcut, and /try (Purser Cloud's page, served here through the binding, which links them at the
+  // root) all get the header's mark.
+  const imageName = ROOT_ICONS.includes(path) ? path.slice(1) : path.startsWith("/assets/") ? path.slice("/assets/".length) : "";
   if (imageName && Object.hasOwn(pages.images, imageName)) {
     const img = pages.images[imageName]!;
     return new Response(Uint8Array.from(atob(img.data), (c) => c.charCodeAt(0)), {

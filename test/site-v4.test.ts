@@ -300,7 +300,7 @@ describe("the site after v4", () => {
 
   it("carries a favicon and an Open Graph image on the redesign's pages, both served", () => {
     for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude"]) {
-      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
+      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
       // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
       expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
     }

@@ -18,6 +18,7 @@ import { accessToken, ACCESS_TOKEN_TTL_MS, AuthError, callerOf, DEMO_CONNECTOR_T
 import { hmacB64u, hmacValid, randomToken, sha256Hex, toB64u, fromB64 } from "../crypto.js";
 import type { Sql } from "../store.js";
 import { ICON_LINKS } from "../brand.js";
+import { ICON_VERSION } from "../../../src/ui/brand/mark.js";
 
 export const CODE_TTL_MS = 5 * 60 * 1000;
 /** How long the consent page's form is good for: one answer, within ten minutes. */
@@ -37,7 +38,7 @@ export function authorizationServer(origin: string): Record<string, unknown> {
     response_types_supported: ["code"], grant_types_supported: ["authorization_code"], code_challenge_methods_supported: ["S256"],
     token_endpoint_auth_methods_supported: ["none"], scopes_supported: ["purser"],
     // Not in RFC 8414's list; a client that shows the server's mark can read it here (the MCP server carries it as icons).
-    logo_uri: `${origin}/icon.png`, service_documentation: "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
+    logo_uri: `${origin}/icon.png?v=${ICON_VERSION}`, service_documentation: "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
   };
 }
 
@@ -159,7 +160,7 @@ button.plain{background:none;border:0;color:var(--muted);font-weight:550;min-hei
 .or{display:flex;align-items:center;gap:10px;color:#8a93a3;margin:20px 0 4px;font-size:13px}.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px 12px;margin:0 0 14px}
 .small{font-size:13px;color:var(--muted);margin:16px 0 0;text-align:center}
-</style></head><body><main><div class="brand"><img src="/favicon.svg" alt="" width="32" height="32">Purser</div><div class="card">
+</style></head><body><main><div class="brand"><img src="/favicon.svg?v=${ICON_VERSION}" alt="" width="32" height="32">Purser</div><div class="card">
 <h1>Connect your AI to Purser</h1>
 <p><span class="who">${esc(client.n)}</span> asks to use your company's Purser. Purser cannot check a client's name.</p>
 <ul class="can"><li>${check}<span>It reads your books: invoices, money movements, reports and what your agents decided.</span></li>

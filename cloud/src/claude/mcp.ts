@@ -10,6 +10,7 @@
 
 import { z } from "zod";
 import type { Caller } from "../auth.js";
+import { iconsOf } from "../brand.js";
 import { dashboard, feedLine } from "../dashboard.js";
 import { insights, listInvoices, listTransactions, oneInvoice, report } from "../read.js";
 import type { TenantDb } from "../tenant.js";
@@ -288,7 +289,7 @@ async function one(c: McpCtx, m: Rpc): Promise<Json | null> {
     case "initialize": {
       const asked = typeof p.protocolVersion === "string" ? p.protocolVersion : "";
       const version = (PROTOCOL_VERSIONS as readonly string[]).includes(asked) ? asked : PROTOCOL_VERSIONS[0];
-      const serverInfo = { name: "purser", title: "Purser", version: "1.1.0", ...(c.origin ? { websiteUrl: c.origin, icons: [{ src: `${c.origin}/icon.png`, mimeType: "image/png", sizes: ["512x512"] }, { src: `${c.origin}/favicon.svg`, mimeType: "image/svg+xml", sizes: ["any"] }] } : {}) };
+      const serverInfo = { name: "purser", title: "Purser", version: "1.1.0", ...(c.origin ? { websiteUrl: c.origin, icons: iconsOf(c.origin) } : {}) };
       return { jsonrpc: "2.0", id: m.id, result: { protocolVersion: version, capabilities: { tools: { listChanged: false }, prompts: { listChanged: false } }, serverInfo, instructions: instructions(c) } };
     }
     case "ping": return { jsonrpc: "2.0", id: m.id, result: {} };

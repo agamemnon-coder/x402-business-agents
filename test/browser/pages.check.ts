@@ -1167,17 +1167,18 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge, which answers 301 to it): four cards, each
     // with its screenshot (loaded, not broken) and one link; no script, so the page asks nothing but its font, its icon
-    // and its four images. Home's one quiet footer link opens it; "Judge" is in no menu. On a phone every target is 44 px.
+    // and its four images. Home's primary button opens it (owner, 13 Nov); "Judge" is in no menu. On a phone every target is 44 px.
     if (judgeBase) {
       const asked: string[] = [];
-      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
+      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/assets/apple-touch-icon.png", "/favicon.ico", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !own.includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
-      const top = page.locator('footer a.flink[href="tour"]');
+      // Owner, 13 Nov: the hero's one primary button is the 3-minute tour; "Try it" (TRY_URL, with /try/sign in the bundle
+      // too) is the second.
+      const top = page.locator("main .e-hero a.btn.primary");
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || (await top.innerText()).trim() !== "Take the 3-minute product tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: not one "Take the 3-minute product tour" link in the footer, inside the page's gutter, and none to /judge`);
+      if ((await top.getAttribute("href")) !== "tour" || (await page.locator('a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || !(await top.innerText()).trim().startsWith("Take the 3-minute tour") || !box || box.y + box.height > h) fail(`/ (Home, with /try/sign) ${tag}: the one primary button is not "Take the 3-minute tour" to /tour in the first screen, or a link to /judge is back`);
+      if ((await page.locator(`main .e-hero a.btn.ghost[href="${TRY_URL}"]`).count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: no "Try it" to the hands-on demo beside it`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
       await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });

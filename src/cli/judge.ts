@@ -76,7 +76,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS })) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
   // As on the relay: /favicon.ico is Purser's mark, so a page with no icon link asks for nothing missing.
-  app.get("/favicon.ico", (_req, res) => { res.type(LOGOS["favicon.svg"]!.type).send(LOGOS["favicon.svg"]!.body); });
+  for (const name of ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon.png"]) app.get(`/${name}`, (_req, res) => { res.type(LOGOS[name]!.type).send(LOGOS[name]!.body); });
   // The CFO's own pages (policy, approvals, passkey enrolment) need the runner and a passkey. Offline they say so and
   // point at the recording, so a juror who follows the emergency stop's link (policy?freeze=on) never meets a 404.
   const liveOnly = (_req: express.Request, res: express.Response) => {

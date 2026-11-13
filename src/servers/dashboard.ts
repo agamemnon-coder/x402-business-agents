@@ -36,6 +36,7 @@ import { filmId } from "../config/film.js";
 import { filmStills } from "../film/stills.js";
 import { proofPage } from "../redesign/proof.js";
 import { tourPage } from "../redesign/tour.js";
+import { ICON_ICO, ICON_PNG_180, ICON_PNG_512 } from "../ui/brand/icons.gen.js";
 import { loadTrace, TRACE_LINK, tracePage } from "../redesign/trace.js";
 import { runsPage } from "../redesign/runs.js";
 import { pricingPage } from "../redesign/pricing.js";
@@ -102,7 +103,11 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   // /tour's four screenshots (src/redesign/tour.ts; docs/assets/tour/README.md says where each was taken).
   ...Object.fromEntries(["try", "proof", "cloud", "connect"].map((n) => [`tour-${n}.webp`, { type: "image/webp", body: readFileSync(new URL(`../../docs/assets/tour/tour-${n}.webp`, import.meta.url)) }])),
   // Purser's own mark and its link preview (src/ui/brand/), for every public page's favicon and Open Graph image.
+  // 13 Nov (owner): every icon is the header's mark (src/ui/brand/mark.ts), the same bytes Purser Cloud serves.
   "favicon.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/brand/favicon.svg", import.meta.url)) },
+  "favicon.ico": { type: "image/x-icon", body: Buffer.from(ICON_ICO, "base64") },
+  "apple-touch-icon.png": { type: "image/png", body: Buffer.from(ICON_PNG_180, "base64") },
+  "icon.png": { type: "image/png", body: Buffer.from(ICON_PNG_512, "base64") },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
   // The vault's folder tree on /proof (docs/media, computed from src/vault/layout.ts by npm run vault:tree).
   "vault-tree-light.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-light.svg", import.meta.url)) },

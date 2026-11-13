@@ -42,13 +42,27 @@ describe("/tour: four steps, three minutes", () => {
     expect(TOUR_STEPS.map((s) => [s.title, s.link.href])).toEqual([
       ["Try it", "/try"],
       ["See the proof", "/proof"],
-      ["Open Purser Cloud as a guest", PURSER_CLOUD_URL],
+      ["Look around a sample company", PURSER_CLOUD_URL],
       ["Connect your AI", "/docs#connect-ai"],
     ]);
     expect(TOUR_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(DEMO_CONNECTOR_TOKEN).toBe(CLOUD_DEMO_TOKEN);
     expect(PURSER_CLOUD_URL).toBe("https://purser-try.max-31b.workers.dev/");
     for (const s of TOUR_STEPS) expect({ step: s.id, oneLine: !s.text.includes("\n") && s.text.length <= 200 }).toEqual({ step: s.id, oneLine: true });
+  });
+
+  // Owner, 13 Nov: a visitor who is not technical. Each card says in one plain sentence what you will see ("You'll see"
+  // or "You'll pay"), has one big button, and the page uses no jargon.
+  it("speaks plainly: one sentence per card, what you'll see, one big button, no jargon", () => {
+    for (const s of TOUR_STEPS) {
+      expect({ step: s.id, sentences: s.text.split(/(?<=[.!?])\s+/).length }).toEqual({ step: s.id, sentences: 1 });
+      expect({ step: s.id, says: /^You'll (see|pay) /.test(s.text) }).toEqual({ step: s.id, says: true });
+    }
+    const main = /<main>[\s\S]*<\/main>/.exec(TOUR_PAGE)![0];
+    const words = main.replace(/<[^>]+>/g, " ");
+    expect(words).not.toMatch(/\b(relay|MCP|x402|testnet|sandbox|API|payables|passkey|token|OAuth|ledger|webhook|rail|CLI|SDK|JSON|endpoint)s?\b/i);
+    for (const s of TOUR_STEPS) expect(main.match(new RegExp(`<div class="go"><a class="btn[^"]*" href="${s.link.href.replace(/[.?]/g, "\\$&")}"`, "g"))).toHaveLength(1);
+    expect(TOUR_PAGE).toContain(".stop .go .btn { height: 52px;");
   });
 
   for (const s of TOUR_STEPS) {
@@ -130,10 +144,10 @@ describe("Judge is out of the menu", () => {
 });
 
 describe("the way in: Home, the README, llms.txt and the form", () => {
-  it("Home has one quiet footer link to /tour, in either bundle", () => {
+  it("Home's one primary button opens /tour, in either bundle (owner, 13 Nov: the obvious place to start)", () => {
     for (const pages of [ON, OFF]) {
       expect(pages.home!.match(/href="tour"/g)).toHaveLength(1);
-      expect(pages.home).toContain('<a class="flink" href="tour">Take the 3-minute product tour</a>');
+      expect(pages.home).toContain('<a class="btn primary big start" href="tour">Take the 3-minute tour');
     }
   });
 
