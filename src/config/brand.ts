@@ -120,7 +120,7 @@ export const DIFFERENTIATORS = [
   "Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.",
 ] as const;
 /** The one line after the three sentences, linked to /try/sign wherever a surface can link (section D, 6 Nov). */
-export const TRY_IT = "Try it in a minute.";
+export const TRY_IT = "Try it in 2 minutes.";
 /** Where TRY_IT goes: a test world of the visitor's own, signed with their own passkey; nothing real moves. */
 export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
 /**
@@ -129,7 +129,7 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * title on the README, under Home's heading and at the start of the form's synopsis. Anything beyond the CFO's signed
  * policy is a proposal the CFO signs with Face ID (docs/cfo-policy.md).
  */
-export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, you sign the exact terms with Face ID.";
+export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**
  * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then
  * "Try it in a minute." Only then the badges and the details. Home says what Purser is and the three sentences under its

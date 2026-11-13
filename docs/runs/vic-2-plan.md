@@ -76,17 +76,19 @@ Rejecting any of them is a valid answer: the run records it and goes on (E does 
 
 ### Message to the CFO (Claude Code fills in the placeholders from the runner's output and sends it as it stands)
 
-> **vic-2 begint over 5 minuten (geen Airi-aankoop, geen Airwallex, niets betaald).** Duur ongeveer 10 minuten.
+> **vic-2 starts in 5 minutes (no Airi purchase, no Airwallex, nothing paid).** It takes about 10 minutes.
 >
-> 1. **Inschrijven (nu).** Open op je telefoon, in één privé-tabblad: `<VIEWER_LINK>`. Ga naar `/enrol`, typ code
->    `<CODE>` (10 minuten geldig) en bevestig met Face ID. Stuur mij daarna: "Bevestig passkey `<FINGERPRINT>`",
->    alleen als die vingerafdruk ook op je telefoon staat.
-> 2. **P-0001, Airi-aankoop EUR 30,00:** Face ID. Daarna kan de telefoon "execution stopped: the Airi rail is off"
->    melden; dat klopt: Purser voert D zelf niet uit, wij vervalsen het bedrag eerst (onze eigen geplante aanval).
-> 3. **P-0002, beleidswijziging: testwinkel geblokkeerd voor Airi:** Face ID.
-> 4. **P-0003, beleidswijziging: testwinkel weer toegestaan:** Face ID.
+> 1. **Enrol (now).** On your phone, in one private tab, open `<VIEWER_LINK>`. Go to `/enrol`, type the code
+>    `<CODE>` (valid for 10 minutes) and confirm with Face ID. Then send me: "Confirm passkey `<FINGERPRINT>`",
+>    only if that fingerprint is also on your phone.
+> 2. **P-0001, Airi purchase EUR 30.00:** Face ID. The phone may then say "execution stopped: the Airi rail is off";
+>    that is right: Purser does not run D itself, we first forge the amount (our own planted attack).
+> 3. **P-0002, policy change: test shop blocked for Airi:** Face ID.
+> 4. **P-0003, policy change: test shop allowed again:** Face ID.
 >
-> Geen Airi-tik en geen Airi-link deze keer. Ik keur zelf niets goed.
+> No Airi tap and no Airi link this time. I approve nothing myself.
+
+(Sent in Dutch on the day; English here.)
 
 ## Environment (names only)
 
