@@ -35,6 +35,8 @@ beforeAll(async () => {
 });
 afterAll(() => c.close());
 
+const B64U = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+
 describe("connector tokens", () => {
   it("are made by a signed-in owner only, shown once, kept as the hash of their secret", async () => {
     // A key, even the owner's full admin key, cannot make one: making one is the company's consent.
@@ -252,6 +254,13 @@ describe("OAuth for claude.ai", () => {
     const twice = await answer("null", once);
     expect([twice.status, twice.headers.get("location")]).toEqual([403, null]);
     expect(await twice.text()).toMatch(/expired or was already used/);
+    // 13 Nov: nor the same form under a second spelling of its signature. The last base64url character of a 32-byte MAC
+    // keeps two padding bits; flipping one gives other text for the same bytes, which the single-use check (by the
+    // token's hash) would not know. Only the spelling the signer writes is accepted.
+    const respelled = once.replace(/.$/, (ch) => B64U[B64U.indexOf(ch) ^ 1]!);
+    expect(respelled).not.toBe(once);
+    expect(Buffer.from(respelled.split(".")[2]!, "base64url").equals(Buffer.from(once.split(".")[2]!, "base64url"))).toBe(true);
+    expect((await answer("null", respelled)).status).toBe(403);
     // A form made for one request does not answer another: another state or PKCE challenge.
     const other = createHash("sha256").update("another verifier, long enough to pass the check").digest("base64url");
     for (const o of [{ state: "st-2" }, { code_challenge: other }] as Record<string, string>[]) expect((await answer("null", await consentOf(), o)).status).toBe(403);
