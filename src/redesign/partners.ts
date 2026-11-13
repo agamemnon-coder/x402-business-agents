@@ -421,7 +421,9 @@ export function visaRunsLine(): string | null {
   const settled = (airi?.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length ?? 0) + later.reduce((n, r) => n + vic3Summary(r).paid, 0);
   const runsN = (airi ? 1 : 0) + later.length;
   if (!settled) return null;
-  const all = `${settled} paid across ${runsN} live Visa run${runsN === 1 ? "" : "s"}`;
+  // One phrase everywhere (jury review, 13 Nov): no "live", which the plain footer strips; the control test is headed
+  // "not a Visa run", so the count is not mistaken for it.
+  const all = `${settled} paid across ${runsN} Visa run${runsN === 1 ? "" : "s"}`;
   return v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${all})` : all;
 }
 export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
