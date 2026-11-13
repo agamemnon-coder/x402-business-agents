@@ -13,7 +13,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { BrowserContext, Page } from "playwright";
+import type { BrowserContext, CDPSession, Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
@@ -88,7 +88,7 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
  * passkey authenticator (the platform kind: user verification, discoverable credentials). Both clouds use the relying
  * party "localhost", so each company's passkey lives in its own context's authenticator.
  */
-async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[] }> {
+async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; errors: string[]; urls: string[]; cdp: CDPSession }> {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: shots ? 2 : 1 });
   const urls: string[] = [];
   ctx.on("request", (r) => urls.push(r.url()));
@@ -99,7 +99,7 @@ async function passkeyContext(): Promise<{ ctx: BrowserContext; page: Page; erro
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-  return { ctx, page, errors, urls };
+  return { ctx, page, errors, urls, cdp };
 }
 /** A company's first run in the console, from its starter key to the owner's passkey made and signed in (the first run's last step on screen). */
 async function firstRun(p: Page, origin: string, slug: string, key: string, snap: (name: string) => Promise<void> = async () => {}) {
@@ -278,8 +278,8 @@ ok((await page.$$("#passkeys li")).length === 1, "Settings lists the owner's one
 await page.click("#passkeys >> text=Remove");
 await page.waitForSelector("text=last owner passkey");
 ok(true, "the company's last owner passkey cannot be removed");
-// Alerts (Settings, Alerts): a WhatsApp number added is shown masked, never whole. Then, six minutes on by the cloud's
-// clock, the sign-in no longer counts as a fresh passkey check: adding an address asks the passkey again (the virtual
+// Alerts (Settings, Alerts): a WhatsApp number added is shown masked, never whole. Then, with "Ask again" switched on
+// and six minutes on by the cloud's clock, the sign-in no longer counts as a fresh passkey check: adding an address asks the passkey again (the virtual
 // authenticator answers), and the console sends the request once more with the step-up token.
 await page.waitForSelector("#alerts");
 await page.selectOption("#alert-channel", "whatsapp");
@@ -287,6 +287,10 @@ await page.fill("#alert-target", "+31612345678");
 await page.click("#alert-add");
 await page.waitForSelector("#alerts >> text=+31*******78");
 ok(!((await page.textContent("#alerts")) ?? "").includes("+31612345678"), "Settings, Alerts shows a WhatsApp number masked, never whole");
+// "Ask again before sensitive changes" is off by default; the owner switches it on (the fresh sign-in is the check).
+ok(!(await page.isChecked("#step-up")), "Settings, Security: \"Ask again before sensitive changes\" is off by default");
+await page.check("#step-up");
+await page.waitForSelector("#security .note-ok");
 skewMs = 6 * 60_000;
 const stepUps: string[] = [];
 page.on("request", (r) => { if (r.url().includes("/v1/auth/step-up")) stepUps.push(r.url()); });
@@ -408,7 +412,7 @@ async function enginePass() {
   const callE = caller(origin);
   const madeE = await callE("POST", "/v1/admin/tenants", ADMIN, { slug: "harbour", name: "Harbour Tools (test company)", owner: { display_name: "The CFO" } });
   ok(madeE.status === 201 && (await callE("POST", "/v1/company", madeE.json.api_key as string, { language: "en" })).status === 200, "engine pass: a company of its own on a cloud that runs an engine, in English");
-  const { ctx: ctxE, page: p, errors: errs } = await passkeyContext();
+  const { ctx: ctxE, page: p, errors: errs, cdp: cdpE } = await passkeyContext();
   await firstRun(p, origin, "harbour", madeE.json.api_key as string);
   const E: EnginePass = { origin, page: p, errors: errs, settle: () => settleOn(p), invoiceId: "", pdf: await pdfOf(EN) };
   await engineUpload(E);
@@ -418,6 +422,7 @@ async function enginePass() {
   await engineProof(E);
   await engineArchive(E);
   await engineClaude(E);
+  await engineSecondKey(E, cdpE);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
   await engineGuestArchive(origin);
@@ -444,6 +449,51 @@ async function engineGuestArchive(origin: string) {
   const text = (await p.textContent("main")) ?? "";
   ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""}`);
   await c.close();
+}
+
+/**
+ * A second key for high-risk payments (src/policy/secondKey.ts), with two of Chromium's virtual authenticators on one
+ * page: the internal one (the platform passkey, Face ID) and a USB one (a cross-platform security key). The owner adds the
+ * security key in Settings, Security; sets the rule (at or above EUR 1000.00) with Face ID; then a EUR 1,309.00 invoice
+ * waits on Face ID alone, the page says why and asks for the key, and it is approved once the key signs the same terms.
+ */
+async function engineSecondKey(E: EnginePass, cdp: CDPSession) {
+  const p = E.page;
+  const { authenticatorId: usb } = await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "usb", hasResidentKey: false, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  await p.goto(`${E.origin}/#/settings`);
+  await p.waitForSelector("#add-key");
+  ok(!(await p.isChecked("#step-up")), "second key: Settings, Security shows \"Ask again before sensitive changes\" off by default");
+  await p.click("#add-key");
+  await p.waitForSelector("#security .note-ok", { timeout: 20_000 });
+  const onUsb = (await cdp.send("WebAuthn.getCredentials", { authenticatorId: usb })).credentials;
+  ok(onUsb.length === 1 && /Security key added/.test((await p.textContent("#security")) ?? ""), `second key: "Add a security key" registers a credential on the USB authenticator (${onUsb.length})`);
+  await p.fill("#second-key-eur", "1000.00");
+  await p.click("#second-key-save");
+  await p.waitForSelector("#second-key-save:not([disabled])", { timeout: 20_000 });
+  await p.waitForFunction(() => /Saved|refused|failed|cancel|not|first/i.test(document.querySelector("#security")?.lastElementChild?.previousElementSibling?.textContent ?? ""), null, { timeout: 20_000 }).catch(() => {});
+  const saved = (await p.textContent("#security")) ?? "";
+  ok(saved.includes("Saved: approved with your Face ID."), `second key: the rule (at or above EUR 1000.00) is saved with the CFO's Face ID (${saved.slice(saved.indexOf("Save with Face ID"), saved.indexOf("Save with Face ID") + 200)})`);
+  await p.goto(`${E.origin}/#/invoices`);
+  await p.waitForSelector("#eng-file", { state: "attached" });
+  const big = EN.replaceAll("BTX-2026-21", "BTX-2026-24").replace("Subtotal EUR 1,554.62", "Subtotal EUR 1,100.00").replace("VAT 19% EUR 295.38", "VAT 19% EUR 209.00").replace("Total due EUR 1,850.00", "Total due EUR 1,309.00");
+  await p.setInputFiles("#eng-file", { name: "bergtex-BTX-2026-24.pdf", mimeType: "application/pdf", buffer: await pdfOf(big) });
+  await p.waitForSelector("#view .note-ok", { timeout: 30_000 });
+  const id = /as (AP-\d+)\./.exec((await p.textContent("#view .note-ok")) ?? "")?.[1] ?? "";
+  await p.goto(`${E.origin}/#/invoices/${id}`);
+  await p.waitForSelector("#pay .btn");
+  await p.click("#pay .btn");
+  await p.waitForSelector("#pay >> text=High-risk: amount at or above EUR 1000.00", { timeout: 20_000 });
+  ok((await p.textContent("#pay .btn"))?.trim() === "Approve with passkey", "second key: a high-risk payment says why before anything is signed, and asks for Face ID first");
+  const signs = async (authenticatorId: string) => (await cdp.send("WebAuthn.getCredentials", { authenticatorId })).credentials.reduce((n, c) => n + c.signCount, 0);
+  const usbBefore = await signs(usb);
+  await p.click("#pay .btn");
+  await p.waitForSelector("#pay >> text=Touch your security key", { timeout: 20_000 });
+  ok(/Touch your security key\./.test((await p.textContent("#pay")) ?? "") && await p.locator(".dhead .st.paid").count() === 0, "second key: on Face ID alone the payment keeps waiting, and the page asks for the security key");
+  ok(await signs(usb) === usbBefore, "second key: the security key has not signed yet");
+  await p.click("#pay .btn");
+  await p.waitForSelector("#pay .note-ok", { timeout: 30_000 });
+  ok(/approved/.test((await p.textContent("#pay .note-ok")) ?? "") && await signs(usb) > usbBefore, "second key: approved once the security key on the USB authenticator signed the same terms");
+  await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId: usb });
 }
 
 /** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */

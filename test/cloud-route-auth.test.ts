@@ -2,11 +2,12 @@
 // It holds: each route in the table names one of the five requirements; the routes anyone may call are exactly the list
 // below, each with the reason it needs no key or session (a route made public by mistake fails here until it is
 // reviewed and added); every other route, called with no credential, is refused with 401 before it runs; and the
-// sensitive settings (alert targets, the webhook, connector tokens, keys, team members, the export, closing) all need a
-// fresh passkey check (cloud/src/stepUp.ts), so a sensitive write added without it fails here too.
+// sensitive settings (alert targets, the webhook, connector tokens, keys, team members, the export, closing) are all
+// step-up routes (cloud/src/stepUp.ts: a fresh passkey check when the company switches it on; the setting itself
+// always), so a sensitive write added without it fails here too.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../cloud/src/app.js";
-import { SESSION_ONLY_ROUTES, STEP_UP_ROUTES } from "../cloud/src/stepUp.js";
+import { ALWAYS_STEP_UP_ROUTES, SESSION_ONLY_ROUTES, STEP_UP_ROUTES } from "../cloud/src/stepUp.js";
 import { testCloud, type TestCloud } from "./support/cloud.js";
 
 const NEEDS = new Set(["public", "platform", "read", "sync", "admin"]);
@@ -81,21 +82,22 @@ describe("every API route states its auth requirement", () => {
   });
 });
 
-describe("sensitive settings need a fresh passkey check", () => {
+describe("sensitive settings are step-up routes", () => {
   it("lists only routes that exist and need admin", () => {
     const table = new Map(ROUTES.map((r) => [key(r), r]));
     for (const k of STEP_UP_ROUTES) {
       expect(table.has(k), k).toBe(true);
       expect(table.get(k)!.need, k).toBe("admin");
     }
-    for (const k of SESSION_ONLY_ROUTES) expect(STEP_UP_ROUTES.has(k), k).toBe(true);
+    for (const k of ALWAYS_STEP_UP_ROUTES) expect(table.get(k)?.need, k).toBe("admin");
+    for (const k of SESSION_ONLY_ROUTES) expect(STEP_UP_ROUTES.has(k) || ALWAYS_STEP_UP_ROUTES.has(k), k).toBe(true);
   });
 
   it("covers every write to alert targets, the webhook, connector tokens, keys and team members", () => {
     const sensitive = ROUTES.filter((r) => r.method !== "GET" && r.need === "admin" && (
-      /^\/v1\/(alerts|webhook|keys|users|claude\/connectors)(\/|$)/.test(r.path) || r.path === "/v1/connect/{provider}/start" || (r.path === "/v1/connect/{provider}" && r.method === "DELETE")
+      /^\/v1\/(alerts|webhook|keys|users|claude\/connectors|security)(\/|$)/.test(r.path) || r.path === "/v1/connect/{provider}/start" || (r.path === "/v1/connect/{provider}" && r.method === "DELETE")
       || r.path === "/v1/company" || r.path === "/v1/airwallex/account" || r.path === "/v1/airwallex/onboarding-link"));
     expect(sensitive.length).toBeGreaterThan(10);
-    expect(sensitive.map(key).filter((k) => !STEP_UP_ROUTES.has(k))).toEqual([]);
+    expect(sensitive.map(key).filter((k) => !STEP_UP_ROUTES.has(k) && !ALWAYS_STEP_UP_ROUTES.has(k))).toEqual([]);
   });
 });

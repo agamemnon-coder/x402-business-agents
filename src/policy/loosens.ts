@@ -16,6 +16,9 @@ export function loosens(c: { key: string; from: string; to: string }): boolean {
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   // Four eyes: turning it off or raising the threshold loosens; turning it on or lowering it tightens.
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  // A second key for high-risk payments: off, or a higher amount, loosens; on, or a lower amount, tightens.
+  if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
+  if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor") || c.key.startsWith("floor.")) return from !== null && (to === null || to < from);
   // Supplier payouts: less held back for the fee loosens; any other funding currency is a change for Face ID.
