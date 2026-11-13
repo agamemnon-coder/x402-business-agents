@@ -115,9 +115,10 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
 const fmt = (n: number) => n.toLocaleString("en-GB");
 
 /** The band: big figures that count up when in view (src/redesign/stats.ts COUNT_JS), each a link to its source. */
-export function scaleBandHtml(stats: ScaleStat[] = scaleStats(), label = "What ran, in numbers"): string {
+export function scaleBandHtml(stats: ScaleStat[] = scaleStats(), label = "What ran, in numbers", o: { strip?: boolean } = {}): string {
   if (!stats.length) return "";
-  return `<ul class="scale" aria-label="${esc(label)}">${stats.map((s) => `<li${s.tone ? ` class="${s.tone}"` : ""} data-rec="${esc(SCALE_SOURCES)}"><a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><span class="sk-ic">${icon(s.icon, 18)}</span><b><span data-count="${s.n}" data-dec="0">${esc(fmt(s.n))}</span></b><small>${esc(s.label)}${s.external ? " ↗" : ""}</small></a></li>`).join("")}</ul>`;
+  // /proof (the owner, 13 Nov: "enterprise level"): one metrics strip, a figure and its label per column, no icons.
+  return `<ul class="scale"${o.strip ? ' data-look="strip"' : ""} aria-label="${esc(label)}">${stats.map((s) => `<li${s.tone ? ` class="${s.tone}"` : ""} data-rec="${esc(SCALE_SOURCES)}"><a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}>${o.strip ? "" : `<span class="sk-ic">${icon(s.icon, 18)}</span>`}<b><span data-count="${s.n}" data-dec="0">${esc(fmt(s.n))}</span></b><small>${esc(s.label)}${s.external ? " ↗" : ""}</small></a></li>`).join("")}</ul>`;
 }
 
 /** Where the band's figures come from, as the block names them (data-rec). */
@@ -134,6 +135,16 @@ ul.scale li.ok .sk-ic { background: var(--ok-soft); color: var(--ok); } ul.scale
 ul.scale b { font-size: 30px; line-height: 1.05; font-weight: 780; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
 ul.scale small { grid-column: 1 / -1; margin-top: 6px; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
 @media (max-width: 420px) { ul.scale b { font-size: 26px; } ul.scale a { padding: 12px; } }
+/* The strip (/proof): one bordered row of six equal columns, divided by hairlines; two columns of three on a phone. */
+ul.scale[data-look="strip"] { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; margin: 8px 0 28px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
+ul.scale[data-look="strip"] li { border-left: 1px solid var(--border); }
+ul.scale[data-look="strip"] li:first-child { border-left: 0; }
+ul.scale[data-look="strip"] a { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; border: 0; border-radius: 0; background: none; padding: 18px 18px 16px; }
+ul.scale[data-look="strip"] a:hover, ul.scale[data-look="strip"] a:focus-visible { background: var(--sunken); }
+ul.scale[data-look="strip"] b { font-size: 28px; font-weight: 720; letter-spacing: -.02em; }
+ul.scale[data-look="strip"] small { margin: 0; font-size: 13px; line-height: 1.35; }
+@media (max-width: 900px) { ul.scale[data-look="strip"] { grid-template-columns: repeat(3, minmax(0, 1fr)); } ul.scale[data-look="strip"] li:nth-child(3n + 1) { border-left: 0; } ul.scale[data-look="strip"] li:nth-child(n + 4) { border-top: 1px solid var(--border); } }
+@media (max-width: 560px) { ul.scale[data-look="strip"] { grid-template-columns: repeat(2, minmax(0, 1fr)); } ul.scale[data-look="strip"] li { border-left: 0; border-top: 1px solid var(--border); } ul.scale[data-look="strip"] li:nth-child(-n + 2) { border-top: 0; } ul.scale[data-look="strip"] li:nth-child(2n) { border-left: 1px solid var(--border); } ul.scale[data-look="strip"] a { padding: 14px 14px 12px; } ul.scale[data-look="strip"] b { font-size: 24px; } }
 `;
 
 /** Only for a note under the band: where to check each figure, in words. */

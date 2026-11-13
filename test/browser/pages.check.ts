@@ -967,10 +967,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (first.next !== "sumc" || first.n !== 4 || !first.between || first.open) fail(`/proof ${tag}: not the scale band, then four cards, under the heading, then the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
-        // The guarantees start within the first screen and a half (1,118 px as built at 390), the fold's line under them
-        // (2,213 px as built; 4,062 before the jury's order of 12 Nov).
-        if (first.gtee < 0 || first.gtee > 1270) fail(`/proof ${tag}: the guarantees start at ${first.gtee} px, over 1,270 px`);
-        if (first.fold < 0 || first.fold > 2400) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 2,400 px`);
+        // The guarantees start within the first screen and a half (1,249 px as built at 390 since the light redesign of
+        // 13 Nov, the strip, four equal cards, each guarantee a row with its pill and evidence stacked), the fold's line
+        // under them (2,768 px as built; 4,062 before the jury's order of 12 Nov).
+        if (first.gtee < 0 || first.gtee > 1350) fail(`/proof ${tag}: the guarantees start at ${first.gtee} px, over 1,350 px`);
+        if (first.fold < 0 || first.fold > 2950) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 2,950 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
