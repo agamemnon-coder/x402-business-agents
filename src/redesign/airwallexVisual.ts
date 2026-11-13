@@ -26,7 +26,8 @@ const cents = (s: string) => Math.round(Number(s.replace(/[^\d.]/g, "")) * 100);
 
 /** The stops of the path, in a payment's order: the product keys and the icon each wears. */
 export const PATH_STOPS: { keys: string[]; label: string; icon: string }[] = [
-  { keys: ["issuing"], label: "Agent card", icon: "credit-card" },
+  // The product's own name beside its job (spec, 13 Nov: "agent card (Issuing)"), so a phone's first screen names a product.
+  { keys: ["issuing"], label: "Agent card (Issuing)", icon: "credit-card" },
   { keys: ["fx"], label: "FX quote", icon: "arrow-left-right" },
   { keys: ["payee-check"], label: "Payee check", icon: "shield-check" },
   { keys: ["payouts", "batch"], label: "Payout or batch", icon: "landmark" },

@@ -22,7 +22,7 @@ describe("the path of a payment through Airwallex", () => {
       const t = [...inUse, ...flagged].find((x) => s.keys.includes(x.key))!;
       expect(html).toContain(`href="#p-${t.key}"`);
     }
-    expect(text(html)).toMatch(/Agent card Live 7 Nov/);
+    expect(text(html)).toMatch(/Agent card \(Issuing\) Live 7 Nov/);
   });
   it("says which stops are built but not yet switched on (a ring, and the words)", () => {
     for (const label of ["Payee check", "Ledger reconciliation"]) expect(text(html)).toMatch(new RegExp(`${label} Live 12 Nov not yet switched on`));
