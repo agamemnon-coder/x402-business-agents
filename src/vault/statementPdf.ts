@@ -75,7 +75,7 @@ export function statementPdf(v: StatementView): Promise<Buffer> {
   const L = 50, W = 495, R = L + W;
 
   // Header: the company, the title, the period, and the test-money band.
-  doc.fillColor(MUTED).font("Helvetica").fontSize(8.5).text(`${v.company.toUpperCase()}  ·  TEST COMPANY  ·  TEST MONEY`, L, 50, { characterSpacing: 1 });
+  doc.fillColor(MUTED).font("Helvetica").fontSize(8.5).text(`${v.company.replace(/\s*\(test company\)$/i, "").toUpperCase()}  ·  TEST COMPANY  ·  TEST MONEY`, L, 50, { characterSpacing: 1 });
   doc.moveDown(0.4).fillColor(INK).font("Helvetica-Bold").fontSize(21).text("Balance sheet and profit and loss");
   doc.font("Helvetica").fontSize(10.5).fillColor(MUTED).text(`2026, books to ${v.asOf}  ·  ${v.currency}`);
   let y = doc.y + 10;
@@ -135,7 +135,7 @@ export function statementPdf(v: StatementView): Promise<Buffer> {
     doc.addPage();
     y = 50;
     heading("Invoices, sorted by Claude");
-    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Test invoices from the Coder eval. Claude chose the account, VAT code and cost centre of each, all three right; code checked them. Its own reason under each.", L, y, { width: W });
+    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Claude chose the account, VAT code and cost centre of each; code checked every choice before it was booked. Claude's own reason under each.", L, y, { width: W });
     y = doc.y + 10;
     for (const s of v.sorted) {
       if (y > 730) { doc.addPage(); y = 50; }
@@ -153,7 +153,7 @@ export function statementPdf(v: StatementView): Promise<Buffer> {
     }
   }
   if (y > 740) { doc.addPage(); y = 50; }
-  doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text("Made by Purser (npm run books:statement): the books rebuilt from the Moneybird sandbox run with its own code and checked against its record, invoice by invoice, to the cent.", L, y + 14, { width: W });
+  doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text("Made by Purser from the ledger of a test company; every figure is read from its run record. Fictional company and suppliers, test money.", L, y + 14, { width: W });
   doc.end();
   return done;
 }

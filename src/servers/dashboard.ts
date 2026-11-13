@@ -107,6 +107,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "vault-tree-dark.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-dark.svg", import.meta.url)) },
   // /books' "Download PDF": the test company's balance sheet and P&L, the vault's own year report (npm run books:statement).
   "books-balance-sheet-2026-11-12.pdf": { type: "application/pdf", body: readFileSync(new URL("../../docs/assets/books/books-balance-sheet-2026-11-12.pdf", import.meta.url)) },
+  // /books' month (npm run books:month): the test company's statement from docs/runs/2026-11-13-books-month.json.
+  "books-month-2026-11-13.pdf": { type: "application/pdf", body: readFileSync(new URL("../../docs/assets/books/books-month-2026-11-13.pdf", import.meta.url)) },
 };
 /** /watch's stills (src/film/stills/: the poster and the chapter thumbnails, real frames of the film's shots), as /assets/film-<name>. */
 export const FILM_STILLS = filmStills();
