@@ -1,0 +1,195 @@
+1
+00:00:00,400 --> 00:00:08,400
+Purser lets AI agents pay company bills, but only within limits the CFO signs with Face ID or a passkey.
+
+2
+00:00:08,400 --> 00:00:12,400
+A limit written in a prompt is only a request.
+
+3
+00:00:12,400 --> 00:00:19,600
+Here, the agent proposes, the CFO signs the exact terms, and code and the payment rails enforce them.
+
+4
+00:00:21,400 --> 00:00:28,600
+This is Purser Cloud, where a company runs Purser, shown with a demo company: made-up data, test money.
+
+5
+00:00:28,600 --> 00:00:36,200
+The Agents tab: each Claude agent, its card limits, what it may and may not do, and its decisions.
+
+6
+00:00:36,200 --> 00:00:41,800
+Invoices and books: what waits for the CFO, what is paid, and the journal.
+
+7
+00:00:41,800 --> 00:00:44,600
+Tokenisation: an invoice token on Metal testnet.
+
+8
+00:00:47,400 --> 00:00:54,600
+When a payment waits for the CFO, an alert can go out by WhatsApp, e-mail, Slack or Teams.
+
+9
+00:00:54,600 --> 00:00:58,200
+They are built, live once Twilio keys are set.
+
+10
+00:00:58,200 --> 00:00:59,800
+An alert never approves.
+
+11
+00:00:59,800 --> 00:01:03,800
+The CFO still signs with Face ID or a passkey.
+
+12
+00:01:06,400 --> 00:01:08,000
+Anyone can try it.
+
+13
+00:01:08,000 --> 00:01:14,000
+Start your own test company: test money on a simulated bank, deleted after 24 hours.
+
+14
+00:01:14,000 --> 00:01:19,600
+Send an invoice that was already paid, and it is caught as a duplicate.
+
+15
+00:01:21,400 --> 00:01:25,800
+File a supplier's invoice for 1,850 euros.
+
+16
+00:01:25,800 --> 00:01:35,400
+The agents check it, and the approval shows the exact terms: the conversion, the cap on the bank fee, and the deadline to sign.
+
+17
+00:01:35,400 --> 00:01:41,000
+The CFO signs with Face ID or a passkey; here, a virtual test passkey.
+
+18
+00:01:41,000 --> 00:01:42,600
+Paid, booked and filed.
+
+19
+00:01:42,600 --> 00:01:46,200
+Change one cent, and the same signature is refused.
+
+20
+00:01:48,400 --> 00:01:59,200
+Security comes in layers that do not trust each other: the agent, Purser's code, the CFO's signature, four eyes, the rail's own limits, and the audit record.
+
+21
+00:01:59,200 --> 00:02:04,400
+In the test harness, all 52 attacks were stopped, and none moved money.
+
+22
+00:02:04,400 --> 00:02:08,800
+At least two layers must fail before a hostile payment moves.
+
+23
+00:02:11,400 --> 00:02:18,200
+Then a script took Claude's place, and made the worst tool call it could, on every turn.
+
+24
+00:02:18,200 --> 00:02:19,800
+380 calls.
+
+25
+00:02:19,800 --> 00:02:20,600
+None unsafe.
+
+26
+00:02:23,400 --> 00:02:29,800
+In the main run on 3 November, three Claude agents made 24 decisions, for 32 cents.
+
+27
+00:02:29,800 --> 00:02:32,600
+Claude decides; code checks before anything moves.
+
+28
+00:02:32,600 --> 00:02:39,800
+In a test company's month, Claude read 20 invoices and chose each account, VAT code and cost centre.
+
+29
+00:02:39,800 --> 00:02:44,600
+Code checked every choice before it was booked, and the books balance.
+
+30
+00:02:49,400 --> 00:02:57,400
+On Airwallex, each agent has its own card, and Airwallex itself declined a simulated 45 euro charge over the limit.
+
+31
+00:02:57,400 --> 00:03:07,000
+A payout has two locks, Purser's and Airwallex's own: it waited until the owner approved it there, then it was paid, with simulated settlement.
+
+32
+00:03:07,000 --> 00:03:11,800
+The payee's bank checks the name, and one signature pays a batch.
+
+33
+00:03:15,400 --> 00:03:22,600
+On Metal, the agent's limit lives in a passkey account that checks both owners' signatures itself, on chain.
+
+34
+00:03:22,600 --> 00:03:29,400
+The agent paid 5 cents inside its mandate; 6 cents, over the cap, was refused on chain.
+
+35
+00:03:29,400 --> 00:03:37,400
+An invoice was tokenised there too, with a simulated financier, and the audit chain's head is anchored in one transaction.
+
+36
+00:03:42,400 --> 00:03:46,800
+Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail.
+
+37
+00:03:46,800 --> 00:03:51,200
+A 45 euro purchase above the limit waited for Face ID.
+
+38
+00:03:51,200 --> 00:03:56,400
+The signed terms' hash sits in Airi's mandate and in Airwallex's payment record.
+
+39
+00:03:59,400 --> 00:04:07,400
+The main run's 95 journal entries were posted to T:0's sandbox, and T:0 matches them line by line.
+
+40
+00:04:09,400 --> 00:04:12,600
+Every line of this film has its record.
+
+41
+00:04:12,600 --> 00:04:17,800
+The proof page lists what Purser guarantees, who enforces each, and the evidence.
+
+42
+00:04:20,400 --> 00:04:27,600
+What is not done: the alerts go live once Twilio keys are set, and sandbox settlement is simulated.
+
+43
+00:04:27,600 --> 00:04:33,200
+In the Visa sandbox, a credential reused on a bigger payment was not refused.
+
+44
+00:04:33,200 --> 00:04:35,600
+There, only Purser holds the limit.
+
+45
+00:04:37,400 --> 00:04:39,000
+Agents do the work.
+
+46
+00:04:39,000 --> 00:04:41,400
+The CFO signs only the exceptions.
+
+47
+00:04:41,400 --> 00:04:45,400
+Our code checks every limit, and the rail checks again.
+
+48
+00:04:45,400 --> 00:04:47,000
+Purser, for Kit 11.
+
+49
+00:04:47,000 --> 00:04:48,200
+Try it yourself.
