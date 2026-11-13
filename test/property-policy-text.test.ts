@@ -136,7 +136,10 @@ function looser(key: string, from: string, to: string): boolean {
   const c = (v: string) => (v === "" ? null : toCents(v));
   if (key === "freeze" || key.startsWith("stop.")) return from === "on" && to === "off";
   if (key.startsWith("counterparty:")) return from === "blocked" && to === "allowed";
-  if (key.startsWith("cap.") || key.startsWith("card.") || key === "approval.four_eyes_eur") return c(from) !== null && (c(to) === null || c(to)! > c(from)!);
+  // A threshold whose empty value means "off" (four eyes; the second key's amount): switching it off or raising it loosens.
+  if (key.startsWith("cap.") || key.startsWith("card.") || key === "approval.four_eyes_eur" || key === "approval.second_key_eur") return c(from) !== null && (c(to) === null || c(to)! > c(from)!);
+  // The second key's other triggers: switching one off loosens.
+  if (key.startsWith("approval.second_key_")) return from === "on" && to !== "on";
   if (key.startsWith("approval.")) return c(to)! > c(from)!;
   if (key.endsWith("_floor")) return c(from) !== null && (c(to) === null || c(to)! < c(from)!);
   throw new Error(`no oracle for ${key}`);

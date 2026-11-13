@@ -53,7 +53,7 @@ beforeAll(async () => {
 afterAll(() => c.close());
 
 describe("the route table", () => {
-  it("holds the engine's thirteen routes, each with what it needs", () => {
+  it("holds the engine's sixteen routes, each with what it needs", () => {
     expect(ENGINE_ROUTES.map((r) => `${r.method} ${r.path} ${r.need}`)).toEqual([
       "GET /v1/engine read",
       "POST /v1/engine/documents admin",
@@ -62,6 +62,9 @@ describe("the route table", () => {
       "GET /v1/engine/proposals/{id} read",
       "POST /v1/engine/passkey/start admin",
       "POST /v1/engine/passkey/finish admin",
+      "POST /v1/engine/policy/second-key admin",
+      "POST /v1/engine/security-key/start admin",
+      "POST /v1/engine/security-key/finish admin",
       "POST /v1/engine/proposals/{id}/approve admin",
       "POST /v1/engine/proposals/{id}/retry admin",
       "POST /v1/engine/sync admin",
@@ -311,7 +314,7 @@ describe("the cloud's own gates", () => {
   const reads = ENGINE_ROUTES.filter((r) => r.method === "GET" && r.path !== "/v1/engine/vault/file");
 
   it("lets a viewer and a read-only key read, and do nothing else", async () => {
-    expect(posts).toHaveLength(7);
+    expect(posts).toHaveLength(10);
     for (const key of [viewer, reader]) {
       for (const r of posts) {
         const res = await c.req("POST", at(r.path), { key, body: {} });
@@ -519,7 +522,7 @@ describe("a cloud with no engine wired", () => {
     const off = testCloud();
     try {
       const t = await off.tenant("plain");
-      expect(ENGINE_ROUTES).toHaveLength(13);
+      expect(ENGINE_ROUTES).toHaveLength(16);
       for (const key of [t.session, t.key]) {
         for (const r of ENGINE_ROUTES) {
           const res = await off.req(r.method, at(r.path), { key, ...(r.method === "POST" ? { body: {} } : {}) });

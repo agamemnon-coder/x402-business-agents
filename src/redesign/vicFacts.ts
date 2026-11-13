@@ -51,6 +51,13 @@ export function vicAttemptCount(rec: AiriRunRecord): { all: number; paid: number
 }
 
 /** The five facts, each one line, each only as the record has it. */
+/**
+ * How the test card reached the checkout in the live runs (the vic-4 run log: Airwallex's sandbox Hosted Payment Page,
+ * filled by the agent like a shopper). Shown right under the purchase flow on /visa (partner review, 13 Nov: it sat
+ * further down, away from purchase B).
+ */
+export const HEADLESS_LINE = "Sandbox only: a headless browser in the agent's process typed the test card into Airwallex's hosted page; the sandbox refuses a direct confirm.";
+
 export function vicFacts(rec: AiriRunRecord): string[] {
   const paid = rec.purchases.filter((p) => p.outcome === "SUCCEEDED");
   if (!rec.test_card || !/single-use/.test(rec.credential ?? "")) missing("a single-use credential from the test card");
@@ -65,9 +72,8 @@ export function vicFacts(rec: AiriRunRecord): string[] {
   return [
     "The credential is a test credential, from Airi's test card.",
     "One person played both the CFO and the cardholder.",
-    // The attempt history is folded (vicAttempts, "The N attempts that failed first"); in sight, how the card number
-    // travelled here and how it would in production (the jury check, 12 Nov).
-    "Sandbox only: a headless browser in the agent's process typed the number into Airwallex's hosted page; the sandbox refuses a direct confirm.",
+    // The attempt history is folded (vicAttempts, "The N attempts that failed first"); how the card number travelled here
+    // (HEADLESS_LINE) sits next to the purchase flow at the top of /visa (partner review, 13 Nov); how it would in production:
     "In production no card number would enter the agent's process: the merchant would get a network token via the Connect access above.",
     "The merchant is Purser's own sandbox account.",
   ];

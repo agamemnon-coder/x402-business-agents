@@ -24,9 +24,9 @@ describe("Purser's mark in the README and docs/assets", () => {
     expect(mark).not.toMatch(/#2dd4bf/i);
   });
 
-  // Since 13 Nov (later) the README opens with a banner of Home's first screen, whose header carries this mark.
-  it("is the mark of the site header the README's banner shows, and the social preview carries the same feather", () => {
-    expect(read("README.md")).toContain('srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp"');
+  // Since 13 Nov (the enterprise README) the README opens with the site's link-preview card, which carries this mark.
+  it("is the mark the README's hero (the social preview) carries: the same feather as the site header", () => {
+    expect(read("README.md")).toContain('<img src="docs/assets/social-preview.png"');
     for (const d of paths(header)) expect(read("docs/assets/social-preview.svg")).toContain(d);
   });
 });

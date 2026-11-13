@@ -63,7 +63,8 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     // The heading counts the tiles; the page is no longer the replay of one run.
     // Review 12 Nov: the seven products, then the three tested live behind flags. 13 Nov: those three switched on in the
     // flow and shown live by docs/runs/2026-11-13-airwallex-switch-on.json, so all ten are in use.
-    expect(awx).toContain("<h1>Ten Airwallex products in use</h1>");
+    // Partner review, 13 Nov: Airi is a beta, the payee check and the ledger reconciliation are API features: counted as such.
+    expect(awx).toContain("<h1>Nine Airwallex features in use, plus Airi (beta)</h1>");
     expect(text(main(awx))).not.toMatch(/Replay of the main run/);
     expect(awx).toMatch(/<span class="pill run">[\s\S]*?Airwallex sandbox · test money · each run dated<\/span>/);
   });
@@ -447,7 +448,7 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
   });
 
   it("links docs for all ten products in the docs fold, each on Airwallex's own docs site", () => {
-    const fold = /<details class="fold"><summary>The Airwallex products and their docs<\/summary>[\s\S]*?<\/details>/.exec(awx)![0];
+    const fold = /<details class="fold"><summary>The Airwallex features and Airi, with their docs<\/summary>[\s\S]*?<\/details>/.exec(awx)![0];
     const docs = productDocs();
     expect(docs.map((d) => d.key)).toEqual([...PRODUCT_ORDER]);
     for (const d of docs) {

@@ -7,7 +7,7 @@ import { vic3Run } from "../src/redesign/vic3Run.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
-import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, productTiles } from "../src/redesign/airwallexProducts.js";
+import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE, productTiles, tilesCountWords } from "../src/redesign/airwallexProducts.js";
 import { airiRun } from "../src/redesign/airiRun.js";
 import { REPO_BLOB, metalStory } from "../src/redesign/metalStory.js";
 import { ICC_LINE, builtOnHtml, builtOnItems } from "../src/redesign/partners.js";
@@ -97,10 +97,10 @@ describe("the Built on strip", () => {
     const latest = later[1]!, latestPaid = latest.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length;
     const latestDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(latest.started_at));
     expect(items.map((i) => i.proof)).toEqual([
-      `${productTiles(run).length} products, each run dated`, `${st.payments.total} payments on testnet (main run)`, `${latestPaid} paid in the ${latestDay} run (${settled} paid across 3 live Visa runs)`,
+      `${tilesCountWords(productTiles(run), true)}, each run dated`, `${st.payments.total} payments on testnet (main run)`, `${latestPaid} paid in the ${latestDay} run (${settled} paid across 3 live Visa runs)`,
       `${run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0)} decisions (main run)`, `${t0Data().journal!.posted} journal entries (main run)`, `${st.payments.sales} paid requests (main run)`,
     ]);
-    expect(items.map((i) => i.proof)).toEqual(["10 products, each run dated", "86 payments on testnet (main run)", "2 paid in the 13 Nov run (5 paid across 3 live Visa runs)", "24 decisions (main run)", "95 journal entries (main run)", "41 paid requests (main run)"]);
+    expect(items.map((i) => i.proof)).toEqual(["9 Airwallex features plus Airi (beta), each run dated", "86 payments on testnet (main run)", "2 paid in the 13 Nov run (5 paid across 3 live Visa runs)", "24 decisions (main run)", "95 journal entries (main run)", "41 paid requests (main run)"]);
     // #216 (12 Nov): ICC spelled out in the footer.
     expect(ICC_LINE).toBe("Visa Intelligent Commerce Connect (access requested)");
   });

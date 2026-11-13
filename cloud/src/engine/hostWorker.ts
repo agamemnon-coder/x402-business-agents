@@ -107,6 +107,9 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     // The Worker hands the request's relying party (../hostOrigin.ts); one it may not use is not taken: the object's own is.
     passkeyStart: async (rp) => host.passkeyStart(rp && rpAllowed(rp, own) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
     passkeyFinish: async (a) => host.passkeyFinish(a),
+    securityKeyStart: async (a) => host.securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, own) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
+    securityKeyFinish: async (a) => host.securityKeyFinish(a),
+    proposeSecondKey: async (changes) => host.proposeSecondKey(changes),
     approve: async (a) => kept(host.approve(a)),
     retry: async (proposalId) => kept(host.retry(proposalId)),
     sync: async () => kept(host.sync()),

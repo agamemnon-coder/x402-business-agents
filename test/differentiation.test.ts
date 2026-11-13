@@ -4,7 +4,7 @@
 // surface drops a sentence, changes a word, puts something before it, or when the record no longer holds the 24.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, README_WHAT, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
 import { HOME_SUB, homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { agentRun, loadRecord, split, stopStory, stopsLine } from "../src/redesign/run.js";
@@ -66,11 +66,14 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
     // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 45).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
+    // 70 lines since the enterprise README (13 Nov): the three proofs and the Enterprise section come before the judges' 3 minutes.
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 70).join("\n"));
+    // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS.
+    expect(top.startsWith(`${README_WHAT} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
-    expect(readme).toContain(`alt="Try it: a test company of your own, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`); // 13 Nov, final pass
+    // Since 13 Nov (the enterprise README): the live demo's line under the badges, in TRY_IT's 2 minutes.
+    expect(readme).toContain(`a test company of your own on test money, in ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.

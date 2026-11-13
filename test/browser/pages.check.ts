@@ -728,7 +728,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /\d+ Nov \(latest\) · Airwallex sandbox · test card · test money|7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
       // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
-      // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
+      // in sight; four facts under the drawing (the headless browser under the purchase flow); purchase B's three amounts are equal; the footer cites the run's record.
       if (path === "/visa") {
         const c = await page.evaluate(`(() => {
           const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
@@ -746,8 +746,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // Since the jury pass (13 Nov) the TAP fold is the last thing inside the closed details fold: not in sight on load at all.
         if (await page.locator("#visa-tap > summary").isVisible() && !(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
         if (!pt.includes(VISA_ENTRY_LINE) || (!iccRecordIn() && !pt.includes(VISA_ICC_LINE)) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
-        // The five facts under the drawing, in the details fold since the jury pass (13 Nov), and in no fold of their own.
-        if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts under the drawing, not five`);
+        // The four facts under the drawing, in the details fold since the jury pass (13 Nov), and in no fold of their own.
+        // Partner review, 13 Nov: the fifth, the headless browser (sandbox only), sits in sight right under the purchase flow.
+        if (c.facts !== 4) fail(`/visa ${tag}: ${c.facts} facts under the drawing, not four`);
+        if (!(await page.locator(".vh-flow .vh-headless").isVisible()) || !/headless browser in the agent's process/.test(await page.locator(".vh-flow .vh-headless").innerText())) fail(`/visa ${tag}: the headless browser is not said right under the purchase flow`);
         if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
         const inMain = (await page.locator("main").textContent()) ?? "";
         if (!/A scripted run, no Claude call/.test(inMain) || /Agents paid with a single-use Visa|three live runs/.test(inMain)) fail(`/visa ${tag}: the run is not called scripted`);
@@ -880,7 +882,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 530; // /security 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 555; // /security 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -889,8 +891,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
       const cards = await page.locator("main article.pc.card").count();
       {
-        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55): ten cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
-        if (cards !== 10 || (await page.locator("main article.pc.card details.fold").count()) !== 11 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not ten cards, each with its detail folded`);
+        // Nine controls and "Not yet" since the owner's request (12 Nov 15:55), and the optional second key (13 Nov): eleven
+        // cards, each with its detail folded, and "If the approver is unavailable" (#unavailable) under the signature.
+        if (cards !== 11 || (await page.locator("main article.pc.card details.fold").count()) !== 12 || (await page.locator("#s-sign details#unavailable").count()) !== 1 || (await page.locator("main details[open]").count())) fail(`/security ${tag}: not eleven cards, each with its detail folded`);
         // 12 Nov (jury check): "not prevented (detected after)".
         if (!/Red team: \d+ attacks, \d+ stopped before anything moved, \d+ not prevented \(detected after\)\./.test(body) || !/npm run verify-log/.test(body) || !/No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet/.test(body)) fail(`/security ${tag}: the red team's counts, the audit command or the "Not yet" line is missing`);
         // The first link is Try (since #188 the hands-on demo, TRY_URL); since 12 Nov the second is Face ID on chain.
