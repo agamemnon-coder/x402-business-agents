@@ -10,8 +10,9 @@ import { COUNT_JS } from "../src/redesign/stats.js";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EXPLORER, MAIN_RUN_CHECK, REPO_BLOB, SEPARATE_RUNS, explorerLink, metalStory, refusalNote, separateRuns } from "../src/redesign/metalStory.js";
-import { HOLD_NOT_FINISHED, INSPECTOR_URL, MAIN_RUN_TRACE, METAL_HOLD_RECORD, METAL_INSPECT_JS, METAL_INSPECTOR_RECORD, coverageRows, holdState, inspectorRecord, mandateRows, replaceSigner } from "../src/redesign/metalMandates.js";
+import { FACEID_SEPARATE_RUN, HOLD_NOT_FINISHED, INSPECTOR_URL, MAIN_RUN_TRACE, METAL_HOLD_RECORD, METAL_INSPECT_JS, METAL_INSPECTOR_RECORD, coverageRows, holdState, inspectorRecord, mandateRows, replaceSigner } from "../src/redesign/metalMandates.js";
 import { loadRecord } from "../src/redesign/run.js";
+import { ownersRun } from "../src/redesign/metalOnchain.js";
 import { METAL_CSP, METAL_PAGE } from "../src/servers/dashboard.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -111,7 +112,10 @@ describe("the four mandates, one table", () => {
   it("shows the spend of the check of 12 November, labelled as recorded, and the customer's as the main run recorded it", () => {
     const live = insp.recorded!;
     expect(live.recorded_on).toBe("2026-11-12");
-    expect(text(cards)).toContain(`Spent: recorded on 12 Nov at block ${live.block}, a read-only check.`);
+    // The final review (13 Nov): a recorded answer says so plainly; the live wording is hidden until a live read succeeds.
+    expect(text(cards)).toContain(`Spent: a recorded snapshot from 12 Nov (block ${live.block}), not a live read.`);
+    expect(cards).toContain(`<span id="mlive-rec">It answers with the recorded snapshot from 12 Nov (block ${live.block}) until a live Metal testnet read is set up, and says so.</span><span id="mlive-how" hidden>Read live: one read for everyone every 15 minutes`);
+    expect(METAL_INSPECT_JS).toMatch(/a\.source === "chain"[\s\S]*how\.hidden = false;[\s\S]*rec\.hidden = true;/);
     expect(cards).toContain(`data-rec="${METAL_INSPECTOR_RECORD}"`);
     for (const m of live.mandates) {
       expect(table).toContain(`<span data-spent="${m.agent}">${m.spent}</span>`);
@@ -205,6 +209,10 @@ describe("the payments, the refusal and the replace", () => {
     expect(steps).toHaveLength(3);
     expect(steps[0]).toBe("Face ID P-0002: the CFO's Face ID and a test passkey approved it in Purser.");
     expect(steps[1]).toMatch(/^New mandates on chain Treasury 2\.00 ↗ Sourcing 0\.04 ↗ One owner key, held by Purser's runner, signed on chain\. The chain did not check Face ID\./);
+    // The final review (13 Nov): the separate run said as it was, nothing more ("Since 12 Nov it does" overstated it).
+    if (ownersRun()) expect(steps[1]).toContain(`${FACEID_SEPARATE_RUN} ↓`);
+    expect(FACEID_SEPARATE_RUN).toBe("In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).");
+    expect(METAL_PAGE).not.toContain("Since 12 Nov it does");
     expect(steps[2]).toBe("Old mandate refused #37 on the old mandate: refused by Metal's facilitator (mandate_revoked), no transaction.");
     for (const e of replaced) expect(grid).toContain(`href="${EXPLORER}/tx/${String(e.payload.tx)}"`);
     expect(rec.snapshot.refusals.some((r) => /#37 .*revoked by a replacement/.test(r.reason))).toBe(true);

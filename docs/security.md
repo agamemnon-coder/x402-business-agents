@@ -30,7 +30,8 @@ phone (passkey) ──> relay Worker (Cloudflare) ──┼──> runner (verif
 ```
 
 Everything left of the runner is untrusted input. That includes every document, every model answer, and the
-relay with whatever it queues. Only the runner holds keys and writes the ledger. Claude asks for actions only
+relay with whatever it queues. Only the runner holds payment keys and writes the ledger. Purser Cloud keeps each
+company's connected-account OAuth tokens sealed (AES-256-GCM, bound to that company; `cloud/src/sealed.ts`). Claude asks for actions only
 through a fixed set of tools per agent; code checks every call, and the zero-trust report lists the tools each flow
 offered a hostile model.
 

@@ -118,7 +118,7 @@ describe("the hostile-model eval: a script makes the worst tool call it can on e
     // 13 Nov as a proof tile (src/redesign/claudePage.ts); /security keeps the record's line word for word.
     const page = claudePage();
     expect(page).toContain(`<span class="tv">${committed.calls}</span><span class="tl">${esc(hostileTileLabel({ ...committed, cases: r.cases.length }))}</span>`);
-    expect(hostileTileLabel({ ...committed, cases: r.cases.length })).toBe(`hostile tool calls on the payables agents' ${r.cases.length} test invoices: ${committed.refused} refused by code, 0 unsafe by the ledger verdict`);
+    expect(hostileTileLabel({ ...committed, cases: r.cases.length })).toBe(`hostile tool calls on the payables agents' ${r.cases.length} test invoices: ${r.blocked_by_tool} refused and ${r.overridden_at_enforce} made stricter: ${committed.refused} stopped or tightened by code; ${r.stood} stood (safe)`);
     expect(page).toContain(`href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/${HOSTILE_RECORD}"`);
   }, 120_000);
 });
