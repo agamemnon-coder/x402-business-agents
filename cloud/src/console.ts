@@ -16,7 +16,8 @@ import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
-  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy"];
+  "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -346,7 +347,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
@@ -424,7 +425,8 @@ function shell(){
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
-  const tab=(location.hash.split('/')[1]||'').split('?')[0];
+  // An invoice belongs to the Books tab (Invoices & books, 13 Nov): the old Invoices route and an invoice's page light it.
+  const tab0=(location.hash.split('/')[1]||'').split('?')[0];const tab=tab0==='invoices'?'books':tab0;
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
 }
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
@@ -448,7 +450,8 @@ function signInView(){
   try{slug.value=localStorage.getItem('purser.cloud.slug')||''}catch(e){}
   const status=el('div','');status.setAttribute('role','status');
   const b=btn(t('cs.sign_in_passkey'),'primary big','scan-face');
-  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','',t('cs.sign_in_lede')),
+  // What Purser Cloud is (13 Nov), as the card's own lede: one line, so the card and the trust line still fit a phone.
+  const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','what',t('cs.what_cloud')),
     el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
     el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
   // Try as guest: the demo company, read only, no passkey and no e-mail (POST /v1/auth/guest). Its data is demo data.
@@ -684,7 +687,7 @@ async function overviewView(){
   const wl=el('div','card list');
   if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
   else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
-  view().replaceChildren(...[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),dashBlock(D),el('div','ovtop',[nx,due]),tiles,inbox,
+  view().replaceChildren(...[whatCloud(m),head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),dashBlock(D),el('div','ovtop',[nx,due]),tiles,inbox,
     el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl])].filter(Boolean));
 }
 
@@ -806,9 +809,11 @@ function invoiceRow(i){
   const w=why(i);const wy=el('span','why',[ic(w[0]),el('span','',w[1])]);wy.title=w[2]||w[1];
   a.append(sup,no,el('span','due num'+(late?' late':''),i.due_date?day(i.due_date):'–'),el('span','amt',[el('span','c',cur(i.currency)),'\u00a0'+(amount(i.total)||'–')]),el('span','stc',[chip(i.status,i.status_words)]),wy);
   const g=ic('chevron-right');g.className='go';a.append(g);return a}
-const FILTERS=[['all',t('filter.all'),()=>true],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
-async function invoicesView(q){
-  title(t('nav.invoices'));
+// Which invoices the ledger books (GET /v1/books/bookings), for the Booked filter; read with the list.
+let BOOKED={};
+const FILTERS=[['all',t('filter.all'),()=>true],['open',t('cs.filter.open'),(i)=>!['paid','rejected','blocked'].includes(i.status)],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['booked',t('cs.filter.booked'),(i)=>!!(BOOKED[i.id]&&BOOKED[i.id].length)],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
+async function invoicesView(q,embed){
+  if(!embed)title(t('nav.invoices'));
   // With an engine: the panel "At work" for everyone, the upload for who may manage the company (an owner).
   const eng=await engineStatus();const write=!!eng&&(await me()).scopes.includes('admin');
   let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
@@ -831,7 +836,8 @@ async function invoicesView(q){
     reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
       catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
     return reloading}
-  view().replaceChildren(...[head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean));
+  const nodes=[embed?null:head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean);
+  if(embed)embed.replaceChildren(...nodes);else view().replaceChildren(...nodes);
   // An invoice that arrived, was paid or was filed in the archive: the list is read again.
   if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
   await page();
@@ -857,7 +863,7 @@ async function invoiceView(id){
   const [i,ev]=await Promise.all([api('/v1/invoices/'+encodeURIComponent(id)),eng?api('/v1/engine/invoices').catch((e)=>{if(e instanceof Expired)throw e;return null}):null]);
   const r=i.reading||{};
   title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
-  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/invoices';
+  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/books';
   let top=detailTop(i),tl=timelineOf(i);
   // With an engine, a paid invoice shows its proof (paid, booked, archived) where the payment card was: first.
   let proof=eng&&i.status==='paid'?proofCard(i):null;let stack=null;
@@ -884,7 +890,9 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
   // The payment card where the person acts, or the proof once paid, first; the panel "At work" last; without an engine,
   // the note that the phone approves. On a phone this column comes before the document (.split.inv).
-  stack=el('div','stack',[pay,proof,read,checks,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  const jr=el('div','card panel journal-for',[el('h2','',t('cs.books.journal_for')),el('p','sub',t('loading'))]);
+  api('/v1/books/invoices/'+encodeURIComponent(id)+'/journal').then((j)=>jr.replaceChildren(el('h2','',t('cs.books.journal_for')),journalTable(j.items||[],t('cs.books.no_journal'))),(e)=>{if(!(e instanceof Expired))jr.replaceChildren(el('h2','',t('cs.books.journal_for')),note(e.message,'bad'))});
+  stack=el('div','stack',[pay,proof,read,checks,jr,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
   view().replaceChildren(back,top,el('div','split inv',[doc,stack]));
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
   drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages,t('cs.invoice_drawn'));
@@ -1133,14 +1141,22 @@ async function archiveView(){
 
 // --- Books ---------------------------------------------------------------------------------------------------------
 const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
-async function booksView(){
+async function booksView(q){
   title(t('cs.nav.books'));
+  try{BOOKED=(await api('/v1/books/bookings')).bookings||{}}catch(e){if(e instanceof Expired)throw e;BOOKED={}}
   const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
   const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
   const vat=el('div','card panel');const journal=el('div','card panel');
   // With an engine, its archive is one link away from the books.
   const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
-  view().replaceChildren(head(t('cs.nav.books'),ME&&ME.demo?t('cs.demo.books_lede'):t('cs.books_lede'),arch?[arch]:null),el('div','split2',[vat,journal]));
+  const inv=el('div','books-invoices');
+  const bal=el('div','card panel balance',[el('h2','',t('cs.books.balance')),el('p','sub',t('loading'))]);
+  view().replaceChildren(head(t('cs.nav.books'),ME&&ME.demo?t('cs.books.demo_lede'):t('cs.books.lede'),arch?[arch]:null),inv,el('h2','section-h',t('cs.books.ledger')),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
+  // The balance sheet from the ledger (GET /v1/reports/balance), per currency: what the company owns, owes and is worth.
+  api('/v1/reports/balance').then((b)=>{const rows=[];for(const [c,v] of Object.entries(b.by_currency||{})){rows.push(el('tr','',[el('td','',el('b','',c)),el('td','r',cur(c)+' '+cents(v.assets_cents||0)),el('td','r',cur(c)+' '+cents(v.liabilities_cents||0)),el('td','r',cur(c)+' '+cents(v.equity_cents||0)),el('td','',v.balanced?el('span','ast active',t('cs.books.balanced')):el('span','ast revoked',t('cs.books.not_balanced')))]))}
+    bal.replaceChildren(el('h2','',t('cs.books.balance')),el('p','sub',t('cs.books.balance_at',{day:day(b.to)})),el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',''),el('th','r',t('cs.books.assets')),el('th','r',t('cs.books.liabilities')),el('th','r',t('cs.books.equity')),el('th','','')])),el('tbody','',rows.length?rows:[el('tr','',el('td','',t('cs.no_entries')))])])))},
+    (e)=>{if(!(e instanceof Expired))bal.replaceChildren(el('h2','',t('cs.books.balance')),note(e.message,'bad'))});
+  await invoicesView(q,inv);
   async function drawVat(){
     const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
@@ -1164,6 +1180,70 @@ async function booksView(){
   if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
   await drawVat();
+}
+
+// --- Shared pieces of the enterprise pass (13 Nov) -------------------------------------------------------------------
+// What Purser Cloud is, in one line, on the sign-in and at the top of the overview; the demo company says what its data is.
+function whatCloud(m){return el('div','what-cloud',[el('p','',t('cs.what_cloud')),m&&m.demo?el('p','demo-label',[ic('flask'),' '+t('cs.demo.label')]):null])}
+// A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
+function journalTable(items,empty){
+  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
+  const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);
+  for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+  if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
+  tbl.append(tb);return el('div','scroll',tbl)}
+// The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
+function exportsCard(){
+  const box=el('div','card panel exports');const out=el('div','');out.setAttribute('role','status');
+  const files=[['xero','bills','Xero · bills'],['xero','journals','Xero · journals'],['quickbooks','bills','QuickBooks Online · bills'],['exact','bills','Exact Online · inkoop'],['exact','journals','Exact Online · memoriaal']];
+  const row=el('div','row2 wrap-row');
+  for(const [f,k,label] of files){const b=btn(label,'','download');b.onclick=async()=>{b.disabled=true;try{await download('/v1/export/csv/'+f+'/'+k,'purser-'+k+'-'+f+'.csv')}catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{b.disabled=false}};row.append(b)}
+  box.append(el('h2','',t('cs.books.exports')),el('p','sub',t('cs.books.exports_sub')),row,out);return box}
+const ext=(href,label)=>{const a=el('a','ext',[label,' ',ic('external-link')]);a.href=href;a.target='_blank';a.rel='noopener noreferrer';return a};
+const shortHash=(h)=>String(h||'').slice(0,10)+'…'+String(h||'').slice(-6);
+
+// --- Agents (13 Nov) -------------------------------------------------------------------------------------------------
+async function agentsView(){
+  title(t('cs.nav.agents'));
+  const [m,r]=await Promise.all([me(),api('/v1/agents')]);shell();
+  const cards=(r.agents||[]).map((a)=>{
+    const st=el('span','ast '+String(a.status).replace(/[^a-z]/g,''),[ic(a.status==='active'?'circle-check':a.status==='paused'?'snowflake':'ban'),' '+tk('cs.agents.status.'+a.status,a.status)]);
+    const since=a.status_since?el('span','sub',' '+t('cs.agents.since',{day:day(a.status_since)})):null;
+    const hd=el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',a.name),el('p','sub',a.role+' · '+a.job)]),el('div','ast-wrap',[st,since])]);
+    const lim=a.card?el('ul','pl',[el('li','',[ic('credit-card'),' '+t('cs.agents.card',{last4:a.card.last4})]),a.card.per_purchase?el('li','',t('cs.agents.per_purchase',{amount:cur(a.card.currency)+' '+a.card.per_purchase})):null,a.card.per_month?el('li','',t('cs.agents.per_month',{amount:cur(a.card.currency)+' '+a.card.per_month})):null,a.card.pays_for?el('li','',t('cs.agents.pays_for',{what:a.card.pays_for})):null]):el('p','sub',t('cs.agents.no_card'));
+    const facts=el('div','agrid',[
+      el('div','',[el('h3','',t('cs.agents.model')),a.models.length?el('p','mono',a.models.join(', ')):el('p','sub',t('cs.agents.no_model')),a.runs&&a.runs.total?el('p','sub',t('cs.agents.runs',{n:a.runs.total,k:a.runs.without_model})):null]),
+      el('div','',[el('h3','',t('cs.agents.limits')),lim]),
+      el('div','',[el('h3','',t('cs.agents.rails')),a.rails.length?el('p','',a.rails.join(', ')):el('p','sub',t('cs.agents.no_rail')),a.spent||a.declined?el('p','sub',t('cs.agents.moved',{n:a.spent,k:a.declined})):null]),
+      el('div','',[el('h3','',t('cs.agents.may')),el('ul','can',a.may.map((x)=>el('li','',[ic('circle-check'),el('span','',x)])))]),
+      el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
+    const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','feed',a.decisions.map((d)=>el('li','',[el('span','when num',day(d.at)),el('span','',[d.text,d.decided_by&&!/fallback/.test(d.text)?el('small','by',' · '+t('cs.agents.decided_by',{who:d.decided_by})):null])]))):el('p','sub',t('cs.agents.no_decisions'))]);
+    return el('section','card agent',[hd,facts,dec])});
+  view().replaceChildren(...[whatCloud(m),head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
+    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls'))]);
+}
+
+// --- Tokenisation (13 Nov) -------------------------------------------------------------------------------------------
+async function tokensView(){
+  title(t('cs.nav.tokens'));
+  const [m,r]=await Promise.all([me(),api('/v1/tokenisation')]);shell();
+  const lbl=(s)=>el('span','rlabel',s);
+  const tok=r.invoice_token;const it=tok.invoice;
+  const steps=el('ol','tsteps',tok.steps.map((s)=>el('li','',[el('b','',tk('cs.tok.step.'+s.step,s.step)),el('span','sub',' '+s.label),el('ul','txs',s.txs.map((x)=>el('li','',[el('span',x.status==='success'?'ok':'bad',[ic(x.status==='success'?'circle-check':'triangle-alert')]),el('span','',x.what+' · '+day(x.at)+' · '),x.explorer?ext(x.explorer,el('code','',shortHash(x.hash))):el('code','',shortHash(x.hash))])))])));
+  const invoice=el('section','card panel tok',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
+    el('p','',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),
+    dl([[t('cs.tok.contract'),el('code','',tok.contract),'mono'],[t('cs.tok.token_id'),el('code','',shortHash(tok.token_id)),'mono'],[t('cs.tok.face_value'),tok.face_value],[t('cs.tok.discount'),tok.discount]]),
+    steps,tok.verified?note(t('cs.tok.verified'),'ok'):null,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
+  const c=r.agent_cards;
+  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
+    el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',t('cs.tok.card')),el('th','',t('cs.tok.holder')),el('th','',t('cs.tok.limits')),el('th','',t('cs.tok.status'))])),el('tbody','',c.cards.map((x)=>el('tr','',[el('td','',[el('b','',x.brand+' ••'+x.last4),el('span','sub',' '+x.form.toLowerCase())]),el('td','',x.holder),el('td','',x.limits.join(' · ')),el('td','',[el('span','ast '+(x.status==='ACTIVE'?'active':'paused'),x.status.charAt(0)+x.status.slice(1).toLowerCase()),x.merchant_categories.length?el('span','sub',' '+t('cs.tok.categories',{list:x.merchant_categories.join(', ')})):null])])))])),
+    el('p','links',[ext(c.record,t('cs.tok.record'))])]);
+  const v=r.visa_credential;
+  const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
+    el('ul','viclist',v.purchases.map((p)=>el('li','',[el('b','',p.step),el('span','',' '+p.what+' · '+p.amount),p.outcome?el('span',p.outcome==='succeeded'?'ok':'sub',' · '+p.outcome+(p.reason?': '+p.reason:'')):null]))),
+    v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
+  view().replaceChildren(whatCloud(m),head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
@@ -1419,7 +1499,9 @@ async function route(){
     view().replaceChildren(el('p','lede',t('loading')));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
-    const pages={'/overview':overviewView,'/invoices':invoicesView,'/transactions':transactionsView,'/books':booksView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    // The Invoices tab is part of Books now (13 Nov): its old route keeps its filter and lands there.
+    if(path==='/invoices'){history.replaceState(null,'','#/books'+(qs?'?'+qs:''));return route()}
+    const pages={'/overview':overviewView,'/agents':agentsView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
@@ -1464,7 +1546,9 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .auth h1 { font-weight: 700; }
 @media (max-width: 1023px) { .signed-out .hero { flex: none; min-height: 0; padding: 20px; border-right: 0; border-bottom: 1px solid var(--border); justify-items: start; } .side { margin: 0; } .side h2 { font-size: 22px; } .side p { margin: 4px 0 0; font-size: 15px; } }
 /* A phone keeps the card and the trust line in the first screen (test/browser/console.check.ts): the panel's list waits for a wider screen. */
-@media (max-width: 640px) { .side ul, .side p { display: none; } .auth .guest { margin-top: 14px; } .auth .guest .gsub { font-size: 12.5px; } }
+@media (max-width: 640px) { .side ul, .side p { display: none; } .auth .guest { margin-top: 14px; } .auth .guest .gsub { font-size: 12.5px; }
+  /* 13 Nov: the card's lede says what Purser Cloud is (three short lines on a phone); the card is a little tighter to keep the trust line in view. */
+  .auth p.what { font-size: 14.5px; line-height: 1.45; margin-bottom: 12px; } .card.auth { padding-top: 20px; padding-bottom: 18px; } .auth h1 { margin-bottom: 6px; } }
 /* Try as guest: under the passkey, after a quiet "or". */
 .auth .guest { margin-top: 18px; display: grid; gap: 8px; }
 .auth .guest .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
@@ -1561,6 +1645,56 @@ svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint)
   .rise svg.ring .seg { opacity: 0; transition: opacity .4s ease .1s; }
   .rise.in svg.ring .seg { opacity: 1; }
   @keyframes drawline { to { stroke-dashoffset: 0; } }
+}
+/* Enterprise pass (13 Nov): what Purser Cloud is, the Agents and Tokenisation tabs, Invoices & books. */
+.what-cloud { margin: 0 0 18px; padding: 12px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--sunken); }
+.what-cloud p { margin: 0; font-weight: 600; color: var(--text); }
+.what-cloud .demo-label { margin-top: 4px; font-weight: 500; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.auth p.what { color: var(--text); }
+.agents { display: grid; gap: 16px; margin: 0 0 16px; }
+.card.agent { padding: 20px; }
+.agent .ah { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: start; margin-bottom: 14px; }
+.agent .ah h2 { margin: 0; font-size: 18px; }
+.agent .ah p.sub { margin: 2px 0 0; }
+.agent .av { width: 40px; height: 40px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; color: var(--text); }
+.ast-wrap { text-align: right; }
+.ast { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 999px; font-weight: 650; font-size: 13px; border: 1px solid var(--border); }
+.ast.active { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
+.ast.paused { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
+.ast.revoked { color: var(--bad); background: var(--bad-soft); border-color: transparent; }
+.agrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; padding: 14px 0; border-top: 1px solid var(--border); }
+.agrid h3, .adec h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; font-weight: 650; }
+.agrid p, .agrid ul { margin: 0; }
+.agrid ul.can, .agrid ul.cannot, .agrid ul.pl { list-style: none; padding: 0; display: grid; gap: 6px; }
+.agrid ul.can li, .agrid ul.cannot li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; }
+.agrid ul.can .ic { color: var(--ok); } .agrid ul.cannot .ic { color: var(--bad); }
+.adec { border-top: 1px solid var(--border); padding-top: 14px; }
+.adec ul.feed { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.adec ul.feed li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; }
+.adec .when { color: var(--muted); } .adec small.by { color: var(--muted); }
+.tok { margin: 0 0 16px; }
+.tok .th { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.tok .th h2 { margin: 0; display: flex; align-items: center; gap: 6px; }
+.rlabel { display: inline-block; padding: 3px 10px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-weight: 650; font-size: 12.5px; }
+ol.tsteps { margin: 12px 0; padding-left: 20px; display: grid; gap: 10px; }
+ol.tsteps ul.txs { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 4px; font-size: 14px; }
+ol.tsteps ul.txs li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.tok .ok { color: var(--ok); } .tok .bad { color: var(--bad); }
+.tok code { font-size: 13px; word-break: break-all; }
+.tok ul.viclist { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.tok .links { display: flex; flex-wrap: wrap; gap: 12px; margin: 10px 0 0; }
+a.ext { display: inline-flex; align-items: center; gap: 4px; }
+a.ext .ic svg { width: 13px; height: 13px; }
+h2.section-h { margin: 28px 0 12px; font-size: 20px; }
+.exports { margin-top: 16px; }
+.exports .wrap-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.journal-for table td.r, .journal-for table th.r { white-space: nowrap; }
+a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 760px) {
+  .agrid { grid-template-columns: 1fr; }
+  .agent .ah { grid-template-columns: 40px 1fr; }
+  .ast-wrap { grid-column: 1 / -1; text-align: left; }
+  .adec ul.feed li { grid-template-columns: 1fr; gap: 0; }
 }
 `;
 
