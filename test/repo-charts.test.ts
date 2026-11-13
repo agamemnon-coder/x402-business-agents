@@ -88,3 +88,27 @@ describe("the README's diagrams and media", () => {
     expect(sec).toMatch(/Checked on 13 November 2026, 06:57 UTC: `tools\/list` .* answers 7 read tools/);
   });
 });
+
+describe("the README against the site (jury findings, 13 Nov)", () => {
+  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+
+  it("calls the guest console public, names purser-try and the connector, and has the 2-minute block", () => {
+    // The public guest console on purser-try is said; the product's own console deployment stays private, and is said so.
+    expect(readme).toMatch(/Try as guest\* opens a demo company read-only/);
+    expect(readme).toMatch(/product's own console deployment is another matter: that hosted preview exists but is private/);
+    expect(readme).toContain("https://purser-try.max-31b.workers.dev/");
+    expect(readme).toContain("https://purser-try.max-31b.workers.dev/mcp");
+    const block = readme.slice(readme.indexOf("## Try it in 2 minutes"), readme.indexOf("\n## ", readme.indexOf("## Try it in 2 minutes") + 5));
+    for (const s of ["https://kit11.max-31b.workers.dev/try", "Try as guest", "purser-demo-read-only", "cannot approve or pay"]) expect({ s, has: block.includes(s) }).toEqual({ s, has: true });
+  });
+
+  it("quotes the same connected-account payout as /runs: the end-to-end run's PAID payout, amount and fee from its record", () => {
+    const runs = readFileSync(join(ROOT, "src/redesign/runs.ts"), "utf8");
+    const id = /label: "Payout PAID", value: "([0-9a-f-]{36})"/.exec(runs)![1]!;
+    const record = readFileSync(join(ROOT, "docs/runs/2026-11-10-platform-e2e.md"), "utf8");
+    const row = record.split("\n").find((l) => l.includes(id))!;
+    const [amount, fee] = [/EUR ([\d.]+) \|/.exec(row)![1]!, /\| EUR ([\d.]+), SETTLED/.exec(row)![1]!];
+    expect(readme).toContain(`EUR ${amount} PAID on a test company's behalf (\`${id}\``);
+    expect(readme).toContain(`Purser's EUR ${fee} fee`);
+  });
+});
