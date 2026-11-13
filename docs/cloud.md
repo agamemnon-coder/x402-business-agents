@@ -105,6 +105,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
+| `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
+| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
+| `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |

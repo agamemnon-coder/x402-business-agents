@@ -37,6 +37,7 @@ import { noteRequest } from "./try/metrics.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
+import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { requireStepUp, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
@@ -446,6 +447,10 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
+  { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
+  { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
+  { method: "GET", path: "/v1/books/bookings", summary: "For each supplier invoice, the ledger entries that book it (its accrual and its payment).", need: "read", run: async (c) => json(200, { bookings: await bookingsOf(db(c)) }) },
+  { method: "GET", path: "/v1/books/invoices/{id}/journal", summary: "The ledger entries that book one supplier invoice, with their lines.", need: "read", run: async (c) => { const items = await journalOf(db(c), c.params[0]!); return items ? json(200, { items }) : err(404, "no such invoice"); } },
   { method: "GET", path: "/v1/dashboard", summary: "The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words.", need: "read", run: async (c) => json(200, await dashboard(db(c), isDemoTenant(c.caller!.tenantId) ? { asOf: c.now.toISOString() } : {})) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
 

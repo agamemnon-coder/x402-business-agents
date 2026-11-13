@@ -187,9 +187,10 @@ describe("the console of a cloud with an engine", () => {
     expect(js).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
     expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
     expect(js).toContain("PDF_MAX_BYTES");
-    // A page of its own, reached from links: the menu keeps its five items.
+    // A page of its own, reached from links: the menu keeps its six items (13 Nov: Agents and Tokenisation joined it,
+    // and Invoices became part of Invoices & books).
     expect(js).toContain("'/archive':archiveView");
-    expect(html.match(/data-tab="/g)).toHaveLength(5);
+    expect(html.match(/data-tab="/g)).toHaveLength(6);
     expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
     expect(js).toContain("a.href='#/archive'");
   });
@@ -255,7 +256,7 @@ describe("the console's language, mark and first run", () => {
     expect(html).toContain('<html lang="en" data-theme="light">');
     // 12 Nov: the console's own pages moved to a bar under the site's header (cloud/src/siteHeader.ts): nav.apptabs.
     const nav = /<nav class="apptabs"[^]*?<\/nav>/.exec(markup)![0];
-    for (const w of ["Overview", "Invoices", "Transactions", "Books", "Settings"]) expect(nav).toContain(`>${w}<`);
+    for (const w of ["Overview", "Agents", "Invoices & books", "Transactions", "Tokenisation", "Settings"]) expect(nav).toContain(`>${w}<`);
     expect(nav).not.toMatch(/Overzicht|Facturen|Boekhouding|Instellingen/);
     expect(markup).toContain(MESSAGES.en["cs.foot"]);
   });
