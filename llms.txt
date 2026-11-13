@@ -4,7 +4,7 @@
 
 Summary: within limits the CFO sets, the agents pay through Airwallex and Metal; above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Metal refusing over-limit purchases, a scripted Visa Intelligent Commerce (VIC) purchase via Airwallex's Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
 
-Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month. Task cards without Face ID: up to EUR 900 a day. Everything above waits for the CFO. Computed from the policy by exposureOf (src/policy/exposure.ts); the parts are in the README.
+Worst case, set by policy: EUR 28,200 on cards and task cards + USD 20 on chain a month. Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for the CFO. Computed from the policy by exposureOf (src/policy/exposure.ts); the parts are in the README.
 
 Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (IN_APPROVAL handled, src/airwallex/approvals.ts). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID, settlement simulated (docs/runs/2026-11-12-airwallex-two-locks-paid.md).
 

@@ -29,7 +29,7 @@ const SOURCES: Record<string, string> = {
   pitch: read("docs/submission/pitch.md"),
   qa: read("docs/submission/qa.md"),
   "demo-day": read("docs/submission/demo-day.md"),
-  spiekkaart: read("docs/internal/spiekkaart-demo.html"),
+  spiekkaart: read("docs/archive/internal/spiekkaart-demo.html"),
   deck: DECK,
   form: read("docs/submission/README.md"),
   // The long form text the short Description replaced (5 Nov), linked from it: its figures are checked as before.
@@ -211,7 +211,7 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
     // The README's "What is real" (docs/in-depth.md since 12 Nov) says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
     expect(flat("docs/in-depth.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
-    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
+    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/archive/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
@@ -363,7 +363,7 @@ describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
 
 describe("the cheat sheet", () => {
   it("is one A4 page, printed from its HTML", () => {
-    const pdf = new URL("../docs/internal/spiekkaart-demo.pdf", import.meta.url);
+    const pdf = new URL("../docs/archive/internal/spiekkaart-demo.pdf", import.meta.url);
     expect(existsSync(pdf)).toBe(true);
     expect((readFileSync(pdf).toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length).toBe(1);
   });

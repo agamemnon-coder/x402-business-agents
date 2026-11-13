@@ -2,7 +2,7 @@
 
 Purser keeps its own books and can also send them to a company's ERP: suppliers, purchase invoices (with the PDF),
 payments and journal entries. It can read back the chart of accounts, the suppliers and whether an invoice is paid.
-No CSV is needed. Design: [docs/superpowers/specs/2026-11-08-erp-connectors-design.md](superpowers/specs/2026-11-08-erp-connectors-design.md).
+No CSV is needed. Design: [docs/archive/superpowers/specs/2026-11-08-erp-connectors-design.md](archive/superpowers/specs/2026-11-08-erp-connectors-design.md).
 
 **Status: built and tested against the vendors' documented request and answer shapes. Moneybird ran live once, in a
 sandbox administration with test data, on 12 November 2026: sent, corrected, read back and reconciled to the cent

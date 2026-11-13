@@ -2,7 +2,7 @@
 
 > **Status, 12 November 2026:** this is the design note of 8 November, kept as written. Where it says "on a branch" or
 > "nothing is deployed", it describes that day. The code is now in this repository, and a hosted preview exists but is
-> private (behind an access key), with no customer: [after-the-kit.md](../../after-the-kit.md).
+> private (behind an access key), with no customer: [after-the-kit.md](../../../after-the-kit.md).
 
 Max, 8 November 2026: "instead of CSV to Excel, everything stored by itself in a nice, clear place, as PDF, like a
 Drive; or even tidier." The vault is that place: a fixed folder tree, the same on a laptop, in the cloud (R2, later)

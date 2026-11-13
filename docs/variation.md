@@ -72,7 +72,7 @@ report [runs/2026-11-02-night-batch.md](runs/2026-11-02-night-batch.md), section
    with `KIT11_AGENTS=on KIT11_AUTONOMY=on` (as in `docs/runs/2026-11-01-autonomy-dry-96-97.md`), never live-1, the
    reserve worktree, the hosted relay or Thursday's world (Max, 2 November).
 2. Test money: about 280 *USDZ in all for 10 worlds, from recycling finished dry worlds and the faucet, every
-   transfer in the recycling log (`docs/runs/testgeld-recycling.md`).
+   transfer in the recycling log (`docs/archive/runs/testgeld-recycling.md`).
 3. The world's parameters from the same generator: `generateWorld(seed)` mapped onto `npm run world -- price-rise
    <after> | ridgeline-price <price> | dispute | invoice | packwise-pro | money-in | deposit [short]`. Not all of a
    simulated world maps today: the dispute's wrong sales come from the supplier's correction fixture, the invoice is

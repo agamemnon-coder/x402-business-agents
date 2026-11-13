@@ -1,4 +1,4 @@
-// Filing into the vault (docs/superpowers/specs/2026-11-08-vault-design.md). Plans every document the books hold, then
+// Filing into the vault (docs/archive/superpowers/specs/2026-11-08-vault-design.md). Plans every document the books hold, then
 // writes what is new: the original invoices byte for byte, payment receipts, month reports and VAT overviews for closed
 // periods, the year report after the year close, and the suppliers list. Each document has a key and the hash of the
 // data it was made from; the same data is never filed twice, and changed data is filed as a correction beside the

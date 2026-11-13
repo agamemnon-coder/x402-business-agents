@@ -875,6 +875,12 @@ export function vic3Markdown(r: Vic3Record): string {
     "",
     `## ${r.run === "vic-4" ? "Credential misuse (F1, F2): Purser's credential check" : "Negative test (F1, F2)"}`,
     "",
+    // vic-4 onwards: the misuse is refused by Purser's own credential check (src/airi/credentialGuard.ts) before any
+    // Airwallex or Airi call, so there is no answer from either to show: the record's refusal code and reason instead.
+    ...r.purchases.filter((p) => !p.negative_test && /^F\d/.test(p.step) && p.outcome && typeof (p.outcome as { code?: unknown }).code === "string").map((p) => {
+      const o = p.outcome as { code: string; reason?: string; by?: string };
+      return `- ${tag}**${p.step}**: ${p.what}. Mandate \`${p.mandate_id ?? "—"}\`, ${p.request ? `${p.request.amount} ${p.request.currency}` : "—"}. Refused \`${o.code}\`${o.by ? ` by ${o.by}` : ""}${o.reason ? `: ${o.reason}` : ""}. Calls: Anthropic ${p.calls.anthropic}, Airwallex ${p.calls.airwallex}, airi-cli ${p.calls.airi}.`;
+    }),
     ...r.purchases.filter((p) => p.negative_test).flatMap((p) => [`- ${tag}**${p.step}**: ${p.negative_test!.label}. ${dry ? "The stand-in checkout answered" : "The Airwallex sandbox answered"} \`${JSON.stringify(p.negative_test!.airwallex)}\`; ${dry ? "the stand-in for Airi" : "Airi"}: \`${JSON.stringify(p.negative_test!.airi)}\`. Result: ${p.negative_test!.result}, finding: ${p.negative_test!.finding}.`]),
     "",
     "## Checks",

@@ -7,7 +7,7 @@ import { HANDS_ON_LIVE, HOLDS_SANDBOX_KEY, MONEY_SENTENCE } from "../cloud/src/t
 
 /** A file's text with comment markers and line breaks folded into single spaces. */
 const flat = (path: string) => readFileSync(path, "utf8").replace(/^\s*(\/\/|#|\*)\s?/gm, " ").replace(/\s+/g, " ");
-const SITES = ["docs/cloud.md", "docs/runbook.md", "src/cloudsync/client.ts", "docs/superpowers/specs/2026-11-08-backend-design.md"];
+const SITES = ["docs/cloud.md", "docs/runbook.md", "src/cloudsync/client.ts", "docs/archive/superpowers/specs/2026-11-08-backend-design.md"];
 
 describe("what Purser Cloud does with money", () => {
   it("is said in one sentence everywhere, from one constant", () => {
