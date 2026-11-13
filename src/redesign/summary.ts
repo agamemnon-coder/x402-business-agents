@@ -23,7 +23,7 @@ export function summaryHtml(cards: SummaryCard[], label: string): string {
 
 /** The fold every detail goes into under the summary. */
 export function detailsFold(id: string, summary: string, inner: string): string {
-  return `<details class="deep sumd" id="${esc(id)}"><summary>${esc(summary)}</summary>${inner}</details>`;
+  return `<details class="sumd" id="${esc(id)}"><summary>${esc(summary)}</summary>${inner}</details>`;
 }
 
 export const SUMMARY_CSS = `
@@ -36,5 +36,12 @@ ul.sumc li.ok .sc-ic { background: var(--ok-soft); color: var(--ok); } ul.sumc l
 ul.sumc .sc-f { font-size: 22px; line-height: 1.1; font-weight: 750; font-variant-numeric: tabular-nums; }
 ul.sumc .sc-t { font-size: 15px; line-height: 1.25; }
 ul.sumc small { grid-column: 1 / -1; margin-top: 6px; font-size: 13.5px; line-height: 1.35; color: var(--muted); }
-details.sumd > summary { font-weight: 650; }
+/* The one fold under the cards: a full-width button, so it reads as something to open (jury pass, 13 Nov). */
+details.sumd { margin: 4px 0 18px; border: 0; }
+details.sumd > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 16px; line-height: 1.3; font-weight: 650; letter-spacing: 0; }
+details.sumd > summary::-webkit-details-marker { display: none; }
+details.sumd > summary::after { content: ""; flex: none; width: 8px; height: 8px; margin: -4px 4px 0 0; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(45deg); background: none; border-radius: 0; }
+details.sumd[open] > summary::after { margin-top: 4px; transform: rotate(-135deg); }
+details.sumd > summary:hover, details.sumd > summary:focus-visible { border-color: var(--accent); }
+details.sumd[open] > summary { margin-bottom: 14px; }
 `;

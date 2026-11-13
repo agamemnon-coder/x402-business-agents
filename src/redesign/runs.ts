@@ -24,7 +24,7 @@ import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } fro
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
-import { VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Run, vic3Summary } from "./vic3Run.js";
+import { VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
@@ -191,7 +191,8 @@ export function liveRuns(): RunRow[] {
       key: "vic-3", iso: v3.started_at, date: day(v3.started_at), kind: "sandbox", partners: ["Airwallex", "Visa", "Claude"],
       title: "Airi, third run: the agent chooses the rail; the signed hash read back twice", rails: "Airi wallet, Airwallex sandbox, Claude, test card",
       name: "Claude chooses the Airi rail; the CFO's signed hash read back from Airi and Airwallex", rate: { done: s.paid, of: s.of, what: "purchases paid" },
-      line: `${s.paid} of ${s.of} purchases paid, after the CFO's Face ID; ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. Test card.`,
+      // Jury pass, 13 Nov: as /visa leads, what happened to each purchase, not "1 of 5 paid" (the rest were stopped on purpose).
+      line: `${vic3Lead(v3)}. Test card.`,
       what: `${s.paid} of ${s.of} purchases paid. The rail was chosen by ${s.model ?? "Claude"} from ${s.menu}. ${s.byPurser.map((p) => p.step).join(", ")} refused by Purser with 0 calls. ${vic3Finding(v3)}`,
       checks: `${okOf(v3.checks)}.`, money: "Test card · test money",
       // The paid one only (review 12 Nov): the others (A unpaid, F1 and F2 our planted misuse) stay in the record.
@@ -741,7 +742,7 @@ export function runsPage(all: RunRow[] = liveRuns(), times: RunTimes = runTimes(
   const body = `<main class="wrap runsp">
 <h1>${esc(RUNS_TITLE)}</h1>
 ${summaryHtml(runsSummary(live, partial, rehearsals, times), "The runs in four cards")}
-<details class="deep sumd" id="runs-all"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
+<details class="sumd" id="runs-all"><summary>${esc(`All ${pl(live.length, "live run")}, newest first`)}</summary>
 ${runsStrip(live)}
 <p class="last">Last live run: ${esc(last.date)}. ${pl(live.length, "live run")}, newest first, every id from its own record. Test money only; what was simulated is said on each run.</p>
 ${faceIdToPaid(times)}

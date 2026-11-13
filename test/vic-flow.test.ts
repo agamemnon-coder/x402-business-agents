@@ -35,7 +35,7 @@ describe("the VIC flow on /visa", () => {
     // Since 12 Nov the latest live run (vic-3) leads, above the drawing of the first run (test/vic3-visa.test.ts).
     // Since the jury pass (13 Nov) the four cards lead and the rest is in one fold: inside it, only the story line and the
     // latest run's block come before the drawing.
-    const fold = '<details class="deep sumd" id="visa-details">';
+    const fold = '<details class="sumd" id="visa-details">';
     expect(visa.indexOf(fold)).toBeGreaterThan(visa.indexOf('<ul class="sumc"'));
     const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run">[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
     expect(before).not.toMatch(/<section|class="card|<details/);

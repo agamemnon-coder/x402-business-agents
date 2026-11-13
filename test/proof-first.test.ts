@@ -253,7 +253,7 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   it("has the heading, the four cards and the details fold's line above \"What Purser guarantees\": no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> <details class="deep sumd" id="details"><summary>[^<]+<\/summary>$/);
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> <details class="sumd" id="details"><summary>[^<]+<\/summary>$/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
 

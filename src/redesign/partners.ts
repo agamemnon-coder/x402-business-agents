@@ -335,7 +335,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
   ${summaryHtml(visaSummary(vic3), "The latest live run in four cards")}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
-  <details class="deep sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
+  <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
   ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>` : ""}
   ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at), summarised: true })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}

@@ -33,7 +33,7 @@ describe("What Purser guarantees", () => {
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<ul class="sumc"[\s\S]*<\/ul>\s*<details class="deep sumd" id="details"><summary>[^<]+<\/summary>$/);
+    expect(between).toMatch(/^<ul class="sumc"[\s\S]*<\/ul>\s*<details class="sumd" id="details"><summary>[^<]+<\/summary>$/);
   });
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {
