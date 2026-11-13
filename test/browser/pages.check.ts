@@ -672,7 +672,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 385 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 480 : 430) /* +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -707,9 +707,24 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // The shared "Built on" strip aside: each of its figures names its own run (jury, 13 Nov), the main run's among them.
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
-      // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
+      // /metal (owner's redesign, 13 Nov) opens on its own picture (.mhero), not the shared flow; its four mandates as
+      // cards, the table of them in a fold.
       if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
       if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
+      if (path === "/metal") {
+        // The owner's redesign (13 Nov): the picture on the first screen, a green and a red path; the charts (a bar per
+        // mandate, the stacked payments, the refusal moment); four mandate cards, each with its bar; the table folded
+        // behind "Details: every mandate"; the replace in three steps.
+        const m = await page.evaluate(`(() => {
+          const hero = document.querySelector(".mhero"), t = document.querySelector("#mandates");
+          return { heroTop: hero ? Math.round(hero.getBoundingClientRect().top + window.scrollY) : -1, paths: [...document.querySelectorAll(".mhero .mpath")].map((p) => p.className),
+            bars: document.querySelectorAll(".mchart svg.bar").length, stack: document.querySelectorAll(".mchart svg.stack rect").length, moment: !!document.querySelector(".mmoment"),
+            cards: [...document.querySelectorAll(".mcards > li")].filter((li) => li.querySelector("svg.bar")).length, folded: !!t && t.tagName === "DETAILS" && !t.open && !!t.querySelector("table.mtab") && /^Details: every mandate/.test(t.querySelector("summary").textContent),
+            steps: document.querySelectorAll(".mrep ol.msteps > li").length, styled: document.querySelectorAll("main [style]").length };
+        })()`) as { heroTop: number; paths: string[]; bars: number; stack: number; moment: boolean; cards: number; folded: boolean; steps: number; styled: number };
+        if (!(m.heroTop >= 0 && m.heroTop < h) || m.paths.join("|") !== "mpath ok|mpath bad") fail(`/metal ${tag}: the picture is not on the first screen with a paid and a refused path (${JSON.stringify(m)})`);
+        if (m.bars !== 4 || m.stack !== 4 || !m.moment || m.cards !== 4 || !m.folded || m.steps !== 3 || m.styled) fail(`/metal ${tag}: not four budget bars, four payment kinds, the refusal moment, four mandate cards with bars, the table folded and three replace steps, without inline style (${JSON.stringify(m)})`);
+      }
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
         const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
@@ -929,7 +944,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
       // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
-      if (words > 380 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 380 plus the frame`);
+      if (words > 480 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 480 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
