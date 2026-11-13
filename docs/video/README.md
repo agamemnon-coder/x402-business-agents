@@ -68,6 +68,15 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
   1,261 in all.
 - **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, the effects on their own bus,
   two-pass loudnorm to -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.
+- **Cinematic pass (Max: "really go all in with the visuals and animations"):** depth on every shot (a perspective grid
+  floor, the scene, foreground bokeh, each drifting at its own speed, and a slow 3D camera turn); bloom on the purple,
+  teal and red accents; a lens-flare glint on REFUSED, SIGNED, PAID, REFUSED ON CHAIN, 0 UNSAFE and the address;
+  headlines split per word, each rising out of its own mask on a stagger; cuts inside the longer scenes (`CUTS` in
+  `promo.ts`: a new framing and a whoosh), so no shot after the opening runs past 3 s apart from the calm beat on "Your
+  CFO signs the exceptions"; zoom-through exits; a 3–4 frame shake and a chromatic split on every stamp; a motion trail
+  on the card swipe; sparks where chain blocks snap; the anchor's blocks stream hex and lock to the head's characters;
+  the live pages on laptop and phone frames with a moving reflection; a riser into the mark and a sub-drop on the end
+  card.
 - **Self-critique pass:** `npm run promo -- sheet [--vertical]` draws the first 10 s every 0.5 s and the film every
   3 s. On v2's first sheets: the first frame was empty, an old PAID stamp showed before the refusal, a count-up rested
   on a figure that is not in the record, the payoff's phone covered its line, and light screens hid the vertical

@@ -52,7 +52,7 @@ describe("the promo film", () => {
   });
 
   it("synthesises its effects in code: every kind is finite and audible", () => {
-    for (const kind of ["whoosh", "impact", "stamp", "tick", "swipe", "boom"] as const) {
+    for (const kind of ["whoosh", "impact", "stamp", "tick", "swipe", "boom", "riser", "subdrop"] as const) {
       const [l] = effect(kind);
       const peak = l.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
       expect(Number.isFinite(peak)).toBe(true);

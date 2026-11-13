@@ -14,7 +14,7 @@ function noise(seed: number) {
 
 /** One effect as [left, right] samples. */
 export function effect(kind: SfxKind, seed = 1): [Float32Array, Float32Array] {
-  const len = { whoosh: 0.55, impact: 1.6, stamp: 0.4, tick: 0.07, swipe: 0.4, boom: 2.6 }[kind];
+  const len = { whoosh: 0.55, impact: 1.6, stamp: 0.4, tick: 0.07, swipe: 0.4, boom: 2.6, riser: 1.5, subdrop: 3.2 }[kind];
   const n = Math.round(len * RATE), L = new Float32Array(n), R = new Float32Array(n), rnd = noise(seed * 7919 + kind.length);
   let lp = 0, lp2 = 0, ph = 0, ph2 = 0;
   for (let i = 0; i < n; i++) {
@@ -28,6 +28,19 @@ export function effect(kind: SfxKind, seed = 1): [Float32Array, Float32Array] {
       const v = (lp - 0.6 * lp2) * env * (kind === "swipe" ? 2.2 : 3.2);
       const pan = kind === "swipe" ? 0.5 : u;
       l = v * Math.cos(pan * Math.PI / 2); r = v * Math.sin(pan * Math.PI / 2);
+    } else if (kind === "riser") {
+      // Noise opening up and a sine gliding up, both growing into the hit.
+      lp += (0.02 + 0.5 * u * u) * (rnd() - lp);
+      ph += (2 * Math.PI * (120 + 900 * u * u)) / RATE;
+      const env = u * u * (1 - Math.max(0, (u - 0.97) / 0.03));
+      const v = (lp * 1.6 + Math.sin(ph) * 0.25) * env;
+      l = v * (1 - 0.3 * u); r = v * (0.7 + 0.3 * u);
+    } else if (kind === "subdrop") {
+      // A sub-bass drop: a sine falling from 90 Hz to 30 Hz, long and soft.
+      ph += (2 * Math.PI * (30 + 60 * Math.exp(-t / 0.35))) / RATE;
+      lp += 0.3 * (rnd() - lp);
+      const v = Math.sin(ph) * Math.exp(-t / 1.1) * Math.min(1, t / 0.004) + lp * Math.exp(-t / 0.03) * 1.2;
+      l = r = v;
     } else if (kind === "impact" || kind === "boom") {
       // A falling sine for the body, a noise burst for the hit.
       const f = kind === "boom" ? 48 * (1 - 0.35 * Math.min(1, t / 0.8)) : 70 * (1 - 0.45 * Math.min(1, t / 0.35));

@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 import { measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
-import { FPS, LABELS, LINES, MUSIC_FROM, ROOT, SCENES, SFX, TOTAL, TRY_URL, VOICE, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../film/promo.js";
+import { CUTS, FPS, LABELS, LINES, MUSIC_FROM, ROOT, SCENES, SFX, TOTAL, TRY_URL, VOICE, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../film/promo.js";
 import { sfxTrack, wav } from "../film/sfx.js";
 
 const OUT = resolve(ROOT, "out/promo");
@@ -128,7 +128,7 @@ async function framePage(browser: import("playwright").Browser, layout: "h" | "v
   if (!frames.try || !frames.phone || !frames.home || !["cloud.png", "cloud-agents.png", "cloud-books.png"].every((f) => existsSync(resolve(LIVE, f))))
     throw new Error("promo: run `npm run promo -- capture` first");
   const page = await (await browser.newContext({ viewport: layout === "v" ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }, deviceScaleFactor: 1 })).newPage();
-  const boot = { data: promoData(), labels: LABELS, lines: LINES, scenes: SCENES, total: TOTAL, url: TRY_URL, walkthrough: WALKTHROUGH_URL, live: `file://${LIVE}`, frames, fps: FPS, layout };
+  const boot = { data: promoData(), labels: LABELS, lines: LINES, scenes: SCENES, cuts: CUTS, total: TOTAL, url: TRY_URL, walkthrough: WALKTHROUGH_URL, live: `file://${LIVE}`, frames, fps: FPS, layout };
   await page.addInitScript((b) => { (window as unknown as { __boot: unknown }).__boot = b; }, boot);
   page.on("pageerror", (e) => { throw e; });
   await page.goto(`file://${resolve(ROOT, "src/film/promo.html")}`);

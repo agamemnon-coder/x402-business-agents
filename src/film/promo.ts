@@ -67,8 +67,14 @@ export const SCENES: readonly Scene[] = [
   { id: "end", from: 61.0, to: TOTAL },
 ];
 
+/**
+ * The cuts inside a scene: at each, the camera jumps to a new framing (a hard cut with a whoosh), so no shot after the
+ * opening runs longer than 3 s, apart from the one calm beat on "Your CFO signs the exceptions".
+ */
+export const CUTS: readonly number[] = [10.0, 13.5, 25.4, 29.5, 33.3, 35.3, 42.3, 46.3, 48.3];
+
 /** The sound effects, synthesised by src/film/sfx.ts: every hit on screen has one. */
-export type SfxKind = "whoosh" | "impact" | "stamp" | "tick" | "swipe" | "boom";
+export type SfxKind = "whoosh" | "impact" | "stamp" | "tick" | "swipe" | "boom" | "riser" | "subdrop";
 export const SFX: readonly { at: number; kind: SfxKind; gain?: number }[] = [
   { at: 0.15, kind: "whoosh" }, { at: 1.05, kind: "tick" }, { at: 1.25, kind: "tick" }, { at: 1.45, kind: "tick" }, { at: 2.0, kind: "impact" },
   { at: 5.2, kind: "whoosh", gain: 0.6 }, { at: 5.4, kind: "boom" },
@@ -80,7 +86,9 @@ export const SFX: readonly { at: number; kind: SfxKind; gain?: number }[] = [
   { at: 37.1, kind: "whoosh" }, { at: 37.5, kind: "tick" }, { at: 37.8, kind: "tick" }, { at: 38.1, kind: "tick" }, { at: 38.4, kind: "tick" }, { at: 39.0, kind: "boom", gain: 0.7 },
   { at: 40.1, kind: "whoosh" }, { at: 42.5, kind: "stamp" }, { at: 44.2, kind: "whoosh" }, { at: 48.6, kind: "stamp" },
   ...[0, 1, 2, 3, 4, 5, 6].map((i) => ({ at: 50.4 + i * 0.6, kind: "stamp" as const, gain: 0.55 })), { at: 54.6, kind: "impact" },
-  { at: 55.4, kind: "whoosh", gain: 0.7 }, { at: 61.0, kind: "boom" },
+  { at: 55.4, kind: "whoosh", gain: 0.7 }, { at: 61.0, kind: "subdrop" },
+  { at: 3.9, kind: "riser", gain: 0.8 },
+  ...CUTS.map((at) => ({ at: at - 0.05, kind: "whoosh" as const, gain: 0.55 })),
 ];
 
 /** A figure on screen: the text shown, the record it comes from, and the string that must be found there. */

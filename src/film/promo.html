@@ -53,11 +53,36 @@
   body.v #money { right: 50%; transform: translateX(50%); top: 70px; font-size: 20px; }
   .flip { display: inline-block; transform-origin: 50% 50%; backface-visibility: hidden; }
   .split { display: flex; align-items: center; gap: 80px; }
+  /* Depth: a perspective grid floor behind, soft bokeh in front; bloom on the accents in the dark scenes. */
+  #grid { position: absolute; left: -50%; right: -50%; top: 48%; height: 120%; transform-origin: 50% 0; pointer-events: none;
+    background-image: linear-gradient(rgba(124,114,255,0.22) 2px, transparent 2px), linear-gradient(90deg, rgba(124,114,255,0.22) 2px, transparent 2px);
+    background-size: 120px 120px; -webkit-mask-image: linear-gradient(transparent, #000 25%, #000 60%, transparent); mask-image: linear-gradient(transparent, #000 25%, #000 60%, transparent); }
+  #bokeh { position: absolute; inset: 0; pointer-events: none; }
+  #bokeh i { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(165,159,255,0.35), transparent 70%); }
+  body:not(.light) .acc { text-shadow: 0 0 28px rgba(124,114,255,0.65), 0 0 70px rgba(124,114,255,0.35); }
+  body:not(.light) .green { text-shadow: 0 0 28px rgba(52,227,160,0.6), 0 0 70px rgba(52,227,160,0.3); }
+  body:not(.light) .stamp.red, body:not(.light) .red { text-shadow: 0 0 30px rgba(255,64,88,0.55); }
+  .stamp.red { box-shadow: 0 0 60px rgba(255,64,88,0.45), inset 0 0 30px rgba(255,64,88,0.2); }
+  .stamp.green { box-shadow: 0 0 60px rgba(52,227,160,0.45), inset 0 0 30px rgba(52,227,160,0.2); }
+  /* Kinetic type: each word in a mask, revealed from below. */
+  .kw { display: inline-block; overflow: hidden; vertical-align: bottom; padding: 0.04em 0.02em 0.06em; margin: -0.04em -0.02em -0.06em; }
+  .kw > i { display: inline-block; font-style: normal; will-change: transform; }
+  /* A lens-flare glint for the big moments. */
+  #glint { position: absolute; width: 1400px; height: 1400px; margin: -700px 0 0 -700px; pointer-events: none; mix-blend-mode: screen; opacity: 0;
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0, rgba(200,195,255,0.45) 2.5%, rgba(124,114,255,0.12) 9%, transparent 22%),
+      linear-gradient(90deg, transparent 10%, rgba(200,195,255,0.5) 49.6%, #fff 50%, rgba(200,195,255,0.5) 50.4%, transparent 90%) 50% 50% / 100% 6px no-repeat,
+      linear-gradient(0deg, transparent 35%, rgba(200,195,255,0.4) 49.7%, rgba(255,255,255,0.9) 50%, rgba(200,195,255,0.4) 50.3%, transparent 65%) 50% 50% / 3px 100% no-repeat; }
+  /* Device frames: a laptop, with a reflection that slides across; the phone has one too. */
+  .laptop { position: relative; border-radius: 24px; background: #0e0f16; padding: 16px; box-shadow: 0 60px 140px rgba(11,18,32,0.5), 0 0 0 2px #2a2c38; }
+  .laptop .lscr { border-radius: 10px; overflow: hidden; position: relative; background: #fff; }
+  .laptop .lscr img { display: block; width: 100%; }
+  .laptop::after { content: ""; position: absolute; left: -6%; right: -6%; bottom: -30px; height: 30px; border-radius: 0 0 24px 24px; background: linear-gradient(#c9ccd8, #8d91a3); box-shadow: 0 30px 60px rgba(11,18,32,0.35); }
+  .sheen { position: absolute; inset: -30%; pointer-events: none; background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.22) 48%, rgba(255,255,255,0.05) 52%, transparent 60%); z-index: 3; }
   body.v .split { flex-direction: column; gap: 50px; }
 </style>
 </head>
 <body>
-<div id="stage"><div id="bg"></div><div id="world">
+<div id="stage"><div id="bg"></div><div id="grid"></div><div id="world">
 
   <!-- 1. Cold open: a live refusal. -->
   <section id="s-cold"><div class="cam" id="c-cold">
@@ -80,16 +105,16 @@
   <section id="s-propose"><div class="cam" id="c-propose"><div class="split">
     <div class="col" style="gap:20px">
       <div class="kick" style="color:#5b6180">Live page · kit11</div>
-      <div class="big dark" id="prT1" style="font-size:150px">Agents<br><span style="color:#5b4ef0">propose.</span></div>
+      <div class="big dark" id="prT1" data-kt="1" style="font-size:150px">Agents<br><span style="color:#5b4ef0">propose.</span></div>
       <div class="row" id="prSteps" style="gap:14px"></div>
     </div>
-    <div class="shot" id="prShot" style="width:760px"><img id="prImg"></div>
+    <div class="laptop" id="prShot" style="width:780px"><div class="lscr"><img id="prImg"><div class="sheen" id="prSheen"></div></div></div>
   </div></div></section>
 
   <!-- 4. The CFO signs: the live /try page on a phone. -->
   <section id="s-phone"><div class="cam" id="c-phone"><div class="split" style="gap:110px">
-    <div class="col" id="phL" style="gap:14px;text-align:right;align-items:flex-end"><div class="big dark" style="font-size:104px">The CFO<br>signs the<br><span style="color:#5b4ef0">exact terms.</span></div></div>
-    <div class="phone" id="phone"><div class="notch"></div><div class="scr" style="width:400px;height:866px"><img id="phImg" style="width:400px;transform-origin:50% 14%;transform:scale(1.12)"></div></div>
+    <div class="col" id="phL" style="gap:14px;text-align:right;align-items:flex-end"><div class="big dark" id="phT" data-kt="1" style="font-size:104px">The CFO<br>signs the<br><span style="color:#5b4ef0">exact terms.</span></div></div>
+    <div class="phone" id="phone"><div class="notch"></div><div class="scr" style="width:400px;height:866px"><div class="sheen" id="phSheen"></div><img id="phImg" style="width:400px;transform-origin:50% 14%;transform:scale(1.12)"></div></div>
     <div class="col" id="phR" style="gap:22px">
       <span class="chip light" id="phC1"><span class="dot" style="color:#5b4ef0"></span>Face ID</span>
       <span class="chip light" id="phC2"><span class="dot" style="color:#5b4ef0"></span>Passkey</span>
@@ -99,31 +124,31 @@
 
   <!-- 5. The rails: Purser Cloud's Agents page. -->
   <section id="s-agents"><div class="cam" id="c-agents">
-    <div class="shot ab" id="agShot" style="width:1500px;height:1700px"><img id="agImg"></div>
+    <div class="laptop ab" id="agShot" style="position:absolute;width:1500px"><div class="lscr" style="height:1000px"><img id="agImg"><div class="sheen" id="agSheen"></div></div></div>
     <div class="ab" id="agShade" style="inset:0;background:linear-gradient(90deg,rgba(242,243,248,0.97) 0%,rgba(242,243,248,0.9) 38%,rgba(242,243,248,0) 70%)"></div>
     <div class="col ab" id="agText" style="left:110px;gap:26px">
-      <div class="big dark" id="agT1" style="font-size:118px">The rails<br><span style="color:#5b4ef0">enforce it</span><br>again.</div>
+      <div class="big dark" id="agT1" data-kt="1" style="font-size:118px">The rails<br><span style="color:#5b4ef0">enforce it</span><br>again.</div>
       <div class="col" id="agChips" style="gap:14px;align-items:flex-start"><span class="chip light">Card limits</span><span class="chip light">Payout approvals</span><span class="chip light">On-chain mandates</span></div>
     </div>
   </div></section>
 
   <!-- 6. Two locks. -->
   <section id="s-locks"><div class="cam" id="c-locks">
-    <div class="shot ab" id="lkShot" style="width:1500px;height:1200px;filter:blur(6px)"><img id="lkImg"></div>
+    <div class="shot ab" id="lkShot" style="display:none"><img id="lkImg"></div>
     <div class="ab" id="lkDark" style="inset:0;background:#04050a"></div>
     <div class="col center" style="gap:56px;position:relative">
       <div class="row" style="gap:100px">
         <div class="col center" id="lk1"><svg width="250" height="250" viewBox="0 0 240 240"><circle cx="120" cy="120" r="104" fill="none" stroke="rgba(124,114,255,0.18)" stroke-width="10"/><circle id="lkR1" cx="120" cy="120" r="104" fill="none" stroke="#7c72ff" stroke-width="10" stroke-linecap="round" transform="rotate(-90 120 120)" pathLength="1" stroke-dasharray="1" style="filter:drop-shadow(0 0 14px #7c72ff)"/><g transform="translate(84 76)" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"><rect x="0" y="36" width="72" height="56" rx="10"/><path id="lkS1" d="M14 36 V22 a22 22 0 0 1 44 0 V36"/></g></svg><div class="kick" id="lkL1">Purser checks</div></div>
         <div class="col center" id="lk2"><svg width="250" height="250" viewBox="0 0 240 240"><circle cx="120" cy="120" r="104" fill="none" stroke="rgba(52,227,160,0.18)" stroke-width="10"/><circle id="lkR2" cx="120" cy="120" r="104" fill="none" stroke="#34e3a0" stroke-width="10" stroke-linecap="round" transform="rotate(-90 120 120)" pathLength="1" stroke-dasharray="1" style="filter:drop-shadow(0 0 14px #34e3a0)"/><g transform="translate(84 76)" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"><rect x="0" y="36" width="72" height="56" rx="10"/><path id="lkS2" d="M14 36 V22 a22 22 0 0 1 44 0 V36"/></g></svg><div class="kick" id="lkL2">The rail checks</div></div>
       </div>
-      <div class="big" id="lkT" style="font-size:118px">Two locks. <span class="acc">One signature.</span></div>
+      <div class="big" id="lkT" data-kt="1" style="font-size:118px">Two locks. <span class="acc">One signature.</span></div>
     </div>
   </div></section>
 
   <!-- 7. Don't take our word for it: a whip through the records' hashes. -->
   <section id="s-word"><div class="cam" id="c-word">
     <div id="wdHash" class="mono ab" style="inset:-10% -50%;font-size:34px;line-height:1.55;color:rgba(165,159,255,0.2);white-space:pre"></div>
-    <div class="col center" style="position:relative"><div class="big" id="wdT1" style="font-size:156px">Don't take</div><div class="big" id="wdT2" style="font-size:156px">our word <span class="acc">for it.</span></div></div>
+    <div class="col center" style="position:relative"><div class="big" id="wdT1" data-kt="1" style="font-size:156px">Don't take</div><div class="big" id="wdT2" data-kt="1" style="font-size:156px">our word <span class="acc">for it.</span></div></div>
   </div></section>
 
   <!-- 8. Airwallex: the card limit. -->
@@ -131,6 +156,7 @@
     <div class="kick" id="cdKick"></div>
     <div style="position:relative;width:1100px;height:420px">
       <div class="ab" id="cdSlot" style="left:0;right:0;top:206px;height:8px;border-radius:4px;background:linear-gradient(90deg,transparent,#7c72ff,transparent);box-shadow:0 0 30px #7c72ff"></div>
+      <div class="ab cdGhost" style="left:250px;top:0;width:600px;height:380px;border-radius:32px;background:linear-gradient(135deg,#2a2660,#0d0e1a);opacity:0"></div><div class="ab cdGhost" style="left:250px;top:0;width:600px;height:380px;border-radius:32px;background:linear-gradient(135deg,#2a2660,#0d0e1a);opacity:0"></div><div class="ab cdGhost" style="left:250px;top:0;width:600px;height:380px;border-radius:32px;background:linear-gradient(135deg,#2a2660,#0d0e1a);opacity:0"></div>
       <div class="ab" id="cdCard" style="left:250px;top:0;width:600px;height:380px;border-radius:32px;padding:40px;background:linear-gradient(135deg,#2a2660,#0d0e1a 60%,#1e1a48);border:1px solid rgba(255,255,255,0.16);box-shadow:0 40px 120px rgba(0,0,0,0.7),0 0 120px rgba(124,114,255,0.3);overflow:hidden">
         <div class="kick" style="color:#d6d8e8">Sourcing agent · its own card</div>
         <div style="width:80px;height:58px;border-radius:12px;background:linear-gradient(135deg,#e8d9a8,#a8925a);margin-top:36px"></div>
@@ -175,7 +201,7 @@
   <!-- 12. Zero-trust attacks: a racing counter. -->
   <section id="s-attacks"><div class="cam" id="c-attacks"><div class="col center" style="gap:6px">
     <div class="row" id="atDigits" style="gap:10px;height:420px;overflow:hidden;align-items:flex-start"></div>
-    <div class="mid" id="atL" style="font-size:66px">Zero-trust attacks</div>
+    <div class="mid" id="atL" data-kt="1" style="font-size:66px">Zero-trust attacks</div>
     <div class="row" id="atMoved" style="gap:28px;margin-top:40px"><span class="mid" style="font-size:66px;color:#c9cbe0">Money moved</span><span class="big green" id="atMovedN" style="font-size:150px"></span></div>
   </div></div></section>
 
@@ -185,7 +211,7 @@
     <div class="col center" style="gap:8px;position:relative">
       <div class="kick" id="hoK">A hostile model</div>
       <div class="big" id="hoN" style="font-size:360px;font-variant-numeric:tabular-nums;letter-spacing:-0.06em"></div>
-      <div class="mid" id="hoL" style="font-size:66px">Hostile tool calls</div>
+      <div class="mid" id="hoL" data-kt="1" style="font-size:66px">Hostile tool calls</div>
       <div class="mid" id="hoRef" style="font-size:46px;color:#c9cbe0;margin-top:20px;font-variant-numeric:tabular-nums"></div>
       <div class="row" id="hoZero" style="gap:26px;margin-top:20px"><span class="big green" id="hoZeroN" style="font-size:170px"></span><span class="big" style="font-size:120px">unsafe.</span></div>
     </div>
@@ -199,11 +225,11 @@
     <div class="ab" id="pfA" style="overflow:hidden;background:#0a0b16">
       <div class="ab" id="pfAimgs" style="inset:0"><img id="pfImg1" class="ab" style="width:900px;left:6%;top:0;border-radius:18px;opacity:0.9"><img id="pfImg2" class="ab" style="width:620px;right:4%;top:0;border-radius:18px;opacity:0.85"></div>
       <div class="ab" style="inset:0;background:linear-gradient(0deg,rgba(10,11,22,0.95) 0%,rgba(10,11,22,0.25) 55%,rgba(10,11,22,0.4) 100%)"></div>
-      <div class="big ab" id="pfT1" style="font-size:96px;left:70px;bottom:120px">Your agents<br>do the work.</div>
+      <div class="big ab" id="pfT1" data-kt="1" style="font-size:96px;left:70px;bottom:120px">Your agents<br>do the work.</div>
     </div>
     <div class="ab" id="pfB" style="overflow:hidden;background:#f2f3f8">
       <div class="phone ab" id="pfPhone" style="position:absolute;transform-origin:50% 0"><div class="notch"></div><div class="scr" style="width:400px;height:866px"><img id="pfPhImg" style="width:400px;transform-origin:50% 14%;transform:scale(1.12)"></div></div>
-      <div class="big dark ab" id="pfT2" style="font-size:96px">Your CFO signs<br><span style="color:#5b4ef0">the exceptions.</span></div>
+      <div class="big dark ab" id="pfT2" data-kt="1" style="font-size:96px">Your CFO signs<br><span style="color:#5b4ef0">the exceptions.</span></div>
     </div>
     <div class="ab" id="pfLine" style="background:#7c72ff;box-shadow:0 0 30px #7c72ff"></div>
   </div></section>
@@ -214,13 +240,15 @@
       <svg width="150" height="150" viewBox="0 0 64 64"><rect x="1" y="1" width="62" height="62" rx="18.5" fill="#11131f" stroke="rgba(255,255,255,0.2)"/><g transform="translate(14.9333 14.9333) scale(1.4222)" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path class="enP" pathLength="1" stroke-dasharray="1" d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path class="enP" pathLength="1" stroke-dasharray="1" d="M16 8 2 22"/><path class="enP" pathLength="1" stroke-dasharray="1" d="M17.5 15H9"/></g></svg>
       <div style="font-size:180px;font-weight:800;letter-spacing:-0.05em">Purser</div>
     </div>
-    <div class="big" id="enTry" style="font-size:92px">Try it <span class="acc">yourself.</span></div>
+    <div class="big" id="enTry" data-kt="1" style="font-size:92px">Try it <span class="acc">yourself.</span></div>
     <div class="mono" id="enUrl" style="font-size:46px;padding:18px 40px;border-radius:999px;background:#7c72ff;color:#fff;box-shadow:0 0 80px rgba(124,114,255,0.6)"></div>
     <div class="mid" id="enWalk" style="font-size:34px;color:#c9cbe0;text-transform:none;letter-spacing:-0.01em"></div>
     <div class="col center" id="enSmall" style="gap:8px;margin-top:14px;font-size:21px;color:#9aa0b8;font-weight:600"></div>
   </div></div></section>
 
 </div>
+  <div id="bokeh"></div>
+  <div id="glint"></div>
   <div id="vig"></div>
   <canvas id="grain" width="512" height="512"></canvas>
   <div id="cap"></div>
@@ -240,7 +268,34 @@
   const back = (x) => { x = clamp(x); const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
   const p = (t, a, d) => clamp((t - a) / d);
   const W = V ? 1080 : 1920, H = V ? 1920 : 1080;
+  // Headlines (data-kt) split per word: each word rises out of its own mask, on a stagger.
+  function splitWords(el) {
+    const walk = (node) => {
+      for (const c of [...node.childNodes]) {
+        if (c.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          c.textContent.split(/(\s+)/).forEach((part) => {
+            if (!part) return;
+            if (/^\s+$/.test(part)) { frag.appendChild(document.createTextNode(" ")); return; }
+            const w = document.createElement("span"); w.className = "kw"; const i = document.createElement("i"); i.textContent = part; w.appendChild(i); frag.appendChild(w);
+          });
+          node.replaceChild(frag, c);
+        } else if (c.nodeType === 1 && c.tagName !== "BR") walk(c);
+      }
+    };
+    walk(el);
+  }
+  for (const el of document.querySelectorAll("[data-kt]")) splitWords(el);
   function rise(el, t, at, dur = 0.4, dy = 60) {
+    if (el.dataset.kt) {
+      el.style.opacity = t >= at - 0.01 ? "1" : "0"; el.style.transform = "none"; el.style.filter = "none";
+      [...el.querySelectorAll(".kw > i")].forEach((w, i) => {
+        const kk = ease(p(t, at + i * 0.055, 0.32));
+        w.style.transform = `translateY(${(1 - kk) * 105}%) rotate(${(1 - kk) * 6}deg) scale(${1 + (1 - kk) * 0.15})`;
+        w.style.filter = kk < 1 ? `blur(${(1 - kk) * 6}px)` : "none";
+      });
+      return;
+    }
     const k = ease(p(t, at, dur));
     el.style.opacity = String(k);
     el.style.transform = `translateY(${(1 - k) * dy}px)`;
@@ -284,8 +339,8 @@
   $("coWords").innerHTML = coWords.map((ln, j) => `<div class="big" style="font-size:${V ? 108 : 132}px;display:flex;gap:0.28em">${ln.map((w) => `<span class="cw${j && w === "request." ? " red" : ""}">${w}</span>`).join("")}</div>`).join("");
   $("lgTag").innerHTML = ["AI", "agents", "spend.", "You", "sign", "off."].map((w, i) => `<span class="tw${i > 2 ? " acc" : ""}">${w}</span>`).join("");
   $("prSteps").innerHTML = ["Read", "Check", "Sign", "Paid"].map((w) => `<span class="chip light ps">${w}</span>`).join("");
-  for (let i = 0; i < 6; i++) $("mtChain").insertAdjacentHTML("beforeend", `${i ? '<div class="mtL" style="width:46px;height:4px;background:#7c72ff;box-shadow:0 0 12px #7c72ff"></div>' : ""}<div class="mtB" style="width:110px;height:110px;border-radius:18px;border:2px solid rgba(165,159,255,0.7);background:rgba(124,114,255,0.1)"></div>`);
-  for (let i = 0; i < 7; i++) $("anBlocks").insertAdjacentHTML("beforeend", `${i ? '<div class="anL" style="width:56px;height:4px;background:#7c72ff;box-shadow:0 0 14px #7c72ff;transform-origin:0 50%"></div>' : ""}<div class="anB mono" style="width:120px;height:120px;border-radius:20px;border:2px solid rgba(165,159,255,0.6);background:rgba(124,114,255,0.08);display:flex;align-items:center;justify-content:center;font-size:18px;color:#a59fff">${D.anchor.head.text.slice(i * 8, i * 8 + 6)}</div>`);
+  for (let i = 0; i < 6; i++) $("mtChain").insertAdjacentHTML("beforeend", `${i ? '<div class="mtL" style="width:46px;height:4px;background:#7c72ff;box-shadow:0 0 12px #7c72ff;position:relative"><i class="spark" style="position:absolute;left:50%;top:50%;width:90px;height:90px;margin:-45px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(165,159,255,0.8) 20%,transparent 65%);opacity:0"></i></div>' : ""}<div class="mtB" style="width:110px;height:110px;border-radius:18px;border:2px solid rgba(165,159,255,0.7);background:rgba(124,114,255,0.1)"></div>`);
+  for (let i = 0; i < 7; i++) $("anBlocks").insertAdjacentHTML("beforeend", `${i ? '<div class="anL" style="width:56px;height:4px;background:#7c72ff;box-shadow:0 0 14px #7c72ff;transform-origin:0 50%;position:relative"><i class="spark" style="position:absolute;right:-45px;top:50%;width:90px;height:90px;margin-top:-45px;border-radius:50%;background:radial-gradient(circle,#fff,rgba(165,159,255,0.8) 20%,transparent 65%);opacity:0"></i></div>' : ""}<div class="anB mono" style="width:120px;height:120px;border-radius:20px;border:2px solid rgba(165,159,255,0.6);background:rgba(124,114,255,0.08);display:flex;align-items:center;justify-content:center;font-size:18px;color:#a59fff">${D.anchor.head.text.slice(i * 8, i * 8 + 6)}</div>`);
   const atTarget = String(D.attacks.run.text);
   $("atDigits").innerHTML = atTarget.split("").map(() => `<div class="atCol" style="font-size:400px;font-weight:900;letter-spacing:-0.06em;line-height:420px;height:420px;overflow:hidden"><div class="atStrip">${"0123456789".split("").concat("0123456789".split("")).map((d) => `<div>${d}</div>`).join("")}</div></div>`).join("");
   for (let i = 0; i < 26; i++) $("hoLines").insertAdjacentHTML("beforeend", `<div class="hl ab" style="height:${2 + (i % 3)}px;width:${200 + (i * 97) % 500}px;top:${(i * 137) % 100}%;background:linear-gradient(90deg,transparent,rgba(165,159,255,0.5),transparent)"></div>`);
@@ -304,6 +359,16 @@
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < img.data.length; i += 4) { const v = rnd() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
   g.putImageData(img, 0, 0);
+  // Foreground bokeh: soft discs that drift faster than the scene (parallax).
+  for (let i = 0; i < 14; i++) { const r = 40 + (i * 53) % 160; $("bokeh").insertAdjacentHTML("beforeend", `<i data-x="${(i * 0.137) % 1}" data-y="${(i * 0.311) % 1}" data-s="${0.6 + (i % 4) * 0.35}" style="width:${r}px;height:${r}px;opacity:${0.15 + (i % 3) * 0.1}"></i>`); }
+  // The framings of the cuts inside a scene (promo.ts CUTS): a focus point and a scale, per layout, and a dutch tilt.
+  const ANGLE = { 10.0: [[0.7, 0.5, 1.35], [0.5, 0.62, 1.3], 1.5], 13.5: [[0.5, 0.5, 1.45], [0.5, 0.55, 1.3], -1.5], 25.4: [[0.5, 0.6, 1.25], [0.5, 0.56, 1.02], 1.2], 29.5: [[0.5, 0.56, 1.3], [0.5, 0.56, 1.25], -1.2],
+    33.3: [[0.5, 0.36, 1.5], [0.5, 0.42, 1.35], 1.0], 35.3: [[0.5, 0.5, 1.18], [0.5, 0.5, 1.12], -1.5], 42.3: [[0.5, 0.58, 1.15], [0.5, 0.56, 1.12], 1.2], 46.3: [[0.5, 0.5, 1.12], [0.5, 0.5, 1.1], -1.0], 48.3: [[0.5, 0.74, 1.4], [0.5, 0.66, 1.3], 1.5] };
+  // Zoom-through exits: the last 0.22 s of these scenes fly into the frame.
+  const EXIT = new Set(["phone", "card", "metal", "hostile", "word"]);
+  const STAMPS = [2.0, 14.5, 26.1, 30.9, 34.6, 42.5, 48.6, 50.4, 51.0, 51.6, 52.2, 52.8, 53.4, 54.0, 54.6];
+  const GLINTS = [[2.0, 0.5, 0.42], [14.5, 0.74, 0.62], [30.9, 0.5, 0.56], [34.6, 0.5, 0.62], [48.6, 0.42, 0.78], [62.0, 0.5, 0.6]];
+  const HEX = "0123456789abcdef";
 
   const LIGHT = new Set(["propose", "phone", "agents"]);
   const LABEL = { cold: L.live, propose: "Live page · kit11.max-31b.workers.dev · test company, test money", phone: L.live, agents: L.cloud, locks: L.cloud, card: L.awx, payout: L.awxPayout, metal: L.metal, anchor: L.metal, attacks: L.harness, hostile: L.hostile, payoff: L.cloud };
@@ -319,6 +384,13 @@
     const s = sceneAt(t), lt = t - s.from, len = s.to - s.from;
     for (const el of document.querySelectorAll("section")) el.classList.toggle("on", el.id === `s-${s.id}`);
     const light = LIGHT.has(s.id);
+    document.body.classList.toggle("light", light);
+    // Depth: the camera drifts on three planes (the grid slowest, the scene, the bokeh fastest) and turns a little in 3D.
+    const dx = 26 * Math.sin(t * 0.37), dy = 16 * Math.cos(t * 0.29);
+    $("grid").style.opacity = light ? "0.18" : "0.55";
+    $("grid").style.transform = `translateX(${dx * 0.4}px) perspective(700px) rotateX(72deg) translateY(${(t * 140) % 120}px)`;
+    for (const b of $("bokeh").children) { const sp = Number(b.dataset.s); b.style.left = `${((Number(b.dataset.x) * W + dx * 2.2 * sp + t * 18 * sp) % (W + 200)) - 100}px`; b.style.top = `${Number(b.dataset.y) * H + dy * 2 * sp}px`; }
+    $("bokeh").style.opacity = light ? "0.25" : "1";
     // Background: light paper for the product, dark with a drifting glow for the rest, tinted per scene.
     const gx = 50 + 20 * Math.sin(t * 0.3), gy = 45 + 14 * Math.cos(t * 0.23);
     const tint = { card: "255,64,88", metal: "255,64,88", payout: lt < 3.0 ? "255,181,71" : "52,227,160", attacks: "52,227,160", hostile: "52,227,160", cold: t > 2.0 ? "255,64,88" : "98,84,255" }[s.id] || "98,84,255";
@@ -332,13 +404,27 @@
     const tx = kind === "left" ? -off * W * 0.35 : kind === "right" ? off * W * 0.35 : 0, ty = kind === "up" ? off * H * 0.3 : 0;
     const sc = kind === "punch" ? 1.25 - 0.25 * k : 1;
     const drift = 1 + 0.03 * (lt / len);
-    cam.style.transform = `translate(${tx}px, ${ty}px) scale(${sc * drift})`;
-    cam.style.filter = off > 0.01 ? (kind === "punch" ? `blur(${off * 14}px)` : `blur(${off * 22}px)`) : "none";
+    // A cut inside the scene: a new framing, held until the next.
+    let fr = "", cutBlur = 0;
+    for (const c of B.cuts) if (c > s.from && c < s.to && t >= c) { const a = ANGLE[c] || [[0.5, 0.5, 1.2], [0.5, 0.5, 1.2], 0]; const [fx, fy, z] = a[V ? 1 : 0]; fr = `translate(${(0.5 - fx) * W * z}px, ${(0.5 - fy) * H * z}px) scale(${z}) rotate(${a[2]}deg)`; cutBlur = Math.max(0, 1 - (t - c) / 0.08) * 10; }
+    // The exit: a zoom through the frame into the next scene.
+    const ex = EXIT.has(s.id) ? ease(p(lt, len - 0.22, 0.22)) : 0;
+    cam.style.transform = `perspective(1800px) translate(${tx + dx}px, ${ty + dy}px) rotateY(${0.9 * Math.sin(t * 0.41)}deg) rotateX(${0.7 * Math.cos(t * 0.33)}deg) scale(${sc * drift * (1 + 2.2 * ex * ex)}) ${fr}`;
+    const bl = Math.max(off > 0.01 ? off * (kind === "punch" ? 14 : 22) : 0, cutBlur, ex * 16);
+    cam.style.filter = bl > 0.05 ? `blur(${bl}px)` : "none";
+    cam.style.opacity = String(1 - ex * 0.6);
     // Shake and flash on the hits.
     let sx = 0, sy = 0, fl = "transparent";
-    for (const [at, amp] of SHAKE) if (t >= at && t < at + 0.5) { const d = Math.exp(-(t - at) / 0.1) * amp; sx += d * Math.sin((t - at) * 95); sy += d * Math.cos((t - at) * 83); }
+    // The shake: three or four frames, hard, then gone.
+    for (const [at, amp] of SHAKE) if (t >= at && t < at + 0.09) { const d = (1 - (t - at) / 0.09) * amp * 1.3; const f = Math.floor((t - at) * B.fps); sx += d * [1, -0.8, 0.6, -0.4, 0.2][f % 5]; sy += d * [-0.6, 0.9, -0.5, 0.3, -0.1][f % 5]; }
     for (const [at, rgb, a] of FLASH) if (t >= at && t < at + 0.35) fl = `rgba(${rgb},${a * Math.exp(-(t - at) / 0.08)})`;
     $("world").style.transform = `translate(${sx}px, ${sy}px)`;
+    // A chromatic split on each stamp, for about four frames.
+    let ch = 0; for (const at of STAMPS) if (t >= at && t < at + 0.07) ch = Math.max(ch, 1 - (t - at) / 0.07);
+    $("world").style.filter = ch > 0 ? `drop-shadow(${-9 * ch}px 0 0 rgba(255,30,80,${0.7 * ch})) drop-shadow(${9 * ch}px 0 0 rgba(0,210,255,${0.7 * ch}))` : "none";
+    // The glint on the big moments.
+    let gl = null; for (const g of GLINTS) if (t >= g[0] && t < g[0] + 0.6) gl = g;
+    if (gl) { const k3 = (t - gl[0]) / 0.6, a = k3 < 0.15 ? k3 / 0.15 : 1 - (k3 - 0.15) / 0.85; Object.assign($("glint").style, { left: `${gl[1] * W}px`, top: `${gl[2] * H}px`, opacity: String(a * 0.9), transform: `scale(${0.6 + 0.8 * k3}) rotate(${k3 * 25}deg)` }); } else $("glint").style.opacity = "0";
     $("flash").style.background = fl;
     $("fade").style.opacity = String(Math.max(clamp(1 - Math.abs(t - 5.15) / 0.12) * 0.9, ease(p(t, B.total - 0.6, 0.6))));
     // Small type: what is simulated.
@@ -391,6 +477,7 @@
       }
       case "propose": {
         await frame($("prImg"), "home", B.frames.home, 0.4 + lt * 1.55);
+        $("prSheen").style.transform = `translateX(${-50 + 100 * easeIO(p(lt, 0.3, 2.2))}%)`;
         const k2 = lt / len;
         $("prShot").style.transform = `perspective(1600px) rotateY(${V ? 0 : -20 + 12 * easeIO(k2)}deg) rotateX(${V ? 10 - 6 * k2 : 4}deg) scale(${V ? 1.1 : 1.0 + 0.12 * easeIO(k2)})`;
         rise($("prT1"), lt, 0.15, 0.4);
@@ -399,6 +486,7 @@
       }
       case "phone": {
         await frame($("phImg"), "phone", B.frames.phone, 2.4 + lt * 1.15);
+        $("phSheen").style.transform = `translateX(${-60 + 120 * easeIO(p(lt, 0.2, 2.6))}%)`;
         const pk = ease(p(lt, 0.0, 0.5));
         $("phone").style.transform = `translateY(${(1 - pk) * 500}px) perspective(1800px) rotateY(${10 - 18 * (lt / len)}deg) rotateX(${(1 - pk) * 30}deg) scale(${V ? 0.95 : 0.98})`;
         rise($("phL"), lt, 0.3, 0.4, 40);
@@ -409,9 +497,10 @@
       case "agents": {
         await still($("agImg"), "cloud-agents.png");
         const k2 = easeIO(lt / len);
-        $("agShot").style.left = V ? "40px" : "620px"; $("agShot").style.top = V ? "760px" : "60px";
+        $("agShot").style.left = V ? "40px" : "620px"; $("agShot").style.top = V ? "820px" : "90px";
         $("agShot").style.transform = `perspective(2000px) rotateY(${V ? 0 : -14}deg) rotateX(${V ? 16 : 6}deg) scale(${V ? 0.66 : 0.9})`;
         $("agImg").style.transform = `translateY(${-560 * k2}px)`;
+        $("agSheen").style.transform = `translateX(${-50 + 100 * k2}%)`;
         $("agShade").style.background = V ? "linear-gradient(180deg,rgba(242,243,248,0.98) 0%,rgba(242,243,248,0.9) 36%,rgba(242,243,248,0) 60%)" : $("agShade").style.background;
         $("agText").style.top = V ? "250px" : ""; $("agText").style.left = V ? "70px" : "110px";
         rise($("agT1"), lt, 0.15, 0.4); rise($("agChips"), lt, 0.9, 0.4, 30);
@@ -442,6 +531,9 @@
         $("cdCard").style.transform = `translateX(${-900 + 900 * sw}px) rotate(${-8 + 8 * sw}deg) scale(${base})`;
         $("cdCard").style.filter = sw > 0 && sw < 1 ? `blur(${Math.sin(sw * Math.PI) * 12}px)` : "none";
         $("cdCard").style.opacity = String(ease(p(lt, 0.0, 0.2)));
+        // The motion trail: three ghosts behind the card while it runs.
+        const speed = Math.sin(clamp(sw) * Math.PI);
+        [...document.querySelectorAll(".cdGhost")].forEach((gh, i) => { const lag = easeIO(p(lt, 0.5 - (i + 1) * 0.035, 0.45)); gh.style.transform = `translateX(${-900 + 900 * lag}px) rotate(${-8 + 8 * lag}deg) scale(${base})`; gh.style.opacity = String(speed * (0.32 - i * 0.09)); gh.style.filter = "blur(6px)"; });
         $("cdSheen").style.transform = `translateX(${-60 + 120 * easeIO(p(lt, 0.9, 1.0))}%)`;
         $("cdSlot").style.opacity = String(0.4 + 0.6 * Math.sin(clamp(p(lt, 0.4, 0.8)) * Math.PI));
         const amt = Number(D.card.amount.text);
@@ -482,7 +574,7 @@
           b.style.opacity = String(kk); b.style.transform = `translateX(${(1 - kk) * 300}px)`;
           if (i === blocks.length - 1) { const r = ease(p(lt, 2.9, 0.15)); b.style.borderColor = r ? "var(--red)" : ""; b.style.background = `rgba(255,64,88,${0.5 * r})`; b.style.boxShadow = `0 0 ${50 * r}px var(--red)`; b.style.transform += ` rotate(${r * 12}deg) translateY(${r * 20}px)`; }
         });
-        links.forEach((l, i) => { l.style.opacity = String(ease(p(lt, 1.6 + i * 0.25, 0.2))); });
+        links.forEach((l, i) => { const at = 1.5 + (i + 1) * 0.3 * (i + 1 < 3 ? 1 : 0.5); l.style.opacity = String(ease(p(lt, at, 0.2))); const sp = l.querySelector(".spark"), k4 = p(lt, at + 0.15, 0.25); sp.style.opacity = String(k4 > 0 && k4 < 1 ? 1 - k4 : 0); sp.style.transform = `scale(${0.3 + 1.6 * k4})`; });
         slam($("mtStamp"), lt, 2.9, 0.2, -7);
         $("mtTx").textContent = typed(`${D.metal.reason.text} · tx ${D.metal.tx.text}`, lt, 3.3, 30);
         break;
@@ -490,7 +582,9 @@
       case "anchor": {
         const blocks = [...document.querySelectorAll(".anB")], links = [...document.querySelectorAll(".anL")];
         blocks.forEach((b, i) => { const kk = back(p(lt, 0.1 + i * 0.18, 0.25)); b.style.opacity = String(clamp(kk)); b.style.transform = `translateY(${(1 - kk) * 60}px)`; });
-        links.forEach((l, i) => { l.style.transform = `scaleX(${ease(p(lt, 0.2 + i * 0.18, 0.18))})`; });
+        links.forEach((l, i) => { l.style.transform = `scaleX(${ease(p(lt, 0.2 + i * 0.18, 0.18))})`; const sp = l.querySelector(".spark"), k4 = p(lt, 0.36 + i * 0.18, 0.22); sp.style.opacity = String(k4 > 0 && k4 < 1 ? 1 - k4 : 0); sp.style.transform = `scale(${0.3 + 1.5 * k4})`; });
+        // Each block's hash streams like a ticker, then locks to the anchored head's characters.
+        blocks.forEach((b, i) => { const lockAt = 0.45 + i * 0.18, real = D.anchor.head.text.slice(i * 8, i * 8 + 6); b.textContent = lt >= lockAt ? real : real.split("").map((_, j) => HEX[(Math.floor(t * 40) * 7 + i * 13 + j * 5) % 16]).join(""); b.style.color = lt >= lockAt ? "#fff" : "#a59fff"; });
         const pulse = (lt * 1.8) % 1;
         blocks.forEach((b, i) => { const on = Math.abs(pulse * blocks.length - i) < 0.7 && lt > 1.4; b.style.background = on ? "rgba(124,114,255,0.55)" : "rgba(124,114,255,0.08)"; });
         const ak = back(p(lt, 1.85, 0.3));
