@@ -75,6 +75,21 @@ const WORST = worstCaseWords();
 const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
 const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
 
+/**
+ * A navigation to the local relay that Firefox now and then does not finish (13 Nov, in CI and here, late in the run): a
+ * new context's goto to /status timed out, once with no request issued at all and once with its request answered but no
+ * load, while the relay answered a fetch in 2 ms, a fresh browser loaded the page at once, and a second goto did too.
+ * Tried again once, said in the log; a page that fails twice still fails the check.
+ */
+async function gotoStarted(page: Page, url: string): Promise<void> {
+  try {
+    await page.goto(url, { waitUntil: "load", timeout: 15_000 });
+  } catch {
+    console.log(`info  ${url}: the browser did not finish loading it within 15 s; tried again`);
+    await page.goto(url, { waitUntil: "load" });
+  }
+}
+
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
   const bad = /\b(null|undefined|NaN)\b/.exec(text);
@@ -181,7 +196,12 @@ async function tapTargets(page: Page, name: string): Promise<void> {
     const out = [];
     for (const e of document.querySelectorAll("main a, main button, main summary")) {
       if (!e.checkVisibility()) continue;
-      for (const r0 of [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)) {
+      // Each line of a target, measured afresh after every scroll: a rect measured before the previous line's scroll is
+      // stale, and probing it lands off the screen (a link drawn on two lines, seen in Firefox at 390 px, 13 Nov).
+      const lines = [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2).length;
+      for (let i = 0; i < lines; i++) {
+        const r0 = [...e.getClientRects()].filter((r) => r.width > 2 && r.height > 2)[i];
+        if (!r0) break;
         window.scrollTo({ top: window.scrollY + r0.top - innerHeight / 2, behavior: "instant" });
         const r = [...e.getClientRects()].find((q) => Math.abs(q.width - r0.width) < 0.5 && Math.abs(q.left - r0.left) < 0.5) || r0;
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -686,7 +706,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
           return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? (() => { const r = document.createRange(); r.setStartAfter(tap); r.setEnd(main, main.childNodes.length); return r.toString().trim(); })() : "?",
             title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => !li.closest("details:not(.sumd)")).length,
-            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: document.querySelector("footer").textContent };
+            amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: (() => { const f = document.querySelector("footer").cloneNode(true); f.querySelector("ul.builton")?.remove(); return f.textContent; })() };
         })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
         if (c.title !== pageTitle(VISA_TITLE)) fail(`/visa ${tag}: the title is "${c.title}"`);
         if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
@@ -701,6 +721,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
         const inMain = (await page.locator("main").textContent()) ?? "";
         if (!/A scripted run, no Claude call/.test(inMain) || /Agents paid with a single-use Visa|three live runs/.test(inMain)) fail(`/visa ${tag}: the run is not called scripted`);
+        // The shared "Built on" strip aside: each of its figures names its own run (jury, 13 Nov), the main run's among them.
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
       // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
@@ -877,7 +898,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // relay's own /health under its policy, with no console or policy error, and shows the quiet state, which is no
     // error. Then /health failing: the page says plainly that the status could not be read, and nothing reads as good.
     if (relay) {
-      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await gotoStarted(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status on the relay ${tag}: the script never finished reading /health`));
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
@@ -891,7 +912,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const [what, answer] of [["a 500 that is no JSON", { status: 500, contentType: "text/plain", body: "error" }], ["a 200 in another shape", { status: 200, contentType: "application/json", body: JSON.stringify({ status: "ok" }) }], ["no answer", null]] as const) {
         await broken.unroute("**/health");
         await broken.route("**/health", (r) => (answer ? r.fulfill(answer) : r.abort()));
-        await broken.goto(`${relay.url}/status`, { waitUntil: "load" });
+        await gotoStarted(broken, `${relay.url}/status`);
         await broken.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status with /health failing (${what}) ${tag}: the page never said so`));
         const text = (await broken.locator("#now").innerText()).replace(/\s+/g, " ").trim();
         if ((await broken.locator("#now").getAttribute("data-tone")) !== "unread" || text !== "The status could not be read just now Site Not read Runner Not read Last sync Not read Alarms Not read The raw answer: /health") fail(`/status with /health failing (${what}) ${tag}: does not say plainly that the status could not be read (${text})`);
@@ -1201,10 +1222,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // Tick steps 2 and 3 (one by its box, one by its title), reload: both still ticked, the count says so.
       await page.locator("#step-sign").check();
       await page.locator('label[for="step-trick"]').click();
-      if ((await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the count does not follow the ticks`);
+      if ((await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the count does not follow the ticks`);
       await page.reload({ waitUntil: "load" });
       const kept = await page.locator('input[type="checkbox"]').evaluateAll((bs) => bs.filter((b) => (b as HTMLInputElement).checked).map((b) => b.id));
-      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 5 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
+      if (kept.join() !== "step-sign,step-trick" || (await page.locator("#prog").innerText()) !== "2 of 6 done") fail(`/judge ${tag}: the ticks do not survive a reload (${kept.join() || "none"})`);
       await look(page, `/judge ticked ${tag}`, w);
       await page.screenshot({ path: join(shots, `judge-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
@@ -1223,7 +1244,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await bp.goto(`${judgeBase}/judge`, { waitUntil: "load" });
       if (await bp.evaluate(() => { try { return typeof window.localStorage; } catch { return "throws"; } }) !== "throws") fail(`/judge (storage blocked) ${tag}: localStorage did not throw`);
       await bp.locator("#step-proof").check();
-      if ((await bp.locator("#prog").innerText()) !== "1 of 5 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
+      if ((await bp.locator("#prog").innerText()) !== "1 of 6 done" || !(await bp.locator("#s-proof").evaluate((li) => li.classList.contains("done")))) fail(`/judge (storage blocked) ${tag}: the box does not tick`);
       await look(bp, `/judge (storage blocked) ${tag}`, w);
       await blocked.close();
       }
@@ -1260,7 +1281,7 @@ if (relay) {
       const tag = `${w}-${scheme}`;
       page.on("console", (m) => { if (m.type() === "error") fail(`/status live ${tag}: console error: ${m.text()}`); });
       page.on("pageerror", (e) => fail(`/status live ${tag}: page error: ${e.message}`));
-      await page.goto(`${relay.url}/status`, { waitUntil: "load" });
+      await gotoStarted(page, `${relay.url}/status`);
       await page.waitForFunction(() => document.getElementById("now")?.hasAttribute("data-tone"), undefined, { timeout: 10_000 }).catch(() => fail(`/status live ${tag}: the script never finished reading /health`));
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
