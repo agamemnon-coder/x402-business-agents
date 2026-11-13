@@ -224,10 +224,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await page.waitForTimeout(1500);
     if (new URL(page.url()).pathname !== "/" || !(await page.isVisible("h1.h-hero"))) fail(`/ ${tag}: a guest does not get Home at / (${page.url()})`);
     await look(page, `/ (Home) ${tag}`, w);
-    // Home as one story (home-story, 12 Nov): two buttons, the hero that plays once and rests on step 4, the visitor's
-    // own check with no request, the sizes, the screens (test/browser/homeStory.ts). The CFO's view is linked from
-    // Proof's head (checked below), not from Home.
-    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("#hero-demo").screenshot({ path: join(shots, `home-demo-${n}-${tag}.png`) }); } });
+    // Home as one story (13 Nov): two buttons, the product card from its /try run record that plays and keeps its size
+    // (one still frame with reduced motion), the stat row, the sizes, the screens (test/browser/homeStory.ts). The CFO's
+    // view is linked from Proof's head (checked below), not from Home.
+    await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("figure.hf").screenshot({ path: join(shots, `home-card-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
 

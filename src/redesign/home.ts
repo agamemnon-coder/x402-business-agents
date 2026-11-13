@@ -65,7 +65,7 @@ ol.flow li::before { content: counter(flow); grid-row: 1 / span 2; align-self: s
 ol.flow li.you::before { background: var(--accent); border-color: var(--accent); color: #fff; }
 ol.flow b { font-size: 17px; font-weight: 700; }
 ol.flow span { font-size: 15px; line-height: 1.5; color: var(--muted); }
-ol.flow a { color: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
+ol.flow a { color: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; padding: 14px 0; } /* a thumb's height (44 px) without moving the line: vertical padding on an inline link */
 @media (min-width: 900px) {
   ol.flow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
   ol.flow li { grid-template-columns: 1fr; row-gap: 8px; align-items: start; align-content: start; }

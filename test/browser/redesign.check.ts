@@ -88,16 +88,16 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     page.on("pageerror", (e) => fail(`${tag} ${page.url()}: page error: ${e.message}`));
     page.on("requestfailed", (r) => { if (!/testnet\.metalntwx\.com/.test(r.url())) fail(`${tag} ${page.url()}: request failed: ${r.url()}`); });
 
-    // "/" is Home itself for a guest (no redirect). Home is one story (home-story, 12 Nov): two buttons, the hero whose
-    // fourth step is the visitor's own check, three proof rows (test/browser/homeStory.ts; pages.check.ts runs it in
-    // full, with the play-through). The replay stage and its four-eyes frame left Home: Watch plays the run.
+    // "/" is Home itself for a guest (no redirect). Home is one story (13 Nov): two buttons, the product card from its
+    // /try run record, the stat row (test/browser/homeStory.ts; pages.check.ts runs it in full, with the play-through and
+    // reduced motion). The replay stage and its four-eyes frame left Home: Watch plays the run.
     await page.goto(`${base}/`, { waitUntil: "load" });
     if (new URL(page.url()).pathname !== "/") fail(`/ ${tag}: a guest is sent away from / (${page.url()})`);
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await look(page, `/home ${tag}`, w);
-    if ((await page.locator("main a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button`);
-    if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
+    if ((await page.locator(".e-hero a.btn.primary").count()) !== 1) fail(`/home ${tag}: the hero has not one primary button`);
+    if (await page.locator("figure.hf").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
     // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header).
     const tabs = (await page.locator("nav.tabs > a, nav.tabs summary").allInnerTexts()).map((t) => t.trim());
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
