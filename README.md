@@ -10,7 +10,7 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Live demo: /try](https://img.shields.io/badge/live_demo-%2Ftry-4f46e5)](https://kit11.max-31b.workers.dev/try)
 
-**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film, 3:58](https://youtu.be/kCUsFHrxE-o) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)
+**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough, 4:58](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)
 
 </div>
 
