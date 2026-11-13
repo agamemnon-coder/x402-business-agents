@@ -173,7 +173,8 @@ describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov;
     for (const [name, html] of [["home", PAGES.home!], ["proof", PAGES.proof!]] as const) {
       const main = /<main[\s\S]*<\/main>/.exec(html)![0];
       // "Visa" alone is the card brand Airwallex issues (a virtual Visa card); TAP is what moved to the footer.
-      expect({ name, tap: /Visa TAP|Trusted Agent|\bTAP\b(?! run)/.test(words(main)) }).toEqual({ name, tap: false });
+      // Since 13 Nov /proof ends its live-runs list with one link, "Visa TAP run → /visa" (the run itself stays on /visa).
+      expect({ name, tap: /Visa TAP(?! run)|Trusted Agent|\bTAP\b(?! run)/.test(words(main).replace("Visa TAP run → /visa", "")) }).toEqual({ name, tap: false });
       // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): now it says neither.
       expect({ name, link: /<a class="flink" href="visa">|Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
       // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
