@@ -179,7 +179,7 @@ describe("/docs: docs and API", () => {
     expect(off).toContain("<code>npm run judge</code>");
     // The README's commands are under "Verify it yourself in 3 commands" since its first screen was shortened (12 Nov).
     expect(repoLinks(off)).toEqual([{ file: "README.md", anchor: "verify-it-yourself-in-3-commands" }]);
-    expect(read("README.md")).toMatch(/^npm run judge -- --check$/m);
+    expect(read("README.md")).toMatch(/^npm run judge -- --check\s/m); // the quick start's line, with its comment (13 Nov)
     expect(read("README.md")).toContain("after that, no network and no keys.");
     expect(plain(off)).toContain("no keys");
   });
