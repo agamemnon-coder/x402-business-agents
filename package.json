@@ -27,6 +27,8 @@
     "try:load": "tsx scripts/load-try.ts",
     "test:d1": "CLOUD_DB=d1 vitest run --config vitest.d1.config.ts",
     "links:external": "tsx scripts/linkcheck-external.ts",
+    "changelog": "tsx scripts/changelog.ts",
+    "charts": "tsx scripts/repo-charts.ts",
     "test:shim": "vitest run --config vitest.shim.config.ts",
     "test:coverage": "vitest run --coverage && tsx test/coverage-areas.ts",
     "typecheck": "tsc --noEmit",

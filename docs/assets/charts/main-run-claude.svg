@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="192" viewBox="0 0 720 192" role="img" aria-label="Main run, 3 Nov: 24 of 24 decisions by Claude, USD 0.3170 in all">
+<style>
+  .bg{fill:#ffffff}.t{fill:#1f2328;font:600 15px system-ui,-apple-system,Segoe UI,sans-serif}.l{fill:#1f2328;font:13px system-ui,-apple-system,Segoe UI,sans-serif}
+  .s{fill:#59636e;font:12px system-ui,-apple-system,Segoe UI,sans-serif}.a{fill:#0969da}.b{fill:#bf8700}.g{stroke:#d1d9e0}.ln{stroke:#0969da;fill:none;stroke-width:2.5}
+  @media (prefers-color-scheme: dark){.bg{fill:#0d1117}.t,.l{fill:#e6edf3}.s{fill:#9198a1}.a{fill:#4493f8}.b{fill:#d29922}.g{stroke:#3d444d}.ln{stroke:#4493f8}}
+</style>
+<rect class="bg" width="720" height="192" rx="8"/>
+<text class="t" x="20" y="30">Main run, 3 Nov: 24 of 24 decisions by Claude, USD 0.3170 in all</text>
+<rect class="a" x="20" y="40" width="12" height="12" rx="2"/><text class="s" x="38" y="50">by Claude</text><rect class="b" x="200" y="40" width="12" height="12" rx="2"/><text class="s" x="218" y="50">fallback to the plain parser</text><text class="l" x="20" y="80">Sourcing (haiku)</text><rect class="a" x="260" y="67" width="290.0" height="18" rx="3"/><text class="l" x="558.0" y="80">11 · USD 0.0088</text>
+<text class="l" x="20" y="110">Support (sonnet)</text><rect class="a" x="260" y="97" width="105.5" height="18" rx="3"/><text class="l" x="373.5" y="110">4 · USD 0.0500</text>
+<text class="l" x="20" y="140">Treasury (opus)</text><rect class="a" x="260" y="127" width="237.3" height="18" rx="3"/><text class="l" x="505.3" y="140">9 · USD 0.2582</text>
+<text class="s" x="20" y="178">From docs/demo/main-run.json, agent_stats: decisions per agent, and Claude's cost per agent.</text>
+</svg>

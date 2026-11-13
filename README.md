@@ -6,7 +6,7 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 **[Try it in a minute.](https://kit11.max-31b.workers.dev/try)** · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](https://youtu.be/kCUsFHrxE-o) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](https://kit11.max-31b.workers.dev/try/sign)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 6034 passing](https://img.shields.io/badge/tests-6034%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: hands-on](https://img.shields.io/badge/live%20demo-hands--on-7c6cff)](https://kit11.max-31b.workers.dev/try) ![Metal testnet · Airwallex sandbox · Visa Intelligent Commerce · Claude: test money only](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox%20%C2%B7%20Visa%20Intelligent%20Commerce%20%C2%B7%20Claude-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 6307 passing](https://img.shields.io/badge/tests-6307%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: hands-on](https://img.shields.io/badge/live%20demo-hands--on-7c6cff)](https://kit11.max-31b.workers.dev/try) ![Metal testnet · Airwallex sandbox · Visa Intelligent Commerce · Claude: test money only](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox%20%C2%B7%20Visa%20Intelligent%20Commerce%20%C2%B7%20Claude-test%20money%20only-555)
 
 ## For reviewers in 30 seconds
 
@@ -36,6 +36,12 @@ only. Built with Claude (Anthropic) as the developer, directed and reviewed by M
 <picture><source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="docs/assets/payment-life-tall-dark.svg"><source media="(max-width: 600px)" srcset="docs/assets/payment-life-tall-light.svg"><source media="(prefers-color-scheme: dark)" srcset="docs/assets/payment-life-wide-dark.svg"><img src="docs/assets/payment-life-wide-light.svg" alt="One payment's life: an invoice arrives, Claude reads it, Purser's code checks it, the exact terms are hashed, above a limit the CFO signs that hash with Face ID, the rail checks with its own controls, the payment is made and written to the ledger." width="100%"></picture>
 
 <table><tr><td width="25%"><a href="https://kit11.max-31b.workers.dev/try/sign"><img src="docs/assets/readme/phone-faceid.webp" alt="The CFO's phone: the exact terms and one button, Approve with Face ID"></a><br><b>Approve with Face ID</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/"><img src="docs/assets/readme/tamper-refused.webp" alt="One cent changed, EUR 240.01: the terms hash no longer matches and the payment is refused"></a><br><b>One cent changed, refused</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/proof"><img src="docs/assets/readme/proof.webp" alt="Proof: each claim with its id, its code and its run"></a><br><b>Proof, every id</b></td><td width="25%"><a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/hands-on.webp" alt="Hands-on: a test company of your own on Purser's engine, test money"></a><br><b>Hands-on, test money</b></td></tr></table>
+
+## See it
+
+<img src="docs/assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, from the run records" width="49%"> <img src="docs/assets/charts/main-run-claude.svg" alt="Main run: Claude's decisions and cost per agent, from its record" width="49%"> <img src="docs/assets/charts/main-run-refusals.svg" alt="Main run: what was refused, from its record" width="49%"> <img src="docs/assets/charts/tests-over-time.svg" alt="Tests in the suite over time, from the README's own history" width="49%">
+
+Drawn from the records by `npm run charts`; the architecture, one payment end to end and the mandate on Metal are [three diagrams](docs/diagrams.md).
 
 ## Why this is a company
 
@@ -97,7 +103,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (4 to 7 min): **6034 tests in 527 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. Four more tests are skipped here: they run only on local D1 (`npm run test:d1`).
+- `npm test` (4 to 7 min): **6307 tests in 547 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. Four more tests are skipped here: they run only on local D1 (`npm run test:d1`).
 - `npm run judge -- --check` (about 3 s): builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record, offline, and fetches each once.
 - `npm run verify-approval` (under 1 s): checks the receipt of the owner's real passkey approval of 7 November, published on 12 November, offline with Node's own crypto: the passkey signed exactly those terms; change one cent and it says NOT VALID. `npm run verify-receipt -- receipt.json` does the same for the receipt you get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign). Getting the receipt needs the live site and your own passkey.
 
@@ -129,22 +135,16 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a single-use card credential.
 - **Cloudflare:** Workers and Durable Objects run the relay, the site and Purser Cloud's engine (one object per company).
 
+## Releases
+
+[`v1.0-submission`](https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.0-submission) (8 November) is the hackathon submission; what came after it is in [CHANGELOG.md](CHANGELOG.md), generated from git, and the next release's notes are [docs/releases/v1.1-final.md](docs/releases/v1.1-final.md).
+
 ## Links
 
-- [docs/in-depth.md](docs/in-depth.md): where each judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the three live runs with every id, Try step by step, what is real and what is mock, the words
-- [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/replay): every step of that run, replayed (under Proof, not in the menu)
-- [docs/README.md](docs/README.md): every doc, grouped by reader (juror, builder, video)
-- [docs/run-it.md](docs/run-it.md): running it live, with sandbox keys and a Metal RPC
-- [docs/runs/](docs/runs/): every run log, dated
-- [docs/controls.md](docs/controls.md): every guard in code, its test, and what needs a person
-- [docs/claims.md](docs/claims.md): every claim in this repo and its source
-- [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md): what Purser uses from each
-- [docs/payables.md](docs/payables.md): the invoice inbox, built after the submission (its code is in [src/ap](src/ap); not in the submitted run)
-- [Hands-on demo](https://kit11.max-31b.workers.dev/try): a test company of your own on Purser's engine, test money; [/security](https://kit11.max-31b.workers.dev/security): the security page
-- [docs/security.md](docs/security.md): threat model, attacks and what stops each one
-- [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md): how an outside agent should use the agent API
-- [docs/submission/README.md](docs/submission/README.md): the submission text, with the short Description
-- [docs/submission/long-description.md](docs/submission/long-description.md): the long form text it replaced, in full
-- [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)
+- **Read:** [docs/in-depth.md](docs/in-depth.md) (each judging criterion, the live runs with every id, what is real and what is mock) · [docs/README.md](docs/README.md) (every doc, by reader) · [docs/diagrams.md](docs/diagrams.md) · [docs/claims.md](docs/claims.md) (every claim and its source) · [docs/runs/](docs/runs/) (every run log, dated) · [docs/controls.md](docs/controls.md) · [docs/security.md](docs/security.md)
+- **Partners:** [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md) (what Purser uses from each) · [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)
+- **Run and build:** [docs/run-it.md](docs/run-it.md) (live, with sandbox keys and a Metal RPC) · [docs/payables.md](docs/payables.md) (the invoice inbox, built after the submission; code in [src/ap](src/ap)) · [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md) (for outside agents) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+- **Site:** [Hands-on demo](https://kit11.max-31b.workers.dev/try) (a test company of your own, test money) · [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/replay) (under Proof, not in the menu) · [/security](https://kit11.max-31b.workers.dev/security)
+- **Submission:** [docs/submission/README.md](docs/submission/README.md) (the submission text, with the short Description) · [docs/submission/long-description.md](docs/submission/long-description.md) (the long form text it replaced, in full)
 
 All money here is test money: the Airwallex sandbox and Metal testnet. Licence: MIT.
