@@ -56,6 +56,20 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
   try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
 })();
+/**
+ * /status's words in sight, as a frame and its run lines (13 Nov): the page lists the five newest runs of /runs, whose
+ * titles change as runs are added, so a pin on the whole page went red at the next run (as /runs' did, review 12 Nov,
+ * DC-5). The frame (everything but the run list) keeps the old budget less the list's share; each run line is short.
+ */
+async function statusWords(page: Page): Promise<{ frame: number; lines: number[] }> {
+  const count = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+  const all = count(await page.locator("main").innerText());
+  const lines = (await page.locator("#runs li:not(.grp)").allInnerTexts()).map(count);
+  return { frame: all - lines.reduce((n, x) => n + x, 0), lines };
+}
+// As built on 13 Nov: the frame 58 words live and 60 quiet; the longest run line 15 words ("Lock 1 opened by a person's real
+// Face ID, not a test passkey", with its day). A small margin on each.
+const STATUS_FRAME = 65, STATUS_LINE = 16;
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -871,8 +885,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
-      const quietWords = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-      if (quietWords > 90) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget 90`);
+      const quiet = await statusWords(page);
+      if (quiet.frame > STATUS_FRAME || quiet.lines.some((n) => n > STATUS_LINE)) fail(`/status on the relay ${tag}: ${quiet.frame} words in sight around the run list in the quiet state (budget ${STATUS_FRAME}), run lines of ${JSON.stringify(quiet.lines)} words (at most ${STATUS_LINE} each)`);
       await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
       // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
       const broken = await context.newPage();
@@ -942,10 +956,12 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
         const fold = document.querySelector("main details.sumd"), cards = document.querySelector("main ul.sumc");
-        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), next: h1 && h1.nextElementSibling ? h1.nextElementSibling.className : "", inFold: !!fold && !!document.getElementById("guarantees") && fold.contains(document.getElementById("guarantees")), open: document.querySelectorAll("main details[open]").length };
+        // The scale band (the owner, 13 Nov) between the heading and the cards.
+        const band = h1 && h1.nextElementSibling && h1.nextElementSibling.matches("ul.scale") ? h1.nextElementSibling : null;
+        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), next: band && band.nextElementSibling ? band.nextElementSibling.className : "no scale band", inFold: !!fold && !!document.getElementById("guarantees") && fold.contains(document.getElementById("guarantees")), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { cards: number; n: number; fold: number; next: string; inFold: boolean; open: number };
       // The jury pass (13 Nov): four cards directly under the heading, then one closed fold that opens with the guarantees.
-      if (first.next !== "sumc" || first.n !== 4 || !first.inFold || first.open) fail(`/proof ${tag}: not four cards under the heading and the guarantees in the one fold under them, closed on load (${JSON.stringify(first)})`);
+      if (first.next !== "sumc" || first.n !== 4 || !first.inFold || first.open) fail(`/proof ${tag}: not the scale band, then four cards, under the heading, and the guarantees in the one fold under them, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
         // The four cards are the page in sight: the fold's line comes within the first screen and a half (720 px as built at 390).
@@ -1246,8 +1262,8 @@ if (relay) {
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
-      const words = (await page.locator("main").innerText()).split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-      if (words > 90) fail(`/status live ${tag}: ${words} words in sight, budget 90`);
+      const live = await statusWords(page);
+      if (live.frame > STATUS_FRAME || live.lines.some((n) => n > STATUS_LINE)) fail(`/status live ${tag}: ${live.frame} words in sight around the run list (budget ${STATUS_FRAME}), run lines of ${JSON.stringify(live.lines)} words (at most ${STATUS_LINE} each)`);
       await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
       await context.close();
     }

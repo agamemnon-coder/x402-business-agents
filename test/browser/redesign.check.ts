@@ -176,8 +176,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then one closed fold that opens
     // with the seven guarantees; with it open, each partner card with one claim to tap in sight; four tiles; every closed
     // line inside still closed; the utility links last.
-    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ul.sumc"), d = document.querySelector("main details.sumd"); return { first: !!h1 && h1.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; closed: boolean };
-    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || !sum.closed) fail(`/proof ${tag}: not four cards directly under the heading on the first screen, with the details fold closed (${JSON.stringify(sum)})`);
+    // Since the owner's word (13 Nov) the scale band sits between the heading and the four cards.
+    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ul.sumc"), d = document.querySelector("main details.sumd"), b = h1 && h1.nextElementSibling; return { first: !!b && b.matches("ul.scale") && b.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; closed: boolean };
+    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || !sum.closed) fail(`/proof ${tag}: not the scale band and four cards under the heading on the first screen, with the details fold closed (${JSON.stringify(sum)})`);
     await page.locator("main details.sumd > summary").click();
     const order = (await page.evaluate(`(() => {
       const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util");

@@ -17,7 +17,7 @@ Three runs where the rail itself held a payment, each a live sandbox or testnet 
 
 | Rail | What happened | Record |
 |---|---|---|
-| **Airwallex**<br>`IN_APPROVAL` | A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement). | 10 Nov, Airwallex sandbox, test money.<br>[Run record](runs/2026-11-10-airwallex-two-locks.md) |
+| **Airwallex**<br>`IN_APPROVAL` | A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00 on 10 Nov. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement). | 12 Nov, Airwallex sandbox, test money.<br>[Run record](runs/2026-11-12-airwallex-two-locks-paid.md) |
 | **Metal**<br>`mandate_cap_exceeded` | As a test, Purser's own check was switched off for one purchase. Metal refused #24 (0.04 test USD, over the 0.03 cap) and recorded the refusal on chain; nothing settled. | 3 Nov, Metal testnet, test money.<br>[Run record](runs/2026-11-03-main-run.md) · [tx 0x2e92…1871](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
 | **Visa Intelligent Commerce via Airi**<br>Airi's passkey step | In a failed attempt, a purchase waited for the cardholder to confirm it with a passkey in Airi. The tap did not come within 5 minutes: no card credential, nothing charged. Purser's own timeout (PURSER_NO_TAP) then cancelled the mandate.<br>_Airi has not refused a purchase outright in a live run._ | 7 Nov, Airwallex sandbox, test card, test money.<br>[Run record](runs/2026-11-07-vic-1.md) |
 
@@ -70,7 +70,7 @@ The logos are the partners' official files, unmodified ([sources](assets/logos/S
 implied. Named in text only: Moneybird, T:0 (why: [sources](assets/logos/SOURCES.md#left-out-named-in-text-only)).
 Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
-- **Airwallex (sandbox).** Main run, 3 Nov: the hash the CFO signed is in Airwallex's own record of SWIFT transfer `03360bfa…` (EUR 240.00). awx-1, 7 Nov: Airwallex declined agents' cards with its own controls (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`). Two locks, from 10 Nov: A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement).
+- **Airwallex (sandbox).** Main run, 3 Nov: the hash the CFO signed is in Airwallex's own record of SWIFT transfer `03360bfa…` (EUR 240.00). awx-1, 7 Nov: Airwallex declined agents' cards with its own controls (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`). Two locks, from 12 Nov: A labelled virtual test passkey signed the terms in Purser; Purser created transfer 4074d684… for EUR 240.00 on 10 Nov. Airwallex held it IN_APPROVAL until a person approved it at Airwallex, 12 Nov; then PAID (simulated settlement).
 - **Metal (testnet).** Main run: a mandate on chain per agent; 86 payments, each its own transaction; #24 refused on chain (`mandate_cap_exceeded`); the mandates replaced on chain after the CFO's Face ID.
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card).** 7 Nov: 2 purchases paid with a single-use credential, each confirmed by the cardholder's passkey in Airi; 5 of 5 checks passed ([run log](runs/2026-11-07-vic-1.md)).
 - **Claude (Anthropic).** Main run: 24 of 24 decisions by Claude, 0 fallbacks; 5 Face ID signatures in the same run.
@@ -96,20 +96,20 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 | Folder | What | Files |
 |---|---|---|
-| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 650 |
-| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 81 |
-| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 17 |
+| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 674 |
+| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 93 |
+| `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 18 |
 | `contracts/` | Solidity contracts used on Metal testnet, with their ABIs | 7 |
-| `test/` | Unit, integration and browser checks | 602 |
-| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 447 |
+| `test/` | Unit, integration and browser checks | 627 |
+| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 457 |
 | `fixtures/` | Test invoices, including the hostile ones (bank change, look-alike, injection) | 19 |
 
 ## Tests and CI
 
-- **4523 of 4525 tests passed** in 421 files, 1 failed, 1 skipped, on commit `596114a` ([summary](assets/test-summary.json)); CI runs them on every push.
-- 525 test files under `test/`, 13 browser checks (Playwright, 390 and 1440 px), 2 workflows.
+- **6311 of 6315 tests passed** in 551 files, 4 skipped, on commit `713f75c` ([summary](assets/test-summary.json)); CI runs them on every push.
+- 547 test files under `test/`, 13 browser checks (Playwright, 390 and 1440 px), 2 workflows.
 - CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Engine tests through the Durable Object handle; Hostile-model eval of the payables agents (the line /claude shows); Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); The CFO's phone pages in Chromium (enrol, approve in every state, policy; 390 and 1440 px, light and dark); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); Playwright Firefox, with its system libraries; Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark); /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 77 dated run logs in [runs/](runs/).
+- 78 dated run logs in [runs/](runs/).
 
 ## Limits, and what is simulated
 
