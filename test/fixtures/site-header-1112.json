@@ -47,5 +47,5 @@
     "null": "<details class=\"pmore\"><summary>More</summary><div class=\"pmenu\"><a href=\"tour\">Product tour</a><a href=\"https://purser-try.max-31b.workers.dev/\">Purser Cloud</a><a href=\"pricing\">Pricing</a><a href=\"security\">Security</a><a href=\"docs\">Docs</a><a href=\"books\">Books</a><hr><a href=\"airwallex\">Airwallex</a><a href=\"metal\">Metal</a><a href=\"visa\">Visa</a><a href=\"claude\">Claude</a></div></details>"
   },
   "moreCssSha256": "a8c6ba93fddc3c3e79b906291e0b9a7c7d74254540fe9c60071066da454d735b",
-  "pageSha256": "d024fc0a20386b540631f46b24708dc9d2ee7f8e6dc615eef14fe98fa30c52e6"
+  "pageSha256": "8462eb3535e67f8228b87f603e4b6b6c5f4516ffce8ff5b2e310273db6d9c0ef"
 }
