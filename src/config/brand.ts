@@ -129,6 +129,11 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * title on the README, under Home's heading and at the start of the form's synopsis. Anything beyond the CFO's signed
  * policy is a proposal the CFO signs with Face ID (docs/cfo-policy.md).
  */
+/**
+ * The README's one sentence on what Purser is (the owner, 13 Nov: the enterprise README), bold under its title and
+ * package.json's description. The form's synopsis and the deck keep WHAT_IT_IS.
+ */
+export const README_WHAT = "Purser is the control layer between a company's AI agents and its money: an agent pays on its own within the limits the CFO set, and anything above them waits for the CFO's Face ID or passkey on the exact terms.";
 export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**
  * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then

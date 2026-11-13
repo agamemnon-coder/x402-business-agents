@@ -4,6 +4,7 @@
 // (docs/runs/2026-11-13-vic-4.json via vic3Run); the words for a code are labels, not figures. No check count anywhere.
 // Inline SVG and HTML only, no script: the page's CSP hashes stay as they are. Its CSS is this page's own (VISA_HERO_CSS).
 
+import { HEADLESS_LINE } from "./vicFacts.js";
 import type { Vic3Purchase, Vic3Record } from "./vic3Run.js";
 import { countOf, esc } from "./ui.js";
 
@@ -11,7 +12,8 @@ export const VISA_FLOW_ID = "visa-flow";
 export const VISA_OUTCOMES_ID = "visa-outcomes";
 export const VISA_HASH_ID = "visa-hash";
 
-/** How a purchase ended, from its record: paid alone, paid after the CFO's Face ID, refused by Purser, or not tapped. */
+/** How a purchase ended, from its record: paid alone, paid after the CFO's Face ID, refused by Purser, or not confirmed in
+ * Airi (partner review, 13 Nov: on /visa "TAP" is Visa's Trusted Agent Protocol only; the cardholder's step is "confirmed"). */
 export type Outcome = "paid" | "paid-faceid" | "refused" | "notap" | "other";
 const codeOf = (p: Vic3Purchase) => p.outcome?.code ?? null;
 export function outcomeOf(p: Vic3Purchase): Outcome {
@@ -29,12 +31,12 @@ export function reasonOf(p: Vic3Purchase): string {
   if (c === "PURSER_MERCHANT_NOT_ALLOWED") return "merchant not allowed";
   if (c === "PURSER_CREDENTIAL_AMOUNT_MISMATCH") return "credential for another amount";
   if (c === "PURSER_CREDENTIAL_ALREADY_USED") return "credential used a second time";
-  if (c === "PURSER_NO_TAP") return "no tap in Airi within 5 minutes";
+  if (c === "PURSER_NO_TAP") return "not confirmed in Airi within 5 minutes";
   if (/terms do not match the approved hash/.test(p.outcome?.refusal ?? "")) return "terms changed after the Face ID";
   return c ?? p.outcome?.status ?? "not run";
 }
 
-const OUT_WORDS: Record<Outcome, string> = { paid: "Paid within the limit", "paid-faceid": "Paid after Face ID", refused: "Refused by Purser", notap: "Not tapped", other: "Other" };
+const OUT_WORDS: Record<Outcome, string> = { paid: "Paid within the limit", "paid-faceid": "Paid after Face ID", refused: "Refused by Purser", notap: "Not confirmed in Airi", other: "Other" };
 const amt = (p: Vic3Purchase) => (p.request ? `${p.request.currency} ${p.request.amount}` : "");
 
 // Icons, inline SVG (aria-hidden: each chip says its outcome in words beside it).
@@ -62,7 +64,7 @@ function lane(title: string, cls: string, steps: { name: string; at: Vic3Purchas
 }
 
 /**
- * The flow: the agent asks, Purser's policy decides; within the limit one tap in Airi, then the Visa credential, the
+ * The flow: the agent asks, Purser's policy decides; within the limit confirmed in Airi, then the Visa credential, the
  * Airwallex PaymentIntent, paid; over it the CFO's Face ID first; refused, stopped before any call. Each purchase of the
  * run stands where it ended.
  */
@@ -74,7 +76,7 @@ export function visaFlowHtml(r: Vic3Record): string {
   const noTap = by((p) => outcomeOf(p) === "notap");
   const refused = by((p) => outcomeOf(p) === "refused");
   const tail = (paid: Vic3Purchase[], tapStop: Vic3Purchase[]) => [
-    { name: "One tap in Airi", at: tapStop },
+    { name: "Confirmed in Airi", at: tapStop },
     { name: "Visa credential", at: [] },
     { name: "Airwallex PaymentIntent", at: [] },
     { name: "Paid", at: paid },
@@ -85,7 +87,8 @@ export function visaFlowHtml(r: Vic3Record): string {
 ${lane("Within the CFO's limit", "vh-l-ok", tail(paidAlone, noTap))}
 ${lane("Over the limit", "vh-l-face", [{ name: "CFO's Face ID", at: [] }, { name: "Then the same path", at: [] }, { name: "Paid", at: paidFaceId }])}
 ${lane("Refused", "vh-l-bad", [{ name: "Stopped before any call; nothing charged", at: refused }])}
-</div></section>`;
+</div>
+<p class="vh-src vh-headless">${esc(HEADLESS_LINE)}</p></section>`;
 }
 
 /** Every purchase of the run in one strip, in the record's order, with a legend that counts each outcome. */

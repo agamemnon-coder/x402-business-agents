@@ -219,7 +219,7 @@ describe("the new read tools, on the demo company", () => {
     expect(events).toEqual(expect.arrayContaining(["ap.received", "proposal.created", "proposal.approved", "transfer.status", "proposal.executed"]));
     expect(events.indexOf("proposal.approved")).toBeLessThan(events.indexOf("proposal.executed"));
     expect(byInvoice.steps.find((s: { event: string }) => s.event === "proposal.approved")).toMatchObject({ who: "The CFO" });
-    expect(byInvoice.books).toEqual([expect.objectContaining({ entry_id: 25, entry_hash: expect.stringMatching(/^[0-9a-f]{64}$/) })]);
+    expect(byInvoice.books).toEqual([expect.objectContaining({ entry_id: 29, entry_hash: expect.stringMatching(/^[0-9a-f]{64}$/) })]);
     expect(byInvoice.steps.map((s: { seq: number }) => s.seq)).toEqual([...byInvoice.steps.map((s: { seq: number }) => s.seq)].sort((a: number, b: number) => a - b));
   });
 
@@ -227,7 +227,7 @@ describe("the new read tools, on the demo company", () => {
     const r = await tool("explain_payment", { id: "AP-0004" });
     expect(text(r)).toMatch(/^The company paid Lagerhaus Nord GmbH EUR 618\.80 on 7 Nov 2026 for invoice LN-2026-0815 \(AP-0004\)/);
     expect(text(r)).toMatch(/The CFO approved P-0008 on 7 Nov 2026 by signing its exact terms with Face ID/);
-    expect(text(r)).toMatch(/Booked in ledger entry 25/);
+    expect(text(r)).toMatch(/Booked in ledger entry 29/);
     expect(text(r)).toMatch(/Demo data, no real money/);
     const card = (await tool("list_transactions", { limit: 30 })).structuredContent.items.find((t: { id: string }) => t.id.startsWith("card:"));
     const e = await tool("explain_payment", { id: card.id });

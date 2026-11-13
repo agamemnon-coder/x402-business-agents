@@ -662,8 +662,8 @@ describe("docs/video/ holds what the code writes", () => {
     // The README, the claims and Max's checklist describe the film on YouTube: v8 (8 November), the length the code has.
     const published = { words, length };
     expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere, v8: ${published.words} words in ${published.length} (`);
-    // Since 13 Nov (the README upgrade) the film is one of three buttons at the top: its link and its length in the alt text.
-    expect(README).toContain(`<a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-${published.length.replaceAll(":", "%3A")}-0b1220?style=for-the-badge" alt="Watch the film, ${published.length}"></a>`);
+    // Since 13 Nov (the enterprise README) the film is a link on the live demo's line at the top, with its length.
+    expect(README).toContain(`[the film, ${published.length}](https://youtu.be/kCUsFHrxE-o)`);
     expect(read("docs/archive/internal/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
