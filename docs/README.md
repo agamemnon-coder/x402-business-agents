@@ -41,7 +41,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 ## Builder
 
 - [architecture.md](architecture.md): architecture, tooling and credits.
-- [diagrams.md](diagrams.md): Purser in three diagrams (who holds which limit, one payment end to end, the mandate on Metal), drawn by GitHub from Mermaid.
+- [diagrams.md](diagrams.md): Purser in five diagrams (in one line, who holds which limit, one payment end to end, the mandate on Metal, where it runs), drawn by GitHub from Mermaid.
 - [run-it.md](run-it.md): running it live, with sandbox keys and a Metal RPC.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
 - [controls.md](controls.md): every control, how it works, and its evidence.

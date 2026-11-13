@@ -90,6 +90,15 @@ const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
 /** The cloud's per-client setup page (cloud/src/claude/connectPage.ts) and the connections guide (13 Nov). */
 const CONNECT_PAGE = `${PURSER_CLOUD_URL}connect-ai`, CONNECTIONS_DOC = "docs/connections.md";
 
+/** The cloud MCP server's read tools, counted from its own list (cloud/src/claude/mcp.ts READ_TOOLS), so the number
+ *  /docs gives follows the server when tools are added. */
+export function readToolCount(): number {
+  const t = repoText("cloud/src/claude/mcp.ts"), a = t.indexOf("const READ_TOOLS"), b = t.indexOf("\n];", a);
+  const n = a < 0 || b < 0 ? 0 : (t.slice(a, b).match(/\n {2}\{\n/g) ?? []).length;
+  if (!n) throw new Error("cloud/src/claude/mcp.ts no longer has a READ_TOOLS list to count");
+  return n;
+}
+
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
 
@@ -103,21 +112,8 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   if (!repoText("cloud/src/connections.ts").includes("export function connectionsCatalogue")) throw new Error("cloud/src/connections.ts no longer lists the connections");
   if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
   const body = `<div class="cols c2">
-  <article class="pc card fd wide" id="agent-api">${head("bot", "Agent API (MCP server)")}
-    <p>An outside agent works under the CFO's policy through these tools. ${esc(NO_TOOL.replace(/^n/, "N"))}.</p>
-    <ul class="pl">${tools.map((t) => `<li data-tool="${esc(t.name)}">${code(t.name)} ${esc(t.title)}</li>`).join("")}</ul>
-    <p>Run it: ${code(MCP_COMMAND)}</p>
-    <p class="sub">It reads ${env.map((e) => code(e.name)).join(", ")}.</p>
-    <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
-    ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
-    ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
-  <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Test preview")}
-    <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
-    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
-  <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
-    <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
-    <p>Claude, ChatGPT, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP. Only the CFO's Face ID approves a payment. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
+    <p><b>Connect your AI:</b> ${code(PURSER_CLOUD_MCP)}, ${readToolCount()} read tools, demo token ${code(DEMO_TOKEN)}. Claude, Cursor, VS Code or Gemini CLI reads your books over MCP and can propose a payment; only the CFO's Face ID approves one. <b>Try as guest</b> in Purser Cloud opens the same read-only demo company.</p>
     <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "The connector's guide")}</div>
     ${foldHtml("Open Purser Cloud as guest, connect Claude", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
@@ -130,6 +126,19 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
       "Format exports, not live integrations: Xero, QuickBooks Online and Exact Online CSV, Slack and Teams messages, an ISO payment message.",
       `From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live). ${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}`,
     ])}</article>
+  <article class="pc card fd wide" id="agent-api">${head("bot", "Outside-agent card API (local)")}
+    <p>An outside agent works under the CFO's policy through these tools. ${esc(NO_TOOL.replace(/^n/, "N"))}.</p>
+    <ul class="pl">${tools.map((t) => `<li data-tool="${esc(t.name)}">${code(t.name)} ${esc(t.title)}</li>`).join("")}</ul>
+    <p>Run it: ${code(MCP_COMMAND)}</p>
+    <p class="sub">It reads ${env.map((e) => code(e.name)).join(", ")}.</p>
+    <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
+    ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
+    ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
+  <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Test preview")}
+    <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
+    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
+  <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
+    <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>

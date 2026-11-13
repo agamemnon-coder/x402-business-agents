@@ -432,7 +432,9 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     expect({ allHold: /All 12 hold|all 12 hold/.test(readme), run1: readme.includes("38 of 38"), oct30Dispute: /Disputes tab of the earlier recorded run/.test(deck) }).toEqual({ allHold: false, run1: false, oct30Dispute: false });
     const s = record.snapshot.agent_stats;
     const [decisions, byClaude] = [s.reduce((n, a) => n + a.decisions, 0), s.reduce((n, a) => n + a.by_claude, 0)];
-    expect(readme).toContain(`${byClaude} of ${decisions} decisions by Claude`);
+    // "all N" since 13 Nov (judge run: no fractions), and only because every decision was Claude's.
+    expect(byClaude).toBe(decisions);
+    expect(readme).toContain(`all ${decisions} decisions by Claude`);
   });
 
   it("would catch a stray 3 or 4", () => {

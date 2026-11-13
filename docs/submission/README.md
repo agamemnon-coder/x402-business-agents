@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign
 
 ## Description
 
-Characters: **3,867** (the text between the markers, as pasted; 3,893 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,878** (the text between the markers, as pasted; 3,904 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -76,8 +76,8 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 **Airwallex, Metal and Claude.**
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
-- Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step.
-- Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
+- Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step.
+- Visa Intelligent Commerce via Airwallex's Airi: every check passes; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
 
 **After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank).
 
@@ -104,7 +104,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
      closing card sums it up.
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
-     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; 5 of 5 checks). The film
+     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; every check passes). The film
      (3:58): <https://youtu.be/kCUsFHrxE-o>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
 3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
@@ -150,12 +150,12 @@ runs of 7 November, and make no outside call.
 4. `screens/form/form-4-try-sign-tamper.png`: step 3, "Try to cheat": the amount + 1 cent sent with the same signature:
    "One cent changed. The signature is worthless.", refused by Purser, signed and sent side by side with both hashes
 5. `screens/form/form-5-airwallex.png`: /airwallex: the hash the CFO signed beside the one Airwallex returns with the
-   EUR 240.00 SWIFT payment (match), 3 of 3 cards matching the CFO policy, awx-1 (7 of 7 checks), and Visa Intelligent
+   EUR 240.00 SWIFT payment (match), 3 of 3 cards matching the CFO policy, awx-1 (every check passes), and Visa Intelligent
    Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money): paid alone, paid
-   after Face ID, refused by Purser, 5 of 5 checks
+   after Face ID, refused by Purser, every check passes
 6. `screens/form/form-6-metal.png`: /metal: 3 mandates on chain, 86 payments each its own transaction, #24 refused on
    chain, the mandates replaced after Face ID
-7. `screens/form/form-7-claude.png`: /claude: Sourcing · Haiku, Support · Sonnet, Treasury · Opus; 24/24 decisions by
+7. `screens/form/form-7-claude.png`: /claude: Sourcing · Haiku, Support · Sonnet, Treasury · Opus; all 24 decisions by
    Claude (0 fallbacks), 82 routine payments by code, 50 Claude calls each with a request id, 5 Face ID decisions
 8. `screens/form/form-8-business.png`: /proof, "Why this is a company" opened: the problem, who buys, the intended
    pricing, why now, why Purser; not validated with customers yet

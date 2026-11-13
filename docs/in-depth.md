@@ -23,7 +23,7 @@ The Kit 11 scenario, run live on 3 November, and the separate runs after it:
 | Criterion | Where it is proven |
 |---|---|
 | Airwallex use | [/airwallex](https://kit11.max-31b.workers.dev/airwallex): cards per agent with the CFO policy as Airwallex's own controls, read back; Airwallex's own declines; SWIFT payouts carrying the signed hash; FX for the shortfall only. [Run log](runs/2026-11-07-awx-1.md) |
-| Agentic | [/claude](https://kit11.max-31b.workers.dev/claude), and the replay of the main run of 3 November at [/replay](https://kit11.max-31b.workers.dev/replay): three Claude agents, 24 of 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
+| Agentic | [/claude](https://kit11.max-31b.workers.dev/claude), and the replay of the main run of 3 November at [/replay](https://kit11.max-31b.workers.dev/replay): three Claude agents, all 24 decisions by Claude; an agent read Airwallex's decline and asked the CFO for a raise instead of retrying |
 | Technical | [What Purser guarantees](https://kit11.max-31b.workers.dev/proof#guarantees), each promise with its code, its test and where it ran; [controls matrix](controls-matrix.md); [verify it yourself](../README.md#verify-it-yourself-in-3-commands) |
 | Finance value | [/try/sign](https://kit11.max-31b.workers.dev/try/sign); [the business case](business/) (a hypothesis; 2 finance conversations, quoted, anonymous; more in progress; no customers yet) |
 | Metal Award | [/metal](https://kit11.max-31b.workers.dev/metal), [docs/metal-award.md](metal-award.md) |
@@ -63,13 +63,13 @@ flowchart LR
 
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex. ([proof](https://kit11.max-31b.workers.dev/proof#airwallex))
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey). ([proof](https://kit11.max-31b.workers.dev/proof#metal))
-- Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step. ([proof](https://kit11.max-31b.workers.dev/proof#claude))
+- Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step. ([proof](https://kit11.max-31b.workers.dev/proof#claude))
 - awx-1, a separate Airwallex-only run (7 November; sandbox, test money, 0 Metal calls): accepted, all seven checks passed in one attempt. Airwallex approved and declined the agents' cards itself (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`); the Sourcing agent (Claude Haiku) read the decline and asked the CFO for a raise instead of retrying; two invoices were paid by SWIFT after the CFO's Face ID (settlement simulated in the sandbox), each carrying the signed hash in Airwallex's own metadata. ([run](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money), [on the site](https://kit11.max-31b.workers.dev/airwallex#awx-1))
 
 ## The main run (3 November)
 
 World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, frozen commit `35e1cac`.
-24 of 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. Max, the builder,
+All 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. Max, the builder,
 plays the CFO and signed with a personal passkey (Face ID on a phone). The second approval (four eyes on P-0002, 2 of 2) came from a labelled
 virtual test passkey on the runner machine, pressed by our build tool, Claude Code, on the builder's go; in production the
 second approver is a second person. The three runtime agents hold no owner key and no passkey, and no key reaches their
@@ -170,7 +170,7 @@ approval, above it only after the CFO's Face ID; a disallowed merchant was refus
 Airwallex sandbox, test card, test money. What the sandbox could not show: the credential is a test credential from
 Airi's test card; one person played both the CFO and the cardholder; the agent's process typed the single-use number
 into Airwallex's hosted checkout page with a headless browser, because the sandbox refuses a direct confirm; the
-merchant is our own Airwallex sandbox merchant. Passed, [5 of 5 checks](runs/2026-11-07-vic-1.md#checks-the-records-checks),
+merchant is our own Airwallex sandbox merchant. Passed, [every check](runs/2026-11-07-vic-1.md#checks-the-records-checks),
 on the fourth attempt that day, the second in its world (the attempts before it are in the log). Log:
 [docs/runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md); record:
 [docs/demo/airi-run.json](demo/airi-run.json); on the site:
@@ -190,7 +190,7 @@ on the fourth attempt that day, the second in its world (the attempts before it 
 
 **A control test of Purser's own checks, not a Visa run (vic-2, 7 Nov, 19:06–19:08 UTC).** The CFO's Face ID on a
 phone, three times; 0 Airi and 0 Airwallex calls in the whole test, so nothing was bought.
-[7 of 7 checks](runs/2026-11-07-vic-2.md#checks); log:
+[every check passes](runs/2026-11-07-vic-2.md#checks); log:
 [docs/runs/2026-11-07-vic-2.md](runs/2026-11-07-vic-2.md); on the site:
 [/visa](https://kit11.max-31b.workers.dev/visa#airi-run-2).
 

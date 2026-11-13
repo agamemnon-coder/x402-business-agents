@@ -233,7 +233,7 @@ export function agentName(id: string): string {
 export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Metal" | "Claude"; anchor: string; text: string }[] = [
   { partner: "Airwallex", anchor: "airwallex", text: "Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and 3 of 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex." },
   { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)." },
-  { partner: "Claude", anchor: "claude", text: "Claude: 24 of 24 decisions in the main run, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step." },
+  { partner: "Claude", anchor: "claude", text: "Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step." },
 ];
 /**
  * The CFO's view (Max's last round, item 4): Home and Proof link to the CFO dashboard's replay of the main run

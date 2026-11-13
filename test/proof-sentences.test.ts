@@ -55,7 +55,8 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
 
   it("Claude: 24 of 24, 0 fallbacks; the reliability run's fault and its fix, 6/10 before and 10/10 after", () => {
     const sp = split(record);
-    expect(text("Claude")).toContain(`${sp.byClaude} of ${sp.decisions} decisions in the main run, ${sp.fallbacks} fallbacks`);
+    expect(sp.byClaude).toBe(sp.decisions); // all of them by Claude, so the sentence says "all" (13 Nov, judge run: no fraction)
+    expect(text("Claude")).toContain(`all ${sp.decisions} decisions in the main run by Claude, ${sp.fallbacks} fallbacks`);
     expect([sp.byClaude, sp.decisions, sp.fallbacks]).toEqual([24, 24, 0]);
     // rel-1 did not pass, at the card raise; its record says why.
     const rel = JSON.parse(read("docs/demo/reliability.json")) as { run: string; passed: boolean; stopped_at: string | null }[];
@@ -68,7 +69,8 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(evals.rows.filter((r) => r.case === "treasury-card-raise").map((r) => [r.model, r.passed, r.runs])).toEqual([["claude-opus-5-5", 10, 10]]);
     // Each number where it belongs: 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before and after the fix
     // (commit 856cb64); "passed every step" is rel-1b, on code with the fix (c231196).
-    expect(text("Claude")).toContain("a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and the next run (rel-1b) passed every step");
+    // Since 13 Nov (judge run) no pass-rate fraction in the sentence: the eval record above holds the 10 of 10.
+    expect(text("Claude")).toContain("a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step");
     expect(rel.find((r) => r.run === "rel-1b")).toMatchObject({ passed: true, stopped_at: null });
     expect(log).toContain("The fix** is commit 856cb64");
     expect(log).toContain("**Code:** c231196, which includes the fix.");

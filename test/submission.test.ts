@@ -101,7 +101,8 @@ describe("the submission pack", () => {
     // The short Description.
     // Since section D (6 Nov) the 24 of 24 is in Claude's proof sentence (PROOF_SENTENCES), checked against the record in
     // test/proof-sentences.test.ts; Treasury's 40 s stays in the long text.
-    expect(pack).toContain(`Claude: ${m.by_claude} of ${m.decisions} decisions in the main run, ${m.fallbacks} fallbacks`);
+    expect(m.by_claude).toBe(m.decisions);
+    expect(pack).toContain(`Claude: all ${m.decisions} decisions in the main run by Claude, ${m.fallbacks} fallbacks`); // no fraction since 13 Nov
     expect(pack).toContain(`The CFO signed ${m.face_id} decisions with Face ID (+1 co-signature)`);
     // The caveats in one line in the form, the second approver in full in the long text (jury review, 6 Nov, #7).
     expect(pack).toContain(CAVEAT_LINE);
@@ -214,7 +215,7 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(flat.match(/Visa Award/g)).toHaveLength(1);
     expect(flat).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.");
     expect(flat.match(/Visa/g)).toHaveLength(2);
-    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi: 5 of 5 checks; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.");
+    expect(flat).toContain("Visa Intelligent Commerce via Airwallex's Airi: every check passes; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first."); // no fraction since 13 Nov
     expect(flat).toContain("Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated");
     expect(long).toContain(T0_STATUS);
     expect(longRaw).toMatch(/^### What is real and what is simulated$/m);

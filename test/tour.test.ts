@@ -172,8 +172,11 @@ describe("the way in: Home, the README, llms.txt and the form", () => {
     expect(TOUR_URL).toBe(`${SITE}/tour`);
     expect(at).toBeGreaterThan(0);
     expect(at).toBeLessThan(20);
-    expect(lines[at]).toContain(`**[${TOUR_LINK}](${TOUR_URL})**`);
-    expect(lines.filter((l) => l.includes(TOUR_URL))).toHaveLength(1);
+    // Since 13 Nov (the README upgrade): the first of three buttons at the top, and the first step of the judges' 3 minutes.
+    expect(lines[at]).toContain(`<a href="${TOUR_URL}"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the ${TOUR_LINK}"></a>`);
+    expect(lines.filter((l) => l.includes(TOUR_URL))).toHaveLength(2);
+    const judges = lines.slice(lines.indexOf("## For judges: 3 minutes")).join("\n");
+    expect(judges.slice(0, judges.indexOf("\n## ", 5))).toContain(`[${TOUR_LINK}](${TOUR_URL})`);
     expect(read("README.md")).not.toMatch(/workers\.dev\/judge\b|Judge it in 3 minutes/);
   });
 
