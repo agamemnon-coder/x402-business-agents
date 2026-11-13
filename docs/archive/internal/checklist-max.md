@@ -15,11 +15,11 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 
 - Voor de film hoef je niets op te nemen: de voice-over is een AI-stem (ElevenLabs), een verteller in de derde
   persoon, en de muziek is AI-gegenereerd (ElevenLabs); de eindkaart vermeldt beide. Zie
-  [docs/video/README.md](../video/README.md).
+  [docs/video/README.md](../../video/README.md).
 - Upload de film op YouTube als **Niet vermeld** (unlisted). De regel is "under five minutes"; de film duurt 3:58 (v8).
   Zet in de beschrijving: "Test money only: the Airwallex sandbox and Metal testnet" en "Voice-over: an AI-generated
   voice (ElevenLabs) · Music: AI-generated (ElevenLabs)".
-- Zet de link in het formulier. Claude zet hem in [README.md](README.md).
+- Zet de link in het formulier. Claude zet hem in [README.md](../../submission/README.md).
 
 ## 2. Repo
 
@@ -29,9 +29,9 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 
 ## 3. Het formulier (HackerEarth)
 
-- Tekst: kopieer de blokken uit [README.md](README.md) (titel, synopsis, beschrijving, instructies). Stuur Claude de
+- Tekst: kopieer de blokken uit [README.md](../../submission/README.md) (titel, synopsis, beschrijving, instructies). Stuur Claude de
   velden en hun limieten, dan past Claude de tekst daarop aan.
-- Screenshots: de 8 bestanden die [README.md](README.md) noemt (sectie "Screenshots"), uit `docs/submission/screens/`.
+- Screenshots: de 8 bestanden die [README.md](../../submission/README.md) noemt (sectie "Screenshots"), uit `docs/submission/screens/`.
 - Deck: `docs/submission/purser-deck.pdf`.
 - Vraagt het formulier om een bestand met de code? Draai `npm run submission` op de tag; de zip staat dan in
   `out/submission/purser-source.zip`.
@@ -49,4 +49,4 @@ Zet nooit een sleutel of geheim in de chat. Typ ze alleen in je eigen terminal o
 - Geen Slack-, X- of LinkedIn-bericht zonder dat jij de tekst hebt goedgekeurd.
 
 Optioneel, ook na het inleveren: een Airwallex-sleutel met alleen de nodige rechten
-([docs/airwallex.md](../airwallex.md), sectie "The scoped key").
+([docs/airwallex.md](../../airwallex.md), sectie "The scoped key").

@@ -43,7 +43,8 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     for (const t of tiles) {
       const html = tileHtml(t.key);
       expect({ key: t.key, shown: html.length > 0 }).toEqual({ key: t.key, shown: true });
-      expect(withoutFolds(main(awx))).toContain(html);
+      // 13 Nov (owner: "overwhelming with all the numbers"): each card is quiet in sight; its figure and id under "Details".
+      expect(withoutFolds(main(awx))).toContain(withoutFolds(html));
       const tt = text(html);
       // In order on the page, the product named, its number large, its id in monospace and its own date.
       expect(awx.indexOf(html)).toBeGreaterThan(at);
@@ -81,9 +82,13 @@ describe("/airwallex: one tile per Airwallex product, each from its run's record
     }
   });
 
-  it("keeps each tile short: at most 24 words, the three-state tile 24", () => {
-    // 24 since 12 Nov (review): "EUR 45.00" is two words where "€45" was one (and on Airi's line, two amounts).
-    for (const t of tiles) expect({ key: t.key, over: tileWords(tileHtml(t.key)) > (t.states ? 24 : 24) ? tileWords(tileHtml(t.key)) : 0 }).toEqual({ key: t.key, over: 0 });
+  it("keeps each tile short: at most 18 words in sight, 26 with its Details open", () => {
+    // 13 Nov (owner: "overwhelming with all the numbers"): in sight the name, one sentence and the day; the figure, what
+    // Airwallex enforces and the id under "Details". (Before: 24 words, all in sight.)
+    for (const t of tiles) {
+      const seen = tileWords(withoutFolds(tileHtml(t.key))), all = tileWords(tileHtml(t.key));
+      expect({ key: t.key, seen: seen <= 18, all: all <= 26 }).toEqual({ key: t.key, seen: true, all: true });
+    }
   });
 
   it("holds every block that names its own record (data-rec) to that record's figures", () => {

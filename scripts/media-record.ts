@@ -55,7 +55,16 @@ async function readScreens(p: Page, holds: number, holdMs: number) {
   }
 }
 
-/** A recorded clip, cut to [from, to] seconds of the recording and sped up to fit MAX_SECONDS: WebM, MP4 and GIF. */
+/** The clips the README shows as a still that links to the MP4, not as a GIF (13 Nov: the two GIFs were 9 MB). */
+export const POSTER_ONLY = new Set(["books", "cloud-dashboard"]);
+
+/** A still from the clip's MP4, at `at` of its length, 880 px wide: the README's poster for that clip. */
+export function poster(mp4: string, png: string, at = 0.4) {
+  ff(["-ss", (duration(mp4) * at).toFixed(2), "-i", mp4, "-frames:v", "1", "-vf", "scale=880:-1:flags=lanczos", png]);
+}
+
+/** A recorded clip, cut to [from, to] seconds of the recording and sped up to fit MAX_SECONDS: WebM, MP4 and a GIF, or
+ *  for POSTER_ONLY clips a poster PNG instead of the GIF. */
 function clip(name: string, raw: string, o: { from: number; to: number; source: string; caption: string }) {
   const span = o.to - o.from;
   const speed = span > MAX_SECONDS ? Math.ceil((span / MAX_SECONDS) * 10) / 10 : 1;
@@ -64,6 +73,11 @@ function clip(name: string, raw: string, o: { from: number; to: number; source: 
   const webm = join(OUT, `${name}.webm`), mp4 = join(OUT, `${name}.mp4`), gif = join(OUT, `${name}.gif`);
   ff(["-i", raw, "-vf", vf, "-an", "-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "36", "-row-mt", "1", webm]);
   ff(["-i", raw, "-vf", `${vf},scale=trunc(iw/2)*2:trunc(ih/2)*2`, "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "26", "-preset", "slow", "-movflags", "+faststart", mp4]);
+  if (POSTER_ONLY.has(name)) {
+    const png = join(OUT, `${name}-poster.png`);
+    poster(mp4, png);
+    entries.push({ file: `${name}-poster.png`, kind: "png", source: o.source, recorded_at: at, bytes: statSync(png).size, width: 880, caption: `${o.caption} (a still from the MP4)` });
+  } else {
   // The GIF: a palette of its own, smaller until it fits.
   for (const [w, fps] of [[880, 12], [800, 10], [720, 10], [640, 8], [560, 8], [480, 6]] as const) {
     const pal = join(tmpdir(), `${name}-pal.png`);
@@ -72,12 +86,13 @@ function clip(name: string, raw: string, o: { from: number; to: number; source: 
     if (statSync(gif).size <= GIF_MAX_BYTES) { entries.push({ file: `${name}.gif`, kind: "gif", source: o.source, recorded_at: at, bytes: statSync(gif).size, seconds: +duration(webm).toFixed(1), speed, width: w, caption: o.caption }); break; }
   }
   if (statSync(gif).size > GIF_MAX_BYTES) throw new Error(`${gif} is over 5 MB at every size tried`);
+  }
   for (const [f, kind] of [[webm, "webm"], [mp4, "mp4"]] as const) {
     const s = duration(f);
     if (s > MAX_SECONDS + 0.2) throw new Error(`${f} is ${s} s, over ${MAX_SECONDS}`);
     entries.push({ file: f.slice(OUT.length + 1), kind, source: o.source, recorded_at: at, bytes: statSync(f).size, seconds: +s.toFixed(1), speed, width: VIDEO.width, caption: o.caption });
   }
-  log(`${name}: ${span.toFixed(1)} s recorded, ${speed}x, gif ${(statSync(gif).size / 1e6).toFixed(2)} MB`);
+  log(`${name}: ${span.toFixed(1)} s recorded, ${speed}x${POSTER_ONLY.has(name) ? ", poster" : `, gif ${(statSync(gif).size / 1e6).toFixed(2)} MB`}`);
 }
 
 /** A context that records its pages; the clip starts at the first frame the page shows. */
@@ -216,7 +231,7 @@ const mb = (n: number) => `${(n / 1e6).toFixed(2)} MB`;
 export function readme(files: Entry[]): string {
   const day = (e: Entry) => e.recorded_at.slice(0, 10);
   const clips = [...new Set(files.filter((f) => f.kind !== "png").map((f) => f.file.replace(/\.(gif|mp4|webm)$/, "")))];
-  const shots = [...new Set(files.filter((f) => f.kind === "png").map((f) => f.file.replace(/-(1440|390)\.png$/, "")))];
+  const shots = [...new Set(files.filter((f) => f.kind === "png" && !f.file.endsWith("-poster.png")).map((f) => f.file.replace(/-(1440|390)\.png$/, "")))];
   const row = (e: Entry) => `[${e.file}](${e.file}) | ${e.kind.toUpperCase()} | ${mb(e.bytes)} | ${e.seconds !== undefined ? `${e.seconds} s` : `${e.width} px wide`} | ${day(e)}`;
   return [
     "# Product media",
@@ -226,10 +241,10 @@ export function readme(files: Entry[]): string {
     "",
     "**The passkey in the /try clip is not a person's.** It is Chromium's virtual WebAuthn authenticator, a test passkey whose user presence is simulated. No phone and no Face ID are involved. In the product, the CFO's own passkey signs.",
     "",
-    "## Clips (each at most 15 s; GIFs at most 5 MB)",
+    "## Clips (each at most 15 s; GIFs at most 5 MB; books and cloud-dashboard have a poster, a still from the MP4, instead of a GIF)",
     "",
     ...clips.flatMap((c) => {
-      const fs = files.filter((f) => f.file.startsWith(`${c}.`));
+      const fs = files.filter((f) => f.file.startsWith(`${c}.`) || f.file === `${c}-poster.png`);
       const e = fs[0]!;
       return [`### ${c}`, "", e.caption, "", `Source: ${e.source} · recorded ${day(e)} · ${e.speed && e.speed > 1 ? `sped up ${e.speed}x to fit 15 s` : "real time"}`, "", "File | Type | Size | Length | Recorded", "--- | --- | --- | --- | ---", ...fs.map(row), ""];
     }),
