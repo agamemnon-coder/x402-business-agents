@@ -1,63 +1,86 @@
-// The promo film (13 Nov): 72 seconds, separate from the walkthrough. A premium-launch style cut: the problem, the
-// answer, the proof, the call to action, read by an AI-generated female narrator (ElevenLabs, a premade library voice),
-// over AI-generated music (ElevenLabs). Every figure on screen is read from its record here, before a frame is drawn:
-// a string that is not found in its record stops the render (checkPromo). The zero-trust and hostile-model counts are
-// read from their JSON reports, never typed. The scenes are drawn by src/film/promo.html; npm run promo renders them.
+// The promo film (13 Nov), v2: 66.5 seconds, separate from the walkthrough, cut to the beat. A cold open on a live
+// refusal, the mark drawn on the music's drop, the product recorded from the live pages, a proof montage where every
+// partner moment is an event, a split-screen payoff, and the end card. Read by an AI-generated female narrator
+// (ElevenLabs, a premade library voice) over AI-generated music (ElevenLabs, one take, re-cut here), with sound
+// effects synthesised in code (src/film/sfx.ts). Every figure on screen is read from its record here, before a frame
+// is drawn: a string that is not found in its record stops the render (checkPromo). The zero-trust and hostile-model
+// counts are read from their JSON reports, never typed. The scenes are drawn by src/film/promo.html.
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { FILM_URL } from "../config/brand.js";
 
 export const ROOT = resolve(import.meta.dirname, "../..");
 export const TRY_URL = "kit11.max-31b.workers.dev/try";
-export const TOTAL = 72;
+/** The walkthrough on YouTube, as the site links it (src/config/brand.ts FILM_URL), without its scheme. */
+export const WALKTHROUGH_URL = FILM_URL.replace(/^https:\/\//, "");
+export const TOTAL = 66.5;
 export const FPS = 60;
-/** The music take starts this late on the film's clock, so its two hits land on "money" and on "Purser." */
-export const MUSIC_AT = 1.0;
+/**
+ * The music take (72 s) is cut in at this point: the film starts 4.6 s into it, so its drop (10.0 s in the take) lands
+ * on the mark at 5.4 s, its quiet bars (60–65 s) under the payoff, and its last hit (65.7 s) on the end card at 61.1 s.
+ */
+export const MUSIC_FROM = 4.6;
 /** The narrator: ElevenLabs premade library voice "Lily" (no clone, no imitation of anyone). */
 export const VOICE = { id: "pFZP5JQG7iQjIQuC4Bku", name: "Lily (ElevenLabs premade voice)", model: "eleven_multilingual_v2" } as const;
 
-/** One line of narration: its id (the WAV/MP3 name), its words, where it starts, and the take's length (measured). */
+/**
+ * One line of narration: its id (the MP3's name), its words, where it starts, and how long its speech runs (measured;
+ * r6's take ends in 0.6 s of silence, not counted).
+ */
 export interface Line { id: string; words: string; at: number; dur: number }
 
 export const LINES: readonly Line[] = [
-  { id: "p1", at: 0.5, dur: 2.93, words: "AI agents are starting to spend company money." },
-  { id: "p2", at: 4.0, dur: 3.47, words: "And a limit written in a prompt... is only a request." },
-  { id: "p3", at: 8.4, dur: 1.52, words: "So who holds the pen?" },
-  { id: "a1", at: 11.0, dur: 1.02, words: "Purser." },
-  { id: "a2", at: 13.0, dur: 6.92, words: "Agents propose. The CFO signs the exact terms, with Face ID or a passkey." },
-  { id: "a3", at: 20.3, dur: 2.4, words: "Then the payment rails enforce the limit, again." },
-  { id: "a4", at: 23.2, dur: 2.27, words: "Two locks. One signature." },
-  { id: "r0", at: 26.2, dur: 1.67, words: "Don't take our word for it." },
-  { id: "r1", at: 28.5, dur: 3.42, words: "Change one cent after signing. Refused." },
-  { id: "r2", at: 32.4, dur: 3.47, words: "A charge over the card limit? Airwallex declined it." },
-  { id: "r3", at: 36.5, dur: 3.94, words: "A payout, held in approval, until the owner said yes." },
-  { id: "r4", at: 41.0, dur: 5.02, words: "Over the agent's cap? Metal refused it. On chain." },
-  { id: "r5", at: 46.6, dur: 2.53, words: "The audit chain, anchored on chain." },
-  { id: "r6", at: 49.6, dur: 3.68, words: "Fifty-three attacks. Money moved: zero." },
-  { id: "r7", at: 53.5, dur: 5.69, words: "A hostile model. Three hundred and eighty tool calls. Zero unsafe." },
-  { id: "c1", at: 61.2, dur: 3.66, words: "Your agents do the work. Your CFO signs the exceptions." },
-  { id: "c2", at: 66.8, dur: 1.91, words: "Purser. Try it yourself." },
+  { id: "n1", at: 2.6, dur: 2.05, words: "A limit in a prompt is only a request." },
+  { id: "a1", at: 5.6, dur: 1.02, words: "Purser." },
+  { id: "a2", at: 8.4, dur: 6.92, words: "Agents propose. The CFO signs the exact terms, with Face ID or a passkey." },
+  { id: "a3", at: 15.8, dur: 2.4, words: "Then the payment rails enforce the limit, again." },
+  { id: "a4", at: 18.6, dur: 2.27, words: "Two locks. One signature." },
+  { id: "r0", at: 21.4, dur: 1.67, words: "Don't take our word for it." },
+  { id: "r2", at: 23.6, dur: 3.47, words: "A charge over the card limit? Airwallex declined it." },
+  { id: "r3", at: 27.5, dur: 3.94, words: "A payout, held in approval, until the owner said yes." },
+  { id: "r4", at: 31.9, dur: 5.02, words: "Over the agent's cap? Metal refused it. On chain." },
+  { id: "r5", at: 37.3, dur: 2.53, words: "The audit chain, anchored on chain." },
+  { id: "r6", at: 40.2, dur: 3.68, words: "Fifty-three attacks. Money moved: zero." },
+  { id: "r7", at: 44.3, dur: 5.69, words: "A hostile model. Three hundred and eighty tool calls. Zero unsafe." },
+  { id: "c1", at: 55.6, dur: 3.66, words: "Your agents do the work. Your CFO signs the exceptions." },
+  { id: "c2", at: 61.1, dur: 1.91, words: "Purser. Try it yourself." },
 ];
 
 export interface Scene { id: string; from: number; to: number }
 export const SCENES: readonly Scene[] = [
-  { id: "problem", from: 0, to: 4.0 },
-  { id: "prompt", from: 4.0, to: 8.3 },
-  { id: "pen", from: 8.3, to: 10.9 },
-  { id: "logo", from: 10.9, to: 12.9 },
-  { id: "sign", from: 12.9, to: 20.2 },
-  { id: "rails", from: 20.2, to: 23.1 },
-  { id: "locks", from: 23.1, to: 26.1 },
-  { id: "word", from: 26.1, to: 28.4 },
-  { id: "cent", from: 28.4, to: 32.3 },
-  { id: "card", from: 32.3, to: 36.4 },
-  { id: "payout", from: 36.4, to: 40.9 },
-  { id: "metal", from: 40.9, to: 46.5 },
-  { id: "anchor", from: 46.5, to: 49.6 },
-  { id: "attacks", from: 49.6, to: 53.4 },
-  { id: "hostile", from: 53.4, to: 60.4 },
-  { id: "cloud", from: 60.4, to: 66.5 },
-  { id: "end", from: 66.5, to: TOTAL },
+  { id: "cold", from: 0, to: 5.2 },
+  { id: "logo", from: 5.2, to: 8.2 },
+  { id: "propose", from: 8.2, to: 11.6 },
+  { id: "phone", from: 11.6, to: 15.4 },
+  { id: "agents", from: 15.4, to: 18.4 },
+  { id: "locks", from: 18.4, to: 21.3 },
+  { id: "word", from: 21.3, to: 23.4 },
+  { id: "card", from: 23.4, to: 27.3 },
+  { id: "payout", from: 27.3, to: 31.7 },
+  { id: "metal", from: 31.7, to: 37.1 },
+  { id: "anchor", from: 37.1, to: 40.1 },
+  { id: "attacks", from: 40.1, to: 44.2 },
+  { id: "hostile", from: 44.2, to: 50.4 },
+  { id: "recap", from: 50.4, to: 55.4 },
+  { id: "payoff", from: 55.4, to: 61.0 },
+  { id: "end", from: 61.0, to: TOTAL },
+];
+
+/** The sound effects, synthesised by src/film/sfx.ts: every hit on screen has one. */
+export type SfxKind = "whoosh" | "impact" | "stamp" | "tick" | "swipe" | "boom";
+export const SFX: readonly { at: number; kind: SfxKind; gain?: number }[] = [
+  { at: 0.15, kind: "whoosh" }, { at: 1.05, kind: "tick" }, { at: 1.25, kind: "tick" }, { at: 1.45, kind: "tick" }, { at: 2.0, kind: "impact" },
+  { at: 5.2, kind: "whoosh", gain: 0.6 }, { at: 5.4, kind: "boom" },
+  { at: 8.2, kind: "whoosh" }, { at: 11.6, kind: "whoosh" }, { at: 13.9, kind: "tick" }, { at: 14.5, kind: "stamp", gain: 0.6 },
+  { at: 15.4, kind: "whoosh" }, { at: 18.4, kind: "whoosh" }, { at: 19.4, kind: "stamp", gain: 0.7 }, { at: 20.0, kind: "stamp", gain: 0.7 },
+  { at: 21.3, kind: "whoosh" }, { at: 23.4, kind: "whoosh" }, { at: 24.0, kind: "swipe" }, { at: 26.1, kind: "impact" },
+  { at: 27.3, kind: "whoosh" }, { at: 27.6, kind: "tick" }, { at: 30.3, kind: "tick" }, { at: 30.9, kind: "stamp" },
+  { at: 31.7, kind: "whoosh" }, { at: 33.4, kind: "tick" }, { at: 33.7, kind: "tick" }, { at: 34.0, kind: "tick" }, { at: 34.6, kind: "impact" },
+  { at: 37.1, kind: "whoosh" }, { at: 37.5, kind: "tick" }, { at: 37.8, kind: "tick" }, { at: 38.1, kind: "tick" }, { at: 38.4, kind: "tick" }, { at: 39.0, kind: "boom", gain: 0.7 },
+  { at: 40.1, kind: "whoosh" }, { at: 42.5, kind: "stamp" }, { at: 44.2, kind: "whoosh" }, { at: 48.6, kind: "stamp" },
+  ...[0, 1, 2, 3, 4, 5, 6].map((i) => ({ at: 50.4 + i * 0.6, kind: "stamp" as const, gain: 0.55 })), { at: 54.6, kind: "impact" },
+  { at: 55.4, kind: "whoosh", gain: 0.7 }, { at: 61.0, kind: "boom" },
 ];
 
 /** A figure on screen: the text shown, the record it comes from, and the string that must be found there. */
@@ -126,7 +149,7 @@ export const LABELS = {
   harness: "Test harness · stand-in rails · test data",
   hostile: "A script in the model's place makes the worst call it can · test data",
   endorse: "Airwallex, Metal and Claude named in text only · No endorsement implied",
-  credits: "Voice and music: AI-generated (ElevenLabs)",
+  credits: "Voice and music: AI-generated (ElevenLabs) · sound effects made in code",
 } as const;
 
 /** Names the film must never show or say (it names partners in text only, and no one else's product). */
@@ -143,7 +166,8 @@ export function checkPromo(): string[] {
   for (const fig of figures) if (!read(fig.source).includes(fig.find)) out.push(`"${fig.text}": "${fig.find}" is not in ${fig.source}`);
   const words = LINES.map((l) => l.words).join(" ");
   const n = words.split(/\s+/).length;
-  if (n < 120 || n > 150) out.push(`narration is ${n} words, not 120–150`);
+  if (n < 90 || n > 150) out.push(`narration is ${n} words, not 90–150`);
+  for (const x of SFX) if (x.at < 0 || x.at >= TOTAL) out.push(`a sound effect at ${x.at} s is outside the film`);
   if (TOTAL < 60 || TOTAL > 75) out.push(`film is ${TOTAL} s, not 60–75`);
   for (const [i, l] of LINES.entries()) {
     const next = LINES[i + 1];

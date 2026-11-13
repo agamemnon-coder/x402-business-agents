@@ -19,45 +19,74 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Promo film (13 Nov)
 
-A 1:12 promo, separate from the walkthrough: dark, fast cuts, bold type, in the style of a premium launch ad. The
-problem (agents spend company money; a limit in a prompt is only a request), the answer (agents propose, the CFO signs
-the exact terms with Face ID or a passkey, the rails enforce the limit again), the proof, and "Try it yourself" with
-`kit11.max-31b.workers.dev/try`. Nothing in it was recorded by Max.
+**v2 (13 Nov, night): 1:06.5, cut to the beat.** Max on v1 (1:12): "looks nice but it still felt boring. It's a
+promo, upgrade it." v2 opens on a live refusal, shows the product recorded from the live pages, and turns each partner
+moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing in it was recorded by Max.
 
-- **Code:** `src/film/promo.ts` (the lines, the scenes, every figure with its record), `src/film/promo.html` (the
-  frames; no figure is typed in it), `src/cli/promo.ts` (`npm run promo`), `test/film-promo.test.ts`.
-- **Every figure is read from its record** and checked before a frame is drawn (`npm run promo -- --check`): one cent
-  changed and refused (the live /try page, recorded frame by frame from its own 16-second loop); Airwallex declining a
-  simulated EUR 45.00 charge over the 30.00 card limit, `LIMIT_EXCEEDED` (awx-1, 7 Nov); payout `4074d684…` held
-  `IN_APPROVAL` (10 Nov) until the owner approved it at Airwallex, then `PAID`, settlement simulated (12 Nov); Metal
-  refusing 0.06 test USD over the 0.05 mandate cap on chain, `mandate_cap_exceeded` (12 Nov); the audit chain's
-  anchor `aaaf56a1…` on Metal testnet (13 Nov); the zero-trust attack count and money moved (read from
-  `docs/zero-trust/report.json`: 53 attacks, 0 moved); the hostile-model
-  eval (read from `docs/evals/ap-hostile.json`: 380 hostile tool calls, 370 refused by code, 0 unsafe). No fractions.
+| Time | Scene | What happens |
+|---|---|---|
+| 0:00 | Cold open | An agent's payment request (the live /try page) flies in; one cent changes; **REFUSED** lands with a shake and an impact; "A limit in a prompt is only a request." word by word |
+| 0:05 | The mark | The feather draws on the music's drop, the name is swept with light, "AI agents spend. You sign off." word by word |
+| 0:08 | Agents propose | Home's live hero loop (light mode, the hero card only), tilted, pushing in: Read, Check, Sign, Paid |
+| 0:11 | The CFO signs | The live /try loop on a phone, in a phone frame: Face ID, Passkey, **SIGNED** |
+| 0:15 | The rails | Purser Cloud's Agents page (guest view), its limits scrolling under "The rails enforce it again." |
+| 0:18 | Two locks | Two rings close, two shackles snap: Purser checks, the rail checks |
+| 0:21 | Don't take our word | A whip through the records' hashes |
+| 0:23 | Airwallex | The Sourcing card swipes; EUR 45.00 against the 30.00 limit; **DECLINED** · `LIMIT_EXCEEDED` |
+| 0:27 | The payout | A ticker flips `IN_APPROVAL` → APPROVED (at Airwallex, 12 Nov) → `PAID`, settlement simulated |
+| 0:31 | Metal | The cap and the payment as bars, then a chain of blocks; the last breaks: **REFUSED ON CHAIN**, the tx typing out |
+| 0:37 | The audit chain | Blocks link, a pulse runs along them, the anchor drops, the head types out |
+| 0:40 | Zero-trust | Slot-machine digits race to the report's count; **Money moved: 0** |
+| 0:44 | Hostile model | 380 races up, 370 refused by code, **0 unsafe** |
+| 0:50 | Recap | Every refusal again, one per beat, then "Money moved: 0" |
+| 0:55 | Payoff | Split screen: "Your agents do the work" (Cloud's pages racing) against "Your CFO signs the exceptions" (the phone, still) |
+| 1:01 | End card | The mark, "Try it yourself", `kit11.max-31b.workers.dev/try`, "Full walkthrough: youtu.be/mp9fmOYfBWc" (`FILM_URL`), the small type |
+
+- **Code:** `src/film/promo.ts` (the lines, the scenes, the sound cues, every figure with its record),
+  `src/film/promo.html` (the frames; no figure is typed in it), `src/film/sfx.ts` (the sound effects, synthesised in
+  code: whoosh, impact, stamp, tick, swipe, boom; no stock audio), `src/cli/promo.ts` (`npm run promo`),
+  `test/film-promo.test.ts`.
+- **Every figure is read from its record** and checked before a frame is drawn (`npm run promo -- --check`): the
+  one-cent refusal (the live /try page); Airwallex declining a simulated EUR 45.00 charge over the 30.00 card limit,
+  `LIMIT_EXCEEDED` (awx-1, 7 Nov); payout `4074d684…` held `IN_APPROVAL` (10 Nov) until the owner approved it at
+  Airwallex, then `PAID`, settlement simulated (12 Nov); Metal refusing 0.06 test USD over the 0.05 mandate cap on
+  chain, `mandate_cap_exceeded` (12 Nov); the anchor `aaaf56a1…` on Metal testnet (13 Nov); 53 zero-trust attacks,
+  0 moved (`docs/zero-trust/report.json`); 380 hostile tool calls, 370 refused by code, 0 unsafe
+  (`docs/evals/ap-hostile.json`). Count-ups rest on the record's figure. No fractions.
 - **Small type** on every proof shot says what is simulated ("Test money · sandbox/testnet", and per shot: test world,
-  Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no marks (the Home
-  page's "Works with" logos are never in frame); the end card says "No endorsement implied".
-- **Live captures** (read only): the /try loop, and Purser Cloud's read-only guest view of the demo company. No /try
-  company was made.
-- **Voice:** "Lily", a premade voice from ElevenLabs' library (`eleven_multilingual_v2`), one take per line, 127 words;
-  no clone, no imitation of anyone. **Music:** one ElevenLabs music take, 72 s, instrumental, placed 1 s in so its hits
-  land on "money" and on "Purser.". Credits used: 284 (voice) + 900 (music) + 39 (the attack line again, when the report went from 52 to 53) = 1,223. The end card credits both as
-  AI-generated.
-- **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, two-pass loudnorm to
-  -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.
+  test company, Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no
+  marks (Home's "Works with" logos are never in frame); the end card says "No endorsement implied".
+- **Live captures** (read only, `npm run promo -- capture`): the /try loop on a desktop and on a phone, and Home's hero
+  loop, each paused and seeked frame by frame at 60 fps from its own CSS animations; Purser Cloud's guest view
+  (Overview, Agents, Invoices & books). No /try company was made.
+- **Voice:** "Lily", a premade voice from ElevenLabs' library (`eleven_multilingual_v2`), 14 lines, 106 words. v1's
+  takes are reused; one new line, "A limit in a prompt is only a request." **Music:** v1's ElevenLabs take, re-cut:
+  the film starts 4.6 s into it, so its drop lands on the mark, its quiet bars under the payoff and its last hit on the
+  end card. **Captions** are burned in on the vertical cut only (muted autoplay), in a dark pill, the words lit as said;
+  the landscape cut has none (the SRT is for YouTube).
+- **Credits:** v1 284 (voice) + 900 (music) + 39 (the attack line again, 52 → 53); v2 38 (the new line), no new music.
+  1,261 in all.
+- **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, the effects on their own bus,
+  two-pass loudnorm to -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.
+- **Self-critique pass:** `npm run promo -- sheet [--vertical]` draws the first 10 s every 0.5 s and the film every
+  3 s. On v2's first sheets: the first frame was empty, an old PAID stamp showed before the refusal, a count-up rested
+  on a figure that is not in the record, the payoff's phone covered its line, and light screens hid the vertical
+  captions. Each was fixed before the render.
 
 ```sh
-npm run promo -- --check              # every figure against its record, the timing, the words
-npm run promo -- capture              # out/promo/live/: the /try loop (660 frames, seeked) and the Cloud guest view
-npm run promo -- vo                   # the narration (skips takes in out/promo/vo/; checks the credits first)
-npm run promo -- render [--vertical]  # out/promo/picture-{h,v}.mp4: 1920x1080 or 1080x1920, 60 fps, silent
-npm run promo -- mix [--vertical]     # out/promo/purser-promo-1080p.mp4 / purser-promo-vertical.mp4 and the .srt
-npm run promo -- stills               # out/promo/still-1-sign.png, still-2-metal.png, still-3-end.png
+npm run promo -- --check                       # every figure against its record, the timing, the words, the cues
+npm run promo -- capture [try phone home cloud] # out/promo/live/: the loops (seeked) and the Cloud guest view
+npm run promo -- vo                            # the narration (skips takes in out/promo/vo/; checks the credits first)
+npm run promo -- sheet [--vertical]            # the self-critique contact sheets
+npm run promo -- render [--vertical]           # out/promo/picture-{h,v}.mp4: 1920x1080 or 1080x1920, 60 fps, silent
+npm run promo -- mix [--vertical]              # out/promo/purser-promo-1080p.mp4 / purser-promo-vertical.mp4, .srt
+npm run promo -- stills                        # out/promo/still-1-phone.png, still-2-metal.png, still-3-end.png
 ```
 
-The music take is `out/promo/music.mp3` (not in git; regenerate with ElevenLabs' music API from the prompt in
-[promo-script.md](promo-script.md)). The MP4s and the SRT are on the orphan branch `promo-asset` under `video/`.
-The script with every line, time and source, and the YouTube title and description: [promo-script.md](promo-script.md).
+The music take is `out/promo/music.mp3` (not in git; the prompt is in [promo-script.md](promo-script.md)). The MP4s
+and the SRT are on the orphan branch `promo-asset` under `video/`. The script with every line, time and source, and
+the YouTube title and description: [promo-script.md](promo-script.md).
+
 ## Film v10 (13 Nov): enterprise hand-in
 
 **Purser: the enterprise hand-in**, 4:58, **the hand-in video** for the Airwallex Agentic Banking Hackathon (Kit 11).
