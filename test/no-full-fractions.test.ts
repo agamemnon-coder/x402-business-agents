@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { countOf, countWords } from "../src/redesign/ui.js";
 
-const visible = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]+>/g, " ")
+const visible = (html: string) => html.replace(/<style\b[\s\S]*?<\/style[^>]*>/gi, " ").replace(/<script\b[\s\S]*?<\/script[^>]*>/gi, " ").replace(/<[^>]+>/g, " ")
   .replace(/&nbsp;|\u00a0/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const FULL = [/\b(\d[\d,]*) of \1\b/g, /\b(\d[\d,]*)\/\1\b/g];
 
