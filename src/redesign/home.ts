@@ -7,9 +7,9 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
-import { designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, JUDGE_LINE, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
-import { agentRun, type AgentRun } from "./run.js";
+import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
@@ -41,6 +41,7 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 .trust img { height: 20px; width: auto; filter: brightness(0); opacity: .45; }
+.trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
 .trust img.tall { height: 22px; }
 @media (max-width: 640px) { .trust { gap: 12px 14px; } .trust img { height: 16px; } .trust img.tall { height: 18px; } }
 :root[data-theme="dark"] .trust img { filter: brightness(0) invert(1); opacity: .5; }
@@ -79,6 +80,9 @@ main.ent ul.stats { margin-top: 48px; grid-template-columns: repeat(auto-fit, mi
 main.ent ul.stats li { padding: 20px; border-radius: 16px; }
 main.ent ul.stats b { font-size: 32px; }
 .statnote { margin: 16px 0 0; font-size: 14px; color: var(--faint); }
+.kit11 { margin: 20px 0 0; max-width: 46em; font-size: 15.5px; line-height: 1.5; color: var(--muted); }
+.kit11 b { color: var(--text); font-weight: 650; }
+.kit11 a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: flex; width: fit-content; align-items: center; min-height: 44px; white-space: nowrap; }
 .e-more { margin: 32px 0 0; display: flex; flex-wrap: wrap; gap: 12px; }
 p.next { margin: 24px 0 0; font-size: 15.5px; color: var(--muted); max-width: 44em; } p.next a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; }
 /* Scroll-in: a section still below the screen once the reader scrolls rises in as it comes into view. Every section is
@@ -175,6 +179,23 @@ export const FEATURES = [
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
 export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
 export const STAT_NOTE = "All runs and test companies on record, counted at build.";
+/** Which agents these are (review, 13 Nov: two sets of agents on one site read as one). */
+export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud and /try.";
+
+/**
+ * The Kit 11 core run in one line (review, 13 Nov: Home told only the payables story): the main run of 3 Nov, its
+ * company, its Metal payments, Claude's decisions and the purchase Metal refused on chain, each from the main run's
+ * record; then the 3:58 film.
+ */
+/** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
+export const FILM_HOME = "The film, 3:58";
+export function kit11Html(run: AgentRun = agentRun()): string {
+  const st = metalStory(run.record), sp = split(run.record), r = st.refusal;
+  const company = (run.record as { company?: unknown }).company;
+  if (!st.payments.total || !sp.decisions) return "";
+  const who = `${run.record.run}${typeof company === "string" ? `, ${company}` : ""}`;
+  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Metal testnet payments, ${sp.byClaude} of ${sp.decisions} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
+}
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -198,10 +219,13 @@ export const AGENT_FLOW: readonly FlowStep[] = [
   { verb: "Pay", who: "Payer agent (Claude) proposes, the rail and code enforce", evals: AP_EVALS },
 ];
 export const WORKS_WITH = "Works with";
+/** Beside the partners' marks (review, 13 Nov); the whole line is in every page's "What's real?" (ui.ts MARKS_NOTE). */
+export const NO_ENDORSEMENT = "No endorsement implied";
 function aboutHtml(): string {
   return `<p class="eyebrow">${esc(ABOUT_HEAD)}</p>
   <h2 class="e-h reveal" id="about">${esc(FLOW_HEAD)}</h2>
   <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` (<a href="${esc(f.evals)}" target="_blank" rel="noopener">see evals</a>)` : ""}</span></li>`).join("")}</ol>
+  <p class="statnote">${esc(AGENT_SETS_NOTE)}</p>
 `;
 }
 
@@ -252,7 +276,7 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   // Its strongest number (the owner, 13 Nov): the limit changes the account ran on chain, each only after every passkey
   // signed. The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
-  return [{ n: changes, label: `limit changes, Face ID verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${owners.rec.threshold} of ${all} passkeys${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+  return [{ n: changes, label: `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}): ${owners.rec.threshold} of ${all}${virtual ? ", co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
 }
 
 /**
@@ -295,7 +319,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="what">${esc(HOME_SUB)}</p>
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}</div>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${logos.map(([src, alt, w, h, cls]) => `<img${cls ? ` class="${cls}"` : ""} src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}">`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
@@ -314,6 +338,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
   ${scaleBandHtml(scaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
+  ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}
   ${designPartnerHtml(opts.partnerUrl ?? DESIGN_PARTNER_URL)}

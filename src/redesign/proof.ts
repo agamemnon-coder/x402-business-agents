@@ -464,6 +464,10 @@ const dayShortUtc = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "nu
 /** The company a run record names (the main run: Northwind Outdoor), for the labels that say whose run a figure is. */
 const companyOf = (run: AgentRun) => { const c = (run.record as { company?: unknown }).company; return typeof c === "string" ? c : ""; };
 
+/** The 13 Nov run with the owner's own iPhone Face ID (review, 13 Nov): where it stands, from its log. */
+const FACEID_AWX_LOG = "docs/runs/2026-11-13-airwallex-faceid.md", FACEID_AWX_DAY = "13 Nov";
+const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPROVAL)`/.exec(readFileSync(new URL(`../../${FACEID_AWX_LOG}`, import.meta.url), "utf8"))?.[1] ?? null; } catch { return null; } })();
+
 export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3?: Vic3Record | null } = {}): SummaryCard[] {
   const out: SummaryCard[] = [];
   const owners = o.owners === undefined ? ownersRun() : o.owners;
@@ -473,13 +477,13 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
     const virtual = owners.rec.owners.some((x) => x.virtual);
     // Its strongest number (the owner, 13 Nov): the limit changes the account ran, each only after every passkey signed.
     const changes = steps.filter((x) => x.key === "bind" || x.key === "replace" || x.key === "revoke").length;
-    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Face ID verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
+    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Passkeys (P-256) verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
       text: `Metal testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change ran only after ${owners.rec.threshold} of ${owners.rec.owners.length} passkeys signed${virtual ? " (co-signer a test key)" : ""}. ${refused.label.replace(/^Refused /, "")} over the cap refused, then paid after the raise.` });
   }
   const hold = airwallexHold(), ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
   // Its strongest number: the amount Airwallex held for a person, then paid.
   const held = hold ? /\((EUR [\d,]+\.\d\d)\)/.exec(hold.short)?.[1] : undefined;
-  if (hold && ended) out.push({ icon: "landmark", fig: held ?? ended, title: `Airwallex held it, then ${ended}`, tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record}`, text: `${hold.short.replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.` });
+  if (hold && ended) out.push({ icon: "landmark", fig: held ?? ended, title: `Airwallex held it, then ${ended}`, tone: "ok", href: "#airwallex", rec: `${TWO_LOCKS_LOG} ${hold.record} ${FACEID_AWX_LOG}`, text: `Signed in Purser with a test passkey; ${hold.short.replace(/^Held /, "held ").replace(/; then [A-Z_]+\.$/, "")}, ${dayShortUtc(hold.date)}; sandbox, test money.${FACEID_AWX_REACHED ? ` With the owner's own iPhone Face ID (${FACEID_AWX_DAY}) a payout reached ${FACEID_AWX_REACHED}.` : ""}` });
   const v3 = o.vic3 === undefined ? vic3Run() : o.vic3;
   // Its strongest number: the amount paid above the CFO's limit, only after Face ID (the run's other outcomes in the line).
   if (v3) {

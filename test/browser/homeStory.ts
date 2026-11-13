@@ -87,7 +87,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const tiles = await row.locator("li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), label: (l.querySelector("small")?.textContent ?? "").trim() })));
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
-  if (!/Face ID verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not Face ID verified on chain (${tiles[0]?.label})`);
+  if (!/passkeys \(P-256\) verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the passkeys verified on chain (${tiles[0]?.label})`);
   // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link.
   const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));
   const wantBand = SCALE.map((x) => ({ figure: fmt(x.n), href: x.href }));

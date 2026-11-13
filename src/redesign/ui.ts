@@ -233,6 +233,12 @@ details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
+/**
+ * What the partners' names and marks mean (review, 13 Nov: "Works with" showed marks with no such note): in every page's
+ * "What's real?", and in short beside the marks on Home (src/redesign/home.ts NO_ENDORSEMENT).
+ */
+export const MARKS_NOTE = "Partner names and marks only say which services Purser uses; no endorsement implied.";
+
 /** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
 export const HEADLINE = TAGLINE_LINE;
 
@@ -275,6 +281,7 @@ export const setBuiltOn = (f: () => string) => { builtOnDefault = f; };
 export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = builtOnDefault?.() ?? ""): string {
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
+<li>${esc(MARKS_NOTE)}</li>
 <li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
 }
 

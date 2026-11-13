@@ -139,7 +139,7 @@ export function payoutTile(h: HashTravel | null, runFile: string): ProductTile |
   if (!h?.match) return null;
   return {
     key: "payouts", name: PRODUCTS.payouts.name, value: money(h.currency, h.amount),
-    what: `${h.transferMethod} payout with the hash of the terms the CFO signed.`, why: "Airwallex returns the same hash.",
+    what: `${h.transferMethod} payout with the hash of the terms the CFO signed.`, why: "Purser re-checks the echoed hash.",
     id: h.transferId, idLabel: `${h.transferMethod} transfer`, href: `#${AWX_HASH_ID}`, iso: h.signedAt, files: [runFile, h.file],
   };
 }

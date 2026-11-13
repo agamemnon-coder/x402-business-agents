@@ -424,7 +424,9 @@ describe("/proof's words in sight", () => {
     // (six figures, a few words each; 162 as built after the cards led with their strongest numbers). A margin of 8.
     // Jury, 13 Nov (second round): "the first screen is too thin", so the seven guarantees are in sight again under the
     // cards (each promise, who enforces it and its evidence; how folded), and the cards name their run: 322 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(330);
+    // Review, 13 Nov: the EUR 240.00 card says who signed it (a test passkey) and where the owner's own Face ID run
+    // stands (IN_APPROVAL): 342 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(345);
     expect(visibleWords(html)).toBeLessThanOrEqual(720);
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
