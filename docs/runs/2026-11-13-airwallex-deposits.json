@@ -1,0 +1,245 @@
+{
+  "stream": "airwallex-switch-on-1113",
+  "capability": "deposits",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "simulated_deposit": true,
+  "source": "built by `npm run awx-switch-on -- deposit-record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "budget": {
+    "approved": 12,
+    "used": 7
+  },
+  "calls": {
+    "total": 7,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /global_accounts",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /simulation/deposit/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /deposits",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /financial_transactions",
+        "calls": 1
+      }
+    ],
+    "lines": [
+      {
+        "at": "2026-11-13T12:42:40.163Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 31826
+      },
+      {
+        "at": "2026-11-13T12:42:40.869Z",
+        "method": "GET",
+        "endpoint": "/global_accounts",
+        "pid": 31826
+      },
+      {
+        "at": "2026-11-13T12:42:41.342Z",
+        "method": "POST",
+        "endpoint": "/simulation/deposit/create",
+        "pid": 31826
+      },
+      {
+        "at": "2026-11-13T12:42:42.105Z",
+        "method": "GET",
+        "endpoint": "/deposits",
+        "pid": 31826
+      },
+      {
+        "at": "2026-11-13T12:43:39.591Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 31912
+      },
+      {
+        "at": "2026-11-13T12:43:40.400Z",
+        "method": "GET",
+        "endpoint": "/deposits",
+        "pid": 31912
+      },
+      {
+        "at": "2026-11-13T12:43:40.892Z",
+        "method": "GET",
+        "endpoint": "/financial_transactions",
+        "pid": 31912
+      }
+    ]
+  },
+  "audit": [
+    {
+      "seq": 1,
+      "ts": "2026-11-13T12:42:40.159Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "deposit",
+      "payload": {
+        "at": "start"
+      }
+    },
+    {
+      "seq": 2,
+      "ts": "2026-11-13T12:42:41.341Z",
+      "actor": "system",
+      "event": "awx_deposit.global_accounts",
+      "subject": null,
+      "payload": {
+        "active": 3,
+        "chosen": "3964c579-c078-45e2-b400-4615079251de",
+        "count": 3
+      }
+    },
+    {
+      "seq": 3,
+      "ts": "2026-11-13T12:42:42.103Z",
+      "actor": "system",
+      "event": "awx_deposit.simulated",
+      "subject": "59769c92-01dd-43e4-8b13-4296d71bd171",
+      "payload": {
+        "amount_cents": 12500,
+        "currency": "GBP",
+        "global_account_id": "3964c579-c078-45e2-b400-4615079251de",
+        "simulated": true,
+        "status": "PENDING"
+      }
+    },
+    {
+      "seq": 4,
+      "ts": "2026-11-13T12:42:42.444Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 0,
+        "by": "source",
+        "checked": 0,
+        "differences": 0,
+        "movements": [],
+        "only": null,
+        "pending": []
+      }
+    },
+    {
+      "seq": 5,
+      "ts": "2026-11-13T12:42:42.445Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "deposit",
+      "payload": {
+        "at": "end"
+      }
+    },
+    {
+      "seq": 6,
+      "ts": "2026-11-13T12:43:39.586Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "deposit-follow",
+      "payload": {
+        "at": "start"
+      }
+    },
+    {
+      "seq": 7,
+      "ts": "2026-11-13T12:43:39.590Z",
+      "actor": "system",
+      "event": "awx_deposit.seen",
+      "subject": "59769c92-01dd-43e4-8b13-4296d71bd171",
+      "payload": {
+        "amount_cents": 12500,
+        "created_at": "2026-11-13T12:42:41+0000",
+        "currency": "GBP",
+        "global_account_id": "3964c579-c078-45e2-b400-4615079251de",
+        "payer": "Sandbox test payer",
+        "reference": "awx-switch-on deposit",
+        "status": "SETTLED"
+      }
+    },
+    {
+      "seq": 8,
+      "ts": "2026-11-13T12:43:40.890Z",
+      "actor": "system",
+      "event": "awx_deposit.read",
+      "subject": null,
+      "payload": {
+        "fresh": 1,
+        "read": 1,
+        "window_days": 1
+      }
+    },
+    {
+      "seq": 9,
+      "ts": "2026-11-13T12:43:40.890Z",
+      "actor": "system",
+      "event": "awx_ft.agreed",
+      "subject": "59769c92-01dd-43e4-8b13-4296d71bd171",
+      "payload": {
+        "airwallex": "1 row(s): GBP 125.00",
+        "how": "a credit for the amount",
+        "items": [
+          {
+            "amount_cents": 12500,
+            "currency": "GBP",
+            "id": "ftx_WXackgHdQ-SLE0KW1xvRcQ",
+            "source_type": "DEPOSIT",
+            "status": "SETTLED",
+            "transaction_type": "DEPOSIT"
+          }
+        ],
+        "kind": "deposit",
+        "label": "deposit from Sandbox test payer (awx-switch-on deposit)",
+        "ledger": "GBP 125.00",
+        "rows": 1
+      }
+    },
+    {
+      "seq": 10,
+      "ts": "2026-11-13T12:43:40.890Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 1,
+        "by": "source",
+        "checked": 1,
+        "differences": 0,
+        "movements": [
+          {
+            "agrees": true,
+            "airwallex": "1 row(s): GBP 125.00",
+            "how": "a credit for the amount",
+            "kind": "deposit",
+            "label": "deposit from Sandbox test payer (awx-switch-on deposit)",
+            "ledger": "GBP 125.00",
+            "rows": 1,
+            "source_id": "59769c92-01dd-43e4-8b13-4296d71bd171"
+          }
+        ],
+        "only": null,
+        "pending": []
+      }
+    },
+    {
+      "seq": 11,
+      "ts": "2026-11-13T12:43:41.209Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "deposit-follow",
+      "payload": {
+        "at": "end"
+      }
+    }
+  ]
+}

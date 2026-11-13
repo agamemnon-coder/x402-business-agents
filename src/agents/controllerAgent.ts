@@ -11,8 +11,9 @@ import type { z } from "zod";
 import { audit } from "../audit/log.js";
 import { claudeClient, MODELS } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
-import { INPUT_VAT, PAYABLES, accountType } from "../ledger/accounts.js";
+import { FOREIGN_VAT, INPUT_VAT, PAYABLES, accountType } from "../ledger/accounts.js";
 import { postEntry, reverseEntry } from "../ledger/core.js";
+import { VAT_CODES } from "../ledger/vat.js";
 import { fromCents } from "../lib/money.js";
 import { controllerAgentOn } from "../config/ledgerAgents.js";
 import {
@@ -38,7 +39,7 @@ export function ledgerInvoices(db: DB): LedgerInvoice[] {
     if (first.reverses !== null || reversed.has(id)) continue;
     const payable = lines.find((l) => l.account === PAYABLES && l.credit_cents > 0);
     if (!payable) continue;
-    const net = lines.filter((l) => l.debit_cents > 0 && l.account !== INPUT_VAT && (accountType(l.account) === "expense" || l.account.startsWith("17")));
+    const net = lines.filter((l) => l.debit_cents > 0 && l.account !== INPUT_VAT && l.account !== FOREIGN_VAT && (accountType(l.account) === "expense" || l.account.startsWith("17")));
     if (net.length === 0) continue;
     const codes = new Set(net.map((l) => l.vat_code ?? ""));
     const main = [...net].sort((a, b) => b.debit_cents - a.debit_cents)[0]!;
@@ -46,7 +47,7 @@ export function ledgerInvoices(db: DB): LedgerInvoice[] {
       entry_id: id, date: first.doc_date.slice(0, 10), month: first.posting_date.slice(0, 7), party: payable.party ?? main.party ?? "", doc_ref: payable.doc_ref ?? main.doc_ref ?? "",
       description: first.description, account: main.account, currency: payable.currency,
       net_cents: net.reduce((s, l) => s + l.debit_cents, 0),
-      vat_cents: lines.filter((l) => l.account === INPUT_VAT).reduce((s, l) => s + l.debit_cents - l.credit_cents, 0),
+      vat_cents: lines.filter((l) => l.account === INPUT_VAT || l.account === FOREIGN_VAT).reduce((s, l) => s + l.debit_cents - l.credit_cents, 0),
       vat_code: codes.size > 1 ? "mixed" : (main.vat_code ?? null),
       total_cents: lines.filter((l) => l.account === PAYABLES).reduce((s, l) => s + l.credit_cents - l.debit_cents, 0),
     });
@@ -181,12 +182,14 @@ export function decideProposal(db: DB, id: string, decision: "approve" | "reject
     else if (k.action === "adjust_vat") {
       const d = Math.abs(k.difference_cents);
       const over = k.difference_cents > 0;
+      // A foreign code's VAT sits on 1515 (src/ap/books.ts), so its correction moves 1515, never Dutch input VAT.
+      const vatAccount = VAT_CODES[k.vat_code]?.foreign ? FOREIGN_VAT : INPUT_VAT;
       posted = postEntry(db, {
         date: now.toISOString().slice(0, 10), description: `VAT correction on entry ${k.entry_id}: ${k.vat_code} is ${fromCents(k.expected_vat_cents)}, posted ${fromCents(k.posted_vat_cents)} (controller proposal ${id}, approved by ${by})`,
         created_by: by, source_key: `controller:${id}`,
         lines: [
-          { account: over ? k.account : INPUT_VAT, debit: d, currency: k.currency, memo: `controller ${id}` },
-          { account: over ? INPUT_VAT : k.account, credit: d, currency: k.currency, memo: `controller ${id}` },
+          { account: over ? k.account : vatAccount, debit: d, currency: k.currency, memo: `controller ${id}` },
+          { account: over ? vatAccount : k.account, credit: d, currency: k.currency, memo: `controller ${id}` },
         ],
       }, now).entry_id;
     }

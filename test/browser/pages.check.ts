@@ -8,7 +8,7 @@
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
 import { statusPage } from "../../src/redesign/status.js";
 import { REASSURE } from "../../src/redesign/home.js";
-import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
+import { pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
 import { VISA_ICC_LINE } from "../../src/config/brand.js";
 import { VISA_ENTRY_LINE, VISA_H1, VISA_TAP_HEADING, VISA_TITLE } from "../../src/redesign/partners.js";
@@ -19,6 +19,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
+import { proofRuns } from "../../src/redesign/proofRuns.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
@@ -55,6 +56,8 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
   try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
 })();
+/** /proof's live runs, one row each (src/redesign/proofRuns.ts). */
+const PROOF_RUN_ROWS = proofRuns().reduce((n, g) => n + g.runs.length, 0);
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -132,6 +135,39 @@ async function look(page: Page, name: string, width: number): Promise<void> {
  * "More" from the keyboard, with no script on the page's side: Tab reaches it after the four tabs, Enter opens it, the
  * next Tab lands on its first link, and Enter on "More" again closes it.
  */
+/**
+ * Judges, 13 Nov (#12): at phone width nothing in the hero and the cards overlaps or is cut off. In each group (a
+ * container), no two visible children (in the flow, not absolute) overlap; none reaches past the screen's edges; and no
+ * child that clips its overflow hides content (scrollWidth over clientWidth). Run at 360 and 390 px.
+ */
+async function noOverlap(page: Page, name: string, groups: string[]): Promise<void> {
+  // Run in the page as plain text: tsx would wrap named functions in a helper the page does not have.
+  const bad = await page.evaluate(`(${OVERLAP_SCRIPT})(${JSON.stringify(groups)})`) as string[];
+  for (const b of bad) fail(`${name}: ${b}`);
+}
+const OVERLAP_SCRIPT = `function (groups) {
+  var out = [], seen = 0;
+  function desc(e) { var c = typeof e.className === "string" && e.className ? "." + e.className.trim().split(/\\s+/).join(".") : ""; return e.tagName.toLowerCase() + (e.id ? "#" + e.id : "") + c; }
+  groups.forEach(function (g) {
+    document.querySelectorAll(g).forEach(function (parent) {
+      seen++;
+      var kids = Array.prototype.filter.call(parent.children, function (k) { var r = k.getBoundingClientRect(), cs = getComputedStyle(k); return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && cs.position !== "absolute" && cs.position !== "fixed"; });
+      var rects = kids.map(function (k) { return k.getBoundingClientRect(); });
+      for (var i = 0; i < kids.length; i++) {
+        var a = rects[i];
+        if (a.left < -0.5 || a.right > innerWidth + 0.5) out.push(g + ": " + desc(kids[i]) + " reaches past the screen (" + Math.round(a.left) + " to " + Math.round(a.right) + " of " + innerWidth + ")");
+        if (getComputedStyle(kids[i]).overflowX !== "visible" && kids[i].scrollWidth > kids[i].clientWidth + 1) out.push(g + ": " + desc(kids[i]) + " cuts its content off (" + kids[i].scrollWidth + " in " + kids[i].clientWidth + " px)");
+        for (var j = i + 1; j < kids.length; j++) {
+          var b = rects[j], w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (w > 1 && h > 1) out.push(g + ": " + desc(kids[i]) + " overlaps " + desc(kids[j]) + " (" + Math.round(w) + " x " + Math.round(h) + " px)");
+        }
+      }
+    });
+  });
+  if (!seen) out.push("none of " + groups.join(", ") + " is on the page");
+  return out;
+}`;
+
 async function moreByKeyboard(page: Page, name: string): Promise<void> {
   const summary = page.locator('nav[aria-label="Main"] > details.pmore > summary');
   const state = async () => (await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = document.activeElement; return { open: d.open, focus: a ? (a.textContent || "").trim() : "", inMenu: !!(a && a.closest(".pmenu")) }; })()`)) as { open: boolean; focus: string; inMenu: boolean };
@@ -243,6 +279,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     await checkHome(page, { url: `${base}/`, name: `/ (Home) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, shot: async (n) => { await page.locator("main figure.hf").screenshot({ path: join(shots, `home-${n}-${tag}.png`) }); } });
     await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`), fullPage: true });
+    // At phone width: nothing in the hero or its card overlaps or is cut off (judges #12), and the card shows its final
+    // state, with no empty block waiting for the animation (review, 13 Nov).
+    if (w <= 430) {
+      await noOverlap(page, `/ (Home) ${tag}`, ["main .e-hero .copy", "main .e-hero .ctas", "main .hf", "main .hf-card", "main .hf-side", "main .hf-inv dl"]);
+      const still = await page.evaluate(() => [...document.querySelectorAll(".hf-card *")].filter((e) => getComputedStyle(e).animationName !== "none").length);
+      if (still) fail(`/ (Home) ${tag}: ${still} parts of the product card still animate below 600 px`);
+    }
 
     // Tap targets on a phone (jury review, 12 Nov: menu links 37 px): every link, button and fold header of the shared
     // header and footer is at least 44 px high, on the three tabs and on the replay at /replay, and the redesign's
@@ -678,7 +721,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 385 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 480 : 430) /* +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -713,9 +756,36 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // The shared "Built on" strip aside: each of its figures names its own run (jury, 13 Nov), the main run's among them.
         if (!c.foot.includes("docs/demo/airi-run.json") || /main run|TAP/.test(c.foot)) fail(`/visa ${tag}: the footer does not cite the Airi run's record, or carries the main run's lines`);
       }
-      // /metal (jury panel, 12 Nov) opens on its four mandates in one table, in place of a picture of the flow.
-      if (path !== "/airwallex" && path !== "/metal" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      // /metal (owner's redesign, 13 Nov) opens on its own picture (.mhero), not the shared flow; its four mandates as
+      // cards, the table of them in a fold.
+      // /claude (13 Nov, Max: more visuals and data) opens on the split, one drawing at each width: routine to code, the
+      // exceptions to Claude, the high-risk ones on to Face ID; then the three agents, five proof tiles and nine model bars.
+      if (path !== "/airwallex" && path !== "/metal" && path !== "/claude" && (await page.locator(".flow.card").count()) !== 1) fail(`${path} ${tag}: no picture of the flow`);
+      if (path === "/claude") {
+        const c = await page.evaluate(`(() => {
+          const shown = [...document.querySelectorAll("#split svg")].filter((s) => s.getBoundingClientRect().width > 0);
+          const r = shown[0] ? shown[0].getBoundingClientRect() : null, h1 = document.querySelector("h1").getBoundingClientRect();
+          return { drawings: shown.length, width: r ? Math.round(r.width) : 0, below: r ? r.top >= h1.bottom : false, top: r ? Math.round(r.top + window.scrollY) : -1,
+            agents: document.querySelectorAll("main .cag").length, tiles: document.querySelectorAll("main .ctile").length, bars: document.querySelectorAll("main .cmr svg.bar").length };
+        })()`) as { drawings: number; width: number; below: boolean; top: number; agents: number; tiles: number; bars: number };
+        if (c.drawings !== 1 || c.width < 280 || !c.below || !(c.top < h)) fail(`/claude ${tag}: the split is not one drawing under the title on the first screen (${JSON.stringify(c)})`);
+        if (c.agents !== 3 || c.tiles !== 5 || c.bars !== 9) fail(`/claude ${tag}: not three agents, five proof tiles and nine model bars (${JSON.stringify(c)})`);
+      }
       if (path === "/metal" && (await page.locator("table.mtab tbody tr").count()) !== 4) fail(`/metal ${tag}: not four mandates in its table`);
+      if (path === "/metal") {
+        // The owner's redesign (13 Nov): the picture on the first screen, a green and a red path; the charts (a bar per
+        // mandate, the stacked payments, the refusal moment); four mandate cards, each with its bar; the table folded
+        // behind "Details: every mandate"; the replace in three steps.
+        const m = await page.evaluate(`(() => {
+          const hero = document.querySelector(".mhero"), t = document.querySelector("#mandates");
+          return { heroTop: hero ? Math.round(hero.getBoundingClientRect().top + window.scrollY) : -1, paths: [...document.querySelectorAll(".mhero .mpath")].map((p) => p.className),
+            bars: document.querySelectorAll(".mchart svg.bar").length, stack: document.querySelectorAll(".mchart svg.stack rect").length, moment: !!document.querySelector(".mmoment"),
+            cards: [...document.querySelectorAll(".mcards > li")].filter((li) => li.querySelector("svg.bar")).length, folded: !!t && t.tagName === "DETAILS" && !t.open && !!t.querySelector("table.mtab") && /^Details: every mandate/.test(t.querySelector("summary").textContent),
+            steps: document.querySelectorAll(".mrep ol.msteps > li").length, styled: document.querySelectorAll("main [style]").length };
+        })()`) as { heroTop: number; paths: string[]; bars: number; stack: number; moment: boolean; cards: number; folded: boolean; steps: number; styled: number };
+        if (!(m.heroTop >= 0 && m.heroTop < h) || m.paths.join("|") !== "mpath ok|mpath bad") fail(`/metal ${tag}: the picture is not on the first screen with a paid and a refused path (${JSON.stringify(m)})`);
+        if (m.bars !== 4 || m.stack !== 4 || !m.moment || m.cards !== 4 || !m.folded || m.steps !== 3 || m.styled) fail(`/metal ${tag}: not four budget bars, four payment kinds, the refusal moment, four mandate cards with bars, the table folded and three replace steps, without inline style (${JSON.stringify(m)})`);
+      }
       if (path === "/airwallex") {
         // Seven tiles, each with the product's name, one number, an id in monospace and its run's date.
         const tiles = (await page.evaluate(`[...document.querySelectorAll(".awp .awt")].map((t) => ({ name: (t.querySelector("h2") || {}).textContent || "", v: t.querySelectorAll(".v").length, id: (t.querySelector(".i code") || {}).textContent || "", date: (t.querySelector("time") || {}).textContent || "", top: t.getBoundingClientRect().top }))`)) as { name: string; v: number; id: string; date: string; top: number }[];
@@ -935,7 +1005,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const stripWords = (await page.locator("footer .builton").innerText().catch(() => "")).split(/\s+/).filter((x) => /\w/.test(x)).length;
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
       // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
-      if (words > 380 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 380 plus the frame`);
+      if (words > 480 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 480 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
@@ -962,21 +1032,18 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { h: number; t: string }[];
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
-        const fold = document.querySelector("main details.sumd"), cards = document.querySelector("main ul.sumc");
-        // The scale band (the owner, 13 Nov) between the heading and the cards.
-        const band = h1 && h1.nextElementSibling && h1.nextElementSibling.matches("ul.scale") ? h1.nextElementSibling : null;
-        const g = document.getElementById("guarantees");
-        return { cards: top(cards), n: cards ? cards.querySelectorAll(":scope > li").length : 0, fold: top(fold), gtee: top(g), next: band && band.nextElementSibling ? band.nextElementSibling.className : "no scale band", between: !!cards && !!g && !!fold && cards.nextElementSibling === g && g.nextElementSibling === fold, open: document.querySelectorAll("main details[open]").length };
-      })()`)) as { cards: number; n: number; fold: number; gtee: number; next: string; between: boolean; open: number };
-      // The jury pass (13 Nov): four cards directly under the heading; since the jury's second round the seven guarantees
-      // in sight under them (the first screen was too thin), then the one fold, closed on load.
-      if (first.next !== "sumc" || first.n !== 4 || !first.between || first.open) fail(`/proof ${tag}: not the scale band, then four cards, under the heading, then the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
+        const fold = document.querySelector("main details.sumd"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
+        // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs,
+        // then the guarantees and the one fold.
+        const order = [];
+        for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
+        return { order: order.slice(0, 8).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
+      })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
+      if (first.order !== "h1 p.plead ol.pchain ul.scale aside.pverify section.pruns section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        if (first.cards < 0 || first.cards >= 780) fail(`/proof ${tag}: the cards start at ${first.cards} px, not on the first screen (under 780 px)`);
-        // The guarantees start within the first screen and a half (1,118 px as built at 390), the fold's line under them
-        // (2,213 px as built; 4,062 before the jury's order of 12 Nov).
-        if (first.gtee < 0 || first.gtee > 1270) fail(`/proof ${tag}: the guarantees start at ${first.gtee} px, over 1,270 px`);
-        if (first.fold < 0 || first.fold > 2400) fail(`/proof ${tag}: the fold's line starts at ${first.fold} px, over 2,400 px`);
+        // The chain and the band on the first screen and a half (the band at 1,1xx px as built at 390).
+        if (first.chain < 0 || first.chain >= 400) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, not on the first screen`);
+        if (first.band < 0 || first.band > 1300) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,300 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1173,19 +1240,21 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
 
     // /tour, the 3-minute product tour (owner, 13 Nov; it replaced /judge, which answers 301 to it): four cards, each
     // with its screenshot (loaded, not broken) and one link; no script, so the page asks nothing but its font, its icon
-    // and its four images. Home's one quiet footer link opens it; "Judge" is in no menu. On a phone every target is 44 px.
+    // and its four images. Home's primary button opens it (owner, 13 Nov); "Judge" is in no menu. On a phone every target is 44 px.
     if (judgeBase) {
       const asked: string[] = [];
-      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/favicon.ico", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
+      const own = ["/tour", "/assets/inter.woff2", "/assets/favicon.svg", "/assets/apple-touch-icon.png", "/favicon.ico", "/assets/tour-sign.webp", "/assets/tour-try.webp", "/assets/tour-proof.webp", "/assets/tour-cloud.webp", "/assets/tour-connect.webp"];
       const onRequest = (r: { url(): string }) => { const u = new URL(r.url()); if (u.origin !== new URL(judgeBase).origin || !own.includes(u.pathname)) asked.push(r.url()); };
       await page.goto(`${judgeBase}/`, { waitUntil: "load" });
-      // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL), with /try/sign in the bundle too.
-      if ((await page.locator("main .e-hero a.btn.primary").getAttribute("href")) !== TRY_URL) fail(`/ (Home, with /try/sign) ${tag}: the button does not lead to the hands-on demo`);
-      const top = page.locator('footer a.flink[href="tour"]');
+      // Owner, 13 Nov: the hero's one primary button is the 3-minute tour; "Try it" (TRY_URL, with /try/sign in the bundle
+      // too) is the second.
+      const top = page.locator("main .e-hero a.btn.primary");
       const box = await top.boundingBox();
-      if ((await page.locator('a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || (await top.innerText()).trim() !== "Take the 3-minute product tour" || !box || box.x < 15) fail(`/ (Home, with /try/sign) ${tag}: not one "Take the 3-minute product tour" link in the footer, inside the page's gutter, and none to /judge`);
+      if ((await top.getAttribute("href")) !== "tour" || (await page.locator('main a[href="tour"]').count()) !== 1 || (await page.locator('header nav .pmenu a[href="tour"]').count()) !== 1 || (await page.locator('a[href*="judge"]').count()) || !(await top.innerText()).trim().startsWith("Take the 3-minute tour") || !box || box.y + box.height > h) fail(`/ (Home, with /try/sign) ${tag}: the one primary button is not "Take the 3-minute tour" to /tour in the first screen, or a link to /judge is back`);
+      // Judges, 13 Nov (#7): "Try it" opens the one hero demo, "Sign in 60 seconds" (/try/sign), where the bundle serves it.
+      if ((await page.locator('main .e-hero a.btn.ghost[href="/try/sign"]').count()) !== 1) fail(`/ (Home, with /try/sign) ${tag}: no "Try it" to /try/sign beside it`);
       if ((await page.locator("main p.reassure").innerText()).trim() !== REASSURE.sign) fail(`/ (Home, with /try/sign) ${tag}: the line under the button is not Home's (src/redesign/home.ts REASSURE)`);
-      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: TRY_URL, fail, quick: true });
+      await checkHome(page, { url: `${judgeBase}/`, name: `/ (Home, with /try/sign) ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try/sign", fail, quick: true });
       await page.goto(`${judgeBase}/home`, { waitUntil: "load" });
       await look(page, `/ (Home, with /try/sign) ${tag}`, w);
       if (w <= 430) await checkTaps(page, { name: `/ (Home, with /try/sign) ${tag}, header and footer`, scopes: CHROME, fail });
@@ -1194,17 +1263,26 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForURL(/\/tour$/);
       page.on("request", onRequest);
       await page.reload({ waitUntil: "load" });
-      for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
-      await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
+      const shown = w >= 600;
+      if (shown) for (const img of await page.locator("ol.tour img").all()) await img.scrollIntoViewIfNeeded();
+      if (shown) await page.waitForFunction(() => [...document.querySelectorAll<HTMLImageElement>("ol.tour img")].every((i) => i.complete), null, { timeout: 5000 }).catch(() => {});
       await look(page, `/tour ${tag}`, w);
       const steps = await page.locator("ol.tour > li").evaluateAll((lis) => lis.map((li) => ({
         img: (li.querySelector("img") as HTMLImageElement | null)?.naturalWidth ?? 0, alt: li.querySelector("img")?.getAttribute("alt") ?? "", links: li.querySelectorAll(".go a").length, title: li.querySelector("h2")?.textContent ?? "",
       })));
-      if (steps.length !== 4 || steps.some((s) => s.img !== 1200 || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not four cards, each with a loaded screenshot, its alt text, a title and one link (${JSON.stringify(steps)})`);
+      if (steps.length !== 5 || steps.some((s) => (shown && s.img !== 1200) || !s.alt || s.links !== 1 || !s.title)) fail(`/tour ${tag}: not five cards, each with ${shown ? "a loaded screenshot, " : ""}its alt text, a title and one link (${JSON.stringify(steps)})`);
+      // Judges, 13 Nov (#7): step 1 is the one hero demo, step 2 the payables inbox.
+      if (JSON.stringify(steps.slice(0, 2).map((s) => s.title)) !== JSON.stringify(["Sign in 60 seconds", "Run the payables inbox"]) || (await page.locator("ol.tour > li").first().locator('.go a[href="/try/sign"]').count()) !== 1) fail(`/tour ${tag}: steps 1 and 2 are not "Sign in 60 seconds" (/try/sign) and "Run the payables inbox"`);
       if ((await page.locator("h1").innerText()).trim() !== "Product tour · 3 minutes") fail(`/tour ${tag}: the title is not "Product tour · 3 minutes"`);
-      if (await page.locator('header nav a[aria-current="page"], header nav a[href*="judge"]').count()) fail(`/tour ${tag}: the menu marks a tab, or has Judge`);
-      if (await page.locator('main a[href*="judge"], main a[href*="watch"], main a[href*="try/sign"]').count()) fail(`/tour ${tag}: links to an old page`);
-      if (w <= 430) await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
+      // Max, 13 Nov: "Product tour" is the first item under More; on /tour, More is marked and so is that item.
+      if ((await page.locator("header nav .pmore > summary.on").count()) !== 1 || ((await page.locator('header nav .pmenu a').first().textContent()) ?? "").trim() !== "Product tour" || (await page.locator('header nav .pmenu a[aria-current="page"]').getAttribute("href")) !== "tour" || (await page.locator('header nav a[href*="judge"]').count())) fail(`/tour ${tag}: More does not open with "Product tour", marked, or the menu has Judge`);
+      if (await page.locator('main a[href*="judge"], main a[href*="watch"]').count()) fail(`/tour ${tag}: links to an old page`);
+      if (w <= 430) {
+        await checkTaps(page, { name: `/tour ${tag}`, scopes: ["body"], fail });
+        await noOverlap(page, `/tour ${tag}`, ["ol.tour", "ol.tour .stop .body", "ol.tour .stop .go"]);
+        // Below 600 px the screenshots, unreadable at that size, are not shown (review, 13 Nov).
+        if (await page.locator("ol.tour .shot:visible").count()) fail(`/tour ${tag}: the screenshots are shown at phone width`);
+      }
       await page.screenshot({ path: join(shots, `tour-${tag}.png`), fullPage: true });
       page.off("request", onRequest);
       if (asked.length) fail(`/tour ${tag}: asked a server for ${asked.join(", ")}`);

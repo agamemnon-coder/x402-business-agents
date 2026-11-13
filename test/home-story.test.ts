@@ -6,10 +6,10 @@
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, TOUR_LINE, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { scaleStats } from "../src/redesign/scale.js";
-import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
+import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, TRY_BUTTON, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -44,7 +44,7 @@ describe("Home, the enterprise pass", () => {
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       const at = [
-        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<a class="btn primary big start"', '<a class="btn big ghost" href="proof">', '<p class="reassure">', '<div class="trust">',
+        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<a class="btn primary big start" href="tour">', html === ON ? '<a class="btn big ghost" href="/try/sign">' : `<a class="btn big ghost" href="${TRY_URL}">`, '<p class="reassure">', '<div class="trust">',
         '<figure class="hf"', '<p class="hf-note">', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
@@ -54,23 +54,29 @@ describe("Home, the enterprise pass", () => {
     }
   });
 
-  it("has two buttons in the hero (Try it live to the hands-on demo, See the proof), and the same proof button with Books at the end", () => {
+  // Owner, 13 Nov: a visitor who is not technical understood the idea but did not know where to look, so the hero's one
+  // primary button is the 3-minute tour, and "Try it" (the hands-on demo) is the second.
+  it("has two buttons in the hero (the 3-minute tour, primary; Try it, to the hands-on demo), and the proof button with Books at the end", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
-    expect([START, PROOF_BUTTON]).toEqual(["Try it live", "See the proof"]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], ["proof", PROOF_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    expect([START, TRY_BUTTON, PROOF_BUTTON]).toEqual(["Take the 3-minute tour", "Try it", "See the proof"]);
+    // Judges, 13 Nov (#7): "Try it" opens the one hero demo, /try/sign ("Sign in 60 seconds"), where the bundle serves it.
+    expect(buttons(ON)).toEqual([["tour", START], ["/try/sign", TRY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    expect(buttons(OFF)).toEqual([["tour", START], [TRY_URL, TRY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(OFF).not.toContain('href="try/sign"');
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
     expect(buildPages({} as NodeJS.ProcessEnv).home).toBe(OFF);
-    expect(ON).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
-    expect(OFF).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
-    expect(mainOf(ON)).not.toContain('href="tour"');
+    // The hero's button and "Product tour" under More (Max, 13 Nov); none in the footer.
+    for (const html of [ON, OFF]) expect(html.match(/href="tour"/g)).toHaveLength(2);
+    for (const html of [ON, OFF]) expect(/<footer[\s\S]*<\/footer>/.exec(html)![0]).not.toContain('href="tour"');
     for (const html of [ON, OFF]) expect(html).not.toMatch(/href="\/?judge"/);
   });
 
-  it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
-    expect(REASSURE).toEqual({ sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." });
+  it("A6: one reassurance line under the buttons, saying only what the pages behind them are", () => {
+    // With /try/sign, "Try it" is the 60-second test world; without, the hands-on demo's test company.
+    expect(REASSURE).toEqual({ sign: "No sign-up, about a minute; nothing real moves.", world: "No sign-up; test companies deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
-    expect(ON).toMatch(new RegExp(`${PROOF_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
+    expect(ON).toMatch(new RegExp(`${TRY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
 
   it("A1: no heading says live; outside the fold, live is said only by the button to the hands-on demo, which runs live", () => {
@@ -105,7 +111,9 @@ describe("Home, the enterprise pass", () => {
       const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string };
       const vic3 = JSON.parse(read(VIC3_RUN_FILE)) as { started_at: string };
       const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
-      expect(text(out.slice(at)).match(DATE)).toEqual([`${day(owners.ran_at)}`, day(vic3.started_at)]);
+      // The main run's line (review, 13 Nov) names its day, as its record does ("the main run, 3 Nov").
+      const mainDay = /\d{1,2} [A-Z][a-z]{2}/.exec(agentRun().record.run)![0];
+      expect(text(out.slice(at)).match(DATE)).toEqual([`${day(owners.ran_at)}`, mainDay, day(vic3.started_at)]);
     }
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
@@ -145,7 +153,7 @@ describe("Home, the enterprise pass", () => {
     const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, Face ID verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length} passkeys, co-signer a test key`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, passkeys (P-256) verified on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}): ${owners.threshold} of ${owners.owners.length}, co-signer a test key`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
@@ -202,9 +210,11 @@ describe("Home, the enterprise pass", () => {
     for (const bad of ["javascript:alert(1)", "http://plain.example.test", 'https://x.test/"><script>']) expect(homePage(undefined, { smallCompanyUrl: bad })).not.toContain('class="next"');
   });
 
-  // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words.
-  it("A11: stays within 300 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(300);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(300);
+  // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words. 345 since the
+  // review of 13 Nov: the main run's line (its company, agents, figures and the film; 32 words) and which agents the
+  // flow shows (9 words); 341 as built.
+  it("A11: stays within 345 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(345);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(345);
   });
 });

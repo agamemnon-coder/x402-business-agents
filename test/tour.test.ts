@@ -8,8 +8,8 @@ import { describe, expect, it } from "vitest";
 import { pageResponse } from "../worker/src/core.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { LOGOS, MOVED, TOUR_CSP, TOUR_PAGE } from "../src/servers/dashboard.js";
-import { TOUR_LINK, TOUR_STEPS, TOUR_TITLE, TOUR_URL, tourPage } from "../src/redesign/tour.js";
-import { NAV_MAIN } from "../src/ui/nav.js";
+import { INBOX_NAME, SIGN_NAME, TOUR_LINK, TOUR_STEPS, TOUR_TITLE, TOUR_URL, tourPage } from "../src/redesign/tour.js";
+import { NAV_MAIN, navHtml } from "../src/ui/nav.js";
 import { header } from "../src/redesign/ui.js";
 import { siteHeader } from "../cloud/src/siteHeader.js";
 import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../src/ui/more.js";
@@ -30,25 +30,46 @@ function served(path: string, pages = ON): number {
 
 /** What each step says, as a mark on the page it links to (Purser Cloud is another site: its setup is on /docs). */
 const SEES: Record<string, { path: string; html: () => string; marks: string[] }> = {
+  // /try/sign: the CFO approves with their own passkey, then the changed cent is refused.
+  sign: { path: "/try/sign", html: () => ON.trySign!, marks: ["You're the CFO", "change one cent"] },
   try: { path: "/try", html: () => ON.try, marks: [] },
   proof: { path: "/proof", html: () => ON.proof!, marks: ["Visa via Airwallex", "Airwallex", "Metal"] },
   cloud: { path: "/docs", html: () => ON.docs!, marks: ["Try as guest", PURSER_CLOUD_URL] },
   connect: { path: "/docs", html: () => ON.docs!, marks: ['id="connect-ai"', PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, "Cursor", "Gemini CLI"] },
 };
 
-describe("/tour: four steps, three minutes", () => {
-  it("is Try, Proof, Purser Cloud as a guest, Connect your AI, in that order, 180 s in all", () => {
+describe("/tour: five steps, three minutes", () => {
+  // Judges, 13 Nov (#7): one hero demo first, "Sign in 60 seconds" (/try/sign); then "Run the payables inbox" (/try).
+  it("is Sign in 60 seconds, Run the payables inbox, Proof, a sample company, Connect your AI, in that order, 180 s in all", () => {
     expect(TOUR_TITLE).toBe("Product tour · 3 minutes");
+    expect([SIGN_NAME, INBOX_NAME]).toEqual(["Sign in 60 seconds", "Run the payables inbox"]);
     expect(TOUR_STEPS.map((s) => [s.title, s.link.href])).toEqual([
-      ["Try it", "/try"],
+      [SIGN_NAME, "/try/sign"],
+      [INBOX_NAME, "/try"],
       ["See the proof", "/proof"],
-      ["Open Purser Cloud as a guest", PURSER_CLOUD_URL],
+      ["Look around a sample company", PURSER_CLOUD_URL],
       ["Connect your AI", "/docs#connect-ai"],
     ]);
     expect(TOUR_STEPS.reduce((t, s) => t + s.seconds, 0)).toBe(180);
     expect(DEMO_CONNECTOR_TOKEN).toBe(CLOUD_DEMO_TOKEN);
     expect(PURSER_CLOUD_URL).toBe("https://purser-try.max-31b.workers.dev/");
     for (const s of TOUR_STEPS) expect({ step: s.id, oneLine: !s.text.includes("\n") && s.text.length <= 200 }).toEqual({ step: s.id, oneLine: true });
+  });
+
+  // Owner, 13 Nov: a visitor who is not technical. Each card says in one plain sentence what you will see or do
+  // ("You'll see", "You'll approve", "You'll run"), has one big button, and the page uses no jargon.
+  it("speaks plainly: one sentence per card, what you'll see, one big button, no jargon", () => {
+    for (const s of TOUR_STEPS) {
+      expect({ step: s.id, sentences: s.text.split(/(?<=[.!?])\s+/).length }).toEqual({ step: s.id, sentences: 1 });
+      expect({ step: s.id, says: /^You'll (see|approve|run) /.test(s.text) }).toEqual({ step: s.id, says: true });
+    }
+    const main = /<main>[\s\S]*<\/main>/.exec(TOUR_PAGE)![0];
+    const words = main.replace(/<[^>]+>/g, " ");
+    expect(words).not.toMatch(/\b(relay|MCP|x402|testnet|sandbox|API|passkey|token|OAuth|ledger|webhook|rail|CLI|SDK|JSON|endpoint)s?\b/i);
+    // Each card's one button, read from the markup (no pattern built from a URL): exactly the steps' links, in order.
+    const buttons = main.split('<div class="go">').slice(1).map((seg) => ({ count: (seg.split("</div>")[0]!.match(/<a /g) ?? []).length, href: /^<a class="btn[^"]*" href="([^"]*)"/.exec(seg)?.[1] ?? null }));
+    expect(buttons).toEqual(TOUR_STEPS.map((s) => ({ count: 1, href: s.link.href })));
+    expect(TOUR_PAGE).toContain(".stop .go .btn { height: 52px;");
   });
 
   for (const s of TOUR_STEPS) {
@@ -76,7 +97,11 @@ describe("/tour: four steps, three minutes", () => {
       expect(html).toContain(`href="${s.link.href}"`);
     }
     const main = /<main>[\s\S]*<\/main>/.exec(html)![0];
-    expect(main).not.toMatch(/href="\/?(judge|watch|replay|live|demo|overview|month|lab|film|try\/sign|try\/verify|trace)\b/);
+    expect(main).not.toMatch(/href="\/?(judge|watch|replay|live|demo|overview|month|lab|film|try\/verify|trace)\b/);
+    // Below 600 px the screenshots are not shown (review, 13 Nov: unreadable thumbnails at phone width).
+    expect(html).toContain("@media (max-width: 599px) { .stop .shot { display: none; } }");
+    // The lead says what holds without overclaiming: agents pay alone within their limits (review, 13 Nov).
+    expect(html).toContain("Purser lets AI agents pay a company's bills within the limits you set; anything above them waits for your Face ID.");
     // No file path or command in what a visitor reads (the footer's "What's real?" names its source, as every page does).
     expect(main.replace(/<[^>]+>/g, " ")).not.toMatch(/\bsrc\/|docs\/|\.ts\b|npm run|localStorage|jury|judg/i);
   });
@@ -115,8 +140,11 @@ describe("Judge is out of the menu", () => {
       expect(html).not.toMatch(/>Judge</);
       expect(html).not.toMatch(/href="[^"]*\/?judge"/);
     }
-    // /tour marks no tab: it is reached from Home's footer, the README and llms.txt.
-    expect(header("tour")).not.toContain('aria-current="page"');
+    // Max, 13 Nov: "Product tour" is the first item under More, in both navigations; /tour marks More, never a tab.
+    for (const html of [header("home"), navHtml("home"), siteHeader(null)]) expect(/<div class="pmenu"><a href="[^"]*tour">Product tour<\/a>/.test(html)).toBe(true);
+    expect(header("tour")).toContain('<summary class="on">More</summary>');
+    expect(header("tour")).toContain('<a href="tour" aria-current="page">Product tour</a>');
+    expect(header("tour")).not.toMatch(/<a href="[^"]*" class="on" aria-current="page">/);
   });
 
   it("no page the site serves links to /judge", () => {
@@ -130,10 +158,11 @@ describe("Judge is out of the menu", () => {
 });
 
 describe("the way in: Home, the README, llms.txt and the form", () => {
-  it("Home has one quiet footer link to /tour, in either bundle", () => {
+  it("Home's one primary button opens /tour, in either bundle (owner, 13 Nov: the obvious place to start)", () => {
     for (const pages of [ON, OFF]) {
-      expect(pages.home!.match(/href="tour"/g)).toHaveLength(1);
-      expect(pages.home).toContain('<a class="flink" href="tour">Take the 3-minute product tour</a>');
+      // The hero's button and "Product tour" under More.
+      expect(pages.home!.match(/href="tour"/g)).toHaveLength(2);
+      expect(pages.home).toContain('<a class="btn primary big start" href="tour">Take the 3-minute tour');
     }
   });
 
@@ -143,8 +172,11 @@ describe("the way in: Home, the README, llms.txt and the form", () => {
     expect(TOUR_URL).toBe(`${SITE}/tour`);
     expect(at).toBeGreaterThan(0);
     expect(at).toBeLessThan(20);
-    expect(lines[at]).toContain(`**[${TOUR_LINK}](${TOUR_URL})**`);
-    expect(lines.filter((l) => l.includes(TOUR_URL))).toHaveLength(1);
+    // Since 13 Nov (the README upgrade): the first of three buttons at the top, and the first step of the judges' 3 minutes.
+    expect(lines[at]).toContain(`<a href="${TOUR_URL}"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the ${TOUR_LINK}"></a>`);
+    expect(lines.filter((l) => l.includes(TOUR_URL))).toHaveLength(2);
+    const judges = lines.slice(lines.indexOf("## For judges: 3 minutes")).join("\n");
+    expect(judges.slice(0, judges.indexOf("\n## ", 5))).toContain(`[${TOUR_LINK}](${TOUR_URL})`);
     expect(read("README.md")).not.toMatch(/workers\.dev\/judge\b|Judge it in 3 minutes/);
   });
 

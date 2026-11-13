@@ -1,0 +1,761 @@
+{
+  "stream": "airwallex-switch-on-1113",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run awx-switch-on -- record` from the run ledger's audit rows and AIRWALLEX_CALL_LOG only",
+  "flags_in_environment": "none (AIRWALLEX_PAYEE_CHECK, AIRWALLEX_BATCH_TRANSFER, AIRWALLEX_FINANCIAL_TX unset: each on by default)",
+  "signer": "awx-switch-on virtual test passkey",
+  "budget": {
+    "approved": 30,
+    "used": 20
+  },
+  "calls": {
+    "total": 20,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 4
+      },
+      {
+        "endpoint": "POST /beneficiaries/verify_account",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 3
+      },
+      {
+        "endpoint": "POST /batch_transfers/create",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/add_items",
+        "calls": 1
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/quote",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /batch_transfers/{id}/items",
+        "calls": 2
+      },
+      {
+        "endpoint": "POST /batch_transfers/{id}/submit",
+        "calls": 1
+      },
+      {
+        "endpoint": "GET /transfers/{id}",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /financial_transactions",
+        "calls": 3
+      }
+    ],
+    "by_phase": {
+      "payee-check": {
+        "total": 3,
+        "by_endpoint": [
+          {
+            "endpoint": "POST /authentication/login",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST /beneficiaries/verify_account",
+            "calls": 2
+          }
+        ]
+      },
+      "batch-transfer": {
+        "total": 11,
+        "by_endpoint": [
+          {
+            "endpoint": "GET /balances/current",
+            "calls": 3
+          },
+          {
+            "endpoint": "POST /authentication/login",
+            "calls": 2
+          },
+          {
+            "endpoint": "POST /batch_transfers/create",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST /batch_transfers/{id}/add_items",
+            "calls": 1
+          },
+          {
+            "endpoint": "POST /batch_transfers/{id}/quote",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET /batch_transfers/{id}/items",
+            "calls": 2
+          },
+          {
+            "endpoint": "POST /batch_transfers/{id}/submit",
+            "calls": 1
+          }
+        ]
+      },
+      "ledger-reconciliation": {
+        "total": 6,
+        "by_endpoint": [
+          {
+            "endpoint": "POST /authentication/login",
+            "calls": 1
+          },
+          {
+            "endpoint": "GET /transfers/{id}",
+            "calls": 2
+          },
+          {
+            "endpoint": "GET /financial_transactions",
+            "calls": 3
+          }
+        ]
+      }
+    },
+    "first": "2026-11-13T12:30:57.414Z",
+    "last": "2026-11-13T12:31:07.633Z"
+  },
+  "audit": [
+    {
+      "seq": 1,
+      "ts": "2026-11-13T12:30:56.735Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "payee-check",
+      "payload": {
+        "at": "start"
+      }
+    },
+    {
+      "seq": 2,
+      "ts": "2026-11-13T12:30:57.406Z",
+      "actor": "treasury",
+      "event": "payee.add_requested",
+      "subject": "N-0001",
+      "payload": {
+        "account": "IBAN DE02…2051",
+        "country": "DE",
+        "currency": "EUR",
+        "method": "LOCAL",
+        "source": null,
+        "vendor": "Stockline Data GmbH"
+      }
+    },
+    {
+      "seq": 4,
+      "ts": "2026-11-13T12:30:57.413Z",
+      "actor": "treasury",
+      "event": "payee.name_check_refused",
+      "subject": "Stockline Data GmbH",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank holds this account, not as \"Stockline Data GmbH\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+        "match": "NOT_MATCHED",
+        "proceed": false,
+        "source": "airwallex"
+      }
+    },
+    {
+      "seq": 5,
+      "ts": "2026-11-13T12:30:58.719Z",
+      "actor": "system",
+      "event": "awx_switch.payee",
+      "subject": "N-0001",
+      "payload": {
+        "code": null,
+        "detail": "the payee's bank holds this account, not as \"Stockline Data GmbH\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+        "outcome": "stopped before the CFO",
+        "status": null,
+        "vendor": "Stockline Data GmbH"
+      }
+    },
+    {
+      "seq": 6,
+      "ts": "2026-11-13T12:30:58.720Z",
+      "actor": "treasury",
+      "event": "payee.add_requested",
+      "subject": "N-0002",
+      "payload": {
+        "account": "account …6132, sort code 04-05-68 (GB)",
+        "country": "GB",
+        "currency": "GBP",
+        "method": "LOCAL",
+        "source": null,
+        "vendor": "Betty Morris"
+      }
+    },
+    {
+      "seq": 8,
+      "ts": "2026-11-13T12:30:58.723Z",
+      "actor": "treasury",
+      "event": "payee.name_check_refused",
+      "subject": "Betty Morris",
+      "payload": {
+        "code": "VERIFIED",
+        "label": "the payee's bank holds this account as \"Betty Morris\", not as \"Betty Morris\" (FULL_MATCH_INCORRECT_TYPE); confirm with the supplier on a known contact before it is proposed",
+        "match": "FULL_MATCH_INCORRECT_TYPE",
+        "proceed": false,
+        "source": "airwallex"
+      }
+    },
+    {
+      "seq": 9,
+      "ts": "2026-11-13T12:30:59.355Z",
+      "actor": "system",
+      "event": "awx_switch.payee",
+      "subject": "N-0002",
+      "payload": {
+        "code": null,
+        "detail": "the payee's bank holds this account as \"Betty Morris\", not as \"Betty Morris\" (FULL_MATCH_INCORRECT_TYPE); confirm with the supplier on a known contact before it is proposed",
+        "outcome": "stopped before the CFO",
+        "status": null,
+        "vendor": "Betty Morris"
+      }
+    },
+    {
+      "seq": 10,
+      "ts": "2026-11-13T12:30:59.356Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "payee-check",
+      "payload": {
+        "at": "end"
+      }
+    },
+    {
+      "seq": 11,
+      "ts": "2026-11-13T12:30:59.356Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "batch-transfer",
+      "payload": {
+        "at": "start"
+      }
+    },
+    {
+      "seq": 22,
+      "ts": "2026-11-13T12:31:00.163Z",
+      "actor": "treasury",
+      "event": "batch.filed",
+      "subject": "P-0003",
+      "payload": {
+        "count": "2",
+        "lines": [
+          {
+            "proposal_id": "P-0001",
+            "terms_sha256": "0320f2ac0a5cedd01f63b8802ce59e0d211f44b4b3bea07f98b91631139c3295"
+          },
+          {
+            "proposal_id": "P-0002",
+            "terms_sha256": "7193ec952fa7c2db3b43c6272e4d811cd7ca72ecb4955b00c18a95eaaadd5335"
+          }
+        ],
+        "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec",
+        "totals": {
+          "EUR": "480.00"
+        }
+      }
+    },
+    {
+      "seq": 23,
+      "ts": "2026-11-13T12:31:00.169Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0003",
+      "payload": {
+        "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+        "method": "passkey",
+        "note": null,
+        "passkey": {
+          "assertion_sha256": "f90858cc1c9e338e931fa81a496282363d0bff19844ad6f9f6a5eb11ba14d762",
+          "credential_id": "TiaoCCk9OA2wNoKJ6h4GSg"
+        },
+        "policy_version": 1,
+        "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec"
+      }
+    },
+    {
+      "seq": 24,
+      "ts": "2026-11-13T12:31:00.169Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0001",
+      "payload": {
+        "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+        "batch": {
+          "id": "P-0003",
+          "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec"
+        },
+        "method": "passkey",
+        "note": "in batch P-0003 (batch hash 443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec)",
+        "passkey": {
+          "assertion_sha256": "f90858cc1c9e338e931fa81a496282363d0bff19844ad6f9f6a5eb11ba14d762",
+          "credential_id": "TiaoCCk9OA2wNoKJ6h4GSg"
+        },
+        "policy_version": 1,
+        "terms_sha256": "0320f2ac0a5cedd01f63b8802ce59e0d211f44b4b3bea07f98b91631139c3295"
+      }
+    },
+    {
+      "seq": 25,
+      "ts": "2026-11-13T12:31:00.169Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0002",
+      "payload": {
+        "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+        "batch": {
+          "id": "P-0003",
+          "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec"
+        },
+        "method": "passkey",
+        "note": "in batch P-0003 (batch hash 443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec)",
+        "passkey": {
+          "assertion_sha256": "f90858cc1c9e338e931fa81a496282363d0bff19844ad6f9f6a5eb11ba14d762",
+          "credential_id": "TiaoCCk9OA2wNoKJ6h4GSg"
+        },
+        "policy_version": 1,
+        "terms_sha256": "7193ec952fa7c2db3b43c6272e4d811cd7ca72ecb4955b00c18a95eaaadd5335"
+      }
+    },
+    {
+      "seq": 26,
+      "ts": "2026-11-13T12:31:00.186Z",
+      "actor": "system",
+      "event": "awx_switch.batch_signed",
+      "subject": "P-0003",
+      "payload": {
+        "lines": [
+          "P-0001",
+          "P-0002"
+        ],
+        "signer": "awx-switch-on virtual test passkey",
+        "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec"
+      }
+    },
+    {
+      "seq": 30,
+      "ts": "2026-11-13T12:31:02.350Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.created",
+      "subject": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+      "payload": {
+        "approval_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec",
+        "batch_id": "P-0003",
+        "items": 2,
+        "request_id": "8dfbb673-0b95-4650-a75e-6863019d2f75",
+        "status": "DRAFTING"
+      }
+    },
+    {
+      "seq": 31,
+      "ts": "2026-11-13T12:31:04.539Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.read_back",
+      "subject": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+      "payload": {
+        "agrees": true,
+        "batch_id": "P-0003",
+        "differences": [],
+        "items": 2,
+        "quotes": [
+          {
+            "fee": "27.16",
+            "fee_currency": "EUR",
+            "payer_pays": "507.16",
+            "source_currency": "EUR",
+            "transfer_currency": "EUR"
+          }
+        ],
+        "read": [
+          {
+            "amount": "240.00",
+            "currency": "EUR",
+            "fee": "13.58",
+            "fee_currency": "EUR",
+            "payer_pays": "253.58",
+            "request_id": "37c70f48-0426-4d7c-9df5-2aa4e1cdb02a",
+            "status": "VALIDATED"
+          },
+          {
+            "amount": "240.00",
+            "currency": "EUR",
+            "fee": "13.58",
+            "fee_currency": "EUR",
+            "payer_pays": "253.58",
+            "request_id": "e9c31d47-9765-4a47-a812-653311247afb",
+            "status": "VALIDATED"
+          }
+        ],
+        "valid": 2
+      }
+    },
+    {
+      "seq": 32,
+      "ts": "2026-11-13T12:31:05.447Z",
+      "actor": "awx-executor",
+      "event": "awx_batch.submitted",
+      "subject": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+      "payload": {
+        "approval_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec",
+        "batch_id": "P-0003",
+        "in_words": "waiting for Airwallex approval",
+        "status": "IN_APPROVAL"
+      }
+    },
+    {
+      "seq": 33,
+      "ts": "2026-11-13T12:31:05.971Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0001",
+      "payload": {
+        "awx_batch_id": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+        "batch_id": "P-0003",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    },
+    {
+      "seq": 34,
+      "ts": "2026-11-13T12:31:05.972Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0002",
+      "payload": {
+        "awx_batch_id": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+        "batch_id": "P-0003",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    },
+    {
+      "seq": 35,
+      "ts": "2026-11-13T12:31:05.972Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0003",
+      "payload": {
+        "awx_batch_id": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+        "status": "IN_APPROVAL",
+        "waiting_for": "Airwallex approval"
+      }
+    },
+    {
+      "seq": 36,
+      "ts": "2026-11-13T12:31:05.973Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "batch-transfer",
+      "payload": {
+        "at": "end"
+      }
+    },
+    {
+      "seq": 37,
+      "ts": "2026-11-13T12:31:05.974Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "ledger-reconciliation",
+      "payload": {
+        "at": "start"
+      }
+    },
+    {
+      "seq": 38,
+      "ts": "2026-11-13T12:31:05.975Z",
+      "actor": "system",
+      "event": "awx_switch.ledger_loaded",
+      "subject": null,
+      "payload": {
+        "from": "docs/demo/airwallex-run.json",
+        "sources": [
+          "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+          "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+          "fafcc208-bd1e-43d9-bd09-69191a8aa81f"
+        ]
+      }
+    },
+    {
+      "seq": 39,
+      "ts": "2026-11-13T12:31:05.976Z",
+      "actor": "system",
+      "event": "awx_ft.agreed",
+      "subject": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "payload": {
+        "airwallex": "2 row(s): 1 payout EUR -240.00, 1 fee row(s) EUR -13.50",
+        "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+        "items": [
+          {
+            "amount_cents": -24000,
+            "currency": "EUR",
+            "id": "ftx_iVC_c_vhP3Od5kXmxcHK6A",
+            "source_type": "PAYOUT",
+            "status": "SETTLED",
+            "transaction_type": "PAYOUT"
+          },
+          {
+            "amount_cents": -1350,
+            "currency": "EUR",
+            "id": "ftx_ohLit-0ENOGGifaWiy8CgA",
+            "source_type": "FEE",
+            "status": "SETTLED",
+            "transaction_type": "FEE"
+          }
+        ],
+        "kind": "payout",
+        "label": "SLL-2026-11",
+        "ledger": "EUR 240.00 + fee EUR 13.50",
+        "rows": 2
+      }
+    },
+    {
+      "seq": 40,
+      "ts": "2026-11-13T12:31:05.976Z",
+      "actor": "system",
+      "event": "awx_ft.agreed",
+      "subject": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "payload": {
+        "airwallex": "2 row(s): 1 payout EUR -1850.00, 1 fee row(s) EUR -13.50",
+        "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+        "items": [
+          {
+            "amount_cents": -185000,
+            "currency": "EUR",
+            "id": "ftx_Ipa-l7_8OgKIrgIPwqPA2A",
+            "source_type": "PAYOUT",
+            "status": "SETTLED",
+            "transaction_type": "PAYOUT"
+          },
+          {
+            "amount_cents": -1350,
+            "currency": "EUR",
+            "id": "ftx_l2KLBOeGPyCemDbUuOVQBQ",
+            "source_type": "FEE",
+            "status": "SETTLED",
+            "transaction_type": "FEE"
+          }
+        ],
+        "kind": "payout",
+        "label": "BTX-2026-11",
+        "ledger": "EUR 1850.00 + fee EUR 13.50",
+        "rows": 2
+      }
+    },
+    {
+      "seq": 41,
+      "ts": "2026-11-13T12:31:05.976Z",
+      "actor": "system",
+      "event": "awx_ft.agreed",
+      "subject": "fafcc208-bd1e-43d9-bd09-69191a8aa81f",
+      "payload": {
+        "airwallex": "2 row(s): EUR 623.50, USD -704.45",
+        "how": "a credit in the bought currency and a debit in the sold one",
+        "items": [
+          {
+            "amount_cents": -70445,
+            "currency": "USD",
+            "id": "ftx_MEyPPF3dNLel2Wqd4S7slg",
+            "source_type": "CONVERSION",
+            "status": "SETTLED",
+            "transaction_type": "CONVERSION_SELL"
+          },
+          {
+            "amount_cents": 62350,
+            "currency": "EUR",
+            "id": "ftx_peUbOmUBMxC1RBeAL6VjDw",
+            "source_type": "CONVERSION",
+            "status": "SETTLED",
+            "transaction_type": "CONVERSION_BUY"
+          }
+        ],
+        "kind": "conversion",
+        "label": "conversion fafcc208",
+        "ledger": "buy EUR 623.50, sell USD 704.45",
+        "rows": 2
+      }
+    },
+    {
+      "seq": 42,
+      "ts": "2026-11-13T12:31:05.976Z",
+      "actor": "system",
+      "event": "awx_ft.reconciled",
+      "subject": null,
+      "payload": {
+        "agree": 3,
+        "by": "source",
+        "checked": 3,
+        "differences": 0,
+        "movements": [
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR -240.00, 1 fee row(s) EUR -13.50",
+            "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "SLL-2026-11",
+            "ledger": "EUR 240.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): 1 payout EUR -1850.00, 1 fee row(s) EUR -13.50",
+            "how": "a PAYOUT debit for the amount and a FEE debit for the fee, both under the transfer id",
+            "kind": "payout",
+            "label": "BTX-2026-11",
+            "ledger": "EUR 1850.00 + fee EUR 13.50",
+            "rows": 2,
+            "source_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7"
+          },
+          {
+            "agrees": true,
+            "airwallex": "2 row(s): EUR 623.50, USD -704.45",
+            "how": "a credit in the bought currency and a debit in the sold one",
+            "kind": "conversion",
+            "label": "conversion fafcc208",
+            "ledger": "buy EUR 623.50, sell USD 704.45",
+            "rows": 2,
+            "source_id": "fafcc208-bd1e-43d9-bd09-69191a8aa81f"
+          }
+        ],
+        "only": null,
+        "pending": []
+      }
+    },
+    {
+      "seq": 43,
+      "ts": "2026-11-13T12:31:05.976Z",
+      "actor": "system",
+      "event": "reconcile.done",
+      "subject": null,
+      "payload": {
+        "checked": 5,
+        "differences": 0,
+        "skipped": []
+      }
+    },
+    {
+      "seq": 44,
+      "ts": "2026-11-13T12:31:07.946Z",
+      "actor": "system",
+      "event": "awx_switch.phase",
+      "subject": "ledger-reconciliation",
+      "payload": {
+        "at": "end"
+      }
+    }
+  ],
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "0320f2ac0a5cedd01f63b8802ce59e0d211f44b4b3bea07f98b91631139c3295",
+      "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+      "method": "passkey"
+    },
+    {
+      "proposal_id": "P-0002",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "7193ec952fa7c2db3b43c6272e4d811cd7ca72ecb4955b00c18a95eaaadd5335",
+      "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+      "method": "passkey"
+    },
+    {
+      "proposal_id": "P-0003",
+      "kind": "payment_batch",
+      "status": "EXECUTED",
+      "terms_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec",
+      "approver": "awx-switch-on virtual test passkey (passkey TiaoCCk9)",
+      "method": "passkey"
+    }
+  ],
+  "payee_adds": [
+    {
+      "add_id": "N-0001",
+      "vendor": "Stockline Data GmbH",
+      "status": "VERIFIED",
+      "proposal_id": null
+    },
+    {
+      "add_id": "N-0002",
+      "vendor": "Betty Morris",
+      "status": "VERIFIED",
+      "proposal_id": null
+    }
+  ],
+  "payee_name_checks": [
+    {
+      "vendor": "Stockline Data GmbH",
+      "code": "VERIFIED",
+      "match": "NOT_MATCHED",
+      "resolved_name": null,
+      "proceed": 0,
+      "label": "the payee's bank holds this account, not as \"Stockline Data GmbH\" (NOT_MATCHED); confirm with the supplier on a known contact before it is proposed",
+      "checked_at": "2026-11-13T12:30:57.413Z"
+    },
+    {
+      "vendor": "Betty Morris",
+      "code": "VERIFIED",
+      "match": "FULL_MATCH_INCORRECT_TYPE",
+      "resolved_name": "Betty Morris",
+      "proceed": 0,
+      "label": "the payee's bank holds this account as \"Betty Morris\", not as \"Betty Morris\" (FULL_MATCH_INCORRECT_TYPE); confirm with the supplier on a known contact before it is proposed",
+      "checked_at": "2026-11-13T12:30:58.723Z"
+    }
+  ],
+  "transfers": [
+    {
+      "request_id": "awx-1:BTX-2026-11",
+      "transfer_id": "4140dee2-6373-4eb4-a71f-bf69130f96a7",
+      "invoice_no": "BTX-2026-11",
+      "amount": "1850.00",
+      "currency": "EUR",
+      "status": "PAID",
+      "fee_actual": "EUR 13.50"
+    },
+    {
+      "request_id": "awx-1:SLL-2026-11",
+      "transfer_id": "738a4263-6d6c-4de8-94a3-93da1c175fb4",
+      "invoice_no": "SLL-2026-11",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "PAID",
+      "fee_actual": "EUR 13.50"
+    },
+    {
+      "request_id": "e9c31d47-9765-4a47-a812-653311247afb",
+      "transfer_id": null,
+      "invoice_no": "SLL-2026-11I",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "IN_APPROVAL",
+      "fee_actual": null
+    },
+    {
+      "request_id": "37c70f48-0426-4d7c-9df5-2aa4e1cdb02a",
+      "transfer_id": null,
+      "invoice_no": "SLL-2026-11J",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "IN_APPROVAL",
+      "fee_actual": null
+    }
+  ],
+  "awx_batches": [
+    {
+      "batch_id": "P-0003",
+      "request_id": "8dfbb673-0b95-4650-a75e-6863019d2f75",
+      "awx_batch_id": "a77101ae-71aa-4c17-82f2-e02ff0b88904",
+      "status": "IN_APPROVAL",
+      "batch_sha256": "443538a5c53829f858b2988fd4ba586506371bbf0a2af2c0a9e60c0ecf4e40ec"
+    }
+  ]
+}

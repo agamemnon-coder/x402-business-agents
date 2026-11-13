@@ -20,7 +20,7 @@ import { ingestDocument, type InboxDeps } from "../ap/inbox.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { checkThenProposePayeeAdd, executePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import { audit } from "../audit/log.js";
 import { CHART } from "../config/gl.js";
 import { PLANS } from "../config/policy.js";
@@ -34,6 +34,7 @@ import { syncLedger } from "../ledger/feed.js";
 import { decide } from "../policy/approvals.js";
 import { ingestCardTransaction, setupCards } from "../policy/cards.js";
 import { FakeAirwallex } from "../redteam/airwallex.js";
+import { FakePayeeNames } from "../airwallex/payeeName.js";
 import { FakeIssuing } from "../redteam/issuing.js";
 
 /** The fixture company the test world is: the platform test world's bakery. */
@@ -78,6 +79,8 @@ export async function buildSandboxWorld(db: DB, dir: string, now = new Date()): 
   if (held.length) throw new Error(`this ledger already holds data (${held.join(", ")}): the test world is built in a new one`);
   mkdirSync(dir, { recursive: true });
   const awx = new FakeAirwallex();
+  // The test world's fictional suppliers have no bank to ask: a labelled stand-in answers the payee check.
+  const standInBank = Object.assign(new FakePayeeNames(), { confirmAll: true });
   // Stand-in test money on the stand-in bank account: enough for the one payout and its stand-in fee.
   awx.bal.EUR.availableCents = 100_000;
   const deps: InboxDeps = { dir: join(dir, "ap"), reader: parserOnly, now: () => now };
@@ -96,7 +99,7 @@ export async function buildSandboxWorld(db: DB, dir: string, now = new Date()): 
     if (apInvoice(db, id)!.status === "needs_vendor") {
       const req = requestPayeeAddForInvoice(db, id, "treasury", now);
       recordPayeeAddVerification(db, req.add_id, { by: "the CFO (test world)", how: "test world: the fictional supplier's bank details as on its own invoice; no real supplier exists to call", actor: "human", address: { street: "Teststraat 2", city: "Amsterdam", postcode: "1011 AB" } }, now);
-      const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+      const p = await checkThenProposePayeeAdd(db, standInBank, req.add_id, "treasury", now);
       approve(p.proposal_id);
       await executePayeeAdd(db, awx, p.proposal_id, { now: () => now }, now);
     }

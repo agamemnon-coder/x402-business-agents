@@ -13,7 +13,7 @@ import { TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { ibanSha } from "../agents/invoice.js";
 import type { AirwallexRail } from "../airwallex/port.js";
 import { beginExecution, createProposal, finishExecution, nextProposalId, type ProposalRow } from "./approvals.js";
-import { nameCheckGate, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { freshCheck, nameCheckGate, payeeCheckOn, runNameCheck, type NameCheckRow, type PayeeNameVerifier } from "../airwallex/payeeName.js";
 
 /** A payee change waits an hour for the CFO, like a mandate change. */
 const PAYEE_CHANGE_TTL_MS = 60 * 60 * 1000;
@@ -108,12 +108,24 @@ export async function checkPayeeChangeName(db: DB, verifier: PayeeNameVerifier, 
   return runNameCheck(db, verifier, { name: r.vendor, entity: "COMPANY", country: iban.slice(0, 2), currency: "EUR", iban, accountKey: iban }, by, now);
 }
 
+/** The flow's way to file a bank-detail change: the new account's bank is asked first (see checkThenProposePayeeAdd). */
+export async function checkThenProposePayeeChange(db: DB, verifier: PayeeNameVerifier | null, id: string, by: Actor, now = new Date()): Promise<ProposalRow> {
+  if (payeeCheckOn()) {
+    const r = row(db, id);
+    if (r.status === "VERIFIED" && !freshCheck(db, r.vendor, normal(r.new_iban), now)) {
+      if (!verifier) throw new Error(`no Airwallex keys: the new account's bank cannot be asked whether it carries ${r.vendor}'s name, so nothing is proposed`);
+      await checkPayeeChangeName(db, verifier, id, by, now);
+    }
+  }
+  return proposePayeeChange(db, id, by, now);
+}
+
 export function proposePayeeChange(db: DB, id: string, by: Actor, now = new Date()): ProposalRow {
   const r = row(db, id);
   if (r.status !== "VERIFIED" || !r.verification_json) throw new Error(`${id} is not verified by a person yet; nothing to propose`);
   const on = active(db, r.vendor);
   if (!on || on.beneficiary_id !== r.old_beneficiary_id) throw new Error(`${r.vendor}'s account on file changed since ${id} was requested`);
-  // AIRWALLEX_PAYEE_CHECK=on: the new account must carry the supplier's name at its bank (src/airwallex/payeeName.ts).
+  // On by default: the new account must carry the supplier's name at its bank (src/airwallex/payeeName.ts).
   const nameCheck = nameCheckGate(db, r.vendor, normal(r.new_iban), now);
   const terms: PayeeChangeTerms = {
     schema: TERMS_SCHEMA, kind: "payee_change", proposal_id: nextProposalId(db),

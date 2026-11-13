@@ -22,6 +22,9 @@ describe("/metal, one by one", () => {
   });
   it("says who signed the replace on chain and names the second approver plainly", () => {
     // Jury panel, 12 Nov: the sentence matches the transactions: one owner key held by the runner signed them.
-    expect(page.replace(/&#39;/g, "'")).toContain("P-0002: the CFO's Face ID and a test passkey approved it in Purser; one owner key, held by Purser's runner, signed on chain. The chain did not check Face ID.");
+    // Since the redesign (13 Nov) the replace is three steps: Face ID in Purser, then the new mandates on chain.
+    const p = page.replace(/&#39;/g, "'");
+    expect(p).toContain("P-0002: the CFO's Face ID and a test passkey approved it in Purser.");
+    expect(p).toContain("One owner key, held by Purser's runner, signed on chain. The chain did not check Face ID.");
   });
 });

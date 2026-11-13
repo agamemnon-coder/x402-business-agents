@@ -14,7 +14,7 @@
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { homeStats, PROOF_BUTTON, START, WHATS_REAL } from "../../src/redesign/home.js";
+import { homeStats, START, TRY_BUTTON, WHATS_REAL } from "../../src/redesign/home.js";
 import { agentRun } from "../../src/redesign/run.js";
 import { scaleStats } from "../../src/redesign/scale.js";
 
@@ -41,13 +41,15 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const fail = (what: string) => o.fail(`${o.name}: ${what}`);
   await page.goto(o.url, { waitUntil: "load" });
 
-  // One story: the hero's two buttons, Try then Proof, the first in the first screen with its one line under it.
+  // One story: the hero's two buttons, the 3-minute tour (primary, owner 13 Nov) then Try it, the first in the first
+  // screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, "proof"])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref} and proof`);
-  if (ctas[0]?.text !== START || ctas[1]?.text !== PROOF_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${PROOF_BUTTON}"`);
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify(["tour", o.tryHref])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to tour and ${o.tryHref}`);
+  if (ctas[0]?.text !== START || ctas[1]?.text !== TRY_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${TRY_BUTTON}"`);
+  if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");
-  if (await page.locator('main a[href="watch"], [data-stage], main a[href="tour"], main a[href="visa"]').count()) fail("a Watch link, a replay stage, or a third way out is back in Home's main part");
+  if (await page.locator('main a[href="watch"], [data-stage], main a[href="visa"]').count()) fail("a Watch link, a replay stage, or a third way out is back in Home's main part");
 
   // The card: once, named by its record, its five steps, and every value the record holds.
   const card = page.locator("main figure.hf");
@@ -87,7 +89,7 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const tiles = await row.locator("li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), label: (l.querySelector("small")?.textContent ?? "").trim() })));
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
-  if (!/Face ID verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not Face ID verified on chain (${tiles[0]?.label})`);
+  if (!/passkeys \(P-256\) verified on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the passkeys verified on chain (${tiles[0]?.label})`);
   // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link.
   const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));
   const wantBand = SCALE.map((x) => ({ figure: fmt(x.n), href: x.href }));

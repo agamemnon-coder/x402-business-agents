@@ -129,7 +129,8 @@ export class X402Desk {
     if (typeof auth?.value !== "string" || !/^\d{1,40}$/.test(auth.value) || BigInt(auth.value) !== BigInt(want.amount) || BigInt(auth.value) > PER_REQUEST_CAP_BASE_UNITS) {
       return this.ask(resourceUrl, 402, "the signed amount is not exactly the price, or is over the cap per request");
     }
-    const settledToday = this.sql.exec("SELECT COUNT(*) AS n FROM x402_payments WHERE kind = 'testnet' AND day = ? AND status IN ('settling', 'settled')", day).toArray()[0] as { n: number };
+    // 'unknown': a settle that threw (a timeout) may have moved money all the same, so it counts (code review 13 Nov).
+    const settledToday = this.sql.exec("SELECT COUNT(*) AS n FROM x402_payments WHERE kind = 'testnet' AND day = ? AND status IN ('settling', 'settled', 'unknown')", day).toArray()[0] as { n: number };
     if (settledToday.n >= DAILY_SETTLE_CAP) return json(429, { error: `the day's cap of ${DAILY_SETTLE_CAP} testnet settlements is reached; nothing was sent`, money: MONEY_LABEL });
 
     // The nonce is taken before any call, so a second copy of this payment is refused while the first one settles.
@@ -140,7 +141,11 @@ export class X402Desk {
     try { v = await f.verify(p, want); } catch (e) { return fail(`Metal's facilitator could not verify the payment: ${(e as Error).message.slice(0, 160)}`); }
     if (!v.isValid) return fail(`Metal's facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
     let s: Awaited<ReturnType<Facilitator["settle"]>>;
-    try { s = await f.settle(p, want); } catch (e) { return fail(`Metal's facilitator could not settle the payment: ${(e as Error).message.slice(0, 160)}`); }
+    try { s = await f.settle(p, want); } catch (e) {
+      // No answer is not a refusal: the settlement may have gone through. It stays on the day's cap, and is not served.
+      this.sql.exec("UPDATE x402_payments SET status = 'unknown' WHERE nonce = ?", nonce);
+      return json(502, { error: `Metal's facilitator gave no answer on the settlement (${(e as Error).message.slice(0, 160)}): it may have settled, so it counts against the day's cap, and this payment's nonce is spent`, money: MONEY_LABEL });
+    }
     if (!s.success) return fail(`Metal's facilitator did not settle the payment: ${s.errorReason ?? "unknown"}`);
     this.sql.exec("UPDATE x402_payments SET status = 'settled', tx = ? WHERE nonce = ?", s.transaction.slice(0, 80), nonce);
     return json(200, { paid_with: "Metal testnet, settled by Metal's facilitator", money: MONEY_LABEL, transaction: s.transaction, resource: receipt },

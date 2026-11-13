@@ -12,6 +12,8 @@ import { agentRun, callBadge, faceIdDecisions, highlights, loadRecord, payments,
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
 import { MORE_LABEL, MORE_LINKS } from "../src/ui/more.js";
 import { hostileClaimText } from "../src/redesign/partners.js";
+import { claudeEvidence } from "../src/redesign/claudeEvidence.js";
+import { hostileTileLabel } from "../src/redesign/claudePage.js";
 import { AWX_PAGE_LABEL } from "../src/redesign/airwallexProducts.js";
 import { METAL_INSPECT_JS } from "../src/redesign/metalMandates.js";
 import { tokenizeRun } from "../src/redesign/tokenizeRun.js";
@@ -98,7 +100,7 @@ describe("the site after v4", () => {
     // Watch: 260 since the film page (12 Nov): the poster, 13 chapters with their times and the key of what is real
     // and what is simulated; the transcript is folded (the replay that was here moved to /replay).
     // Home: 300 since the enterprise pass (owner, 12 Nov): four features and the stat row (288 as built).
-    const budget: Record<string, number> = { home: 300, watch: 260, try: 180, proof: 720 /* +5 for the honesty notes of the panel review, 10 Nov */, pricing: 150, security: 280 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked; +15, jury check 12 Nov: "Face ID signs on chain" and "How the 2 were detected" linked */, metal: tokenizeRun() ? 385 : 330 /* +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built); +5, jury check 12 Nov: "Since 12 Nov it does", linking it from the replace card */, airwallex: 480 /* +40, 13 Nov (owner: "graphs and visuals"): the path of seven stops, the charts' legends and the two meters in words, the cards' figures and ids folded (474 as built); +10, 13 Nov: the fold "Approved with the owner's own Face ID (13 Nov)", its summary in sight (8 words; 437 as built); +5, panel review 10 Nov; +4, jury panel 12 Nov; +41, jury check 12 Nov: three tiles behind flags (payee check, batch transfer, ledger reconciliation) and their line, 411 as built; +15, review at 390 px 12 Nov (f5c3a817): seven products plus three tested live, 'Built, not yet switched on', 429 as built */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
+    const budget: Record<string, number> = { home: 345 /* 300 since the enterprise pass (12 Nov); +45, review 13 Nov: the main run's line and which agents the flow shows (341 as built) */, watch: 260, try: 180, proof: 1200 /* +5 for the honesty notes of the panel review, 10 Nov; +480, the owner 13 Nov ("the proof is what we need"): every live run in sight, by partner (1,186 as built) */, pricing: 150, security: 280 /* 220 until 12 Nov 15:55: nine controls, each with its proof (the owner); +5, 12 Nov merge: the hostile-model eval and the zero-trust report linked; +15, jury check 12 Nov: "Face ID signs on chain" and "How the 2 were detected" linked */, metal: tokenizeRun() ? 480 : 430 /* +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +75, jury panel 12 Nov: the four mandates in one table (seven columns, each figure a word); +50, 12 Nov wire-in: "Face ID signs on chain", six steps from docs/runs/2026-11-12-faceid-onchain.json (49 words as built); +5, jury check 12 Nov: "Since 12 Nov it does", linking it from the replace card */, airwallex: 480 /* +40, 13 Nov (owner: "graphs and visuals"): the path of seven stops, the charts' legends and the two meters in words, the cards' figures and ids folded (474 as built); +10, 13 Nov: the fold "Approved with the owner's own Face ID (13 Nov)", its summary in sight (8 words; 437 as built); +5, panel review 10 Nov; +4, jury panel 12 Nov; +41, jury check 12 Nov: three tiles behind flags (payee check, batch transfer, ledger reconciliation) and their line, 411 as built; +15, review at 390 px 12 Nov (f5c3a817): seven products plus three tested live, 'Built, not yet switched on', 429 as built */, visa: 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) /* + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov; test/icc-block.test.ts holds the block to it); +5, panel review 10 Nov; +105 for the overview on top, its flow and three run cards (Max, 10 Nov: more Visa); +5 on 12 Nov for two folded lines under the Airi runs, "As reported by the Airwallex sandbox" and "The CFO's policy next to Visa's VIC rules" (14 words; 9 of them paid for by the TAP section's line that went; 614 as built); +10 on 12 Nov for a third folded line, "Card data: not a network-tokenised checkout, no PCI attestation" (9 words: what this checkout is not, readable without opening the fold; 623 as built) */, claude: 240 /* +45, jury panel 12 Nov: measured, not asserted (four figures, each with its record, and the injection screen); +30, 12 Nov merge: the hostile-model eval's line with its record link (29 words), kept beside the measured block; +15, 12 Nov merge: the measured block's line on the zero-trust report, shown once docs/zero-trust/report.json is in the tree */, notFound: 40 };
     // Docs 200 since 12 Nov: four cards, the agent API's tools by name with one short line each, every description folded.
     // Status 90 since 12 Nov: the status lines (empty until /health is read) and the five latest live runs.
     Object.assign(budget, { docs: 280 /* +10, review 12 Nov: the KIT note; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in that card, its link and its folded steps' header (274 as built) */, status: 90 });
@@ -114,13 +116,15 @@ describe("the site after v4", () => {
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["dashboard", "month", "film", "try", "lab", "metal", "metalReport", "visa", "airwallex", "claude", "pricing", "security", "home", "watch", "proof", "notFound", "approve", "enrol", "policy"]));
     expect(all.map(([k]) => k)).toEqual(expect.arrayContaining(["docs", "status"]));
     // 12 Nov (jury panel): /claude's hostile-model eval line says "0 unsafe" as CI computed it (docs/evals/ap-hostile.json).
-    const hostile = hostileClaimText();
-    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " "))?.[0] ?? null }).toEqual({ name, found: null });
+    // Since 13 Nov the same record's figures are a proof tile on /claude (hostileTileLabel, src/redesign/claudePage.ts).
+    const hostile = hostileClaimText(), tile = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
+    for (const [name, html] of all) for (const re of bad) expect({ name, found: re.exec(allText(html).replace(hostile || "\u0000", " ").replace(tile, " "))?.[0] ?? null }).toEqual({ name, found: null });
   });
 
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Pricing, Security, Docs, then Airwallex, Metal, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
+    // Max, 13 Nov: "Product tour" first.
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Product tour", "tour"], ["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Pricing", "pricing"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Metal", "metal"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
@@ -140,9 +144,10 @@ describe("the site after v4", () => {
       // The partner pages follow the product pages after one divider; nothing else is in the dropdown.
       const product = MORE_LINKS.filter((l) => l.group === "product" && served.includes(l.label));
       expect({ name, rest: (more?.[2] ?? "").replace(/<a [^>]*>[^<]+<\/a>/g, "") }).toEqual({ name, rest: product.length ? "<hr>" : "" });
-      // The footer repeats the product pages' links (not the partner pages), in the same order; Try, an older page, has no footer.
+      // The footer repeats the product pages' links (not the partner pages, not the product tour, 13 Nov), in the same
+      // order; Try, an older page, has no footer.
       const foot = /<footer class="foot">[\s\S]*?<\/footer>/.exec(html)?.[0] ?? "";
-      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href)).map((l) => [l.href, l.label]) });
+      if (name !== "try") expect({ name, footer: [...foot.matchAll(/<a class="flink" href="\/?([a-z]+)">([^<]+)<\/a>/g)].map((m) => [m[1], m[2]]).filter(([href]) => MORE_LINKS.some((l) => l.href === href && l.group === "product")) }).toEqual({ name, footer: product.filter((l) => !/^https:/.test(l.href) && l.key !== "tour").map((l) => [l.href, l.label]) });
     }
   });
 
@@ -269,9 +274,10 @@ describe("the site after v4", () => {
       const airi = /<div class="awrb"><div class="card airi" id="airi-run">[\s\S]*?<\/details><\/div><\/div>/.exec(whole)?.[0] ?? "";
       expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
-      // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
+      // /metal opens on one picture (owner's redesign, 13 Nov): a payment paid and one refused under the same mandate.
       // /visa's picture since the redesign of 13 Nov (the owner: "more visuals and data"): the latest run's flow, its purchases on their paths.
-      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'class="vh-flow card"' : 'class="card vicflow"') : 'class="flow card"';
+      // /claude (13 Nov) opens on the split: routine to code, the exceptions to Claude, the high-risk ones on to Face ID.
+      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mhero card"' : name === "visa" ? (vic3Run() ? 'class="vh-flow card"' : 'class="card vicflow"') : name === "claude" ? 'class="csplit card"' : 'class="flow card"';
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);
@@ -300,7 +306,7 @@ describe("the site after v4", () => {
 
   it("carries a favicon and an Open Graph image on the redesign's pages, both served", () => {
     for (const name of ["home", "watch", "proof", "pricing", "security", "metal", "airwallex", "visa", "claude"]) {
-      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg"/);
+      expect(PUBLIC[name]).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
       // Absolute since 6 Nov (jury QA, Q5): a relative image was a 404 from /try/sign and not read by every link preview.
       expect(PUBLIC[name]).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113">/);
     }

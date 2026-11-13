@@ -3,6 +3,8 @@
 // the test acting only as the people do (a person checks a new supplier's account, the CFO approves). A stop between
 // any two steps changes nothing in the end; two processes never run one step twice; nothing above the limit runs
 // without the CFO's approval of the exact terms.
+import { standInBank } from "./support/standInBank.js";
+import { FakePayeeNames } from "../src/airwallex/payeeName.js";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
@@ -125,7 +127,7 @@ async function world(o: { gate?: AloneGate; coder?: boolean; file?: boolean; now
   const inbox: InboxDeps = { dir: join(root, "ap"), reader: parserOnly, sink: o.sink ?? new CsvFileSink(join(root, "ap", "journal.csv")), now, ...(o.coder ? { coder: scriptedCoder([]) } : {}) };
   const erp = standInBooks();
   const deps: AutopilotDeps = {
-    inbox, folders: [folder], rail: awx, execute: executeOn(awx, inbox), vault: new LocalSink(join(root, "vault")), company: "Northwind Outdoor", erp,
+    inbox, folders: [folder], rail: awx, payeeNames: standInBank(), execute: executeOn(awx, inbox), vault: new LocalSink(join(root, "vault")), company: "Northwind Outdoor", erp,
     gate: o.gate ?? null, now, owner: { id: "autopilot-1", pid: 1, host: "test-host" }, alive: () => true, orphanGraceMs: 0,
   };
   return { db, awx, root, folder, dbPath, deps, erp };
@@ -328,6 +330,23 @@ describe("a failing step is tried again later, then parked for a person", () => 
     expect(tries()).toEqual(["failed", "failed", "failed", "done"]);
     expect(parkedItems(w.db)).toEqual([]);
   }, 60_000);
+
+  it("a new supplier whose bank holds the account under another name is parked for the CFO at once, never proposed", async () => {
+    const w = await world();
+    w.deps.rail = null;
+    const bank = new FakePayeeNames();
+    bank.accounts.set("DE75512108001245126199", { name: "Mallory Ltd", entity: "COMPANY", bank: "Test Bank" });
+    w.deps.payeeNames = bank;
+    writeFileSync(join(w.folder, "new-de.pdf"), await pdfOf(DE));
+    await drain(w.db, w.deps);
+    personChecksSuppliers(w.db);
+    await drain(w.db, w.deps);
+    const add = w.db.prepare("SELECT add_id FROM payee_adds").get() as { add_id: string };
+    expect(parkedItems(w.db)).toMatchObject([{ item: add.add_id, step: "file the supplier for the CFO", attempts: 1, reason: expect.stringMatching(/holds this account as "Mallory Ltd"/) }]);
+    expect(w.db.prepare("SELECT COUNT(*) AS n FROM proposals WHERE kind = 'payee_add'").get()).toEqual({ n: 0 });
+    await drain(w.db, w.deps);
+    expect(bank.calls).toBe(1);
+  });
 
   it("a success in between clears the count", async () => {
     let t = Date.parse("2026-11-12T09:00:00Z");

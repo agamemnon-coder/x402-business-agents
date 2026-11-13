@@ -3,6 +3,8 @@
 
 import { erc20Abi, parseAbi, parseEventLogs, type Hash } from "viem";
 import { AirwallexRest } from "../airwallex/adapter.js";
+import { ftBySourceVia } from "./awxFinancialTx.js";
+import { listDeposits } from "../airwallex/deposits.js";
 import { Airwallex, fromEnv } from "../airwallex/client.js";
 import { issuingFromEnv } from "../airwallex/issuing.js";
 import { centsToBaseUnits, fromCents } from "../lib/money.js";
@@ -31,11 +33,13 @@ export function authorizationUsed(payer: string, nonce: string): Promise<boolean
 
 export function reconcileSourcesFromEnv(db?: DB): ReconcileSources {
   const cfg = fromEnv();
-  const rest = cfg ? new AirwallexRest(new Airwallex(cfg)) : null;
+  const api = cfg ? new Airwallex(cfg) : null;
+  const rest = api ? new AirwallexRest(api) : null;
   const issuing = issuingFromEnv(db);
   return {
     ...(rest ? { transfer: async (id: string) => { const t = await rest.getTransfer(id); return { status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
     ...(rest ? { transferByRequestId: async (requestId: string) => { const t = await rest.findTransferByRequestIdStrict(requestId); return t && { id: t.id, status: t.status, amountCents: t.amountCents, currency: t.currency }; } } : {}),
+    ...(api ? { financialTransactions: ftBySourceVia(api), deposits: (w: { from: string; to: string }) => listDeposits(api, w) } : {}),
     ...(issuing ? { cardTransactions: (cardId: string) => issuing.rail.listCardTransactions(cardId) } : {}),
     ...(process.env.METAL_RPC_URL ? { chainTransfer: receiptCarries } : {}),
     // A live world (Metal configured): the facilitator's public list of what settled to Northwind.

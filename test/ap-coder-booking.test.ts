@@ -281,7 +281,7 @@ describe("with the flag off, nothing of the Coder runs and the books are what th
       const total = toCents(r.total), tax = toCents(r.tax);
       const memo = `${r.vendor} invoice ${r.invoice_no}`;
       const row = (account: string, name: string, debit: number, credit: number, m: string) => [r.issue_date, r.id, "accrual", account, name, debit ? fromCents(debit) : "", credit ? fromCents(credit) : "", r.currency, m, r.doc_sha256].join(",");
-      return [row(r.gl_account, NAMES[r.gl_account]!, total - tax, 0, memo), row("1510", "Input VAT receivable (supplier invoices)", tax, 0, `${memo}: input VAT`), row("2100", "Accounts payable (supplier invoices)", 0, total, memo)];
+      return [row(r.gl_account, NAMES[r.gl_account]!, total - tax, 0, memo), (r.vendor === "Zeeland Verpakkingen B.V." ? row("1510", "Input VAT receivable (supplier invoices)", tax, 0, `${memo}: input VAT`) : row("1515", "Foreign VAT to reclaim (EU refund)", tax, 0, `${memo}: foreign VAT to reclaim`)), row("2100", "Accounts payable (supplier invoices)", 0, total, memo)];
     });
     const csv = journalCsv(apJournal(db));
     expect(csv).toBe(`date,invoice_id,event,account,account_name,debit,credit,currency,memo,doc_sha256\n${engine.join("\n")}\n`);
@@ -299,26 +299,27 @@ const NAMES: Record<string, string> = { "6200": "Goods from the manufacturer", "
 const KEYS = "bic,classified_by,cost_centre,credit_accepted_at,credit_accepted_by,currency,doc_kind,doc_sha256,due_date,findings,gl_account,gl_rule,iban_last4,id,invoice_no,issue_date,paid_at,proposal_id,read_by,reading,received_at,review_by,review_note,status,subtotal,tax,total,updated_at,vendor";
 const PINNED_CSV = `date,invoice_id,event,account,account_name,debit,credit,currency,memo
 2026-11-02,AP-0001,accrual,6200,Goods from the manufacturer,1554.62,,EUR,Bergtex Textil GmbH invoice BTX-2026-21
-2026-11-02,AP-0001,accrual,1510,Input VAT receivable (supplier invoices),295.38,,EUR,Bergtex Textil GmbH invoice BTX-2026-21: input VAT
+2026-11-02,AP-0001,accrual,1515,Foreign VAT to reclaim (EU refund),295.38,,EUR,Bergtex Textil GmbH invoice BTX-2026-21: foreign VAT to reclaim
 2026-11-02,AP-0001,accrual,2100,Accounts payable (supplier invoices),,1850.00,EUR,Bergtex Textil GmbH invoice BTX-2026-21
 2026-11-03,AP-0002,accrual,6900,Other supplier invoices,400.00,,EUR,Zeeland Verpakkingen B.V. invoice ZV-4471
 2026-11-03,AP-0002,accrual,1510,Input VAT receivable (supplier invoices),84.00,,EUR,Zeeland Verpakkingen B.V. invoice ZV-4471: input VAT
 2026-11-03,AP-0002,accrual,2100,Accounts payable (supplier invoices),,484.00,EUR,Zeeland Verpakkingen B.V. invoice ZV-4471
 2026-11-04,AP-0003,accrual,6900,Other supplier invoices,1000.00,,EUR,Lagerhaus Nord GmbH invoice LN-2026-0815
-2026-11-04,AP-0003,accrual,1510,Input VAT receivable (supplier invoices),190.00,,EUR,Lagerhaus Nord GmbH invoice LN-2026-0815: input VAT
+2026-11-04,AP-0003,accrual,1515,Foreign VAT to reclaim (EU refund),190.00,,EUR,Lagerhaus Nord GmbH invoice LN-2026-0815: foreign VAT to reclaim
 2026-11-04,AP-0003,accrual,2100,Accounts payable (supplier invoices),,1190.00,EUR,Lagerhaus Nord GmbH invoice LN-2026-0815
 `;
 const PINNED_LEDGER = [
   // 13 Nov: the German supplier's 19% is coded as foreign VAT from its own VAT id (src/ap/books.ts foreignVat), on its own
   // row of the VAT overview, never Dutch input tax (Bergtex and Lagerhaus Nord, both German); the only change to these books.
+  // Code review 13 Nov: their VAT is booked to 1515 (foreign VAT to reclaim, EU refund), so 1510 holds only what 5b reclaims.
   "ap-accrual|AP-0001 #1 6200 D155462 C0 EUR cc=CC300 vat=PF_DE19:29538 party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21",
-  "ap-accrual|AP-0001 #2 1510 D29538 C0 EUR cc=null vat=null:null party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21: input VAT",
+  "ap-accrual|AP-0001 #2 1515 D29538 C0 EUR cc=null vat=null:null party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21: foreign VAT to reclaim",
   "ap-accrual|AP-0001 #3 2100 D0 C185000 EUR cc=null vat=null:null party=Bergtex Textil GmbH due=2026-11-16 ref=BTX-2026-21 · Bergtex Textil GmbH entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21",
   "ap-accrual|AP-0002 #1 6900 D40000 C0 EUR cc=CC300 vat=P21:8400 party=Zeeland Verpakkingen B.V. due=null ref=null entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471",
   "ap-accrual|AP-0002 #2 1510 D8400 C0 EUR cc=null vat=null:null party=Zeeland Verpakkingen B.V. due=null ref=null entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471: input VAT",
   "ap-accrual|AP-0002 #3 2100 D0 C48400 EUR cc=null vat=null:null party=Zeeland Verpakkingen B.V. due=2026-11-17 ref=ZV-4471 · Zeeland Verpakkingen B.V. entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471",
   "ap-accrual|AP-0003 #1 6900 D100000 C0 EUR cc=CC300 vat=PF_DE19:19000 party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815",
-  "ap-accrual|AP-0003 #2 1510 D19000 C0 EUR cc=null vat=null:null party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815: input VAT",
+  "ap-accrual|AP-0003 #2 1515 D19000 C0 EUR cc=null vat=null:null party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815: foreign VAT to reclaim",
   "ap-accrual|AP-0003 #3 2100 D0 C119000 EUR cc=null vat=null:null party=Lagerhaus Nord GmbH due=2026-11-18 ref=LN-2026-0815 · Lagerhaus Nord GmbH entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815",
 ];
 const PINNED_EVENTS = [

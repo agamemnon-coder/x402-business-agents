@@ -24,9 +24,16 @@ describe("the path of a payment through Airwallex", () => {
     }
     expect(text(html)).toMatch(/Agent card \(Issuing\) Live 7 Nov/);
   });
-  it("says which stops are built but not yet switched on (a ring, and the words)", () => {
-    for (const label of ["Payee check", "Ledger reconciliation"]) expect(text(html)).toMatch(new RegExp(`${label} Live 12 Nov not yet switched on`));
-    expect((html.match(/<li class="off">/g) ?? []).length).toBe(2);
+  it("says which stops are built but not yet switched on (a ring, and the words); since 13 Nov none is left", () => {
+    // docs/runs/2026-11-13-airwallex-switch-on.json shows the payee check and the ledger live in the flow: filled, no words.
+    expect(flagged).toEqual([]);
+    for (const label of ["Payee check", "Ledger reconciliation"]) expect(text(html)).toMatch(new RegExp(`${label} Live 12 Nov`));
+    expect(text(html)).not.toContain("not yet switched on");
+    expect((html.match(/<li class="off">/g) ?? []).length).toBe(0);
+    // Built but not switched on, a stop says so (the switch-on record left out): a ring, and the words.
+    const built = pathHtml(inUse.filter((t) => t.key !== "payee-check"), inUse.filter((t) => t.key === "payee-check"));
+    expect(text(built)).toMatch(/Payee check Live 12 Nov not yet switched on/);
+    expect((built.match(/<li class="off">/g) ?? []).length).toBe(1);
   });
 });
 
@@ -60,7 +67,7 @@ describe("when a flagged product is switched on (another run flips it in the pag
     const all = [...inUse, ...flagged];
     expect(timelineSvg(all, [])).not.toContain('class="off"');
     expect(pathHtml(all, [])).not.toContain("not yet switched on");
-    expect(metersHtml(all)).toBe(metersHtml(flagged));
+    expect(metersHtml(all)).toBe(metersHtml(inUse.filter((t) => t.key === "ledger" || t.key === "payee-check")));
     expect(visualsHtml(all, [])).toContain("payee name checks stopped before the CFO is asked");
   });
 });
@@ -87,9 +94,9 @@ describe("one payment as a bar", () => {
 });
 
 describe("the two meters", () => {
-  it("read their counts from the flagged tiles' records", () => {
-    const html = metersHtml(flagged);
-    const ledger = flagged.find((t) => t.key === "ledger")!, payee = flagged.find((t) => t.key === "payee-check")!;
+  it("read their counts from the tiles' records (in use since 13 Nov)", () => {
+    const html = metersHtml(inUse);
+    const ledger = inUse.find((t) => t.key === "ledger")!, payee = inUse.find((t) => t.key === "payee-check")!;
     expect(text(html)).toContain(`${ledger.value} movements agree`);
     expect(text(html)).toContain(`${payee.value} payee name checks stopped before the CFO is asked`);
   });
@@ -97,11 +104,13 @@ describe("the two meters", () => {
 
 describe("on the page", () => {
   const awx = buildPages().airwallex!;
-  it("opens with the path, then the charts, then the cards in two groups", () => {
-    const at = ['<ol class="awpath"', 'class="awviz"', 'id="awg-on"', 'id="awg-off"'].map((m) => awx.indexOf(m));
+  it("opens with the path, then the charts, then the cards; the built-not-switched-on group only while one is left", () => {
+    const at = ['<ol class="awpath"', 'class="awviz"', 'id="awg-on"'].map((m) => awx.indexOf(m));
     expect(at.every((i) => i > 0)).toBe(true);
     expect(at).toEqual([...at].sort((a, b) => a - b));
-    expect(awx).toContain("Built, not yet switched on; each ran live on 12 Nov.");
+    // 13 Nov: all three switched on (docs/runs/2026-11-13-airwallex-switch-on.json), so the second group is gone.
+    expect(awx).not.toContain('id="awg-off"');
+    expect(awx).not.toContain("Built, not yet switched on; each ran live on 12 Nov.");
     expect(awx).toContain(visualsHtml(inUse, flagged));
   });
   it("has no inline style and uses the site's tokens only", () => {

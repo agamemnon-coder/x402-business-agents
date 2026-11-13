@@ -56,7 +56,7 @@ describe("every page's head (Q5)", () => {
   it("links the favicon wherever the page's CSP allows an image, and never where it refuses one (img-src 'none')", () => {
     for (const [name, page] of html) {
       const none = /img-src 'none'/.test(csp[name] ?? "");
-      expect({ name, icon: /<link rel="icon" href="[^"]*assets\/favicon\.svg"/.test(head(page)) }).toEqual({ name, icon: !none });
+      expect({ name, icon: /<link rel="icon" href="[^"]*assets\/favicon\.svg\?v=1113b"/.test(head(page)) }).toEqual({ name, icon: !none });
     }
   });
 

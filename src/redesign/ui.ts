@@ -9,6 +9,7 @@ import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js
 import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
 import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
+import { ICON_VERSION } from "../ui/brand/mark.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -234,6 +235,12 @@ details.real .pop { margin: 0 0 10px; max-width: 640px; padding: 16px 18px; font
 details.real .pop ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }`;
 
+/**
+ * What the partners' names and marks mean (review, 13 Nov: "Works with" showed marks with no such note): in every page's
+ * "What's real?", and in short beside the marks on Home (src/redesign/home.ts NO_ENDORSEMENT).
+ */
+export const MARKS_NOTE = "Partner names and marks only say which services Purser uses; no endorsement implied.";
+
 /** The one tagline (jury QA, 6 Nov, Q8: was "Agents spend. Limits hold." in og:title): Home's heading, the film's line. */
 export const HEADLINE = TAGLINE_LINE;
 
@@ -276,6 +283,7 @@ export const setBuiltOn = (f: () => string) => { builtOnDefault = f; };
 export function footer(source: string, real: string[] = MAIN_RUN_REAL, links: [string, string][] = [], builtOn = builtOnDefault?.() ?? ""): string {
   return `<footer class="foot"><div class="wrap"><details class="real" id="real"><summary class="pill">${icon("info", 15)} What's real?</summary><div class="pop card"><ul>
 ${real.map((line) => `<li>${esc(line)}</li>`).join("\n")}
+<li>${esc(MARKS_NOTE)}</li>
 <li>${esc(source)}</li></ul></div></details>${builtOn}<span>Built for the Airwallex Agentic Banking Hackathon</span>${footerLinks().map((l) => `<a class="flink" href="${l.href}">${l.label}</a>`).join("")}${links.map(([href, label]) => `<a class="flink" href="${esc(href)}">${esc(label)}</a>`).join("")}</div></footer>`;
 }
 
@@ -508,7 +516,8 @@ ${o.js}</script>`;
 <meta name="description" content="${esc(o.description)}">
 <meta name="theme-color" content="#0b1220">
 ${previewTags().join("\n")}
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png?v=${ICON_VERSION}">
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
 ${MOTION_CSS}${SITE_MOTION_CSS}

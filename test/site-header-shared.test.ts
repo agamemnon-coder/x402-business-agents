@@ -75,7 +75,8 @@ describe("the cloud pages carry the site's header", () => {
     const pages = [tryPage(n, { origin: "https://x.test", rpId: "x.test" }), consolePage(n, { origin: "https://x.test", rpId: "x.test", mailDomain: "x.test" })];
     for (const html of pages) {
       const body = html.slice(html.indexOf("<body"));
-      expect(body).toContain(siteHeader(html.includes("purser-try") ? "try" : "cloud"));
+      // The console marks no item since the review of 13 Nov ("More" was marked on every page); /try marks Try.
+      expect(body).toContain(siteHeader(html.includes("purser-try") ? "try" : null));
       expect(html).toContain(HEADER_CSS_MARK);
       expect(html).not.toMatch(/\son[a-z]+="/);
       expect(html).not.toMatch(/<script(?![^>]*nonce=)/);

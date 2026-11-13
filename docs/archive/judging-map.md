@@ -1,4 +1,4 @@
-> Kept for history (archived 12 November 2026). Replaced by: the README's ["For reviewers in 30 seconds"](../../README.md#for-reviewers) and the site's [/judge](https://kit11.max-31b.workers.dev/judge).
+> Kept for history (archived 12 November 2026). Replaced by: the README's ["For judges: 3 minutes"](../../README.md#for-judges-3-minutes) and the site's [/judge](https://kit11.max-31b.workers.dev/judge).
 
 # How we read the brief
 

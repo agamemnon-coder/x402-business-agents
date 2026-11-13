@@ -174,7 +174,7 @@ describe("/security: security and trust", () => {
 
   it("signatures: the exact terms, signed with a passkey, one changed cent refused; the proof is the Try tab", () => {
     // 12 Nov (jury check): the Face ID on chain run linked beside it.
-    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Face ID signs on chain How If the approver is unavailable");
+    expect(inSight("s-sign")).toBe("Signed terms The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused. Try it yourself Passkeys sign on chain (P-256) How If the approver is unavailable");
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(card(html, "s-sign")).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
     expect(flowLinks(html, true)).toContain('<a class="pf" href="/try" data-next="/try">Try it yourself</a>');
@@ -332,8 +332,8 @@ describe("/security: security and trust", () => {
       .concat(((r) => [r.cases.length, r.calls, r.refused, r.unsafe].map(String))(json<{ cases: unknown[]; calls: number; refused: number; unsafe: number }>("docs/evals/ap-hostile.json")))
       // And the day the two-locks run's record names, from its own heading.
       .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
-    // Names that carry a digit are not figures: "SOC 2", "SHA-256", and the files the folds name.
-    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
+    // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
+    const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);
     expect(figures(`${text} 100% safe`).filter((n) => !allowed.has(n))).toEqual(["100"]);
   });
@@ -359,8 +359,9 @@ describe("the two pages on the site", () => {
     expect((buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as Pages).security).toContain('href="/try" data-next="/try"');
     expect(CHECK_PATHS).toEqual(expect.arrayContaining(["/pricing", "/security"]));
     // 12 Nov (review): the README said "18 pages" while the list grew; it now names the list, which no count can outdate.
-    const check = read("README.md").split("\n").find((l) => l.startsWith("- `npm run judge -- --check`")) ?? "";
-    expect(check).toContain("builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record");
+    // Since 13 Nov (the README upgrade) the quick start's own line says it, as a comment beside the command.
+    const check = read("README.md").split("\n").find((l) => l.startsWith("npm run judge -- --check")) ?? "";
+    expect(check).toContain("every page in CHECK_PATHS built from the main run's record, offline");
     expect(check).not.toMatch(/\b\d+ pages\b/);
     expect(read("src/cli/judge.ts")).toContain("for (const path of CHECK_PATHS) {");
     expect(HEADER_PATHS.filter((h) => ["/pricing", "/security"].includes(h.path))).toEqual([{ path: "/pricing", kind: "page", status: 200 }, { path: "/security", kind: "page", status: 200 }]);
@@ -415,7 +416,8 @@ describe("the two pages on the site", () => {
     }
     expect(navHtml("month")).toMatch(/data-nav="proof" class="on"/);
     expect(menuItemOf("runs")).toBeNull();
-    expect(menuItemOf("tour")).toBeNull();
+    // The product tour is under More since 13 Nov (Max): /tour marks More.
+    expect(menuItemOf("tour")).toBe("more");
     expect(menuItemOf("pricing")).toBe("more");
     expect(menuItemOf("proof")).toBe("proof");
     expect(menuItemOf(null)).toBeNull();

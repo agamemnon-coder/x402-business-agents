@@ -24,7 +24,7 @@ import { clearPossibleDuplicate, ingestDocument, recheck, type InboxDeps, type I
 import { insights } from "../ap/insights.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import { apInvoice, apInvoices } from "../ap/store.js";
-import { proposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { checkThenProposePayeeAdd, readBackOf, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import { scanFolder } from "../ap/watch.js";
 import { ClaudeReader } from "../claude/reader.js";
 import { openDb } from "../db/open.js";
@@ -118,7 +118,8 @@ async function main(): Promise<void> {
     });
     console.log(`${r.add_id} verified. Next: npm run payables -- supplier-propose ${r.add_id}`);
   } else if (cmd === "supplier-propose") {
-    const p = proposePayeeAdd(db, args[1] ?? "", "human");
+    const { payeeVerifierFromEnv } = await import("../airwallex/payeeName.js");
+    const p = await checkThenProposePayeeAdd(db, await payeeVerifierFromEnv(), args[1] ?? "", "human");
     console.log(`${p.proposal_id}: the new supplier waits for the CFO's Face ID on the phone`);
   } else if (cmd === "not-duplicate") {
     const i = apInvoice(db, args[1] ?? "");

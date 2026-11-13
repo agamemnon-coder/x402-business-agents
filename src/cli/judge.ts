@@ -66,7 +66,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/security", page(SECURITY_CSP, () => SECURITY_PAGE));
   app.get("/docs", page(DOCS_CSP, () => DOCS_PAGE));
   // The 3-minute product tour (13 Nov); /judge, its old address, answers 301 to it (MOVED, above).
-  app.get("/tour", page(TOUR_CSP, () => TOUR_PAGE));
+  // This server has no /try/sign: the tour's first step leads to /try here, as in a bundle without it (flowLinks).
+  app.get("/tour", page(TOUR_CSP, () => TOUR_PAGE.replace(/href="\/try\/sign"/g, 'href="/try"')));
   // /status, the offline copy: this server has no /health and no runner, so the page says so (no script, no request).
   app.get("/status", page(STATUS_OFFLINE_CSP, () => STATUS_PAGE_OFFLINE));
   app.get("/t0", page(T0_CSP, () => T0_PAGE));
@@ -76,7 +77,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/assets/inter.woff2", (_req, res) => { res.type("font/woff2").send(FONT); });
   for (const [name, logo] of Object.entries({ ...LOGOS, ...FILM_STILLS, ...DOWNLOADS })) app.get(`/assets/${name}`, (_req, res) => { res.type(logo.type).send(logo.body); });
   // As on the relay: /favicon.ico is Purser's mark, so a page with no icon link asks for nothing missing.
-  app.get("/favicon.ico", (_req, res) => { res.type(LOGOS["favicon.svg"]!.type).send(LOGOS["favicon.svg"]!.body); });
+  for (const name of ["favicon.ico", "favicon.svg", "apple-touch-icon.png", "icon.png"]) app.get(`/${name}`, (_req, res) => { res.type(LOGOS[name]!.type).send(LOGOS[name]!.body); });
   // The CFO's own pages (policy, approvals, passkey enrolment) need the runner and a passkey. Offline they say so and
   // point at the recording, so a juror who follows the emergency stop's link (policy?freeze=on) never meets a 404.
   const liveOnly = (_req: express.Request, res: express.Response) => {
@@ -132,7 +133,7 @@ export function judgeMenu(url: string): string[] {
     `  ${url}/runs          every live run, newest first, with its ids and records`,
     `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
-    `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/try           the earlier offline task demo; the hands-on demo is live at https://kit11.max-31b.workers.dev/try`,
     `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
     `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
     `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,

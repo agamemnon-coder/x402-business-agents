@@ -168,7 +168,7 @@ export function securityCards(): SecurityCard[] {
       line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
       // 12 Nov: the Face ID on chain run (a passkey account on Metal testnet; the second owner a labelled virtual test
       // passkey), the answer to "the chain did not check Face ID".
-      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("metal#faceid-onchain", "Face ID signs on chain")] : [])],
+      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("metal#faceid-onchain", "Passkeys sign on chain (P-256)")] : [])],
       fold: { summary: "How", lines: [esc(terms.how), code(terms), ...(ownersRun() ? [esc("On Metal testnet, 12 Nov: a passkey account changed an agent's mandate only with both owners' passkeys, and checked them on chain; the second owner was a labelled virtual test passkey.")] : [])] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
       more: {

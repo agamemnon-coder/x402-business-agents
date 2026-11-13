@@ -63,7 +63,7 @@ describe("connector tokens", () => {
   it("without a token, /mcp answers 401 and says where to sign in", async () => {
     const r = await rpc(null, "initialize");
     expect(r.status).toBe(401);
-    expect(r.res.headers.get("www-authenticate")).toBe(`Bearer resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource"`);
+    expect(r.res.headers.get("www-authenticate")).toBe(`Bearer resource_metadata="${ORIGIN}/.well-known/oauth-protected-resource", scope="purser"`);
   });
 });
 
@@ -73,7 +73,7 @@ describe("/mcp", () => {
     expect(init.status).toBe(200);
     expect(init.json.result).toMatchObject({ protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "purser" } });
     expect(String(init.json.result!.instructions)).toMatch(/connected to Purser for .*cannot approve, pay.*Face ID/);
-    expect((await rpc(reader, "initialize", { protocolVersion: "1999-01-01" })).json.result!.protocolVersion).toBe("2025-06-18");
+    expect((await rpc(reader, "initialize", { protocolVersion: "1999-01-01" })).json.result!.protocolVersion).toBe("2025-11-25");
     expect((await rpc(reader, "ping")).json.result).toEqual({});
     const note = await c.req("POST", "/mcp", { key: reader, body: { jsonrpc: "2.0", method: "notifications/initialized" }, headers: { origin: "null-omit" } });
     expect(note.status).toBe(202);
@@ -88,7 +88,8 @@ describe("/mcp", () => {
 
   it("reads the books with a reading token, and lists no tool that proposes, approves or pays", async () => {
     const names = await toolNames(reader);
-    expect(names).toEqual(["company_overview", "list_invoices", "get_invoice", "list_transactions", "books_report", "agent_decisions", "what_needs_attention"]);
+    expect(names).toEqual(["company_overview", "list_invoices", "get_invoice", "list_transactions", "books_report", "agent_decisions", "what_needs_attention",
+      "cash_position", "pending_approvals", "cfo_policy", "spend_breakdown", "vat_summary", "payment_audit_trail", "explain_payment"]);
     const inv = await call(reader, "list_invoices");
     expect(inv.isError).toBeUndefined();
     expect(inv.structuredContent!.items).toBeDefined();
@@ -153,21 +154,23 @@ describe("polish (13 Nov): Purser's icon, ready-made prompts, results a phone ca
     expect([...png.slice(1, 4)].map((b) => String.fromCharCode(b)).join("")).toBe("PNG");
     expect(new DataView(png.buffer).getUint32(16)).toBe(180);
     const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
-    expect((init.json.result!.serverInfo as { icons: { src: string }[] }).icons.map((i) => i.src)).toEqual([`${ORIGIN}/icon.png`, `${ORIGIN}/favicon.svg`]);
-    expect((await c.req("GET", "/.well-known/oauth-authorization-server")).json.logo_uri).toBe(`${ORIGIN}/icon.png`);
-    // Every page of the cloud links it.
-    expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg"');
+    expect((init.json.result!.serverInfo as { icons: { src: string }[] }).icons.map((i) => i.src)).toEqual([`${ORIGIN}/icon.png?v=1113b`, `${ORIGIN}/favicon.svg?v=1113b`]);
+    expect((await c.req("GET", "/.well-known/oauth-authorization-server")).json.logo_uri).toBe(`${ORIGIN}/icon.png?v=1113b`);
+    // Every page of the cloud links it, with the query that makes a browser fetch the new mark (13 Nov).
+    expect(await (await c.fetch(`${ORIGIN}/`)).text()).toContain('<link rel="icon" href="/favicon.svg?v=1113b"');
+    // The query is not part of the path: the icon answers with it.
+    expect((await c.fetch(`${ORIGIN}/favicon.svg?v=1113b`)).status).toBe(200);
   });
 
-  it("offers three ready-made prompts, each asking for the tools that answer it", async () => {
+  it("offers five ready-made prompts, each asking for the tools that answer it", async () => {
     const init = await rpc(DEMO_CONNECTOR_TOKEN, "initialize", { protocolVersion: "2025-06-18" });
     expect(init.json.result!.capabilities).toMatchObject({ prompts: {} });
     const list = (await rpc(DEMO_CONNECTOR_TOKEN, "prompts/list")).json.result!.prompts as { name: string; title: string; arguments?: { name: string; required: boolean }[] }[];
-    expect(list.map((p) => p.title)).toEqual(["CFO weekly brief", "What needs my Face ID?", "Explain this invoice"]);
+    expect(list.map((p) => p.title)).toEqual(["CFO weekly brief", "What needs my Face ID?", "Explain this invoice", "Explain this payment", "Cash outlook"]);
     expect(list[2]!.arguments).toEqual([expect.objectContaining({ name: "invoice_id", required: true })]);
     const tools = (await toolNames(proposer));
     for (const p of list) {
-      const got = await rpc(DEMO_CONNECTOR_TOKEN, "prompts/get", { name: p.name, arguments: { invoice_id: "AP-0005" } });
+      const got = await rpc(DEMO_CONNECTOR_TOKEN, "prompts/get", { name: p.name, arguments: { invoice_id: "AP-0005", payment_id: "AP-0004" } });
       const text = ((got.json.result!.messages as { content: { text: string } }[])[0]!.content.text);
       const named = [...text.matchAll(/\b([a-z]+_[a-z_]+)\b/g)].map((m) => m[1]!).filter((n) => n !== "waiting_cfo");
       expect({ p: p.name, unknown: named.filter((n) => !tools.includes(n)) }).toEqual({ p: p.name, unknown: [] });
@@ -243,7 +246,7 @@ describe("OAuth for claude.ai", () => {
     const html = await page.text();
     expect(html).toMatch(/Connect your AI to Purser/);
     expect(html).toMatch(/Use the demo company/);
-    expect(html).toContain('href="/favicon.svg"');
+    expect(html).toContain('href="/favicon.svg?v=1113b"');
     expect(html).toMatch(/never approve or pay/);
     expect(page.headers.get("content-security-policy")).toMatch(/form-action 'self' https:\/\/claude\.ai; .*frame-ancestors 'none'/);
     expect((await c.fetch(`${ORIGIN}${authorizeUrl({ redirect_uri: "https://evil.example/cb" })}`)).status).toBe(400);

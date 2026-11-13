@@ -65,13 +65,17 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(lines.slice(0, 6)).toContain("# Purser · AI agents spend. You sign off.");
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 30).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
+    // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 45).join("\n"));
+    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
+    // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
+    // (TRY_IT's 2 minutes), the tour, the film.
+    expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof); /try/sign stays
     // linked from the README (the "Approve with Face ID" picture), not from the top.
-    expect(lines.slice(0, 16).join("\n")).toContain("(https://kit11.max-31b.workers.dev/tour)");
+    expect(lines.slice(0, 16).join("\n")).toContain("\"https://kit11.max-31b.workers.dev/tour\"");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
@@ -83,9 +87,10 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const t = words(hero);
     // The one button right under what Purser is; then the sentence every juror repeated. The other two sentences stay
     // in the README and the form.
-    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons, the reassurance line; the first
+    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (since 13 Nov the tour, then Try it),
+    // the reassurance line; the first
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Try it live See the proof Your own test company, deleted after 24 hours.`)).toBe(true);
+    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Take the 3-minute tour Try it No sign-up, about a minute; nothing real moves.`)).toBe(true);
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);

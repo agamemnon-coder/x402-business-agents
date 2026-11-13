@@ -24,7 +24,8 @@ import { ingestDocument, ingestEmail, type InboxDeps } from "../ap/inbox.js";
 import { payApInvoice, syncPayments } from "../ap/pay.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, type ApInvoiceRow } from "../ap/store.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { FakePayeeNames, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { checkThenProposePayeeAdd, executePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
 import type { Posting } from "../accounting/books.js";
 import { buildEntries, functionalCurrency, pushBooks, resolveAccounts, type T0Client, type T0Entry, type T0Rate } from "../accounting/t0.js";
 import { T0_SANDBOX_MAP } from "../config/t0Map.js";
@@ -85,6 +86,8 @@ export interface PlatformE2EDeps {
   log: (line: string) => void;
   /** "dry run" or "live": written into every record so no reader mistakes one for the other. */
   mode: "dry run" | "live";
+  /** The payee check's bank. The world's suppliers are fictional, so by default a labelled stand-in answers it. */
+  payeeNames?: PayeeNameVerifier;
 }
 
 export interface PaymentResult {
@@ -215,7 +218,7 @@ async function runCompany(d: PlatformE2EDeps, c: WorldCompany, privPkcs8: string
     if (apInvoice(db, id)!.status !== "needs_vendor") continue;
     const req = requestPayeeAddForInvoice(db, id, "treasury", now());
     recordPayeeAddVerification(db, req.add_id, { by: "the CFO (test world)", how: "test world: the fictional supplier's bank details as on its own invoice; no real supplier exists to call", actor: "human", address: { street: "Teststraat 2", city: "Amsterdam", postcode: "1011 AB" } }, now());
-    const p = proposePayeeAdd(db, req.add_id, "treasury", now());
+    const p = await checkThenProposePayeeAdd(db, d.payeeNames ?? Object.assign(new FakePayeeNames(), { confirmAll: true }), req.add_id, "treasury", now());
     await sign(p.proposal_id, p.terms_sha256);
     await executePayeeAdd(db, rail, p.proposal_id, { now, reader }, now());
     steps.get(id)!.push({ kind: "supplier_approved", at: at(), data: { payee_add: p.proposal_id, terms_sha256: p.terms_sha256, beneficiary: str((db.prepare("SELECT beneficiary_id FROM beneficiaries WHERE name = ? ORDER BY rowid DESC").get(apInvoice(db, id)!.vendor) as { beneficiary_id?: string } | undefined)?.beneficiary_id), approved_with: TEST_PASSKEY } });
@@ -325,10 +328,11 @@ export const T0_SANDBOX_AP_MAP: Record<string, { number: string; name: string; n
   // vendor of its own: the sandbox run books what is owed to suppliers to Other Current Liabilities instead.
   "2100": { number: "24000", name: "Other Current Liabilities", note: "owed to suppliers; T:0's A/P accounts need a T:0 vendor as counterparty" },
   "1510": { number: "15100", name: "Other Current Assets - General", note: "input VAT on supplier invoices: the US sandbox chart has no VAT receivable account (our call)" },
+  "1515": { number: "15100", name: "Other Current Assets - General", note: "foreign VAT to reclaim (EU refund): the US sandbox chart has no VAT receivable account (our call)" },
 };
 
 /**
- * Input VAT (1510) mapped onto the first active, postable other current asset when nothing else maps it. Only when T:0
+ * Input VAT (1510) and foreign VAT to reclaim (1515) mapped onto the first active, postable other current asset when nothing else maps it. Only when T:0
  * has no account numbered as ours; never over a mapping in T0_SANDBOX_MAP or T0_SANDBOX_AP_MAP.
  */
 export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts"]>>): Record<string, { number: string; name: string; note: string }> {
@@ -336,6 +340,7 @@ export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts
   const usable = accounts.filter((a) => a.is_active && a.is_postable && a.account_number);
   const oca = usable.filter((a) => a.account_type === "other_current_assets").sort((a, b) => a.account_number!.localeCompare(b.account_number!));
   if (oca[0]) out["1510"] = { number: oca[0].account_number!, name: oca[0].name, note: "input VAT: T:0's first other current asset (by type)" };
+  if (oca[0]) out["1515"] = { number: oca[0].account_number!, name: oca[0].name, note: "foreign VAT to reclaim: T:0's first other current asset (by type)" };
   return out;
 }
 

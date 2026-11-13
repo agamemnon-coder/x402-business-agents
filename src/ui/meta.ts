@@ -5,6 +5,7 @@
 // (src/relay/assets.ts). Tags only, no script or style, so no page's CSP hash changes.
 
 import { CORE_SENTENCE, HERO } from "../config/brand.js";
+import { ICON_VERSION } from "./brand/mark.js";
 
 /** The hosted site. */
 export const SITE_URL = "https://kit11.max-31b.workers.dev";
@@ -62,7 +63,7 @@ export function withMeta(html: string, o: { description?: string; icon?: boolean
   const tags = [
     /<meta name="description"/.test(head) ? "" : `<meta name="description" content="${esc(description)}">`,
     ...(/property="og:|name="twitter:/.test(head) ? [] : previewTags()),
-    o.icon === false || /rel="icon"/.test(head) ? "" : '<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">',
+    o.icon === false || /rel="icon"/.test(head) ? "" : `<link rel="icon" href="/assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">\n<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=${ICON_VERSION}">`,
   ].filter(Boolean);
   if (!tags.length) return html;
   return html.replace(/<\/title>/, () => `</title>\n${tags.join("\n")}`);

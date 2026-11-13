@@ -144,9 +144,12 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
     expect(metal).toContain(`purchase ${leads.metal[0]!.text}`);
     expect(metal).toContain(`${leads.metal[1]!.text.replace(/ tx$/, " transaction")}`);
     const sp = split(record), rf = reliabilityFix()!;
-    expect(claude).toContain(`${sp.byClaude} of ${sp.decisions} decisions in the main run, ${sp.fallbacks} fallbacks`);
+    // Since 13 Nov (judge run): no pass-rate fraction in the words; "all" and "every run" only where the record says so.
+    expect(sp.byClaude).toBe(sp.decisions);
+    expect(rf.after.passed).toBe(rf.after.runs);
+    expect(claude).toContain(`all ${sp.decisions} decisions in the main run by Claude, ${sp.fallbacks} fallbacks`);
     expect(claude).toContain(`a reliability run (${rf.run}) found a fault in how the agents hand off a card raise`);
-    expect(claude).toContain(`went from ${rf.before.passed}/${rf.before.runs} to ${rf.after.passed}/${rf.after.runs} and the next run (${rf.next}) passed every step`);
+    expect(claude).toContain(`now passes every run, and the next run (${rf.next}) passed every step`);
   });
 });
 
@@ -252,10 +255,11 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   // Jury pass, 13 Nov: the heading, the scale band (the owner, 13 Nov), the four summary cards, then the one details
   // fold, which opens with the guarantees.
   // Jury, 13 Nov (second round): the guarantees in sight again, under the band and the four cards; the fold after them.
-  it("has the heading, the band and the four cards above \"What Purser guarantees\", the fold after it: no run label", () => {
+  // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs.
+  it("has the heading, the chain, the band, the offline check and the live runs above \"What Purser guarantees\", the fold after it: no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <ul class="sumc"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4}<\/ul> $/);
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
@@ -424,14 +428,18 @@ describe("/proof's words in sight", () => {
     // (six figures, a few words each; 162 as built after the cards led with their strongest numbers). A margin of 8.
     // Jury, 13 Nov (second round): "the first screen is too thin", so the seven guarantees are in sight again under the
     // cards (each promise, who enforces it and its evidence; how folded), and the cards name their run: 322 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(330);
-    expect(visibleWords(html)).toBeLessThanOrEqual(720);
+    // Review, 13 Nov: the EUR 240.00 card says who signed it (a test passkey) and where the owner's own Face ID run
+    // stands (IN_APPROVAL): 342 as built.
+    // The owner, 13 Nov ("the proof is what we need"): every live run in sight, by partner, each with its day, its chip,
+    // its id and how to verify it; the proof chain and the offline check above them; the four cards gone: 810 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1200); // 720 until the live runs came into sight (1,186 as built)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(357);
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built)
   });
 });

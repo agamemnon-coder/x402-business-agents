@@ -1,5 +1,6 @@
 // The final seam review and red team round 3 on the integrated platform, each finding as the scenario that broke it.
 // All against the in-memory Airwallex stand-in: no outside call, test money.
+import { standInBank } from "./support/standInBank.js";
 import { mkdtempSync, rmSync } from "node:fs";
 import { request } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -27,7 +28,7 @@ import { apInvoice } from "../src/ap/store.js";
 import { accountWords } from "../src/policy/fraudCore.js";
 import { agentOf, describeTerms, reviewLabel } from "../src/approve/client.js";
 import { parseReview } from "../src/dashboard/snapshot.js";
-import { executePayeeAdd, proposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
+import { executePayeeAdd, checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAdd, requestPayeeAddForInvoice } from "../src/ap/vendors.js";
 import { journal } from "../src/accounting/gl.js";
 import { batchesFor } from "../src/cloudsync/client.js";
 import { openDb, type DB } from "../src/db/open.js";
@@ -82,7 +83,7 @@ const add = async (text: string, name = "invoice.pdf") => {
 const addSupplier = async (id: string) => {
   const req = requestPayeeAddForInvoice(db, id, "treasury", now);
   recordPayeeAddVerification(db, req.add_id, { by: "the CFO", how: HOW, actor: "human", address: ADDRESS }, now);
-  const p = proposePayeeAdd(db, req.add_id, "treasury", now);
+  const p = await checkThenProposePayeeAdd(db, standInBank(), req.add_id, "treasury", now);
   approve(p.proposal_id);
   await executePayeeAdd(db, awx, p.proposal_id, { now: () => now, reader: parserOnly }, now);
   return apInvoice(db, id)!;

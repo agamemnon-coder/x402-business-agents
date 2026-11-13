@@ -115,9 +115,13 @@ describe("the architecture diagram", () => {
 describe("Verify it yourself in 3 commands", () => {
   const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
 
-  it("lists npm ci, npm test and npm run judge -- --check in that order, then verify-receipt", () => {
+  // Since 13 Nov (the README upgrade) the three commands are the quick start, under 2 minutes: npm ci, the offline
+  // judge check and the real approval's receipt; the full suite (npm test, 4 to 7 min) is its own line below.
+  it("lists npm ci, npm run judge -- --check and npm run verify-approval in that order, then npm test and verify-receipt", () => {
     const block = SECTION.slice(SECTION.indexOf("```sh"), SECTION.indexOf("```", SECTION.indexOf("```sh") + 5));
-    expect(block.split("\n").slice(1).filter(Boolean)).toEqual(["npm ci", "npm test", "npm run judge -- --check"]);
+    expect(block.split("\n").slice(1).filter(Boolean).map((l) => l.replace(/\s+#.*$/, ""))).toEqual(["npm ci", "npm run judge -- --check", "npm run verify-approval"]);
+    expect(SECTION).toContain("The full suite, `npm test` (about 8 to 9 min on a laptop)");
+    expect(SECTION).toContain("ExperimentalWarning: SQLite is an experimental feature");
     expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`");
   });
 
@@ -130,7 +134,7 @@ describe("Verify it yourself in 3 commands", () => {
 
   it("says honestly what needs the network", () => {
     expect(SECTION).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
-    expect(SECTION).toContain("Getting the receipt needs the live site and your own passkey.");
+    expect(SECTION).toContain("(that one needs the live site and your own\npasskey)");
   });
 
   it("the tests badge links to this section", () => {

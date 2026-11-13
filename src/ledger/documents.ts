@@ -4,7 +4,7 @@
 // Each document posts once: its source key is the counterparty and the document number.
 
 import type { DB } from "../db/open.js";
-import { INPUT_VAT, isBank, OUTPUT_VAT, PAYABLES, RECEIVABLES } from "./accounts.js";
+import { FOREIGN_VAT, INPUT_VAT, isBank, OUTPUT_VAT, PAYABLES, RECEIVABLES } from "./accounts.js";
 import { LedgerRefused, postEntry, type LineInput, type Posted } from "./core.js";
 import { assertSignedTerms } from "./termsLock.js";
 import { VAT_CODES, vatOn } from "./vat.js";
@@ -48,6 +48,7 @@ export function purchaseInvoice(db: DB, inv: DocumentBase & { supplier: string }
   const lines: LineInput[] = [];
   let payable = 0;
   let inputVat = 0;
+  let foreignVat = 0;
   let reverseVat = 0;
   for (const l of inv.lines) {
     const c = codeOf(l, "purchase");
@@ -58,9 +59,12 @@ export function purchaseInvoice(db: DB, inv: DocumentBase & { supplier: string }
     else {
       payable += vat;
       if (c.deductible) inputVat += vat;
+      // Another country's VAT (PF_DE19): reclaimed through the EU refund, on its own account, never in 5b.
+      else if (c.foreign) foreignVat += vat;
     }
   }
   if (inputVat) lines.push({ account: INPUT_VAT, ...side(inputVat, "debit"), currency: inv.currency, doc_ref: inv.doc_ref, memo: "input VAT" });
+  if (foreignVat) lines.push({ account: FOREIGN_VAT, ...side(foreignVat, "debit"), currency: inv.currency, doc_ref: inv.doc_ref, memo: "foreign VAT to reclaim" });
   if (reverseVat) {
     // Reverse charge: we owe the VAT and reclaim it in the same return; nothing extra goes to the supplier.
     lines.push({ account: INPUT_VAT, ...side(reverseVat, "debit"), currency: inv.currency, doc_ref: inv.doc_ref, memo: "input VAT, reverse charge" });

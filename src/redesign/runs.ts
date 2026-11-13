@@ -337,7 +337,7 @@ function extraRuns(): RunRow[] {
     const refused = ow.steps.find((x) => x.kind === "refusal" && x.tx);
     out.push({
       key: "faceid-onchain-1", iso: ow.ran_at, date: day(ow.ran_at), kind: "testnet", partners: ["Metal"],
-      name: "Face ID signs on chain: the agent's limit changes only when two passkeys sign",
+      name: "Passkeys sign on chain (P-256): the agent's limit changes only when two passkeys sign",
       line: `${ran.length} mandate changes run by the account only with both signatures; one payment refused on chain, then paid. Second signer: a virtual test passkey.`,
       title: "The passkey account on chain", rails: "Metal testnet (a passkey account, two owners), CFO passkey, labelled virtual test passkey",
       what: "A passkey account on Metal testnet with two passkey owners and a threshold of 2 bound, raised and revoked an agent's mandate; the account checked both signatures itself (WebAuthn verifier). The second owner is a labelled virtual test passkey.",

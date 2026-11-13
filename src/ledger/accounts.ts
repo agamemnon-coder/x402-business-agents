@@ -26,6 +26,8 @@ export const isBank = (account: string) => account.startsWith("12");
 
 export const RECEIVABLES = "1300";
 export const INPUT_VAT = "1510";
+/** VAT a supplier abroad charged (a code with `foreign`, PF_DE19): reclaimed through the EU refund, never in box 5b. */
+export const FOREIGN_VAT = "1515";
 export const STOCK = "1700";
 export const PAYABLES = "2100";
 export const VAT_PAYABLE = "2200";

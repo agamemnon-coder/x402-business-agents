@@ -27,7 +27,7 @@ interface Tx { at: string; direction: "in" | "out" | "internal"; flow: "in" | "o
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }
 
 const AGENTS = new Set(["sourcing", "support", "treasury", "checker", "coder", "payer", "reader", "claude"]);
-const agentOf = (t: Tx): string | null => /\bthe (\w+) agent\b/i.exec(`${t.approval.authority} ${t.description}`)?.[1]?.toLowerCase() ?? null;
+export const agentOf = (t: Pick<Tx, "approval" | "description">): string | null => /\bthe (\w+) agent\b/i.exec(`${t.approval.authority} ${t.description}`)?.[1]?.toLowerCase() ?? null;
 const reasonWords: Record<string, string> = { LIMIT_EXCEEDED: "over the card's limit", MERCHANT_CATEGORY_NOT_ALLOWED: "a merchant category this card may not pay" };
 const who = (actor: string) => (actor === "human" ? "The CFO" : AGENTS.has(actor) && actor !== "claude" ? agentName(actor) : actor === "awx-executor" ? "Purser (Airwallex)" : "Purser's code");
 
@@ -65,6 +65,20 @@ export function feedLine(r: Audit): FeedItem | null {
 }
 
 /** asOf: the day the figures stand at (the demo company's own end); otherwise the newest movement or decision. */
+/**
+ * The audit trail in words, and its counts, once (review, 13 Nov: the Overview said 33 decisions while the MCP tool
+ * said 25, its default page of entries): `entries`, every line newest first (agents, the CFO and Purser's code);
+ * `agent_decisions`, the lines an agent made; `by_fallback`, how many of those code answered with no model. The
+ * Overview and the MCP tools (company_overview, agent_decisions) all read these numbers from here.
+ */
+export function decisionLog(rows: Audit[]): { entries: FeedItem[]; agent_decisions: number; by_fallback: number } {
+  return {
+    entries: rows.map(feedLine).filter((x): x is FeedItem => x !== null).reverse(),
+    agent_decisions: rows.filter((r) => AGENTS.has(r.actor) && feedLine(r) !== null).length,
+    by_fallback: rows.filter((r) => r.event === "card.decline_met" && /"source":"fallback"/.test(r.payload_json)).length + rows.filter((r) => r.event === "claude.fallback").length,
+  };
+}
+
 export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promise<unknown> {
   const txs = (await db.select<{ body_json: string }>("transactions", {}, { order: ["sort_key"] })).map((r) => JSON.parse(r.body_json) as Tx);
   const inv = await db.select<{ status: string; currency: string; total: string; vendor: string; due_date: string }>("invoices", {}, { order: ["id"] });
@@ -120,10 +134,10 @@ export async function dashboard(db: TenantDb, o: { asOf?: string } = {}): Promis
   for (const r of inv.filter((x) => x.currency === currency)) { const k = state(r.status); invoices[k]!.count++; invoices[k]!.amount = money(cents(invoices[k]!.amount) + cents(r.total)); }
   const duplicates = audit.filter((r) => r.event === "ap.duplicate_document").length;
 
-  // The feed: the newest decisions, newest first.
-  const feed = audit.map(feedLine).filter((x): x is FeedItem => x !== null).reverse().slice(0, 14);
-  const decisions = audit.filter((r) => AGENTS.has(r.actor) && feedLine(r) !== null).length;
-  const byFallback = audit.filter((r) => r.event === "card.decline_met" && /"source":"fallback"/.test(r.payload_json)).length + audit.filter((r) => r.event === "claude.fallback").length;
+  // The feed: the newest decisions, newest first; the counts from decisionLog, the one source the MCP tools use too.
+  const log = decisionLog(audit);
+  const feed = log.entries.slice(0, 14);
+  const decisions = log.agent_decisions, byFallback = log.by_fallback;
   const approvedByCfo = audit.filter((r) => r.event === "proposal.approved").length;
 
   return {

@@ -69,7 +69,8 @@ async function preparePayment(db: DB, id: string, now: Date): Promise<{ inv: ApI
     throw new Error(`${id} is ${inv.status.replace(/_/g, " ")}, not ready to pay${why ? `: ${why}` : ""}`);
   }
   if (!payableCurrency(inv.currency)) throw new Error(`${id} is in ${inv.currency}; Purser does not pay that currency (pays EUR only in two-decimal currencies SWIFT carries), so a person pays it`);
-  const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string };
+  const doc = db.prepare("SELECT path FROM ap_documents WHERE sha256 = ?").get(inv.doc_sha256) as { path: string } | undefined;
+  if (!doc) throw new Error(`${id}: its document is missing`);
   const text = (await pdfText(readDoc(db, doc.path))).text;
   const r = inv.reading;
   const invoiceNo = ledgerInvoiceNo(r.invoice_no, r.vendor);
@@ -132,7 +133,7 @@ export async function payApInvoice(db: DB, rail: AirwallexRail & PayoutRail, id:
  * expiry aside); code enforces the proposal on Pay's own plan, as always. null: nothing to propose on (not payable, the
  * plan stopped), no client, or the agent did not propose; Pay then runs the Payer as before. Moves nothing.
  */
-export async function earlyPayer(db: DB, rail: AirwallexRail & PayoutRail, id: string, now: Date, claude: Anthropic | null): Promise<EarlyPayer | null> {
+export async function earlyPayer(db: DB, rail: AirwallexRail & PayoutRail, id: string, now: Date, claude: Anthropic | null, log: (line: string) => void = (l) => console.warn(l)): Promise<EarlyPayer | null> {
   if (!claude) return null;
   let planned: PlannedPayment | null = null;
   let invoiceNo: string;
@@ -143,7 +144,9 @@ export async function earlyPayer(db: DB, rail: AirwallexRail & PayoutRail, id: s
       planned = plan;
       return { go: false, reason: "only the plan was read (the Payer, early)" };
     });
-  } catch {
+  } catch (e) {
+    // Pay runs the Payer as before; why the early plan stopped is said, never dropped (code review 13 Nov).
+    log(`early Payer for ${id}: ${e instanceof Error ? e.message : String(e)}`);
     return null;
   }
   if (!planned) return null;
@@ -203,7 +206,8 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
       changed.push(setStatus(db, inv.id, "ready", "system", { proposal_id: null, reason: `${inv.proposal_id} ${p.status.toLowerCase()}; it can be filed again` }, now));
       clearStaleNote(db, inv.id);
     } else if (p.status === "EXECUTED") {
-      const paid = db.prepare("SELECT amount, currency, approval_sha256 FROM transfers WHERE invoice_no = ? AND status = 'PAID'").get(ledgerInvoiceNo(inv.invoice_no, inv.vendor)) as PaidPayout | undefined;
+      // The payout the signed proposal names, by its request id: never another payout under the same invoice number.
+      const paid = p.request_id ? db.prepare("SELECT amount, currency, approval_sha256 FROM transfers WHERE request_id = ? AND status = 'PAID'").get(p.request_id) as PaidPayout | undefined : undefined;
       if (!paid) continue;
       // Booked only as the CFO signed it: the same hash the executor checked before the payment is checked again here.
       const wrong = bookingProblem(db, inv.proposal_id!, paid);

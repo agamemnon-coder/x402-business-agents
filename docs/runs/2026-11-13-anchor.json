@@ -1,0 +1,37 @@
+{
+  "schema": "purser.anchor/v1",
+  "anchored_at": "2026-11-13T14:05:58.952Z",
+  "network": "Metal testnet",
+  "chain_id": 63825,
+  "head": "aaaf56a1616d6e1210bfbe27d23c9aa58d40930675148b6f6870aaba28fd816f",
+  "height": 701,
+  "parts": [
+    {
+      "name": "decision log (recorded run, 30 Oct)",
+      "file": "docs/audit/friday-1-audit.jsonl",
+      "kind": "audit-rows",
+      "height": 194,
+      "head": "ee0732445a717f7386b4c6ccd94c0f5459b515e1d3e0869833c10d328fd83618"
+    },
+    {
+      "name": "audit chain (main run, 3 Nov)",
+      "file": "docs/demo/main-run-trace.json",
+      "kind": "audit-links",
+      "height": 412,
+      "head": "f8d2a633d27316c3d2818a547ab0fb731532cfa25cd13b5ab6f00d635f223220"
+    },
+    {
+      "name": "books (main run journal, 3 Nov)",
+      "file": "docs/demo/main-run-trace.json",
+      "kind": "journal-digest",
+      "height": 95,
+      "head": "7b0d846919757154810e4fc1b04eca2e66890feb2ac8190ee9f9c128e1a32717"
+    }
+  ],
+  "calldata": "0x7075727365722e616e63686f722f7631206161616635366131363136643665313231306266626532376432336339616135386434303933303637353134386236663638373061616261323866643831366620373031",
+  "tx": "0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+  "from": "0xE62DDB110AA0d9123BAc397487e1a70c92db0D93",
+  "block": 27469355,
+  "explorer": "https://testnet.metalntwx.com/tx/0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+  "check": "npm run verify-anchor"
+}

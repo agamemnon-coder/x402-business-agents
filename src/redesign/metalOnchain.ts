@@ -24,7 +24,9 @@ export const FACEID_RUNBOOK = "docs/runs/driver/faceid-onchain-runbook.md";
 export const TOKENIZE_RUNBOOK = "docs/runs/driver/tokenize-runbook.md";
 /** The one line a section shows without its record. */
 export const NOT_RUN_YET = "Built; the live run on Metal testnet has not happened yet.";
-export const FACEID_TITLE = "Face ID signs on chain";
+// Review, 13 Nov: the chain verifies a passkey's P-256 signature; which device made it (the owner states an iPhone with
+// Face ID) the chain does not prove, so the title names the passkey.
+export const FACEID_TITLE = "Passkeys sign on chain (P-256)";
 export const TOKEN_TITLE = "Invoice → token → pre-financing → settlement";
 
 const newest = (names: string[], suffix: string) => names.filter((n) => new RegExp(`^\\d{4}-\\d{2}-\\d{2}-${suffix}\\.json$`).test(n)).sort().pop();

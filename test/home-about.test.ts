@@ -4,7 +4,8 @@
 // claimed, no quotes, no design-partner call, no person named.
 import { describe, expect, it } from "vitest";
 import { DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL } from "../src/config/brand.js";
-import { ABOUT_HEAD, AGENT_FLOW, FLOW_HEAD, WORKS_WITH, homePage } from "../src/redesign/home.js";
+import { ABOUT_HEAD, AGENT_FLOW, AGENT_SETS_NOTE, FLOW_HEAD, NO_ENDORSEMENT, WORKS_WITH, homePage } from "../src/redesign/home.js";
+import { MARKS_NOTE } from "../src/redesign/ui.js";
 import { textOutsideTags } from "./support/scriptBlocks.js";
 
 const ON = homePage(undefined, { trySign: true }), OFF = homePage();
@@ -23,7 +24,8 @@ describe("About Purser on Home", () => {
       const a = about(html);
       expect(a).toContain(`id="about">${FLOW_HEAD}</h2>`);
       // The eval-only steps end with "(see evals)", a link to the evals (the review of 12 Nov).
-      expect(text(a)).toBe(`${ABOUT_HEAD} ${FLOW_HEAD} ${AGENT_FLOW.map((f) => `${f.verb} ${f.who}${f.evals ? " ( see evals )" : ""}`).join(" ")}`);
+      // Then which agents these are (review, 13 Nov): the payables agents; the main run's are named on its line below.
+      expect(text(a)).toBe(`${ABOUT_HEAD} ${FLOW_HEAD} ${AGENT_FLOW.map((f) => `${f.verb} ${f.who}${f.evals ? " ( see evals )" : ""}`).join(" ")} ${AGENT_SETS_NOTE}`);
       expect(AGENT_FLOW.filter((f) => f.evals).map((f) => f.verb)).toEqual(["Check", "Pay"]);
       expect(a).not.toMatch(/ style="/);
     }
@@ -32,11 +34,14 @@ describe("About Purser on Home", () => {
   it("shows the partners' logos in the hero, each an image the site serves, named in its alt text", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
     const trust = /<div class="trust">[\s\S]*?<\/div>/.exec(hero)![0];
-    expect(text(trust)).toBe(WORKS_WITH);
+    expect(text(trust)).toBe(`${WORKS_WITH} ${NO_ENDORSEMENT}`);
     expect([...trust.matchAll(/<img(?: class="[^"]+")? src="assets\/([^"]+)" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([
       ["logo-airwallex.png", "Airwallex"], ["logo-visa.png", "Visa"], ["logo-metal.svg", "Metal"], ["logo-claude.png", "Claude"],
     ]);
-    expect(ON).not.toMatch(/endorse|certified|partner of/i);
+    // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).
+    expect(MARKS_NOTE).toBe("Partner names and marks only say which services Purser uses; no endorsement implied.");
+    expect(ON).toContain(`<li>${MARKS_NOTE}</li>`);
+    expect(ON.replace(MARKS_NOTE, "").replace(`<small>${NO_ENDORSEMENT}</small>`, "")).not.toMatch(/endorse|certified|partner of/i);
   });
 
   it("claims no customer, quotes no one, asks for no design partner and names no person", () => {

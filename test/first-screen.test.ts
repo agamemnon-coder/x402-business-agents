@@ -5,8 +5,8 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TOUR_LINE, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { HOME_SUB, REASSURE, START, TRY_BUTTON, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -41,34 +41,39 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">', ""]);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    // Since 13 Nov (second review): three calls to action (Try it, the product tour, Proof), the film on its own line,
-    // three badges (CI, license, live demo), then the rails and "test money only" as plain text.
-    const links = `**[${TRY_IT}](https://kit11.max-31b.workers.dev/try)** · **[3-minute product tour](https://kit11.max-31b.workers.dev/tour)** · **[Proof](https://kit11.max-31b.workers.dev/proof)**`;
-    expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", links, "", `[Film, 3:58](${FILM_URL})`, ""]);
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(3);
-    expect(lines.slice(badges + 1, badges + 7)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", "", "</div>", "", "## For reviewers"]);
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(60);
+    // Since 13 Nov (the README upgrade, then the judge run): four buttons (sign in 60 seconds, the payables inbox, the tour,
+    // the film), one row of badges, the rails and "test money only" as plain text, the four screenshots with /try/sign first, then the
+    // one-line diagram under "How it works" and the judges' 3 minutes.
+    const buttons = `<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/tour"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the 3-minute product tour"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>`;
+    expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", buttons, ""]);
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(11); // CI, CodeQL, tests, MIT, Node, TypeScript, MCP, four partners
+    expect(lines.slice(badges + 1, badges + 4)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", ""]);
+    expect(lines[badges + 4]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/try\/sign">/);
+    expect(lines.slice(badges + 5, badges + 10)).toEqual(["", "</div>", "", "## How it works", ""]);
+    expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
+    expect(TRY_IT).toBe("Try it in 2 minutes.");
+    expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(110); // after the Visa and Metal Award sections (13 Nov)
   });
 
-  it("opens Home under its heading with what Purser is, one button to /try/sign with one reassurance line, then the sentence every juror repeated (home-story, 12 Nov)", () => {
+  it("opens Home under its heading with what Purser is, the 3-minute tour as the one primary button, Try it second, one reassurance line", () => {
     const t = words(hero(HOME));
-    expect([START, PROOF_BUTTON]).toEqual(["Try it live", "See the proof"]);
-    // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (try it, see the proof), one reassurance line.
-    expect(t.startsWith(`${HERO} ${HOME_SUB} ${START} ${PROOF_BUTTON} ${REASSURE.sign}`)).toBe(true);
+    expect([START, TRY_BUTTON]).toEqual(["Take the 3-minute tour", "Try it"]);
+    // Owner, 13 Nov: the headline, one sentence, the tour (primary), Try it (secondary), one reassurance line.
+    expect(t.startsWith(`${HERO} ${HOME_SUB} ${START} ${TRY_BUTTON} ${REASSURE.sign}`)).toBe(true);
     expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost"']);
-    // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
-    expect(hero(HOME)).toContain(`<a class="btn primary big start" href="/try">`);
+    expect(hero(HOME)).toContain('<a class="btn primary big start" href="tour">');
+    // Judges, 13 Nov (#7): with /try/sign in the bundle, "Try it" opens it ("Sign in 60 seconds"); without, /try.
+    expect(hero(HOME)).toContain('<a class="btn big ghost" href="/try/sign">');
     expect(HOME).not.toContain("Watch the agents");
     // The three sentences stay in the README, the form and the deck; Home tells the first with its product card.
     for (const d of DIFFERENTIATORS.slice(1)) expect(words(HOME)).not.toContain(d);
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
-    expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${START} ${PROOF_BUTTON} ${REASSURE.world}`);
-    // The product tour (13 Nov): one footer link in either bundle; never a call to action in the page, never a tab.
-    expect(HOME).toContain(`<a class="flink" href="tour">${TOUR_LINE}</a>`);
-    expect(hero(HOME)).not.toContain('href="tour"');
-    expect(homePage().match(/href="tour"/g)).toEqual(['href="tour"']);
+    expect(hero(homePage())).toContain('<a class="btn big ghost" href="/try">');
+    expect(words(hero(homePage()))).toContain(`${START} ${TRY_BUTTON} ${REASSURE.world}`);
+    // The product tour (13 Nov): the hero's primary button, the one link to it on Home; never a tab.
+    expect(homePage().match(/href="tour"/g)).toEqual(['href="tour"', 'href="tour"']);
     expect(homePage()).not.toMatch(/href="\/?judge"/);
     expect(homePage()).not.toContain('>Judge</a>');
   });

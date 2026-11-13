@@ -1,8 +1,22 @@
-# Purser in three diagrams
+# Purser in five diagrams
 
 Mermaid, so GitHub draws them from this text. Each names the file that does the step; the README's
 [How it works in 5 files](../README.md#how-it-works-in-5-files) links the exact lines. Test money only: the Airwallex
 sandbox and Metal testnet.
+
+## 0. In one line
+
+The README opens with it: an agent proposes, the CFO's policy decides, above the limit the CFO's passkey signs, the
+rail pays under its own limit, and the books and the audit log record it.
+
+```mermaid
+flowchart LR
+  A["Claude agent<br/>proposes a payment"] --> P["CFO policy<br/>Purser's code"]
+  P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
+  P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
+  F --> R
+  R --> B["Books and the<br/>hash-chained audit log"]
+```
 
 ## 1. Architecture: who holds which limit
 
@@ -78,4 +92,32 @@ sequenceDiagram
   O->>Acc: sign P-0002: raise the cap
   Ag->>Sup: the same amount again: paid
   O->>Acc: sign P-0003: revoke the mandate
+```
+
+## 4. Where it runs
+
+The two Cloudflare Workers (`worker/wrangler.jsonc`, `cloud/wrangler.try.jsonc`), their Durable Objects, the D1
+database, the MCP server and the relay. The live runs are made by the runner (Node, `src/cli`), not by a Worker.
+
+```mermaid
+flowchart LR
+  U["Browser or phone"] --> K
+  F["CFO's phone<br/>passkey"] <--> RO
+  subgraph K["Worker kit11 · worker/"]
+    S["Site: Home, Try, Proof, the tour<br/>/try/sign"]
+    RO["Durable Object RelayObject<br/>the relay: proposals, approvals"]
+  end
+  RN["Runner · Node, src/cli<br/>the live runs"] <--> RO
+  K -- "service binding TRY_ENGINE" --> API
+  subgraph C["Worker purser-try · cloud/"]
+    API["Console and API"]
+    MCP["/mcp · MCP server<br/>read, propose only"]
+    E["Durable Object CompanyEngine<br/>one per company"]
+    D[("D1 database")]
+  end
+  AI["Your AI · any MCP client"] --> MCP
+  API & MCP --> E --> D
+  RN --> AW["Airwallex sandbox"] & M["Metal testnet"] & V["Airi · Visa Intelligent Commerce"]
+  S -- "FX quote, read-only" --> AW
+  S & E --> CL["Claude · Anthropic API"]
 ```

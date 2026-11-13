@@ -96,7 +96,7 @@ const words = (lang: Lang, bank: Bank) => (bank === "stand-in" ? { ...T[lang], .
 export const ACCOUNT_NAMES_NL: Readonly<Record<string, string>> = {
   "1200": "Bank: Airwallex EUR (incl. bedrijfskaarten)", "1201": "Bank: Airwallex USD", "1202": "Bank: Airwallex GBP",
   "1203": "Bank: Airwallex, overige valuta", "1210": "Bank: Metal-rekening (*USDZ, testnet)", "1220": "Bank: Metal clearing (*USDZ, testnet)",
-  "1300": "Debiteuren", "1510": "Te vorderen btw (inkoopfacturen)", "1590": "Kruisposten (tussen eigen rekeningen)", "1700": "Voorraad",
+  "1300": "Debiteuren", "1510": "Te vorderen btw (inkoopfacturen)", "1515": "Terug te vragen buitenlandse btw (EU-teruggaaf)", "1590": "Kruisposten (tussen eigen rekeningen)", "1700": "Voorraad",
   "2100": "Crediteuren (inkoopfacturen)", "2200": "Te betalen btw", "2210": "Af te dragen btw (aan klanten berekend)", "2900": "Nog niet geïdentificeerde ontvangsten",
   "3000": "Eigen vermogen: beginsaldi en inbreng eigenaar", "3100": "Ingehouden winst",
   "4000": "Omzet: voorraaddata aan winkeliers", "4100": "Terugbetalingen aan klanten", "4200": "Omzet: groothandel aan winkeliers",

@@ -106,8 +106,9 @@ describe("the partner pages", () => {
       // /airwallex shows several runs, each dated on its own block (jury panel, 12 Nov): its label is true for all of them.
       if (page === AIRWALLEX_PAGE) { expect(page).toContain(AWX_PAGE_LABEL); expect(page.replace(/<footer[\s\S]*<\/footer>/, "")).not.toMatch(/Replay of the main run/); }
       else expect(page).toMatch(/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/);
-      // /claude since 12 Nov (jury panel): measured, not asserted, in place of its docs fold (test/claude-evidence.test.ts).
-      if (page === CLAUDE_PAGE) expect(page).toContain('<section class="cev card" aria-labelledby="cev-h"><h2 id="cev-h">Measured, not asserted</h2>');
+      // /claude since 12 Nov (jury panel): measured, not asserted, in place of its docs fold (test/claude-evidence.test.ts);
+      // since 13 Nov as proof tiles (src/redesign/claudePage.ts).
+      if (page === CLAUDE_PAGE) expect(page).toContain('<section class="cev tiles card" aria-labelledby="cev-h"><h2 id="cev-h">Measured, not asserted</h2>');
       else {
         expect(page).toMatch(/<details class="fold"><summary>The (Airwallex|Claude) [^<]*docs/);
         expect(page.split(docs).length - 1).toBeGreaterThanOrEqual(4);
@@ -132,7 +133,8 @@ describe("the partner pages", () => {
     expect(MORE_LABEL).toBe("More");
     // Purser Cloud first (the owner, 12 Nov): the hosted product, on its own address.
     // /books (owner, 12 Nov) sits with the product pages.
-    expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "pricing", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
+    // Max, 13 Nov: the product tour first.
+    expect(MORE_LINKS.map((l) => l.key)).toEqual(["tour", "cloud", "pricing", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
     expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
