@@ -8,6 +8,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { Ajv } from "ajv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DEMO_CONNECTOR_TOKEN } from "../cloud/src/auth.js";
+import { clientTabs } from "../cloud/src/claude/connectPage.js";
 import { MODERN_VERSIONS, PAGE_SIZE, PROTOCOL_VERSIONS } from "../cloud/src/claude/mcp.js";
 import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 
@@ -367,5 +368,34 @@ describe("OAuth: complete metadata, and Client ID Metadata Documents (ChatGPT, C
     for (const id of ["https://203.0.113.9/meta.json", "https://client.example/", "http://client.example/meta.json"]) expect((await authorize({ client_id: id })).status).toBe(400);
     expect(fetched.some((u) => /203\.0\.113|http:\/\//.test(u))).toBe(false);
     delete c.env.outbound;
+  });
+});
+
+describe("/connect-ai: a tab per client, exact configs, one-click links", () => {
+  it("serves one tab per major client, every snippet and link built from this cloud's own address, with no script", async () => {
+    const r = await c.fetch(`${ORIGIN}/connect-ai`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-security-policy")).toMatch(/default-src 'none'; style-src 'nonce-[^']+'; img-src 'self'/);
+    const html = await r.text();
+    expect(html).not.toMatch(/<script/i);
+    for (const name of ["Claude", "ChatGPT", "Cursor", "VS Code", "Gemini CLI", "Windsurf"]) expect(html).toContain(`>${name}</label>`);
+    expect(html).toMatch(/No AI can approve, pay, change a limit or write to the books/);
+    const tabs = clientTabs(ORIGIN);
+    for (const t of tabs) for (const s of t.snippets) {
+      expect(s.code).toContain(`${ORIGIN}/mcp`);
+      if (s.code.startsWith("{")) expect(() => JSON.parse(s.code)).not.toThrow();
+    }
+    const cursor = new URL(tabs.find((t) => t.id === "cursor")!.links[0]!.href);
+    expect(cursor.protocol).toBe("cursor:");
+    expect(cursor.searchParams.get("name")).toBe("purser");
+    expect(JSON.parse(atob(cursor.searchParams.get("config")!))).toEqual({ url: `${ORIGIN}/mcp` });
+    const vs = new URL(tabs.find((t) => t.id === "vscode")!.links[0]!.href);
+    expect(vs.origin).toBe("https://vscode.dev");
+    const inner = vs.searchParams.get("url")!;
+    expect(inner.startsWith("vscode:mcp/install?")).toBe(true);
+    expect(JSON.parse(decodeURIComponent(inner.slice("vscode:mcp/install?".length)))).toEqual({ name: "purser", type: "http", url: `${ORIGIN}/mcp` });
+    // ChatGPT signs in by OAuth only: its tab offers no fixed token.
+    expect(tabs.find((t) => t.id === "chatgpt")!.snippets).toEqual([]);
+    expect(tabs.find((t) => t.id === "gemini")!.snippets[1]!.code).toContain('"httpUrl"');
   });
 });

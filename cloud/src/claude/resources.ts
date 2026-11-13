@@ -45,7 +45,7 @@ function policyMarkdown(company: string, demo: boolean, p: Json): string {
   const v = p.policy_version as { version: number; at: string; sha256: string } | null;
   const cards = p.agent_cards as { name: string; currency: string; per_purchase: string; per_month: string }[];
   const settings = p.settings as { setting: string; value: string }[];
-  return [`# ${company}: the CFO's policy${demo ? " (demo data)" : ""}`, "", ...(p.rules as string[]).map((r) => `- ${r}`), "", `_${String(p.rules_source)}_`, "",
+  return [`# ${company}: the CFO's policy${demo && !/demo/i.test(company) ? " (demo data)" : ""}`, "", ...(p.rules as string[]).map((r) => `- ${r}`), "", `_${String(p.rules_source)}_`, "",
     "## In force", v ? `Policy version ${v.version}, since ${v.at.slice(0, 10)} (sha256 ${v.sha256}).` : "No policy version recorded yet.", "",
     "## Agents' cards", ...(cards.length ? cards.map((k) => `- ${k.name}: ${k.currency} ${k.per_purchase} a purchase, ${k.currency} ${k.per_month} a month`) : ["- none issued"]), "",
     "## Settings", ...(settings.length ? settings.map((x) => `- ${x.setting}: ${x.value}`) : ["- none recorded"]), ""].join("\n");

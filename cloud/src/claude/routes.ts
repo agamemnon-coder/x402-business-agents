@@ -14,6 +14,7 @@ import type { EngineApi } from "../engine/api.js";
 import { DEMO_END, ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
 import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
+import { connectPage } from "./connectPage.js";
 import { mcpAnswer } from "./mcp.js";
 import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../brand.gen.js";
 import { type FetchDoc, authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
@@ -38,7 +39,7 @@ export interface ClaudeKit<C extends ClaudeCtx> {
 export interface ClaudeRoute<C extends ClaudeCtx> { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: "public" | "read" | "admin"; run: (c: C) => Promise<Response> }
 
 /** The paths outside /v1 this block answers (the rest of the site is the console's). */
-export const isClaudePath = (p: string): boolean => p === "/mcp" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
+export const isClaudePath = (p: string): boolean => p === "/mcp" || p === "/connect-ai" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
 
 /** Purser's mark (cloud/src/brand.gen.ts, the site header's): what a browser tab, a home screen and a connector show. */
 const ICON_PATHS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
@@ -104,6 +105,7 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
       return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
     } },
 
+    { method: "GET", path: "/connect-ai", summary: "How to connect each AI client (Claude, ChatGPT, Cursor, VS Code, Gemini CLI, Windsurf) to /mcp: a tab per client with an exact config or a one-click install link.", need: "public", run: async (c) => connectPage(c.env.origin) },
     { method: "GET", path: "/favicon.ico", summary: "Purser's icon (ICO, 32 and 48 px).", need: "public", run: async () => icon(bytes(ICON_ICO), "image/x-icon") },
     { method: "GET", path: "/favicon.svg", summary: "Purser's icon (SVG).", need: "public", run: async () => icon(ICON_SVG, "image/svg+xml") },
     { method: "GET", path: "/apple-touch-icon.png", summary: "Purser's icon for a home screen (PNG, 180 px).", need: "public", run: async () => icon(bytes(ICON_PNG_180), "image/png") },

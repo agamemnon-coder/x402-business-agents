@@ -90,8 +90,8 @@ const cursorProp = { type: "string", description: "The next_cursor of the previo
 const obj = (properties: Json, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 /** An output shape: the named fields are promised, more may come along. */
 const shape = (properties: Json, required: string[] = Object.keys(properties)) => ({ type: "object", properties, required });
-const S = { type: "string" }, N = { type: "number" }, I = { type: "integer" }, B = { type: "boolean" }, NS = { type: ["string", "null"] };
-const arr = (items: Json = {}) => ({ type: "array", items });
+const S = { type: "string" }, N = { type: "number" }, I = { type: "integer" }, B = { type: "boolean" }, NS = { anyOf: [{ type: "string" }, { type: "null" }] };
+const arr = (items: Json = { type: "object" }) => ({ type: "array", items });
 const PAGE = shape({ items: arr({ type: "object" }), next_cursor: NS });
 /** The resources a result names, so a client can open them (purser:// URIs, read with resources/read). */
 export const RES = {
@@ -292,7 +292,7 @@ const READ_TOOLS: Tool[] = [
     title: "The CFO's policy, in plain words",
     description: "The rules Purser holds every payment to, in plain words, and what the company's records say the CFO set: the policy version in force, each agent's card limits, the treasury settings and how many proposals were approved, rejected or expired.",
     inputSchema: obj({}),
-    outputSchema: shape({ rules: arr(S), rules_source: S, policy_version: { type: ["object", "null"] }, agent_cards: arr(shape({ agent: S, name: S, currency: S, per_purchase: S, per_month: S })), settings: arr(shape({ setting: S, value: S, at: S })), decisions: shape({ approved: I, rejected: I, expired: I }) }),
+    outputSchema: shape({ rules: arr(S), rules_source: S, policy_version: { anyOf: [{ type: "object" }, { type: "null" }] }, agent_cards: arr(shape({ agent: S, name: S, currency: S, per_purchase: S, per_month: S })), settings: arr(shape({ setting: S, value: S, at: S })), decisions: shape({ approved: I, rejected: I, expired: I }) }),
     args: z.object({}).strict(),
     readOnly: true,
     run: async (c) => {
