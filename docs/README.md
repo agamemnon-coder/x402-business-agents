@@ -41,6 +41,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 ## Builder
 
 - [architecture.md](architecture.md): architecture, tooling and credits.
+- [diagrams.md](diagrams.md): Purser in three diagrams (who holds which limit, one payment end to end, the mandate on Metal), drawn by GitHub from Mermaid.
 - [run-it.md](run-it.md): running it live, with sandbox keys and a Metal RPC.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
 - [controls.md](controls.md): every control, how it works, and its evidence.
@@ -52,8 +53,10 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [phone-approval.md](phone-approval.md): the dashboard and approval on a phone.
 - [ask-purser.md](ask-purser.md): a card for one task, from one sentence.
 - [agent-api.md](agent-api.md): outside agents (the agent API, MCP) and the ERP export.
+- [connect-claude.md](connect-claude.md): connect your own AI (Claude, or any MCP client) to a Purser company: read and propose only; every client's steps and every tool.
 - [audit/README.md](audit/README.md): the audit log of the recorded run of 30 October.
 - [security/README.md](security/README.md): the security artefacts (the software bill of materials).
+- [repo-settings.md](repo-settings.md): the repository's settings on GitHub (About, social preview, releases, branch protection on main), for the owner to set by hand.
 - Built after the kit (test environment, not live): [payables.md](payables.md) (the invoice inbox), [ledger.md](ledger.md) (Purser's own books), [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md) (ERP connectors), [airwallex-platform.md](airwallex-platform.md) (connected accounts), [cloud.md](cloud.md), [go-live.md](go-live.md) (what is open before real money) and [e2e-live.md](e2e-live.md) (three test companies, invoice to T:0).
 - More built after the kit, each saying its own status: [tokenize.md](tokenize.md) (invoice tokens on Metal, a
   prototype; its run of 12 November is [runs/2026-11-12-tokenize.md](runs/2026-11-12-tokenize.md), its record template
