@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="pv pv-social" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-labelledby="pv-social-t pv-social-d">
-<title id="pv-social-t">Purser</title><desc id="pv-social-d">Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID.</desc>
+<title id="pv-social-t">Purser</title><desc id="pv-social-d">Purser. AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey.</desc>
 <style>.pv{--bg:#f7f8fa;--surface:#ffffff;--sunken:#f1f3f7;--border:#e3e6ec;--text:#0b1220;--muted:#586174;--faint:#646d7e;--accent:#4f46e5;--accent-soft:#eef0ff;--ok:#0b7d43;--ok-soft:#e6f6ee;--bad:#c5363c;--bad-soft:#fdecec;--metal:#0b7a70;--metal-soft:#e3f5f2;--awx:#ad4a0c;--awx-soft:#fdf0e7;--claude:#a84d2b;--claude-soft:#fbefe9;--a-sourcing:#2563eb}
 .pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
 .pv .pv-bg { fill: var(--bg); }
@@ -55,12 +55,12 @@
 .pv .s-name { font-size: 38px; font-weight: 760; letter-spacing: -.025em; fill: #0b1220; }
 .pv .s-line { font-size: 80px; font-weight: 800; letter-spacing: -.04em; fill: #0b1220; } .pv .s-line2 { fill: #4f46e5; }
 .pv .s-sub { font-size: 31px; font-weight: 520; letter-spacing: -.01em; fill: #3b4456; }
-.pv .s-bw { font-size: 20px; font-weight: 600; fill: #586174; letter-spacing: .01em; }
+.pv .s-bw { font-size: 21px; font-weight: 560; fill: #586174; } .pv .s-bwn { font-weight: 680; fill: #0b1220; }
 .pv .s-card { fill: #ffffff; stroke: #e3e6ec; stroke-width: 1.5; filter: drop-shadow(0 18px 40px rgba(16, 24, 40, .10)); }
 .pv .s-node { fill: #f1f3f7; } .pv .s-hot { fill: #eef0ff; stroke: #4f46e5; stroke-width: 2.5; }
 .pv .s-ic { fill: #ffffff; } .pv .s-ic-hot { fill: #4f46e5; }
 .pv .s-g { color: #4f46e5; } .pv .s-g-hot { color: #ffffff; } .pv .s-g-ok { color: #0b7d43; } .pv .s-g-bad { color: #c5363c; }
-.pv .s-n { font-size: 22px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
+.pv .s-n { font-size: 21px; font-weight: 700; letter-spacing: -.01em; fill: #0b1220; } .pv .s-ns { font-size: 17px; font-weight: 500; fill: #586174; }
 .pv .s-link { fill: none; stroke: #c9cfda; stroke-width: 3; stroke-linecap: round; }
 .pv .s-ok { fill: #e6f6ee; stroke: #0b7d43; stroke-width: 2; } .pv .s-bad { fill: #fdecec; stroke: #c5363c; stroke-width: 2; }
 .pv .s-e { font-size: 21px; font-weight: 750; } .pv .s-e-ok { fill: #0b7d43; } .pv .s-e-bad { fill: #c5363c; }
@@ -73,15 +73,15 @@
 <text class="s-name" x="150" y="106"><tspan x="150" dy="0">Purser</tspan></text>
 <text class="s-line" x="72" y="268"><tspan x="72" dy="0">AI agents spend.</tspan></text>
 <text class="s-line s-line2" x="72" y="358"><tspan x="72" dy="0">You sign off.</tspan></text>
-<text class="s-sub" x="72" y="428"><tspan x="72" dy="0">Every payment above its limit</tspan><tspan x="72" dy="40">waits for your Face ID.</tspan></text>
-<text class="s-bw" x="72" y="516"><tspan x="72" dy="0">Built with</tspan></text>
+<text class="s-sub" x="72" y="428"><tspan x="72" dy="0">Every payment above its limit</tspan><tspan x="72" dy="40">waits for your Face ID or a passkey.</tspan></text>
+<text class="s-bw" x="72" y="540">Built with <tspan class="s-bwn">Airwallex · Metal · Visa Intelligent Commerce · Claude</tspan></text>
 <rect class="s-card" x="756" y="64" width="372" height="502" rx="28"/>
 <path class="s-link" d="M821 172 L821 198"/>
 <path class="s-link" d="M821 280 L821 306"/>
 <path class="s-link" d="M821 388 L821 414"/><path class="s-link" d="M821 401 L986 401 L986 414"/>
 <rect class="s-node" x="784" y="94" width="316" height="74" rx="18"/><rect class="s-ic" x="800" y="110" width="42" height="42" rx="12"/><g class="s-g"><svg class="i" x="809" y="119" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg></g><text class="s-n" x="858" y="127"><tspan x="858" dy="0">The agent asks to pay</tspan></text><text class="s-ns" x="858" y="152"><tspan x="858" dy="0">by card or by transfer</tspan></text>
 <rect class="s-node" x="784" y="202" width="316" height="74" rx="18"/><rect class="s-ic" x="800" y="218" width="42" height="42" rx="12"/><g class="s-g"><svg class="i" x="809" y="227" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></svg></g><text class="s-n" x="858" y="235"><tspan x="858" dy="0">Above its limit</tspan></text><text class="s-ns" x="858" y="260"><tspan x="858" dy="0">checked by code</tspan></text>
-<rect class="s-node s-hot" x="784" y="310" width="316" height="74" rx="18"/><rect class="s-ic s-ic-hot" x="800" y="326" width="42" height="42" rx="12"/><g class="s-g-hot"><svg class="i" x="809" y="335" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg></g><text class="s-n" x="858" y="343"><tspan x="858" dy="0">Your Face ID</tspan></text><text class="s-ns" x="858" y="368"><tspan x="858" dy="0">you sign the exact terms</tspan></text>
+<rect class="s-node s-hot" x="784" y="310" width="316" height="74" rx="18"/><rect class="s-ic s-ic-hot" x="800" y="326" width="42" height="42" rx="12"/><g class="s-g-hot"><svg class="i" x="809" y="335" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/></svg></g><text class="s-n" x="858" y="343"><tspan x="858" dy="0">Face ID or a passkey</tspan></text><text class="s-ns" x="858" y="368"><tspan x="858" dy="0">you sign the exact terms</tspan></text>
 <rect class="s-ok" x="784" y="418" width="151" height="110" rx="18"/><g class="s-g-ok"><svg class="i" x="800" y="432" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></g><text class="s-e s-e-ok" x="800" y="486"><tspan x="800" dy="0">Signed</tspan></text><text class="s-es" x="800" y="512"><tspan x="800" dy="0">Paid</tspan></text>
 <rect class="s-bad" x="949" y="418" width="151" height="110" rx="18"/><g class="s-g-bad"><svg class="i" x="965" y="432" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 9-6 6"/><path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z"/><path d="m9 9 6 6"/></svg></g><text class="s-e s-e-bad" x="965" y="486"><tspan x="965" dy="0">Not signed</tspan></text><text class="s-es" x="965" y="512"><tspan x="965" dy="0">Never paid</tspan></text>
 </svg>

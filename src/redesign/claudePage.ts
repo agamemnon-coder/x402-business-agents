@@ -10,6 +10,7 @@
 import { AGENT_EVALS, HOLDOUTS_RECORD, INJECTION_LINE, SWEEP_RECORD, VARIATION_RECORD, ZERO_TRUST_REPORT, HOSTILE_EVAL, modelLines, passedWords, type ClaudeEvidence, type ModelLine } from "./claudeEvidence.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { countOf, esc, icon } from "./ui.js";
+import { hostileSplit, hostileWords } from "./partners.js";
 
 export const CLAUDE_CSS = `:root { --cv-code: #646d7e; --cv-claude: #a84d2b; --cv-face: #4f46e5; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --cv-code: #858fa1; --cv-claude: #d27650; --cv-face: #7a73f0; } }
@@ -140,11 +141,16 @@ export function agentCards(agents: AgentFigures[]): string {
 
 export interface HostileFigures { calls: number; refused: number; stood: number; unsafe: number; cases: number }
 /**
- * The hostile-model eval's tile label, as its record counts it (CI computes the "0 unsafe"; the site's tests let it
- * through). It names its scope (review round 1, 12 Nov): the payables agents and their test invoices, not the three agents above.
+ * The hostile-model eval's tile label, in the one wording of its split (hostileWords, src/redesign/partners.ts; the final
+ * review, 13 Nov), read from its record. It names its scope (review round 1, 12 Nov): the payables agents and their
+ * test invoices, not the three agents above.
  */
-// Judge panel, 13 Nov: the calls not refused are said too, in the record's word (stood), so the two counts add up.
-export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on the payables agents' ${h.cases} test invoices: ${h.refused} refused by code, ${h.stood} stood as made, ${h.unsafe} unsafe by the ledger verdict`;
+// Judge panel, 13 Nov: the calls not refused are said too (stood); the final review, 13 Nov: in the one wording of the split.
+export const hostileTileLabel = (h: HostileFigures) => {
+  const s = hostileSplit();
+  if (!s || s.calls !== h.calls || s.refused !== h.refused) throw new Error("the hostile-model eval's tile and its record differ");
+  return `hostile tool calls on the payables agents' ${h.cases} test invoices: ${hostileWords(s)}`;
+};
 
 /**
  * The Haiku-as-Support tile's label: what its "0 of 10" counts (runs passed on the attack case support-outside), what

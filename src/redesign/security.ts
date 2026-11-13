@@ -132,9 +132,10 @@ export const TWO_LOCKS_LINES: readonly DocLine[] = [
 ];
 /** The models: no keys or tools; code checks what they return (docs/security.md, least privilege). */
 export const MODELS_LINE: DocLine = { doc: "docs/security.md", anchor: "#least-privilege", quote: "Models: no key, URL, credential or tool. They read text and return typed data that code checks" };
-/** Secrets: only the runner holds keys; every push is scanned; the cloud's logs are cleaned. */
+/** Secrets: only the runner holds payment keys; Purser Cloud seals each company's OAuth tokens; every push is scanned; the cloud's logs are cleaned. */
 export const SECRETS_LINES: readonly DocLine[] = [
-  { doc: "docs/security.md", anchor: "#trust-boundaries", quote: "Only the runner holds keys and writes the ledger." },
+  { doc: "docs/security.md", anchor: "#trust-boundaries", quote: "Only the runner holds payment keys and writes the ledger." },
+  { doc: "docs/cloud.md", anchor: "#endpoints", quote: "Purser exchanges the code server side and keeps the tokens sealed (AES-256-GCM) for this company only." },
   { doc: "docs/security.md", anchor: "#checks", quote: "gitleaks on the pushed commits and the whole history of the branch under check" },
   { doc: "docs/cloud.md", anchor: "#monitoring-logs-and-alert-webhooks", quote: "cloud/src/log.ts cleans every field: anything named like a secret becomes [redacted]" },
 ];
@@ -319,13 +320,14 @@ export function securityViz(zt: ZeroTrust = zeroTrust(), he: HostileEval = hosti
     ${foldHtml("How this was tested", [...zt.principle.map(esc), esc(HARNESS_LINE), `The audit chain and the books were anchored on ${esc(anchor.network)} on ${esc(anchor.day)}; check it with <code>${esc(anchor.check)}</code>. ${outLink(repoHref(ANCHOR_RECORD), ANCHOR_RECORD)}`])}
   </section>`;
 
-  const parts = [{ cls: "a", n: he.tool, label: "refused by the tool's own check" }, { cls: "b", n: he.enforce, label: "made stricter by code before it counted" }, { cls: "c", n: he.stood, label: "stood as the script made it" }];
+  // The one wording of the split (hostileWords, src/redesign/partners.ts; the final review, 13 Nov).
+  const parts = [{ cls: "a", n: he.tool, label: "refused" }, { cls: "b", n: he.enforce, label: "made stricter" }, { cls: "c", n: he.stood, label: he.unsafe === 0 ? "stood (safe)" : `stood (${he.unsafe} unsafe)` }];
   let x = 0;
   const rects = parts.map((p) => { const w = (p.n / he.calls) * 1000; const r = `<rect class="f-${p.cls}" x="${x.toFixed(1)}" width="${w.toFixed(1)}" height="30"><title>${esc(`${p.n} ${p.label}`)}</title></rect>`; x += w; return r; }).join("");
   const hostile = `<section class="card zchart" id="hostile" aria-labelledby="hostile-h">
     <h2 class="zh" id="hostile-h">A hostile model, against the code<span class="pill">Test data</span></h2>
     <p class="zsub">A script in the agents' place made the worst tool call it could, every turn.</p>
-    <p class="zbig"><b>${he.calls}</b> calls · <b>${he.unsafe === 0 ? "none" : he.unsafe}</b> unsafe</p>
+    <p class="zbig"><b>${he.calls}</b> calls · <b>${he.refused}</b> stopped or tightened by code</p>
     <svg class="stack" viewBox="0 0 1000 30" preserveAspectRatio="none" role="img" aria-label="${esc(`${he.calls} hostile tool calls: ${parts.map((p) => `${p.n} ${p.label}`).join(", ")}`)}">${rects}</svg>
     <ul class="zlegend">${parts.map((p) => `<li><span class="dot d-${p.cls}"></span><b>${p.n}</b>${esc(p.label)}</li>`).join("")}</ul>
     <div class="links">${outLink(repoHref(HOSTILE_RECORD_FILE), "The eval's record")}</div>
@@ -398,7 +400,8 @@ export function securityCards(): SecurityCard[] {
     },
     {
       id: "s-secrets", icon: "shield-check", title: "Secrets",
-      line: esc("Only the runner holds keys, and every push is scanned for leaked secrets."),
+      // The final review (13 Nov): "payment keys", and the connected accounts' tokens Purser Cloud keeps (cloud/src/sealed.ts).
+      line: esc("Only the runner holds payment keys; Purser Cloud keeps each company's connected-account OAuth tokens sealed (AES-GCM, per company)."),
       links: [outLink(repoHref("docs/security.md", "#trust-boundaries"), "Trust boundaries")],
       fold: { summary: "How", lines: SECRETS_LINES.map(quoted) },
     },
