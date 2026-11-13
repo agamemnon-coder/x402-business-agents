@@ -15,7 +15,7 @@ flowchart LR
   P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
   P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
   F --> R
-  R --> B["Books and the<br/>hash-chained audit log"]
+  R --> B["Books and the hash-chained audit log<br/>posted to T:0 and Moneybird (sandboxes)"]
 ```
 
 ## 1. Architecture: who holds which limit

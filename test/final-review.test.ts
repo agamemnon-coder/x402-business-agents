@@ -61,4 +61,23 @@ describe("the final review (13 Nov)", () => {
     expect(read("docs/demo/main-run.json")).toContain("0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(sec("Visa Award")).toContain("Visa TAP is an extra, not part of the entry.");
   });
+
+  it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
+    const readme = read("README.md");
+    const shots = [...readme.matchAll(/src="docs\/assets\/readme\/([\w-]+\.webp)"/g)].map((m) => m[1]!);
+    const script = read("scripts/readme-shots.ts");
+    expect(shots.length).toBeGreaterThanOrEqual(9);
+    for (const f of shots) {
+      expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
+      expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
+    }
+    expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set(shots)].sort());
+    // T:0: the run record's own figures.
+    expect(read("docs/runs/2026-11-10-t0-journal-sandbox.md")).toContain("95 journal entries posted to T:0's shared sandbox entity");
+    expect(readme).toContain("95 journal entries, debits equal to credits, matched line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md))");
+    // The anchor run: its record and the package script it names.
+    expect(read("docs/runs/2026-11-13-anchor.md")).toContain("npm run verify-anchor");
+    expect(readme).toContain("[record](docs/runs/2026-11-13-anchor.md)");
+    expect((JSON.parse(read("package.json")) as { scripts: Record<string, string> }).scripts["verify-anchor"]).toBeDefined();
+  });
 });
