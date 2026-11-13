@@ -6,7 +6,7 @@ the CFO's Face ID in Purser Cloud: the approval is a passkey signature over the 
 can make one.
 
 Purser is a remote MCP server at **`<your Purser Cloud address>/mcp`**. For the hosted test cloud that is
-`https://purser-try.max-31b.workers.dev/mcp` once this change is deployed (it has not been deployed from this branch).
+`https://purser-try.max-31b.workers.dev/mcp`. Checked on 13 November 2026, 06:57 UTC: `tools/list` there with the demo company's token answers the 7 read tools (the two proposal tools need a token that may propose).
 
 ## Three steps
 

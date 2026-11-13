@@ -13,7 +13,8 @@ flowchart LR
     U["Support · Sonnet"]
     T["Treasury · Opus"]
   end
-  subgraph Purser["Purser runner (code)"]
+  CL["Your own Claude<br/>connector or Code plugin"]
+  subgraph Purser["Purser (code)"]
     P["Policy: reserveSpend<br/>src/policy/holds.ts"]
     A["Approvals: termsHash<br/>src/lib/terms.ts"]
     X["Executors: re-check the hash<br/>src/executors/"]
@@ -28,6 +29,7 @@ flowchart LR
     V["Visa Intelligent Commerce<br/>via Airwallex's Airi"]
   end
   S & U & T --> P
+  CL -- "/mcp: read, propose only" --> A
   P -- "within the limits" --> X
   P -- "beyond them: a proposal" --> A
   A <--> R <--> F
