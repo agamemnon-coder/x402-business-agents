@@ -58,7 +58,8 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 
 ## How it works in 5 files
 
-Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
+Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the
+kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
 each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
 beyond them, with Face ID on the exact terms.
 

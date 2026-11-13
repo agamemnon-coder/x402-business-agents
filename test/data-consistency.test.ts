@@ -432,7 +432,8 @@ describe("the deck's test count against the README's test line", () => {
     const shown = /([\d,]+) tests in (\d+) files, all passing/.exec(deck);
     expect(shown).not.toBeNull();
     const [deckTests, deckFiles] = [shown![1]!.replace(/,/g, ""), shown![2]!];
-    const readme = /\*\*(\d+) tests in (\d+) files, all passing\*\*/.exec(text("README.md"))!;
+    // The README's line as `npm run test-count` writes it since 13 Nov ("**N tests passing**, S skipped, in F files").
+    const readme = /\*\*(\d+) tests passing\*\*, \d+ skipped, in (\d+) files/.exec(text("README.md"))!;
     const claims = text("docs/claims.md");
     const deckRow = claims.split("\n").find((l) => l.startsWith("| The deck (section D, 6 November)")) ?? "";
     const note = /Dated note, [^:]+: the committed PDF and its "Security and tests" slide are the render of [^.]+? and show ([\d,]+) tests in (\d+) files/.exec(deckRow);
