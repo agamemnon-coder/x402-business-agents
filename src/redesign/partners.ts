@@ -393,7 +393,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   const body = claudeMain({
     logo: LOGO.claude, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
-    split: { ...sp, calls, faceId: faceIdDecisions(run.record) },
+    split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     folds: sweepFold(ev, used) + failureFold(ev)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.

@@ -69,7 +69,9 @@ svg.bar { display: block; width: 100%; height: 10px; }
 const link = (file: string, label = "record") => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
-export interface SplitFigures { routine: number; decisions: number; byClaude: number; fallbacks: number; calls: number; faceId: number }
+export interface SplitFigures { routine: number; decisions: number; byClaude: number; fallbacks: number; calls: number; faceId: number;
+  /** The main run's payments on Metal (metalStory), to say how they relate to the split (jury review, 13 Nov). */
+  onChain?: { total: number; sales: number; purchases: number; refunds: number; sweeps: number } }
 
 /** The split as one sentence (both drawings say it; the figure carries it for readers who do not see them). */
 export const splitSentence = (f: SplitFigures) =>
@@ -114,7 +116,12 @@ ${bar("sk-face", f.faceId, "of those, high-risk: the CFO's Face ID")}
 </ul></div>`;
   // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
   const cap = `${f.byClaude === f.decisions ? `<b>All ${f.decisions}</b>` : `<b>${f.byClaude} of ${f.decisions}</b>`} decisions by Claude, holds included; <b>${f.fallbacks}</b> fallbacks · <b>${f.calls}</b> Claude calls, each logged`;
-  return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}</figcaption></figure>`;
+  // How the split relates to Metal's and x402's counts (jury review, 13 Nov), said only when the record's figures add up:
+  // the routine payments are the x402 sales and code's purchases; the refunds and the sweep are among the exceptions.
+  const oc = f.onChain;
+  const rel = oc && oc.sales + oc.purchases === f.routine && oc.total === f.routine + oc.refunds + oc.sweeps
+    ? `<br>${esc(`On Metal: ${oc.total} payments, the ${f.routine} routine ones (${oc.sales} x402 sales, ${oc.purchases} purchases) and ${oc.refunds} refunds and ${oc.sweeps} sweep, decided among the ${f.decisions} exceptions.`)}` : "";
+  return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}${rel}</figcaption></figure>`;
 }
 
 /** A bar of n out of of, as SVG (its width an attribute: the page's CSP allows no style attribute). */
@@ -154,9 +161,13 @@ export const hostileTileLabel = (h: HostileFigures) => {
  * code did, and the model Support runs on instead, with its runs passed. Judge panel, 13 Nov: "failed one attack test"
  * beside "0 of 10" read as a contradiction; the words are docs/claude.md's, from docs/agent-evals.md.
  */
-export function supportTileLabel(lines: ModelLine[], used: Record<string, string>): string {
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "2026-10-31" → "31 Oct". */
+const shortDay = (iso: string) => `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]}`;
+
+export function supportTileLabel(lines: ModelLine[], used: Record<string, string>, ranAt?: string): string {
   const inUse = lines.find((l) => l.agent === "support" && FAM(l.model) === used.support && !/haiku/.test(l.model));
-  return `runs passed by Haiku as Support asked for refunds outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
+  return `runs passed by Haiku as Support on one attack case${ranAt ? ` (${shortDay(ranAt.slice(0, 10))})` : ""}: refunds asked outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
 }
 
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */
@@ -168,7 +179,7 @@ export function proofTiles(e: ClaudeEvidence, used: Record<string, string> = {})
     v ? tile("database", String(v.decisions), `decisions in ${v.worlds} simulated worlds, ${v.claudePct === 100 ? "all" : `${v.claudePct}%`} by Claude; ${v.unsafe} unsafe actions${e.fix && e.fix.unsafe === 0 ? ", fixed" : ""}`, VARIATION_RECORD, link(VARIATION_RECORD)) : "",
     e.holdouts ? tile("lock", String(e.holdouts.run), `blind holdouts, ${e.holdouts.safe === e.holdouts.run ? "all" : e.holdouts.safe} safe${e.holdouts.partial ? `; ${e.holdouts.partial} on code's rule only` : ""}`, HOLDOUTS_RECORD, link(HOLDOUTS_RECORD)) : "",
     // The failure says why it matters (13 Nov): code held it, and the sweep is why Support runs on another model.
-    haikuSupport ? tile("shield-alert", `${haikuSupport.passed} of ${haikuSupport.runs}`, supportTileLabel(lines, used), AGENT_EVALS, link(AGENT_EVALS)) : "",
+    haikuSupport ? tile("shield-alert", `${haikuSupport.passed} of ${haikuSupport.runs}`, supportTileLabel(lines, used, (haikuSupport as { ran_at?: string }).ran_at), AGENT_EVALS, link(AGENT_EVALS)) : "",
     lines.length ? tile("sliders-horizontal", String(lines.length), "model and agent pairs, measured", SWEEP_RECORD, link(SWEEP_RECORD)) : "",
     h ? tile("shield-check", String(h.calls), hostileTileLabel(h), HOSTILE_EVAL, link(HOSTILE_EVAL) + (e.zeroTrust ? link(ZERO_TRUST_REPORT, "zero-trust report") : "")) : "",
   ].filter(Boolean);
@@ -187,7 +198,13 @@ export function modelChart(e: ClaudeEvidence, used: Record<string, string>): str
     const label = `${cap(l.agent)} on ${FAM(l.model)}: passed ${countOf(l.passed, l.runs, true)} runs, ${usd(l.costPerPass)} USD a pass, ${l.medianS.toFixed(1)} s`;
     return `<div class="cmr"><span class="m">${esc(FAM(l.model))}</span>${bar(l.passed, l.runs, label, !inUse)}<span class="n"><b>${esc(passedWords(l.passed, l.runs))}</b> · $${esc(usd(l.costPerPass))} · ${esc(l.medianS.toFixed(1))}s${inUse ? ` · <span class="use">in use</span>` : ""}</span></div>`;
   };
-  return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}</h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Passed · USD a pass · time. ${link(SWEEP_RECORD)}</p></article>`;
+  // Jury review, 13 Nov: each group says what its figures add up (every case run on that model) and when, from the rows,
+  // so the chart's Support figures do not read against the one attack case on the tile above.
+  const span = (a: string) => {
+    const days = [...new Set(e.sweep!.rows.filter((r) => r.agent === a).map((r) => (r as { ran_at?: string }).ran_at?.slice(0, 10)).filter((d): d is string => !!d))].sort();
+    return days.length ? days[0] === days.at(-1) ? shortDay(days[0]!) : `${shortDay(days[0]!)}–${shortDay(days.at(-1)!)}` : "";
+  };
+  return `<h2 class="csec" id="models">Each agent on each model</h2><article class="cmodels card" data-rec="${esc(SWEEP_RECORD)}" aria-label="Each agent on each model: pass rate, cost per pass, time">${agents.map((a) => `<div class="cmg"><h3>${esc(`${a[0]!.toUpperCase()}${a.slice(1)}`)}<small>${esc(` · every case run${span(a) ? `, ${span(a)}` : ""}`)}</small></h3>${lines.filter((l) => l.agent === a).map(row).join("")}</div>`).join("")}<p class="key">Passed · USD a pass · time. ${link(SWEEP_RECORD)}</p></article>`;
 }
 
 /** The injection screen as code holds it, in its own fold (13 Nov: the proof tiles carry figures only). */
