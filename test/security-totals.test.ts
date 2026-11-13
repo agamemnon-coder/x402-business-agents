@@ -14,6 +14,16 @@ describe("/security: the three attack tests, named with their totals under the h
     expect(redTeamRound([REDTEAM_REPORT]).after).toBe(rt.caught_after);
   });
 
+  // The final jury, 13 Nov: the headline's attack count and this line's must be one number from one report.
+  it("says the same zero-trust count as the layers headline on the same page", () => {
+    const page = securityPage();
+    const headline = /<p class="zsub"><b>(\d+) attacks<\/b>/.exec(page)?.[1];
+    const line = /zero trust, (\d+) attacks/.exec(securityLead())?.[1];
+    expect(headline).toBeDefined();
+    expect(line).toBe(headline);
+    expect(Number(line)).toBe(json("docs/zero-trust/report.json").attacks_run);
+  });
+
   it("is the line right under the page's heading", () => {
     const page = securityPage();
     const h1 = page.indexOf("<h1"), lead = page.indexOf('<p class="lead">');
