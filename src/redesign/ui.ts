@@ -6,7 +6,7 @@
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
-import { OG_IMAGE, TAGLINE_LINE, ogTitle } from "../ui/meta.js";
+import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
 import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 
@@ -505,12 +505,7 @@ ${o.js}</script>`;
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="${esc(o.description)}">
 <meta name="theme-color" content="#0b1220">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Purser">
-<meta property="og:title" content="${esc(ogTitle(o.title))}">
-<meta property="og:description" content="${esc(o.description)}">
-<meta property="og:image" content="${OG_IMAGE}">
-<meta name="twitter:card" content="summary_large_image">
+${previewTags().join("\n")}
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <title>${esc(pageTitle(o.title))}</title>
 <style>${CSS}
