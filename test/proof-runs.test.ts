@@ -31,7 +31,7 @@ describe("/proof: the live runs and the strip's count", () => {
   });
 
   it("links the TAP run to /visa, once, under the list", () => {
-    expect(runs).toContain(`<p class="pr-more"><a href="visa#visa-tap">${TAP_LINK.replace(">", "&gt;")}</a></p>`);
+    expect(runs).toContain(`<p class="pr-more"><a href="visa#visa-tap">${TAP_LINK.replaceAll(">", "&gt;")}</a></p>`);
     expect(main.match(/\bTAP\b/g)).toHaveLength(1);
   });
 

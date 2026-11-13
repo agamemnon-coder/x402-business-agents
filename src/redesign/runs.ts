@@ -93,7 +93,8 @@ const checkRate = (checks: Record<string, { ok: boolean }>): RunRate => {
   const all = Object.values(checks);
   return { done: all.filter((c) => c.ok).length, of: all.length, what: "checks passed" };
 };
-const rateWords = (r: RunRate) => `${r.done} of ${r.of} ${r.what}`;
+/** A rate in words. Checks have no pass-rate fraction (judge run, 13 Nov): every check passed, or not every one did. */
+const rateWords = (r: RunRate) => (r.what === "checks passed" ? (r.done === r.of ? "every check passed" : "not every check passed") : `${r.done} of ${r.of} ${r.what}`);
 const okOf = (checks: Record<string, { ok: boolean }>) => rateWords(checkRate(checks));
 /** What the main run and its rehearsal simulated: the site's one caveat line, without its "Test money." */
 const SIMULATED_LINE = CAVEAT_LINE.replace(/^Test money\. /, "");

@@ -508,7 +508,8 @@ describe("/runs as a timeline", () => {
     expect(known(rows.filter((r) => r.rate).map((r) => r.key))).toEqual(["vic-4", "vic-3", "platform-e2e-1", "t0-1", "vic-2", "vic-1", "awx-1"]);
     for (const r of rows.filter((x) => x.rate)) {
       const e = entriesOf(html).find((x) => x.key === r.key)!;
-      const words = `${r.rate!.done} of ${r.rate!.of} ${r.rate!.what}`;
+      // Checks have no pass-rate fraction (judge run, 13 Nov); other series keep "N of M".
+      const words = r.rate!.what === "checks passed" ? (r.rate!.done === r.rate!.of ? "every check passed" : "not every check passed") : `${r.rate!.done} of ${r.rate!.of} ${r.rate!.what}`;
       // A full rate carries the tick and the colour of success; one that fell short carries neither.
       const full = r.rate!.done === r.rate!.of;
       expect(inSight(e.html), r.key).toMatch(new RegExp(full ? `<span class="rt ok"><svg[^>]*>.*?</svg>${words}</span>` : `<span class="rt">${words}</span>`));
