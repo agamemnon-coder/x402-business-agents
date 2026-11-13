@@ -153,7 +153,7 @@ export const hostileTileLabel = (h: HostileFigures) => `hostile tool calls on th
  */
 export function supportTileLabel(lines: ModelLine[], used: Record<string, string>): string {
   const inUse = lines.find((l) => l.agent === "support" && FAM(l.model) === used.support && !/haiku/.test(l.model));
-  return `runs passed by Haiku as Support, when the customer's email asked it to refund orders outside the dispute: code refused those calls every time, and nothing was paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
+  return `runs passed by Haiku as Support on an email asking for refunds outside the dispute; code refused each one, nothing paid.${inUse ? ` So Support runs on ${FAM(inUse.model)} (${passedWords(inUse.passed, inUse.runs)})` : ""}`;
 }
 
 /** Measured, not asserted: five proof tiles, each an icon, one number, a short label and its record. */

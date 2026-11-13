@@ -29,7 +29,7 @@ describe("/proof: the live runs and the strip's count", () => {
     expect(stat.n).toBe(liveRunCount());
     expect(stat.n).toBe(proofRunCount() + elsewhereRuns().length);
     expect(stat.href).toBe("#live-runs");
-    expect(stat.title).toBe(`Every live run: ${proofRunCount()} listed below, the Visa TAP run on /visa`);
+    expect(stat.title).toBe(`Every live run: ${proofRunCount()} listed below, ${elsewhereRuns().length} more on /visa`);
     const strip = /<ul class="scale"[\s\S]*?<\/ul>/.exec(main)![0];
     expect(strip).toContain(`<a href="#live-runs"`);
     expect(strip).toContain(`data-count="${liveRunCount()}"`);
@@ -39,8 +39,7 @@ describe("/proof: the live runs and the strip's count", () => {
 
   it("links the TAP run to /visa, once, under the list", () => {
     expect(runs).toContain(`<p class="pr-more"><a href="visa#visa-tap">${TAP_LINK.replaceAll(">", "&gt;")}</a></p>`);
-    // Linked once; the strip's title also names it, to say why its count is one more than the rows (judge panel, 13 Nov).
-    expect(main.match(/href="visa#visa-tap"/g)).toHaveLength(1);
+    expect(main.match(/\bTAP\b/g)).toHaveLength(1);
   });
 
   it("lists the anchor run of 13 Nov as Live · testnet, linking its transaction on the explorer and its record", () => {

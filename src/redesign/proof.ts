@@ -12,6 +12,7 @@ import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
 import { PROOF_RUNS_CSS, PROOF_RUNS_ID, proofChainHtml, proofRunCount, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
+import { liveRunCount } from "./runs.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
@@ -480,7 +481,7 @@ const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPRO
  */
 export function proofScaleStats(): ScaleStat[] {
   // The site's one live-run count (the same as /home and /runs); the rows below are all of them but the TAP run, on /visa.
-  return scaleStats(scaleFigures()).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: `Every live run: ${proofRunCount()} listed below, the Visa TAP run on /visa` } : s));
+  return scaleStats(scaleFigures()).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: `Every live run: ${proofRunCount()} listed below, ${liveRunCount() - proofRunCount()} more on /visa` } : s));
 }
 
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */

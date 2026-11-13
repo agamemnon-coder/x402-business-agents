@@ -73,10 +73,11 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
-    // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof); /try/sign stays
-    // linked from the README (the "Approve with Face ID" picture), not from the top.
+    // Since 13 Nov (second review) the top has three calls to action (Try it, the product tour, Proof). Judge panel,
+    // 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
     expect(lines.slice(0, 16).join("\n")).toContain("\"https://kit11.max-31b.workers.dev/tour\"");
-    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    expect(readme).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
+    expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
