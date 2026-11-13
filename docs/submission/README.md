@@ -91,9 +91,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 ## Instructions
 
 <!-- instructions -->
-1. The 3-minute product tour: <https://kit11.max-31b.workers.dev/tour> (four steps, each with a screenshot and a
-   link: try it, see the proof, Purser Cloud as a guest, connect your AI).
-2. Or the same way on your own: Home (<https://kit11.max-31b.workers.dev/>), then Try, then Proof.
+1. Home (<https://kit11.max-31b.workers.dev/>), then Try, then Proof.
    - Home (about 40 s): four steps of one payment (ask, Face ID, paid), then tap "+1 cent": the check in your
      browser says Refused, "Hash no longer matches".
    - Try (about a minute): <https://kit11.max-31b.workers.dev/try/sign> opens a test world of your own; nothing real moves.
@@ -107,7 +105,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
      Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; every check passes). The film
      (3:58): <https://youtu.be/kCUsFHrxE-o>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
-3. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
+2. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
    exits; `npm run judge` serves them and opens the browser). Running it live (sandbox keys, a Metal RPC):

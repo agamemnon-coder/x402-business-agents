@@ -48,8 +48,7 @@ export interface Pages {
   /** The partner pages (src/partners/), no script; absent in a bundle built before them. */
   airwallex?: string;
   claude?: string;
-  /** /pricing and /security, the product pages under "More" (src/redesign/pricing.ts, security.ts), no script; absent in a bundle built before them. */
-  pricing?: string;
+  /** /security, the product page under "More" (src/redesign/security.ts), no script; absent in a bundle built before it. */
   security?: string;
   /** /docs, "Docs and API", under "More" too (src/redesign/docs.ts), no script; absent in a bundle built before it. */
   docs?: string;
@@ -78,11 +77,9 @@ export interface Pages {
   trySign?: string;
   /** /try/verify: a receipt.json checked in the browser (src/try/verify.ts); with /try/sign only. */
   tryVerify?: string;
-  /** /tour: "Product tour · 3 minutes", four steps with a screenshot each (src/redesign/tour.ts); it replaced /judge on 13 Nov. */
-  tour?: string;
   /** Old public addresses folded into the four tabs, and where they now go (302). */
   redirects?: Record<string, string>;
-  /** Addresses retired for good (301, query kept): /judge → /tour. */
+  /** Addresses retired for good (301, query kept): /judge → /home. */
   moved?: Record<string, string>;
   approve: string;
   enrol: string;
@@ -95,7 +92,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; pricing?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; tour?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -189,13 +186,11 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/try") return page(pages.try, pages.csp.try);
   if (path === "/try/sign" && pages.trySign && pages.csp.trySign) return page(pages.trySign, pages.csp.trySign);
   if (path === "/try/verify" && pages.tryVerify && pages.csp.tryVerify) return page(pages.tryVerify, pages.csp.tryVerify);
-  if (path === "/tour" && pages.tour && pages.csp.tour) return page(pages.tour, pages.csp.tour);
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
   if (path === "/metal") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
-  if (path === "/pricing" && pages.pricing && pages.csp.pricing) return page(pages.pricing, pages.csp.pricing);
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);
   if (path === "/status" && pages.status && pages.csp.status) return page(pages.status, pages.csp.status);
@@ -228,7 +223,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   // /mcp and /connect are Purser Cloud's (the MCP server and the connect settings), not this site's: someone who tries
   // them here is sent to the docs' "Connect your AI" card, which names the server's address (review, 13 Nov).
   if (CONNECT_PATHS.has(path)) return new Response(null, { status: 302, headers: { ...COMMON_HEADERS, location: CONNECT_DOCS } });
-  // A link pasted with the sentence's full stop or comma on it ("…/tour." in a form, jury review, 7 Nov, #18) goes to
+  // A link pasted with the sentence's full stop or comma on it ("…/judge." in a form, jury review, 7 Nov, #18) goes to
   // the same path without it, its query kept. Only a trailing "." or ","; the page itself is then answered as usual.
   // Never off the site (code review, 13 Nov): "//evil.com." trimmed is "//evil.com", which a browser reads as another
   // host; the new address must be this site's own path.

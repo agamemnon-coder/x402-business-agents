@@ -307,12 +307,9 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const { page, errors, mobile, height } = v;
 
   // Since #188 (12 Nov) every Try button opens the hands-on demo (TRY_URL): Home's first button and Watch's "Now try it
-  // yourself" lead there; /try/sign is "The 60-second story", linked from the README (the product tour, /tour, which
-  // replaced /judge on 13 Nov, links current pages only). The visit opens it by its address.
+  // yourself" lead there; /try/sign is "Sign in 60 seconds", linked from the README. The visit opens it by its address.
   await page.goto(`${local.url}/home`);
-  // Owner, 13 Nov: the hero's primary button is the 3-minute tour; "Try it" beside it opens this demo, "Sign in 60
-  // seconds" (judges, 13 Nov, #7: one hero demo), in this bundle.
-  check(await page.locator('main .e-hero a.btn.ghost[href="/try/sign"]').count() === 1, `${tag}: Home's "Try it" leads to /try/sign`);
+  check(await page.locator(`main .e-hero a.btn.primary[href="${TRY_URL}"]`).count() === 1, `${tag}: Home's button leads to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/watch`);
   check(await page.locator(`a.nextstep[href="${TRY_URL}"]`).count() >= 1, `${tag}: Watch ends in "Now try it yourself", to the hands-on demo (${TRY_URL})`);
   await page.goto(`${local.url}/try/sign`);

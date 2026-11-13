@@ -8,7 +8,7 @@
 
 An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 
-<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/tour"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the 3-minute product tour"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>
+<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Metal: testnet](https://img.shields.io/badge/Metal-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0)
 
@@ -39,10 +39,9 @@ flowchart LR
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Metal, built for
 Starter Kit 11 (x402 Business Agents) and entered for the Metal Award and the Visa Award.
 The Kit 11 scenario, run live on 3 November.\
-**1. The [3-minute product tour](https://kit11.max-31b.workers.dev/tour).**\
-**2. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
+**1. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
 passkey, then change them: refused.\
-**3. [Proof](https://kit11.max-31b.workers.dev/proof):** one id per rail in [docs/in-depth.md](docs/in-depth.md#what-ran-live-one-id-per-rail), every run in [docs/runs/](docs/runs/README.md).\
+**2. [Proof](https://kit11.max-31b.workers.dev/proof):** one id per rail in [docs/in-depth.md](docs/in-depth.md#what-ran-live-one-id-per-rail), every run in [docs/runs/](docs/runs/README.md).\
 **Offline:** [the quick start](#verify-it-yourself-in-3-commands), under 2 minutes, no keys.\
 **Simulated:** the customer, the supplier, the merchants' charges, the settlement and the second approver; test money
 only.
