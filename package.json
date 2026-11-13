@@ -52,6 +52,8 @@
     "verify-log": "tsx src/cli/verifyLog.ts",
     "verify-receipt": "tsx src/cli/verifyReceipt.ts",
     "verify-approval": "tsx src/cli/verifyReceipt.ts docs/runs/2026-11-07-awx-1/receipt-P-0002.json",
+    "anchor": "tsx src/cli/anchor.ts",
+    "verify-anchor": "tsx src/cli/verifyAnchor.ts",
     "e2e:live": "tsx src/cli/e2eLive.ts",
     "passkey": "tsx src/cli/passkey.ts",
     "approvals": "tsx src/cli/approvals-page.ts",
