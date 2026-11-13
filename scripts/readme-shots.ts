@@ -2,6 +2,10 @@
 // docs/assets/readme/. The README's hero is Home's first screen, light and dark (hero-light.webp, hero-dark.webp; restored
 // 13 Nov, evening, owner), 1440 x 600.
 //   npm run readme:shots -- --hero  the two hero shots only, from a local build
+//   npm run readme:shots -- --banner  the README's banner, dark and light (scripts/readme-banner.html, 1280 x 400 at 2x)
+//   npm run readme:shots -- --try-frame  /try on a phone at the approval: a frame of the recorded live walk of /try
+//     (npm run record-try10: one test company, test money, a CDP virtual test passkey), at its "approve-held" mark
+// The gallery's shots (GALLERY) are 1280 px wide; the rest 960.
 //   npm run readme:shots            a local build of this checkout (nothing from the deployed site):
 //     - the site's pages, served offline by the judge server (src/cli/judge.ts, the main run's committed record);
 //     - Purser Cloud's console as a guest ("Try as guest": the demo company, made-up data, test money), served on this
@@ -36,14 +40,27 @@ export const SITE_SHOTS: { file: string; path: string; label: string }[] = [
 /** The deployed site and Purser Cloud's public preview, for --live. */
 export const LIVE = { site: "https://kit11.max-31b.workers.dev", cloud: "https://purser-try.max-31b.workers.dev" };
 export const CLOUD_SHOT = { file: "cloud-guest.webp", label: "Purser Cloud as a guest" };
-/** The README's hero: Home's first screen, light and dark (a <picture> in the README). */
+/** The README's banner (13 Nov, owner), drawn from scripts/readme-banner.html; dark and light, by prefers-color-scheme. */
+export const BANNERS = [{ file: "banner-dark.png", theme: "dark" as const }, { file: "banner-light.png", theme: "light" as const }];
+/** /try on a phone at the approval, from the recorded live walk (docs/video/recording-try-v10.json has its marks). */
+export const TRY_PHONE = { file: "try-phone.webp", recording: "out/video/v10/recordings/try-walk.mp4", mark: "approve-held", label: "/try on a phone: the approval with the exact terms" };
+/** The README's 2x2 gallery, larger than the rest. */
+export const GALLERY = ["try-phone.webp", "proof.webp", "cloud-guest.webp", "security.webp"];
+/** The README's hero: Home's first screen, light and dark (a <picture> in the README, in the gallery since 13 Nov). */
 export const HERO_SHOTS = [{ file: "hero-light.webp", scheme: "light" as const }, { file: "hero-dark.webp", scheme: "dark" as const }];
 
 const tmp = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "readme-shots-"));
-const webp = (png: string, file: string) => execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", png, "-vf", "scale=960:-1:flags=lanczos", "-quality", "82", join(OUT, file)]);
+const webp = (png: string, file: string) => execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-i", png, "-vf", `scale=${GALLERY.includes(file) ? 1280 : 960}:-1:flags=lanczos`, "-quality", "80", join(OUT, file)]);
 
 async function main() {
   mkdirSync(OUT, { recursive: true });
+  if (process.argv.includes("--try-frame")) {
+    const rec = JSON.parse(readFileSync(join(ROOT, "docs/video/recording-try-v10.json"), "utf8")) as { marks: Record<string, number> };
+    const at = rec.marks[TRY_PHONE.mark]! - 0.3;
+    execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-ss", at.toFixed(2), "-i", join(ROOT, TRY_PHONE.recording), "-frames:v", "1", "-vf", "scale=540:-1:flags=lanczos", "-quality", "82", join(OUT, TRY_PHONE.file)]);
+    console.log(`wrote docs/assets/readme/${TRY_PHONE.file} from ${TRY_PHONE.recording} at ${at.toFixed(2)} s`);
+    return;
+  }
   const require = createRequire(import.meta.url);
   const { chromium } = require("playwright") as typeof import("playwright");
   const browser = await chromium.launch();
@@ -60,6 +77,19 @@ async function main() {
     console.log(`wrote docs/assets/readme/${file} from ${url}`);
   };
 
+  if (process.argv.includes("--banner")) {
+    for (const b of BANNERS) {
+      const ctx = await browser.newContext({ viewport: { width: 1280, height: 400 }, deviceScaleFactor: 2 });
+      const page = await ctx.newPage();
+      await page.goto(`${new URL(`file://${join(ROOT, "scripts/readme-banner.html")}`).href}?theme=${b.theme}`);
+      await page.evaluate(() => document.fonts.ready);
+      await page.screenshot({ path: join(OUT, b.file) });
+      await ctx.close();
+      console.log(`wrote docs/assets/readme/${b.file}`);
+    }
+    await browser.close();
+    return;
+  }
   const guest = async (p: import("playwright").Page) => {
     await p.click('button:has-text("Try as guest")');
     await p.waitForSelector('h1:text-is("Overview")', { timeout: 30_000 });

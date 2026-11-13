@@ -64,9 +64,10 @@ describe("the final review (13 Nov)", () => {
 
   it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
     const readme = read("README.md");
-    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif))"/g)].map((m) => m[1]!);
+    // The banner (PNG, drawn from scripts/readme-banner.html) and the phone frame of the recorded /try walk count too.
+    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
-    expect(shots.length).toBeGreaterThanOrEqual(8); // the hero is the link-preview card since 13 Nov, not a shot
+    expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages
     for (const f of shots) {
       expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
       expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });

@@ -113,16 +113,19 @@ describe("the architecture diagram", () => {
 });
 
 describe("Verify it yourself in 3 commands", () => {
+  // Its own section since the README upgrade of 13 Nov, evening (it was a subsection of "How it works in 5 files").
+  const at = README.indexOf("## Verify it yourself in 3 commands");
+  const VERIFY = at < 0 ? "" : README.slice(at, README.indexOf("\n## ", at + 5));
   const pkg = JSON.parse(read("package.json")) as { scripts: Record<string, string> };
 
   // Since 13 Nov (the README upgrade) the three commands are the quick start, under 2 minutes: npm ci, the offline
   // judge check and the real approval's receipt; the full suite (npm test, 4 to 7 min) is its own line below.
   it("lists npm ci, npm run judge -- --check and npm run verify-approval in that order, then npm test and verify-receipt", () => {
-    const block = SECTION.slice(SECTION.indexOf("```sh"), SECTION.indexOf("```", SECTION.indexOf("```sh") + 5));
+    const block = VERIFY.slice(VERIFY.indexOf("```sh"), VERIFY.indexOf("```", VERIFY.indexOf("```sh") + 5));
     expect(block.split("\n").slice(1).filter(Boolean).map((l) => l.replace(/\s+#.*$/, ""))).toEqual(["npm ci", "npm run judge -- --check", "npm run verify-approval"]);
-    expect(SECTION).toContain("The full suite, `npm test` (about 8 to 9 min on a laptop)");
-    expect(SECTION).toContain("ExperimentalWarning: SQLite is an experimental feature");
-    expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`");
+    expect(VERIFY).toContain("The full suite, `npm test` (about 8 to 9 min on a laptop)");
+    expect(VERIFY).toContain("ExperimentalWarning: SQLite is an experimental feature");
+    expect(VERIFY).toContain("`npm run verify-receipt -- receipt.json`");
   });
 
   it("runs scripts that exist, and judge knows --check", () => {
@@ -133,13 +136,13 @@ describe("Verify it yourself in 3 commands", () => {
   });
 
   it("says honestly what needs the network", () => {
-    expect(SECTION).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
-    expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`\nchecks any receipt of the same format."); // /try/sign's receipt went with it (13 Nov)
+    expect(VERIFY).toContain("`npm ci` downloads packages from npm; after that, no network and no keys.");
+    expect(VERIFY).toContain("`npm run verify-receipt -- receipt.json`\nchecks any receipt of the same format."); // /try/sign's receipt went with it (13 Nov)
   });
 
   it("the tests badge links to this section", () => {
     expect(README).toContain("](#verify-it-yourself-in-3-commands)");
-    expect(SECTION).toContain("### Verify it yourself in 3 commands");
+    expect(VERIFY).toContain("## Verify it yourself in 3 commands");
   });
 });
 
