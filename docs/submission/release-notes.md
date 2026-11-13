@@ -178,8 +178,8 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
   `test/proof-sentences.test.ts`. Airwallex: the hash the CFO signed is in Airwallex's own record of the EUR 240.00
   SWIFT payment; 3 of 3 cards carry the CFO's policy as Airwallex's own controls. Metal: a mandate on chain per agent;
   86 payments, each its own transaction; #24 refused on chain; the mandates replaced after the CFO's Face ID (four
-  eyes; second approver a labelled test passkey). Claude: 24 of 24 decisions, 0 fallbacks; rel-1 found a fault in how
-  the agents hand off a card raise; after the fix the eval rebuilt from that moment went from 6/10 to 10/10 and rel-1b
+  eyes; second approver a labelled test passkey). Claude: all 24 decisions by Claude, 0 fallbacks; rel-1 found a fault in how
+  the agents hand off a card raise; after the fix the eval rebuilt from that moment now passes every run, and rel-1b
   passed every step. The form's Description now goes problem, solution, proof, Airwallex and Metal, business, what's
   real (3,967 characters); the Instructions go /try/sign, then /proof and the film, then the repository. 2607 tests in
   265 files, all passing (with main's).
@@ -213,9 +213,9 @@ Record: [docs/demo/main-run.json](../demo/main-run.json); log: [docs/runs/2026-1
 - 6 November, /proof puts the strongest proof first (Max's last round, item 2): each partner card opens with its
   claims, each one a link. Airwallex: "The hash the CFO signed is in Airwallex's own record of the SWIFT payment" and
   "3 of 3 cards carry the CFO's policy", to their anchors on /airwallex; Metal: "#24 refused on chain" and "86
-  payments, each its own tx", to Metal's testnet explorer; Claude: "24/24, 0 fallbacks" and "a reliability run found a
-  hand-off fault; fixed: 6/10 → 10/10", with a note that 6/10 → 10/10 is the eval rebuilt from rel-1's moment, before
-  and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
+  payments, each its own tx", to Metal's testnet explorer; Claude: "all 24 decisions by Claude, 0 fallbacks" and "a reliability run found a
+  hand-off fault; fixed: the rebuilt eval now passes every run", with a note that this is the eval rebuilt from rel-1's
+  moment, before and after the fix, and that rel-1b then passed every step. Every number is read from its record. The TAP remark under
   the figures is gone: TAP is on /visa and in the footer link. 2647 tests in 268 files, all passing (with main's).
 - 6 November, the CFO's view, visible (Max's last round, item 4): "See the CFO's view" on Home and in Proof's head, to
   the CFO dashboard's replay of the main run (/?autonomy: public, read-only, no viewer key). It opens at its top with

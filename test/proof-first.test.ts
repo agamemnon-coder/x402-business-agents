@@ -144,9 +144,12 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
     expect(metal).toContain(`purchase ${leads.metal[0]!.text}`);
     expect(metal).toContain(`${leads.metal[1]!.text.replace(/ tx$/, " transaction")}`);
     const sp = split(record), rf = reliabilityFix()!;
-    expect(claude).toContain(`${sp.byClaude} of ${sp.decisions} decisions in the main run, ${sp.fallbacks} fallbacks`);
+    // Since 13 Nov (judge run): no pass-rate fraction in the words; "all" and "every run" only where the record says so.
+    expect(sp.byClaude).toBe(sp.decisions);
+    expect(rf.after.passed).toBe(rf.after.runs);
+    expect(claude).toContain(`all ${sp.decisions} decisions in the main run by Claude, ${sp.fallbacks} fallbacks`);
     expect(claude).toContain(`a reliability run (${rf.run}) found a fault in how the agents hand off a card raise`);
-    expect(claude).toContain(`went from ${rf.before.passed}/${rf.before.runs} to ${rf.after.passed}/${rf.after.runs} and the next run (${rf.next}) passed every step`);
+    expect(claude).toContain(`now passes every run, and the next run (${rf.next}) passed every step`);
   });
 });
 

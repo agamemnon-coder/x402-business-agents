@@ -16,7 +16,7 @@ import { TRY_URL } from "../src/redesign/ui.js";
 import { openDb } from "../src/db/open.js";
 import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
-import { CLOUD_DEMO_URL, CLOUD_PREVIEW_LINE, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage } from "../src/redesign/docs.js";
+import { CLOUD_DEMO_URL, CLOUD_PREVIEW_LINE, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage, readToolCount } from "../src/redesign/docs.js";
 import { LIVE_RUN_EXPECTED_MS, RUNNER_DOWN_AFTER_MS } from "../src/ops/publicHealth.js";
 import { RUNS_TITLE, liveRuns } from "../src/redesign/runs.js";
 import { STATUS_RUNS, latestRuns, runLabels, statusPage } from "../src/redesign/status.js";
@@ -77,7 +77,7 @@ describe("/docs: docs and API", () => {
     expect(html).toContain("<h1>Docs and API</h1>");
     expect(html).toContain("<title>Purser · Docs and API</title>");
     expect(html).toMatch(/<span class="pill note">(?:<svg[\s\S]*?<\/svg>)?Sandbox and testnet only<\/span>/);
-    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["agent-api", "cloud-api", "payments", "connect-ai", "offline"]);
+    expect([...html.matchAll(/<article class="pc card[^"]*" id="([a-z-]+)"/g)].map((m) => m[1])).toEqual(["connect-ai", "agent-api", "cloud-api", "payments", "offline"]); // Connect your AI first since 13 Nov (judge run)
   });
 
   it("lists exactly the tools the code defines, in the code's order, each with its own title; every description is in the fold, word for word", async () => {
@@ -197,8 +197,10 @@ describe("/docs: docs and API", () => {
     // Names with digits in them are names (x402, the KIT11_ variables, the OpenAPI document's path), and the tools'
     // descriptions are the code's own words (held to the server's answer above): nothing else carries a figure.
     const ours = (t: string) => agentTools().reduce((rest, tool) => rest.replace(tool.description, " "), t).replace(/\bx402\b|\bKIT11_[A-Z_]+\b|\/v1\/[\w./]+|\bhttps:\/\/[\w.-]+\/[\w/.-]*/g, " ");
-    expect(numbers(ours(text))).toEqual([]);
-    expect(numbers(ours(`${text} over 40 customers`))).toEqual(["40"]);
+    // The one number of its own (13 Nov, judge run): the cloud MCP server's read tools, counted from its READ_TOOLS list.
+    expect(numbers(ours(text))).toEqual([String(readToolCount())]);
+    expect(text).toContain(`${readToolCount()} read tools`);
+    expect(numbers(ours(`${text} over 40 customers`))).toEqual([String(readToolCount()), "40"]);
   });
 
   it("says what is real in its own words: sandbox and testnet only, and that the preview is private", () => {

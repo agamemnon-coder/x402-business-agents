@@ -121,7 +121,7 @@ shows the badges), then "Here is my worst case, in one line." (the screen shows 
 | 3 | Purser gives each agent its own Airwallex card and its own Metal mandate. | README, third paragraph |
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
 | 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
-| 6 | 24 of 24 decisions were made by Claude. | Record: `split` (24/24, 0 fallbacks) |
+| 6 | All 24 decisions were made by Claude. | Record: `split` (all 24 decisions by Claude, 0 fallbacks) |
 | 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |

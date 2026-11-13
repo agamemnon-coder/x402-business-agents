@@ -76,11 +76,13 @@ describe("the README's diagrams and media", () => {
 
   // Since 13 Nov (the README upgrade): five diagrams in docs/diagrams.md; the README inlines four of them, word for word
   // and in the same order, and links the fifth (who holds which limit), which its one-line diagram now sums up.
-  it("inlines four of docs/diagrams.md's five diagrams exactly, in order, and links the fifth", () => {
+  it("inlines three of docs/diagrams.md's five diagrams exactly, in order, and links the other two", () => {
     const docs = blocks(readFileSync(join(ROOT, "docs/diagrams.md"), "utf8"));
     expect(docs).toHaveLength(5);
-    expect(blocks(readme)).toEqual([docs[0], docs[2], docs[3], docs[4]]);
+    expect(blocks(readme)).toEqual([docs[0], docs[2], docs[4]]);
     expect(readme).toContain("(docs/diagrams.md#1-architecture-who-holds-which-limit)");
+    // The mandate on Metal is linked from the Metal Award section since the award sections came in (13 Nov).
+    expect(readme).toContain("(docs/diagrams.md#3-the-mandate-on-metal-bound-refused-raised-revoked)");
   });
 
   it("opens See it with the hands-on demo's GIF and the caption media.json gives it, the test passkey said", () => {

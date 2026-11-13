@@ -120,7 +120,8 @@ describe("Verify it yourself in 3 commands", () => {
   it("lists npm ci, npm run judge -- --check and npm run verify-approval in that order, then npm test and verify-receipt", () => {
     const block = SECTION.slice(SECTION.indexOf("```sh"), SECTION.indexOf("```", SECTION.indexOf("```sh") + 5));
     expect(block.split("\n").slice(1).filter(Boolean).map((l) => l.replace(/\s+#.*$/, ""))).toEqual(["npm ci", "npm run judge -- --check", "npm run verify-approval"]);
-    expect(SECTION).toContain("The full suite, `npm test` (4 to 7 min)");
+    expect(SECTION).toContain("The full suite, `npm test` (about 8 to 9 min on a laptop)");
+    expect(SECTION).toContain("ExperimentalWarning: SQLite is an experimental feature");
     expect(SECTION).toContain("`npm run verify-receipt -- receipt.json`");
   });
 

@@ -8,9 +8,9 @@
 
 An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 
-<a href="https://kit11.max-31b.workers.dev/tour"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the 3-minute product tour"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Try_it-2_min-0b1220?style=for-the-badge" alt="Try it in 2 minutes"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>
+<a href="https://kit11.max-31b.workers.dev/try/sign"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/tour"><img src="https://img.shields.io/badge/Take_the_tour-3_min-0b1220?style=for-the-badge" alt="Take the 3-minute product tour"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Metal: testnet](https://img.shields.io/badge/Metal-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude)
 
 Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.
 
@@ -19,6 +19,11 @@ Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claud
 </div>
 
 ## How it works
+
+Airwallex's AgentOS says its "components do not initiate money-out actions (transfers, FX conversions, or payouts) on
+your behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026). Purser is the
+control layer for when agents do move money on Airwallex: within limits the CFO signs, and above them only with the
+CFO's passkey on the exact terms.
 
 ```mermaid
 flowchart LR
@@ -61,6 +66,20 @@ Each row from its run record; test money throughout. Every run, newest first: [d
 | In Purser Cloud: the payee check, batch approval and reconciliation as product features | Built and tested on stand-ins; not shown switched on in a live run | — | [reconcile-books.md](docs/reconcile-books.md) |
 | Real customers, real money, a second person approving | Not yet | — | [go-live.md](docs/go-live.md) |
 
+## Visa Award
+
+Visa Intelligent Commerce through Airwallex's Airi: an agent pays with a single-use Visa credential, within the CFO's
+limit on its own and above it only after the CFO's passkey. Live in the Airwallex sandbox with a test card on 7 November
+([first run](docs/runs/2026-11-07-vic-1.md)) and 13 November: 2 paid (1 after Face ID), 5 refused by Purser incl.
+reused credentials, 1 not tapped: nothing charged ([latest run](docs/runs/2026-11-13-vic-4.md)). Visa TAP is an extra, not part of the entry. [/visa](https://kit11.max-31b.workers.dev/visa)
+
+## Metal Award
+
+Each agent pays x402 under its own mandate on Metal testnet, and Metal refuses what is over it: in the main run of
+3 November, 86 Metal payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)).
+On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only
+when both signed, and Metal refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-metal-bound-refused-raised-revoked)). [/metal](https://kit11.max-31b.workers.dev/metal) · [docs/metal-award.md](docs/metal-award.md)
+
 ## See it
 
 <img src="docs/assets/media/try-flow.gif" alt="The hands-on demo, end to end: a test company files a sample invoice, Claude reads it, Pay, the approval passkey (Chromium's virtual authenticator: a test passkey, no person or phone), paid on the simulated bank, booked and filed. Test money." width="100%">
@@ -97,7 +116,7 @@ beyond them, with a passkey (Face ID on iPhone) on the exact terms.
 
 ![Agent, then policy. Within the limits the agent pays under its own mandate or card limit; beyond them the CFO's passkey signs the SHA-256 of the exact terms, the executor re-checks the hash, then Airwallex or Metal. Every step goes into the hash-chained audit log.](docs/assets/how-it-works.svg)
 
-Who holds which limit, agent by agent and rail by rail, is drawn in [docs/diagrams.md](docs/diagrams.md#1-architecture-who-holds-which-limit), with all five diagrams and their notes.
+Who holds which limit, rail by rail, and the mandate on Metal are drawn in [docs/diagrams.md](docs/diagrams.md#1-architecture-who-holds-which-limit) with all five diagrams.
 
 <details><summary>One payment beyond the limit, end to end</summary>
 
@@ -119,25 +138,6 @@ sequenceDiagram
   Ex->>Rail: pay (an Airwallex payout carries the signed hash in its metadata)
   Rail-->>Ex: accepted (sandbox or testnet)
   Ex->>Bk: book it, append to the hash-chained log
-```
-
-</details>
-
-<details><summary>The mandate on Metal: bound, refused, raised, revoked (the run of 12 November; the second owner a labelled virtual test passkey)</summary>
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant O as Owners (2 of 2 passkeys)
-  participant Acc as Passkey account (Metal testnet)
-  participant Ag as Sourcing agent (its own mandate key)
-  participant Sup as Supplier
-  O->>Acc: sign P-0001: bind a mandate (cap per payment, budget, one payee)
-  Ag->>Sup: pay inside the cap: paid, no owner signs
-  Ag-xSup: pay over the cap: refused on chain (mandate_cap_exceeded)
-  O->>Acc: sign P-0002: raise the cap
-  Ag->>Sup: the same amount again: paid
-  O->>Acc: sign P-0003: revoke the mandate
 ```
 
 </details>
@@ -202,7 +202,7 @@ The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git.
 
 ```sh
 npm ci                       # under a minute: the exact versions in the lockfile
-npm run judge -- --check     # about 3 s: every page in CHECK_PATHS built from the main run's record, offline
+npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
 npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
 ```
 
@@ -223,7 +223,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign) (that one needs the live site and your own
 passkey).
 
-The full suite, `npm test` (4 to 7 min): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `a3918d22`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6342 tests passing**, 4 skipped, in 556 files (the last full run, on commit `a3918d22`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 

@@ -132,7 +132,7 @@ export function judgeMenu(url: string): string[] {
     `  ${url}/runs          every live run, newest first, with its ids and records`,
     `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
-    `  ${url}/try           type a task for an agent (offline, code reads it)`,
+    `  ${url}/try           the earlier offline task demo; the hands-on demo is live at https://kit11.max-31b.workers.dev/try`,
     `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
     `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
     `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,

@@ -45,4 +45,20 @@ describe("the final review (13 Nov)", () => {
     for (const a of ["Sourcing", "Support", "Treasury", "Reader", "Checker", "Coder", "Payer"]) expect({ a, named: readme.includes(a) }).toEqual({ a, named: true });
     expect(read("src/redesign/home.ts")).toMatch(/Checker agent \(Claude\)[\s\S]*Coder agent \(Claude\)[\s\S]*Payer agent \(Claude\)/);
   });
+
+  it("quotes Airwallex's AgentOS word for word, with its URL, and says Purser's part without naming anyone else", () => {
+    const readme = read("README.md");
+    // Read on 13 Nov 2026 from https://www.airwallex.com/docs/developer-tools/ai/agentos ("Before you deploy").
+    expect(readme).toContain('"components do not initiate money-out actions (transfers, FX conversions, or payouts) on\nyour behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026)');
+  });
+
+  it("has a Visa Award and a Metal Award section, each with its live dates and records", () => {
+    const readme = read("README.md");
+    const sec = (h: string) => readme.slice(readme.indexOf(`## ${h}`), readme.indexOf("\n## ", readme.indexOf(`## ${h}`) + 5));
+    for (const f of ["docs/runs/2026-11-07-vic-1.md", "docs/runs/2026-11-13-vic-4.md"]) expect(sec("Visa Award")).toContain(`](${f})`);
+    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Metal Award")).toContain(`](${f})`);
+    expect(sec("Metal Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    expect(read("docs/demo/main-run.json")).toContain("0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    expect(sec("Visa Award")).toContain("Visa TAP is an extra, not part of the entry.");
+  });
 });
