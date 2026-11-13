@@ -26,7 +26,7 @@ import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
 import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
-import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
+import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles, tilesCountWords } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
 import { ICC_RUN_ID, iccBlock, iccRecordIn } from "./iccBlock.js";
 import { VIC2_RUN_FILE, VIC2_RUN_ID, vic2Run, vic2RunBlock } from "./vic2Run.js";
@@ -411,10 +411,10 @@ export function visaRunsLine(): string | null {
   return v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${all})` : all;
 }
 export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
-  const st = metalStory(run.record), tiles = productTiles(run).length, t0 = t0Data().journal;
+  const st = metalStory(run.record), tiles = productTiles(run), t0 = t0Data().journal;
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
-    ...(tiles ? [{ name: "Airwallex", href: "airwallex", proof: `${tiles} products, each run dated` }] : []),
+    ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true)}, each run dated` }] : []),
     { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),

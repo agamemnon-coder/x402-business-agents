@@ -6,7 +6,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { airiRun, type AiriRunRecord } from "../src/redesign/airiRun.js";
 import { visaPage } from "../src/redesign/partners.js";
-import { VIC_ATTEMPTS_ID, VIC_COMPARE_COLUMNS, VIC_COMPARE_ID, VIC_FACTS_ID, vicAttemptCount, vicAttemptLines, vicAttemptsHtml, vicCompare, vicCompareHtml, vicFacts, vicFactsHtml } from "../src/redesign/vicFacts.js";
+import { VIC_ATTEMPTS_ID, VIC_COMPARE_COLUMNS, VIC_COMPARE_ID, VIC_FACTS_ID, vicAttemptCount, vicAttemptLines, vicAttemptsHtml, vicCompare, vicCompareHtml, vicFacts, vicFactsHtml, HEADLESS_LINE } from "../src/redesign/vicFacts.js";
+import { visaFlowHtml } from "../src/redesign/visaHero.js";
+import { vic3Run } from "../src/redesign/vic3Run.js";
 import { vicNetworkRecord } from "../src/redesign/vicNetwork.js";
 
 const raw = (f: string) => JSON.parse(readFileSync(new URL(`../${f}`, import.meta.url), "utf8"));
@@ -17,16 +19,18 @@ const airi = raw("docs/demo/airi-run.json");
 const html = visaPage(), main = /<main[\s\S]*<\/main>/.exec(html)![0];
 const unfolded = main.replace(/<details\b[\s\S]*?<\/details>/g, " ");
 
-describe("the five facts under the drawing", () => {
+describe("the four facts under the drawing, the headless browser beside the purchase flow", () => {
   const facts = vicFacts(rec);
 
   // The jury check of 12 Nov: the attempt history is folded ("The N attempts that failed first"); in sight, the headless
   // browser said to be sandbox only, and the production path (a network token, no card number in the agent's process).
-  it("are five short lines, each backed by the record: test credential, one person in both roles, the headless browser (sandbox only), the production path, our own merchant", () => {
+  // Partner review, 13 Nov: the headless browser (sandbox only) moved from this list to right under /visa's purchase flow,
+  // next to purchase B (src/redesign/visaHero.ts, HEADLESS_LINE); it is still said once, in sight.
+  it("are four short lines, each backed by the record: test credential, one person in both roles, the production path, our own merchant; the headless browser sits under the purchase flow", () => {
+    expect(visaFlowHtml(vic3Run()!)).toContain(HEADLESS_LINE);
     expect(facts).toEqual([
       "The credential is a test credential, from Airi's test card.",
       "One person played both the CFO and the cardholder.",
-      "Sandbox only: a headless browser in the agent's process typed the number into Airwallex's hosted page; the sandbox refuses a direct confirm.",
       "In production no card number would enter the agent's process: the merchant would get a network token via the Connect access above.",
       "The merchant is Purser's own sandbox account.",
     ]);
