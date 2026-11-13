@@ -11,7 +11,7 @@
 // same key with a version suffix. The ledger never loses or doubles a movement, and never changes a posted entry.
 
 import { journal } from "../accounting/gl.js";
-import { accrualEntries, bookable, codedAccrual, dutchVat } from "../ap/books.js";
+import { accrualEntries, bookable, codedAccrual, dutchVat, foreignVat } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoices } from "../ap/store.js";
 import { openingLines } from "../accounting/books.js";
@@ -105,7 +105,8 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
     want.set(n === 1 ? base : `${base}#${n}`, { date: l.date, description: l.description, doc_ref: l.proof || l.ref, pair: c > 0 ? [{ ...bank, debit: c }, { ...gl, credit: c }] : [{ ...gl, debit: -c }, { ...bank, credit: -c }] });
   }
   // The payables inbox's invoices the books hold, on receipt: the expense (with its Dutch VAT code when the invoice's
-  // tax is 21% or 9% of its net, so it counts in 5b) and input VAT against what is owed (2100), the same entries as the
+  // tax is 21% or 9% of its net, so it counts in 5b; with PF_DE19 when a supplier with a German VAT id charged 19%, so
+  // it counts on the overview's own foreign-VAT row, never in 5b) and input VAT against what is owed (2100), the same entries as the
   // inbox's CSV sink (src/ap/books.ts accrualEntries). One posting per invoice; one that leaves the books (rejected) is
   // reversed like any other source that is gone. An invoice the Coder coded (src/ap/coderAgent.ts) posts its entries line
   // for line: each net line with its own cost centre, VAT code and VAT (for a reverse-charge code the VAT the company
@@ -118,7 +119,8 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
     const coded = codedAccrual(inv);
     const vat = es.find((e) => e.account === "1510");
     const net = es[0]!;
-    const code = vat && !coded ? dutchVat(toCents(net.debit), toCents(vat.debit)) : null;
+    // Dutch VAT (21% or 9%) counts in 5b; a German supplier's 19% is Germany's VAT and goes on its own row.
+    const code = vat && !coded ? (dutchVat(toCents(net.debit), toCents(vat.debit)) ?? foreignVat(toCents(net.debit), toCents(vat.debit), inv.reading?.vat_id)) : null;
     const pair: LineInput[] = es.map((e) => {
       const debit = e.debit ? toCents(e.debit) : 0;
       const credit = e.credit ? toCents(e.credit) : 0;

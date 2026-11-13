@@ -42,7 +42,7 @@ const REVERSE_EU = `${SINGLE}\nUSt-IdNr.: DE147258369\nSteuerschuldnerschaft des
 
 // The company's books as the case carries them: the repository's own chart, VAT codes and cost centres.
 const chart = Object.entries({ ...CHART, ...AP_CHART, ...LEDGER_CHART }).map(([account, name]) => ({ account, name, purchase: /^[56]\d{3}$/.test(account) }));
-const vatCodes = Object.values(VAT_CODES).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
+const vatCodes = Object.values(VAT_CODES).filter((v) => !v.foreign).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
 const costCentres = Object.entries(COST_CENTRE_NAMES).map(([code, name]) => ({ code, name }));
 
 function caseOf(text: string, over: { country?: string; history?: HistoryCoding[]; account?: string } = {}): CodingCase {

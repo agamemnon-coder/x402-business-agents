@@ -180,6 +180,8 @@ export interface VatOverview {
   uncoded_lines: number;
   /** VAT-coded lines in a currency other than EUR: a person converts them for the return. */
   other_currency_lines: number;
+  /** VAT charged by suppliers abroad (codes with `foreign`): outside the Dutch return's boxes, on its own row. */
+  foreign_vat: { lines: number; base_cents: number; vat_cents: number };
 }
 
 const RUBRICS: VatRubric[] = ["1a", "1b", "1e", "2a", "3a", "3b", "4a", "4b"];
@@ -205,6 +207,7 @@ export function vatOverviewFrom(lines: PostedLine[], quarter: string): VatOvervi
   let input = 0;
   let uncoded = 0;
   let otherCurrency = 0;
+  const foreign = { lines: 0, base_cents: 0, vat_cents: 0 };
   for (const r of rows) {
     if (!r.vat_code) {
       if (isProfitAndLoss(r.account)) uncoded += 1;
@@ -213,6 +216,7 @@ export function vatOverviewFrom(lines: PostedLine[], quarter: string): VatOvervi
     if (r.currency !== "EUR") { otherCurrency += 1; continue; }
     const c = VAT_CODES[r.vat_code]!;
     const vat = r.vat_cents ?? 0;
+    if (c.foreign) { foreign.lines += 1; foreign.base_cents += r.debit_cents - r.credit_cents; foreign.vat_cents += vat; continue; }
     const base = c.kind === "sale" ? r.credit_cents - r.debit_cents : r.debit_cents - r.credit_cents;
     if (c.kind === "sale") {
       if (c.rubric) { rubrics[c.rubric].base_cents += base; rubrics[c.rubric].vat_cents += vat; }
@@ -222,5 +226,5 @@ export function vatOverviewFrom(lines: PostedLine[], quarter: string): VatOvervi
     if (c.deductible) input += vat;
   }
   const owed = RUBRICS.reduce((s, k) => s + rubrics[k].vat_cents, 0);
-  return { quarter, from, to, notice: VAT_NOTICE, rubrics, owed_5a_cents: owed, input_5b_cents: input, balance_5c_cents: owed - input, uncoded_lines: uncoded, other_currency_lines: otherCurrency };
+  return { quarter, from, to, notice: VAT_NOTICE, rubrics, owed_5a_cents: owed, input_5b_cents: input, balance_5c_cents: owed - input, uncoded_lines: uncoded, other_currency_lines: otherCurrency, foreign_vat: foreign };
 }

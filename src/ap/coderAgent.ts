@@ -46,7 +46,9 @@ export const apAgentsOn = (env: Record<string, string | undefined> = process.env
 const COMPANY_COUNTRY = "NL";
 /** The stored ledger's chart; only the expense accounts a supplier invoice may be booked to take purchase lines. */
 const CHART: ChartAccount[] = Object.entries(LEDGER_ACCOUNTS).map(([account, name]) => ({ account, name, purchase: Object.hasOwn(EXPENSE_ACCOUNTS, account) }));
-const VAT: CaseVatCode[] = Object.values(VAT_CODES).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
+// The Coder's codes are the Dutch return's: a foreign code (13 Nov, PF_DE19) is set by the books from the supplier's own VAT
+// id (src/ap/books.ts foreignVat), never picked by a rate alone, which would guess the supplier's country.
+const VAT: CaseVatCode[] = Object.values(VAT_CODES).filter((v) => !v.foreign).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
 const COST_CENTRES: CostCentre[] = Object.entries(COST_CENTRE_NAMES).map(([code, name]) => ({ code, name }));
 /** The most earlier invoices of a supplier a case carries (the agent is shown the newest few). */
 const HISTORY_MAX = 20;
