@@ -11,10 +11,11 @@
 import { z } from "zod";
 import { AuthError, KEY_MAX_DAYS, newApiKey, type Caller } from "../auth.js";
 import type { EngineApi } from "../engine/api.js";
-import { ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
+import { DEMO_END, ensureDemoCompany, isDemoTenant } from "../guest/guest.js";
 import type { Blobs, Sql } from "../store.js";
 import type { TenantDb } from "../tenant.js";
 import { mcpAnswer, PROTOCOL_VERSIONS } from "./mcp.js";
+import { ICON_ICO, ICON_PNG_180, ICON_PNG_512, ICON_SVG } from "../brand.gen.js";
 import { authorizationServer, authorizeAsk, consent, consentPage, exchange, OAuthRefused, protectedResource, registerClient } from "./oauth.js";
 
 export interface ClaudeCtx {
@@ -37,7 +38,17 @@ export interface ClaudeKit<C extends ClaudeCtx> {
 export interface ClaudeRoute<C extends ClaudeCtx> { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: "public" | "read" | "admin"; run: (c: C) => Promise<Response> }
 
 /** The paths outside /v1 this block answers (the rest of the site is the console's). */
-export const isClaudePath = (p: string): boolean => p === "/mcp" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-");
+export const isClaudePath = (p: string): boolean => p === "/mcp" || p.startsWith("/oauth/") || p.startsWith("/.well-known/oauth-") || ICON_PATHS.includes(p);
+
+/** Purser's mark (cloud/src/brand.gen.ts, the site header's): what a browser tab, a home screen and a connector show. */
+const ICON_PATHS = ["/favicon.ico", "/favicon.svg", "/apple-touch-icon.png", "/icon.png"];
+const bytes = (b64: string): Uint8Array<ArrayBuffer> => Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+const icon = (body: string | Uint8Array<ArrayBuffer>, type: string) => new Response(body, { status: 200, headers: { "content-type": type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
+/** The cloud's icon, as an MCP Implementation.icons entry and the OAuth metadata's logo. */
+export const iconsOf = (origin: string) => [
+  { src: `${origin}/icon.png`, mimeType: "image/png", sizes: ["512x512"] },
+  { src: `${origin}/favicon.svg`, mimeType: "image/svg+xml", sizes: ["any"] },
+];
 
 /** What a 401 at /mcp says, so a client finds where to sign in (RFC 9728 section 5.1). */
 export const mcpChallenge = (origin: string) => `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
@@ -91,9 +102,14 @@ export function claudeRoutes<C extends ClaudeCtx>(kit: ClaudeKit<C>): ClaudeRout
       const demo = isDemoTenant(caller.tenantId);
       if (demo) await ensureDemoCompany(c.env.sql, c.env.blobs, c.now);
       const company = (await c.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [caller.tenantId]))?.name ?? "the company";
-      const out = await mcpAnswer({ caller, db: c.db!, now: c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000));
+      const out = await mcpAnswer({ origin: c.env.origin, caller, db: c.db!, now: demo ? new Date(DEMO_END) : c.now, company, engine: demo ? null : (c.env.engine?.(caller.tenantId) ?? null), demo }, await kit.text(c, 1_000_000));
       return out.status === 202 ? new Response(null, { status: 202 }) : json(out.status, out.body);
     } },
+
+    { method: "GET", path: "/favicon.ico", summary: "Purser's icon (ICO, 32 and 48 px).", need: "public", run: async () => icon(bytes(ICON_ICO), "image/x-icon") },
+    { method: "GET", path: "/favicon.svg", summary: "Purser's icon (SVG).", need: "public", run: async () => icon(ICON_SVG, "image/svg+xml") },
+    { method: "GET", path: "/apple-touch-icon.png", summary: "Purser's icon for a home screen (PNG, 180 px).", need: "public", run: async () => icon(bytes(ICON_PNG_180), "image/png") },
+    { method: "GET", path: "/icon.png", summary: "Purser's icon (PNG, 512 px): the MCP server's and the OAuth sign-in's.", need: "public", run: async () => icon(bytes(ICON_PNG_512), "image/png") },
 
     { method: "GET", path: "/.well-known/oauth-protected-resource", summary: "OAuth protected resource metadata (RFC 9728) for /mcp: this cloud is its authorization server.", need: "public", run: async (c) => json(200, protectedResource(c.env.origin)) },
     { method: "GET", path: "/.well-known/oauth-protected-resource/mcp", summary: "The same metadata at the path RFC 9728 derives from /mcp.", need: "public", run: async (c) => json(200, protectedResource(c.env.origin)) },

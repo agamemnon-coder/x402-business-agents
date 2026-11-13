@@ -145,7 +145,9 @@ describe("the README's own words elsewhere: the package, the business pages, the
   const flat = (s: string) => s.replace(/\s+/g, " ");
 
   it("package.json's description is the README's first sentence", () => {
-    const first = README.split("\n").slice(1).find((l) => l.trim() !== "")!.trim();
+    // The first sentence under the title, as written in the owner's centred top (13 Nov): bold, so the marks go.
+    const lines = README.split("\n");
+    const first = lines.slice(lines.findIndex((l) => l.startsWith("# Purser")) + 1).find((l) => l.trim() !== "")!.trim().replace(/^\*\*|\*\*$/g, "");
     expect(first.length).toBeGreaterThan(40);
     expect(first).toMatch(/^[A-Z][^\n]*\.$/);
     expect((JSON.parse(read("package.json")) as { description?: string }).description).toBe(first);

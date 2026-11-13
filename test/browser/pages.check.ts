@@ -6,6 +6,7 @@
 // script and works from the keyboard). Also /pricing and /security, the product pages under "More".
 //   npx tsx test/browser/pages.check.ts [screenshot dir]            against `npm run judge` started here
 //   npx tsx test/browser/pages.check.ts [screenshot dir] --live <url>   against a hosted relay (no key)
+import { statusPage } from "../../src/redesign/status.js";
 import { REASSURE } from "../../src/redesign/home.js";
 import { TRY_URL, pageTitle } from "../../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../../src/config/film.js";
@@ -56,20 +57,6 @@ const metalWithRecord = liveAt >= 0 ? null : await (async () => {
   // The page is built from the record in memory; the world's temp files (keys, ledger) are deleted right away.
   try { const s = await sampleRunRecord(); return metalPage(agentRun(), { file: s.file, rec: s.record }); } finally { removeTokenizeWorlds(); }
 })();
-/**
- * /status's words in sight, as a frame and its run lines (13 Nov): the page lists the five newest runs of /runs, whose
- * titles change as runs are added, so a pin on the whole page went red at the next run (as /runs' did, review 12 Nov,
- * DC-5). The frame (everything but the run list) keeps the old budget less the list's share; each run line is short.
- */
-async function statusWords(page: Page): Promise<{ frame: number; lines: number[] }> {
-  const count = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
-  const all = count(await page.locator("main").innerText());
-  const lines = (await page.locator("#runs li:not(.grp)").allInnerTexts()).map(count);
-  return { frame: all - lines.reduce((n, x) => n + x, 0), lines };
-}
-// As built on 13 Nov: the frame 58 words live and 60 quiet; the longest run line 15 words ("Lock 1 opened by a person's real
-// Face ID, not a test passkey", with its day). A small margin on each.
-const STATUS_FRAME = 65, STATUS_LINE = 16;
 const failures: string[] = [];
 const fail = (what: string) => { failures.push(what); console.log(`FAIL  ${what}`); };
 /** The menu on every page: the four tabs, then "More" with the pages under it, in this order (src/ui/more.ts). */
@@ -79,6 +66,14 @@ const MENU = JSON.stringify({ items: [...(WATCH_IN_MENU ? ["Home", "Watch", "Try
 // 1.1: the worst case as the README and step 0 say it, read from the policy code (src/policy/exposureSources.ts).
 const { worstCaseWords } = await import("../../src/policy/exposureSources.js");
 const WORST = worstCaseWords();
+
+/**
+ * /status's word budget in a state the page read from /health: 90 words as served (test/saas-status-docs.test.ts), plus
+ * the words of the answer the script wrote into its "now" card in place of the served placeholders, and only those. (The
+ * flat 90 went red when the five latest runs' labels grew the served page to 85 words, still within its own budget.)
+ */
+const wordsOf = (t: string) => t.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
+const statusBudget = (nowText: string) => 90 + Math.max(0, wordsOf(nowText) - wordsOf((/<article class="pc card[^"]*" id="now"[\s\S]*?<\/article>/.exec(statusPage())?.[0] ?? "").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<[^>]+>/g, " ")));
 
 async function look(page: Page, name: string, width: number): Promise<void> {
   const text = await page.evaluate(() => document.body.innerText);
@@ -845,7 +840,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/docs" ? 260 /* +10, review 12 Nov: the KIT note; +50, jury 13 Nov: Purser Cloud as a guest with Claude (test/site-v4.test.ts) */ : 90;
+      const budget = path === "/docs" ? 280 /* 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       // /status left "More" on 12 Nov (src/ui/more.ts): a page not in the menu marks nothing there.
@@ -856,9 +851,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (!(await page.evaluate(() => document.fonts.check("16px Inter")))) fail(`${path} ${tag}: Inter did not load`);
       const cards = await page.locator("main article.pc.card").count();
       if (path === "/docs") {
-        // Five cards since the jury of 13 Nov: "Open Purser Cloud as guest, connect Claude" (#claude), its steps folded.
+        // Five cards since 13 Nov: "Connect your AI" (#connect-ai), with Purser Cloud as a guest (jury, 13 Nov), its steps folded.
         if (cards !== 5 || !/Docs and API\s+For developers and integrators\./.test(body) || (await page.locator("main details[open]").count())) fail(`/docs ${tag}: not the heading, the lead line and five cards with every fold closed`);
-        if (!(await page.locator('#claude a[href="https://purser-try.max-31b.workers.dev/"]').count()) || !/Try as guest/.test(await page.locator("#claude").innerText())) fail(`/docs ${tag}: the Purser Cloud card has no link to the cloud, or does not say "Try as guest"`);
+        if (!(await page.locator('#connect-ai a[href="https://purser-try.max-31b.workers.dev/"]').count()) || !/Try as guest/.test(await page.locator("#connect-ai").innerText())) fail(`/docs ${tag}: the Purser Cloud card has no link to the cloud, or does not say "Try as guest"`);
         const listed = await page.locator("#agent-api li[data-tool] > code").allInnerTexts();
         if (JSON.stringify(listed) !== JSON.stringify(DOCS_TOOLS)) fail(`/docs ${tag}: the tools listed are not the code's (${listed.join(", ")})`);
         if (!/npm run -s mcp/.test(body) || !/npm run judge/.test(body) || !/\/v1\/openapi\.json/.test(body) || !(await page.locator('#offline a[href$="README.md#verify-it-yourself-in-3-commands"]').count())) fail(`/docs ${tag}: a command, the OpenAPI document's path or the README's link is missing`);
@@ -887,8 +882,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await look(page, `/status on the relay ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "quiet" || now !== "No live run in progress Site Up Runner Off between runs Last sync None on record Alarms No report on record The raw answer: /health") fail(`/status on the relay ${tag}: not the quiet state in plain words (${now})`);
-      const quiet = await statusWords(page);
-      if (quiet.frame > STATUS_FRAME || quiet.lines.some((n) => n > STATUS_LINE)) fail(`/status on the relay ${tag}: ${quiet.frame} words in sight around the run list in the quiet state (budget ${STATUS_FRAME}), run lines of ${JSON.stringify(quiet.lines)} words (at most ${STATUS_LINE} each)`);
+      const quietWords = wordsOf(await page.locator("main").innerText()), quietBudget = statusBudget(now);
+      if (quietWords > quietBudget) fail(`/status on the relay ${tag}: ${quietWords} words in sight in the quiet state, budget ${quietBudget} (90 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-quiet-${tag}.png`), fullPage: true });
       // A page of its own for the failing /health: the browser logs the failed answer as a console error, which is the point.
       const broken = await context.newPage();
@@ -1270,8 +1265,8 @@ if (relay) {
       await look(page, `/status live ${tag}`, w);
       const now = (await page.locator("#now").innerText()).replace(/\s+/g, " ").trim();
       if ((await page.locator("#now").getAttribute("data-tone")) !== "ok" || !/^A live run is in progress Site Up Runner Syncing Last sync In the last \d+ minutes? Alarms None The raw answer: \/health$/.test(now)) fail(`/status live ${tag}: not the live state in plain words (${now})`);
-      const live = await statusWords(page);
-      if (live.frame > STATUS_FRAME || live.lines.some((n) => n > STATUS_LINE)) fail(`/status live ${tag}: ${live.frame} words in sight around the run list (budget ${STATUS_FRAME}), run lines of ${JSON.stringify(live.lines)} words (at most ${STATUS_LINE} each)`);
+      const words = wordsOf(await page.locator("main").innerText()), budget = statusBudget(now);
+      if (words > budget) fail(`/status live ${tag}: ${words} words in sight, budget ${budget} (90 as served, plus the answer's words)`);
       await page.screenshot({ path: join(shots, `status-live-${tag}.png`), fullPage: true });
       await context.close();
     }

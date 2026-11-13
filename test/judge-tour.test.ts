@@ -58,7 +58,7 @@ const SEES: Record<string, { path: string; marks: (string | RegExp)[] }[]> = {
   policy: [{ path: "/try/sign", marks: ["Change the rule.", 'id="rule-chips"', /worst.case/i, "The agent pays it alone.", "That's Purser."] }],
   // Purser Cloud is another site; its steps are on /docs, with the cloud's /mcp address and the demo token the cloud
   // itself names (cloud/src/auth.ts).
-  cloud: [{ path: "/docs", marks: ['id="claude"', "Try as guest", PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, "Use the demo company"] }],
+  cloud: [{ path: "/docs", marks: ['id="connect-ai"', "Try as guest", PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, "Use the demo company"] }],
   proof: [
     { path: "/proof", marks: ['id="awx-1"', /\d of \d checks pass/] },
     { path: "/airwallex", marks: ['id="awx-1"', "LIMIT_EXCEEDED"] },
@@ -83,7 +83,7 @@ describe("/judge: the six steps", () => {
     expect(PURSER_CLOUD_MCP).toBe("https://purser-try.max-31b.workers.dev/mcp");
     expect(JUDGE_STEPS.map((s) => s.links.map((l) => l.href))).toEqual([
       // Since 12 Nov (one Try everywhere): steps 2 to 4 in the hands-on demo (TRY_URL); /try/sign once, as "the 60-second story".
-      ["/home"], ["/try", "/try/sign"], ["/try"], ["/try"], [PURSER_CLOUD_URL, "/docs#claude"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
+      ["/home"], ["/try", "/try/sign"], ["/try"], ["/try"], [PURSER_CLOUD_URL, "/docs#connect-ai"], // The Visa run among the proof's links since 12 Nov (jury panel): the Airi run, Visa Intelligent Commerce via Airi.
       ["/proof", "/airwallex#awx-1", "/metal", "/visa", metalStory(loadRecord().record).refusal!.proof.href],
     ]);
     // The tour starts on Home and ends on the proof; no step is the replay, by its link, its title or its line.

@@ -16,7 +16,7 @@ CFO, who approves them with Face ID in Purser Cloud, or lets them expire. Say th
    (`needs_vendor`), is held, is already waiting for the CFO or is paid cannot be proposed: tell the user why.
 3. Propose it. Call `propose_invoice_payment` once, with the invoice's id.
    - If the tool is not there, the token reads only. Tell the user that an owner can make a token that may propose,
-     in Purser Cloud under Settings, Connect Claude.
+     in Purser Cloud under Settings, Connect your AI.
    - If Purser refuses, repeat its reason in its own words. Do not try again with another invoice unless the user asks.
 4. Tell the user what happened: the proposal's id, the payee and amount from its `facts`, any `warnings`, and that
    **nothing is paid until the CFO approves these exact terms with Face ID in Purser Cloud**.

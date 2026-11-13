@@ -61,14 +61,15 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     const readme = read("README.md");
     const lines = readme.split("\n");
     // The one tagline in the title (jury QA, 6 Nov, Q8).
-    expect(lines[0]).toBe("# Purser · AI agents spend. You sign off.");
+    // Since 13 Nov (the owner) the title sits in the centred top, under the logo, within the first 6 lines.
+    expect(lines.slice(0, 6)).toContain("# Purser · AI agents spend. You sign off.");
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
-    const top = words(lines.slice(1, 16).join("\n"));
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 30).join("\n"));
     expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]} ${TRY_IT}`)).toBe(true);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
-    expect(lines.slice(0, 10).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
+    expect(lines.slice(0, 16).join("\n")).toContain("(https://kit11.max-31b.workers.dev/try/sign)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });

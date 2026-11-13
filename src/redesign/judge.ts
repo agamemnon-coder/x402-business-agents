@@ -56,7 +56,7 @@ export function judgeSteps(record = loadRecord().record): JudgeStep[] {
       // Jury, 13 Nov: the hosted product with Claude, as a guest (the demo company, read only; its token is public).
       id: "cloud", title: "Open Purser Cloud as guest, connect Claude (demo token)", seconds: 30,
       see: "Try as guest opens the demo company, read only. Add Purser to Claude as a connector with the demo token; Claude reads the books and can approve or pay nothing.",
-      links: [{ label: "Open Purser Cloud", href: PURSER_CLOUD_URL }, { label: "Connect Claude: the steps", href: "/docs#claude" }],
+      links: [{ label: "Open Purser Cloud", href: PURSER_CLOUD_URL }, { label: "Connect Claude: the steps", href: "/docs#connect-ai" }],
     },
     {
       id: "proof", title: "See the proof", seconds: 30,
