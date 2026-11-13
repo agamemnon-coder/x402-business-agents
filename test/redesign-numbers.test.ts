@@ -96,6 +96,9 @@ const visibleText = (html: string) => html
   // The latest live run (vic-4 since 13 Nov) on top of /visa: its figures are checked against docs/runs/2026-11-13-vic-4.json
   // in test/vic3-visa.test.ts.
   .replace(/Latest live run[\s\S]*?docs\/runs\/2026-11-1\d-vic-\d\.json/g, " ")
+  // /visa's hero since 13 Nov (the flow, every purchase's outcome, the signed hash read back): its amounts, steps and
+  // hashes are checked against docs/runs/2026-11-13-vic-4.json in test/visa-hero.test.ts.
+  .replace(/The agent asks to buy[\s\S]*?read-backs equal to the signed hash \(SHA-256 [0-9a-f]{64}\)\./g, " ")
   .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.

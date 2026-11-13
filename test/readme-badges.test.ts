@@ -17,12 +17,12 @@ describe("README badges", () => {
     expect(badgeLine).not.toMatch(/[?&]logo=/);
   });
 
-  it("states the same test count as the README's test line", () => {
-    const line = readme.match(/\*\*(\d+) tests passing\*\*/); // written by npm run test-count from docs/assets/test-summary.json (13 Nov)
-    const badge = badgeLine.match(/badge\/tests-(\d+)%20passing/);
-    expect(line).not.toBeNull();
-    expect(badge).not.toBeNull();
-    expect(badge![1]).toBe(line![1]);
+  // Since 13 Nov (second review): three badges, CI, license and the live demo. No tests badge: the count is the README's
+  // line, written from docs/assets/test-summary.json by npm run test-count (test/test-count.test.ts).
+  it("is three badges: CI, license and the live demo; the count is in the README's test line, not a badge", () => {
+    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "License: MIT", "Live demo: hands-on"]);
+    expect(badgeLine).not.toMatch(/badge\/tests-/);
+    expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
   });
 
   // Since 12 Nov (one Try everywhere) the live demo badge opens the hands-on demo, not /try/sign.
@@ -30,6 +30,7 @@ describe("README badges", () => {
     // Jury pass, 13 Nov: one Try URL everywhere (kit11 /try).
     expect(badgeLine).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(badgeLine).not.toContain("purser-try");
-    expect(badgeLine).toContain("Metal%20testnet%20%C2%B7%20Airwallex%20sandbox");
+    // The rails and "test money only" moved from a badge to plain text under the badges (13 Nov).
+    expect(readme).toContain("Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.");
   });
 });

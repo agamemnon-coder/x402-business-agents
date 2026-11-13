@@ -646,8 +646,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
         // Since 12 Nov the first proof is the latest live run (vic-3); since the jury pass (13 Nov), its four cards.
-        const top = await page.evaluate(() => Math.round(((document.querySelector("main ul.sumc") ?? document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        const top = await page.evaluate(() => Math.round(((document.getElementById("visa-flow") ?? document.querySelector("main ul.sumc") ?? document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
         if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
+        // The redesign of 13 Nov: the flow, every purchase's outcome and the signed hash read back, each within the page's width.
+        const hero = await page.evaluate(() => ["visa-flow", "visa-outcomes", "visa-hash"].map((id) => { const e = document.getElementById(id); return { id, ok: !!e && e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1 }; }));
+        for (const x of hero) if (!x.ok) fail(`/visa ${tag}: #${x.id} is missing or wider than the page`);
+        // The record and footnote links are tap targets of at least 24 px (13 Nov).
+        const small = await page.evaluate(() => [...document.querySelectorAll("main a.pf, main a[data-rec], main .src a, footer a.flink")].filter((a) => (a as HTMLElement).offsetParent).filter((a) => a.getBoundingClientRect().height < 24).map((a) => (a.textContent ?? "").trim().slice(0, 40)));
+        if (small.length) fail(`/visa ${tag}: links under 24 px tall: ${small.join(" | ")}`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
@@ -672,7 +678,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 415 /* +41, jury check 12 Nov: three tiles behind flags (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 385 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 385 : 330) /* +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 240 : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).

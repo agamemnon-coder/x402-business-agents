@@ -32,9 +32,11 @@ export function centsOf(s: string): number | null {
   return m ? (m[1] ? -1 : 1) * (Number(m[2]!.replace(/,/g, "")) * 100 + Number(m[3])) : null;
 }
 /** The plain names the statement shows; every other account keeps its chart name, without the bracketed note. */
-const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "1515": "Foreign VAT to reclaim (EU refund)", "2100": "Creditors", "3000": "Owner's equity" };
+// 5000 is the chart's "Purchased stock data (warehouse …)", Kit 11's data licence; a test company's goods for resale
+// read as stock purchases (review, 13 Nov: "Purchased stock data" for mugs confused a visitor).
+const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "1515": "Foreign VAT to reclaim (EU refund)", "2100": "Creditors", "3000": "Owner's equity", "5000": "Stock purchases" };
 export const plainName = (account: string, name: string): string => PLAIN[account] ?? name.replace(/\s*\(.*\)$/, "");
-const chartName = (account: string) => (LEDGER_ACCOUNTS[account] ?? "").replace(/\s*\(.*\)$/, "");
+const chartName = (account: string) => plainName(account, LEDGER_ACCOUNTS[account] ?? "");
 
 /**
  * The statement as both /books and the PDF show it, from the file; null when the file does not hold one. The balance

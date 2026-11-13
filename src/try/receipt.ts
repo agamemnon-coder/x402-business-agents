@@ -159,8 +159,27 @@ export function verifyReceipt(input: unknown): ReceiptResult {
 /** What a passing receipt proves, and what it does not, for the command's last lines. */
 export const RECEIPT_MEANS = [
   "Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.",
-  "Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.",
+  "Does not prove: who holds the key, or that it was Face ID (no attestation is checked).",
 ];
+
+/** The line for a /try/sign receipt: its terms name the test world they were signed in (terms.test_world). */
+export const RECEIPT_TRY_WORLD = "A test world's terms: nothing real moved.";
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * What the receipt is, read from the receipt itself (judge run, 13 Nov: `npm run verify-approval` on the real P-0002
+ * said "test world"). A /try/sign receipt's terms carry test_world; an Airwallex sandbox approval says so in its note,
+ * dated by the server's verification when it has one. Null when the receipt says neither: nothing is guessed.
+ */
+export function receiptOrigin(input: unknown): string | null {
+  const r = (input ?? {}) as Partial<TryReceipt>;
+  if (r.terms && typeof r.terms === "object" && typeof (r.terms as Record<string, unknown>).test_world === "string") return RECEIPT_TRY_WORLD;
+  if (typeof r.note === "string" && /Airwallex sandbox/.test(r.note) && /test money/.test(r.note)) {
+    const at = typeof r.verified_by_server_at === "string" ? /^(\d{4})-(\d{2})-(\d{2})T/.exec(r.verified_by_server_at) : null;
+    return at ? `Airwallex sandbox approval of ${Number(at[3])} ${MONTHS[Number(at[2]) - 1]}, test money.` : "Airwallex sandbox approval, test money.";
+  }
+  return null;
+}
 /** The extra line when the terms carry an FX quote. */
 /** The extra line when the receipt carries the world's hash chain. */
 export const RECEIPT_CHAIN_MEANS = "The hash chain: every row covers the one before and one records this signature; the server kept it, so it shows the order and that no row changed after the next, not who wrote them.";

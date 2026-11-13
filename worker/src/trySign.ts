@@ -31,7 +31,7 @@ import { verifyAssertion, type PublicKeyXY } from "./webauthn.js";
 import { QuoteUnavailable, type FxQuote, type FxSource } from "./fxQuote.js";
 import { AGENTS, SWIFT_FEE_MAX_EUR_CENTS, type Agent } from "../../src/config/policy.js";
 import { ALONE_CHOICES, ALONE_PER_DAY, PAID_ALONE, exposurePolicyOfWorld } from "../../src/try/policy.js";
-import { EXPOSURE_TASK_CARDS, exposureOf, exposureWords, type RecordedRate } from "../../src/policy/exposure.js";
+import { EXPOSURE_TASK_CARDS, exposureOf, exposureWords, TRY_WORLD_WORST_HEAD, type RecordedRate } from "../../src/policy/exposure.js";
 import { defaultPolicy, FIELD_WORDS, policyBounds, policyChanges, readSet, threeLocks, withSet, type Locks, type PolicyChange, type WorldPolicy } from "../../src/try/policy.js";
 import { checkQuoteAgainstFloor, planInvoice, type TreasuryState } from "../../src/policy/treasury.js";
 import { checkInvoiceReading, parseInvoiceFallback, type Invoice } from "../../src/claude/invoiceReading.js";
@@ -525,6 +525,13 @@ export class TrySignDesk {
   }
 
   /** Never throws: anything unexpected answers a fixed 500, with no exception text, stack or path in it (A1). */
+  /** Today's spend on this page's live agents (its own table), for the relay's /health; on this desk's own clock. */
+  spentToday(): { usd: number; budget_usd: number } {
+    const day = this.now().toISOString().slice(0, 10);
+    const row = (this.sql.exec("SELECT usd FROM ts_spend WHERE day = ?", day).toArray() as { usd: number }[])[0];
+    return { usd: Math.round((row?.usd ?? 0) * 10_000) / 10_000, budget_usd: AGENT_LINE_DAILY_USD };
+  }
+
   async fetch(req: Request): Promise<Response> {
     try {
       return await this.handle(req);
@@ -1173,7 +1180,7 @@ export class TrySignDesk {
   /** 1.1: the worst case a policy allows, by Purser's own code (src/policy/exposure.ts), with the main run's rate. */
   private exposure(p: WorldPolicy) {
     const ep = exposurePolicyOfWorld(p);
-    return exposureWords(exposureOf(ep), ep, this.rate);
+    return exposureWords(exposureOf(ep), ep, this.rate, undefined, TRY_WORLD_WORST_HEAD);
   }
   /** The policy in force in this world, and its version (1 when the world opened). */
   private policyOf(worldId: string): { version: number; policy: WorldPolicy } {

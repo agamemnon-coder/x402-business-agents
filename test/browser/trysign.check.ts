@@ -59,7 +59,7 @@ const { recordedRate } = await import("../../src/policy/exposureSources.js");
 const worldExpo = (alone: string, treasuryMonthly?: string) => {
   const p = defaultPolicy(new Date(), { reserve_floor: "25000.00", alone_limit: "500.00" });
   const ep = exposurePolicyOfWorld({ ...p, agents: { ...p.agents, treasury: { ...p.agents.treasury, alone, ...(treasuryMonthly ? { monthly: treasuryMonthly } : {}) } } });
-  return exposureWords(exposureOf(ep), ep, WORST_RATE);
+  return exposureWords(exposureOf(ep), ep, WORST_RATE, undefined, TRY_POLICY.worstCase);
 };
 const WORST_RATE = recordedRate((await import("../../src/redesign/run.js")).loadRecord().record as unknown as Parameters<typeof recordedRate>[0]);
 const WORST = worldExpo("500.00");

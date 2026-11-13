@@ -444,9 +444,10 @@ describe("the deck's test count against the README's test line", () => {
     }
     expect({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: note !== null }).toEqual({ deck: `${deckTests} in ${deckFiles}`, readme: `${readme[1]} in ${readme[2]}`, noted: true });
     expect([note![1]!.replace(/,/g, ""), note![2]]).toEqual([deckTests, deckFiles]);
-    // The deck's count is one claims.md has on record, with its day, in the Tests row's history.
-    const testsRow = claims.split("\n").find((l) => l.startsWith("| Tests |")) ?? "";
-    expect(testsRow).toMatch(new RegExp(`(Was|;) ${deckTests} in ${deckFiles} files \\(\\d+ Nov`));
+    // The deck's count is one claims.md has on record, with its day, in the Tests row's history (since 13 Nov its own
+    // section, "The test count, earlier values", which the row links).
+    const history = claims.slice(claims.indexOf("## The test count, earlier values"));
+    expect(history).toMatch(new RegExp(`^- ${deckTests} in ${deckFiles} files \\(\\d+ Nov`, "m"));
   });
 });
 
