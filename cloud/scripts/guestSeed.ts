@@ -125,16 +125,18 @@ const STORY: [number, number, () => Promise<unknown>][] = [
   [19, 15, () => pay(b1)],
   [14, 14, async () => { l1 = await file(inv({ ...LAGER, no: "LN-2026-0790", date: "27 October 2026", due: "10 November 2026", net: "1,000.00", vatPct: 19, vatAmt: "190.00", total: "1,190.00" }), "lagerhaus-0790.pdf"); await addSupplier(l1); }],
   [13, 15, () => pay(l1)],
-  [9, 14, async () => { b2 = await file(inv({ ...BERGTEX, no: "BTX-2026-21", date: "2 November 2026", due: "16 November 2026", net: "1,554.62", vatPct: 19, vatAmt: "295.38", total: "1,850.00" }), "bergtex-21.pdf"); }],
+  [9, 14, async () => { b2 = await file(inv({ ...BERGTEX, no: "BTX-2026-20", date: "2 November 2026", due: "16 November 2026", net: "1,554.62", vatPct: 19, vatAmt: "295.38", total: "1,850.00" }), "bergtex-20.pdf"); }],
   [8, 15, () => pay(b2)],
   [6, 14, async () => { l2 = await file(inv({ ...LAGER, no: "LN-2026-0815", date: "4 November 2026", due: "18 November 2026", net: "520.00", vatPct: 19, vatAmt: "98.80", total: "618.80" }), "lagerhaus-0815.pdf"); }],
   [5, 15, () => pay(l2)],
   [3, 14, async () => { b3 = await file(inv({ ...BERGTEX, no: "BTX-2026-24", date: "9 November 2026", due: "23 November 2026", net: "1,100.00", vatPct: 19, vatAmt: "209.00", total: "1,309.00" }), "bergtex-24.pdf"); }],
   [2, 10, () => pay(b3, false)], // waits for the CFO's Face ID
   [2, 13, () => file(inv({ ...ZEELAND, no: "ZV-4471", date: "3 November 2026", due: "17 November 2026", net: "400.00", vatPct: 21, vatAmt: "84.00", total: "484.00" }), "zeeland-4471.pdf")], // a new supplier: waits
-  [1, 11, async () => { try { await file(inv({ ...BERGTEX, no: "BTX-2026-21", date: "2 November 2026", due: "16 November 2026", net: "1,554.62", vatPct: 19, vatAmt: "295.38", total: "1,850.00" }), "bergtex-21-again.pdf"); } catch { /* the duplicate is stopped */ } }],
+  [1, 11, async () => { try { await file(inv({ ...BERGTEX, no: "BTX-2026-20", date: "2 November 2026", due: "16 November 2026", net: "1,554.62", vatPct: 19, vatAmt: "295.38", total: "1,850.00" }), "bergtex-20-again.pdf"); } catch { /* the duplicate is stopped */ } }],
 ];
-for (const [d, h, step] of STORY.slice().sort((x, y) => y[0] - x[0] || x[1] - y[1])) { at(d, h); await step(); }
+// The ledger feed books after each step, as a runner does through the day, so the journal reads in date order (jury,
+// 13 Nov: a receipt booked after its payment).
+for (const [d, h, step] of STORY.slice().sort((x, y) => y[0] - x[0] || x[1] - y[1])) { at(d, h); await step(); syncLedger(db, now()); }
 
 // 5. One closing poll of the cards, the ledger feed books what moved, and the batches a runner would push.
 at(0, 15); await pollCardTransactions(db, w.issuing, now());
