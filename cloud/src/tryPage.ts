@@ -37,6 +37,7 @@ import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
+import { FILM_URL } from "../../src/config/brand.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -68,6 +69,8 @@ body:has(.screen.start) .trust { margin-top: auto; }
 .start .btn.big { margin-top: 0; width: 100%; }
 .start .btn .i { vertical-align: 0; }
 .start .fine { margin: 12px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
+.start .walkl { margin: 2px 0 0; font-size: 13px; text-align: center; }
+.start .walkl a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
 @media (min-width: 1024px) {
   body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
   body:has(.screen.start) header.top { grid-column: 1 / -1; grid-row: 1; }
@@ -606,7 +609,8 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   box.classList.add('start');
   const text=el('p','lede',C.start.text);const b=btn(C.start.button,true);
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
-  box.append(text,b,el('p','fine',C.start.fine));
+  const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
+  box.append(text,b,el('p','fine',C.start.fine),el('p','walkl',walk));
   b.addEventListener('click',async()=>{
     b.disabled=true;label(C.start.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -1335,7 +1339,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
