@@ -56,6 +56,16 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [audit/README.md](audit/README.md): the audit log of the recorded run of 30 October.
 - [security/README.md](security/README.md): the security artefacts (the software bill of materials).
 - Built after the kit (test environment, not live): [payables.md](payables.md) (the invoice inbox), [ledger.md](ledger.md) (Purser's own books), [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md) (ERP connectors), [airwallex-platform.md](airwallex-platform.md) (connected accounts), [cloud.md](cloud.md), [go-live.md](go-live.md) (what is open before real money) and [e2e-live.md](e2e-live.md) (three test companies, invoice to T:0).
+- More built after the kit, each saying its own status: [tokenize.md](tokenize.md) (invoice tokens on Metal, a
+  prototype; its run of 12 November is [runs/2026-11-12-tokenize.md](runs/2026-11-12-tokenize.md), its record template
+  [tokenize-run-template.md](tokenize-run-template.md)), [real-customers.md](real-customers.md) (each company's own
+  money account and books; behind flags that are off by default), [autopilot.md](autopilot.md) (pending invoices one
+  step forward, until a person is needed), [reconcile-books.md](reconcile-books.md) (Purser's books next to the outside
+  books), [zero-trust.md](zero-trust.md) (the limits proven layer by layer, generated),
+  [agent-evals-ledger.md](agent-evals-ledger.md) (evals of the ledger agents, generated),
+  [engine-events.md](engine-events.md) (the engine's events for the hands-on page; the code wins) and
+  [visa-icc.md](visa-icc.md) (Visa Intelligent Commerce Connect from public docs; access not granted, not used).
+- [readme-v2-draft.md](readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
 - [superpowers/specs/](superpowers/specs/): the design specs of 8 November for what was built after the kit. [plans/](plans/): design notes and research (Visa TAP, Airi, one source for the books).
 - Dated records, kept where other documents cite them: [data-qa.md](data-qa.md) (the data check of the recorded run of 30 October; the main run's is [runs/2026-11-03-main-run-data-qa.md](runs/2026-11-03-main-run-data-qa.md)) and [metal-qa-2026-11-01-week.md](metal-qa-2026-11-01-week.md) (the Metal QA of 1 November).
 
