@@ -1,0 +1,58 @@
+{
+  "recorded_at": "2026-11-13T17:33:37.065Z",
+  "origin": "https://purser-try.max-31b.workers.dev",
+  "page": "https://purser-try.max-31b.workers.dev/try",
+  "browser": "headless Chromium (Playwright), 390x844, dark",
+  "passkey": "a CDP virtual authenticator: a virtual test passkey, not a person's Face ID",
+  "money": "test money on the page's simulated bank; the test company is deleted after 24 hours",
+  "marks": {
+    "start": 0.49306583404541016,
+    "duplicate": 19.978065967559814,
+    "duplicate-held": 23.9820659160614,
+    "checked": 35.907065868377686,
+    "approve-shown": 40.79506587982178,
+    "approve-held": 46.347065925598145,
+    "sign": 46.35206580162048,
+    "paid": 54.17306590080261,
+    "paid-held": 57.18206596374512,
+    "cheat": 57.187065839767456,
+    "refused": 60.37006592750549,
+    "refused-held": 64.37406587600708
+  },
+  "windows": {
+    "try-start": {
+      "from": "start",
+      "to": "duplicate-held",
+      "seconds": 15
+    },
+    "try-approve": {
+      "from": "checked",
+      "to": "approve-held",
+      "seconds": 11
+    },
+    "try-paid": {
+      "from": "sign",
+      "to": "paid-held",
+      "seconds": 8
+    },
+    "try-cent": {
+      "from": "cheat",
+      "to": "refused-held",
+      "seconds": 8
+    }
+  },
+  "said": {
+    "start": "Run a company's payables with Purser. AI agents check each invoice on Purser's real engine. You sign the exact terms. Start with a test company Test money · deleted after 24 h",
+    "duplicate": "At work Your test company · test money · simulated bank Claude reads live Purser reads and checks it. Caught: a copy of a filed invoice. Filed before as BTX-2026-17, now paid. Nothing added or paid. Answered in 3.3 s, measured in your browser. The invoice Supplier Bergtex Textil GmbH Invoice number BTX-2026-17 Amount EUR 1,620.00 Due 14 Dec 2026 Status Paid Try another invoice",
+    "duplicate-held": "At work Your test company · test money · simulated bank Claude reads live Purser reads and checks it. Purser's code The same file came in again. It was already filed, so nothing was added. +3.3 s Caught: a copy of a filed invoice. Filed before as BTX-2026-17, now paid. Nothing added or paid. Answered in 3.3 s, measured in your browser. The invoice Supplier Bergtex Textil GmbH Invoice number BTX-2026-17 Amount EUR 1,620.00 Due 14 Dec 2026 Status Paid Try another invoice",
+    "checked": "At work Your test company · test money · simulated bank Claude reads live Purser reads and checks it. Claude Haiku 5.5 answered live. Its answer was used. +3.6 s Purser's code An invoice of EUR 1,850.00 came in and was checked: ready to pay. +2.3 s Checker agent · Claude Haiku 5.5 Decided: ask the CFO, because Bergtex Textil GmbH invoice BTX-2026-21 for EUR 1850.00 (due 2026-11-30) checks out: supplier on file, IBAN ****3000 is the account on file, subtotal plus VAT… (its own words) Purser's code enforced: ask the CFO; the agent may pay no invoice alone, so the CFO decides +2.3 s All steps Ready to pay. Nothing is paid until you sign the exact terms. Answered in 7.6 s, measured in your browser. The invoice Claude Supplier Bergtex Textil GmbH Invoice number BTX-2026-21 Amount EUR 1,850.00 Due 30 Nov 2026 Status Ready to pay Pay this invoice",
+    "approve-shown": "Approve Your test company · test money · simulated bank Claude reads live Approve the payment. EUR 1,850.00 Payee Bergtex Textil GmbH Account ending …3000 Due 30 Nov 2026 Conversion USD 401.45 → EUR 370.00 at 1.0850 Bank fee at most EUR 20.00 Sign before 13 Nov 2026, 17:46 8724b031b23d… Show the exact terms Your passkey signs exactly these terms. This saves a test passkey for purser-try.max-31b.workers.dev on this device; you can delete it afterwards. Create your approval passkey",
+    "approve-held": "Approve Your test company · test money · simulated bank Claude reads live Approve the payment. EUR 1,850.00 Payee Bergtex Textil GmbH Account ending …3000 Due 30 Nov 2026 Conversion USD 401.45 → EUR 370.00 at 1.0850 Bank fee at most EUR 20.00 Sign before 13 Nov 2026, 17:46 8724b031b23d… Show the exact terms Your passkey signs exactly these terms. This saves a test passkey for purser-try.max-31b.workers.dev on this device; you can delete it afterwards. Create your approval passkey Purser's code The payment was filed for approval. Nothing is paid before a person signs. +0.0 s Purser's code The invoice is now: waits for a signature. +0.0 s Purser's code A note for a person was added to the invoice. +0.0 s All steps",
+    "sign": "Approve Your test company · test money · simulated bank Claude reads live Approve the payment. EUR 1,850.00 Payee Bergtex Textil GmbH Account ending …3000 Due 30 Nov 2026 Conversion USD 401.45 → EUR 370.00 at 1.0850 Bank fee at most EUR 20.00 Sign before 13 Nov 2026, 17:46 8724b031b23d… Show the exact terms Your passkey signs exactly these terms. This saves a test passkey for purser-try.max-31b.workers.dev on this device; you can delete it afterwards. Create your approval passkey Purser's code The payment was filed for approval. Nothing is paid before a person signs. +0.0 s Purser's code The invoice is now: waits for a signature. +0.0 s Purser's code A note for a person was added to the invoice. +0.0 s All steps",
+    "paid": "Paid Your test company · test money · simulated bank Claude reads live Paid, booked, filed. 8724b031b23d… Paid on the simulated bank · test money EUR 1,850.00 PAID Fee EUR 13.40 the simulated bank's flat SWIFT fee Booked in Purser's ledger Account Debit Credit Invoice BTX-2026-21 · Bergtex Textil GmbH 2100 · creditors Dr EUR 1,850.00 1200 · bank Cr EUR 1,850.00 Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH 6800 · expense Dr EUR 13.40 1200 · bank Cr EUR 13.40 Bergtex Textil GmbH invoice BTX-2026-21 (received) 6200 · expense Dr EUR 1,554.62 1510 · VAT Dr EUR 295.38 2100 · creditors Cr EUR 1,850.00 Debits equal credits. Chain head File another invoice What Purser did Try changing what you signed See a sample company in Purser Cloud A demo company, read only: not your test company.",
+    "paid-held": "Paid Your test company · test money · simulated bank Claude reads live Paid, booked, filed. 8724b031b23d… Paid on the simulated bank · test money EUR 1,850.00 PAID Fee EUR 13.40 the simulated bank's flat SWIFT fee Booked in Purser's ledger Account Debit Credit Invoice BTX-2026-21 · Bergtex Textil GmbH 2100 · creditors Dr EUR 1,850.00 1200 · bank Cr EUR 1,850.00 Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH 6800 · expense Dr EUR 13.40 1200 · bank Cr EUR 13.40 Bergtex Textil GmbH invoice BTX-2026-21 (received) 6200 · expense Dr EUR 1,554.62 1510 · VAT Dr EUR 295.38 2100 · creditors Cr EUR 1,850.00 Debits equal credits. Chain head Filed in the archive Invoice 2026-11-09 BTX-2026-21 EUR 1850.00.pdf Receipt 2026-11-13 Bergtex Textil GmbH BTX-2026-21.pdf File another invoice What Purser did Try changing what you signed See a sample company in Purser Cloud A demo company, read only: not your test company.",
+    "cheat": "Paid Your test company · test money · simulated bank Claude reads live Paid, booked, filed. 8724b031b23d… Paid on the simulated bank · test money EUR 1,850.00 PAID Fee EUR 13.40 the simulated bank's flat SWIFT fee Booked in Purser's ledger Account Debit Credit Invoice BTX-2026-21 · Bergtex Textil GmbH 2100 · creditors Dr EUR 1,850.00 1200 · bank Cr EUR 1,850.00 Transfer fee, invoice BTX-2026-21 · Bergtex Textil GmbH 6800 · expense Dr EUR 13.40 1200 · bank Cr EUR 13.40 Bergtex Textil GmbH invoice BTX-2026-21 (received) 6200 · expense Dr EUR 1,554.62 1510 · VAT Dr EUR 295.38 2100 · creditors Cr EUR 1,850.00 Debits equal credits. Chain head Filed in the archive Invoice 2026-11-09 BTX-2026-21 EUR 1850.00.pdf Receipt 2026-11-13 Bergtex Textil GmbH BTX-2026-21.pdf File another invoice What Purser did Try changing what you signed See a sample company in Purser Cloud A demo company, read only: not your test company.",
+    "refused": "Pay Your test company · test money · simulated bank Claude reads live Pay it with your signature. Amount Payee Account ending Pay with my signature Refused by Purser Your signature: This signature is over other terms than the ones on screen. Nothing was paid. Purser's payment check: refused (the terms do not match what was approved) Its own words Signed8724b031b23ddcaae3a5541a43783aa2babc44ab2482b33f286d535f756616b2 Sent9211e9892bb5152d4a1146489554e7ecc4f247f1cf2217ecbb03f3686b3b51b6 You changed the amount by one cent. Your signature does not cover that. Round trip 769 ms, measured in your browser Transfers made: 0 Raw answer Put back what you signed Back",
+    "refused-held": "Pay Your test company · test money · simulated bank Claude reads live Pay it with your signature. Amount Payee Account ending Pay with my signature Refused by Purser Your signature: This signature is over other terms than the ones on screen. Nothing was paid. Purser's payment check: refused (the terms do not match what was approved) Its own words Signed8724b031b23ddcaae3a5541a43783aa2babc44ab2482b33f286d535f756616b2 Sent9211e9892bb5152d4a1146489554e7ecc4f247f1cf2217ecbb03f3686b3b51b6 You changed the amount by one cent. Your signature does not cover that. Round trip 769 ms, measured in your browser Transfers made: 0 Raw answer Put back what you signed Back"
+  }
+}

@@ -110,7 +110,7 @@ describe("captions, badges and placeholder cards (ASS)", () => {
     expect(ass).toMatch(/Dialogue: 5,0:01:17\.15,0:01:28\.90,Caption,.*awx-1 · 7 Nov · EUR 240\.00 by SWIFT/);
     expect(ass).toMatch(/Dialogue: 5,0:01:17\.00,0:01:55\.00,Badge,.*Airwallex sandbox · test money/);
     for (const b of ["Test world · no money moves", "Metal testnet · test USD", "Airi test card · test money"]) expect(ass).toContain(b);
-    expect(Object.values(BADGES).length).toBe(10);
+    expect(Object.values(BADGES).length).toBe(13);
   });
 
   it("draws a placeholder card where the owner's footage goes, and none once it is given", () => {
