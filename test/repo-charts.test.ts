@@ -59,3 +59,32 @@ describe("the changelog", () => {
     expect((md.match(/^- \d{4}-\d{2}-\d{2} · \[#\d+\]/gm) ?? []).length).toBe(n);
   });
 });
+
+describe("the README's diagrams and media", () => {
+  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  const blocks = (md: string) => [...md.matchAll(/```mermaid\n[\s\S]*?```/g)].map((m) => m[0]);
+
+  it("inlines the three diagrams exactly as docs/diagrams.md has them", () => {
+    const docs = blocks(readFileSync(join(ROOT, "docs/diagrams.md"), "utf8"));
+    expect(docs).toHaveLength(3);
+    expect(blocks(readme)).toEqual(docs);
+  });
+
+  it("opens See it with the hands-on demo's GIF and the caption media.json gives it, the test passkey said", () => {
+    const media = JSON.parse(readFileSync(join(ROOT, "docs/assets/media/media.json"), "utf8")) as { files: { file: string; caption: string }[] };
+    const caption = media.files.find((f) => f.file === "try-flow.gif")!.caption;
+    expect(caption).toMatch(/test passkey, no person or phone/);
+    const see = readme.slice(readme.indexOf("## See it"), readme.indexOf("\n## ", readme.indexOf("## See it") + 5));
+    expect(see.indexOf("docs/assets/media/try-flow.gif")).toBeGreaterThan(0);
+    expect(see.indexOf("docs/assets/media/try-flow.gif")).toBeLessThan(see.indexOf("cloud-dashboard.gif"));
+    expect(see).toContain(`*${caption}*`);
+    for (const f of ["cloud-dashboard.gif", "books.gif", "proof.gif"]) expect(existsSync(join(ROOT, "docs/assets/media", f)) && see.includes(f)).toBe(true);
+  });
+
+  it("says Connect Claude can read and propose only, with the public demo token and the dated live check", () => {
+    const sec = readme.slice(readme.indexOf("## Connect Claude"), readme.indexOf("\n## ", readme.indexOf("## Connect Claude") + 5));
+    expect(sec).toContain("it can never approve or pay");
+    expect(sec).toContain("`purser-demo-read-only`");
+    expect(sec).toMatch(/Checked on 13 November 2026, 06:57 UTC: `tools\/list` .* answers 7 read tools/);
+  });
+});

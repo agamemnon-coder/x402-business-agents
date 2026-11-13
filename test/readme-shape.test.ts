@@ -13,8 +13,9 @@ const lines = README.split("\n");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
 
 describe("the README's shape (jury panel, 12 Nov)", () => {
-  it("is at most 150 lines, with one badge row and 'Why this is a company' in the first 60 lines", () => {
-    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(150);
+  it("is at most 300 lines, with one badge row and 'Why this is a company' in the first 60 lines", () => {
+    // 150 lines until 13 Nov; the owner then asked for the three diagrams and the charts inline, so the cap is 300.
+    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(300);
     expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(1);
     expect(lines.indexOf("## Why this is a company")).toBeGreaterThan(0);
     expect(lines.indexOf("## Why this is a company")).toBeLessThan(60);

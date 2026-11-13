@@ -54,7 +54,8 @@ describe("one tagline (Q8)", () => {
   it("is \"AI agents spend. You sign off.\": Home's og:title, the README's title, the form's title, the deck's first slide, /film", () => {
     expect(HERO).toBe("AI agents spend. You sign off.");
     expect(head(pages.home!)).toContain(`<meta property="og:title" content="Purser · ${HERO}">`);
-    expect(read("README.md").split("\n")[0]).toBe(`# Purser · ${HERO}`);
+    // The README's title, under the Purser mark in the owner's centred top (13 Nov): the first heading.
+    expect(read("README.md").split("\n").find((l) => l.startsWith("# "))).toBe(`# Purser · ${HERO}`);
     expect(read("docs/submission/README.md")).toMatch(new RegExp(`## Title\\n\\nPurser · ${reEscape(HERO)}\\n`));
     expect(read("src/submission/deck.ts")).toContain("title: HERO,");
     expect(pages.film).toContain(`"${HERO}"`);
