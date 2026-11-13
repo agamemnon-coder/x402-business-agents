@@ -120,6 +120,11 @@ export const EXPOSURE_HOW = "How this is computed";
  */
 export const EXPOSURE_TASK_CARDS: "counted" | "apart" = "counted";
 
+/** The worst case's heading where the policy is Purser's own (README, Home, the CFO's view). */
+export const WORST_CASE_HEAD = "Worst case, set by policy";
+/** The same heading on /try/sign, whose figure is the visitor's test world's (judge run, 13 Nov: say whose numbers they are). */
+export const TRY_WORLD_WORST_HEAD = "Worst case, your test world's policy";
+
 const dayWords = (date: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 const agentWords = (a: Agent) => `${a[0]!.toUpperCase()}${a.slice(1)} agent`;
 
@@ -129,7 +134,7 @@ const agentWords = (a: Agent) => `${a[0]!.toUpperCase()}${a.slice(1)} agent`;
  * EXPOSURE_ABOVE; everything else (`how`) behind one fold, EXPOSURE_HOW, closed by default. EUR and test USD apart;
  * an EUR total only at the recorded rate, said with its source and date, inside the fold.
  */
-export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate | null, taskCards: "counted" | "apart" = EXPOSURE_TASK_CARDS) {
+export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate | null, taskCards: "counted" | "apart" = EXPOSURE_TASK_CARDS, head: string = WORST_CASE_HEAD) {
   const tasks = x.agents.find((e) => e.agent === "treasury")!.alone;
   const counted = taskCards === "counted";
   const less = (a: Amounts, t: number): Amounts => (counted ? a : { eurCents: a.eurCents - t, usdCents: a.usdCents });
@@ -140,8 +145,8 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
   const figure = `${moneyShort("EUR", month.eurCents)} ${what} + ${moneyShort("USD", month.usdCents)} on chain a month`;
   const approx = rate ? `≈ ${moneyShort("EUR", approxEurCents(month.eurCents, month.usdCents, rate.usdPerEur))} in all at the main run's rate of ${dayWords(rate.date)} (${rate.usdPerEur} USD per EUR, ${rate.source}); test USD is never added to EUR otherwise.` : "No EUR total: the record has no usable rate, and test USD is never added to EUR without one.";
   return {
-    /** In sight, large: "Worst case, set by policy" word for word. */
-    headline: `Worst case, set by policy: ${figure}.`,
+    /** In sight, large: "Worst case, set by policy" word for word (a test world's: "Worst case, your test world's policy"). */
+    headline: `${head}: ${figure}.`,
     figure,
     /** In sight, one short line. */
     tasks: counted
@@ -170,7 +175,7 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
       EXPOSURE_COMPARISON,
     ],
     /** The form's sentence, for the form's rewrite to quote word for word: "the agents together", a total over all agents. */
-    form: `Worst case, set by policy: the agents together can spend at most ${moneyShort("EUR", month.eurCents)}${counted ? " (cards and task cards)" : ""} and ${moneyShort("USD", month.usdCents)} (test USD) a month; everything above waits for the CFO.`,
+    form: `${head}: the agents together can spend at most ${moneyShort("EUR", month.eurCents)}${counted ? " (cards and task cards)" : ""} and ${moneyShort("USD", month.usdCents)} (test USD) a month; everything above waits for the CFO.`,
   };
 }
 export type ExposureWords = ReturnType<typeof exposureWords>;

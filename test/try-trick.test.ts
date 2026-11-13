@@ -168,14 +168,20 @@ describe("the /trick endpoint and its live call", () => {
 });
 
 describe("/health shows today's spend on the live agents (Max, 7 Nov)", () => {
-  it("the USD spent today against the daily budget, once the page's desk has its table", async () => {
+  it("the USD spent today against the daily budget, read from the page's own instance (never the relay's storage)", async () => {
     const { Relay } = await import("../worker/src/core.js");
-    const db = new Database(":memory:");
-    const sql = sqlOver(db);
-    new TrySignDesk(sql, { reader: null });
-    db.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run(new Date().toISOString().slice(0, 10), 0.12345);
-    const relay = new Relay(sql, { relayToken: "t", webhookSecret: undefined, mfa: false, liveRun: false } as never);
+    // Two instances, two databases, as on the Worker: the desk's spend is in the try-sign instance's table only.
+    const deskDb = new Database(":memory:");
+    const now = () => new Date("2026-11-13T09:00:00Z");
+    const desk = new TrySignDesk(sqlOver(deskDb), { reader: null, now });
+    deskDb.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run("2026-11-13", 0.12345);
+    deskDb.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run("2026-11-12", 9);
+    const relaySql = sqlOver(new Database(":memory:"));
+    const relay = new Relay(relaySql, { relayToken: "t", webhookSecret: undefined, mfa: false, liveRun: false, liveAgents: async () => desk.spentToday() } as never);
     const body = (await (await relay.fetch(new Request("https://relay.example/health"))).json()) as { live_agents_today?: { usd: number; budget_usd: number } };
     expect(body.live_agents_today).toEqual({ usd: 0.1235, budget_usd: AGENT_LINE_DAILY_USD });
+    // Without a way to ask the page's instance, /health says nothing about it (and the relay's own storage has no such table).
+    const alone = new Relay(sqlOver(new Database(":memory:")), { relayToken: "t", webhookSecret: undefined, mfa: false, liveRun: false } as never);
+    expect(((await (await alone.fetch(new Request("https://relay.example/health"))).json()) as { live_agents_today?: unknown }).live_agents_today).toBeUndefined();
   });
 });
