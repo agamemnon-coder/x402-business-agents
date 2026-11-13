@@ -6,7 +6,7 @@ import { Ajv } from "ajv";
 import { describe, expect, it } from "vitest";
 import { SERVER_VERSION } from "../cloud/src/claude/mcp.js";
 
-const entry = JSON.parse(readFileSync("server.json", "utf8")) as Record<string, any>;
+const entry = JSON.parse(readFileSync("server.json", "utf8")) as { $schema: string; name: string; version: string; description: string; packages?: unknown; remotes: unknown[] };
 const schema = JSON.parse(readFileSync("fixtures/mcp-registry/server.schema.2025-12-11.json", "utf8")) as Record<string, unknown>;
 
 describe("server.json for the official MCP Registry", () => {

@@ -90,7 +90,7 @@ const cursorProp = { type: "string", description: "The next_cursor of the previo
 const obj = (properties: Json, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 /** An output shape: the named fields are promised, more may come along. */
 const shape = (properties: Json, required: string[] = Object.keys(properties)) => ({ type: "object", properties, required });
-const S = { type: "string" }, N = { type: "number" }, I = { type: "integer" }, B = { type: "boolean" }, NS = { anyOf: [{ type: "string" }, { type: "null" }] };
+const S = { type: "string" }, I = { type: "integer" }, NS = { anyOf: [{ type: "string" }, { type: "null" }] };
 const arr = (items: Json = { type: "object" }) => ({ type: "array", items });
 const PAGE = shape({ items: arr({ type: "object" }), next_cursor: NS });
 /** The resources a result names, so a client can open them (purser:// URIs, read with resources/read). */

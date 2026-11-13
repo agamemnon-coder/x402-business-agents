@@ -87,6 +87,8 @@ const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 /** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
 const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
+/** The cloud's per-client setup page (cloud/src/claude/connectPage.ts) and the connections guide (13 Nov). */
+const CONNECT_PAGE = `${PURSER_CLOUD_URL}connect-ai`, CONNECTIONS_DOC = "docs/connections.md";
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
@@ -97,6 +99,8 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   if (!repoText("src/platform/mcpServer.ts").includes(NO_TOOL)) throw new Error("src/platform/mcpServer.ts no longer says what no tool can do");
   if (!repoText(CLOUD_ROUTES).includes(`path: "${CLOUD_OPENAPI_PATH}"`)) throw new Error(`${CLOUD_ROUTES} no longer serves ${CLOUD_OPENAPI_PATH}`);
   if (!repoText(CONNECT_DOC).includes(`\`${DEMO_CONNECTOR_TOKEN}\``) || !repoText("cloud/src/auth.ts").includes(`DEMO_CONNECTOR_TOKEN = "${DEMO_CONNECTOR_TOKEN}"`)) throw new Error("the demo company's connector token is not the one the cloud and its guide name");
+  if (!repoText("cloud/src/claude/routes.ts").includes('path: "/connect-ai"')) throw new Error("the cloud no longer serves /connect-ai");
+  if (!repoText("cloud/src/connections.ts").includes("export function connectionsCatalogue")) throw new Error("cloud/src/connections.ts no longer lists the connections");
   if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
   const body = `<div class="cols c2">
   <article class="pc card fd wide" id="agent-api">${head("bot", "Agent API (MCP server)")}
@@ -113,14 +117,20 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
-    <p>Claude, Cursor, VS Code or Gemini CLI reads your books in Purser over MCP and can propose a payment. Only the CFO's Face ID approves one. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
-    <div class="links">${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "Setup for each AI")}</div>
+    <p>Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf reads your books in Purser over MCP: invoices, payments, cash, VAT, what waits for approval and the CFO's policy. Only the CFO's Face ID approves a payment. To try: <b>Try as guest</b> in Purser Cloud opens the read-only demo company, and the demo token ${code(DEMO_TOKEN)} connects your AI to it.</p>
+    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "The connector's guide")}</div>
     ${foldHtml("Open Purser Cloud as guest, connect Claude", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
       `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
     ])}</article>
+  <article class="pc card wide" id="connections">${head("arrow-left-right", "Connections to other systems")}
+    <p>Every connection reads or exports; none moves money, approves or writes to the books.</p>
+    <ul class="pl"><li><b>Live:</b> the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.</li>
+      <li><b>Format exports:</b> Xero, QuickBooks Online and Exact Online CSV, Slack and Teams message formats, ISO 20022 pacs.008. Files and messages in each product's format, not live integrations.</li>
+      <li><b>From the runner:</b> Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live).</li></ul>
+    <div class="links">${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}</div></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>

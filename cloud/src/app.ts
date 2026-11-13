@@ -37,6 +37,7 @@ import { noteRequest } from "./try/metrics.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
+import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -272,6 +273,18 @@ export const ROUTES: Route[] = [
     }
   } },
   { method: "GET", path: "/v1/openapi.json", summary: "This API, as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin)) },
+  { method: "GET", path: "/v1/openapi.read.json", summary: "The read API alone (every GET a read-scoped key may call), as OpenAPI 3.1.", need: "public", run: async (c) => json(200, openApi(c.env.origin, { readOnly: true })) },
+  { method: "GET", path: "/v1/export/csv/{format}/{kind}", summary: "Supplier invoices (kind bills: xero, quickbooks, exact) or ledger journals (kind journals: xero, exact) as a CSV file in that product's import columns; from and to (days) narrow it. A format export, not a live integration: the file is imported by a person.", need: "read", run: async (c) => {
+    const [format, kind] = c.params as [string, string];
+    const allowed = (CSV_FORMATS as Record<string, readonly string[]>)[format];
+    if (!allowed) return err(404, `no CSV format ${format}: xero, quickbooks or exact`);
+    if (!allowed.includes(kind)) return err(404, `${format} exports ${allowed.join(" and ")}`);
+    const day = (k: string) => { const v = c.url.searchParams.get(k); if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new BadRequest(`${k} must be a day like 2026-11-30`); return v || null; };
+    const from = day("from"), to = day("to");
+    const text = kind === "bills" ? await billsCsv(db(c), format as CsvFormat, from, to) : await journalsCsv(db(c), format as "xero" | "exact", from, to);
+    return new Response(text, { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="purser-${kind}-${format}.csv"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  } },
+  { method: "GET", path: "/v1/connections", summary: "Every connection Purser has to other systems, what each does and whether it is a live integration or a format export.", need: "public", run: async (c) => json(200, connectionsCatalogue(c.env.origin)) },
 
   { method: "GET", path: "/v1/admin/companies", summary: "The companies on this cloud for the platform operator: each one's Airwallex account and status, the supplier payouts that moved and those waiting, and Purser's fees taken, from what the runners pushed (never a key or an account number).", need: "platform", run: async (c) => json(200, await platformCompanies(c.env.sql)) },
   { method: "POST", path: "/v1/admin/tenants", summary: "Create a company and its first owner; returns the owner's API key once.", need: "platform", run: async (c) => {
@@ -419,7 +432,13 @@ export const ROUTES: Route[] = [
 
   { method: "POST", path: "/v1/sync", summary: "The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys.", need: "sync", run: async (c) => {
     const b = await body(c, SyncBatch, 50_000_000);
-    return json(200, { applied: await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal }) });
+    // What the push changes is compared before and after it: the company's webhook hears payment.paid, approval.needed
+    // and books.closed (cloud/src/connections.ts), once, for a change this push made.
+    const before = await statusesBefore(db(c), b);
+    const head = (await syncState(db(c))).ledger.entry_id;
+    const applied = await applySync(db(c), c.env.blobs, b, c.now, { kind: c.caller!.kind, principal: c.caller!.principal });
+    for (const e of await eventsOf(db(c), b, before, head, c.env.origin)) await notify(c.env.sql, c.caller!.tenantId, e.type, e.data, c.now, c.env.outbound, c.env.retryDelayMs);
+    return json(200, { applied });
   } },
   { method: "GET", path: "/v1/sync/state", summary: "Where the cloud's copy stands: the heads of the audit and ledger chains, and the documents it holds.", need: "sync", run: async (c) => json(200, await syncState(db(c))) },
   { method: "GET", path: "/v1/mail", summary: "Inbound e-mail waiting for the runner; paginated (limit, cursor).", need: "sync", run: async (c) => json(200, await paged<Record<string, unknown>>(db(c), "inbound_mail", "id", { status: "queued" }, c.url.searchParams, (r) => r)) },
@@ -722,9 +741,12 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
 const ERROR = (description: string) => ({ description, content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } });
 
 /** OpenAPI 3.1, generated from the route table. */
-export function openApi(origin: string): Record<string, unknown> {
+/** The read API alone: every GET a read-scoped key may call (no admin, sync, platform or hands-on demo route). */
+const isReadRoute = (r: { method: string; path: string; need: string }) => r.method === "GET" && r.need === "read" && r.path.startsWith("/v1/") && !r.path.startsWith("/v1/try") && !r.path.startsWith("/v1/engine") && !r.path.startsWith("/v1/edge");
+
+export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<string, unknown> {
   const paths: Record<string, Record<string, unknown>> = {};
-  for (const r of ROUTES) {
+  for (const r of o.readOnly ? ROUTES.filter(isReadRoute) : ROUTES) {
     const params = [...r.path.matchAll(/\{(\w+)\}/g)].map((m) => ({ name: m[1], in: "path", required: true, schema: { type: "string" } }));
     (paths[r.path] ??= {})[r.method.toLowerCase()] = {
       summary: r.summary,
@@ -736,7 +758,9 @@ export function openApi(origin: string): Record<string, unknown> {
   }
   return {
     openapi: "3.1.0",
-    info: { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
+    info: o.readOnly
+      ? { title: "Purser Cloud read API", version: "1.0.0", description: "The read-only part of Purser Cloud's API: invoices, documents, suppliers, payments, the transactions register, the ledger, its reports and the accounting exports. Every route is a GET a read-scoped key may call; none moves money, approves or writes." }
+      : { title: "Purser Cloud API", version: "1.0.0", description: "Everything a company's finance runs on, in one place: invoices, documents, suppliers, payments, the ledger and its reports. Test money only until a company goes live." },
     servers: [{ url: origin }],
     components: { schemas: { Error: { type: "object", required: ["error", "code"], properties: { error: { type: "string", description: "What went wrong, for a person" }, code: { type: "string", enum: Object.values(CODES), description: "Stable, for a program" } } } }, securitySchemes: { bearer: { type: "http", scheme: "bearer", description: "An API key (pck_...) or a passkey session (pcs....)" }, platformAdmin: { type: "http", scheme: "bearer" } } },
     paths,

@@ -4,6 +4,7 @@
 // initialize still serves older clients; every tool has a title, icons, annotations and an outputSchema its results
 // conform to; results link the resources they name; the books, invoices, payments and the policy are resources;
 // lists page with cursors; errors say what to do; and still nothing approves, pays, changes a limit or writes.
+/* eslint-disable @typescript-eslint/no-explicit-any -- JSON-RPC answers are read loosely here; each test checks their shape */
 import { createHash, randomBytes } from "node:crypto";
 import { Ajv } from "ajv";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
