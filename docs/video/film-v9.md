@@ -48,3 +48,22 @@ Each row fits its words with a second to spare; nothing is sped up.
 Put the film's YouTube id in `src/config/film.ts` (`FILM_YOUTUBE_ID`). /watch then embeds it (youtube-nocookie.com,
 allowed by that page's CSP only), each chapter jumps to its time, and Watch may return as a tab (`WATCH_IN_MENU`).
 The chapters for the YouTube description are at the end of `script-5.md`.
+
+## The hand-in film (13 Nov, draft)
+
+The film for the hand-in, under 4:45 (`HANDIN` in `src/film/cuts.ts`, 4:38 as cut): the problem; Kit 11's core; the
+hands-on demo on Max's phone; Face ID checked on chain and a payment refused on chain (Metal, 12 Nov); Airwallex's own
+card limit; Visa via Airi (12 Nov); two locks, then PAID; the books Claude codes; Purser Cloud's console; the proof
+page; what is not done; the close.
+
+- [handin-script.md](handin-script.md): the script with its times, words, captions, badges and claims.
+- [handin-shots.md](handin-shots.md): per scene, the shot, who records it (Max on his iPhone, Max on his laptop, or the
+  capture tool), the exact address or screen, and what is done there.
+- [handin.srt](handin.srt): the captions (narration) draft for YouTube.
+
+All three are written by `npm run cut -- --docs handin-5` and a test holds them to the code. Two lines follow what the
+records show, not what was hoped: the hands-on demo's line says the screen names who read the invoice (no record shows
+the deployed demo with Claude switched on; with Claude on, keep the take whose screen says so), and the Visa scene says
+the signed hash travels with the payment, while "what is not done" says the sandbox did not refuse a reused credential.
+Finalise after today's site fixes: capture the page shots (`npm run capture -- D1a T3 F0 F1 F1b F2 T9a V3 D3 T5f B1 PR1 V3n`),
+then `npm run cut -- handin-5 --vo <dir> --own M1=… --own P2a=… --own S1=…`.

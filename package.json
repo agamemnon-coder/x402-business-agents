@@ -15,6 +15,7 @@
   },
   "scripts": {
     "books:statement": "tsx scripts/books-statement.ts",
+    "books:month": "tsx scripts/books-month.ts",
     "test": "vitest run",
     "cloud:font": "tsx cloud/scripts/font.ts",
     "cloud:pdfjs": "tsx cloud/scripts/pdfjs.ts",

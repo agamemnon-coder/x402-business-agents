@@ -43,10 +43,15 @@ describe("the scene", () => {
     expect(SCENE_CSS).not.toMatch(/url\(/);
   });
 
-  it("is on the console's page too, with its CSS in the one nonce style", () => {
+  // Since 13 Nov (owner: Purser Cloud white and enterprise, clearly not the /try demo) the console no longer draws /try's
+  // scene: its signed-out band is a calm panel, what Purser Cloud is in three lines, and the page is always light.
+  it("is /try's alone: the console shows its own calm panel instead, always light", () => {
     const page = consolePage("n0nce", { origin: "https://cloud.example", rpId: "cloud.example", mailDomain: "" });
-    expect(page).toContain(`<div class="hero">${svg}</div>`);
-    expect(page).toContain(SCENE_CSS);
+    expect(page).not.toContain(svg);
+    expect(page).not.toContain(SCENE_CSS);
+    expect(page).toMatch(/<div class="hero"><div class="side"><h2 data-t="cs.side.title">Purser Cloud<\/h2>/);
+    expect(page).toContain('<html lang="en" data-theme="light">');
+    expect(page).toContain('<meta name="color-scheme" content="light">');
     expect(page).not.toMatch(/class="mk">P</);
   });
 });

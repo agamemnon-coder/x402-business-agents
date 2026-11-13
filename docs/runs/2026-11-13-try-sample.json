@@ -1,0 +1,18 @@
+{
+  "what": "One visit of the hands-on demo (/try) on the live deployment (https://kit11.max-31b.workers.dev/try), sample invoice \"A clean invoice from a supplier on file\", 13 November 2026 05:19 UTC, driven by Chromium with its virtual passkey authenticator. Claude was on: Claude Haiku 5.5 read the invoice, and the Checker, the Coder and the Payer agents each ran on Claude Haiku 5.5 (request ids below); Purser's code enforced every limit and the CFO's passkey signed the exact terms. Test money, a simulated bank, a test passkey.",
+  "captured_at": "2026-11-13",
+  "mode": { "reader": "claude", "reader_model": "claude-haiku-5-5", "bank": "simulated", "money": "test", "passkey": "virtual test authenticator" },
+  "invoice": { "supplier": "Bergtex Textil GmbH", "number": "BTX-2026-21", "currency": "EUR", "total": "1850.00", "due": "2026-11-30", "account_ending": "3000" },
+  "read": { "read_by": "claude:claude-haiku-5-5" },
+  "check": { "status": "Ready to pay", "checker": { "source": "claude", "model": "claude-haiku-5-5", "proposed": "ask_cfo", "enforced": "the agent may pay no invoice alone, so the CFO decides", "request_id": "req_011CgzN2nJq59TcuPXdPSSy5" } },
+  "coded": { "source": "claude", "model": "claude-haiku-5-5", "account": "6200", "request_id": "req_011CgzN2qb2MUdKDtpj39F77" },
+  "payer": { "source": "claude", "model": "claude-haiku-5-5", "rail": "bank_swift", "pay_currency": "USD", "outcome": "ask_cfo", "request_id": "req_011CgzN3F59HyTH4Nkw6TyNG" },
+  "claude_cost_usd_micros": { "read": 324, "checker": 713, "coder": 788, "payer": 638 },
+  "signed": { "terms_hash_prefix": "b39aae3677f9", "method": "passkey" },
+  "paid": { "status": "PAID", "bank": "simulated", "fee": "13.40" },
+  "booked": [
+    { "account": "6200", "name": "Expense", "debit": "1554.62", "credit": null },
+    { "account": "1510", "name": "Input VAT", "debit": "295.38", "credit": null },
+    { "account": "2100", "name": "Creditors", "debit": null, "credit": "1850.00" }
+  ]
+}

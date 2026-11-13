@@ -125,8 +125,8 @@ a0a455444a30a936bb6c5f3b100b41d71cb94fd7:cloud/src/engine/hostWorker.ts:generic-
 # 12 Nov: the passkey account's address on Metal testnet (a public contract, linked on the explorer), next to the word
 # "Passkey account" in the runs list: an address, not a key
 f26d0b8e945485109e36bcaca78a26604ebdae25:docs/runs/README.md:generic-api-key:16
-# False positives (13 Nov): an env variable name passed through, not its value; a virtual test passkey's public
-# fingerprint; a token id that is the public document hash of a test run.
+# 13 Nov (owner approved): verified false positives. hostWorker.ts reads the env var by name only; the fixture's
+# passkey_fingerprint is a public-key hash of a labelled virtual test passkey, and token_id is the fixture's document hash.
 1d84591f21c2f73b9c8cef3b6cb24135dcd74d92:cloud/src/engine/hostWorker.ts:generic-api-key:126
 020bfdc4c498a7c2e2021d90df0f8d5f0b653116:test/fixtures/tokenize-run.json:generic-api-key:26
 020bfdc4c498a7c2e2021d90df0f8d5f0b653116:test/fixtures/tokenize-run.json:generic-api-key:49

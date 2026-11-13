@@ -65,9 +65,10 @@ export function airwallexHold(log = read(TWO_LOCKS_LOG), paid = read(TWO_LOCKS_P
   const approvedDay = new Date(`${day} 12:00 UTC`).toISOString().slice(0, 10);
   return {
     rail: "airwallex", name: "Airwallex", code: status, control: "Its own transfer approval workflow",
-    short: `Held ${transfer.slice(0, 8)}… (${amount}) until a person approved it at Airwallex.`,
-    what: `A labelled virtual test passkey signed the terms in Purser; Purser created transfer ${transfer.slice(0, 8)}… for ${amount}. Airwallex held it ${status} until a person approved it at Airwallex, ${shortDay(approvedDay)}; then ${ended} (simulated settlement).`,
-    date: isoDay(created), label: "Airwallex sandbox, test money", record: TWO_LOCKS_LOG,
+    // Jury pass, 13 Nov: the card is dated the day it ended PAID (12 Nov), and links that day's record.
+    short: `Held ${transfer.slice(0, 8)}… (${amount}) until a person approved it at Airwallex; then ${ended}.`,
+    what: `A labelled virtual test passkey signed the terms in Purser; Purser created transfer ${transfer.slice(0, 8)}… for ${amount} on ${shortDay(isoDay(created))}. Airwallex held it ${status} until a person approved it at Airwallex, ${shortDay(approvedDay)}; then ${ended} (simulated settlement).`,
+    date: approvedDay, label: "Airwallex sandbox, test money", record: TWO_LOCKS_PAID_LOG,
   };
 }
 const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));

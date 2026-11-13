@@ -18,6 +18,7 @@ import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
 import { esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
 import { split } from "./run.js";
+import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
@@ -164,8 +165,8 @@ export const FEATURES = [
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
-export const STAT_RECORDS = "docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-12-vic-3.json";
-export const STAT_NOTE = "Sandbox and testnet runs. Each figure from its run record.";
+export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-12-vic-3.json";
+export const STAT_NOTE = "Each figure from a sandbox or testnet record.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
 /** The fold at the end of Home (the owner, 12 Nov, for the Founder's award): no new page, no menu item, no person. */
@@ -225,14 +226,32 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
 }
 
 /**
+ * First on record (jury pass, 13 Nov): Face ID verified on chain. The passkey account on Metal testnet
+ * (docs/runs/<date>-faceid-onchain.json): every limit change ran only after all its owners' passkeys signed, checked by
+ * the account itself; a payment over the cap was refused on chain, and paid after both signed the raise. The second
+ * signer is a virtual test passkey, and the tile says so. No record, or no refusal followed by a raise: no tile.
+ */
+export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
+  if (!owners) return [];
+  const steps = ownersSteps(owners.rec);
+  const refused = steps.findIndex((s) => s.key === "refused");
+  const raised = steps.findIndex((s, i) => i > refused && s.key === "replace");
+  if (refused < 0 || raised < 0) return [];
+  const all = owners.rec.owners.length, virtual = owners.rec.owners.filter((o) => o.virtual).length;
+  // The stand-in in sight: the co-signer is a virtual test passkey (the CFO's device is as the owner stated it).
+  return [{ n: owners.rec.threshold, suf: ` of ${all}`, label: `Face ID verified on chain${virtual ? "; co-signer a test key" : ""}`, icon: "scan-face", tone: "ok" }];
+}
+
+/**
  * The stat row (the owner, 12 Nov: one strong stat row), every figure from a run record: Claude's decisions in the main
  * run (its agent_stats), Metal payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
  * run) and the Visa read-backs (vic-3). A figure whose record lacks it drops out.
  */
-export function homeStats(run: AgentRun, rows: ProofRow[] = proofRows(run)): Stat[] {
+export function homeStats(run: AgentRun, rows: ProofRow[] = proofRows(run), owners: OwnersRun | null = ownersRun()): Stat[] {
   const sp = split(run.record), pay = metalStory(run.record).payments;
   const awx = rows.find((r) => r.partner === "Airwallex"), m = awx ? /^(\w+) ([\d.]+) over a ([\d.]+) limit/.exec(awx.text) : null;
   return [
+    ...faceIdTile(owners),
     ...(sp.decisions ? [{ n: sp.byClaude, label: `Claude decisions in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}`, icon: "bot" }] : []),
     ...(pay.total ? [{ n: pay.total, label: "Metal payments, each its own transaction", icon: "link-2", tone: "ok" as const }] : []),
     ...(m ? [{ n: Number(m[2]), dec: 2, pre: `${m[1]} `, label: `declined by Airwallex over a ${m[1]} ${m[3]} card limit`, icon: "ban", tone: "bad" as const }] : []),
@@ -296,7 +315,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
   // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
   const real = [
-    "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on Purser's own engine, 12 November, with no API key set, so Purser's code read that invoice; when /try runs live, its reader is Claude. Test money, a simulated bank, a test passkey.",
+    "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey.",
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
     `The Metal figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,

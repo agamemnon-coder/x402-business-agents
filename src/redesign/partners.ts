@@ -23,7 +23,8 @@ import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
-import { VIC3_RUN_FILE, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
+import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary, visaSummary } from "./vic3Run.js";
+import { SUMMARY_CSS, summaryHtml } from "./summary.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
@@ -38,7 +39,7 @@ import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.j
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
 import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, holdState, metalBody } from "./metalMandates.js";
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, measuredBlock, sweepFold } from "./claudeEvidence.js";
-import { BOOKS_CSS, BOOKS_JS, CODER_EVAL, MONEYBIRD_RECORD, STATEMENT_FILE, booksBody, booksData } from "./booksPage.js";
+import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
 
@@ -266,8 +267,9 @@ export function assertVicFirst(html: string): void {
   }
   for (const id of [VIC_FLOW_ID, VIC_FACTS_ID, VISA_OVERVIEW_ID, AIRI_RUN_ID]) if (!top.includes(`id="${id}"`)) fail(`the VIC block #${id} is not above the TAP fold`);
   for (const id of [VIC2_RUN_ID, VIC_COMPARE_ID]) if (main.includes(`id="${id}"`) && !top.includes(`id="${id}"`)) fail(`the block #${id} is not above the TAP fold`);
-  const unfolded = top.replace(/<details\b[\s\S]*?<\/details>/g, " ");
-  for (const id of [VIC_FACTS_ID, VIC_COMPARE_ID]) if (top.includes(`id="${id}"`) && !unfolded.includes(`id="${id}"`)) fail(`#${id} is inside a fold`);
+  // Jury pass, 13 Nov: the VIC blocks (#vic-facts, #vic-compare among them) sit in the one details fold under the four
+  // cards; what must stay outside any fold is the entry line and the Intelligent Commerce Connect line.
+  const unfolded = top.replace(/<details\b[\s\S]*<\/details>/g, " ");
   const seen = plainWords(unfolded);
   if (!seen.includes(VISA_ENTRY_LINE)) fail("the entry line (which runs are the Visa entry) is not on the page, outside any fold");
   // With an ICC run record (src/redesign/iccBlock.ts), its block takes the status line's place: the line would no longer be true.
@@ -326,11 +328,16 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // The latest live run leads (12 Nov, vic-3): the record's own numbers and ids; the first run (7 Nov) follows.
   const vic3 = vic3Run();
   const more = [vicAttemptsHtml(rec), vicNetworkBlock(rec), vicRulesBlock(rec, vic2Run()), cardDataHtml()].join("");
+  // Jury pass, 13 Nov: the latest run as it ended for each purchase ("1 paid after Face ID, 3 refused by Purser, 1 not
+  // tapped: nothing charged"), four cards, the two lines that say what the entry is, then every detail in one fold.
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
-  <p class="vintro">${esc(VISA_LEAD)}</p>
+  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
+  ${summaryHtml(visaSummary(vic3), "The latest live run in four cards")}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
-  ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at) })}</div>` : ""}
+  <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
+  ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>` : ""}
+  ${vic3 ? `<div class="awrb">${vic3RunHtml(vic3, { first: dayShort(rec.started_at), summarised: true })}</div>` : ""}
   ${vicFlowBlock(rec, { h: "h2" })}
   ${vicFactsHtml(vicFacts(rec))}
   ${vicCompareHtml(vicCompare(rec, vicNetworkRecord()))}
@@ -341,12 +348,13 @@ export function visaPage(run: AgentRun = agentRun()): string {
   <div class="awrb">${vic2RunBlock(undefined, { fold: false })}</div>
   ${more ? `<div class="awrb"><div class="card" id="${VISA_MORE_ID}">${more}</div></div>` : ""}
   <a class="open" href="proof#${AIRI_RUN_ID}">All the proof ${icon("arrow-right", 15)}</a>
+  </details>
   <div class="folds card">${visaTapFold(run)}</div>
 </div></main>`;
   const html = page({
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }`, body, js: COUNT_JS, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${SUMMARY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -424,8 +432,10 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   ];
 }
 export const ICC_LINE = "Visa Intelligent Commerce Connect (access requested)";
-export function builtOnHtml(run: AgentRun = agentRun(), icc = true): string {
-  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li><a class="flink" href="${esc(i.href)}"${/^https?:/.test(i.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(`${i.name}: ${i.proof}`)}</a></li>`).join("")}${icc ? `<li>${esc(ICC_LINE)}</li>` : ""}</ul>`;
+// Jury pass, 13 Nov: Visa Intelligent Commerce Connect is not used, so it is not in "Built on" (/visa says its status in
+// its body: VISA_ICC_LINE). The second argument stays for callers; it changes nothing now.
+export function builtOnHtml(run: AgentRun = agentRun(), _icc = false): string {
+  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li><a class="flink" href="${esc(i.href)}"${/^https?:/.test(i.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(`${i.name}: ${i.proof}`)}</a></li>`).join("")}</ul>`;
 }
 // Every page's footer carries it (review, 12 Nov), computed once per process from the same records.
 /**
@@ -433,7 +443,7 @@ export function builtOnHtml(run: AgentRun = agentRun(), icc = true): string {
  * /proof, and /trace links no other host) and no "live" (a recorded run or a replay is never called live there).
  */
 export function builtOnPlainHtml(run: AgentRun = agentRun()): string {
-  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li>${esc(`${i.name}: ${i.proof.replace(/\blive /g, "")}`)}</li>`).join("")}<li>${esc(ICC_LINE)}</li></ul>`;
+  return `<ul class="builton"><li><b>Built on</b></li>${builtOnItems(run).map((i) => `<li>${esc(`${i.name}: ${i.proof.replace(/\blive /g, "")}`)}</li>`).join("")}</ul>`;
 }
 let builtOnCache = "";
 setBuiltOn(() => (builtOnCache ||= builtOnPlainHtml()));
@@ -454,8 +464,8 @@ export function t0Page(run: AgentRun = agentRun()): string {
 
 /** /books (owner, 12 Nov): Purser's bookkeeping with AI agents, from the run records and evals alone (src/redesign/booksPage.ts). */
 export function booksPage(run: AgentRun = agentRun()): string {
-  return page({ title: "Books", description: "The books Purser's agents kept for a test company: balance sheet, P&L, cash and spend charts, the invoices Claude sorted with its reasons, and a PDF.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()), js: BOOKS_JS, stage: false,
-    source: `Source: ${STATEMENT_FILE} (npm run books:statement, from ${MONEYBIRD_RECORD}), ${CODER_EVAL} and ${T0_JOURNAL_RECORD}.`, real: ["The balance sheet is a test company's, test money: its opening equity is the test bank's opening balance.", "The invoices Claude sorted are the Coder eval's test invoices.", "Moneybird and T:0 are sandboxes with test data."], builtOn: builtOnHtml(run) });
+  return page({ title: "Books", description: "A month of a test company's books: twenty supplier invoices read and booked by Claude live, paid on a simulated bank; balance sheet, P&L, charts and a PDF.", tab: "books", css: `${CSS}\n${BOOKS_CSS}`, body: booksBody(booksData()), js: BOOKS_JS, stage: false,
+    source: `Source: ${RUN_FILE} (npm run books:month), ${MONEYBIRD_RECORD} and ${T0_JOURNAL_RECORD}.`, real: ["The company and its suppliers are fictional, and the money is test money on a simulated bank: its opening equity is that bank's opening balance.", "Claude (Haiku) read and coded every invoice live in the run, under the demo's spend caps; the approvals were signed by a software passkey.", "Moneybird and T:0 are sandboxes with test data, from earlier runs."], builtOn: builtOnHtml(run) });
 }
 
 /** The clean 404: what happened, and the four tabs. No script. */

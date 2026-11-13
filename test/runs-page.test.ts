@@ -393,7 +393,12 @@ describe("/runs as a timeline", () => {
     const live = entriesOf(liveList(html)), reh = entriesOf(rehGroup(html));
     // Review 12 Nov: a local control test (no partner called: vic-2) sits with the rehearsals, outside the live runs.
     const outside = (r: RunRow) => kindOf(r) === "rehearsal" || kindOf(r) === "control";
-    expect(live.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r)).map((r) => r.key));
+    // Jury pass, 13 Nov: a run that stopped short (PARTIAL_RUNS) is not counted as live; it has its own closed group.
+    expect(live.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r) && !r.partial).map((r) => r.key));
+    const partial = entriesOf(/<details class="rehs" id="partial">[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
+    expect(partial.map((e) => e.key)).toEqual(["real-customers-1", "metal-passkey-owners"]);
+    expect(partial.map((e) => e.key)).toEqual(rows.filter((r) => !outside(r) && r.partial).map((r) => r.key));
+    expect(html).not.toMatch(/<details class="rehs" id="partial"[^>]*\sopen/);
     expect(known(reh.map((e) => e.key))).toEqual(["vic-2", "agent-1", "friday-1"]);
     expect(reh.map((e) => e.key)).toEqual(rows.filter(outside).map((r) => r.key));
     for (const e of live) expect(e.cls).not.toContain("k-rehearsal");
@@ -403,7 +408,8 @@ describe("/runs as a timeline", () => {
     expect(existsSync("docs/runs")).toBe(true);
     // Rehearsals do not count as live runs.
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
-    expect(known(live.map((e) => e.key))).toHaveLength(23); // vic-2 is a local control test since 12 Nov (review)
+    // vic-2 is a local control test since 12 Nov (review); since 13 Nov (jury pass) the two partial runs are listed apart.
+    expect(known(live.map((e) => e.key))).toHaveLength(21);
   });
 
   it("marks exactly one run as the product: the main run", () => {
@@ -428,14 +434,14 @@ describe("/runs as a timeline", () => {
     }
     // Which runs carry which filter: from their rails and kind.
     const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
-    expect(carrying("metal")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-passkey-owners", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
-    expect(carrying("testnet")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-passkey-owners", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    expect(carrying("metal")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    expect(carrying("testnet")).toEqual(["tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     expect(carrying("claude")).toEqual(["vic-3", "platform-e2e-1", "main-1"]);
     // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second
     // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
     // TAP is outside the Visa entry (the jury check, 12 Nov): its row is not counted under Visa.
     expect(carrying("visa")).toEqual(["vic-3", "vic-1"]);
-    expect(carrying("airwallex")).toEqual(["vic-3", "real-customers-1", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["vic-3", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
     const v2e = [...live, ...entriesOf(rehGroup(html))].find((e) => e.key === "vic-2")!;
@@ -443,8 +449,8 @@ describe("/runs as a timeline", () => {
     expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
     expect(row("vic-2").partners).toEqual([]);
     expect(links.find((l) => l.id === "visa")!.n).toBe(2);
-    expect(links.find((l) => l.id === "airwallex")!.n).toBe(12);
-    expect(carrying("sandbox")).toEqual(["vic-3", "real-customers-1", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(11);
+    expect(carrying("sandbox")).toEqual(["vic-3", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
     for (const l of links) {
@@ -548,7 +554,7 @@ describe("/runs as a timeline", () => {
   });
 
   it("shows the first id in sight and lists every id in full in the fold, with the longer text, the checks, the rails and the money words", () => {
-    for (const r of rows.filter((x) => kindOf(x) !== "rehearsal" && kindOf(x) !== "control")) {
+    for (const r of rows.filter((x) => kindOf(x) !== "rehearsal" && kindOf(x) !== "control" && !x.partial)) {
       const e = entriesOf(liveList(html)).find((x) => x.key === r.key)!;
       const seen = inSight(e.html), fold = e.html.slice(seen.length);
       // One fold per entry, named by what is in it and how many more ids.
@@ -658,7 +664,10 @@ describe("/runs as a timeline", () => {
     const frame = (h: string) => visibleWords(h.replace(liveList(h), ""));
     for (const page of [html, runsPage([...rows, oldShape]), runsPage([...rows, oldShape, series])]) {
       // 12 Nov (wire-in): +12 for the one "Face ID to paid" line (master list 81, src/redesign/runTimes.ts).
-      expect(frame(page)).toBeLessThanOrEqual(84);
+      // 13 Nov (jury pass): +66 for the four summary cards and the partial runs' line, with the strip, the filters and
+      // the list in one fold. This count cuts a fold at its first </details>, so it still counts what follows the
+      // "Face ID to paid" fold inside the outer one; the page in sight is shorter than it says.
+      expect(frame(page)).toBeLessThanOrEqual(150);
       for (const e of entriesOf(liveList(page))) expect(visibleWords(`<main>${e.html}</main>`), e.key).toBeLessThanOrEqual(60);
     }
     // The frame is what is not an entry: the page is the frame plus its entries.

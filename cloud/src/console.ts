@@ -8,7 +8,6 @@
 import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
-import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { tryPageResponse } from "./tryPage.js";
@@ -319,7 +318,8 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 @media (max-width: 640px) { .auth { margin-top: 4vh; padding: 28px 22px 24px; } .auth h1 { font-size: 24px; } }
 /* Signed out (sign-in, first run, a passkey's enrolment): two zones, as /try's start. The illustration (cloud/src/scene.ts)
    in a band on the brand's tokens, the card, and the trust line under it. A phone: the band on top, the card below. A wide
-   screen: the band left, the card right, centred. Signed in: neither. */
+   screen: the band left, the card right, centred. Signed in: neither. Since 13 Nov (owner: the console white and
+   enterprise, clearly not the /try demo) the band is a calm panel, what Purser Cloud is in three lines, not /try's scene. */
 .hero, .trust { display: none; }
 .signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
 .signed-out #foot { display: none; }
@@ -335,8 +335,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
   .signed-out main { grid-column: 2; grid-row: 4; margin: 0; padding: 0 40px; }
   .signed-out .auth { max-width: 460px; }
   .signed-out .trust { grid-column: 2; grid-row: 5; margin: 0; padding: 18px 40px 0; }
-}
-${SCENE_CSS}`;
+}`;
 
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
@@ -345,7 +344,7 @@ ${siteHeader("cloud")}
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
-<div class="hero">${sceneSvg()}</div>
+<div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
@@ -734,7 +733,7 @@ async function invoicesView(q){
     reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
       catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
     return reloading}
-  view().replaceChildren(head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more]));
+  view().replaceChildren(...[head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean));
   // An invoice that arrived, was paid or was filed in the archive: the list is read again.
   if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
   await page();
@@ -1276,6 +1275,42 @@ setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.s
 route();
 `;
 
+/**
+ * Purser Cloud's own look (13 Nov, owner: "white and enterprise, clearly not the /try demo"): always light (the page
+ * sets data-theme="light", so the tokens' dark block never applies), white surfaces with hairline borders, a neutral
+ * page, calmer type and spacing, square-ish corners. Last in the one style, so it settles what the shared kit leaves.
+ */
+const CLOUD_CSS = `
+:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #8a93a1; --r: 12px; }
+body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
+header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.appbar .wrap { min-height: 52px; }
+.apptabs a { border-radius: 8px; font-weight: 600; color: var(--muted); }
+.apptabs a[aria-current="page"] { background: var(--sunken); color: var(--text); box-shadow: inset 0 -2px 0 var(--text); border-radius: 8px 8px 0 0; }
+main { padding: 32px 0 72px; }
+#view h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 4px; }
+#view h2 { font-weight: 650; letter-spacing: -.01em; }
+.card, .auth { border: 1px solid var(--border); border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.test { background: #fff7e6; border: 1px solid #f3dfb5; }
+#foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
+/* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
+.signed-out { background: #ffffff; }
+.signed-out .hero { background: #f8f9fb; border-right: 1px solid var(--border); align-content: center; justify-items: center; }
+.side { max-width: 420px; margin: 0 auto; padding: 8px 4px; }
+.side h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
+.side p { margin: 8px 0 20px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.side ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.side li { display: flex; gap: 10px; align-items: flex-start; color: var(--text); font-size: 15px; line-height: 1.45; }
+.side li .i { color: var(--accent); margin-top: 1px; }
+.signed-out main { margin-top: 0; padding: 24px 0; }
+.signed-out .auth { box-shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 12px 32px -16px rgba(16, 24, 40, .12); }
+.auth h1 { font-weight: 700; }
+@media (max-width: 1023px) { .signed-out .hero { flex: none; min-height: 0; padding: 20px; border-right: 0; border-bottom: 1px solid var(--border); justify-items: start; } .side { margin: 0; } .side h2 { font-size: 22px; } .side p { margin: 4px 0 0; font-size: 15px; } }
+/* A phone keeps the card and the trust line in the first screen (test/browser/console.check.ts): the panel's list waits for a wider screen. */
+@media (max-width: 640px) { .side ul { display: none; } }
+`;
+
 const nonce = () => {
   const b = crypto.getRandomValues(new Uint8Array(18));
   let s = "";
@@ -1294,11 +1329,11 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;
@@ -1353,6 +1388,9 @@ const PAGE_HEADERS = {
   "strict-transport-security": "max-age=31536000",
 };
 
+/** Paths people type for the console, and the console route each one opens. */
+export const CONSOLE_PATHS: Record<string, string> = { "/sign-in": "#/sign-in", "/signin": "#/sign-in", "/login": "#/sign-in", "/console": "#/sign-in", "/start": "#/start", "/overview": "#/overview" };
+
 let font: Uint8Array | null = null;
 
 /** Everything outside /v1: the console page at /, its font, pdf.js from the bundle's assets, and a plain 404. Only GET and HEAD. */
@@ -1363,6 +1401,10 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "", engine: !!env.engine }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
   if (url.pathname === "/try") return tryPageResponse(req, url, env);
+  // The console's pages are routes after "#" (#/sign-in, #/start); a typed or bookmarked path (/sign-in, /login,
+  // /console) went to a plain 404 (13 Nov). It goes to the console's own route instead.
+  const route = CONSOLE_PATHS[url.pathname.replace(/\/+$/, "") || "/"];
+  if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   if (url.pathname === "/pdfview") {
     const n = nonce();
     return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": pdfViewCsp(n, env.origin) } });
