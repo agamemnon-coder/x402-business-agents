@@ -72,7 +72,7 @@ const testsLine = summary
   ? `**${summary.passed} of ${summary.total} tests passed** in ${summary.files} files${summary.failed ? `, ${summary.failed} failed` : ""}${summary.skipped ? `, ${summary.skipped} skipped` : ""}, on commit \`${summary.commit}\` ([summary](assets/test-summary.json)); CI runs them on every push.`
   : `The test count is not in this build: run \`npx vitest run --reporter=json --outputFile.json=vitest.json\`, then \`npm run readme-draft -- --tests vitest.json\`.`;
 
-const md = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
+const body = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
      Not README.md yet: the orchestrator integrates it. Every number below is read from a run record or computed;
      regenerate rather than edit. Image paths are relative to docs/. -->
 
@@ -190,6 +190,9 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 Screenshots and short loops of the live site: [assets/screens/](assets/screens/README.md).
 `;
+// The draft lives in docs/archive/ since the final review (13 Nov); its links are written from docs/, so each relative
+// one gets one "../" more.
+const md = body.replace(/\]\((?![a-z]+:|#|\/)([^)]+)\)/g, "](../$1)");
 
 if (check) {
   if (read(OUT) !== md) { console.error(`${OUT} differs from what the records give now: npm run readme-draft`); process.exit(1); }
