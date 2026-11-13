@@ -81,6 +81,16 @@ describe("the console page", () => {
     expect((await c.fetch(`${ORIGIN}/.env`)).status).toBe(404);
     expect((await c.fetch(`${ORIGIN}/`, { method: "POST" })).status).toBe(405);
   });
+
+  // 13 Nov: a typed or bookmarked path for the console (/sign-in, /login, /console, ...) went to a plain 404; it opens
+  // the console's own route now (its pages are routes after "#"). Anything else stays a 404.
+  it("sends the paths people type for the console to its own routes, and nothing else", async () => {
+    for (const [path, to] of [["/sign-in", "/#/sign-in"], ["/sign-in/", "/#/sign-in"], ["/login", "/#/sign-in"], ["/signin", "/#/sign-in"], ["/console", "/#/sign-in"], ["/start", "/#/start"], ["/overview", "/#/overview"]] as const) {
+      const r = await c.fetch(`${ORIGIN}${path}`, { redirect: "manual" });
+      expect({ path, status: r.status, to: r.headers.get("location") }).toEqual({ path, status: 302, to });
+    }
+    expect((await c.fetch(`${ORIGIN}/sign-in/x`, { redirect: "manual" })).status).toBe(404);
+  });
 });
 
 /** The page's config, as its script reads it from the meta tag. */
@@ -242,7 +252,7 @@ describe("the console's language, mark and first run", () => {
   const markup = withoutBlocks(html, ["script", "style"]);
 
   it("paints in English first: the page's language and the menu's words", () => {
-    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('<html lang="en" data-theme="light">');
     // 12 Nov: the console's own pages moved to a bar under the site's header (cloud/src/siteHeader.ts): nav.apptabs.
     const nav = /<nav class="apptabs"[^]*?<\/nav>/.exec(markup)![0];
     for (const w of ["Overview", "Invoices", "Transactions", "Books", "Settings"]) expect(nav).toContain(`>${w}<`);

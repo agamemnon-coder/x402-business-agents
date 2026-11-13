@@ -224,7 +224,7 @@ describe("the console's language", () => {
   // (test/cloud-console.test.ts tests that rule); this test pinned the Dutch first paint and now pins the English one.
   it("serves the console with both catalogues, English first, and no Dutch words in its HTML", () => {
     const html = consolePage("n", { origin: ORIGIN, rpId: RP, mailDomain: "" });
-    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('<html lang="en" data-theme="light">');
     const text = shownText(html).replace(/\b(Purser Cloud|Purser|Face ID|Airwallex)\b/g, " ");
     expect(/\b(Overzicht|Facturen|Boekhouding|Instellingen|Testgeld|alleen|betalingen)\b/.exec(text)?.[0] ?? null).toBeNull();
     expect(html).toContain('"nl":{');
