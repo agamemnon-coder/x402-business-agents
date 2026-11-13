@@ -34,7 +34,7 @@ export function centsOf(s: string): number | null {
 /** The plain names the statement shows; every other account keeps its chart name, without the bracketed note. */
 // 5000 is the chart's "Purchased stock data (warehouse …)", Kit 11's data licence; a test company's goods for resale
 // read as stock purchases (review, 13 Nov: "Purchased stock data" for mugs confused a visitor).
-const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "2100": "Creditors", "3000": "Owner's equity", "5000": "Stock purchases" };
+const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "1515": "Foreign VAT to reclaim (EU refund)", "2100": "Creditors", "3000": "Owner's equity", "5000": "Stock purchases" };
 export const plainName = (account: string, name: string): string => PLAIN[account] ?? name.replace(/\s*\(.*\)$/, "");
 const chartName = (account: string) => plainName(account, LEDGER_ACCOUNTS[account] ?? "");
 

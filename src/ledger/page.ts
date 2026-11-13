@@ -37,7 +37,7 @@ export function ledgerPage(db: DB, opts: { asOf: string; quarter: string; year: 
     table(["Account", "Currency", "Balance"], cashByCurrency(db).map((c) => [c.account, c.currency, money(c.balance_cents)]), [2]),
     `<h2>VAT overview ${esc(vat.quarter)}</h2><p class="note">${esc(vat.notice)}</p>`,
     table(["Rubric", "Base", "VAT"], Object.entries(vat.rubrics).map(([r, v]) => [r, money(v.base_cents), money(v.vat_cents)]).concat([["5a owed", "", money(vat.owed_5a_cents)], ["5b input VAT", "", money(vat.input_5b_cents)], ["5c balance", "", money(vat.balance_5c_cents)]]), [1, 2]),
-    `<p class="note">Lines with no VAT code yet: ${vat.uncoded_lines}. VAT-coded lines in another currency: ${vat.other_currency_lines}.${vat.foreign_vat.lines ? ` Foreign VAT, outside the Dutch return: ${vat.foreign_vat.lines} line(s), VAT ${money(vat.foreign_vat.vat_cents)} on ${money(vat.foreign_vat.base_cents)}.` : ""}</p>`,
+    `<p class="note">Lines with no VAT code yet: ${vat.uncoded_lines}. VAT-coded lines in another currency: ${vat.other_currency_lines}.${vat.foreign_vat.lines ? ` Foreign VAT, outside the Dutch return: ${vat.foreign_vat.lines} line(s), VAT ${money(vat.foreign_vat.vat_cents)} on ${money(vat.foreign_vat.base_cents)}, booked to 1515 (to reclaim through the EU refund).` : ""}</p>`,
     ...(["receivables", "payables"] as const).flatMap((k) => [`<h2>${k === "receivables" ? "Customers owe us" : "We owe suppliers"}</h2>`,
       table(["Party", "Document", "Currency", "Due", "Open", "Overdue (days)"], ageing(db, k, opts.asOf).items.map((i) => [i.party, i.doc_ref, i.currency, i.due_date ?? "", money(i.open_cents), String(i.days_overdue)]), [4, 5])]),
     "<h2>Stock</h2>",

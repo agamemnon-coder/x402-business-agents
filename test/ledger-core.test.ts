@@ -43,12 +43,14 @@ describe("posting", () => {
   it("accepts the payables and ledger accounts, which stay out of the cash journal's chart (T:0 mirrors it)", () => {
     const db = fresh();
     expect(postEntry(db, sale({ lines: [{ account: "1300", debit: 100, currency: "EUR" }, { account: "2100", credit: 100, currency: "EUR" }] }), NOW).duplicate).toBe(false);
-    for (const a of ["1300", "1510", "1700", "2100", "2200", "2210", "3100", "8000"]) {
+    for (const a of ["1300", "1510", "1515", "1700", "2100", "2200", "2210", "3100", "8000"]) {
       expect(CHART[a], a).toBeUndefined();
       expect(LEDGER_ACCOUNTS[a], a).toBeTruthy();
     }
     expect(AP_CHART).toEqual({
       "1510": "Input VAT receivable (supplier invoices)",
+      // Code review 13 Nov: a German supplier's VAT (PF_DE19) is not Dutch input VAT; it is reclaimed through the EU refund.
+      "1515": "Foreign VAT to reclaim (EU refund)",
       "2100": "Accounts payable (supplier invoices)",
       // Multi-currency payouts (PR #112): the Airwallex balances in other currencies, one per currency.
       "1203": "Bank: Airwallex, other currencies (one balance per currency)",

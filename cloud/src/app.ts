@@ -485,13 +485,15 @@ export const ROUTES: Route[] = [
     const t = db(c);
     const cred = await t.one<{ user_id: string }>("credentials", { credential_id: c.params[1]!, user_id: c.params[0]! });
     if (!cred) return notFound("passkey");
-    const person = await t.one<{ role: Role; session_gen: number }>("users", { id: c.params[0]! });
+    const person = await t.one<{ role: Role }>("users", { id: c.params[0]! });
     const iso = c.now.toISOString();
     try {
       // Removed, the person's sessions ended (one made with that passkey ends with it), and checked at commit that some
       // owner still has a passkey: the company is never left without one.
       await t.apply([t.callerGuard(c.caller!, iso), t.delete("credentials", { credential_id: c.params[1]!, user_id: c.params[0]! }),
-        t.update("users", { id: c.params[0]! }, { session_gen: (person?.session_gen ?? 0) + 1 }),
+        // Incremented in SQL at commit, as enrolPasskey's recovery does (code review 13 Nov: a sign-out and sign-in between
+        // a read and a set left a session at the new generation, alive after the removal).
+        { sql: "UPDATE users SET session_gen = session_gen + 1 WHERE tenant_id = ? AND id = ?", params: [t.tenantId, c.params[0]!] },
         ...(person?.role === "owner" ? [t.ownerPasskeyRemainsGuard(iso)] : [])]);
     } catch (e) {
       if (e instanceof WriteConflict) return err(409, "this is the last owner passkey of the company: enrol another owner passkey first");

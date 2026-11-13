@@ -104,6 +104,32 @@ describe("the x402 endpoint a juror can call", () => {
     expect((await get(d, signed())).status).toBe(200);
   });
 
+  // Code review 13 Nov: a settle that throws (a timeout) may still have moved money on chain, so it counts against the
+  // day's cap as 'unknown'; only a verify refusal or a settle that answers success: false is 'refused' and uncounted.
+  it("with settlement on: settle timeouts count against the day's cap, so repeated timeouts cannot settle past it", async () => {
+    let settles = 0;
+    let mode: "timeout" | "refuse" = "timeout";
+    const f: Facilitator = {
+      verify: async () => ({ isValid: true }),
+      settle: async () => {
+        settles++;
+        if (mode === "timeout") throw new Error("the operation timed out");
+        return { success: false, errorReason: "insufficient_funds", transaction: "", network: NETWORK };
+      },
+    };
+    const d = desk({ settle: "on", facilitator: async () => f, now: () => new Date("2026-11-14T09:00:00Z") });
+    // A settle that answers success: false is refused and does not count.
+    mode = "refuse";
+    expect((await get(d, signed())).status).toBe(402);
+    expect((await get(d, signed())).status).toBe(402);
+    mode = "timeout";
+    for (let i = 0; i < DAILY_SETTLE_CAP + 5; i++) await get(d, signed());
+    expect(settles - 2).toBe(DAILY_SETTLE_CAP);
+    const capped = await get(d, signed());
+    expect(capped.status).toBe(429);
+    expect(settles - 2).toBe(DAILY_SETTLE_CAP);
+  });
+
   it("answers only GET and HEAD on its own path", async () => {
     expect((await desk().fetch(new Request(URL0, { method: "POST" }))).status).toBe(405);
     expect((await desk().fetch(new Request(`https://kit11.example/x402/other`))).status).toBe(404);

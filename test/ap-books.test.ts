@@ -57,11 +57,12 @@ describe("the books", () => {
     const es = apJournal(db).filter((e) => e.invoice_id === id);
     expect(es.map((e) => [e.event, e.account, e.debit, e.credit])).toEqual([
       ["accrual", "6200", "1554.62", ""],
-      ["accrual", "1510", "295.38", ""],
+      // Bergtex is German (VAT id DE…) and charged 19%: Germany's VAT, to reclaim through the EU refund (1515), not 5b.
+      ["accrual", "1515", "295.38", ""],
       ["accrual", "2100", "", "1850.00"],
     ]);
     expect(sum(es, "debit")).toBe(sum(es, "credit"));
-    expect(es[1]!.account_name).toMatch(/Input VAT/);
+    expect(es[1]!.account_name).toMatch(/Foreign VAT/);
   });
 
   it("books the payment and the SWIFT fee Airwallex charged once it is paid", async () => {

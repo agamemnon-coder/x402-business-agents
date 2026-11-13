@@ -7,7 +7,7 @@
 // or its company was swept) is counted against that company, never against the caller's address: one phone that wakes
 // up with an old session must not turn away a room on the same Wi-Fi. Forged and unknown tokens are counted per
 // address, as for every other caller.
-import { fromB64, hmacValid } from "../crypto.js";
+import { signedPayload } from "../crypto.js";
 import type { Sql } from "../store.js";
 import { isTryTenant, TryRefused } from "./start.js";
 import { on, readSwitches } from "./switches.js";
@@ -73,10 +73,6 @@ export async function tryGate(sql: Sql, tenantId: string, method: string, patter
 export async function signedTrySession(secret: string, authorization: string | null): Promise<string | null> {
   const token = /^Bearer (pcs\.\S+)$/.exec(authorization ?? "")?.[1];
   if (!token) return null;
-  const [, body, sig] = token.split(".");
-  if (!body || !sig || !(await hmacValid(secret, body, sig))) return null;
-  try {
-    const p = JSON.parse(new TextDecoder().decode(fromB64(body))) as { t?: unknown };
-    return typeof p.t === "string" && isTryTenant(p.t) ? p.t : null;
-  } catch { return null; }
+  const p = await signedPayload(secret, "pcs", token, Infinity) as { t?: unknown } | null;
+  return p && typeof p.t === "string" && isTryTenant(p.t) ? p.t : null;
 }
