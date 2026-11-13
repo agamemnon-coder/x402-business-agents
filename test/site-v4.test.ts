@@ -270,8 +270,8 @@ describe("the site after v4", () => {
       expect({ name, airiAboveTap: name === "visa" ? airi.length > 0 && whole.indexOf(airi) < whole.indexOf('class="flow card"') : true }).toEqual({ name, airiAboveTap: true });
       // /airwallex opens on a tile per Airwallex product (jury panel, 12 Nov); its flow of the main run is one of the folds.
       // /metal opens on its four mandates in one table (jury panel, 12 Nov), its one fold inside it (the read to repeat).
-      // /visa's picture is the VIC flow (12 Nov); since the jury pass (13 Nov) the latest run's four cards lead, the rest folded.
-      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'class="sumc"' : 'class="card vicflow"') : 'class="flow card"';
+      // /visa's picture since the redesign of 13 Nov (the owner: "more visuals and data"): the latest run's flow, its purchases on their paths.
+      const first = name === "airwallex" ? '<ol class="awpath"' : name === "metal" ? '<section class="mt card"' : name === "visa" ? (vic3Run() ? 'class="vh-flow card"' : 'class="card vicflow"') : 'class="flow card"';
       expect({ name, pictureFirst: whole.indexOf(first) >= 0 && whole.indexOf(first) < whole.indexOf("<details") }).toEqual({ name, pictureFirst: true });
       // /visa's folds each have their own anchor (the attempts, Airwallex's record, Visa's rules, card data, TAP).
       expect((whole.match(name === "visa" ? /<details class="fold" id="[\w-]+">/g : /<details class="fold">/g) ?? []).length).toBeGreaterThanOrEqual(2);

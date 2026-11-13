@@ -23,8 +23,8 @@ import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
-import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary, visaSummary } from "./vic3Run.js";
-import { SUMMARY_CSS, summaryHtml } from "./summary.js";
+import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
+import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
@@ -334,7 +334,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
-  ${summaryHtml(visaSummary(vic3), "The latest live run in cards")}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  ${visaFlowHtml(vic3)}
+  ${visaOutcomesHtml(vic3, visaRunsLine())}
+  ${visaHashHtml(vic3)}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
   ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>` : ""}
@@ -355,7 +357,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const html = page({
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${SUMMARY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a single-use Visa credential is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -418,20 +420,28 @@ export function claudePage(run: AgentRun = agentRun()): string {
  * only as access requested, not used in this entry.
  */
 const dayShortOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
-export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
-  const st = metalStory(run.record), tiles = productTiles(run).length, airi = airiRun(), t0 = t0Data().journal;
-  // Paid purchases across the live Airi runs, as /visa counts them: 7 Nov (SETTLED) and the latest run (vic-3).
-  const v3 = vic3Run();
-  // Every live Airi run that paid: 7 Nov's SETTLED, then each later run's paid purchases (vic-3, vic-4), from their records.
+/**
+ * The Visa runs in one phrase, the same in the footer, on /visa and in the README (the owner, 13 Nov: it read two ways).
+ * The live Visa runs are those that paid with an Airi credential: 7 Nov (docs/demo/airi-run.json), vic-3 and vic-4; the
+ * 7 Nov control test (vic-2) made no Airi or Airwallex call and is not counted. Every number from those records.
+ */
+export function visaRunsLine(): string | null {
+  const airi = airiRun(), v3 = vic3Run();
   const later = [vic3Run(VIC3_PREV_FILE), v3].filter((x): x is NonNullable<typeof x> => !!x);
   const settled = (airi?.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length ?? 0) + later.reduce((n, r) => n + vic3Summary(r).paid, 0);
   const runsN = (airi ? 1 : 0) + later.length;
+  if (!settled) return null;
+  const all = `${settled} paid across ${runsN} live Visa run${runsN === 1 ? "" : "s"}`;
+  return v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${all})` : all;
+}
+export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
+  const st = metalStory(run.record), tiles = productTiles(run).length, t0 = t0Data().journal;
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles ? [{ name: "Airwallex", href: "airwallex", proof: `${tiles} products, each run dated` }] : []),
     { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
-    ...(settled ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${settled} across ${runsN} runs)` : `${settled} purchases paid in ${runsN} live run${runsN === 1 ? "" : "s"}` }] : []),
+    ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },
     ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries (main run)` }] : []),
     { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests (main run)` },

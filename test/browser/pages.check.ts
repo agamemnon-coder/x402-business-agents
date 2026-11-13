@@ -646,8 +646,14 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
         // Since 12 Nov the first proof is the latest live run (vic-3); since the jury pass (13 Nov), its four cards.
-        const top = await page.evaluate(() => Math.round(((document.querySelector("main ul.sumc") ?? document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        const top = await page.evaluate(() => Math.round(((document.getElementById("visa-flow") ?? document.querySelector("main ul.sumc") ?? document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
         if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
+        // The redesign of 13 Nov: the flow, every purchase's outcome and the signed hash read back, each within the page's width.
+        const hero = await page.evaluate(() => ["visa-flow", "visa-outcomes", "visa-hash"].map((id) => { const e = document.getElementById(id); return { id, ok: !!e && e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1 }; }));
+        for (const x of hero) if (!x.ok) fail(`/visa ${tag}: #${x.id} is missing or wider than the page`);
+        // The record and footnote links are tap targets of at least 24 px (13 Nov).
+        const small = await page.evaluate(() => [...document.querySelectorAll("main a.pf, main a[data-rec], main .src a, footer a.flink")].filter((a) => (a as HTMLElement).offsetParent).filter((a) => a.getBoundingClientRect().height < 24).map((a) => (a.textContent ?? "").trim().slice(0, 40)));
+        if (small.length) fail(`/visa ${tag}: links under 24 px tall: ${small.join(" | ")}`);
       }
       const pt = await page.evaluate(() => document.body.innerText);
       // The footer's "Built on" strip (owner, 12 Nov) is the frame's, not the page's: its words are not counted.
