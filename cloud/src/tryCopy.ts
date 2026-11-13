@@ -32,7 +32,7 @@ export const START = {
   /** Under the button. */
   fine: "Test money · deleted after 24 h",
   /** Under the card, small and grey. */
-  trust: "Works with Airwallex · Metal · Visa Intelligent Commerce · Claude (sandbox and testnet runs)",
+  trust: "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
