@@ -23,9 +23,9 @@ const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!
 /** Names of other spend and payment companies that must never appear in these lines (the partners are not competitors). */
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
 
-const MARK = '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">';
-// The Home page with the Purser logo, dark or light as the reader's GitHub is (restored 13 Nov, owner, from 642f3be).
-const HERO_BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/hero-dark.webp"><img src="docs/assets/readme/hero-light.webp" alt="Purser's Home page: AI agents spend. You sign off. One sample invoice from Read to Paid (a local build of this repository)" width="100%"></picture></a>`;
+// The README's banner (13 Nov, evening, owner): drawn from scripts/readme-banner.html, dark and light; Home's own
+// picture (hero-*.webp) moved to the gallery.
+const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a>`;
 
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
@@ -43,27 +43,28 @@ describe("the first screen (section D, 6 Nov)", () => {
     // repeated, one line of links with Try it first, the badges, then the reviewers' block.
     // Since 13 Nov (owner): the mark is the site header's own, black and white (docs/assets/brand/purser-mark.svg, test/brand-mark.test.ts).
     // Since 13 Nov (the enterprise README): the site's link-preview card as the hero (the same file as src/ui/brand/og.png).
-    // 13 Nov, evening (owner): the mark at 72 px above the Home page's picture, dark and light.
-    expect(lines.slice(0, 6)).toEqual(['<div align="center">', "", MARK, "", HERO_BANNER, ""]);
-    for (const f of ["docs/assets/brand/purser-mark.svg", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
-    expect(lines[6]).toBe(`# Purser · ${HERO}`);
+    // 13 Nov, evening (owner, the README upgrade): the banner, then the title; under the badges and the live demo's line,
+    // Watch it, the 3 steps, the three proofs and the rails' line, Built with, the gallery, the quick start, Enterprise.
+    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", BANNER, ""]);
+    for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
+    expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    // What Purser is (README_WHAT), the sentence every juror repeated, the three badges, the live demo's line, then the
-    // three proofs, the rails with "test money only" and the three commands, the four screenshots, then Enterprise.
-    // The three buttons (Try it, the proof, the walkthrough) above the full badge row (13 Nov, evening, owner).
-    expect(lines.slice(7, badges - 2)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
+    expect(lines.slice(5, badges - 2)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
     expect(lines[badges - 2]).toContain("Watch_the_walkthrough-4%3A58");
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(13);
     expect(lines[badges + 2]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
-    expect(lines.slice(badges + 3, badges + 6)).toEqual(["", "</div>", ""]);
-    expect(lines.slice(badges + 9, badges + 12)).toEqual(["", "Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))", ""]);
-    expect(lines[badges + 12]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/proof">/); // /proof first since the final pass
-    expect(lines.slice(badges + 13, badges + 16)).toEqual(["", "## Enterprise", ""]);
+    expect(lines.slice(badges + 3, badges + 7)).toEqual(["", "</div>", "", "## Watch it"]);
+    const order = ["## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Verify it yourself in 3 commands", "## Enterprise"].map((h) => lines.indexOf(h));
+    expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
+    expect(lines.some((l) => l.startsWith("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
+    expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg"');
+    expect(README).toContain("*5-minute walkthrough · AI voice and music: ElevenLabs*");
+    expect(README).toContain("Text names only; no endorsement implied.");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(110); // after the Visa and Metal Award sections (13 Nov)
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(170); // after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with what Purser is, the hands-on demo as the one primary button, the proof second, one reassurance line", () => {

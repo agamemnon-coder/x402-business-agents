@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- The README's banner (13 Nov, owner): 1280 x 400, drawn at 2x by `npm run readme:shots -- --banner` into
+     docs/assets/readme/banner-dark.png and banner-light.png. ?theme=light for the light one. The feather is the site
+     header's mark (docs/assets/brand/purser-mark.svg). Words only from the README's own lines. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Purser · banner</title>
+<style>
+  :root { --bg1: #070b18; --bg2: #1a1446; --bg3: #3b1d7a; --ink: #f4f6fb; --sub: #c9cfe6; --pill: rgba(255,255,255,0.08); --pillb: rgba(255,255,255,0.18); --pillt: #e7e9f7; --glow: rgba(139,133,255,0.35); }
+  :root.light { --bg1: #ffffff; --bg2: #f3f1ff; --bg3: #e4ddff; --ink: #0b1220; --sub: #3c4560; --pill: rgba(91,72,214,0.07); --pillb: rgba(91,72,214,0.22); --pillt: #2a2357; --glow: rgba(139,133,255,0.25); }
+  html, body { margin: 0; width: 1280px; height: 400px; overflow: hidden; }
+  body { font-family: "Inter", "Inter Display", system-ui, sans-serif; color: var(--ink);
+    background: radial-gradient(900px 420px at 88% 18%, var(--glow), transparent 60%), linear-gradient(120deg, var(--bg1) 0%, var(--bg2) 55%, var(--bg3) 100%); }
+  .grid { position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1.2px); background-size: 28px 28px; }
+  :root.light .grid { background-image: radial-gradient(rgba(11,18,32,0.06) 1px, transparent 1.2px); }
+  .wrap { position: relative; display: flex; align-items: center; gap: 44px; height: 100%; padding: 0 88px; box-sizing: border-box; }
+  .tile { flex: none; width: 152px; height: 152px; border-radius: 40px; display: grid; place-items: center;
+    background: linear-gradient(140deg, #8b85ff 0%, #5b48d6 52%, #2a1f7a 100%); box-shadow: 0 18px 50px rgba(59,29,122,0.45), inset 0 1px 0 rgba(255,255,255,0.35); }
+  .tile svg { width: 88px; height: 88px; }
+  h1 { margin: 0; font-family: "Inter Display", "Inter", sans-serif; font-weight: 700; font-size: 84px; letter-spacing: -2.5px; line-height: 1; }
+  .line { margin: 14px 0 0; font-size: 34px; font-weight: 600; letter-spacing: -0.6px; color: var(--sub); }
+  .pills { display: flex; gap: 12px; margin-top: 30px; }
+  .pill { font-size: 19px; font-weight: 600; color: var(--pillt); background: var(--pill); border: 1px solid var(--pillb); border-radius: 999px; padding: 9px 18px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="grid"></div>
+<div class="wrap">
+  <div class="tile" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></div>
+  <div>
+    <h1>Purser</h1>
+    <p class="line">AI agents spend. You sign off.</p>
+    <div class="pills"><span class="pill">Face ID on the exact terms</span><span class="pill">Limits enforced in 3 layers</span><span class="pill">Audit log anchored on chain</span></div>
+  </div>
+</div>
+<script>if (new URLSearchParams(location.search).get("theme") === "light") document.documentElement.classList.add("light");</script>
+</body>
+</html>

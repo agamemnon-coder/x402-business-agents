@@ -67,7 +67,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // sentences stay in the form and the deck.
     // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.
     // 70 lines since the enterprise README (13 Nov): the three proofs and the Enterprise section come before the judges' 3 minutes.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 70).join("\n"));
+    // 135 lines since the README upgrade (13 Nov, evening): Watch it, the 3 steps, Built with, the gallery and the
+    // quick start come before the judges' 3 minutes.
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 135).join("\n"));
     // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS.
     expect(top.startsWith(`${README_WHAT} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
