@@ -10,7 +10,7 @@
 //   4. Next     three links: Purser Cloud, the live runs, how it stays safe
 // Nothing is invented: every line comes from an answer; what an answer does not hold is left out, or said to be not in
 // yet. The page (cloud/src/tryPage.ts) registers this screen with one hook, between screen 5 and screen 6.
-import { accountType, INPUT_VAT, isBank, LEDGER_ACCOUNTS, PAYABLES } from "../../../src/ledger/accounts.js";
+import { accountType, FOREIGN_VAT, INPUT_VAT, isBank, LEDGER_ACCOUNTS, PAYABLES } from "../../../src/ledger/accounts.js";
 
 /** The words, all of them (the word budget is held by test/try-books.test.ts: at most 45 outside the data). */
 export const DID = {
@@ -43,7 +43,7 @@ export type Role = keyof typeof DID.roles;
 /** An account's role in the invoice's and the payment's entries, by the chart (src/ledger/accounts.ts); else null. */
 export function roleOf(account: string): Role | null {
   if (account === PAYABLES) return "creditors";
-  if (account === INPUT_VAT) return "vat";
+  if (account === INPUT_VAT || account === FOREIGN_VAT) return "vat";
   if (isBank(account)) return "bank";
   return accountType(account) === "expense" ? "expense" : null;
 }

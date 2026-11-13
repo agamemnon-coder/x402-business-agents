@@ -18,7 +18,7 @@ import { apInvoices } from "./store.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
 import { paymentDay } from "../vault/data.js";
 
-export const AP_ACCOUNTS = { inputVat: "1510", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
+export const AP_ACCOUNTS = { inputVat: "1510", foreignVat: "1515", payable: "2100", bank: "1200", fees: "6800", transit: "1590" } as const;
 /** VAT the company itself owes on a reverse-charged purchase (the stored ledger's output VAT account). */
 const VAT_OWED = "2210";
 
@@ -79,6 +79,14 @@ export function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | nul
   return null;
 }
 
+/**
+ * The VAT code the engine's own accrual carries on its net line: a Dutch rate first (whoever charged it), else a
+ * foreign one from the supplier's own VAT id; null when neither fits (the line stays uncoded for a person).
+ */
+export function accrualVatCode(netCents: number, vatCents: number, supplierVatId: string | null | undefined): "P21" | "P9" | "PF_DE19" | null {
+  return dutchVat(netCents, vatCents) ?? foreignVat(netCents, vatCents, supplierVatId);
+}
+
 const cents = (x: unknown): x is number => Number.isSafeInteger(x) && (x as number) >= 0;
 
 /**
@@ -125,8 +133,11 @@ function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: st
     out.push({ ...line(inv, "accrual", date, g.account, g.net, 0, memo), cost_centre: g.cost_centre, ...(g.vat_code !== null ? { vat_code: g.vat_code, vat_cents: reverse ? self : g.vat } : {}) });
     if (self) owed.push(self);
   }
+  // VAT under a foreign code (PF_DE19) is that country's VAT, reclaimed through the EU refund: 1515, never 1510 (5b).
   const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
-  if (vat) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat, 0, `${memo}: input VAT`));
+  const abroad = c.lines.reduce((s, l) => s + (l.vat_code !== null && VAT_CODES[l.vat_code]?.foreign ? l.vat_cents : 0), 0);
+  if (vat - abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat - abroad, 0, `${memo}: input VAT`));
+  if (abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, abroad, 0, `${memo}: foreign VAT to reclaim`));
   for (const self of owed) {
     out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, self, 0, `${memo}: input VAT, reverse charge`), line(inv, "accrual", date, VAT_OWED, 0, self, `${memo}: VAT owed, reverse charge`));
   }
@@ -146,9 +157,13 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
   const memo = `${inv.vendor} invoice ${inv.invoice_no}`;
   const coding = bookedCoding(inv);
   if (coding) return codedEntries(inv, coding, date, memo);
+  // A German supplier's 19% (PF_DE19, by its own VAT id) is Germany's VAT: 1515, to reclaim through the EU refund, not 5b.
+  const abroad = tax > 0 && accrualVatCode(total - tax, tax, inv.reading?.vat_id) === "PF_DE19";
   return [
     line(inv, "accrual", date, inv.gl_account, total - tax, 0, memo),
-    ...(tax ? [line(inv, "accrual", date, AP_ACCOUNTS.inputVat, tax, 0, `${memo}: input VAT`)] : []),
+    ...(tax ? [abroad
+      ? line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, tax, 0, `${memo}: foreign VAT to reclaim`)
+      : line(inv, "accrual", date, AP_ACCOUNTS.inputVat, tax, 0, `${memo}: input VAT`)] : []),
     line(inv, "accrual", date, AP_ACCOUNTS.payable, 0, total, memo),
   ];
 }

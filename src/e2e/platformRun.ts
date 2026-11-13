@@ -325,10 +325,11 @@ export const T0_SANDBOX_AP_MAP: Record<string, { number: string; name: string; n
   // vendor of its own: the sandbox run books what is owed to suppliers to Other Current Liabilities instead.
   "2100": { number: "24000", name: "Other Current Liabilities", note: "owed to suppliers; T:0's A/P accounts need a T:0 vendor as counterparty" },
   "1510": { number: "15100", name: "Other Current Assets - General", note: "input VAT on supplier invoices: the US sandbox chart has no VAT receivable account (our call)" },
+  "1515": { number: "15100", name: "Other Current Assets - General", note: "foreign VAT to reclaim (EU refund): the US sandbox chart has no VAT receivable account (our call)" },
 };
 
 /**
- * Input VAT (1510) mapped onto the first active, postable other current asset when nothing else maps it. Only when T:0
+ * Input VAT (1510) and foreign VAT to reclaim (1515) mapped onto the first active, postable other current asset when nothing else maps it. Only when T:0
  * has no account numbered as ours; never over a mapping in T0_SANDBOX_MAP or T0_SANDBOX_AP_MAP.
  */
 export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts"]>>): Record<string, { number: string; name: string; note: string }> {
@@ -336,6 +337,7 @@ export function apFallback(accounts: Awaited<ReturnType<T0Client["listGlAccounts
   const usable = accounts.filter((a) => a.is_active && a.is_postable && a.account_number);
   const oca = usable.filter((a) => a.account_type === "other_current_assets").sort((a, b) => a.account_number!.localeCompare(b.account_number!));
   if (oca[0]) out["1510"] = { number: oca[0].account_number!, name: oca[0].name, note: "input VAT: T:0's first other current asset (by type)" };
+  if (oca[0]) out["1515"] = { number: oca[0].account_number!, name: oca[0].name, note: "foreign VAT to reclaim: T:0's first other current asset (by type)" };
   return out;
 }
 

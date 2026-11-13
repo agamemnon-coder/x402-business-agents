@@ -26,7 +26,7 @@ export interface LedgerInvoice {
   account: string;
   currency: string;
   net_cents: number;
-  /** Input VAT posted (1510). */
+  /** VAT posted: input VAT (1510), or for a foreign code foreign VAT to reclaim (1515). */
   vat_cents: number;
   /** The VAT code on the net lines, or null when none is set; "mixed" when they differ. */
   vat_code: string | null;
@@ -259,7 +259,7 @@ export function answerControllerTool(c: ControllerCase, state: ControllerState, 
 export function describeCorrection(k: Correction): string {
   switch (k.action) {
     case "reverse_entry": return `reverse entry ${k.entry_id} (${fromCents(k.amount_cents)} ${k.currency}), a duplicate of entry ${k.duplicate_of}`;
-    case "adjust_vat": return `move ${fromCents(Math.abs(k.difference_cents))} ${k.currency} ${k.difference_cents > 0 ? "from input VAT (1510) to" : "from"} account ${k.account}${k.difference_cents > 0 ? "" : " to input VAT (1510)"}: ${k.vat_code} on entry ${k.entry_id} is ${fromCents(k.expected_vat_cents)}, posted ${fromCents(k.posted_vat_cents)}`;
+    case "adjust_vat": { const vat = VAT_CODES[k.vat_code]?.foreign ? "foreign VAT (1515)" : "input VAT (1510)"; return `move ${fromCents(Math.abs(k.difference_cents))} ${k.currency} ${k.difference_cents > 0 ? `from ${vat} to` : "from"} account ${k.account}${k.difference_cents > 0 ? "" : ` to ${vat}`}: ${k.vat_code} on entry ${k.entry_id} is ${fromCents(k.expected_vat_cents)}, posted ${fromCents(k.posted_vat_cents)}`; }
     case "query_supplier": return `hold entry ${k.entry_id} (${fromCents(k.total_cents)} ${k.currency}) and ask the supplier: the median of ${k.prior_invoices} earlier invoices is ${fromCents(k.median_cents)}`;
   }
 }

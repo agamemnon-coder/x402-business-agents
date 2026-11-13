@@ -11,7 +11,7 @@
 // same key with a version suffix. The ledger never loses or doubles a movement, and never changes a posted entry.
 
 import { journal } from "../accounting/gl.js";
-import { accrualEntries, bookable, codedAccrual, dutchVat, foreignVat } from "../ap/books.js";
+import { accrualEntries, accrualVatCode, AP_ACCOUNTS, bookable, codedAccrual } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoices } from "../ap/store.js";
 import { openingLines } from "../accounting/books.js";
@@ -106,7 +106,8 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
   }
   // The payables inbox's invoices the books hold, on receipt: the expense (with its Dutch VAT code when the invoice's
   // tax is 21% or 9% of its net, so it counts in 5b; with PF_DE19 when a supplier with a German VAT id charged 19%, so
-  // it counts on the overview's own foreign-VAT row, never in 5b) and input VAT against what is owed (2100), the same entries as the
+  // it counts on the overview's own foreign-VAT row, never in 5b) and its VAT (input VAT 1510, or for PF_DE19 foreign VAT
+  // to reclaim, 1515) against what is owed (2100), the same entries as the
   // inbox's CSV sink (src/ap/books.ts accrualEntries). One posting per invoice; one that leaves the books (rejected) is
   // reversed like any other source that is gone. An invoice the Coder coded (src/ap/coderAgent.ts) posts its entries line
   // for line: each net line with its own cost centre, VAT code and VAT (for a reverse-charge code the VAT the company
@@ -117,10 +118,11 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
     if (locked) { refusals.set(inv.proposal_id!, locked); held.add(`ap-accrual|${inv.id}`); continue; }
     const es = accrualEntries(inv);
     const coded = codedAccrual(inv);
-    const vat = es.find((e) => e.account === "1510");
+    // Input VAT (1510), or a German supplier's VAT on its own account (1515, src/ap/books.ts accrualEntries).
+    const vat = es.find((e) => e.account === AP_ACCOUNTS.inputVat || e.account === AP_ACCOUNTS.foreignVat);
     const net = es[0]!;
     // Dutch VAT (21% or 9%) counts in 5b; a German supplier's 19% is Germany's VAT and goes on its own row.
-    const code = vat && !coded ? (dutchVat(toCents(net.debit), toCents(vat.debit)) ?? foreignVat(toCents(net.debit), toCents(vat.debit), inv.reading?.vat_id)) : null;
+    const code = vat && !coded ? accrualVatCode(toCents(net.debit), toCents(vat.debit), inv.reading?.vat_id) : null;
     const pair: LineInput[] = es.map((e) => {
       const debit = e.debit ? toCents(e.debit) : 0;
       const credit = e.credit ? toCents(e.credit) : 0;

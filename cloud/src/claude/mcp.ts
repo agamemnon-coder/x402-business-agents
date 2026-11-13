@@ -90,7 +90,7 @@ function bookLines(company: string, name: string, r: Record<string, unknown>): [
     const v = r as { quarter: string; owed_5a_cents: number; input_5b_cents: number; balance_5c_cents: number; uncoded_lines: number; notice?: string; foreign_vat?: { lines: number; base_cents: number; vat_cents: number } };
     return [`${company}: VAT overview ${v.quarter}, balance ${fromCents(v.balance_5c_cents)} (an overview, not a filing).`, r as Json, [
       `Owed (5a) ${fromCents(v.owed_5a_cents)} · input VAT (5b) ${fromCents(v.input_5b_cents)} · balance (5c) ${fromCents(v.balance_5c_cents)}.`,
-      ...(v.foreign_vat?.lines ? [`Foreign VAT, outside the Dutch return: ${fromCents(v.foreign_vat.vat_cents)} on ${fromCents(v.foreign_vat.base_cents)} (${plural(v.foreign_vat.lines, "line")}; a German supplier's 19%).`] : []),
+      ...(v.foreign_vat?.lines ? [`Foreign VAT, outside the Dutch return: ${fromCents(v.foreign_vat.vat_cents)} on ${fromCents(v.foreign_vat.base_cents)} (${plural(v.foreign_vat.lines, "line")}; a German supplier's 19%, booked to 1515 to reclaim through the EU refund).`] : []),
       ...(v.uncoded_lines ? [`${plural(v.uncoded_lines, "line")} without a VAT code are not counted; a person codes them before filing.`] : [])]];
   }
   if (name === "payables" || name === "receivables") {

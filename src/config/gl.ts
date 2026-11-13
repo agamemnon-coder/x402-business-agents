@@ -36,6 +36,9 @@ export function bankAccountFor(currency: string): string {
 
 export const AP_CHART: Record<string, string> = {
   "1510": "Input VAT receivable (supplier invoices)",
+  // VAT a supplier abroad charged (PF_DE19): not Dutch input VAT, so never in box 5b; reclaimed from that country
+  // through the EU VAT refund procedure.
+  "1515": "Foreign VAT to reclaim (EU refund)",
   "2100": "Accounts payable (supplier invoices)",
   "1203": "Bank: Airwallex, other currencies (one balance per currency)",
 };

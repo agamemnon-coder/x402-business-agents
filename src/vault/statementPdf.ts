@@ -32,7 +32,7 @@ export function centsOf(s: string): number | null {
   return m ? (m[1] ? -1 : 1) * (Number(m[2]!.replace(/,/g, "")) * 100 + Number(m[3])) : null;
 }
 /** The plain names the statement shows; every other account keeps its chart name, without the bracketed note. */
-const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "2100": "Creditors", "3000": "Owner's equity" };
+const PLAIN: Record<string, string> = { "1200": "Cash at bank", "1510": "VAT receivable", "1515": "Foreign VAT to reclaim (EU refund)", "2100": "Creditors", "3000": "Owner's equity" };
 export const plainName = (account: string, name: string): string => PLAIN[account] ?? name.replace(/\s*\(.*\)$/, "");
 const chartName = (account: string) => (LEDGER_ACCOUNTS[account] ?? "").replace(/\s*\(.*\)$/, "");
 
