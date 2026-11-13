@@ -173,6 +173,7 @@ interface ZtReport {
   attacks_run: number; attacks_stopped: number; attacks_where_money_moved: number; layers: number;
   principle: string[]; reading: { harness: string }; layer_list: ZtLayer[]; attacks: ZtAttack[];
   depth: { minimum: { optional_off: { depth: number } } };
+  generated: { date: string };
 }
 /** What each attack aimed at, in our words; a target not named here is an error. */
 export const ZT_TARGETS: Record<string, string> = { bank_payout: "Bank payout", supplier_invoice: "Supplier invoice", record: "The record", card_purchase: "Card purchase", onchain_payment: "On-chain payment", policy: "The policy", company_data: "Company data" };
@@ -187,7 +188,9 @@ export const ZT_NAMES: Record<string, { name: string; short: string; sub: string
 };
 
 export interface ZeroTrust {
-  run: number; stopped: number; moved: number; minDepth: number; harness: string; principle: string[];
+  run: number; stopped: number; moved: number; minDepth: number;
+  /** The day the report was generated (its own generated.date), said with the hero's count. */
+  day: string; harness: string; principle: string[];
   layers: (ZtLayer & { stopped: number })[];
   /** Attacks by target, most first; `at` counts them by the layer that stopped each. */
   targets: { id: string; name: string; total: number; at: Record<string, number> }[];
@@ -205,7 +208,7 @@ export function zeroTrust(text: string = repoText(ZERO_TRUST_REPORT)): ZeroTrust
     const of = r.attacks.filter((a) => a.target === id);
     return { id, name: ZT_TARGETS[id]!, total: of.length, at: Object.fromEntries(r.layer_list.map((l) => [l.id, of.filter((a) => a.stopped_by?.layer === l.id).length])) };
   }).sort((a, b) => b.total - a.total);
-  return { run: r.attacks_run, stopped, moved, minDepth: r.depth.minimum.optional_off.depth, harness: r.reading.harness, principle: r.principle, layers: r.layer_list.map((l) => ({ ...l, stopped: stoppedAt(l.id) })), targets };
+  return { run: r.attacks_run, day: day(`${r.generated.date}T12:00:00Z`), stopped, moved, minDepth: r.depth.minimum.optional_off.depth, harness: r.reading.harness, principle: r.principle, layers: r.layer_list.map((l) => ({ ...l, stopped: stoppedAt(l.id) })), targets };
 }
 
 export interface HostileEval { calls: number; refused: number; tool: number; enforce: number; stood: number; unsafe: number; line: string }
@@ -328,7 +331,7 @@ export function securityViz(zt: ZeroTrust = zeroTrust(), he: HostileEval = hosti
   };
   const hero = `<section class="card zhero" id="layers" aria-labelledby="layers-h">
     <h2 class="zh" id="layers-h">The layers a payment must pass<span class="pill">Test harness, simulated rails</span></h2>
-    <p class="zsub"><b>${zt.run} attacks</b>, ${zt.stopped === zt.run ? "all stopped" : `${zt.stopped} stopped`}; ${zt.moved === 0 ? "none" : zt.moved} moved money. At least ${zt.minDepth === 2 ? "two" : esc(String(zt.minDepth))} layers must fail before a hostile payment moves.</p>
+    <p class="zsub"><b>${zt.run} attacks on the payment path</b>, ${zt.stopped === zt.run ? "all stopped" : `${zt.stopped} stopped`} (zero-trust harness, ${esc(zt.day)}); ${zt.moved === 0 ? "none" : zt.moved} moved money. At least ${zt.minDepth === 2 ? "two" : esc(String(zt.minDepth))} layers must fail before a hostile payment moves.</p>
     <div class="zpath"><div class="ztrack" aria-hidden="true">${zt.layers.map((_, i) => `<b class="zt t${i + 1}"></b>`).join("")}<i class="zp ok"></i><i class="zp no s2"></i><i class="zp no s3"></i><i class="zp no s5"></i></div>
     <ol class="zlayers">${zt.layers.map(node).join("")}</ol></div>
     <ul class="zkey"><li><i class="ok"></i>Paid as signed, then recorded</li><li><i class="no"></i>Refused at its layer</li></ul>
@@ -485,7 +488,7 @@ const cardHtml = (c: SecurityCard) => `<article class="pc card fd${c.wide ? " wi
  * and the red team's two not prevented (detected after) said there, beside the headline, not only in its card.
  */
 export function securityLead(zt: ZeroTrust = zeroTrust(), he: HostileEval = hostileEval(), rt: RedTeamRound = redTeamRound([REDTEAM_REPORT])): string {
-  return `Three attack tests: zero trust, ${zt.run} attacks, ${zt.stopped === zt.run ? "all" : zt.stopped} stopped; a hostile model, ${he.calls} tool calls, ${he.unsafe === 0 ? "none" : he.unsafe} unsafe by the ledger verdict; the red team, ${rt.attempts} attacks, ${rt.after ?? 0} not prevented (detected after).`;
+  return `Three attack tests: zero trust, ${zt.run} attacks on the payment path, ${zt.stopped === zt.run ? "all" : zt.stopped} stopped; a hostile model, ${he.calls} tool calls, ${he.unsafe === 0 ? "none" : he.unsafe} unsafe by the ledger verdict; the red team, ${rt.attempts} attacks, ${rt.after ?? 0} not prevented (detected after).`;
 }
 
 export function securityPage(): string {
