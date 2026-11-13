@@ -20,15 +20,13 @@
       "caption": "books at 390 px (first screen)"
     },
     {
-      "file": "books.gif",
-      "kind": "gif",
+      "file": "books-poster.png",
+      "kind": "png",
       "source": "https://kit11.max-31b.workers.dev/books",
       "recorded_at": "2026-11-13T06:37:47.797Z",
-      "bytes": 4669065,
-      "seconds": 14.3,
-      "speed": 1.1,
-      "width": 640,
-      "caption": "kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money."
+      "bytes": 175576,
+      "width": 880,
+      "caption": "kit11 /books: a test company's month, read and booked by Claude live; balance sheet, charts and the invoices sorted by Claude. Test money. (a still from the MP4)"
     },
     {
       "file": "books.mp4",
@@ -71,15 +69,13 @@
       "caption": "cloud-dashboard at 390 px (first screen)"
     },
     {
-      "file": "cloud-dashboard.gif",
-      "kind": "gif",
+      "file": "cloud-dashboard-poster.png",
+      "kind": "png",
       "source": "https://purser-try.max-31b.workers.dev/ (Try as guest)",
       "recorded_at": "2026-11-13T06:39:04.044Z",
-      "bytes": 4255170,
-      "seconds": 13.4,
-      "speed": 1.1,
-      "width": 720,
-      "caption": "Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books."
+      "bytes": 168855,
+      "width": 880,
+      "caption": "Purser Cloud as a guest: the demo company's dashboard (made-up data from a simulated month, test money), then its books. (a still from the MP4)"
     },
     {
       "file": "cloud-dashboard.mp4",
