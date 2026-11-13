@@ -58,7 +58,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg"');
-    expect(README).toContain("*5-minute walkthrough · AI voice and music: ElevenLabs*");
+    // Jury round 2, 13 Nov: the film's own length (298.0 s), and the partners as text only, never a logo image.
+    expect(README).toContain("*4:58 walkthrough · AI voice and music: ElevenLabs*");
+    expect(README).not.toMatch(/5-minute walkthrough|<img[^>]*built-with\.png/);
+    expect(README).toContain("Built with Airwallex, Metal, Claude, Visa and Cloudflare (no endorsement implied).");
     expect(README).toContain("Text names only; no endorsement implied.");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
