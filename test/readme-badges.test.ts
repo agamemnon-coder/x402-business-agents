@@ -23,7 +23,7 @@ describe("README badges", () => {
   // on main (a dynamic badge, so it cannot drift), MIT, the Node version package.json requires, TypeScript strict as
   // tsconfig.json sets it, the MCP server, and one static shield per partner in the site's own colours, no logos.
   it("is CI, CodeQL, the tests read from test-summary.json, MIT, Node, TypeScript strict, the MCP server and the four partners", () => {
-    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", `Node: ${pkgNode}`, "TypeScript: strict", "MCP server: read, propose only", "Airwallex: sandbox", "Metal: testnet", "Visa: VIC via Airi", "Claude: Haiku, Sonnet, Opus"]);
+    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", `Node: ${pkgNode}`, "TypeScript: strict", "MCP server: read, propose only", "Airwallex: sandbox", "Metal: testnet", "Visa: VIC via Airi", "Claude: Haiku, Sonnet, Opus", "T:0: sandbox ledger"]); // T:0 since 13 Nov (owner)
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     expect(badgeLine).toContain("https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed");
     expect(badgeLine).toContain(`https://img.shields.io/badge/node-${encodeURIComponent(pkgNode)}-339933`);
