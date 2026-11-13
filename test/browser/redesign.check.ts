@@ -96,8 +96,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(shots, `home-first-${tag}.png`) });
     await look(page, `/home ${tag}`, w);
-    if ((await page.locator("main a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button`);
-    if (await page.locator("#hero-demo").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
+    // The hero's one primary button (Try); since the enterprise pass the stat row ends in "See the proof" as a second one.
+    if ((await page.locator("main .e-hero a.btn.primary").count()) !== 1) fail(`/home ${tag}: not one primary button in the hero`);
+    if (await page.locator("main figure.hf").evaluate((e) => e.getBoundingClientRect().right > window.innerWidth + 1)) fail(`/home ${tag}: the hero runs off the page`);
     // The menu: Home, Try, Proof first, no Watch, at most five items (a link, or a fold's header).
     const tabs = (await page.locator("nav.tabs > a, nav.tabs summary").allInnerTexts()).map((t) => t.trim());
     if (tabs.slice(0, 3).join() !== "Home,Try,Proof" || tabs.length > 5 || (!WATCH_IN_MENU && (tabs.some((t) => /watch/i.test(t)) || (await page.locator('nav.tabs a[href*="watch"]').count()) > 0))) fail(`/home ${tag}: the menu is not Home, Try, Proof (at most five, no Watch): ${tabs.join(", ")}`);
@@ -105,7 +106,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (w < 500) await checkTaps(page, { name: `/home ${tag}, header and footer`, scopes: CHROME, fail });
     await checkHome(page, { url: `${base}/`, name: `/home ${tag}`, width: w, height: h, touch: w < 500, tryHref: "/try", fail, quick: true });
     await look(page, `/home ${tag}, after the hero's check`, w);
-    await page.goto(`${base}/home?demo=4`, { waitUntil: "load" });
+    await page.goto(`${base}/home`, { waitUntil: "load" });
     await page.screenshot({ path: join(shots, `home-${tag}.png`) });
     await page.screenshot({ path: join(shots, `home-full-${tag}.png`), fullPage: true });
 
@@ -172,18 +173,22 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
     // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Metal, T:0, Claude.
     if ((await page.locator(".pcard").count()) !== 5) fail(`/proof ${tag}: not five partner cards`);
-    // The jury's order (12 Nov): the guarantees directly under the heading, on the first screen; each partner card with
-    // one claim to tap in sight; four tiles; every closed line still closed; the utility links last.
+    // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then one closed fold that opens
+    // with the seven guarantees; with it open, each partner card with one claim to tap in sight; four tiles; every closed
+    // line inside still closed; the utility links last.
+    const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ul.sumc"), d = document.querySelector("main details.sumd"); return { first: !!h1 && h1.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; closed: boolean };
+    if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || !sum.closed) fail(`/proof ${tag}: not four cards directly under the heading on the first screen, with the details fold closed (${JSON.stringify(sum)})`);
+    await page.locator("main details.sumd > summary").click();
     const order = (await page.evaluate(`(() => {
-      const h1 = document.querySelector("main h1"), g = document.getElementById("guarantees"), u = document.querySelector("main .util");
+      const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util");
       const shown = (e) => e.getBoundingClientRect().height > 0 && e.checkVisibility();
       return {
-        first: h1 && h1.nextElementSibling === g, top: g ? Math.round(g.getBoundingClientRect().top + scrollY) : -1, promises: g ? g.querySelectorAll("li .by").length : 0,
+        first: !!d && d.querySelector(":scope > summary").nextElementSibling === g, top: 0, promises: g ? g.querySelectorAll("li .by").length : 0,
         claims: [...document.querySelectorAll(".pcard > ul.lead a.c")].filter(shown).length, tiles: document.querySelectorAll(".nums a.num").length,
         closed: [...document.querySelectorAll("main details.deep")].filter((d) => !d.open).length, last: !!u && !u.nextElementSibling && u.querySelectorAll("a").length,
       };
     })()`)) as { first: boolean; top: number; promises: number; claims: number; tiles: number; closed: number; last: number | false };
-    if (!order.first || order.top < 0 || order.top >= h || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees are not directly under the heading on the first screen (top ${order.top} px, ${order.promises} promises)`);
+    if (!order.first || order.promises !== 7) fail(`/proof ${tag}: the seven guarantees do not open the details fold (${order.promises} promises)`);
     if (order.claims !== 5 || order.tiles !== 4 || order.closed !== 5 || order.last !== 4) fail(`/proof ${tag}: not five claims in sight (one per partner card), four tiles, five closed lines and four utility links last (${JSON.stringify(order)})`);
     await page.screenshot({ path: join(shots, `proof-${tag}.png`) });
     // Every fold of the page; "More" in the menu stays closed, as a reader leaves it.

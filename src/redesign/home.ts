@@ -66,6 +66,8 @@ ol.flow li.you::before { background: var(--accent); border-color: var(--accent);
 ol.flow b { font-size: 17px; font-weight: 700; }
 ol.flow span { font-size: 15px; line-height: 1.5; color: var(--muted); }
 ol.flow a { color: var(--accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
+/* A thumb's size to tap (44 px), with the line as it was: the padding is taken back by the margin. */
+ol.flow a { display: inline-block; padding-block: 14px; margin-block: -14px; line-height: 16px; }
 @media (min-width: 900px) {
   ol.flow { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
   ol.flow li { grid-template-columns: 1fr; row-gap: 8px; align-items: start; align-content: start; }
