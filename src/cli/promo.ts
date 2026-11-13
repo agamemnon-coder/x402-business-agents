@@ -197,7 +197,7 @@ function mix() {
   const measure = spawnSync("ffmpeg", ["-hide_banner", "-nostats", ...inputs, "-filter_complex", `${graph};[mix]${measureFilter()}[m]`, "-map", "[m]", "-f", "null", "-"], { encoding: "utf8", maxBuffer: 1 << 26 });
   const measured = parseMeasured(measure.stderr);
   const file = resolve(OUT, vertical ? "purser-promo-vertical.mp4" : "purser-promo-1080p.mp4");
-  execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...inputs, "-filter_complex", `${graph};[mix]${normaliseFilter(measured)}[a]`,
+  execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...inputs, "-filter_complex", `${graph};[mix]${normaliseFilter(measured)},alimiter=limit=0.7:attack=0.5:release=60:level=false,aresample=48000[a]`,
     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "320k", "-t", String(TOTAL), "-movflags", "+faststart", file], { stdio: "inherit" });
   writeFileSync(resolve(OUT, "purser-promo.srt"), promoSrt());
   console.log(file);

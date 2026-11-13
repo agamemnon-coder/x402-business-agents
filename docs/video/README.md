@@ -67,7 +67,8 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
 - **Credits:** v1 284 (voice) + 900 (music) + 39 (the attack line again, 52 → 53); v2 38 (the new line), no new music.
   1,261 in all.
 - **Mix:** the voice placed with `placeFilter`, the music ducked under it by a sidechain, the effects on their own bus,
-  two-pass loudnorm to -14 LUFS, true peak -1 dB (`src/film/mix.ts`), AAC 320 kb/s.
+  two-pass loudnorm to -14 LUFS (`src/film/mix.ts`), then a limiter so the effects' transients stay under -1 dBTP after
+  AAC (measured on both MP4s: -14.2 LUFS, -1.8 dBTP), AAC 320 kb/s. Encoded at CRF 15, 60 fps.
 - **Cinematic pass (Max: "really go all in with the visuals and animations"):** depth on every shot (a perspective grid
   floor, the scene, foreground bokeh, each drifting at its own speed, and a slow 3D camera turn); bloom on the purple,
   teal and red accents; a lens-flare glint on REFUSED, SIGNED, PAID, REFUSED ON CHAIN, 0 UNSAFE and the address;
