@@ -113,7 +113,7 @@ describe("an approval alert on every channel", () => {
     // Nothing that approves: no token, no code, no reply word; the only link is the console's page, without a query.
     const everything = [...sent.map((s) => s.body), ...mails.map((m) => m.text + m.subject)].join("\n");
     expect(everything).not.toMatch(FORBIDDEN);
-    const urls = [...everything.matchAll(/https:\/\/[^\s"\\)]+/g)].map((m) => m[0]).filter((u) => !u.includes("adaptivecards.io"));
+    const urls = [...everything.matchAll(/https:\/\/[^\s"\\)]+/g)].map((m) => m[0]).filter((u) => new URL(u).hostname !== "adaptivecards.io");
     // (the signed webhook's event keeps its existing approve_in, the invoices page).
     expect(new Set(urls)).toEqual(new Set([link, `${ORIGIN}/#/invoices`]));
   });
