@@ -9,6 +9,10 @@ import { narration, onScreen, type Placed } from "./cuts.js";
 export const W = 1920, H = 1080;
 /** The phone frame on a 1920x1080 picture: a portrait recording sits in it, its corners rounded (src/film/slots.ts). */
 export const PHONE_BOX = { x: 1240, y: 150, w: 380, h: 822, r: 52 } as const;
+/** Film v10: the letterbox (2.39:1): bars of 138 px above and below a 1920x804 picture. */
+export const BAR = 138;
+/** Film v10: the phone frame inside the letterboxed picture, right of centre; the step's words stand left of it. */
+export const PHONE_BOX_LB = { x: 1236, y: 162, w: 356, h: 756, r: 44 } as const;
 
 const t = (sec: number) => {
   const cs = Math.max(0, Math.round(sec * 100));
@@ -38,6 +42,11 @@ Style: Card,Inter SemiBold,64,&H00F6F1EE,&H00F6F1EE,&H00000000,&H00000000,0,0,0,
 Style: Small,Inter Medium,32,&H00BDADA4,&H00BDADA4,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,5,96,96,0,1
 Style: Draft,Inter Medium,30,&H00D0D0D0,&H00D0D0D0,&H90000000,&H00000000,0,1,0,0,100,100,0,0,3,10,0,2,240,240,20,1
 Style: Frame,Inter,20,&H00372B26,&H00372B26,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,0,0,0,1
+Style: BarCaption,Inter SemiBold,40,&H00F6F1EE,&H00F6F1EE,&H00000000,&H00000000,0,0,0,0,100,100,0.4,0,1,0,0,5,96,96,0,1
+Style: BarBadge,Inter Medium,24,&H00B9C2CC,&H00B9C2CC,&H00000000,&H00000000,0,0,0,0,100,100,0.6,0,1,0,0,6,64,64,0,1
+Style: Corner,Inter Medium,22,&H0075706B,&H0075706B,&H00000000,&H00000000,0,0,0,0,100,100,0.6,0,1,0,0,4,64,64,0,1
+Style: Title,Inter SemiBold,76,&H00F6F1EE,&H00F6F1EE,&H00000000,&H00000000,0,0,0,0,100,100,-0.5,0,1,0,0,5,120,120,0,1
+Style: Step,Inter SemiBold,62,&H00F6F1EE,&H00F6F1EE,&H00000000,&H00000000,0,0,0,0,100,100,-0.4,0,1,0,0,4,120,120,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -49,7 +58,8 @@ const ev = (layer: number, a: number, b: number, style: string, text: string) =>
  * The ASS file of a cut. `filled` names the owner's shots that have footage (no placeholder card then); `draft` adds
  * the narration line at the bottom (a cut without a voice yet).
  */
-export function assFile(placed: Placed[], o: { filled?: Set<string>; draft?: boolean; notes?: { at: number; to: number; text: string }[] } = {}): string {
+export function assFile(placed: Placed[], o: { filled?: Set<string>; draft?: boolean; notes?: { at: number; to: number; text: string }[]; letterbox?: boolean } = {}): string {
+  if (o.letterbox) return letterboxAss(placed, o);
   const lines: string[] = [];
   // A shot not captured yet: a plain card saying which, so a draft is never mistaken for the finished film.
   for (const n of o.notes ?? []) {
@@ -93,4 +103,46 @@ export function wrap(s: string, n: number): string {
   for (const w of s.split(" ")) { if (cur && (cur + " " + w).length > n) { out.push(cur); cur = w; } else cur = cur ? `${cur} ${w}` : w; }
   if (cur) out.push(cur);
   return out.join("\n");
+}
+
+/**
+ * Film v10's burned-in words, letterboxed as film v8: the caption in the bar below, the badge in the bar above (right),
+ * a quiet credit in the bar above (left); title cards large in the picture; beside a recording, its step large on the
+ * left of the phone frame (the caption is the step, so it is not repeated in the bar).
+ */
+function letterboxAss(placed: Placed[], o: { draft?: boolean; notes?: { at: number; to: number; text: string }[] }): string {
+  const lines: string[] = [];
+  const end = placed.at(-1)!.start + placed.at(-1)!.seconds;
+  const cardAt = placed.find((p) => p.row.kind === "card")?.start ?? end;
+  lines.push(ev(4, 0.5, cardAt, "Corner", `{\\an4\\pos(64,${BAR / 2})\\fad(600,300)}Purser · Starter Kit 11`));
+  for (const n of o.notes ?? []) {
+    lines.push(ev(3, n.at, n.to, "Small", `{\\an4\\pos(300,440)\\fs30\\1c&H00B0B0&}NOT CAPTURED YET`));
+    lines.push(ev(3, n.at, n.to, "Small", `{\\an4\\pos(300,500)\\fs40\\1c&HF6F1EE&}${assText(n.text)}`));
+  }
+  const recAt = new Set(placed.flatMap((p) => p.segs.filter((g) => g.rec).map((g) => Math.round(g.start * 1000))));
+  for (const x of onScreen(placed)) {
+    if (x.kind === "caption" && !recAt.has(Math.round(x.at * 1000))) lines.push(ev(5, x.at + 0.2, x.to - 0.15, "BarCaption", `{\\pos(960,${H - BAR / 2})\\fad(260,220)}${assText(x.text)}`));
+    if (x.kind === "badge") lines.push(ev(5, x.at, x.to, "BarBadge", `{\\an6\\pos(${W - 64},${BAR / 2})\\fad(200,200)}${assText(x.text)}`));
+  }
+  for (const p of placed) for (const g of p.segs) {
+    const a = g.start, b = g.start + g.seconds;
+    if (g.title) {
+      const [first, ...rest] = g.title;
+      const top = 540 - (rest.length * 70) / 2 - 10;
+      lines.push(ev(3, a, b, "Title", `{\\pos(960,${top})\\fad(700,500)}${assText(first!)}`));
+      rest.forEach((l, i) => lines.push(ev(3, a + 0.9 + i * 0.7, b, "Small", `{\\pos(960,${top + 110 + i * 70})\\fs42\\fad(600,500)}${assText(l)}`)));
+    }
+    if (g.rec && typeof g.caption === "string") {
+      lines.push(ev(3, a + 0.2, b - 0.1, "Step", `{\\an4\\pos(140,520)\\fad(300,250)}${assText(g.caption.split(" · ").map((l) => wrap(l, 26)).join("\n"))}`));
+      lines.push(ev(3, a + 0.2, b - 0.1, "Small", `{\\an4\\pos(140,${g.caption.includes("·") ? 700 : 640})\\fs28\\1c&HB9C2CC&\\fad(300,250)}Recorded from the live page · virtual test passkey`));
+    }
+    if (g.card) {
+      const [url, line, credits] = g.card;
+      lines.push(ev(3, a, b, "Card", `{\\pos(960,470)\\fad(400,0)}${assText(url!)}`));
+      lines.push(ev(3, a, b, "Small", `{\\pos(960,560)\\fad(400,0)}${assText(line!)}`));
+      if (credits) lines.push(ev(3, a, b, "Small", `{\\pos(960,${H - BAR / 2})\\fs24\\fad(400,0)}${assText(credits)}`));
+    }
+  }
+  if (o.draft) for (const n of narration(placed)) lines.push(ev(6, n.at, n.to, "Draft", `VO: ${assText(n.text)}`));
+  return HEADER + lines.join("\n") + "\n";
 }

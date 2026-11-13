@@ -82,6 +82,8 @@
     "capture": "tsx src/cli/capture.ts",
     "cut": "tsx src/cli/cut.ts",
     "promo": "tsx src/cli/promo.ts",
+    "record-try10": "tsx src/cli/recordTry10.ts",
+    "voice10": "tsx src/cli/voice10.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
     "ap-hostile-eval": "tsx src/cli/apHostile.ts",

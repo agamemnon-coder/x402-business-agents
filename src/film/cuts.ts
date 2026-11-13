@@ -9,7 +9,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { CLAIMS, claim } from "./claims.js";
-import { OWN_FOOTAGE, OWN_HOW, SHOTS, seconds as shotSeconds, type Action, type OwnShot } from "./shots.js";
+import { ZT_ATTACKS } from "./zeroTrust.js";
+import { ALL_SHOTS, OWN_FOOTAGE, OWN_HOW, seconds as shotSeconds, type Action, type OwnShot } from "./shots.js";
 
 export const ROOT = resolve(import.meta.dirname, "../..");
 export const SITE_URL = "kit11.max-31b.workers.dev";
@@ -26,6 +27,9 @@ export const BADGES = {
   books: "Sandbox · test data",
   simbank: "Simulated bank · test money",
   testco: "Test company · test money",
+  demo: "Demo company · made-up data · test money",
+  testdata: "Test data · no network",
+  notlive: "Built · live once Twilio keys are set",
 } as const;
 export type Badge = keyof typeof BADGES;
 
@@ -35,6 +39,10 @@ export interface Seg {
   own?: OwnShot;
   /** An end card: its lines. */
   card?: string[];
+  /** Film v10: a title card on the film's dark background, its lines large (the first the largest). */
+  title?: string[];
+  /** Film v10: a recording made by code (npm run record-try10), out/video/v10/recordings/<rec>.mp4, in the phone frame. */
+  rec?: string;
   seconds: number;
   /** One caption per shot; a caption with its own window (seconds from the shot's start) for the opening only. */
   caption?: string | { from: number; to: number; text: string }[];
@@ -59,7 +67,7 @@ export interface Row {
   give?: Record<string, number>;
 }
 
-export interface Cut { id: "submission-3" | "walkthrough-5" | "handin-5"; title: string; file: string; rows: Row[]; limit: number }
+export interface Cut { id: "submission-3" | "walkthrough-5" | "handin-5" | "handin-10"; title: string; file: string; rows: Row[]; limit: number; /** Film v10: letterboxed to 2.39:1, captions and badges in the bars. */ letterbox?: boolean }
 
 const s = (shot: string | string[], seconds: number, caption?: Seg["caption"], badge?: Badge): Seg => ({ shot: Array.isArray(shot) ? shot : [shot], seconds, caption, badge });
 const own = (o: OwnShot, seconds: number, caption?: Seg["caption"], badge?: Badge): Seg => ({ own: o, seconds, caption, badge });
@@ -161,7 +169,50 @@ export const HANDIN: Cut = {
   ],
 };
 
-export const CUTS: Record<Cut["id"], Cut> = { "submission-3": SUBMISSION, "walkthrough-5": WALKTHROUGH, "handin-5": HANDIN };
+const title = (lines: string[], seconds: number, badge?: Badge): Seg => ({ title: lines, seconds, badge });
+const rec = (file: string, seconds: number, caption: string, badge: Badge): Seg => ({ rec: file, seconds, caption, badge });
+const s10 = (shot: string, seconds: number, caption?: string, badge?: Badge): Seg => s(shot, seconds, caption, badge);
+
+/** The recordings film v10 lays into the phone frame (npm run record-try10 writes them, with what the page showed). */
+export const RECORDINGS_10 = {
+  "try-start": "/try on purser-try: start a test company; an invoice already paid, sent again, is caught as a duplicate",
+  "try-approve": "/try: a supplier's invoice of EUR 1,850.00 checked; the approval with the conversion, the fee's cap and the deadline",
+  "try-paid": "/try: signed with the virtual test passkey; paid on the simulated bank, booked and filed",
+  "try-cent": "/try: the amount changed by one cent, the same signature refused",
+} as const;
+
+export const CREDITS_10 = "Test money only: Airwallex sandbox · Metal testnet · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs).";
+
+/**
+ * Film v10 (13 Nov, the enterprise hand-in, under five minutes): what Purser is today. The problem; Purser Cloud as the
+ * place where a company runs Purser (its demo company, made-up data); the approval alerts (built, not live); the
+ * hands-on demo recorded by code from the live page; the layers of security, the zero-trust report and the hostile-model
+ * eval; Claude; the partners' runs (Airwallex, Metal, Visa via Airi, T:0); the proof page; what is not done. No one on
+ * camera: an AI narrator (ElevenLabs) reads every line. Letterboxed, dark, large and slow, as film v8.
+ */
+export const HANDIN10: Cut = {
+  id: "handin-10", title: "Purser: the enterprise hand-in (film v10)", file: "purser-v10", limit: 299, letterbox: true,
+  rows: [
+    { id: "x01", kind: "vo", chapter: "The problem", words: "Purser lets AI agents pay company bills, but only within limits the CFO signs with Face ID or a passkey. A limit written in a prompt is only a request. Here, the agent proposes, the CFO signs the exact terms, and code and the payment rails enforce them.", segs: [title(["AI agents are starting to pay company bills.", "Who signs off?"], 7), s10("X-home", 14, "Agents pay only within limits the CFO signs")], claims: ["C01", "C02"] },
+    { id: "x02", kind: "vo", chapter: "Purser Cloud", words: "This is Purser Cloud, where a company runs Purser, shown with a demo company: made-up data, test money. The Agents tab: each Claude agent, its card limits, what it may and may not do, and its decisions. Invoices and books: what waits for the CFO, what is paid, and the journal. Tokenisation: an invoice token on Metal testnet.", segs: [s10("X-cloud-overview", 6, "Purser Cloud · where a company runs Purser", "demo"), s10("X-cloud-agents", 8, "Agents · limits · may and may not", "demo"), s10("X-cloud-books", 6, "Invoices & books", "demo"), s10("X-cloud-tokens", 6, "Tokenisation · Metal testnet", "demo")], claims: ["C50", "C54"] },
+    { id: "x03", kind: "vo", chapter: "Approval alerts", words: "When a payment waits for the CFO, an alert can go out by WhatsApp, e-mail, Slack or Teams. They are built, live once Twilio keys are set. An alert never approves. The CFO still signs with Face ID or a passkey.", segs: [title(["Approval alerts", "WhatsApp · e-mail · Slack · Teams", "The alert links; the passkey approves."], 19, "notlive")], claims: ["C49"] },
+    { id: "x04", kind: "vo", chapter: "Try it: your own test company", words: "Anyone can try it. Start your own test company: test money on a simulated bank, deleted after 24 hours. Send an invoice that was already paid, and it is caught as a duplicate.", segs: [rec("try-start", 15, "Your own test company", "simbank")], claims: ["C44", "C51"] },
+    { id: "x05", kind: "vo", words: "File a supplier's invoice for 1,850 euros. The agents check it, and the approval shows the exact terms: the conversion, the cap on the bank fee, and the deadline to sign. The CFO signs with Face ID or a passkey; here, a virtual test passkey. Paid, booked and filed. Change one cent, and the same signature is refused.", segs: [rec("try-approve", 11, "Conversion · fee cap · deadline", "simbank"), rec("try-paid", 8, "Signed · paid · booked", "simbank"), rec("try-cent", 8, "One cent changed → refused", "simbank")], claims: ["C44", "C51", "C05"] },
+    { id: "x06", kind: "vo", chapter: "Security in layers", words: `Security comes in layers that do not trust each other: the agent, Purser's code, the CFO's signature, four eyes, the rail's own limits, and the audit record. In the test harness, all ${ZT_ATTACKS} attacks were stopped, and none moved money. At least two layers must fail before a hostile payment moves.`, segs: [s10("X-security", 14, "Six layers · each stops on its own", "harness"), s10("X-attacks", 11, `All ${ZT_ATTACKS} attacks stopped · test harness`, "harness")], claims: ["C47"] },
+    { id: "x07", kind: "vo", words: "Then a script took Claude's place, and made the worst tool call it could, on every turn. 380 calls. None unsafe.", segs: [s10("X-hostile", 12, "Hostile-model eval · none unsafe", "testdata")], claims: ["C48"] },
+    { id: "x08", kind: "vo", chapter: "Claude decides, code checks", words: "In the main run on 3 November, three Claude agents made 24 decisions, for 32 cents. Claude decides; code checks before anything moves. In a test company's month, Claude read 20 invoices and chose each account, VAT code and cost centre. Code checked every choice before it was booked, and the books balance.", segs: [s10("X-claude", 11, "Main run · 3 Nov · 24 decisions · USD 0.3170"), s10("X-books", 15, "Coded by Claude · checked by code", "testco")], claims: ["C22", "C43"], rounded: [["32", "0.3170", 0.01]] },
+    { id: "x09", kind: "vo", chapter: "Airwallex", words: "On Airwallex, each agent has its own card, and Airwallex itself declined a simulated 45 euro charge over the limit. A payout has two locks, Purser's and Airwallex's own: it waited until the owner approved it there, then it was paid, with simulated settlement. The payee's bank checks the name, and one signature pays a batch.", segs: [s10("X-awx-card", 8, "LIMIT_EXCEEDED · card ····2441 · 7 Nov", "awx"), s10("X-awx-locks", 10, "Two locks · PAID 12 Nov · settlement simulated", "awx"), s10("X-awx-payee", 8, "Payee check · the bank checks the name", "awx")], claims: ["C12", "C26", "C41", "C10", "C52", "C53"] },
+    { id: "x10", kind: "vo", chapter: "Metal", words: "On Metal, the agent's limit lives in a passkey account that checks both owners' signatures itself, on chain. The agent paid 5 cents inside its mandate; 6 cents, over the cap, was refused on chain. An invoice was tokenised there too, with a simulated financier, and the audit chain's head is anchored in one transaction.", segs: [s10("X-faceid-chain", 9, "Two passkeys · checked on chain · 12 Nov", "metal"), s10("X-refused", 8, "0.06 over the 0.05 cap · refused on chain", "metal"), s10("X-anchor", 10, "Audit chain anchored · 13 Nov", "metal")], claims: ["C40", "C40r", "C54", "C55"] },
+    { id: "x11", kind: "vo", chapter: "Visa via Airi", words: "Through Visa Intelligent Commerce and Airwallex's Airi, Claude chose the rail. A 45 euro purchase above the limit waited for Face ID. The signed terms' hash sits in Airi's mandate and in Airwallex's payment record.", segs: [s10("X-visa", 17, "Visa via Airi · 12 Nov · hash read back", "airi")], claims: ["C42"] },
+    { id: "x12", kind: "vo", chapter: "T:0", words: "The main run's 95 journal entries were posted to T:0's sandbox, and T:0 matches them line by line.", segs: [s10("X-t0", 10, "T:0 sandbox · 10 Nov · all 95 entries", "books")], claims: ["C16"] },
+    { id: "x13", kind: "vo", chapter: "The proof", words: "Every line of this film has its record. The proof page lists what Purser guarantees, who enforces each, and the evidence.", segs: [s10("X-proof", 11)], claims: ["C46"] },
+    { id: "x14", kind: "vo", chapter: "What is not done", words: "What is not done: the alerts go live once Twilio keys are set, and sandbox settlement is simulated. In the Visa sandbox, a credential reused on a bigger payment was not refused. There, only Purser holds the limit.", segs: [s10("X-visa-n", 17, "Sandbox did not refuse · only Purser held", "airi")], claims: ["C42n", "C10", "C49"] },
+    { id: "x15", kind: "vo", chapter: "Close", words: "Agents do the work. The CFO signs only the exceptions. Our code checks every limit, and the rail checks again. Purser, for Kit 11. Try it yourself.", segs: [title(["Agents do the work.", "The CFO signs only the exceptions.", "Purser · Kit 11"], 13)], claims: ["C19", "C34"] },
+    { id: "x16", kind: "card", words: "", segs: [{ card: [SITE_URL, "Try it yourself", CREDITS_10], seconds: 6 }], claims: [] },
+  ],
+};
+
+export const CUTS: Record<Cut["id"], Cut> = { "submission-3": SUBMISSION, "walkthrough-5": WALKTHROUGH, "handin-5": HANDIN, "handin-10": HANDIN10 };
 
 // ---- Which rows hold today -------------------------------------------------------------------------------------------
 
@@ -291,12 +342,13 @@ export function checkCut(cut: Cut, o: { demoDay?: boolean } = {}): string[] {
     // PAID in the Airwallex sandbox is said with its simulated settlement (rule 2); a Metal testnet payment settles on chain.
     if (/\bPAID\b|\bpaid\b/.test(r.words + r.segs.map((g) => (typeof g.caption === "string" ? g.caption : "")).join(" ")) && r.kind === "vo" && r.claims.some((c) => AIRWALLEX_PAID.has(c)) && !/simulat/i.test(r.words + JSON.stringify(r.segs)) && !r.claims.includes("C10")) out.push(`${r.id}: PAID without "settlement simulated"`);
     for (const g of p.segs) {
-      if (g.shot && !g.shot.some((id) => SHOTS.some((x) => x.id === id))) out.push(`${r.id}: no shot ${g.shot.join("/")}`);
+      if (g.shot && !g.shot.some((id) => ALL_SHOTS.some((x) => x.id === id))) out.push(`${r.id}: no shot ${g.shot.join("/")}`);
       if (g.own && !(g.own in OWN_FOOTAGE)) out.push(`${r.id}: no own footage ${g.own}`);
+      if (g.rec && !(g.rec in RECORDINGS_10)) out.push(`${r.id}: no recording ${g.rec}`);
     }
     // Every number said or shown is found in the records of the row's claims (or is a stated rounding of one).
     const sources = r.claims.flatMap((c) => claim(c).sources).map(text).filter((x): x is string => x !== null).join("\n");
-    const shown = r.segs.flatMap((g) => (typeof g.caption === "string" ? [g.caption] : (g.caption ?? []).map((c) => c.text)));
+    const shown = r.segs.flatMap((g) => [...(typeof g.caption === "string" ? [g.caption] : (g.caption ?? []).map((c) => c.text)), ...(g.title ?? [])]);
     for (const [where, line] of [["said", r.words], ...shown.map((c) => ["shown", c] as const)] as const) {
       for (const n of numbers(line)) {
         if (inText(n, sources)) continue;
@@ -367,17 +419,17 @@ export const chapters = (placed: Placed[]) => placed.filter((p) => p.row.chapter
 /** The script table as rendered (the plan's B or C), with claim ids and what is still a placeholder. */
 export function scriptMarkdown(cut: Cut, placed: Placed[]): string {
   const rows = placed.map((p) => {
-    const shots = p.segs.map((g) => (g.own ? `**${g.own}** (placeholder: ${OWN_FOOTAGE[g.own]})` : g.card ? "end card" : g.shot!.join(" / "))).join(" → ");
+    const shots = p.segs.map((g) => (g.own ? `**${g.own}** (placeholder: ${OWN_FOOTAGE[g.own]})` : g.card ? "end card" : g.title ? `title card “${g.title.join(" / ")}”` : g.rec ? `recording **${g.rec}** (${RECORDINGS_10[g.rec as keyof typeof RECORDINGS_10] ?? "?"})` : g.shot!.join(" / "))).join(" → ");
     const caps = p.segs.map((g) => (typeof g.caption === "string" ? g.caption : (g.caption ?? []).map((c) => c.text).join("; "))).filter(Boolean).join(" → ");
     const badges = [...new Set(p.segs.map((g) => (g.badge ? BADGES[g.badge] : "")).filter(Boolean))].join(", ");
-    return `| ${clock(p.start)}–${clock(p.start + p.seconds)} | ${shots} | ${p.row.kind === "cam" ? "MAX-CAM" : p.row.kind === "vo" ? "VO" : "—"}: ${p.row.words || "—"} | ${caps || "—"}${badges ? ` + badge ${badges}` : ""} | ${p.row.claims.join(", ") || "—"} |`;
+    return `| ${clock(p.start)}–${clock(p.start + p.seconds)} | ${shots} | ${p.row.kind === "cam" ? "MAX-CAM" : p.row.kind === "vo" ? (cut.letterbox ? "AI narrator" : "VO") : "—"}: ${p.row.words || "—"} | ${caps || "—"}${badges ? ` + badge ${badges}` : ""} | ${p.row.claims.join(", ") || "—"} |`;
   });
   const ch = chapters(placed).map((c) => `${clock(c.at)} ${c.title}`).join("\n");
   return `# ${cut.title} (${clock(total(placed))})\n\nMade by \`npm run cut -- ${cut.id}\` from src/film/cuts.ts. Spoken words: ${placed.reduce((k, p) => k + spokenWords(p.row.words), 0)} at ${WPM} a minute.\n\n| Time | Shot | Narration | Caption | Claims |\n|---|---|---|---|---|\n${rows.join("\n")}\n\n## Chapters (for the YouTube description)\n\n${ch}\n`;
 }
 
 /** What a shot's actions do, in words, for the shot list. */
-const doing = (a: Action) => ("hold" in a ? `hold ${a.hold} s` : "scroll" in a ? `scroll to "${a.scroll}" (${a.s} s)` : "click" in a ? `click "${a.click}"` : "pick" in a ? `pick ${a.pick}` : `highlight "${a.highlight.join("\", \"")}"`);
+const doing = (a: Action) => ("hold" in a ? `hold ${a.hold} s` : "scroll" in a ? `scroll to "${a.scroll}" (${a.s} s)` : "click" in a ? `click "${a.click}"` : "pick" in a ? `pick ${a.pick}` : "hash" in a ? `go to ${a.hash}` : `highlight "${a.highlight.join("\", \"")}"`);
 
 /** The shot list per scene: time, shot, who records it and how, the exact address or screen, what is done, caption, badge. */
 export function shotListMarkdown(cut: Cut, placed: Placed[]): string {
@@ -392,8 +444,12 @@ export function shotListMarkdown(cut: Cut, placed: Placed[]): string {
         lines.push(`- **${g.own}**, ${g.seconds} s · **Max (${/screen recording|Laptop/.test(how.device) && !/iPhone/.test(how.device) ? "screen" : "iPhone"})** · ${how.device}`, `  - Where: ${how.where}`, `  - Do: ${how.steps.join("; ")}`, ...(tail ? [`  - On screen: ${tail}`] : []));
       } else if (g.card) {
         lines.push(`- End card, ${g.seconds} s: ${g.card.join(" · ")} (drawn by the cut)`);
+      } else if (g.title) {
+        lines.push(`- Title card, ${g.seconds} s: “${g.title.join(" / ")}” (drawn by the cut)${tail ? `; ${tail}` : ""}`);
+      } else if (g.rec) {
+        lines.push(`- **${g.rec}**, ${g.seconds} s · **recorded by code** (\`npm run record-try10\`, headless Chromium at phone size, a CDP virtual test passkey) · ${RECORDINGS_10[g.rec as keyof typeof RECORDINGS_10] ?? ""}`, ...(tail ? [`  - On screen: ${tail}`] : []));
       } else {
-        const shot = g.shot!.map((id) => SHOTS.find((x) => x.id === id)).find((x) => x !== undefined)!;
+        const shot = g.shot!.map((id) => ALL_SHOTS.find((x) => x.id === id)).find((x) => x !== undefined)!;
         const alt = g.shot!.length > 1 ? ` (or ${g.shot!.filter((x) => x !== shot.id).join(", ")})` : "";
         lines.push(`- **${shot.id}**${alt}, ${g.seconds} s · **capture** · ${shot.what}`, `  - Where: ${shot.still ?? (shot.urls ?? []).join(" or ")}`, `  - Do: ${shot.actions.map(doing).join(", then ")} (${shotSeconds(shot)} s)`, ...(shot.must.length ? [`  - Must show: ${shot.must.map((m) => `"${m}"`).join(", ")}`] : []), ...(tail ? [`  - On screen: ${tail}`] : []));
       }

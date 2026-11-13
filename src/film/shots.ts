@@ -7,6 +7,8 @@
 // T = can be captured from the live site today; D = waits for a stream, and is taken from the first site whose page
 // passes its gate (the preview, kit11-next, until the stream is live); stills are files of this repository.
 
+import { ZT_ATTACKS } from "./zeroTrust.js";
+
 export const LIVE = "https://kit11.max-31b.workers.dev";
 /** "local:/path": the page as this branch builds it (npm run capture serves the Worker's pages on this computer). */
 export const LOCAL = "local:";
@@ -22,12 +24,16 @@ export type Action =
   /** Give the page's file input a repository file (instant). */
   | { pick: string }
   /** Outline the smallest elements that contain these strings (a highlight box; the page's words are not changed). */
-  | { highlight: string[] };
+  | { highlight: string[] }
+  /** Set the page's location hash (a tab of a one-page app, e.g. "#/agents"), then wait for it to draw (instant). */
+  | { hash: string };
 
-export type Viewport = "desktop" | "phone";
+export type Viewport = "desktop" | "phone" | "scope";
 export const VIEWPORTS: Record<Viewport, { width: number; height: number; dpr: number; out: [number, number] }> = {
   desktop: { width: 1440, height: 900, dpr: 2, out: [1920, 1080] },
   phone: { width: 390, height: 844, dpr: 3, out: [1080, 1920] },
+  /** Film v10: the letterboxed picture (2.39:1), 1920x804 between the bars; the page drawn at 1.2x, so its text reads large. */
+  scope: { width: 1600, height: 669, dpr: 2, out: [1920, 804] },
 };
 
 export interface Shot {
@@ -103,7 +109,40 @@ export const PHONE_SHOTS: readonly Shot[] = ["D1a", "T2b", "T8", "T9a", "T9b", "
   return { ...s, id: `${id}-phone`, viewport: "phone" as const, actions: s.actions.map((a) => ("scroll" in a ? { ...a, at: Math.min(a.at ?? 0.3, 0.25) } : a)) };
 });
 
-export const ALL_SHOTS: readonly Shot[] = [...SHOTS, ...PHONE_SHOTS];
+const CLOUD = "https://purser-try.max-31b.workers.dev/";
+const scope = (s: Omit<Shot, "viewport">): Shot => ({ viewport: "scope", ...s });
+/** Into Purser Cloud's demo company (read only, made-up data, test money): the sign-in page's guest button, then a tab. */
+const guest = (tab: string): Action[] => [{ click: "Try as guest" }, { hash: `#/${tab}` }];
+
+/**
+ * Film v10 (13 Nov, the enterprise hand-in): the pages at the letterboxed size (1600x669 CSS pixels, 1920x804 out), the
+ * page filling the picture between the bars. The partner pages and records as in the hand-in film, the security page,
+ * and Purser Cloud's demo company (the guest view: read only, made-up data, test money).
+ */
+export const SCOPE_SHOTS: readonly Shot[] = [
+  scope({ id: "X-home", what: "Home: the H1 and the steps", urls: [`${LIVE}/`], actions: [{ hold: 5 }, { scroll: "Purser's code holds the limits", s: 3, at: 0.55 }, { hold: 8 }], must: ["AI agents spend.", "You sign off."] }),
+  scope({ id: "X-cloud-overview", what: "Purser Cloud, demo company: the Overview", urls: [CLOUD], actions: [...guest("overview"), { hold: 7 }], must: ["Try as guest"], mustNot: ["Loading …"] }),
+  scope({ id: "X-cloud-agents", what: "Purser Cloud, demo company: the Agents tab", urls: [CLOUD], actions: [...guest("agents"), { hold: 2 }, { scroll: "LIMITS (CFO POLICY", s: 3, at: 0.15 }, { hold: 6 }], must: ["Try as guest"] }),
+  scope({ id: "X-cloud-books", what: "Purser Cloud, demo company: Invoices & books", urls: [CLOUD], actions: [...guest("books"), { hold: 2 }, { scroll: "Waits for the CFO's Face ID", s: 2, at: 0.35 }, { hold: 4 }], must: ["Try as guest"] }),
+  scope({ id: "X-cloud-tokens", what: "Purser Cloud, demo company: the Tokenisation tab", urls: [CLOUD], actions: [...guest("tokenisation"), { hold: 2 }, { scroll: "Invoice token on Metal testnet", s: 2, at: 0.1 }, { hold: 5 }], must: ["Try as guest"], mustNot: ["Northwind Outdoor (demo company): what is open"] }),
+  scope({ id: "X-security", what: "/security: the layers a payment must pass", urls: [`${LIVE}/security`], actions: [{ hold: 1 }, { scroll: "The layers a payment must pass", s: 2.5, at: 0.16 }, { hold: 10 }], must: ["The layers a payment must pass", `${ZT_ATTACKS} attacks, all stopped`] }),
+  scope({ id: "X-attacks", what: "/security: where each attack was stopped", urls: [`${LIVE}/security`], actions: [{ hold: 0.5 }, { scroll: "Where each attack was stopped", s: 2.5, at: 0.08 }, { hold: 9 }], must: ["Where each attack was stopped"] }),
+  scope({ id: "X-hostile", what: "/security: a hostile model, against the code", urls: [`${LIVE}/security`], actions: [{ hold: 0.5 }, { scroll: "A hostile model, against the code", s: 2.5, at: 0.12 }, { hold: 12 }], must: ["A hostile model, against the code", "380"] }),
+  scope({ id: "X-claude", what: "/claude: the three agents and their decisions", urls: [`${LIVE}/claude`], actions: [{ hold: 3 }, { scroll: "Three agents", s: 2.5, at: 0.62 }, { hold: 8 }], must: ["Three agents", "Haiku"] }),
+  scope({ id: "X-books", what: "/books: the Coder agent's choices with its reasons", urls: [`${LIVE}/books`], actions: [{ hold: 2 }, { scroll: "Invoices, sorted by Claude", s: 2.5, at: 0.12 }, { highlight: ["chose its account, VAT code and cost centre"] }, { hold: 11 }], must: ["Invoices, sorted by Claude", "chose its account, VAT code and cost centre"] }),
+  scope({ id: "X-awx-card", what: "/airwallex: LIMIT_EXCEEDED", urls: [`${LIVE}/airwallex`], actions: [{ hold: 0.5 }, { scroll: "LIMIT_EXCEEDED", s: 2, at: 0.35 }, { highlight: ["LIMIT_EXCEEDED"] }, { hold: 8 }], must: ["LIMIT_EXCEEDED"] }),
+  scope({ id: "X-awx-locks", what: "/airwallex: two locks, IN_APPROVAL then PAID", urls: [`${LIVE}/airwallex`], actions: [{ hold: 0.5 }, { scroll: "IN_APPROVAL at Airwallex", s: 2, at: 0.5 }, { highlight: ["IN_APPROVAL at Airwallex"] }, { hold: 9 }], must: ["IN_APPROVAL"] }),
+  scope({ id: "X-awx-payee", what: "The payee-check record on GitHub: the bank's answer per name", urls: [`${GH}/docs/runs/2026-11-12-airwallex-payee-check.md`], actions: [{ hold: 0.5 }, { scroll: "Airwallex's answer", s: 1.5, at: 0.2 }, { highlight: ["FULL_MATCH"] }, { hold: 8 }], must: ["The payee's bank checks the name before the CFO is asked", "FULL_MATCH"] }),
+  scope({ id: "X-faceid-chain", what: "/runs: passkeys sign on chain, two owners", urls: [`${LIVE}/runs`], actions: [{ hold: 0.5 }, { scroll: "Passkeys sign on chain (P-256)", s: 2, at: 0.15 }, { highlight: ["Passkeys sign on chain (P-256)"] }, { hold: 7 }], must: ["Passkeys sign on chain (P-256)"] }),
+  scope({ id: "X-refused", what: "The explorer page of the refused payment, tx 0xe6d9c7ea…585df4", urls: ["https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4"], actions: [{ hold: 8 }], must: ["0xe6d9"], ownTheme: true }),
+  scope({ id: "X-anchor", what: "The anchor record on GitHub: the chain head on Metal testnet, height 701", urls: [`${GH}/docs/runs/2026-11-13-anchor.md`], actions: [{ hold: 0.5 }, { scroll: "Purser's chain head anchored", s: 1.5, at: 0.1 }, { highlight: ["Height: 701"] }, { hold: 8 }], must: ["Height: 701"] }),
+  scope({ id: "X-visa", what: "The vic-3 record on GitHub: 45.00 EUR after Face ID, both read-backs", urls: [`${GH}/docs/runs/2026-11-12-vic-3.md`], actions: [{ hold: 0.5 }, { scroll: "above the CFO's limit: Face ID", s: 1.5, at: 0.3 }, { highlight: ["above the CFO's limit: Face ID"] }, { hold: 15 }], must: ["above the CFO's limit: Face ID"] }),
+  scope({ id: "X-visa-n", what: "The vic-3 record: the negative tests, only Purser enforces the binding", urls: [`${GH}/docs/runs/2026-11-12-vic-3.md`], actions: [{ hold: 0.5 }, { scroll: "Negative test (F1, F2)", s: 1.5, at: 0.15 }, { highlight: ["only Purser enforces the binding here"] }, { hold: 15 }], must: ["only Purser enforces the binding here"] }),
+  scope({ id: "X-t0", what: "The T:0 record on GitHub: 95 journal entries, matched line by line", urls: [`${GH}/docs/runs/2026-11-10-t0-journal-sandbox.md`], actions: [{ hold: 0.5 }, { scroll: "matches our books line by line", s: 1.5, at: 0.72 }, { highlight: ["matches our books line by line"] }, { hold: 8 }], must: ["matches our books line by line"] }),
+  scope({ id: "X-proof", what: "/proof: what Purser guarantees, who enforces it, the evidence", urls: [`${LIVE}/proof`], actions: [{ hold: 3 }, { scroll: "What Purser guarantees", s: 2, at: 0.1 }, { hold: 7 }], must: ["What Purser guarantees"] }),
+];
+
+export const ALL_SHOTS: readonly Shot[] = [...SHOTS, ...PHONE_SHOTS, ...SCOPE_SHOTS];
 
 /**
  * What only the owner can record (the plan's E): the placeholders in the first cut. They are never captured; the cut
