@@ -35,6 +35,8 @@ export function icon(name: string, size = 20): string {
 /** The icons a page's script draws, by name, as markup strings (built here, never from data). */
 export const iconSet = (names: string[]) => Object.fromEntries(names.map((n) => [n, icon(n, 16)]));
 
+/** A count of a whole, in words: "All 3" when every one, else "3 of 4" (standing rule, 13 Nov: no N/N fraction on a page). */
+export const countOf = (n: number, of: number): string => (n === of ? `All ${of}` : `${n} of ${of}`);
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
 /**
