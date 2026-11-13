@@ -130,3 +130,6 @@ f26d0b8e945485109e36bcaca78a26604ebdae25:docs/runs/README.md:generic-api-key:16
 1d84591f21c2f73b9c8cef3b6cb24135dcd74d92:cloud/src/engine/hostWorker.ts:generic-api-key:126
 020bfdc4c498a7c2e2021d90df0f8d5f0b653116:test/fixtures/tokenize-run.json:generic-api-key:26
 020bfdc4c498a7c2e2021d90df0f8d5f0b653116:test/fixtures/tokenize-run.json:generic-api-key:49
+# 13 Nov: the owner's passkey fingerprint (a public-key hash, also in docs/runs/2026-11-13-airwallex-faceid.md) in the
+# generated runs list for one commit; removed from that list in the next.
+40608c076f95d62377b54d0595a5c6f4cb02b3ed:docs/runs/README.md:generic-api-key:12

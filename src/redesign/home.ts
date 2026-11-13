@@ -165,7 +165,7 @@ export const FEATURES = [
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
-export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-12-vic-3.json";
+export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
 export const STAT_NOTE = "Each figure from a sandbox or testnet record.";
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";

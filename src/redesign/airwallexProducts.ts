@@ -537,6 +537,14 @@ export function airwallexDescription(run: AgentRun): string {
   return `The Airwallex products Purser uses, each with one number, one id and the date of its own run: ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names.join("")}.`;
 }
 
+/** The run of 13 Nov: the owner's own iPhone Face ID opened lock 1 on one payout (its row in src/redesign/runs.ts). */
+export const FACEID_KEY = "awx-faceid-1";
+/** That run as a fold on /airwallex, in its row's words: held IN_APPROVAL, not PAID that day. */
+export function faceIdFoldHtml(row: RunRow | null | undefined): string {
+  if (!row) return "";
+  return foldHtml(`Approved with the owner's own Face ID (${dayShort(row.iso)})`, `<ul class="pl">${liPlain(row.line ?? row.what)}</ul><p class="src"><a class="pf" href="runs#${FACEID_KEY}">${esc("Every id on /runs")}</a></p>`, ` id="faceid-run"`);
+}
+
 /** /airwallex's body: the tiles first, the hash block under them, everything else folded. */
 export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const tiles = productTiles(run), platform = platformRunOfRecord(), locks = twoLocksOfRecord(), q = fxQuote(run.record), accept = acceptanceRunOfRecord();
@@ -546,6 +554,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const folds = [
     o.awx1 ? foldHtml("Airwallex-only run: every step and id", `<div class="awrb">${o.awx1}</div>`) : "",
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",
+    faceIdFoldHtml(liveRuns().find((r) => r.key === FACEID_KEY)),
     platformFoldHtml(platform, first, firstRow ? dayShort(firstRow.iso) : null),
     foldHtml("Metal earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
     foldHtml("The Airwallex products and their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),

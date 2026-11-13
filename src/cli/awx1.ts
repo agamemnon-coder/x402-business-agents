@@ -3,7 +3,7 @@
 //   stand-in [--out file]    the whole scenario on the in-memory stand-ins, 0 network: no key is read, fetch is refused.
 //                            Its record says STAND-IN; it is never written to docs/demo or docs/runs
 //   preflight                the live world's settings (no secret printed), then 3 Airwallex calls: login, balances, webhooks
-//   live [--from <step>]     the scenario on the sandbox, with the runner (npm run relay) beside it; AWX1_GO=yes only
+//   live [--from s] [--to s] the scenario on the sandbox, with the runner (npm run relay) beside it; AWX1_GO=yes only
 //   record --verify-log <file> [--out file]   the run's record from the ledger, the call log, the last reconciliation
 //                            and npm run verify's saved output; 0 calls
 // Nothing here approves anything: Max does, with Face ID, on the relay.
@@ -36,7 +36,8 @@ if (cmd === "plan") {
     const { reconcile } = await import("../finance/reconcile.js");
     const db = openDb();
     const w = await standInDeps(db, { log: (l) => console.log(`STAND-IN  ${l}`) });
-    await runAwx1(w.deps);
+    const span = { ...(opt("--from") ? { from: opt("--from") as never } : {}), ...(opt("--to") ? { to: opt("--to") as never } : {}) };
+    await runAwx1(w.deps, span);
     const r = await reconcile(db, standInSources(w.issuing, w.awx));
     const rec = awx1Record(db, { mode: "stand-in", virtualLabels: [VIRTUAL_PASSKEY_LABEL], verify: await verifyLines(db, standInGet(w.awx)), reconcile: { checked: r.checked, differences: r.differences.length, skipped: r.skipped } });
     for (const [k, v] of Object.entries(rec.checks)) console.log(`${v.ok ? "ok  " : "FAIL"}  ${k}  ${v.detail}`);
@@ -76,10 +77,12 @@ if (cmd === "plan") {
   const { runAwx1, STEPS } = await import("../awx/scenario.js");
   const { liveDeps } = await import("../awx/live.js");
   const from = opt("--from") as (typeof STEPS)[number] | undefined;
+  const to = opt("--to") as (typeof STEPS)[number] | undefined;
   if (from && !STEPS.includes(from)) { console.error(`--from one of ${STEPS.join(", ")}`); process.exit(2); }
+  if (to && !STEPS.includes(to)) { console.error(`--to one of ${STEPS.join(", ")}`); process.exit(2); }
   const stamp = () => new Date().toISOString().slice(11, 19);
   try {
-    await runAwx1(liveDeps(db, (l) => console.log(`${stamp()} ${l}`)), from ? { from } : {});
+    await runAwx1(liveDeps(db, (l) => console.log(`${stamp()} ${l}`)), { ...(from ? { from } : {}), ...(to ? { to } : {}) });
     console.log(`${stamp()} done: run npm run verify | tee <log>, npm run reconcile, then npm run awx-1 -- record --verify-log <log>`);
   } catch (e) {
     console.error(`${stamp()} STOPPED          ${(e as Error).message} (recorded as awx1.step_failed; see the runbook's abort criteria)`);

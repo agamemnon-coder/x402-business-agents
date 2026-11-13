@@ -44,6 +44,7 @@ import { CREDENTIAL_DIR_MODE, CREDENTIAL_FILE_NAME } from "./cardData.js";
 import { AiriRefusal, AiriWaitTimeout, CheckoutOutcomeUnknown, scrubText, type AiriCheckout, type AiriClient, type CheckoutAnswer } from "./client.js";
 import { AIRI_CURRENCY, airiPolicy } from "./policy.js";
 import { AIRI_RAIL, decideAiriPurchase, executeAiriPurchase, requestAiriPurchase, type AiriDeps, type AiriOutcome, type AiriPurchaseRequest } from "./purchase.js";
+import { credentialUseRefusal } from "./credentialGuard.js";
 import { readBackTerms, type IntentMetadataReader, type TermsReadBack } from "./termsMetadata.js";
 import { MERCHANT, NOT_ALLOWED_URL, assertNoSecrets, preflight, seedPolicy } from "./vic1.js";
 import { readRunnerEnv, type RunnerEnv } from "./vic2.js";
@@ -54,8 +55,8 @@ export const RUN = "vic-3";
 export const BUDGETS = { anthropic: 6, airwallex: 20, airi: 24 } as const;
 export type Budgeted = keyof typeof BUDGETS;
 
-export const AMOUNTS = { A: "12.00", B: "45.00", C: "250.00", D: "5.00", E: "30.00", E_TAMPERED: "190.00", F1_MANDATE: "10.00", F1_INTENT: "40.00" } as const;
-export const STEPS = ["A", "B", "C", "D", "E", "F1", "F2"] as const;
+export const AMOUNTS = { A: "12.00", G: "18.00", B: "45.00", C: "250.00", D: "5.00", E: "30.00", E_TAMPERED: "190.00", F1_MANDATE: "10.00", F1_INTENT: "40.00" } as const;
+export const STEPS = ["A", "B", "G", "C", "D", "E", "F1", "F2"] as const;
 export type Step = (typeof STEPS)[number];
 
 export const NOT_REFUSED_FINDING = "not refused by Airi/Airwallex sandbox; only Purser enforces the binding here";
@@ -65,6 +66,10 @@ export const PLANTED_E = "our own planted change: a red-team step of the vic-3 c
 export const PLANTED_F1 = "our own planted misuse: the vic-3 conductor, not Purser's executor (which never does this), tried the credential of a 10.00 EUR mandate on a 40.00 EUR PaymentIntent";
 export const PLANTED_F2 = "our own planted misuse: the vic-3 conductor, not Purser's executor (which never does this), tried B's credential, already used once, on a new PaymentIntent";
 /** The stand-in model's name: never a Claude model id, so nothing reads it as Claude. */
+/** vic-4: F1 and F2 go to Purser's credential check (src/airi/credentialGuard.ts) instead of the checkout. */
+export const GUARD_F1 = "vic-4: A's credential (a 12.00 EUR mandate, already used) presented for a 40.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
+export const GUARD_F2 = "vic-4: B's credential, already used once, presented again for a new 45.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
+
 export const STAND_IN_MODEL = "stand-in-model-not-claude";
 
 export class Vic3Stop extends Error {
@@ -184,6 +189,10 @@ export interface Vic3Deps {
   now?: () => Date;
   /** Budgets other than the defaults (tests only; the CLI uses BUDGETS). */
   budgets?: Partial<Record<Budgeted, number>>;
+  /** "vic-4": a third paid purchase (G), and F1/F2 refused by Purser's credential check with 0 calls. Default "vic-3". */
+  variant?: "vic-3" | "vic-4";
+  /** Before each tap step (A, B after its Face ID, G): waits until the wallet owner says the phone is ready. */
+  ready?: (step: Step, what: string) => Promise<void>;
 }
 
 export interface RailChoiceRecord {
@@ -385,6 +394,8 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
   const claude = d.claude ? budgetedClaude(d.claude, b.anthropic) : null;
   const model = d.model ?? MODELS.classify;
   const tmpRoot = d.tmpRoot ?? tmpdir();
+  const vic4 = d.variant === "vic-4";
+  const run = vic4 ? "vic-4" : RUN;
   const rail = (co: Checkout): AiriDeps => ({ airi, checkout: co, showPasskeyUrl: d.showPasskeyUrl, ...(d.clearPasskeyUrl ? { clearPasskeyUrl: d.clearPasskeyUrl } : {}), say: d.log, tmpRoot, ...(d.sleep ? { sleep: d.sleep } : {}) });
   const keep = { file: null as string | null, dir: mkdtempSync(join(tmpRoot, "purser-vic3-keep-")) };
   chmodSync(keep.dir, CREDENTIAL_DIR_MODE);
@@ -423,16 +434,17 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
     const p0 = await preflight({ db: d.db, mode: d.mode, rail: rail(checkout), airi, log: d.log, awaitCfo: async () => "", now: clock });
     pf = { cli: p0.cli, session_expires: p0.sessionExpires, card: p0.method.display };
     pm = p0.method.paymentMethodId;
-    seedPolicy(d.db, started, RUN);
+    seedPolicy(d.db, started, run);
     stopIfSpent();
 
-    // ---- A: within the limit; the agent chooses the rail ---------------------------------------------------------
-    {
-      const p = blank("A", "within the CFO's limit: the agent alone, one tap in Airi", { amount: AMOUNTS.A, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
+    // ---- A (and G in vic-4): within the limit; the agent chooses the rail ----------------------------------------
+    const within = async (step: "A" | "G", amount: string, item: string) => {
+      const p = blank(step, "within the CFO's limit: the agent alone, one tap in Airi", { amount, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
       purchases.push(p);
       const from = counts();
-      say(p, `${AMOUNTS.A} EUR at ${MERCHANT.name}: the Sourcing agent chooses the rail from three`);
-      const r = await keepOnStop(p, from, () => chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item: "Trail map pack", amount: AMOUNTS.A }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount: AMOUNTS.A, item: "Trail map pack", description: "vic-3 A: within the CFO's limit" }), clock())));
+      say(p, `${amount} EUR at ${MERCHANT.name}: the Sourcing agent chooses the rail from three`);
+      await d.ready?.(step, `${amount} EUR, alone: one tap in Airi`);
+      const r = await keepOnStop(p, from, () => chooseRail({ db: d.db, claude, model, mode: d.mode, env: d.env }, { item, amount }, () => requestAiriPurchase(d.db, rail(checkout), order(pm, { amount, item, description: `${run} ${step}: within the CFO's limit` }), clock())));
       p.rail_choice = r.choice;
       const o: AiriOutcome | null = r.paid;
       p.outcome = brief(o ?? { status: "not_paid", why: r.choice.note ?? "the agent did not pay" });
@@ -445,7 +457,8 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       p.calls = diff(from);
       say(p, `${o ? o.status : "not paid"}${o && "code" in o && o.code ? ` (${o.code})` : ""}; rail chosen by ${r.choice.by}${r.choice.request_id ? `, request ${r.choice.request_id}` : ""}`);
       stopIfSpent();
-    }
+    };
+    await within("A", AMOUNTS.A, "Trail map pack");
 
     // ---- B: above the limit; Face ID; hash in mandate and PaymentIntent, both read back --------------------------
     {
@@ -462,9 +475,10 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
         const decided = await d.awaitCfo(asked.proposalId);
         say(p, `${asked.proposalId} ${decided}`);
         if (decided === "APPROVED") {
+          await d.ready?.("B", `${AMOUNTS.B} EUR, after the Face ID: one tap in Airi`);
           const origin = approvalOrigin(d.db, asked.proposalId);
-          const run = () => executeAiriPurchase(d.db, rail(keeping(checkout, keep)), asked.proposalId, clock());
-          const o = origin ? await withOrigin(origin, run) : await run();
+          const go = () => executeAiriPurchase(d.db, rail(vic4 ? checkout : keeping(checkout, keep)), asked.proposalId, clock());
+          const o = origin ? await withOrigin(origin, go) : await go();
           p.outcome = brief(o);
           const row = rowOf(d.db, "proposal_id", asked.proposalId);
           p.mandate_id = row?.mandate_id ?? null; p.payment_intent_id = row?.checkout_ref ?? null;
@@ -488,6 +502,8 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       p.calls = diff(from);
       say(p, `${JSON.stringify(p.outcome && typeof p.outcome === "object" && "status" in p.outcome ? p.outcome.status : p.outcome)}; mandate read back ${p.read_back.mandate ? (p.read_back.mandate.equal ? "equal" : "NOT equal") : "—"}; PaymentIntent read back ${p.read_back.payment_intent ? (p.read_back.payment_intent.equal ? "equal" : "NOT equal") : "—"}`);
     }
+
+    if (vic4) await within("G", AMOUNTS.G, "Map case");
 
     // ---- C, D: refused by Purser, straight to requestAiriPurchase, 0 rail calls ----------------------------------
     for (const [step, what, req] of [
@@ -546,8 +562,33 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       say(p, `${JSON.stringify((p.outcome as { status?: Json }).status ?? null)}; calls: Airi ${p.calls.airi}, Airwallex ${p.calls.airwallex}, Anthropic ${p.calls.anthropic}`);
     }
 
+    // ---- vic-4 F1, F2: the credential misuse of vic-3, now refused by Purser's credential check, 0 calls ---------
+    if (vic4) {
+      for (const [step, what, src, amount, label] of [
+        ["F1", "A's credential presented for another amount (40.00 EUR): refused by Purser's credential check", "A", AMOUNTS.F1_INTENT, GUARD_F1],
+        ["F2", "B's credential presented a second time: refused by Purser's credential check", "B", AMOUNTS.B, GUARD_F2],
+      ] as const) {
+        const p = blank(step, what, { amount, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
+        purchases.push(p);
+        const from = counts();
+        const mandateId = purchases.find((q) => q.step === src)?.mandate_id ?? null;
+        if (!mandateId) {
+          p.outcome = brief({ status: "not_run", why: `${src} has no mandate in this run` });
+          p.failed_attempts.push(p.outcome);
+        } else {
+          p.mandate_id = mandateId;
+          const no = credentialUseRefusal(d.db, { mandateId, amount, currency: AIRI_CURRENCY });
+          audit(d.db, "system", "vic3.credential_check", step, { run, label, mandate_id: mandateId, amount, refused: no?.code ?? null }, clock());
+          p.outcome = brief(no ? { status: "refused", by: "purser (credential check, before any Airwallex call)", code: no.code, reason: no.reason } : { status: "NOT refused" });
+          if (!no) p.failed_attempts.push(p.outcome);
+        }
+        p.calls = diff(from);
+        say(p, `${JSON.stringify((p.outcome as { status?: Json }).status ?? null)}${p.outcome && (p.outcome as { code?: Json }).code ? ` (${String((p.outcome as { code?: Json }).code)})` : ""}; calls: Airi ${p.calls.airi}, Airwallex ${p.calls.airwallex}, Anthropic ${p.calls.anthropic}`);
+      }
+    }
+
     // ---- F1: a 10.00 mandate's credential on a 40.00 PaymentIntent ------------------------------------------------
-    {
+    if (!vic4) {
       const p = blank("F1", "negative test: a 10.00 EUR mandate's credential tried on a 40.00 EUR PaymentIntent", { amount: AMOUNTS.F1_MANDATE, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
       purchases.push(p);
       const from = counts();
@@ -586,7 +627,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
     }
 
     // ---- F2: B's used credential once more on a new PaymentIntent ------------------------------------------------
-    {
+    if (!vic4) {
       const p = blank("F2", "negative test: B's credential, already used once, tried on a new PaymentIntent", { amount: AMOUNTS.B, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
       purchases.push(p);
       const from = counts();
@@ -742,6 +783,8 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
   const by = (s: Step) => r.purchases.find((p) => p.step === s);
   const zero = (p: Vic3Purchase | undefined) => !!p && p.calls.airi === 0 && p.calls.airwallex === 0 && p.calls.anthropic === 0;
   const st = (p: Vic3Purchase | undefined) => (p?.outcome && typeof p.outcome === "object" && !Array.isArray(p.outcome) ? (p.outcome as Record<string, Json>) : {});
+  const vic4 = d.variant === "vic-4";
+  const G = by("G");
   const A = by("A"), B = by("B"), C = by("C"), D = by("D"), E = by("E"), F1 = by("F1"), F2 = by("F2");
   const chose = (p: Vic3Purchase | undefined) => !!p?.rail_choice && p.rail_choice.chosen === AIRI_RAIL && p.rail_choice.by === (d.mode === "dry" ? "stand-in" : "claude");
   const checks: Vic3Record["checks"] = {
@@ -754,9 +797,16 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
     c_refused_by_purser_0_calls: { ok: st(C).status === "refused" && st(C).code === "PURSER_ABOVE_HARD_CAP" && zero(C), detail: `C: ${String(st(C).status ?? "not run")} ${String(st(C).code ?? "")}; calls ${JSON.stringify(C?.calls ?? null)}` },
     d_refused_by_purser_0_calls: { ok: st(D).status === "refused" && st(D).code === "PURSER_MERCHANT_NOT_ALLOWED" && zero(D), detail: `D: ${String(st(D).status ?? "not run")} ${String(st(D).code ?? "")}; calls ${JSON.stringify(D?.calls ?? null)}` },
     e_refused_by_hash_check_0_calls: { ok: st(E).status === "refused" && /terms do not match the approved hash/.test(String(st(E).refusal ?? "")) && zero(E), detail: `E: ${String(st(E).status ?? "not run")}; calls ${JSON.stringify(E?.calls ?? null)}` },
-    f1_rail_chosen_by_the_agent: { ok: chose(F1), detail: `F1: rail ${F1?.rail_choice?.chosen ?? "none"} chosen by ${F1?.rail_choice?.by ?? "nobody"}` },
-    f1_answer_recorded: { ok: !!F1?.negative_test?.airwallex, detail: `F1: ${F1?.negative_test?.finding ?? "no answer recorded"}` },
-    f2_answer_recorded: { ok: !!F2?.negative_test?.airwallex, detail: `F2: ${F2?.negative_test?.finding ?? "no answer recorded"}` },
+    ...(vic4 ? {
+      g_rail_chosen_by_the_agent: { ok: chose(G), detail: `G: rail ${G?.rail_choice?.chosen ?? "none"} chosen by ${G?.rail_choice?.by ?? "nobody"}` },
+      g_paid: { ok: st(G).status === "succeeded", detail: `G: ${String(st(G).status ?? "not run")}` },
+      f1_refused_by_credential_check_0_calls: { ok: st(F1).status === "refused" && st(F1).code === "PURSER_CREDENTIAL_AMOUNT_MISMATCH" && zero(F1), detail: `F1: ${String(st(F1).status ?? "not run")} ${String(st(F1).code ?? "")}; calls ${JSON.stringify(F1?.calls ?? null)}` },
+      f2_refused_by_credential_check_0_calls: { ok: st(F2).status === "refused" && st(F2).code === "PURSER_CREDENTIAL_ALREADY_USED" && zero(F2), detail: `F2: ${String(st(F2).status ?? "not run")} ${String(st(F2).code ?? "")}; calls ${JSON.stringify(F2?.calls ?? null)}` },
+    } : {
+      f1_rail_chosen_by_the_agent: { ok: chose(F1), detail: `F1: rail ${F1?.rail_choice?.chosen ?? "none"} chosen by ${F1?.rail_choice?.by ?? "nobody"}` },
+      f1_answer_recorded: { ok: !!F1?.negative_test?.airwallex, detail: `F1: ${F1?.negative_test?.finding ?? "no answer recorded"}` },
+      f2_answer_recorded: { ok: !!F2?.negative_test?.airwallex, detail: `F2: ${F2?.negative_test?.finding ?? "no answer recorded"}` },
+    }),
     credential_deleted: { ok: r.credentialDeleted, detail: r.credentialDeleted ? "B's kept credential and its directory are deleted" : "B's kept credential is still on disk" },
     within_budgets: { ok: !r.stopped, detail: r.stopped ?? `Anthropic ${r.b.anthropic.n}/${r.b.anthropic.max}, Airwallex ${r.b.airwallex.n}/${r.b.airwallex.max}, airi-cli ${r.b.airi.n}/${r.b.airi.max}` },
   };
@@ -766,7 +816,7 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
     // origin of the call), the record says what it was.
     .map((x) => ({ seq: x.seq, ts: x.ts, actor: x.actor, event: x.event, subject: x.subject, payload: JSON.parse(d.mode === "dry" ? x.payload_json.replaceAll('"by":"claude"', '"by":"stand-in (not Claude)"') : x.payload_json) as Json }));
   return {
-    run: RUN, mode: d.mode,
+    run: vic4 ? "vic-4" : RUN, mode: d.mode,
     label: d.mode === "dry" ? DRY_LABEL : `live: airi-cli and the Airwallex sandbox (test money, Airi's test card); checkout: ${d.checkout.label}`,
     started_at: r.started.toISOString(), ended_at: r.ended.toISOString(),
     budgets: { anthropic: { max: r.b.anthropic.max, used: r.b.anthropic.n }, airwallex: { max: r.b.airwallex.max, used: r.b.airwallex.n }, airi: { max: r.b.airi.max, used: r.b.airi.n } },
@@ -776,7 +826,14 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
 
 /** Why a live vic-3 command may not start (empty: it may). Nothing is called before this is empty. Values are never read
  *  out, only whether they are set (and the call budget's number). */
-export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<string, string | undefined>): string[] {
+export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<string, string | undefined>, run: "vic-3" | "vic-4" = "vic-3"): string[] {
+  if (run === "vic-4") {
+    // The same refusals, for vic-4's own go, ledger and keys folder.
+    const mapped = { ...env, VIC3_GO: env.VIC4_GO, KIT11_DB: (env.KIT11_DB ?? "").replace(/vic-4([^/]*\.sqlite)$/, "vic-3$1"), KIT11_KEYS_DIR: (env.KIT11_KEYS_DIR ?? "").replace(/\/vic-4([^/]*)$/, "/vic-3$1") };
+    if (!/vic-4[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) mapped.KIT11_DB = "";
+    if (!/\/vic-4[^/]*$/.test(env.KIT11_KEYS_DIR ?? "")) mapped.KIT11_KEYS_DIR = "";
+    return vic3LiveRefusals(cmd, mapped).map((w) => w.replaceAll("VIC3_GO", "VIC4_GO").replaceAll("vic-3", "vic-4"));
+  }
   const why: string[] = [];
   if (!["preflight", "live", "recover"].includes(cmd)) why.push(`unknown command ${JSON.stringify(cmd.slice(0, 20))}`);
   if (env.KIT11_AIRI_RAIL !== "on") why.push("KIT11_AIRI_RAIL=on (the conductor's rail; the runner runs without it)");
@@ -803,7 +860,7 @@ export function vic3Markdown(r: Vic3Record): string {
     return [o.status ?? o.outcome, o.code, o.by ? `by ${String(o.by)}` : null].filter((x) => x !== undefined && x !== null).join(", ");
   };
   const lines: string[] = [
-    `# vic-3${dry ? `: ${STAND_IN} dry run, not live` : ""}`,
+    `# ${r.run}${dry ? `: ${STAND_IN} dry run, not live` : ""}`,
     "",
     `**${r.label}.**`,
     ...(dry ? ["", `${STAND_IN}: every row below comes from the stand-ins (src/airi/standIn.ts) and a stand-in model that is not Claude. No Airi, Airwallex or Anthropic call was made, no card was used, and no approval is the CFO's Face ID. It is not the run's evidence: the live run is the owner's.`] : []),
@@ -816,7 +873,7 @@ export function vic3Markdown(r: Vic3Record): string {
     "|---|---|---|---|---|---|---|---|---|---|---|",
     ...r.purchases.map((p) => `| ${tag}${p.step} | ${cell(p.what)} | ${p.request ? `${p.request.amount} ${p.request.currency}` : "—"} | ${p.rail_choice ? `${cell(p.rail_choice.chosen)} (${p.rail_choice.by}, ${cell(p.rail_choice.request_id)}; ${p.rail_choice.menu.length} rails offered)` : "—"} | ${cell(p.mandate_id)} | ${cell(p.payment_intent_id)} | ${shortSha(p.terms_sha256)} | ${p.read_back.mandate ? (p.read_back.mandate.equal ? "equal" : "not equal") + (p.read_back.mandate.before_credential ? ", before the credential" : ", AFTER the credential") : "—"} | ${p.read_back.payment_intent ? (p.read_back.payment_intent.equal ? "equal" : "not equal") : "—"} | ${cell(outcome(p))} | ${p.calls.anthropic} / ${p.calls.airwallex} / ${p.calls.airi} |`),
     "",
-    "## Negative test (F1, F2)",
+    `## ${r.run === "vic-4" ? "Credential misuse (F1, F2): Purser's credential check" : "Negative test (F1, F2)"}`,
     "",
     ...r.purchases.filter((p) => p.negative_test).flatMap((p) => [`- ${tag}**${p.step}**: ${p.negative_test!.label}. ${dry ? "The stand-in checkout answered" : "The Airwallex sandbox answered"} \`${JSON.stringify(p.negative_test!.airwallex)}\`; ${dry ? "the stand-in for Airi" : "Airi"}: \`${JSON.stringify(p.negative_test!.airi)}\`. Result: ${p.negative_test!.result}, finding: ${p.negative_test!.finding}.`]),
     "",
