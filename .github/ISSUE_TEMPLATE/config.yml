@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report
+    url: https://github.com/agamemnon-coder/x402-business-agents/security/advisories/new
+    about: Report a vulnerability privately, not in a public issue.
