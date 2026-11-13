@@ -43,7 +43,7 @@ describe("/security: security and trust", () => {
   // The owner, 12 Nov 15:55: the strongest page of the site, enterprise grade and calm: one header line, a grid of
   // controls each with its proof, and a short honest "Not yet".
   it("has nine controls and a \"Not yet\" box in this order, each one short sentence, a link to its proof and a folded detail", () => {
-    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-locks", "Two locks"], ["s-limits", "Limits outside the prompt"], ["s-code", "Agents propose, code enforces"], ["s-secrets", "Secrets"], ["s-tenants", "Each company apart"], ["s-audit", "Audit trail"], ["s-redteam", "Tested by attack"], ["s-data", "Money and data"], ["s-notyet", "Not yet"]]);
+    expect(cards.map((c) => [c.id, c.title])).toEqual([["s-sign", "Signed terms"], ["s-keys", "Optional: a second key for high-risk payments"], ["s-locks", "Two locks"], ["s-limits", "Limits outside the prompt"], ["s-code", "Agents propose, code enforces"], ["s-secrets", "Secrets"], ["s-tenants", "Each company apart"], ["s-audit", "Audit trail"], ["s-redteam", "Tested by attack"], ["s-data", "Money and data"], ["s-notyet", "Not yet"]]);
     // A grid of three at desktop width, the "Not yet" box across it.
     expect(html).toContain('<div class="cols c3">');
     expect(cards.filter((c) => c.wide).map((c) => c.id)).toEqual(["s-notyet"]);

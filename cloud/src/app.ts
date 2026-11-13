@@ -40,7 +40,7 @@ import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
-import { requireStepUp, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
+import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
 
 export interface CloudEnv {
@@ -110,7 +110,7 @@ interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string
 type Need = "public" | "platform" | Scope;
 interface Route { method: "GET" | "POST" | "DELETE"; path: string; summary: string; need: Need; run: (c: Ctx) => Promise<Response> }
 
-const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" };
+const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" };
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 /** Every error has one shape: a sentence for a person and a stable code for a program. */
 const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
@@ -207,6 +207,12 @@ export const ROUTES: Route[] = [
     return json(200, { ...(await setWebhook(c.env.sql, c.caller!.tenantId, b.url, c.caller!.principal, c.now)), note: "the secret is shown once" });
   } },
   { method: "DELETE", path: "/v1/webhook", summary: "Remove the alert webhook.", need: "admin", run: async (c) => json(200, { removed: await removeWebhook(c.env.sql, c.caller!.tenantId) }) },
+  { method: "GET", path: "/v1/security/settings", summary: "The company's security settings: step_up, whether sensitive settings ask for the passkey again after five minutes (\"Ask again before sensitive changes\"; off by default).", need: "admin", run: async (c) =>
+    json(200, { step_up: await stepUpOn(c.env.sql, c.caller!.tenantId) }) },
+  { method: "POST", path: "/v1/security/settings", summary: "Switch \"Ask again before sensitive changes\" on or off: { step_up: boolean }. A signed-in owner, after a fresh passkey check, whatever the setting; never a key. Recorded in the security events.", need: "admin", run: async (c) => {
+    const b = await body(c, z.object({ step_up: z.boolean() }).strict(), 1_000);
+    return json(200, await setStepUp(c.env.sql, c.caller!.tenantId, b.step_up, c.caller!.principal, c.now));
+  } },
   { method: "GET", path: "/v1/alerts", summary: "Approval alerts (Settings, Alerts): who hears that a payment waits for the CFO's Face ID and on which channel (WhatsApp, e-mail, Slack, Teams, the signed webhook), targets masked, and the latest deliveries with their status. An alert only tells; nothing in it approves.", need: "admin", run: async (c) => json(200, await alertSettings(c.env.sql, c.caller!.tenantId, c.env.alerts)) },
   { method: "POST", path: "/v1/alerts/targets", summary: "Add an alert target: { channel: whatsapp | email | slack | teams, target } (a number like +31612345678, an address, or a Slack or Teams webhook URL). A signed-in owner after a fresh passkey check (step-up); never a key. Answers the target masked.", need: "admin", run: async (c) => {
     const b = await body(c, NewTarget, 4_000);
@@ -752,7 +758,7 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
         if (!ok) return err(403, "the starter key only makes the first owner's passkey; sign in with that passkey to do the rest");
       }
       // Sensitive settings need a fresh passkey check of the signed-in person (cloud/src/stepUp.ts).
-      await requireStepUp(env.sessionSecret, `${req.method} ${hit.r.path}`, req, caller, now);
+      await requireStepUp(env.sql, env.sessionSecret, `${req.method} ${hit.r.path}`, req, caller, now);
       // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
       const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
       // The demo company's guests share one viewer: each network gets its own bucket, so one busy room never locks out the rest.
@@ -810,7 +816,8 @@ export function openApi(origin: string, o: { readOnly?: boolean } = {}): Record<
       ...(params.length ? { parameters: params } : {}),
       security: r.need === "public" ? [] : r.need === "platform" ? [{ platformAdmin: [] }] : [{ bearer: [r.need] }],
       "x-purser-needs": r.need,
-      ...(STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": SESSION_ONLY_ROUTES.has(`${r.method} ${r.path}`) ? "a signed-in owner, passkey checked in the last five minutes" : "a session: passkey checked in the last five minutes" } : {}),
+      ...(ALWAYS_STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": "always: a signed-in owner, passkey checked in the last five minutes" }
+        : STEP_UP_ROUTES.has(`${r.method} ${r.path}`) ? { "x-purser-step-up": SESSION_ONLY_ROUTES.has(`${r.method} ${r.path}`) ? "a signed-in owner; when the company asks again before sensitive changes, passkey checked in the last five minutes" : "when the company asks again before sensitive changes: a session's passkey checked in the last five minutes" } : {}),
       responses: { 200: { description: "OK" }, 400: ERROR("A request that does not fit"), 401: ERROR("Not signed in"), 403: ERROR("Not allowed"), 404: ERROR("Not found (also: another company's object)"), 429: ERROR("Rate limited") },
     };
   }

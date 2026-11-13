@@ -663,7 +663,7 @@ function dashBlock(D){
     kpi(D,t('cs.dash.in'),'arrow-down-left',toCents(D.money.in),t('cs.dash.in_sub'),'pos'),
     kpi(D,t('cs.dash.out'),'arrow-up-right',toCents(D.money.out),t('cs.dash.out_sub')),
     kpi(D,t('cs.dash.net'),'wallet',toCents(D.money.net),t('cs.dash.net_sub',{date:dday(D.since)}),toCents(D.money.net)>=0?'pos':'neg'),
-    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t('cs.dash.decisions_fallback',{n:D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
+    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
   const g1=el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
     dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]);
   const g2=el('div','dgrid g2',[dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),spendBars(D)),
@@ -985,7 +985,7 @@ function proofCard(i0){
     const even=Object.keys({...dr,...cr}).every((c)=>(dr[c]||0)===(cr[c]||0));
     const tb=el('tbody','');
     for(const e of mine){const h=el('td','','#'+e.entry_id+' · '+day(e.posting_date)+' · '+data('journal',e.description||''));h.colSpan=3;tb.append(el('tr','en',[h]));
-      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.eng.account')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])]),tb]);
     // The head of the ledger chain: the newest entry's own hash, as the read model holds it (a session may not ask /v1/sync/state).
     const head=es.v[es.v.length-1];
@@ -1044,21 +1044,29 @@ function payCard(o){
   // The terms as the engine gives them (the phone page's facts): the first four in view and the rest in a fold, as the
   // phone page shows first and details; the stand-in bank beside them; the fingerprint (hash and request id) last.
   const factsDl=(fs)=>{const d=dl(fs);d.classList.add('facts');return d};
-  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
+  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),p.second_key?note(p.second_key.message,'warn'):null,note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
     fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
   const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
     if(!o.write||p.status!=='PENDING_APPROVAL'){draw([...terms(p),print(p)]);return}
     if(!hasPasskeys()){draw([...terms(p),note(t('cs.no_passkeys'),'bad'),print(p)]);return}
-    const b=eng&&eng.passkey?btn(t('cs.eng.approve'),'primary','scan-face'):btn(t('cs.eng.setup'),'primary','key-round');
+    // A high-risk payment (src/policy/secondKey.ts) whose Face ID is in: the security key is next.
+    const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
+    const b=eng&&eng.passkey?(keyNext?btn(t('cs.eng.touch_key'),'primary','key-round'):btn(t('cs.eng.approve'),'primary','scan-face')):btn(t('cs.eng.setup'),'primary','key-round');
     if(eng&&eng.passkey)act(b,()=>approve(p));
     else act(b,async()=>{await approvalPasskey();eng=await engineStatus();proposal(p);said.replaceChildren(note(t('cs.eng.set_up'),'ok'))});
     draw([...terms(p),el('p','fine',t('cs.eng.signs')),el('div','acts',[b]),eng&&eng.passkey?el('p','fine',t('cs.eng.holder',{name:eng.passkey.label})):null,said,print(p)])}
   async function approve(p){
     let c;
-    try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}})}
+    // Face ID first; on a high-risk payment whose Face ID is in, the person's security key (USB or NFC) signs the same terms.
+    const keyNext=!!(p.second_key&&p.second_key.signed.passkey&&!p.second_key.signed.security_key);
+    const allow=keyNext?p.second_key.security_keys.map((id)=>({type:'public-key',id:fromB64u(id)})):[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}];
+    if(keyNext&&!allow.length)throw new Error(t('cs.sec.no_key'));
+    try{c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:allow,userVerification:'required',timeout:120000}})}
     catch(e){if(e&&e.name==='NotAllowedError')throw new Error(t('cs.eng.cancelled')+' '+t('cs.eng.other_device',{name:eng.passkey.label}));throw e}
     const r=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+    // One key of a high-risk payment: the page says why and asks for the other one.
+    if(r.status==='second_key'){const q=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id));proposal(q.proposal);said.replaceChildren(note(r.message,'warn'));return}
     // The engine's own words, for a refusal as for an approval.
     if(r.status!=='approved'){said.replaceChildren(note(r.message,'bad'));return}
     const s=r.settled||{};
@@ -1193,13 +1201,15 @@ async function booksView(q){
   const j=await api('/v1/ledger/entries?limit=30');
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
   await drawVat();
 }
 
 // --- Shared pieces of the enterprise pass (13 Nov) -------------------------------------------------------------------
+// A VAT code in words where Purser knows it (cloud/src/tryCopy.ts vat), else the code itself.
+const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
 // What Purser Cloud is, in one line, on the sign-in and at the top of the overview; the demo company says what its data is.
 function whatCloud(m){return el('div','what-cloud',[el('p','',t('cs.what_cloud')),m&&m.demo?el('p','demo-label',[ic('flask'),' '+t('cs.demo.label')]):null])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
@@ -1207,7 +1217,7 @@ function journalTable(items,empty){
   const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+t('cs.vat_code',{code:l.vat_code}):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
@@ -1237,7 +1247,7 @@ async function agentsView(){
       el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
     const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','feed',a.decisions.map((d)=>el('li','',[el('span','when num',day(d.at)),el('span','',[d.text,d.decided_by&&!/fallback/.test(d.text)?el('small','by',' · '+t('cs.agents.decided_by',{who:d.decided_by})):null])]))):el('p','sub',t('cs.agents.no_decisions'))]);
     return el('section','card agent',[hd,facts,dec])});
-  view().replaceChildren(...[whatCloud(m),head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
+  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
     cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls'))]);
 }
 
@@ -1260,7 +1270,7 @@ async function tokensView(){
   const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
     el('ul','viclist',v.purchases.map((p)=>el('li','',[el('b','',p.step),el('span','',' '+p.what+' · '+p.amount),p.outcome?el('span',p.outcome==='succeeded'?'ok':'sub',' · '+p.outcome+(p.reason?': '+p.reason:'')):null]))),
     v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
-  view().replaceChildren(whatCloud(m),head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
+  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
@@ -1338,6 +1348,50 @@ async function alertsCard(){
   return card;
 }
 
+// Security (13 Nov): "Ask again before sensitive changes" (off by default; switching it asks for the passkey), and with
+// the engine, a security key as a second key and the CFO's rule for high-risk payments, a policy change signed with Face ID.
+async function securityCard(){
+  const card=el('div','card panel security');card.id='security';
+  const msg=el('div','');msg.setAttribute('role','status');
+  const r=await api('/v1/security/settings');
+  const box=el('input','');box.type='checkbox';box.id='step-up';box.checked=!!r.step_up;
+  const lab=el('label','check',[box,' ',t('cs.sec.step_up')]);lab.htmlFor='step-up';
+  box.onchange=async()=>{const want=box.checked;box.disabled=true;
+    try{const o=await api('/v1/security/settings',{method:'POST',body:{step_up:want}});box.checked=!!o.step_up;msg.replaceChildren(note(t(o.step_up?'cs.sec.step_up_on':'cs.sec.step_up_off'),'ok'))}
+    catch(e){box.checked=!want;if(!(e instanceof Expired))msg.replaceChildren(note(e.message,'bad'))}finally{box.disabled=false}};
+  const kids=[el('h2','',t('cs.sec.title')),lab,el('p','sub',t('cs.sec.step_up_sub')),msg];
+  if(CFG.engine){
+    const keyMsg=el('div','');keyMsg.setAttribute('role','status');
+    const add=btn(t('cs.sec.add_key'),'','key-round');add.id='add-key';
+    add.onclick=async()=>{add.disabled=true;keyMsg.replaceChildren(note(t('cs.sec.touch_new')));
+      try{const s=await engineCall('/v1/engine/security-key/start',{method:'POST'});
+        const made=await navigator.credentials.create({publicKey:{rp:{id:s.rp.id,name:s.rp.name},user:{id:new TextEncoder().encode(s.user.id),name:s.user.name,displayName:s.user.displayName},challenge:fromB64u(s.challenge),
+          pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
+          authenticatorSelection:{authenticatorAttachment:'cross-platform',userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}});
+        await engineCall('/v1/engine/security-key/finish',{method:'POST',body:{credential:registrationOf(made)}});keyMsg.replaceChildren(note(t('cs.sec.key_added'),'ok'))}
+      catch(e){if(!(e instanceof Expired))keyMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{add.disabled=false}};
+    // The CFO's rule: the triggers become one policy change, approved here with the CFO's Face ID; nothing changes before.
+    const amount=el('input','field');amount.id='second-key-eur';amount.inputMode='decimal';amount.placeholder='10000.00';amount.maxLength=12;
+    const trig=(id,key)=>{const b=el('input','');b.type='checkbox';b.id=id;const l=el('label','check',[b,' ',t(key)]);l.htmlFor=id;return [b,l]};
+    const [np,npl]=trig('second-key-new-payee','cs.sec.t_new_payee'),[bc,bcl]=trig('second-key-bank','cs.sec.t_bank'),[nc,ncl]=trig('second-key-country','cs.sec.t_country');
+    const ruleMsg=el('div','');ruleMsg.setAttribute('role','status');
+    const save=btn(t('cs.sec.rule_save'),'primary','scan-face');save.id='second-key-save';
+    save.onclick=async()=>{const v=amount.value.trim();if(v&&!/^\d{1,9}\.\d{2}$/.test(v)){ruleMsg.replaceChildren(note(t('cs.sec.amount_rule'),'bad'));return}
+      save.disabled=true;
+      try{const eng=await engineStatus();if(!eng||!eng.passkey)throw new Error(t('cs.sec.passkey_first'));
+        const changes=[{key:'approval.second_key_eur',to:v},{key:'approval.second_key_new_payee',to:np.checked?'on':'off'},{key:'approval.second_key_bank_changed',to:bc.checked?'on':'off'},{key:'approval.second_key_new_country',to:nc.checked?'on':'off'}];
+        const r=await engineCall('/v1/engine/policy/second-key',{method:'POST',body:{changes}});const p=r.proposal;
+        const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(p.challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(eng.passkey.credential_id)}],userVerification:'required',timeout:120000}});
+        const a=await engineCall('/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{method:'POST',body:{terms_sha256:p.terms_sha256,credential:signedOf(c)}});
+        ruleMsg.replaceChildren(note(a.status==='approved'?t('cs.sec.rule_saved'):a.message,a.status==='approved'?'ok':'bad'))}
+      catch(e){if(!(e instanceof Expired))ruleMsg.replaceChildren(note(e&&e.name==='NotAllowedError'?t('cs.eng.cancelled'):e.message,'bad'))}finally{save.disabled=false}};
+    kids.push(el('h2','sub-h',t('cs.sec.key_h')),el('p','',t('cs.sec.key_lede')),el('div','row2',[add]),keyMsg,
+      el('h2','sub-h',t('cs.sec.rule_h')),el('p','',t('cs.sec.rule_lede')),el('div','form-row',[el('div','',[el('label','',t('cs.sec.t_amount')),amount])]),npl,bcl,ncl,el('div','row2',[save]),ruleMsg,note(t('cs.sec.tested')));
+  }
+  card.replaceChildren(...kids);
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1354,7 +1408,8 @@ async function settingsView(){
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
   const claude=await claudeCard(m,true);
   const alerts=m.kind==='session'?await alertsCard():null;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const security=m.kind==='session'&&!m.demo?await securityCard():null;
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,security,alerts,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1821,7 +1876,7 @@ export const consoleCsp = (n: string) =>
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
   "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
-  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
 /** Paths people type for the console, and the console route each one opens. */
@@ -1843,7 +1898,7 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   if (url.pathname === "/pdfview") {
     const n = nonce();
-    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": pdfViewCsp(n, env.origin) } });
+    return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "x-frame-options": "SAMEORIGIN", "content-security-policy": pdfViewCsp(n, env.origin) } });
   }
   if (url.pathname === "/assets/inter.woff2") {
     font ??= fromB64(INTER_WOFF2_B64);

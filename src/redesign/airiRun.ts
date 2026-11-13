@@ -195,7 +195,7 @@ export function airiRunSummary(rec: AiriRunRecord): AiriRunSummary | null {
     `${b.currency} ${b.amount}, above that limit: ${b.proposal_id} waited for ${faceId} on its exact terms (terms hash ${short(b.terms_sha256)}). Only then did the runner ask Airi for mandate ${b.mandate_id}; the cardholder confirmed it in Airi with a passkey, and PaymentIntent ${b.payment_intent_id} ${b.outcome}: ${b.proposal_id} ${b.proposal_end}.`,
     `${c.currency} ${c.amount} at a merchant the CFO does not allow: refused by Purser, ${c.code}, with ${c.airi_calls} Airi calls.`,
     `The record and the run log hold ids, order hashes and codes only: no one-time Airi link, no card number, no credential.`,
-    ...(earlier.length ? [`The second attempt in this world: the first stopped on a missed tap and a reused order reference before any card was used. The reference is fixed; both are in the run log.`] : []),
+    ...(earlier.length ? [`The second attempt in this world: the first stopped on a purchase not confirmed in Airi in time and a reused order reference before any card was used. The reference is fixed; both are in the run log.`] : []),
   ];
   return {
     date: dayShort(rec.started_at), heading: airiHeading(dayShort(rec.started_at)), summary: airiSummaryLine(rec), checksOk: checks.filter((x) => x.ok).length, checksAll: checks.length, outcomes, checks, lines,

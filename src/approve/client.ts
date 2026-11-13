@@ -210,6 +210,9 @@ export function policyLoosens(c: { key: string; from: string; to: string }): boo
   if (c.key.startsWith("cap.")) return from !== null && (to === null || to > from);
   if (c.key.startsWith("card.")) return from !== null && (to === null || to > from);
   if (c.key === "approval.four_eyes_eur") return from !== null && (to === null || to > from);
+  // A second key for high-risk payments (src/policy/secondKey.ts): off, or a higher amount, loosens.
+  if (c.key === "approval.second_key_eur") return from !== null && (to === null || to > from);
+  if (c.key.startsWith("approval.second_key_")) return c.from === "on" && c.to !== "on";
   if (c.key.startsWith("approval.")) return from !== null && to !== null && to > from;
   if (c.key.endsWith("_floor")) return from !== null && (to === null || to < from);
   if (c.key.startsWith("counterparty:")) return c.from === "blocked" && c.to === "allowed";
@@ -1217,7 +1220,7 @@ function passkeyError(e: unknown, lang?: PhoneLang): string {
   return `The passkey did not answer: ${e instanceof Error ? e.message : String(e)}`;
 }
 
-const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "answered"]);
+const FINAL = new Set(["pending", "rejected", "executed", "failed", "refused", "too_late", "already", "enrolled", "drafted", "cosigned", "second_key", "answered"]);
 const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   queued: { tone: "wait", head: "Signed", lead: "Waiting for the runner to check your signature." },
   approved: { tone: "wait", head: "Approved", lead: "The runner checked your signature. Executing now." },
@@ -1228,6 +1231,8 @@ const VERDICT: Record<string, { tone: string; head: string; lead: string }> = {
   too_late: { tone: "warn", head: "Too late", lead: "Nothing was approved." },
   already: { tone: "info", head: "Already decided", lead: "" },
   enrolled: { tone: "ok", head: "Passkey enrolled", lead: "From now on, approvals need this passkey." },
+  // A high-risk payment (src/policy/secondKey.ts): the runner's message says why and which key is still to sign.
+  second_key: { tone: "wait", head: "1 of 2 keys", lead: "Your Face ID counts. This payment is high-risk: it also needs your security key, in Purser Cloud. Nothing is paid until then." },
   cosigned: { tone: "wait", head: "1 of 2 approvals", lead: "Your Face ID counts. This one needs a second person (four eyes): it runs only once someone else approves it with their own passkey." },
   drafted: { tone: "ok", head: "Rules drafted", lead: "Opus turned your words into rules and the runner checked each one. Nothing has changed yet: review them and approve with Face ID." },
   answered: { tone: "info", head: "Purser", lead: "" },

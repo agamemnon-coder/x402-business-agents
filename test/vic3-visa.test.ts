@@ -32,7 +32,7 @@ describe("/visa's lead: the latest live run", () => {
     expect(text(block)).toMatch(new RegExp(`${paid.length} of ${abcde.length} purchases paid`));
     expect(vic3Summary(raw)).toMatchObject({ paid: paid.length, of: abcde.length });
     for (const p of paid) expect(text(block)).toContain(`${p.step}: ${p.request!.currency} ${p.request!.amount}`);
-    for (const p of raw.purchases.filter((x) => x.outcome?.code === "PURSER_NO_TAP")) expect(text(block)).toContain(`${p.step}: not tapped: the tap in Airi did not come within the 5 minutes; nothing charged.`);
+    for (const p of raw.purchases.filter((x) => x.outcome?.code === "PURSER_NO_TAP")) expect(text(block)).toContain(`${p.step}: not confirmed in Airi: the cardholder's confirmation did not come within the 5 minutes; nothing charged.`);
   });
 
   it("says equal for each read-back only where the record says equal", () => {

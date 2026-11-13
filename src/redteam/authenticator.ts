@@ -34,7 +34,8 @@ export class FakeAuthenticator {
   /** The public key as a JWK (P-256): what a receipt carries so anyone can check a signature offline. */
   readonly publicJwk: { kty: "EC"; crv: "P-256"; x: string; y: string };
 
-  constructor() {
+  /** "platform" plays a phone's passkey (Face ID); "cross-platform" a security key (USB or NFC, such as a YubiKey). */
+  constructor(readonly attachment: "platform" | "cross-platform" = "platform") {
     const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
     this.privateKey = privateKey;
     this.spkiSha256 = createHash("sha256").update(publicKey.export({ type: "spki", format: "der" })).digest("hex");
@@ -64,8 +65,8 @@ export class FakeAuthenticator {
     const clientDataJSON = Buffer.from(JSON.stringify({ type: "webauthn.create", challenge: c.challenge, origin: c.origin, crossOrigin: false }));
     return {
       id: this.credentialId, rawId: this.credentialId, type: "public-key",
-      response: { clientDataJSON: b64url(clientDataJSON), attestationObject: b64url(attestationObject), transports: ["internal", "hybrid"] },
-      clientExtensionResults: {}, authenticatorAttachment: "platform",
+      response: { clientDataJSON: b64url(clientDataJSON), attestationObject: b64url(attestationObject), transports: this.attachment === "platform" ? ["internal", "hybrid"] : ["usb", "nfc"] },
+      clientExtensionResults: {}, authenticatorAttachment: this.attachment,
     };
   }
 
@@ -80,7 +81,7 @@ export class FakeAuthenticator {
         clientDataJSON: b64url(clientDataJSON), authenticatorData: b64url(authData), signature: b64url(signature),
         ...(c.userHandle ? { userHandle: c.userHandle } : {}),
       },
-      clientExtensionResults: {}, authenticatorAttachment: "platform",
+      clientExtensionResults: {}, authenticatorAttachment: this.attachment,
     };
   }
 }

@@ -4,7 +4,7 @@
 // surface drops a sentence, changes a word, puts something before it, or when the record no longer holds the 24.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
+import { CAVEAT_LINE, CHAIN_TEST, DIFFERENTIATORS, KIT11_RUN_LINE, KIT_LINE, README_WHAT, TRY_IT, WHAT_IT_IS } from "../src/config/brand.js";
 import { HOME_SUB, homePage } from "../src/redesign/home.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { agentRun, loadRecord, split, stopStory, stopsLine } from "../src/redesign/run.js";
@@ -66,17 +66,20 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // The pitch once (jury panel, 12 Nov): what Purser is and the sentence every juror repeated; the other two
     // sentences stay in the form and the deck.
     // 45 lines since 13 Nov: the one-line diagram sits above the judges' 3 minutes, which carry the Kit 11 line.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 45).join("\n"));
-    expect(top.startsWith(`${WHAT_IT_IS} ${DIFFERENTIATORS[0]}`)).toBe(true);
+    // 70 lines since the enterprise README (13 Nov): the three proofs and the Enterprise section come before the judges' 3 minutes.
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 70).join("\n"));
+    // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS.
+    expect(top.startsWith(`${README_WHAT} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
-    expect(readme).toContain(`alt="Run the payables inbox, ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}"`);
+    // Since 13 Nov (the enterprise README): the live demo's line under the badges, in TRY_IT's 2 minutes.
+    expect(readme).toContain(`a test company of your own on test money, in ${TRY_IT.replace(/^Try it in /, "").replace(/\.$/, "")}`);
     for (const d of DIFFERENTIATORS.slice(1)) expect(readme).not.toContain(d);
     expect(top).toContain(KIT11_RUN_LINE.replace(/\.$/, ""));
     // Since 13 Nov, evening (owner), the product tour is gone: the README links no /tour anywhere.
     expect(readme).not.toContain("kit11.max-31b.workers.dev/tour");
-    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links no address of it; the hands-on demo instead.
-    expect(readme).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
+    // 13 Nov, final pass: /try/sign answers 301 to /try (#283); the README links /try, never /try/sign.
+    expect(readme).not.toContain("kit11.max-31b.workers.dev/try/sign");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
@@ -188,13 +191,14 @@ describe("Visa TAP is on /visa only, in its one closed fold (jury panel, 12 Nov;
     }
   });
 
-  it("the form's screenshots are the live site's, /try/sign signed and tampered among them, not /visa", () => {
+  it("the form's screenshots: the live site's, /try approved, paid and tampered (a local build of it) among them, not /visa", () => {
     const list = between(form, "## Screenshots", "## Deck and zip");
     // Since D6 (6 Nov) the form's 8 screenshots come from the live site, in the form's order: the problem, try it (three,
-    // from one /try/sign world), the proof per partner, the business. Each file the list names is in the repository.
+    // from one /try/sign world), the proof per partner, the business. Since 13 Nov screens 2–4 are /try from a local
+    // build of main 5eeaf5f (approve, paid, one cent refused). Each file the list names is in the repository.
     const named = [...list.matchAll(/^(\d)\. `(screens\/form\/[^`]+\.png)`/gm)].map((m) => [Number(m[1]), m[2]!] as const);
     expect(named.map(([n]) => n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(named.map(([, f]) => f)).toEqual(["home", "try-sign-sheet", "try-sign-verified", "try-sign-tamper", "airwallex", "metal", "claude", "business"].map((x, i) => `screens/form/form-${i + 1}-${x}.png`));
+    expect(named.map(([, f]) => f)).toEqual(["home", "try-approve", "try-paid", "try-refused", "airwallex", "metal", "claude", "business"].map((x, i) => `screens/form/form-${i + 1}-${x}.png`));
     for (const [, f] of named) expect({ f, there: existsSync(new URL(`../docs/submission/${f}`, import.meta.url)) }).toEqual({ f, there: true });
     expect(list).not.toContain("17-visa");
     expect(read("src/cli/submission.ts")).toContain('"18-try-sign.png"');

@@ -141,9 +141,9 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
   it("each short claim is the matching sentence's fact, in fewer words", () => {
     const awx = sentence("Airwallex"), metal = sentence("Metal"), claude = sentence("Claude");
     expect(awx).toContain("the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment");
-    // The page says "All 3" (no N/N fraction, 13 Nov); the sentence for the submission says the same count as "3 of 3".
-    const head = leads.airwallex[1]!.text.split(" cards")[0]!, all = /^All (\d+)$/.exec(head);
-    expect(awx).toContain(`${all ? `${all[1]} of ${all[1]}` : head} agent cards carry the CFO's policy`);
+    // The page says "All 3" (no N/N fraction, 13 Nov); so does the sentence for the submission, as "all 3".
+    const head = leads.airwallex[1]!.text.split(" cards")[0]!;
+    expect(awx).toContain(`${head.replace(/^All /, "all ")} agent cards carry the CFO's policy`);
     expect(metal).toContain(`purchase ${leads.metal[0]!.text}`);
     expect(metal).toContain(`${leads.metal[1]!.text.replace(/ tx$/, " transaction")}`);
     const sp = split(record), rf = reliabilityFix()!;

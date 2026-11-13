@@ -129,8 +129,8 @@ describe("the core line", () => {
     expect(top).toContain(DIFFERENTIATORS[0]);
     // Since 13 Nov, evening (owner), the product tour is gone; the README's top links Try and Proof.
     expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/tour");
-    // Judge panel, 13 Nov: the live site has no /try/sign (301 to /try), so the README links the hands-on demo instead.
-    expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/try/sign");
+    expect(SOURCES.README!).toContain("(https://kit11.max-31b.workers.dev/try)"); // /try since 13 Nov (/try/sign answers 301 to it)
+    expect(SOURCES.README!).not.toContain("workers.dev/try/sign");
   });
 });
 
@@ -173,7 +173,9 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the decisions by Claude as the record counts them", () => {
     for (const name of Object.keys(TEXT)) for (const m of all(/(\d+)(?: of |\/)(\d+) decisions/g, name)) expect({ name, said: [Number(m[1]), Number(m[2])] }).toEqual({ name, said: [sp.byClaude, sp.decisions] });
-    for (const name of ["pitch", "deck", "spiekkaart"]) expect({ name, said: all(/(\d+)(?: of |\/)(\d+) decisions/g, name).length > 0 }).toEqual({ name, said: true });
+    // A whole count may read "all 24 decisions" (no N/N fraction, 13 Nov): then all of them were Claude's.
+    for (const name of Object.keys(TEXT)) for (const m of all(/\ball (\d+) decisions/gi, name)) expect({ name, said: [Number(m[1]), Number(m[1])] }).toEqual({ name, said: [sp.byClaude, sp.decisions] });
+    for (const name of ["pitch", "deck", "spiekkaart"]) expect({ name, said: all(/(?:(\d+)(?: of |\/)|\ball )(\d+) decisions/gi, name).length > 0 }).toEqual({ name, said: true });
   });
 
   it("says the seconds from Face ID to PAID as measured, and says the settlement is simulated wherever it says them", () => {

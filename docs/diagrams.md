@@ -15,7 +15,8 @@ flowchart LR
   P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
   P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
   F --> R
-  R --> B["Books and the hash-chained audit log<br/>posted to T:0 and Moneybird (sandboxes)"]
+  R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
+  B --> L["Hash-chained audit log"] --> N["Its head anchored on Metal testnet<br/>npm run verify-anchor"]
 ```
 
 ## 1. Architecture: who holds which limit
@@ -104,7 +105,7 @@ flowchart LR
   U["Browser or phone"] --> K
   F["CFO's phone<br/>passkey"] <--> RO
   subgraph K["Worker kit11 · worker/"]
-    S["Site: Home, Try, Proof, the tour<br/>/try/sign"]
+    S["Site: Home, Try, Proof, /security<br/>the hands-on demo"]
     RO["Durable Object RelayObject<br/>the relay: proposals, approvals"]
   end
   RN["Runner · Node, src/cli<br/>the live runs"] <--> RO

@@ -5,7 +5,7 @@
 // truth: src/config/brand.ts (FIRST_SCREEN, WHY_COMPANY). Breaks when a place drops, adds or reorders a word.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
+import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { HOME_SUB, PROOF_BUTTON, REASSURE, START, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
@@ -23,6 +23,8 @@ const anchors = (md: string) => [...md.matchAll(/^#+ (.+)$/gm)].map((m) => m[1]!
 /** Names of other spend and payment companies that must never appear in these lines (the partners are not competitors). */
 const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wise|Stripe|Mastercard|Coinbase|Google|Visa)\b/;
 
+const HERO_BANNER = `<a href="https://kit11.max-31b.workers.dev/"><img src="docs/assets/social-preview.png" alt="Purser: AI agents spend. You sign off. Every payment above its limit waits for your Face ID or a passkey: the agent asks to pay, code checks it against its limit, you sign the exact terms; signed is paid, not signed is never paid. Built with Airwallex, Metal, Visa Intelligent Commerce and Claude." width="100%"></a>`;
+
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
     expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
@@ -38,20 +40,21 @@ describe("the first screen (section D, 6 Nov)", () => {
     // The owner's centred top (13 Nov): the Purser mark, the title, the pitch in bold, the sentence every juror
     // repeated, one line of links with Try it first, the badges, then the reviewers' block.
     // Since 13 Nov (owner): the mark is the site header's own, black and white (docs/assets/brand/purser-mark.svg, test/brand-mark.test.ts).
-    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", '<img src="docs/assets/brand/purser-mark.svg" alt="Purser" width="72" height="72">', ""]);
+    // Since 13 Nov (the enterprise README): the site's link-preview card as the hero (the same file as src/ui/brand/og.png).
+    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", HERO_BANNER, ""]);
+    expect(readFileSync(new URL("../docs/assets/social-preview.png", import.meta.url)).equals(readFileSync(new URL("../src/ui/brand/og.png", import.meta.url)))).toBe(true);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    // Since 13 Nov (the README upgrade, then the judge run): three buttons (sign in 60 seconds, the payables inbox, the film;
-    // the tour's went with the tour that evening), one row of badges, the rails and "test money only" as plain text, the four screenshots with /try/sign first, then the
-    // one-line diagram under "How it works" and the judges' 3 minutes.
-    // Judge panel, 13 Nov: "Sign in 60 seconds" opens /try (the live site has no /try/sign; it answers 301 to /try).
-    const buttons = `<a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Sign_in-60_seconds-0b1220?style=for-the-badge" alt="Sign in 60 seconds"></a> <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Run_the_payables_inbox-2_min-0b1220?style=for-the-badge" alt="Run the payables inbox, 2 minutes"></a> <a href="https://youtu.be/kCUsFHrxE-o"><img src="https://img.shields.io/badge/Watch_the_film-3%3A58-0b1220?style=for-the-badge" alt="Watch the film, 3:58"></a>`;
-    expect(lines.slice(5, badges)).toEqual(["", `**${WHAT_IT_IS}**`, "", DIFFERENTIATORS[0], "", buttons, ""]);
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(12); // CI, CodeQL, tests, MIT, Node, TypeScript, MCP, four partners and T:0
-    expect(lines.slice(badges + 1, badges + 4)).toEqual(["", "Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.", ""]);
-    // The first tile is still the /try/sign screenshot (a local build); it links the hands-on demo, where you sign (judge panel, 13 Nov).
-    expect(lines[badges + 4]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/try"><img src="docs\/assets\/readme\/try-sign\.webp"/);
-    expect(lines.slice(badges + 5, badges + 10)).toEqual(["", "</div>", "", "## How it works", ""]);
+    // What Purser is (README_WHAT), the sentence every juror repeated, the three badges, the live demo's line, then the
+    // three proofs, the rails with "test money only" and the three commands, the four screenshots, then Enterprise.
+    expect(lines.slice(5, badges)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(3); // CI, MIT, the live demo
+    expect(lines[badges + 2]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
+    expect(lines.slice(badges + 3, badges + 6)).toEqual(["", "</div>", ""]);
+    expect(lines.slice(badges + 9, badges + 12)).toEqual(["", "Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))", ""]);
+    expect(lines[badges + 12]).toMatch(/^<table><tr><td width="25%"><a href="https:\/\/kit11\.max-31b\.workers\.dev\/proof">/); // /proof first since the final pass
+    expect(lines.slice(badges + 13, badges + 16)).toEqual(["", "## Enterprise", ""]);
+    expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/kCUsFHrxE-o");

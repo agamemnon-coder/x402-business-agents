@@ -1,4 +1,6 @@
-// Step-up for sensitive settings (cloud/src/stepUp.ts). It holds: a session signed in with the passkey less than five
+// Step-up for sensitive settings (cloud/src/stepUp.ts), an owner's choice, off by default. Off: signing in with the
+// passkey is enough, at any point of the session; only switching the setting itself needs a fresh passkey check, from a
+// signed-in owner, and the switch is a security event. On, it holds: a session signed in with the passkey less than five
 // minutes ago may change a sensitive setting; an older one is refused with code step_up_required until the person
 // confirms with their own passkey; the step-up token that check returns lasts five minutes and works with the session
 // it was made for only (not next to another session of the same person, not after sign-out); a passkey that is not the
@@ -11,6 +13,8 @@ import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./suppor
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 let c: TestCloud, t: TestTenant;
 beforeEach(async () => { c = testCloud(); t = await c.tenant("acme"); });
+/** The owner switches "Ask again before sensitive changes" on, with the fresh sign-in the test company starts with. */
+const askAgain = async () => expect((await c.req("POST", "/v1/security/settings", { key: t.session, body: { step_up: true } })).json).toEqual({ step_up: true });
 afterEach(() => c.close());
 
 const later = (min: number) => { c.clock.now = new Date(c.clock.now.getTime() + min * 60_000); };
@@ -30,7 +34,28 @@ async function signIn(): Promise<string> {
 }
 const addSlack = (session: string, headers: Record<string, string> = {}) => c.req("POST", "/v1/alerts/targets", { key: session, headers, body: { channel: "slack", target: "https://hooks.slack.com/services/T000/B000/XXXX" } });
 
-describe("step-up", () => {
+describe("step-up switched off (the default)", () => {
+  it("lets a signed-in owner change sensitive settings at any point of the session", async () => {
+    expect((await c.req("GET", "/v1/security/settings", { key: t.session })).json).toEqual({ step_up: false });
+    later(14);
+    expect((await addSlack(t.session)).status).toBe(201);
+    expect((await c.req("POST", "/v1/keys", { key: t.session, body: { name: "late", scopes: ["read"] } })).status).toBe(201);
+  });
+
+  it("asks a fresh passkey check to switch it, records the switch, and never lets a key switch it", async () => {
+    later(6);
+    expect((await c.req("POST", "/v1/security/settings", { key: t.session, body: { step_up: true } })).json.code).toBe("step_up_required");
+    const up = await stepUp(t.session);
+    expect((await c.req("POST", "/v1/security/settings", { key: t.session, headers: { [STEP_UP_HEADER]: up.token }, body: { step_up: true } })).json).toEqual({ step_up: true });
+    expect((await c.req("POST", "/v1/security/settings", { key: t.key, body: { step_up: false } })).status).toBe(403);
+    expect((await c.req("POST", "/v1/security/settings", { key: t.session, headers: { [STEP_UP_HEADER]: up.token }, body: { step_up: false } })).json).toEqual({ step_up: false });
+    const kinds = ((await c.req("GET", "/v1/security/events", { key: t.session })).json.items as { kind: string }[]).map((e) => e.kind);
+    expect(kinds.filter((k) => k.startsWith("security.step_up")).sort()).toEqual(["security.step_up_off", "security.step_up_on"]);
+  });
+});
+
+describe("step-up switched on", () => {
+  beforeEach(askAgain);
   it("lets a session signed in under five minutes ago change a sensitive setting", async () => {
     later(4);
     expect((await addSlack(t.session)).status).toBe(201);

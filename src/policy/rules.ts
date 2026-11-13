@@ -13,7 +13,7 @@ import { airiRailOn, airiRuleDefs } from "../airi/policy.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { FEE_BPS_CAP, platformFeeOn } from "../airwallex/platform.js";
 
-export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
+export type PolicyKey = "approval.airi_alone" | "approval.airi_alone_per_day" | `airi.merchant.${string}` | "freeze" | `stop.${string}` | `pause.${string}` | "approval.four_eyes_eur" | "approval.second_key_eur" | "approval.second_key_new_payee" | "approval.second_key_bank_changed" | "approval.second_key_new_country" | `cap.${Agent}` | `card.${string}.per_tx` | `card.${string}.monthly` | "eur_floor" | "usd_floor" | "approval.refund_each" | "approval.refund_per_dispute" | "approval.task_card_eur" | `counterparty:${string}`
   | "payout.funding_currency" | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | "platform.fee_bps";
 
 export interface Rule {
@@ -52,6 +52,11 @@ const STATIC: Rule[] = [
   // Ask Purser (G): a task card the CFO asks for up to this amount is issued at once; above it, with Face ID.
   { key: "approval.task_card_eur", label: "Task cards up to this are issued without Face ID", unit: "EUR", kind: "money", min: 0, max: 150_000, fallback: TASK_CARD_EUR_FALLBACK, agent: "treasury" },
   { key: "approval.four_eyes_eur", label: "Payments above this need two people (four eyes)", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
+  // High-risk payments need Face ID and a security key (src/policy/secondKey.ts); every trigger is off until set.
+  { key: "approval.second_key_eur", label: "High-risk payments need Face ID and a security key: at or above this amount", unit: "EUR", kind: "optional_money", min: 0, max: MAX_FLOOR, fallback: "" },
+  { key: "approval.second_key_new_payee", label: "High-risk payments need Face ID and a security key: a payee first paid less than 30 days ago", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
+  { key: "approval.second_key_bank_changed", label: "High-risk payments need Face ID and a security key: bank details changed since the last payment", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
+  { key: "approval.second_key_new_country", label: "High-risk payments need Face ID and a security key: a new country", unit: "", kind: "choice", choices: ["off", "on"], fallback: "off" },
   { key: "eur_floor", label: "EUR reserve floor", unit: "EUR", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   { key: "usd_floor", label: "USD reserve floor", unit: "USD", kind: "money", min: 0, max: MAX_FLOOR, fallback: "", agent: "treasury" },
   // Each agent's company card at Airwallex (K2). The card itself is synced to these, so Airwallex declines the rest.
@@ -171,6 +176,7 @@ export function policyValue(db: DB, key: string): string {
 
 function display(r: Rule, value: string): string {
   if (r.key === "approval.four_eyes_eur" && value === "") return "off (one person approves)";
+  if (r.key === "approval.second_key_eur" && value === "") return "off (Face ID alone)";
   if (r.kind === "optional_money" && value === "") return "no extra limit (the mandate's cap applies)";
   if (r.kind === "money" && value === "") return "not set yet";
   return r.unit ? `${value} ${r.unit}` : value;

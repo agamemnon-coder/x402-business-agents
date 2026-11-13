@@ -7,6 +7,7 @@ import { audit, type Actor } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { prefixMatches, rejectionSha256, termsHash, type Terms } from "../lib/terms.js";
 import { fourEyes } from "./fourEyes.js";
+import { recordFactor, secondKeyReasons } from "./secondKey.js";
 import { policyVersion } from "./versions.js";
 import { currentOrigin } from "../provenance/origin.js";
 import { hubGateRefusal } from "../hub/gate.js";
@@ -136,8 +137,9 @@ export interface DecideArgs {
   /** Method passkey: the full hash the passkey signed (its WebAuthn challenge), already verified by the caller: the
    *  terms hash to approve, rejectionSha256(terms hash) to reject. */
   signedSha256?: string;
-  /** Method passkey: which credential signed, and the hash of the stored assertion. */
-  passkey?: { credentialId: string; assertionSha256: string };
+  /** Method passkey: which credential signed, and the hash of the stored assertion; factor: a passkey (the default) or a
+   *  security key, which only ever counts as the second key of a high-risk payment (src/policy/secondKey.ts). */
+  passkey?: { credentialId: string; assertionSha256: string; factor?: "passkey" | "security_key" };
 }
 
 /**
@@ -180,21 +182,38 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
     const alternative = args.decision === "APPROVED" ? approvedAlternative(db, p) : null;
     if (alternative) throw new Error(`another option, ${alternative}, was already approved`);
     let approver = args.approver;
+    const factor = args.passkey?.factor ?? "passkey";
+    // A high-risk payment (src/policy/secondKey.ts, off until the CFO switches a trigger on): the same person signs its
+    // exact terms with two different keys, their passkey and a security key. With one of them it keeps waiting. A
+    // security key never approves anything else.
+    const highRisk = args.decision === "APPROVED" ? secondKeyReasons(db, p, now) : [];
+    if (highRisk.length) {
+      if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} is high-risk (${highRisk.join("; ")}): it needs your Face ID and your security key`);
+      const person = args.approver.split(" (")[0]!;
+      const both = recordFactor(db, { proposalId: p.proposal_id, termsSha256: p.terms_sha256, person, credentialId: passkey.credential_id, factor, assertionSha256: passkey.assertion_sha256 }, now);
+      if (!both) {
+        audit(db, "human", "proposal.factor_signed", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, person, factor, high_risk: highRisk, of: "1 of 2 keys", passkey }, now);
+        return "PENDING_APPROVAL";
+      }
+      approver = `${person} (passkey and security key)`;
+    } else if (args.decision === "APPROVED" && factor === "security_key") {
+      throw new Error(`${p.proposal_id} is not high-risk: a security key alone never approves; approve with your passkey (Face ID)`);
+    }
     if (args.decision === "APPROVED" && fourEyes(db, p)) {
       // E1, four eyes: two different people, each with their own passkey, and never the one who proposed it. The
       // first signature is kept and the proposal waits; the second approves. One person's rejection stops it.
       if (args.method !== "passkey" || !passkey) throw new Error(`${p.proposal_id} needs the passkeys of two different people (four eyes)`);
-      const person = args.approver.split(" (")[0]!;
+      const person = approver.split(" (")[0]!;
       if (person === p.created_by) throw new Error(`${person} proposed ${p.proposal_id}, so ${person} cannot approve it (four eyes)`);
       const signed = db.prepare("SELECT person, approver FROM cosignatures WHERE proposal_id = ? AND terms_sha256 = ? ORDER BY created_at, rowid").all(p.proposal_id, p.terms_sha256) as { person: string; approver: string }[]; // only a first signature over these exact terms counts: one made before the stored terms changed signed other terms (zero-trust matrix, 12 November)
       if (signed.some((x) => x.person === person)) throw new Error(`${person} already approved ${p.proposal_id}; a second person must approve it with their own passkey`);
       db.prepare("INSERT INTO cosignatures (proposal_id, credential_id, person, approver, terms_sha256, assertion_sha256, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .run(p.proposal_id, passkey.credential_id, person, args.approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
+        .run(p.proposal_id, passkey.credential_id, person, approver, p.terms_sha256, passkey.assertion_sha256, now.toISOString());
       if (signed.length === 0) {
-        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver: args.approver, person, of: "1 of 2", method: args.method, passkey }, now);
+        audit(db, "human", "proposal.cosigned", p.proposal_id, { terms_sha256: p.terms_sha256, approver, person, of: "1 of 2", method: args.method, passkey }, now);
         return "PENDING_APPROVAL";
       }
-      approver = [...signed.map((x) => x.approver), args.approver].join(" + ");
+      approver = [...signed.map((x) => x.approver), approver].join(" + ");
     }
     // The policy as it stood when the person decided (backend review B4).
     const policy = policyVersion(db, now);

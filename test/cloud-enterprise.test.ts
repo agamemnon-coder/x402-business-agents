@@ -6,7 +6,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
 import { MESSAGES } from "../src/ui/i18n.js";
-import { testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
+import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import TOKENIZE from "../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
 
 let c: TestCloud, guest: string, A: TestTenant;
@@ -75,11 +75,13 @@ describe("GET /v1/tokenisation", () => {
 describe("Invoices & books: bookings and an invoice's journal", () => {
   it("finds each invoice's accrual and the payment that settled it, and serves its journal lines", async () => {
     const b = (await get("/v1/books/bookings")).json.bookings as Record<string, number[]>;
-    expect(b["AP-0004"]).toEqual([25, 30]);
+    expect(b["AP-0004"]).toEqual([27, 29]);
     expect(b["AP-0005"]).toEqual([31]);
     expect(b["AP-0006"]).toBeUndefined();
     const j = (await get("/v1/books/invoices/AP-0004/journal")).json.items as J[];
-    expect(j.map((e) => e.entry_id)).toEqual([25, 30]);
+    expect(j.map((e) => e.entry_id)).toEqual([27, 29]);
+    // The receipt is booked before its payment (jury, 13 Nov).
+    expect(j.map((e) => e.posting_date)).toEqual([...j.map((e) => e.posting_date)].sort());
     const lines = j.flatMap((e) => e.lines as J[]);
     expect(lines.reduce((n, l) => n + l.debit_cents - l.credit_cents, 0)).toBe(0);
     expect((await get("/v1/books/invoices/AP-0006/journal")).json.items).toEqual([]);
@@ -105,5 +107,39 @@ describe("the console", () => {
   it("adds no inline script beyond the one with the page's nonce, and no write call for agents", () => {
     expect([...html.matchAll(/<script\b[^>]*>/gi)].map((m) => m[0])).toEqual([`<script type="module" nonce="n0nce">`]);
     expect(html).not.toMatch(/\/v1\/agents\/[^'"]*\/(pause|revoke)/);
+  });
+  it("names a VAT code in words where Purser knows it, keeps the account, and says the runner sent the last update (jury, 13 Nov)", () => {
+    expect(MESSAGES.en["cs.vat.PF_DE19"]).toBe("German 19%, reclaimed from Germany");
+    expect(MESSAGES.nl["cs.vat.PF_DE19"]).toBeTruthy();
+    expect(html).toContain("l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')");
+    expect(html).not.toContain("l.vat_code?' · '+l.vat_code");
+    expect(MESSAGES.en["cs.last_update"]).toBe("Last update from the runner");
+  });
+  it("shows the 'Purser Cloud is…' box on Overview only, so the phone header stays short (jury, 13 Nov)", () => {
+    expect(html.match(/(?<!function )whatCloud\(/g)).toHaveLength(1);
+    expect(html).toContain("view().replaceChildren(...[whatCloud(m),head(t('cs.nav.overview')");
+  });
+  it("labels the demo's fallback decisions as a simulated month, from its own count (jury, 13 Nov)", async () => {
+    expect((await get("/v1/dashboard")).json.agents).toEqual({ decisions: 33, by_fallback: 8 });
+    expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).toBe("{a} by the agents · {n} by code when no model answered (simulated month)");
+    expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).not.toMatch(/Claude/);
+    expect(html).toContain("t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback})");
+  });
+});
+
+describe("headers (jury, 13 Nov)", () => {
+  it("the console may not be framed; the PDF viewer only by the console itself", async () => {
+    expect((await c.fetch(`${ORIGIN}/`)).headers.get("x-frame-options")).toBe("DENY");
+    expect((await c.fetch(`${ORIGIN}/try`)).headers.get("x-frame-options")).toBe("DENY");
+    const pdf = await c.fetch(`${ORIGIN}/pdfview`);
+    expect(pdf.headers.get("x-frame-options")).toBe("SAMEORIGIN");
+    expect(pdf.headers.get("content-security-policy")).toContain("frame-ancestors 'self'");
+  });
+  it("every /v1 JSON answer, an error included, carries nosniff and HSTS", async () => {
+    for (const r of [await c.fetch(`${ORIGIN}/v1/agents`, { headers: { authorization: `Bearer ${guest}` } }), await c.fetch(`${ORIGIN}/v1/agents`), await c.fetch(`${ORIGIN}/v1/nope`)]) {
+      expect(r.headers.get("content-type")).toMatch(/^application\/json/);
+      expect(r.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(r.headers.get("strict-transport-security")).toBe("max-age=31536000; includeSubDomains");
+    }
   });
 });

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 // The badge row under the README's first lines: at most five badges, no logos of others, and the tests badge says the
@@ -8,41 +8,45 @@ const badgeLine = readme.split("\n").find((l) => l.includes("actions/workflows/c
 const pkgNode = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { engines: { node: string } }).engines.node;
 
 describe("README badges", () => {
-  // Eleven since 13 Nov (owner, after the live README): one row, every badge real or read from the repository.
-  it("has at most twelve badges, on one line", () => {
+  // One row since 13 Nov (owner, after the live README); three since the enterprise README (13 Nov).
+  it("has at most three badges, on one line", () => {
     const badges = badgeLine.match(/!\[[^\]]*\]\(/g) ?? [];
     expect(badges.length).toBeGreaterThan(1);
-    expect(badges.length).toBeLessThanOrEqual(12);
+    expect(badges.length).toBeLessThanOrEqual(3);
   });
 
   it("uses no logos", () => {
     expect(badgeLine).not.toMatch(/[?&]logo=/);
   });
 
-  // Since 13 Nov (owner, after the live README): CI and CodeQL (GitHub's own), the tests from docs/assets/test-summary.json
-  // on main (a dynamic badge, so it cannot drift), MIT, the Node version package.json requires, TypeScript strict as
-  // tsconfig.json sets it, the MCP server, and one static shield per partner in the site's own colours, no logos.
-  it("is CI, CodeQL, the tests read from test-summary.json, MIT, Node, TypeScript strict, the MCP server and the four partners", () => {
-    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", `Node: ${pkgNode}`, "TypeScript: strict", "MCP server: read, propose only", "Airwallex: sandbox", "Metal: testnet", "Visa: VIC via Airi", "Claude: Haiku, Sonnet, Opus", "T:0: sandbox ledger"]); // T:0 since 13 Nov (owner)
-    expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
-    expect(badgeLine).toContain("https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed");
-    expect(badgeLine).toContain(`https://img.shields.io/badge/node-${encodeURIComponent(pkgNode)}-339933`);
-    expect((JSON.parse(readFileSync(new URL("../tsconfig.json", import.meta.url), "utf8")) as { compilerOptions: { strict: boolean } }).compilerOptions.strict).toBe(true);
-    expect(badgeLine).not.toMatch(/badge\/tests-\d/);
+  // Since 13 Nov (the enterprise README, owner): three badges only: CI (GitHub's own), the licence, and the live demo.
+  // The MCP Registry entry, the partners and the tests moved into the text (the Enterprise section, the rails line).
+  it("is CI, the licence and the live demo, nothing else", () => {
+    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "License: MIT", "Live demo: /try"]);
+    expect(badgeLine).toContain("(https://kit11.max-31b.workers.dev/try)");
+    expect(badgeLine).toContain("(LICENSE)");
     expect(badgeLine).not.toMatch(/[?&]logo=/);
+    // The registry entry is still named, in the Enterprise section, under the name server.json publishes.
+    const registered = (JSON.parse(readFileSync(new URL("../server.json", import.meta.url), "utf8")) as { name: string }).name;
+    expect(registered).toBe("io.github.agamemnon-coder/purser");
+    expect(readme).toContain(`(https://registry.modelcontextprotocol.io/v0/servers?search=${registered})`);
     expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
+    expect(pkgNode.length).toBeGreaterThan(0);
   });
 
-  // The buttons above the badges (13 Nov, judge run): sign in 60 seconds on /try/sign, run the payables inbox on /try
-  // (one Try URL everywhere), the film; then the rails and "test money only" as plain text.
-  // 13 Nov, evening (owner): the product tour is gone, and its button with it.
-  // Judge panel, 13 Nov: the live site has no /try/sign (it answers 301 to /try), so "Sign in 60 seconds" opens the hands-on demo, where you sign.
-  it("puts three buttons above the badges: sign in 60 seconds and the payables inbox on /try, the film; and says test money only", () => {
-    const buttons = readme.split("\n").find((l) => l.includes("Watch_the_film")) ?? "";
-    expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/try", "https://youtu.be/kCUsFHrxE-o"]);
-    expect([...buttons.matchAll(/alt="([^"]+)"/g)].map((m) => m[1])).toEqual(["Sign in 60 seconds", "Run the payables inbox, 2 minutes", "Watch the film, 3:58"]);
-    expect(buttons).not.toContain("purser-try");
-    expect(readme.indexOf(buttons)).toBeLessThan(readme.indexOf(badgeLine));
-    expect(readme).toContain("Metal testnet · Airwallex sandbox · Visa via Airwallex Airi (sandbox) · Claude: test money only.");
+  // Since 13 Nov (the enterprise README): no buttons; the live demo's line under the badges, with the film and /proof,
+  // then the three proofs, each with its record, and "test money only".
+  it("puts the live demo's line under the badges, then three proofs with their records, and says test money only", () => {
+    const lines = readme.split("\n");
+    const at = lines.indexOf(badgeLine);
+    expect(lines[at + 2]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film, 3:58](https://youtu.be/kCUsFHrxE-o) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(readme).not.toContain("for-the-badge");
+    const proofs = lines.slice(at + 3).filter((l) => l.startsWith("- **")).slice(0, 3);
+    expect(proofs.map((l) => /^- \*\*([^.:]+)/.exec(l)![1])).toEqual(["Face ID or a passkey signs the exact terms", "Limits are enforced in 3 layers", "The audit chain is anchored on chain"]);
+    for (const l of proofs) expect({ l: l.slice(0, 40), record: /\[record\]\(docs\/runs\/[^)]+\)/.test(l) }).toEqual({ l: l.slice(0, 40), record: true });
+    for (const r of proofs.flatMap((l) => [...l.matchAll(/\(docs\/runs\/([^)]+)\)/g)].map((m) => m[1]!))) expect({ r, there: existsSync(new URL(`../docs/runs/${r}`, import.meta.url)) }).toEqual({ r, there: true });
+    expect(proofs[1]).toContain("(https://kit11.max-31b.workers.dev/api/metal/mandates)");
+    expect(proofs[1]).toContain("or the recorded 12 Nov snapshot when the chain does not answer");
+    expect(readme).toContain("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude.");
   });
 });

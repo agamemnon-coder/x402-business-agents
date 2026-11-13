@@ -1362,7 +1362,7 @@ ${siteHeader("try")}
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
   "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
-  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
 /** GET /try: the page under the console's policy, with a fresh nonce. */

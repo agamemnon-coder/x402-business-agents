@@ -489,6 +489,17 @@ export function flaggedHtml(tiles: ProductTile[] = flaggedTiles()): string {
   return tiles.length ? `<section class="awgroup off" aria-labelledby="awg-off"><h2 id="awg-off"><span class="dot" aria-hidden="true"></span>${esc(FLAGGED_LINE)}</h2><div class="awp">${tiles.map(tileHtml).join("\n")}</div></section>` : "";
 }
 
+/**
+ * What the tiles are, counted from them (partner review, 13 Nov): Airi is a beta of its own, and the payee check and the
+ * ledger reconciliation are features of Airwallex's APIs, not products. So: "Nine Airwallex features in use, plus Airi
+ * (beta)"; `short` for a list line ("9 Airwallex features plus Airi (beta)").
+ */
+export function tilesCountWords(tiles: ProductTile[], short = false): string {
+  const n = tiles.filter((t) => t.key !== "airi").length, airi = tiles.some((t) => t.key === "airi");
+  const word = WORDS[n] ?? String(n);
+  return short ? `${n} Airwallex features${airi ? " plus Airi (beta)" : ""}` : `${word[0]!.toUpperCase()}${word.slice(1)} Airwallex features in use${airi ? ", plus Airi (beta)" : ""}`;
+}
+
 /** The tiles that have their facts, in the fixed order. */
 export function productTiles(run: AgentRun): ProductTile[] {
   return [
@@ -573,10 +584,10 @@ export interface AirwallexBody {
   proofHash: string;
 }
 
-/** The page's description: the products on its tiles, by name. */
+/** The page's description: what its tiles are, by name (Airwallex features, and Airi as the beta it is). */
 export function airwallexDescription(run: AgentRun): string {
   const names = productTiles(run).map((t) => t.name);
-  return `The Airwallex products Purser uses, each with one number, one id and the date of its own run: ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names.join("")}.`;
+  return `The Airwallex features Purser uses${productTiles(run).some((t) => t.key === "airi") ? ", and Airi (beta)," : ","} each with one number, one id and the date of its own run: ${names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names.join("")}.`;
 }
 
 /** The run of 13 Nov: the owner's own iPhone Face ID opened lock 1 on one payout (its row in src/redesign/runs.ts). */
@@ -599,7 +610,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
     faceIdFoldHtml(liveRuns().find((r) => r.key === FACEID_KEY)),
     platformFoldHtml(platform, first, firstRow ? dayShort(firstRow.iso) : null),
     foldHtml("Metal earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
-    foldHtml("The Airwallex products and their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
+    foldHtml("The Airwallex features and Airi, with their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
     foldHtml("What is simulated", `<ul class="pl">${[
       liPlain("The Airwallex sandbox, with test money only."),
       ...o.simulated.map((t) => liPlain(t)),
@@ -612,10 +623,9 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
       ...(testPasskeys.length ? [liPlain(`In ${testPasskeys.join(" and ")} the approvals were signed with a labelled test passkey, not Face ID.`)] : []),
     ].join("")}</ul>`),
   ].join("");
-  const count = WORDS[tiles.length] ?? String(tiles.length);
   const flagged = flaggedTiles();
   return `<main class="pp awxp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${count[0]!.toUpperCase()}${count.slice(1)} Airwallex products in use${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
+  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(AWX_PAGE_LABEL)}</span><h1>${esc(tiles.length > 1 ? `${tilesCountWords(tiles)}${flagged.length ? `; ${WORDS[flagged.length] ?? flagged.length} more tested live on 12 Nov` : ""}` : "Purser on Airwallex")}</h1></div>
   ${visualsHtml(tiles, flagged)}
   ${tilesHtml(tiles)}
   ${flaggedHtml(flagged)}
