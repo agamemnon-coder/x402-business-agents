@@ -333,7 +333,10 @@ describe("sealing", () => {
     const key = await sealKey(TOKEN_KEY);
     const s = await seal(key, "tok", "aad");
     const parts = s.split(".");
-    const tampered = `${parts[0]}.${parts[1]}.${parts[2]!.slice(0, -2)}AA`;
+    // Flip the first character of the ciphertext (it always carries six full bits); replacing the last two could be a
+    // no-op when they are already "AA" or only padding bits change, which made this test fail about once in a few hundred runs.
+    const c = parts[2]!;
+    const tampered = `${parts[0]}.${parts[1]}.${c[0] === "A" ? "B" : "A"}${c.slice(1)}`;
     await expect(unseal(key, tampered, "aad")).rejects.toThrow();
     expect(await unseal(key, s, "aad")).toBe("tok");
   });

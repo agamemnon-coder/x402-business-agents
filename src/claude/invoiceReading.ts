@@ -3,6 +3,7 @@
 // with them. No database and no Node modules, so the runner (src/claude/reader.ts, src/claude/tools.ts) and the relay
 // Worker's /try/sign run the very same reader.
 
+import { untagged } from "../lib/untagged.js";
 import { z } from "zod";
 import { readAmount } from "../lib/money.js";
 
@@ -40,7 +41,7 @@ export const InvoiceSchema = z.object({
 export const INVOICE_INSTRUCTION = "Extract the invoice: number, vendor (the issuing company's legal name), total due as a plain decimal with two decimals and no thousands separators, currency code, due date as YYYY-MM-DD, IBAN without spaces, BIC, and the payment reference.";
 
 /** The user turn the reader sends: the instruction, then the document inside its tags. */
-export const readerTurn = (instruction: string, document: string) => `${instruction}\n\n<document>\n${document}\n</document>`;
+export const readerTurn = (instruction: string, document: string) => `${instruction}\n\n<document>\n${untagged(document)}\n</document>`;
 
 const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
 

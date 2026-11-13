@@ -453,7 +453,7 @@ const rpcError = (id: unknown, code: number, message: string, data?: Json) => ({
 /** MCP's own error codes (2026-07-28, schema.ts): the reserved -32020 to -32099 range. */
 export const HEADER_MISMATCH = -32020, UNSUPPORTED_PROTOCOL_VERSION = -32022;
 
-const identity = (c: McpCtx) => ({ name: "purser", title: "Purser", version: SERVER_VERSION, description: "Read a company's books in Purser: invoices, payments, cash, VAT, approvals and the CFO's policy. Never approves or pays.",
+const identity = (c: McpCtx) => ({ name: "purser", title: "Purser", version: SERVER_VERSION, description: "Read a company's books in Purser: invoices, payments, cash, VAT, approvals and the CFO's policy. Never approves or pays; with a propose-scoped token it can file a payment for the CFO's approval.",
   ...(c.origin ? { websiteUrl: c.origin, icons: iconsAt(c.origin) } : {}) });
 export const iconsAt = iconsOf;
 const capabilities = { tools: { listChanged: false }, prompts: { listChanged: false }, resources: { subscribe: false, listChanged: false } };

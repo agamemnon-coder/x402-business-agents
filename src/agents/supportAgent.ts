@@ -8,6 +8,7 @@
 // code records it, then pays and proposes it. A dispute that already has a decision is never decided again: the run
 // carries out what is left of that decision (after a restart) and answers "already decided".
 
+import { untagged } from "../lib/untagged.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { audit } from "../audit/log.js";
@@ -152,7 +153,7 @@ export async function settleDispute(db: DB, f: DisputeFacts, deps: SupportDeps, 
     prompt: [
       `Dispute ${f.disputeId} from ${f.customer} about stock checks ${f.seqs.map((s) => `#${s}`).join(", ")}; the customer asks: ${f.requested}.`,
       `Your automatic limits: ${fromCents(deps.limits.eachCents)} per refund and ${fromCents(deps.limits.perDisputeCents)} per dispute.`,
-      "<document>", f.email, "</document>",
+      "<document>", untagged(f.email), "</document>",
     ].join("\n"),
     tools: [
       {

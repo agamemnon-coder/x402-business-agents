@@ -219,8 +219,12 @@ export async function isPlatformAdmin(adminTokenSha256: string, authorization: s
 
 // Passkey sign-in: a one-time challenge, then the assertion checked in the Worker against a credential the person
 // enrolled in the cloud (its public key, x and y).
-export async function newChallenge(sql: Sql, tenantId: string, now: Date): Promise<{ challenge_id: string; challenge: string }> {
-  const id = `c${randomToken(12)}`;
+/**
+ * A challenge's purpose is in its id (final review S6): "c…" signs in, "u…" steps up an existing session. Each is taken
+ * only by its own ceremony, so a sign-in challenge never serves as a step-up, nor the other way round.
+ */
+export async function newChallenge(sql: Sql, tenantId: string, now: Date, purpose: "sign-in" | "step-up" = "sign-in"): Promise<{ challenge_id: string; challenge: string }> {
+  const id = `${purpose === "step-up" ? "u" : "c"}${randomToken(12)}`;
   const challenge = randomToken(32);
   // Expired challenges go at once, and a company has a bounded number open (red team round 4: every unauthenticated
   // call added a row until the daily housekeeping; from many addresses that was unbounded).
@@ -235,6 +239,7 @@ export async function passkeyLogin(sql: Sql, a: { tenantId: string; challengeId:
   // Used once, whatever the outcome, and taken atomically: the same assertion sent several times at once gets one
   // session (the update succeeds for one request only); a failed attempt cannot be retried with the same challenge.
   const iso = a.now.toISOString();
+  if (!a.challengeId.startsWith("c")) throw new AuthError(401, "the sign-in challenge is unknown, used or expired");
   const taken = await sql.run("UPDATE challenges SET used_at = ? WHERE id = ? AND tenant_id = ? AND used_at IS NULL AND expires_at > ?", [iso, a.challengeId, a.tenantId, iso]);
   if (taken.changes !== 1) throw new AuthError(401, "the sign-in challenge is unknown, used or expired");
   const ch = (await sql.first<{ challenge: string }>("SELECT challenge FROM challenges WHERE id = ? AND tenant_id = ?", [a.challengeId, a.tenantId]))!;
