@@ -20,7 +20,7 @@ import type { BrowserContext, Page, Route } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { DID } from "../../cloud/src/try/books.js";
+import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
 import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
@@ -577,7 +577,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const ids = new Set((ourTx.booking as { entry_ids: number[] }).entry_ids);
   const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id));
   const apiLines = mine.flatMap((e) => e.lines);
-  const shownAccounts = await page.locator(".blk.booked tbody td.mono").allTextContents();
+  const shownAccounts = await page.locator(".blk.booked tbody td > span.mono").allTextContents();
   ok(apiLines.length > 0 && shownAccounts.join() === apiLines.map((l) => l.account).join(), `${tag}: booked: the invoice's journal lines, as the ledger holds them (${shownAccounts.join(" ")})`);
   const dr = apiLines.reduce((n, l) => n + l.debit_cents, 0), cr = apiLines.reduce((n, l) => n + l.credit_cents, 0);
   ok(dr === cr && (await page.textContent(".blk.booked .bal")) === BOOKS.even, `${tag}: booked: debits equal credits (${dr} = ${cr})`);
@@ -674,8 +674,15 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.click(`button.link:has-text("${PAY.back}")`);
   await page.waitForSelector(`h1:text-is("${BOOKS.heading}")`);
 
+  // The main step on is Purser Cloud's guest dashboard (owner, 13 Nov): a link, in a new tab, never the site's home.
+  const go = page.locator(`a.btn.primary.go-cloud:has-text("${BOOKS.next}")`);
+  ok(await go.count() === 1 && await go.getAttribute("href") === CLOUD_URL && CLOUD_URL === "https://purser-try.max-31b.workers.dev/#/guest" && await go.getAttribute("target") === "_blank",
+    `${tag}: "${BOOKS.next}" opens Purser Cloud's guest dashboard (${CLOUD_URL}), in a new tab`);
+  // The fee says where it comes from; the booked VAT line is named as such.
+  ok((await page.textContent(".blk.paid dd"))!.includes(BOOKS.feeWhy) && await page.locator(".blk.booked tr.vatl .role").count() === 1, `${tag}: the fee says where it comes from; the VAT line is named`);
+
   // 5b What Purser did with it: filed, booked, matched, from this company's own answers; then the three links.
-  await page.click(`.btn.primary:has-text("${BOOKS.next}")`);
+  await page.click(`button.btn:has-text("${BOOKS.what}")`);
   await page.waitForSelector(`h1:text-is("${DID.heading}")`);
   await page.waitForSelector(".did-step .did-doc", { timeout: 20_000 });
   await page.waitForSelector(".did-step .bal", { timeout: 20_000 });
@@ -711,7 +718,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".did-step .bal")) === DID.balanced && dr === cr, `${tag}: did: "${DID.balanced}", from the lines' own sums (${dr} = ${cr})`);
   ok((await page.textContent(".did-match .pill")) === ourPay.status && (await page.textContent(".did-match .mono")) === String(ourPay.invoice_no), `${tag}: did: matched, the payment ${ourPay.status as string} with its reference (${ourPay.invoice_no as string})`);
   const nexts = await page.locator("a.did-next").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).getAttribute("href")));
-  ok(nexts.join() === ["/", "https://kit11.max-31b.workers.dev/runs", "https://kit11.max-31b.workers.dev/security"].join(), `${tag}: did: next steps, Purser Cloud, the live runs, how it stays safe`);
+  ok(nexts.join() === [CLOUD_URL, "https://kit11.max-31b.workers.dev/runs", "https://kit11.max-31b.workers.dev/security"].join(), `${tag}: did: next steps, Purser Cloud (its guest dashboard), the live runs, how it stays safe`);
   ok((await page.textContent(".did-label")) === DID.label, `${tag}: did: labelled test company, simulated bank`);
   await screenChecks(page, `${tag} screen 5b`, width);
   if (shots) {
@@ -911,6 +918,20 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
   await p.ctx.close();
+}
+
+// Purser Cloud's #/guest (the paid screen's "Open Purser Cloud", owner 13 Nov): the console signs in as a guest by itself
+// and opens the demo company's overview, read only, with its ribbon; on this server, as on purser-try.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const page = await ctx.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto(`${ORIGIN}/${new URL(CLOUD_URL).hash}`);
+  await page.waitForSelector('h1:text-is("Overview")', { timeout: 20_000 });
+  const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.cloud.session") ?? "{}") as { guest?: boolean });
+  ok(stored.guest === true && new URL(page.url()).hash === "#/overview" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's overview as a guest, with no page error (${errors.join(" | ")})`);
+  await ctx.close();
 }
 
 await browser.close();

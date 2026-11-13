@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pdfOf } from "../src/e2e/documents.js";
-import { SAMPLE_SOURCES, samplesFile } from "../src/engine/tryWorld.js";
+import { SAMPLE_SOURCES, samplePdf, samplesFile } from "../src/engine/tryWorld.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -30,7 +30,7 @@ const typed = (o: Record<string, string> = {}) => ({ supplier_key: "bergtex", in
 
 describe("the generated samples file", () => {
   it("is up to date with its sources and their PDFs", async () => {
-    const pdfs = await Promise.all(SAMPLE_SOURCES.map(async (s) => (await pdfOf(s.text)).toString("base64")));
+    const pdfs = await Promise.all(SAMPLE_SOURCES.map(async (s) => (await samplePdf(s)).toString("base64")));
     expect(readFileSync("cloud/src/engine/samples.gen.ts", "utf8")).toBe(samplesFile(pdfs));
   });
 });
@@ -116,7 +116,7 @@ describe("write your own", () => {
   it("a repeated invoice number gets the engine's duplicate answer", async () => {
     const s = await visitor();
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: typed() })).status).toBe(200);
-    const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ amount: "99.00" }) });
+    const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ amount: "199.00" }) });
     expect(r.status, JSON.stringify(r.json)).toBe(200);
     const inv = (r.json as unknown as Upload).invoice!;
     expect(inv.payable).toBe(false);
@@ -139,12 +139,12 @@ describe("write your own", () => {
       const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed(o) });
       expect(r.status, JSON.stringify(o)).toBe(400);
       expect(r.json, JSON.stringify(o)).toMatchObject({ code: `invalid_${field}`, field });
-      // Each message names its field, but the cap's, which says the demo's limit plainly.
-      if (r.json.message !== "Demo invoices go up to EUR 5,000.") expect(r.json.message, JSON.stringify(o)).toContain(field);
+      // Each message names its field, but the range's, which says the demo's limits plainly.
+      if (r.json.message !== "Demo invoices go from EUR 100 to EUR 5,000.") expect(r.json.message, JSON.stringify(o)).toContain(field);
     }
-    for (const amount of ["5000.01", "10000.00", "123456789.00"]) {
+    for (const amount of ["5000.01", "10000.00", "123456789.00", "99.99", "1.50"]) {
       const r = await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ amount }) });
-      expect(r.json, amount).toMatchObject({ code: "invalid_amount", field: "amount", message: "Demo invoices go up to EUR 5,000." });
+      expect(r.json, amount).toMatchObject({ code: "invalid_amount", field: "amount", message: "Demo invoices go from EUR 100 to EUR 5,000." });
     }
     // Shapes the route itself refuses: a field too long, a field more.
     expect((await c.req("POST", "/v1/engine/compose", { key: s, body: typed({ invoice_no: "A".repeat(10_000) }) })).status).toBe(400);

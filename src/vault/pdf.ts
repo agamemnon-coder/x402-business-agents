@@ -160,6 +160,27 @@ const INK = "#111827";
 const MUTED = "#6b7280";
 const LINE = "#e5e7eb";
 const WARN = "#b45309";
+const ACCENT = "#4f46e5";
+
+/**
+ * A receipt's header in the layout of the demo's invoices (src/engine/invoicePdf.ts, owner 13 Nov): the company's name
+ * and what the receipt is for on the left, the document's title on the right, then the test-money band.
+ */
+function receiptHeader(doc: Doc, company: string, title: string, sub: string, paidOn: string, lang: Lang, bank: Bank) {
+  doc.font("Helvetica-Bold").fontSize(15).fillColor(INK).text(company, 50, 50, { width: 280 });
+  doc.font("Helvetica").fontSize(9.5).fillColor(MUTED).text(sub, 50, doc.y + 2, { width: 280 });
+  const left = doc.y;
+  doc.font("Helvetica-Bold").fontSize(20).fillColor(ACCENT).text(title, 300, 50, { width: 245, align: "right" });
+  doc.font("Helvetica").fontSize(9.5).fillColor(INK).text(`${T[lang].paidOn}: ${paidOn}`, 300, doc.y + 2, { width: 245, align: "right" });
+  let y = Math.max(left, doc.y) + 14;
+  doc.moveTo(50, y).lineTo(545, y).strokeColor(LINE).lineWidth(1).stroke();
+  y += 10;
+  doc.rect(50, y, 495, 34).fill("#fffbeb");
+  doc.fillColor(WARN).font("Helvetica-Bold").fontSize(10).text(words(lang, bank).testMoney, 60, y + 6);
+  doc.font("Helvetica").fontSize(8.5).text(words(lang, bank).testMoneyLine, 60, y + 19);
+  doc.y = y + 44;
+  doc.x = 50;
+}
 
 function render(title: string, created: string, draw: (doc: Doc) => void): Promise<Buffer> {
   const at = /^\d{4}-\d{2}-\d{2}/.test(created) ? new Date(`${created.slice(0, 10)}T00:00:00Z`) : new Date("2000-01-01T00:00:00Z");
@@ -236,7 +257,7 @@ function footer(doc: Doc, lang: Lang) {
 export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl", bank: Bank = "sandbox"): Promise<Buffer> {
   const t = words(lang, bank);
   return render(`${t.receipt} ${r.vendor} ${r.invoice_no}`, r.paid_at, (doc) => {
-    header(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, true, lang, bank);
+    receiptHeader(doc, company, t.receipt, `${r.vendor} · ${t.invoice} ${r.invoice_no}`, pdfDate(r.paid_at.slice(0, 10), lang), lang, bank);
     section(doc, t.invoice);
     kv(doc, [[t.supplier, r.vendor], [t.invoice, r.invoice_no], [t.invoiceDate, r.invoice_date ? pdfDate(r.invoice_date, lang) : t.none], [t.dueDate, r.due_date ? pdfDate(r.due_date, lang) : t.none], [t.reference, r.reference || t.none],
       [t.account, r.account]]);
@@ -254,6 +275,8 @@ export function receiptPdf(company: string, r: ReceiptData, lang: Lang = "nl", b
     } else kv(doc, [[t.approval, t.noApproval], [t.proposal, r.proposal_id], [t.termsHash, r.terms_sha256]]);
     if (t.verify) doc.moveDown(0.4).font("Helvetica").fontSize(9).fillColor(INK).text(t.verify, 50, undefined, { width: 495 });
     footer(doc, lang);
+    // The demo's receipts (the stand-in bank): the same small footer as its invoices.
+    if (bank === "stand-in") doc.font("Helvetica").fontSize(8).fillColor(MUTED).text(lang === "nl" ? "Demo · testgeld" : "Demo · test money", 50, 780, { width: 495, align: "center", lineBreak: false });
   });
 }
 

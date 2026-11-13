@@ -229,7 +229,7 @@ describe("bodies and origins", () => {
     // 10k reads as 10000.00, and the demo's cap (EUR 5,000: the simulated bank's USD floor) still refuses it, plainly.
     const big = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-4", amount: "10k" } });
     expect(big.status).toBe(400);
-    expect(big.json).toMatchObject({ field: "amount", message: "Demo invoices go up to EUR 5,000." });
+    expect(big.json).toMatchObject({ field: "amount", message: "Demo invoices go from EUR 100 to EUR 5,000." });
     for (const amount of ["abc", "-5", "0", "1850.001", ""]) {
       const r = await c.req("POST", "/v1/engine/compose", { key: v.s, body: { ...base, invoice_no: "AM-5", amount } });
       expect(r.status, amount).toBe(400);
