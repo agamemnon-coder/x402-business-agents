@@ -437,7 +437,7 @@ export function visaRunsLine(): string | null {
   return v3 ? `${vic3Summary(v3).paid} paid in the ${dayShortOf(v3.started_at)} run (${all})` : all;
 }
 export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: string; proof: string }[] {
-  const st = metalStory(run.record), tiles = productTiles(run).length, airi = airiRun(), t0 = t0Data().journal;
+  const st = metalStory(run.record), tiles = productTiles(run).length, t0 = t0Data().journal;
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles ? [{ name: "Airwallex", href: "airwallex", proof: `${tiles} products, each run dated` }] : []),
