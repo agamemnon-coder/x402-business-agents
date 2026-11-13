@@ -66,7 +66,7 @@ describe("/proof's Airwallex card opens with the hash and the cards, each linked
     expect(leads.airwallex[0]!.text).toBe("The hash the CFO signed is in Airwallex's own record of the SWIFT payment");
   });
 
-  it("says all 3 cards carry the CFO's policy, counted from the card read-back, with each card's own anchor", () => {
+  it("says 3 of 3 cards carry the CFO's policy, counted from the card read-back, with each card's own anchor", () => {
     const rows = cardControlRows(record);
     const n = rows.filter((r) => r.match).length;
     expect([n, rows.length]).toEqual([3, 3]);
@@ -141,8 +141,9 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
   it("each short claim is the matching sentence's fact, in fewer words", () => {
     const awx = sentence("Airwallex"), metal = sentence("Metal"), claude = sentence("Claude");
     expect(awx).toContain("the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment");
-    // The page and the sentence for the submission say the same count, "All 3" / "all 3" (no N/N fraction, 13 Nov).
-    expect(awx).toContain(`${leads.airwallex[1]!.text.split(" cards")[0]!.toLowerCase()} agent cards carry the CFO's policy`);
+    // The page says "All 3" (no N/N fraction, 13 Nov); so does the sentence for the submission, as "all 3".
+    const head = leads.airwallex[1]!.text.split(" cards")[0]!;
+    expect(awx).toContain(`${head.replace(/^All /, "all ")} agent cards carry the CFO's policy`);
     expect(metal).toContain(`purchase ${leads.metal[0]!.text}`);
     expect(metal).toContain(`${leads.metal[1]!.text.replace(/ tx$/, " transaction")}`);
     const sp = split(record), rf = reliabilityFix()!;

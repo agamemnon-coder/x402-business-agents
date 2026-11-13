@@ -1,7 +1,6 @@
 // Section D (6 Nov): the proof, one sentence per partner, word for word wherever it appears (the README, Home, the
 // form's Description, the deck), from one source (PROOF_SENTENCES in src/config/brand.ts). Every number in a sentence is
 // read here from its record, never typed in: breaks when a record changes and a sentence still says the old figure.
-import { countOf } from "../src/redesign/ui.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PROOF_HEADING, PROOF_SENTENCES } from "../src/config/brand.js";
@@ -27,7 +26,7 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     for (const p of PROOF_SENTENCES) expect({ p: p.partner, stops: p.text.split(". ").length }).toEqual({ p: p.partner, stops: 1 });
   });
 
-  it("Airwallex: the signed hash is in Airwallex's own record of the EUR 240.00 SWIFT payment; all 3 cards carry the policy", () => {
+  it("Airwallex: the signed hash is in Airwallex's own record of the EUR 240.00 SWIFT payment; 3 of 3 cards carry the policy", () => {
     const h = hashTravel(record)!;
     expect(h).not.toBeNull();
     expect([h.match, h.carried, h.method, h.transferMethod, h.currency, h.amount]).toEqual([true, h.signed, "passkey", "SWIFT", "EUR", "240.00"]);
@@ -35,7 +34,9 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     const rows = cardControlRows(record);
     const n = rows.filter((r) => r.match).length;
     expect([n, rows.length]).toEqual([3, 3]);
-    expect(text("Airwallex")).toContain(`${countOf(n, rows.length, true)} agent cards carry the CFO's policy as Airwallex's own controls`);
+    // "all 3", not "3 of 3" (13 Nov: no N/N fraction in the submission either), and only because every card matches.
+    expect(n).toBe(rows.length);
+    expect(text("Airwallex")).toContain(`all ${rows.length} agent cards carry the CFO's policy as Airwallex's own controls`);
   });
 
   it("Metal: a mandate per agent, 86 payments each its own transaction, #24 refused on chain, the mandates replaced after Face ID", () => {

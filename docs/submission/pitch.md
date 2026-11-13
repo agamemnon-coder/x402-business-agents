@@ -1,7 +1,7 @@
 # Purser: the pitch
 
 For Max, in English, to say out loud. First the **Demo Day pitch** (3 minutes, in the order of 7 November: Home, the replay at `/watch`, the
-live demo of `/try/sign`, then the proof);
+live demo on `/try`, then the proof);
 below it the earlier three lengths, kept for when there is no live demo (the 3-minute version there plays the main
 run's replay instead). One sentence per row, at most 14 words, one message each; the only longer one is the core line,
 word for word. Every figure is the main run's (3 November 2026, world `main-1`, frozen commit `35e1cac`) or a dated
@@ -17,7 +17,8 @@ beside the laptop: [cheat-sheet.pdf](cheat-sheet.pdf).
 - **Record:** [docs/demo/main-run.json](../demo/main-run.json), read through `src/redesign/run.ts` (the function is
   named in the row: `stopStory`, `timings`, `faceIdDecisions`, `split`, `disputeStory`, `fxOf`, `letThroughOf`).
 - **README:** [README.md](../../README.md), "The main run" and "What is real, what is mock".
-- **Try:** `/try/sign`, its code in `worker/src/trySign.ts` (`FIXED_PROPOSALS`, `checkPayment`) and `src/try/sign.ts`.
+- **Try:** `/try`, the hands-on demo: its words in `cloud/src/tryCopy.ts`, its page in `cloud/src/tryPage.ts`, a test
+  company on Purser's engine (test money, a simulated bank, deleted after 24 hours).
 - **Airwallex read back (6 November, GET only):** [the transfer](../runs/airwallex-transfer-approval-2026-11-06.json)
   and [the cards](../runs/airwallex-cards-2026-11-06.json), matched to the record in `src/redesign/airwallexProof.ts`.
 - **Business case (a hypothesis, not validated):** [docs/business/](../business/README.md).
@@ -27,28 +28,27 @@ Max says the figures as words ("twenty-four"); they are written as digits here s
 ## Demo Day: the 3-minute pitch (19 November)
 
 Four parts, in the order Max set on 7 Nov: Home, then the replay at `/watch` (out of the site's menu since 12 Nov),
-then the live demo of `/try/sign`, then the proof. Max
+then the live demo on `/try`, then the proof. Max
 speaks at about **2.3 words a second**; each part's budget is its seconds times 2.3, and the words written stay under
 it, so the taps, the Face ID prompts and the tab switches fit in the rest. The words are counted the way
 `test/demo-day-pack.test.ts` counts them (the "Max says" column only).
 
 - **The problem, and the agents at work:** 0:00–0:20 (20 s); budget 46 words; written 40 words; about 17 s of speech, 3 s
   for one click.
-- **Live: sign, cheat, trick, change the rule:** 0:20–1:30 (70 s); budget 161 words; written 117 words; about 51 s of
-  speech, 19 s for three Face ID prompts, the fake invoice and the server's answers.
-- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 111 words; about 48 s of speech, 2 s for two tab
+- **Live: an invoice, Face ID, one cent, a copy:** 0:20–1:30 (70 s); budget 161 words; written 105 words; about 46 s of
+  speech, the rest for the taps, two passkey prompts and Claude's reading.
+- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 110 words; about 48 s of speech, 2 s for two tab
   switches (tight: cut the Airi line first if it runs over).
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 352 words; about 2:33 of speech, 27 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 339 words; about 2:27 of speech, 33 s for taps and pauses.
 
 Before you start: the laptop's shared screen shows Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)).
-Your iPhone is mirrored to the screen (the path tested on 6 November: Safari, Face ID), with `/try/sign` opened a minute
-before you start (the test world opens when the page is shown, and its agents start at once, with a fresh FX quote
-that lasts up to 15 minutes; if it has run out, the page offers **Get a new quote**). Tabs on the laptop: Home,
+Your iPhone is mirrored to the screen (Safari, Face ID), with [/try](https://kit11.max-31b.workers.dev/try) open and
+**Start with a test company** tapped a minute before you start (the company is deleted after 24 hours). Tabs on the laptop: Home,
 [/watch](https://kit11.max-31b.workers.dev/watch), [/proof](https://kit11.max-31b.workers.dev/proof),
 [/metal](https://kit11.max-31b.workers.dev/metal), the deck (slide 12, the QR). If the room cannot show a phone, run
-`/try/sign` in the laptop's browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The
+`/try` in the laptop's browser instead (Touch ID). What to do when a step fails: [demo-day.md](demo-day.md), "The
 Demo Day script".
 
 ### 0:00–0:20 · The problem, and the agents at work
@@ -59,25 +59,23 @@ Demo Day script".
 | | But a prompt is not a financial control; Airwallex says so itself. | [docs/business/problem.md](../business/problem.md) [S1]: "A prompt is not a financial control." (Airwallex, 5 October 2026) |
 | Pause one beat. | So who signs off? | The film's hook (`01-hook`) |
 | Switch to the tab with [/watch](https://kit11.max-31b.workers.dev/watch) (Home has no button to it since 12 Nov): it plays the main run. | This is Purser: three Claude agents running a company, replayed. | `/watch`'s heading "Replay of the main run, 3 November" (`replayHead`, `src/redesign/watch.ts`; the words are `runLabel`'s, `src/redesign/run.ts`) |
-| Pick up the phone. | Now I take the CFO's chair. | Home's button, "Try it yourself" (`START`, `src/redesign/home.ts`) |
+| Pick up the phone. | Now I take the CFO's chair. | Home's button, "Try it live" (`START`, `src/redesign/home.ts`) |
 
-### 0:20–1:30 · Live: sign, cheat, trick, change the rule (`/try/sign`)
+### 0:20–1:30 · Live: an invoice, Face ID, one cent, a copy (`/try`)
 
 | Do | Max says | Source |
 |---|---|---|
-| Hold the phone up; the mirror shows `/try/sign`, opened a minute before. | Live, on my phone, in a test world; nothing real moves. | `TRY_SIGN_LABEL` (`src/try/sign.ts`); `TRY_SIGN_TTL_MS`, one hour (`worker/src/trySign.ts`) |
-| Point at the heading. | My Treasury agent wants to pay an invoice above its limit. | `TRY_SIGN_SCREENS.ask.head` (`src/try/sign.ts`); T-0002 in `FIXED_PROPOSALS` (`worker/src/trySign.ts`) |
-| Point at the agents' steps and the advice. | Claude Sonnet read the invoice, code checked it, and Claude Opus advises. | Screen 1's live agents (`AGENT_STEPS`, `worker/src/trySign.ts`): Sonnet reads, Purser's code checks and writes the terms, Opus advises, each labelled live, recorded or fixed |
-| Tap **Sign with Face ID** (two prompts: the test passkey, then the signature). Wait for the green check. | My Face ID signs the hash of exactly these terms. | `src/try/sign.ts`: one button, the passkey made on the way |
-| Tap **Now try to cheat: change one cent**. | Now I change one cent, and send the same signature. | `TRY_SIGN_SCREENS.signed.cheat`; the same verifier checks the changed terms (`worker/src/trySign.ts`) |
-| Point at the red line. | One cent changed. The signature is worthless. | `TAMPER_VERDICT.cent` (`src/try/sign.ts`) |
-| Tap **Next: trick the agent**, then a fake invoice. | Now a fake invoice: Claude Sonnet reads it, live. | `TRY_SIGN_SCREENS.trick` (`src/try/sign.ts`); `ATTACKS`, `runTrick` (`worker/src/trick.ts`) |
-| Point at the verdict. | Whatever it reads, Purser's code blocks it. | `TRICKS` (`worker/src/trick.ts`): each fake invoice blocked by Purser's own fraud and injection code |
-| Tap **Next: change the rule**, then **€2,000**. | Now I let the agent pay up to two thousand alone. | `TRY_SIGN_SCREENS.rule` (`src/try/sign.ts`) |
-| Point at the worst case. | Here is my worst case, in one line. | `TRY_SIGN_SCREENS.rule.worst`; `worstAloneLine` (`src/try/sign.ts`) |
-| Tap **Sign with Face ID**. | A looser rule needs my signature too. | `setPolicy` (`worker/src/trySign.ts`): looser needs a signature, stricter applies at once |
-| Point at the green card. | Its next invoice: paid alone, no signature needed. | `NEXT_INVOICE` and `runAlone` (`worker/src/trySign.ts`) |
-| Tap **Finish**: the closing card. Put the phone down. | That's Purser, in about a minute. | `TRY_SIGN_SCREENS.done` (`src/try/sign.ts`) |
+| Hold the phone up; the mirror shows `/try`, the test company started a minute before. | Live, on my phone: a test company of my own, on test money. | `BAND.line` "Your test company · test money · simulated bank" (`cloud/src/tryCopy.ts`) |
+| **Pick a sample**: "A supplier's invoice"; tap **File this invoice**. | An invoice comes in. Claude reads it, live, and Purser's code checks it. | `INVOICE`, `WORK` (`cloud/src/tryCopy.ts`); the band says "Claude reads live" (if it says "Purser's code reads today", say "Purser's code reads it") |
+| Point at "Ready to pay." | Nothing is paid until I sign the exact terms. | `WORK.readySub` (`cloud/src/tryCopy.ts`) |
+| Tap **Pay this invoice**; point at the rows of the approval card. | Every term is on the card: the conversion, the fee cap, the deadline. | `PROPOSAL_FIELDS`: Conversion, Bank fee "at most", Sign before (`cloud/src/tryCopy.ts`, #284) |
+| Tap **Create your approval passkey**, then **Approve … with Face ID** (two prompts). | My Face ID signs the hash of exactly these terms. | `APPROVE.signs`, `APPROVE.termsNote`: the SHA-256 of the terms (`cloud/src/tryCopy.ts`) |
+| Point at "Paid, booked, filed." | Paid on a simulated bank, booked and filed. | `BOOKS.heading`, `BOOKS.paid` (`cloud/src/tryCopy.ts`) |
+| Tap **Try changing what you signed**; add one cent to the amount; tap **Pay with my signature**. | Now I change one cent, and send the same signature. | `BOOKS.cheat`, `PAY.button` (`cloud/src/tryCopy.ts`) |
+| Point at "Refused by Purser" and "You changed the amount by one cent." | One cent changed. The signature is worthless. | `PAY.stamp`, `PAY.vAmountCent` (`cloud/src/tryCopy.ts`) |
+| Tap **Back**, then **File another invoice**; pick "An invoice you already paid, sent again"; file it. | Now an invoice I already paid, sent again. | The duplicate sample (`cloud/src/engine/samples.gen.ts`); each test company starts with that invoice paid (#284) |
+| Point at "Caught: a copy of a filed invoice." | Caught as a copy: nothing added, nothing paid. | `WORK.duplicate`, `WORK.duplicateOf` (`cloud/src/tryCopy.ts`) |
+| Put the phone down. | That's Purser, in about a minute. | Max |
 
 ### 1:30–2:20 · The proof
 
@@ -85,31 +83,31 @@ Demo Day script".
 |---|---|---|
 | Laptop: tab [/proof](https://kit11.max-31b.workers.dev/proof), open "Airwallex, read back", at "The hash the CFO signed travels with the payment." | Proof one, from that run: Airwallex's record of our 240 euro SWIFT payment. | [airwallex-transfer-approval-2026-11-06.json](../runs/airwallex-transfer-approval-2026-11-06.json): transfer `03360bfa…3985`, EUR 240, SWIFT, PAID (read with GET only) |
 | Point at the two hashes, side by side. | It carries the hash I signed with Face ID. | Same record, `metadata.approval_sha256` `797d4483…abcd` = P-0005's `terms_sha256`, approved by Max with his passkey (record seq 360); matched in code (`hashTravel`, `src/redesign/airwallexProof.ts`) |
-| | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: 3 of 3 cards match the CFO policy |
+| | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: all 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
 | Open the line above, "Visa Intelligent Commerce via Airwallex's Airi": ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
 | Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
 | | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
 | | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
-| Back to [/proof](https://kit11.max-31b.workers.dev/proof), the Claude figure. | Proof three: Claude made 24 of 24 decisions, with 0 fallbacks. | Record: `split` (24 of 24, 0 fallbacks) |
+| Back to [/proof](https://kit11.max-31b.workers.dev/proof), the Claude figure. | Proof three: Claude made all 24 decisions, with 0 fallbacks. | Record: `split` (all 24, 0 fallbacks) |
 | | Said plainly: the second approver was a test passkey, and settlement is simulated. | `SECOND_APPROVER`; `SANDBOX_SETTLED` (`src/config/brand.ts`); README, "What is real, what is mock" |
 
 ### 2:20–3:00 · The business and the ask
 
 | Do | Max says | Source |
 |---|---|---|
-| Deck slide 12: the QR to `/try/sign`. | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
+| Deck slide 12: the QR (it opens `/try`). | Purser is for finance teams on Airwallex whose AI agents spend money. | [docs/business/model.md](../business/model.md), "Who buys and who uses it (hypothesis)" |
 | | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (`src/submission/deck.ts`) |
 | | We'd charge a monthly fee per company, with invoices included. | [docs/business/model.md](../business/model.md), "Pilot pricing (hypothesis)" |
 | | That is a hypothesis: no customer has seen a price yet. | [docs/business/model.md](../business/model.md): "no customer has seen a price" |
 | | The more agent features Airwallex ships, the more there is to govern. | [docs/business/model.md](../business/model.md), "Risks": "the more there is for Purser to govern" |
 | Look at the jury. | Our ask: we're looking for design partners on Airwallex. | The ask; [docs/business/roadmap.md](../business/roadmap.md): "Test the demand hypothesis" comes first |
 | | Finance teams whose agents already spend, or soon will. | [docs/business/model.md](../business/model.md), "Buyer" (hypothesis) |
-| Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 12; `docs/media/try-sign-qr.png` |
+| Point at the QR; leave it up for the questions. | Scan the code, and sign one yourself. | Deck slide 12; `docs/media/try-sign-qr.png` (`/try/sign` answers 301 to `/try`) |
 | | Thank you. | Max |
 
 If a part runs over in rehearsal, cut in this order: "Agents also paid with Visa Intelligent Commerce…" (the screen
-shows the badges), then "Here is my worst case, in one line." (the screen shows it), then
+shows the badges), then "Nothing is paid until I sign the exact terms." (the screen says it), then
 "Finance teams whose agents already spend, or soon will.", then "The more agent features Airwallex ships…".
 
 ## 1. The elevator pitch (30 seconds)
@@ -124,7 +122,7 @@ shows the badges), then "Here is my worst case, in one line." (the screen shows 
 | 6 | All 24 decisions were made by Claude. | Record: `split` (all 24 decisions by Claude, 0 fallbacks) |
 | 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
-| 9 | Sign one yourself, at kit11.max-31b.workers.dev/try/sign. | Try: live since 4 November |
+| 9 | Sign one yourself, at kit11.max-31b.workers.dev/try. | Try: the hands-on demo, `/try` (`cloud/src/tryPage.ts`) |
 
 About 90 words: 35 seconds at a steady pace (the stops take one sentence of 27 words, as every document says them).
 
@@ -162,15 +160,15 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | **1:50 Said plainly** | Said plainly: the second approver was a test passkey, and the sandbox simulates settlement. | `SECOND_APPROVER`; Log, "Approvals"; `SANDBOX_SETTLED`; README (Purser moves SENT and PAID through the sandbox's simulation API) |
 | | Every id is published on /proof; check it with npm run verify. | `/proof`; Record: `snapshot.audit` (412 rows, intact); README |
 | **2:05 The jury signs** | Now you sign off: scan this, now or during the questions. | Deck, slides 4 and 12; `docs/media/try-sign-qr.png` |
-| | Your own test world; nothing real moves. | Try: `TRY_SIGN_LABEL` |
-| | A rule blocks one payment; you sign the other with your passkey. | Try: `checkPayment` (reserve floor blocks T-0001; T-0002 waits for a signature) |
+| | Your own test company, on test money. | Try: `BAND.line` (`cloud/src/tryCopy.ts`) |
+| | Claude reads an invoice; you approve the exact terms with your passkey. | Try: `WORK`, `APPROVE` (`cloud/src/tryCopy.ts`) |
 | | Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them. | The core line (Max, 5 Nov); `CORE_LINE`, `src/submission/deck.ts` |
-| | On mine, signed before, I change the amount by one cent. | Try: "Try to tamper: change the amount by 0.01" (Max's tab, signed before the demo) |
-| | The same signature is refused. | Try: "Refused: the same signature does not verify for the changed terms" |
+| | On mine, signed before, I change the amount by one cent. | Try: "Try changing what you signed" (`BOOKS.cheat`), on Max's test company, paid before the demo |
+| | The same signature is refused. | Try: "Refused by Purser" (`PAY.stamp`, `cloud/src/tryCopy.ts`) |
 | | One cent. Worthless. | The film (`12-tamper`) |
 
 About 280 words: 2:00 of speech; the rest is clicks on /watch and the pause while the jury scans. If a rehearsal runs
-over, cut first "Your own test world; nothing real moves." (the slide says it), then "Last, a 240 euro licence is due."
+over, cut first "Your own test company, on test money." (the slide says it), then "Last, a 240 euro licence is due."
 
 ## 3. The full pitch (5 minutes, when there is time)
 
