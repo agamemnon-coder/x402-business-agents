@@ -53,3 +53,19 @@ export async function hmacValid(secret: string, message: string, sigB64u: string
     return false;
   }
 }
+
+/**
+ * The JSON a signed token carries (`<tag>.<base64url JSON>.<HMAC of the JSON part under secret>`), or null: another tag,
+ * longer than maxLen, a signature that does not check, or a body that is not JSON. Sessions, connector access tokens,
+ * OAuth client ids and consent forms are all read through it; each caller then checks the fields it needs.
+ */
+export async function signedPayload(secret: string, tag: string, token: string, maxLen: number): Promise<unknown> {
+  if (token.length > maxLen) return null;
+  const [t, body, sig] = token.split(".");
+  if (t !== tag || !body || !sig || !(await hmacValid(secret, body, sig))) return null;
+  try {
+    return JSON.parse(new TextDecoder().decode(fromB64(body))) as unknown;
+  } catch {
+    return null;
+  }
+}

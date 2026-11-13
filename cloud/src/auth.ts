@@ -3,7 +3,7 @@
 // secret) only creates tenants. Every check fails closed.
 
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
-import { fromB64, hmacB64u, hmacValid, randomToken, sameString, sha256Hex, toB64u } from "./crypto.js";
+import { hmacB64u, randomToken, sameString, sha256Hex, signedPayload, toB64u } from "./crypto.js";
 import type { Sql } from "./store.js";
 import { TenantDb, WriteConflict, type Stmt } from "./tenant.js";
 
@@ -159,14 +159,8 @@ export async function sessionToken(secret: string, s: { tenantId: string; userId
 }
 
 async function fromSession(sql: Sql, secret: string, token: string, now: Date): Promise<Caller> {
-  const [, body, sig] = token.split(".");
-  if (!body || !sig || !(await hmacValid(secret, body, sig))) throw new AuthError(401, "bad session");
-  let p: { t: string; u: string; r: Role; g: number; exp: number };
-  try {
-    p = JSON.parse(new TextDecoder().decode(fromB64(body))) as typeof p;
-  } catch {
-    throw new AuthError(401, "bad session");
-  }
+  const p = await signedPayload(secret, "pcs", token, Infinity) as { t: string; u: string; r: Role; g: number; exp: number } | null;
+  if (!p) throw new AuthError(401, "bad session");
   if (typeof p.exp !== "number" || p.exp <= now.getTime()) throw new AuthError(401, "the session expired; sign in again");
   // A person erased, given another role or signed out since the token was issued, or a closed company: access ends at once.
   const user = await sql.first<{ role: Role; erased_at: string | null; session_gen: number; closed_at: string | null }>(
@@ -189,14 +183,8 @@ export async function accessToken(secret: string, a: { keyId: string; clientId: 
 }
 
 async function fromAccessToken(sql: Sql, secret: string, token: string, now: Date): Promise<Caller> {
-  const [, body, sig] = token.split(".");
-  if (!body || !sig || !(await hmacValid(`access:${secret}`, body, sig))) throw new AuthError(401, "bad access token");
-  let p: { k: string; c: string; exp: number };
-  try {
-    p = JSON.parse(new TextDecoder().decode(fromB64(body))) as typeof p;
-  } catch {
-    throw new AuthError(401, "bad access token");
-  }
+  const p = await signedPayload(`access:${secret}`, "pca", token, Infinity) as { k: string; c: string; exp: number } | null;
+  if (!p) throw new AuthError(401, "bad access token");
   if (typeof p.exp !== "number" || p.exp <= now.getTime() || typeof p.k !== "string") throw new AuthError(401, "the access token expired; connect again");
   const c = await liveKey(sql, p.k, null, now);
   if (!isConnector(c.purpose)) throw new AuthError(401, "bad access token");

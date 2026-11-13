@@ -15,7 +15,7 @@
 // (Settings, Connect your AI), so whoever connects Claude already holds the company's own consent for it.
 
 import { accessToken, ACCESS_TOKEN_TTL_MS, AuthError, callerOf, DEMO_CONNECTOR_TOKEN, isConnector } from "../auth.js";
-import { hmacB64u, hmacValid, randomToken, sha256Hex, toB64u, fromB64 } from "../crypto.js";
+import { hmacB64u, randomToken, sha256Hex, signedPayload, toB64u } from "../crypto.js";
 import type { Sql } from "../store.js";
 import { ICON_LINKS } from "../brand.js";
 
@@ -23,7 +23,6 @@ export const CODE_TTL_MS = 5 * 60 * 1000;
 /** How long the consent page's form is good for: one answer, within ten minutes. */
 export const CONSENT_TTL_MS = 10 * 60 * 1000;
 const enc = new TextEncoder();
-const dec = new TextDecoder();
 
 export function resourceOf(origin: string): string { return `${origin}/mcp`; }
 
@@ -70,15 +69,9 @@ export async function registerClient(secret: string, body: unknown): Promise<Rec
 }
 
 export async function clientOf(secret: string, clientId: string): Promise<Client> {
-  const [tag, body, sig] = clientId.split(".");
-  if (tag !== "pcc" || !body || !sig || clientId.length > 4000 || !(await hmacValid(`client:${secret}`, body, sig))) throw new OAuthRefused(401, "invalid_client", "unknown client: register first");
-  try {
-    const c = JSON.parse(dec.decode(fromB64(body))) as Client;
-    if (typeof c.n !== "string" || !Array.isArray(c.r)) throw new Error("shape");
-    return c;
-  } catch {
-    throw new OAuthRefused(401, "invalid_client", "unknown client: register first");
-  }
+  const c = await signedPayload(`client:${secret}`, "pcc", clientId, 4000) as Client | null;
+  if (!c || typeof c.n !== "string" || !Array.isArray(c.r)) throw new OAuthRefused(401, "invalid_client", "unknown client: register first");
+  return c;
 }
 
 export interface AuthorizeAsk { client_id: string; redirect_uri: string; state: string; code_challenge: string; resource: string }
@@ -124,10 +117,8 @@ export async function consentToken(secret: string, ask: AuthorizeAsk, now: Date)
 
 /** Checks a consent form's token for this request and spends it; false when it is missing, forged, for another request, expired or used. */
 async function spendConsentToken(sql: Sql, secret: string, ask: AuthorizeAsk, token: string, now: Date): Promise<boolean> {
-  const [tag, body, sig] = token.split(".");
-  if (tag !== "pcf" || !body || !sig || token.length > 1000 || !(await hmacValid(`consent:${secret}`, body, sig))) return false;
-  let p: { b: string; n: string; exp: number };
-  try { p = JSON.parse(dec.decode(fromB64(body))) as typeof p; } catch { return false; }
+  const p = await signedPayload(`consent:${secret}`, "pcf", token, 1000) as { b: string; n: string; exp: number } | null;
+  if (!p) return false;
   if (typeof p.exp !== "number" || p.exp <= now.getTime() || p.b !== (await bindingOf(ask))) return false;
   await sql.run("DELETE FROM oauth_consents WHERE expires_at < ?", [now.getTime()]);
   const spent = await sql.run("INSERT OR IGNORE INTO oauth_consents (token_sha256, expires_at) VALUES (?, ?)", [await sha256Hex(token), p.exp]);
