@@ -344,6 +344,7 @@ ${siteHeader("cloud")}
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
+<div class="demo-ribbon" id="demo" hidden><div class="wrap">${svg("flask", 15)}<span data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><a href="#/sign-in" id="demo-out" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</a></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
@@ -413,6 +414,8 @@ function shell(){
     const co=$('#co'),aw=ME&&ME.airwallex;co.replaceChildren();if(c){co.append(el('span','av',c.trim().charAt(0).toUpperCase()),el('span','cn',c));
       co.append(aw?el('span','aw '+String(aw.status).replace(/[^a-z_]/g,''),[el('i',''),el('span','aww',[el('span','awl','Airwallex · '),tk('cs.awx.status.'+aw.status,aw.status)])]):el('span','aw none',[el('i',''),el('span','aww',t('cs.awx.none'))]));
       co.title=[n,c,aw?'Airwallex '+(aw.account_id||'')+' · '+tk('cs.awx.status.'+aw.status,aw.status):''].filter(Boolean).join(' · ')}}
+  // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
+  const dm=$('#demo');if(dm){const on=!!(S&&ME&&ME.demo);dm.hidden=!on;document.body.classList.toggle('demo',on)}
   const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
 }
@@ -440,6 +443,13 @@ function signInView(){
   const card=el('div','card auth',[el('h1','',t('cs.sign_in')),el('p','',t('cs.sign_in_lede')),
     el('label','',t('cs.company_address')),el('div','addr',[slug,el('span','',CFG.mailDomain?'@'+CFG.mailDomain:'.purser')]),b,status,
     el('p','alt',[t('cs.new_company'),(()=>{const a=el('a','',t('cs.set_it_up'));a.href='#/start';return a})()])]);
+  // Try as guest: the demo company, read only, no passkey and no e-mail (POST /v1/auth/guest). Its data is demo data.
+  const gb=btn(t('cs.guest.button'),'ghost big','arrow-up-right');gb.id='guest';
+  const gs=el('div','');gs.setAttribute('role','status');
+  gb.onclick=async()=>{gb.disabled=true;gs.replaceChildren(note(t('cs.guest.opening')));
+    try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go('#/overview')}
+    catch(e){gs.replaceChildren(note(t('cs.guest.failed',{error:e.message}),'bad'));gb.disabled=false}};
+  card.append(el('div','guest',[el('div','or',[el('span','',t('cs.guest.or'))]),gb,el('p','gsub',t('cs.guest.sub')),gs]));
   if(notice){status.append(note(notice,'bad'));notice=null}
   if(!hasPasskeys()){b.disabled=true;status.append(note(t('cs.no_passkeys'),'bad'))}
   b.onclick=async()=>{const s=slug.value.trim().toLowerCase();if(!/^[a-z0-9][a-z0-9-]{1,40}$/.test(s)){status.replaceChildren(note(t('cs.slug_rule'),'bad'));return}
@@ -558,9 +568,85 @@ function segbar(parts,label){const tot=parts.reduce((n,p)=>n+Math.max(0,p.v),0);
   return el('div','segwrap',[bar,el('ul','legend',parts.map((p,i)=>el('li',p.v>0?'':'zero',[el('i','s'+i),el('span','',p.l),el('b','num',p.t)])))])}
 const meter=(v,max)=>{const m=el('span','meter');const f=el('span','');f.style.width=(max>0&&v>0?Math.max(2,v/max*100):0).toFixed(1)+'%';m.append(f);m.setAttribute('aria-hidden','true');return m};
 const toCents=(v)=>{const m=/^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(String(v||''));if(!m)return 0;const c=Number(m[2])*100+Number((m[3]||'').padEnd(2,'0'));return m[1]?-c:c};
+// --- The start screen's dashboard (GET /v1/dashboard): every figure counted by the cloud from the company's own rows.
+// Charts are SVG and DOM built here (no library, no inline style markup: the page's nonce policy), drawn at the card's
+// own width so their words stay legible on a phone. Numbers count up and parts rise in once they are in view; with
+// reduced motion everything simply stands.
+const SVGNS='http://www.w3.org/2000/svg';
+const sv=(tag,attrs,kids)=>{const e=document.createElementNS(SVGNS,tag);for(const k in attrs||{})e.setAttribute(k,String(attrs[k]));for(const c of [].concat(kids??[]))if(c)e.append(c);return e};
+const RM=()=>matchMedia('(prefers-reduced-motion: reduce)').matches;
+function whenSeen(node,fn){if(RM()||!('IntersectionObserver' in window)){fn(true);return}const io=new IntersectionObserver((es)=>{if(es.some(e=>e.isIntersecting)){io.disconnect();fn(false)}},{threshold:.25});io.observe(node)}
+function countUp(node,target,fmt){node.textContent=fmt(target);whenSeen(node,(still)=>{if(still)return;const t0=performance.now();const step=(now)=>{const k=Math.min(1,(now-t0)/950);node.textContent=fmt(k<1?target*(1-Math.pow(1-k,3)):target);if(k<1)requestAnimationFrame(step)};node.textContent=fmt(0);requestAnimationFrame(step)})}
+const dday=(iso)=>new Date(String(iso).slice(0,10)+'T12:00:00Z').toLocaleDateString(L.lang==='nl'?'nl-NL':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'});
+const kfmt=(c)=>{const a=Math.abs(c)/100;return (c<0?'-':'')+(a>=1000?(a/1000).toFixed(a>=10000?0:1).replace('.',L.lang==='nl'?',':'.')+'k':String(Math.round(a)))};
+const amt=(D,c)=>cur(D.currency)+' '+cents(Math.round(c));
+function dcard(cls,title,sub,body){return el('section','card dcard rise '+cls,[el('div','dh',[el('h2','',title),sub?el('p','',sub):null]),body])}
+function kpi(D,label,icon,c,sub,tone,plain){const v=el('b','num');countUp(v,c,plain?(x)=>String(Math.round(x)):(x)=>amt(D,x));return el('div','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null])}
+// Net cash, day by day: one line, its area to zero, three gridlines, the first, middle and last day, the end value.
+function cashChart(D,W){
+  const pts=D.cash.map(p=>({d:p.day,v:toCents(p.net),i:toCents(p.in),o:toCents(p.out)}));const H=Math.max(190,Math.min(300,Math.round(W*0.46))),l=48,r=14,tp=14,b=26;
+  const min=Math.min(0,...pts.map(p=>p.v)),max=Math.max(1,...pts.map(p=>p.v));const X=(k)=>l+(pts.length<2?0:k/(pts.length-1))*(W-l-r),Y=(v)=>tp+(max-v)/(max-min||1)*(H-tp-b);
+  const g=sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'chart',role:'img','aria-label':t('cs.dash.cash_title')+': '+amt(D,pts.length?pts[pts.length-1].v:0)});
+  g.append(sv('defs',{},[sv('linearGradient',{id:'cashfill',x1:0,y1:0,x2:0,y2:1},[sv('stop',{offset:'0%','stop-color':'var(--accent)','stop-opacity':.22}),sv('stop',{offset:'100%','stop-color':'var(--accent)','stop-opacity':0})])]));
+  // Gridlines at zero, half the top and the top; the lowest point only when cash went clearly below zero.
+  const ticks=[0,max/2,max].concat(min<-max*0.08?[min]:[]);
+  for(const v of ticks){const y=Y(v);g.append(sv('line',{x1:l,x2:W-r,y1:y,y2:y,class:v===0?'zero':'grid'}),sv('text',{x:l-8,y:y+4,class:'ax','text-anchor':'end'},[document.createTextNode(v===0?'0':kfmt(v))]))}
+  const line=pts.map((p,k)=>(k?'L':'M')+X(k).toFixed(1)+' '+Y(p.v).toFixed(1)).join(' ');
+  g.append(sv('path',{d:line+' L'+X(pts.length-1).toFixed(1)+' '+Y(0).toFixed(1)+' L'+X(0).toFixed(1)+' '+Y(0).toFixed(1)+' Z',class:'area',fill:'url(#cashfill)'}),sv('path',{d:line,class:'line',pathLength:1}));
+  for(const k of [0,Math.floor((pts.length-1)/2),pts.length-1])if(pts[k])g.append(sv('text',{x:X(k),y:H-6,class:'ax','text-anchor':k===0?'start':k===pts.length-1?'end':'middle'},[document.createTextNode(dday(pts[k].d))]));
+  // One hover target per day, its words in a title (the day, what came in and went out, where cash stood).
+  pts.forEach((p,k)=>{const w=(W-l-r)/Math.max(1,pts.length-1);g.append(sv('rect',{x:X(k)-w/2,y:tp,width:w,height:H-tp-b,class:'hit'},[sv('title',{},[document.createTextNode(dday(p.d)+': '+t('cs.dash.in')+' '+amt(D,p.i)+' · '+t('cs.dash.out')+' '+amt(D,p.o)+' · '+t('cs.dash.net')+' '+amt(D,p.v))])]))});
+  const e=pts[pts.length-1];if(e)g.append(sv('circle',{cx:X(pts.length-1),cy:Y(e.v),r:4.5,class:'end'}));
+  return g}
+// Payments per week: CFO-approved and within an agent's own limit, as counts (the amounts differ too much to share a scale).
+function weekChart(D,W){
+  const ws=D.approvals.weeks;const H=200,l=10,b=26,tp=18;const max=Math.max(1,...ws.map(w=>w.cfo+w.alone));const bw=Math.min(46,(W-l*2)/Math.max(1,ws.length)*0.6),step=(W-l*2)/Math.max(1,ws.length);
+  const g=sv('svg',{viewBox:'0 0 '+W+' '+H,width:W,height:H,class:'chart',role:'img','aria-label':t('cs.dash.appr_title')});
+  ws.forEach((w,k)=>{const x=l+step*k+(step-bw)/2,h=(n)=>n/max*(H-tp-b);const yc=H-b-h(w.cfo),ya=yc-h(w.alone);
+    const tip=dday(w.week)+': '+w.cfo+' '+t('cs.dash.appr_cfo')+' ('+amt(D,toCents(w.cfo_amount))+') · '+w.alone+' '+t('cs.dash.appr_alone')+' ('+amt(D,toCents(w.alone_amount))+')';
+    const col=sv('g',{class:'col'},[sv('title',{},[document.createTextNode(tip)])]);
+    if(w.cfo)col.append(sv('rect',{x,y:yc,width:bw,height:h(w.cfo),rx:3,class:'b cfo'}));
+    if(w.alone)col.append(sv('rect',{x,y:ya,width:bw,height:h(w.alone),rx:3,class:'b alone'}));
+    col.append(sv('text',{x:x+bw/2,y:ya-5,class:'val','text-anchor':'middle'},[document.createTextNode(String(w.cfo+w.alone))]),sv('text',{x:x+bw/2,y:H-8,class:'ax','text-anchor':'middle'},[document.createTextNode(dday(w.week))]));
+    g.append(col)});
+  return g}
+// Invoices by state: a ring of their counts, the total in its middle, and a legend with each count and amount.
+function invoiceRing(D){
+  const I=D.invoices;const parts=[['paid','cs.dash.inv_paid'],['waiting_cfo','cs.dash.inv_waiting'],['needs_vendor','cs.dash.inv_vendor'],['open','cs.dash.inv_open'],['stopped','cs.dash.inv_stopped']].filter(([k])=>I[k]&&I[k].count);
+  const tot=parts.reduce((n,[k])=>n+I[k].count,0);const g=sv('svg',{viewBox:'0 0 120 120',width:132,height:132,class:'ring',role:'img','aria-label':t('cs.dash.inv_title')+': '+parts.map(([k,l])=>t(l)+' '+I[k].count).join(', ')});
+  g.append(sv('circle',{cx:60,cy:60,r:46,class:'track'}));let off=0;
+  parts.forEach(([k],i)=>{const f=I[k].count/(tot||1)*100;g.append(sv('circle',{cx:60,cy:60,r:46,pathLength:100,class:'seg r'+i,'stroke-dasharray':(f-1.2).toFixed(2)+' '+(100-f+1.2).toFixed(2),'stroke-dashoffset':(25-off).toFixed(2)}));off+=f});
+  g.append(sv('text',{x:60,y:60,class:'rt','text-anchor':'middle'},[document.createTextNode(String(tot))]),sv('text',{x:60,y:78,class:'rs','text-anchor':'middle'},[document.createTextNode(t('cs.dash.inv_count'))]));
+  const lg=el('ul','rlegend',parts.map(([k,l],i)=>el('li','',[el('i','r'+i),el('span','',t(l)),el('b','num',String(I[k].count)),el('small','num',amt(D,toCents(I[k].amount)))])));
+  return el('div','ringwrap',[g,el('div','',[lg,I.duplicates_stopped?el('p','fine',t('cs.dash.inv_dup',{n:I.duplicates_stopped})):null])])}
+// Spend by who started it: one bar each, its amount and how many payments; Airwallex's declines said, never counted.
+function spendBars(D){
+  const max=Math.max(1,...D.spend.map(s=>toCents(s.amount)));
+  return el('ul','sbars',D.spend.map((s,i)=>{const f=el('span','sf');f.style.width=Math.max(1.5,toCents(s.amount)/max*100).toFixed(1)+'%';
+    return el('li','',[el('div','sl',[el('span','',tk('cs.dash.spend.'+s.key,s.label)),el('b','num',amt(D,toCents(s.amount)))]),el('span','strk',[f]),el('span','ss',[t('cs.dash.n_payments',{n:s.count}),s.declined?el('span','dec',' · '+t('cs.dash.declined',{n:s.declined})):null])])}))}
+function feedList(D){
+  return el('ol','feed',D.feed.map(f=>el('li','f-'+f.tone,[el('span','fd'),el('div','',[el('div','fw',[el('b','',f.who),el('time','',dday(f.at))]),el('p','',f.text)])])))}
+function dashBlock(D){
+  if(!D||!D.cash||!D.cash.length)return null;
+  const wide=innerWidth>=980,full=view().clientWidth||960;
+  const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
+  const k=el('div','kpis',[
+    kpi(D,t('cs.dash.in'),'arrow-down-left',toCents(D.money.in),t('cs.dash.in_sub'),'pos'),
+    kpi(D,t('cs.dash.out'),'arrow-up-right',toCents(D.money.out),t('cs.dash.out_sub')),
+    kpi(D,t('cs.dash.net'),'wallet',toCents(D.money.net),t('cs.dash.net_sub',{date:dday(D.since)}),toCents(D.money.net)>=0?'pos':'neg'),
+    kpi(D,t('cs.dash.decisions'),'shield-check',D.agents.decisions,D.agents.by_fallback?t('cs.dash.decisions_fallback',{n:D.agents.by_fallback}):t('cs.dash.decisions_sub'),'',true)]);
+  const g1=el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
+    dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]);
+  const g2=el('div','dgrid g2',[dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),spendBars(D)),
+    dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,weekW)]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))]);
+  const g3=dcard('feedc',t('cs.dash.feed_title'),t('cs.dash.feed_sub'),feedList(D));
+  const box=el('div','dash',[k,g1,g2,g3]);
+  // Rise in once in view (in order); bars grow and the line draws itself. Reduced motion: all shown at once.
+  requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))whenSeen(n,()=>n.classList.add('in'))});
+  return box}
 async function overviewView(){
   title(t('cs.nav.overview'));
-  const [m,x,all]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200')]);shell();
+  const [m,x,all,D]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),api('/v1/dashboard').catch((e)=>{if(e instanceof Expired)throw e;return null})]);shell();
   const items=all.items||[];
   const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
   const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
@@ -587,8 +673,8 @@ async function overviewView(){
   const wl=el('div','card list');
   if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
   else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
-  view().replaceChildren(head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),el('div','ovtop',[nx,due]),tiles,inbox,
-    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl]));
+  view().replaceChildren(...[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),dashBlock(D),el('div','ovtop',[nx,due]),tiles,inbox,
+    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl])].filter(Boolean));
 }
 
 // --- The engine (test money, on its stand-in bank) -----------------------------------------------------------------
@@ -1269,6 +1355,7 @@ async function route(){
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
 }
+$('#demo-out').onclick=(e)=>{e.preventDefault();$('#out').click()};
 $('#out').onclick=async()=>{workStop();try{await api('/v1/auth/logout',{method:'POST'})}catch(e){}forget();S=null;ME=null;go('#/sign-in')};
 window.addEventListener('hashchange',route);
 setInterval(()=>{if(S&&S.exp<=Date.now()){forget();S=null;ME=null;notice=t('cs.session_ended');go('#/sign-in')}else shell()},30000);
@@ -1308,7 +1395,95 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .auth h1 { font-weight: 700; }
 @media (max-width: 1023px) { .signed-out .hero { flex: none; min-height: 0; padding: 20px; border-right: 0; border-bottom: 1px solid var(--border); justify-items: start; } .side { margin: 0; } .side h2 { font-size: 22px; } .side p { margin: 4px 0 0; font-size: 15px; } }
 /* A phone keeps the card and the trust line in the first screen (test/browser/console.check.ts): the panel's list waits for a wider screen. */
-@media (max-width: 640px) { .side ul { display: none; } }
+@media (max-width: 640px) { .side ul, .side p { display: none; } .auth .guest { margin-top: 14px; } .auth .guest .gsub { font-size: 12.5px; } }
+/* Try as guest: under the passkey, after a quiet "or". */
+.auth .guest { margin-top: 18px; display: grid; gap: 8px; }
+.auth .guest .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
+.auth .guest .or::before, .auth .guest .or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.btn.ghost { background: #fff; border-color: var(--border); width: 100%; }
+.btn.ghost:hover { border-color: var(--text); }
+.auth .guest .gsub { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+/* The demo company's ribbon: on every page while a guest looks around. */
+.demo-ribbon { background: #fff7e6; border-bottom: 1px solid #f3dfb5; color: #7a4a00; font-size: 13.5px; }
+.demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
+.demo-ribbon span { flex: 1; line-height: 1.4; }
+.demo-ribbon a { font-weight: 650; color: #7a4a00; white-space: nowrap; }
+.signed-out .demo-ribbon { display: none; }
+/* The start screen's dashboard (GET /v1/dashboard). */
+.dash { display: grid; gap: 16px; margin: 4px 0 32px; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 980px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+.kpi { padding: 16px 18px; display: grid; gap: 6px; align-content: start; }
+.kpi .kl { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.kpi .kl .ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--sunken); color: var(--muted); }
+.kpi b { font-size: 26px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi.pos .kl .ic { background: var(--ok-soft); color: var(--ok); } .kpi.neg .kl .ic { background: var(--bad-soft); color: var(--bad); }
+.kpi .ks { font-size: 12.5px; color: var(--faint); line-height: 1.35; }
+@media (max-width: 520px) { .kpi { padding: 14px; } .kpi b { font-size: 20px; } }
+.dgrid { display: grid; gap: 16px; }
+@media (min-width: 980px) { .dgrid.g1 { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); } .dgrid.g2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.dcard { padding: 18px 20px 16px; min-width: 0; }
+.dcard .dh h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
+.dcard .dh p { margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+.cv { overflow: hidden; }
+svg.chart { display: block; max-width: 100%; height: auto; overflow: visible; }
+svg.chart .grid { stroke: var(--border); stroke-width: 1; }
+svg.chart .zero { stroke: #c9ced6; stroke-width: 1; stroke-dasharray: 3 3; }
+svg.chart .ax { font: 500 11.5px Inter, system-ui, sans-serif; fill: var(--faint); }
+svg.chart .val { font: 650 12px Inter, system-ui, sans-serif; fill: var(--text); }
+svg.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+svg.chart .end { fill: #fff; stroke: var(--accent); stroke-width: 2.5; }
+svg.chart .hit { fill: transparent; } svg.chart .hit:hover { fill: rgba(16, 24, 40, .04); }
+svg.chart .b.cfo { fill: var(--accent); } svg.chart .b.alone { fill: color-mix(in srgb, var(--accent) 30%, #fff); }
+.klegend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; font-size: 12.5px; color: var(--muted); }
+.klegend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.klegend i.cfo { background: var(--accent); } .klegend i.alone { background: color-mix(in srgb, var(--accent) 30%, #fff); }
+.ringwrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+svg.ring { flex: none; transform: rotate(-90deg); }
+svg.ring .track, svg.ring .seg { fill: none; stroke-width: 13; }
+svg.ring .track { stroke: var(--sunken); }
+svg.ring text { transform: rotate(90deg); transform-origin: 60px 60px; }
+svg.ring .rt { font: 700 26px Inter, system-ui, sans-serif; fill: var(--text); }
+svg.ring .rs { font: 500 10.5px Inter, system-ui, sans-serif; fill: var(--faint); }
+.r0 { stroke: var(--ok); } .r1 { stroke: var(--accent); } .r2 { stroke: #d08a1c; } .r3 { stroke: #98a1ae; } .r4 { stroke: var(--bad); }
+.rlegend { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.rlegend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; column-gap: 8px; align-items: baseline; font-size: 13.5px; }
+.rlegend li i { width: 10px; height: 10px; border-radius: 3px; align-self: center; }
+.rlegend li i.r0 { background: var(--ok); } .rlegend li i.r1 { background: var(--accent); } .rlegend li i.r2 { background: #d08a1c; } .rlegend li i.r3 { background: #98a1ae; } .rlegend li i.r4 { background: var(--bad); }
+.rlegend li small { grid-column: 2 / -1; color: var(--faint); font-size: 12.5px; }
+.dcard .fine { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.sbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.sbars .sl { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.sbars .sl b { font-variant-numeric: tabular-nums; }
+.sbars .strk { display: block; height: 10px; margin: 6px 0 4px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
+.sbars .sf { display: block; height: 100%; border-radius: 999px; background: var(--accent); transform-origin: left center; }
+.sbars li:first-child .sf { background: var(--text); }
+.sbars .ss { font-size: 12.5px; color: var(--faint); } .sbars .dec { color: var(--bad); }
+.feed { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 28px; }
+@media (min-width: 980px) { .feed { grid-template-columns: 1fr 1fr; } }
+.feed li { display: grid; grid-template-columns: 12px minmax(0, 1fr); column-gap: 10px; padding: 10px 0; border-top: 1px solid var(--border); }
+.feed .fd { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: #98a1ae; }
+.feed .f-ok .fd { background: var(--ok); } .feed .f-bad .fd { background: var(--bad); } .feed .f-wait .fd { background: #d08a1c; } .feed .f-info .fd { background: var(--accent); }
+.feed .fw { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.feed .fw time { color: var(--faint); white-space: nowrap; }
+.feed p { margin: 2px 0 0; font-size: 14px; line-height: 1.45; color: var(--text); overflow-wrap: anywhere; }
+@media (max-width: 979px) { .feed li:nth-child(n+9) { display: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .rise { opacity: 0; transform: translateY(10px); transition: opacity .55s ease, transform .55s ease; }
+  .rise.in { opacity: 1; transform: none; }
+  .kpis .kpi:nth-child(2) { transition-delay: .06s; } .kpis .kpi:nth-child(3) { transition-delay: .12s; } .kpis .kpi:nth-child(4) { transition-delay: .18s; }
+  .rise .sf { transform: scaleX(0); transition: transform .9s cubic-bezier(.2, .7, .2, 1) .2s; }
+  .rise.in .sf { transform: scaleX(1); }
+  .rise svg.chart .line { stroke-dasharray: 1; stroke-dashoffset: 1; }
+  .rise.in svg.chart .line { animation: drawline 1.4s ease-out .25s forwards; }
+  .rise svg.chart .area, .rise svg.chart .end { opacity: 0; transition: opacity .7s ease 1.1s; }
+  .rise.in svg.chart .area, .rise.in svg.chart .end { opacity: 1; }
+  .rise svg.chart .b { transform-box: fill-box; transform-origin: center bottom; transform: scaleY(0); transition: transform .7s cubic-bezier(.2, .7, .2, 1) .2s; }
+  .rise.in svg.chart .b { transform: scaleY(1); }
+  .rise svg.ring .seg { opacity: 0; transition: opacity .6s ease .3s; }
+  .rise.in svg.ring .seg { opacity: 1; }
+  @keyframes drawline { to { stroke-dashoffset: 0; } }
+}
 `;
 
 const nonce = () => {

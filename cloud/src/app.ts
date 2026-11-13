@@ -34,6 +34,8 @@ import { tryError, tryRoutes } from "./try/routes.js";
 import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
 import { noteRequest } from "./try/metrics.js";
+import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
+import { dashboard } from "./dashboard.js";
 
 export interface CloudEnv {
   sql: Sql;
@@ -168,7 +170,7 @@ const SLUG = z.string().regex(/^[a-z0-9][a-z0-9-]{1,40}$/, "a slug is lowercase 
  * Addresses no company may have (red team round 5): a company's address is also its inbox (slug@domain), and these are
  * the mailboxes certificate authorities and mail systems write to (RFC 2142, CA/Browser Forum domain validation).
  */
-export const RESERVED_SLUGS = new Set(["postmaster", "hostmaster", "webmaster", "admin", "administrator", "abuse", "root", "noreply", "no-reply",
+export const RESERVED_SLUGS = new Set([DEMO_SLUG, "postmaster", "hostmaster", "webmaster", "admin", "administrator", "abuse", "root", "noreply", "no-reply",
   "mailer-daemon", "security", "ssl-admin", "info", "support", "www", "mail", "dmarc", "dmarc-reports", "bounce", "bounces", "purser", "api", "console"]);
 const NEW_SLUG = SLUG.refine((v) => !RESERVED_SLUGS.has(v), "this address is reserved");
 
@@ -344,9 +346,13 @@ export const ROUTES: Route[] = [
     const b = await body(c, z.object({ enrolment_id: z.string().max(80), token: z.string().min(40).max(80) }).strict());
     return json(200, await inviteInfo(c.env.sql, { enrolmentId: b.enrolment_id, token: b.token, now: c.now }));
   } },
+  { method: "POST", path: "/v1/auth/guest", summary: "Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail.", need: "public", run: async (c) => {
+    return json(200, await guestSession(c.env.sql, c.env.blobs, c.env.sessionSecret, c.now));
+  } },
   { method: "POST", path: "/v1/auth/logout", summary: "Sign out: every session of the signed-in person ends.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session") return err(400, "only a signed-in person signs out; revoke a key with DELETE /v1/keys/{id}");
-    await endSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal);
+    // The demo company's guests share one viewer: one guest signing out must not end the others' sessions.
+    if (!isDemoTenant(c.caller!.tenantId)) await endSessions(c.env.sql, c.caller!.tenantId, c.caller!.principal);
     return json(200, { signed_out: true });
   } },
 
@@ -364,7 +370,9 @@ export const ROUTES: Route[] = [
     return json(200, { tenant: { id: c.caller!.tenantId, ...t, language: companyLanguage }, kind: c.caller!.kind, principal: c.caller!.principal, scopes: [...c.caller!.scopes], role: c.caller!.role ?? null,
       user: c.caller!.user ? { id: c.caller!.user, display_name: person?.display_name ?? null, role: person?.role ?? null, language: person?.language ?? null } : null,
       language: person?.language === "en" || person?.language === "nl" ? person.language : companyLanguage,
-      owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t ? `${t.slug}@${c.env.mailDomain}` : null });
+      owner_has_passkey: ownerPasskey, airwallex: awx ? { account_id: awx.account_id, status: awx.status } : null, inbox: c.env.mailDomain && t && !isDemoTenant(c.caller!.tenantId) ? `${t.slug}@${c.env.mailDomain}` : null,
+      // The guest's demo company (Try as guest): demo data, read only; the console labels every page with it.
+      demo: isDemoTenant(c.caller!.tenantId) ? { as_of: DEMO_END } : null });
   } },
   { method: "POST", path: "/v1/company", summary: "Change the company's display name (its address, the slug, stays) or the pages' language for everyone (nl or en).", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ name: z.string().trim().min(1).max(200).optional(), language: z.enum(["nl", "en"]).optional() }).strict().refine((x) => x.name !== undefined || x.language !== undefined, "send a name or a language"));
@@ -376,6 +384,8 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/me/language", summary: "The signed-in person's own language for the pages (nl or en), or null to follow the company's.", need: "read", run: async (c) => {
     if (c.caller!.kind !== "session" || !c.caller!.user) return err(400, "only a signed-in person has a language of their own");
     const b = await body(c, z.object({ language: z.enum(["nl", "en"]).nullable() }).strict());
+    // The demo company's shared guest keeps no choice of its own (the page keeps it in the browser).
+    if (isDemoTenant(c.caller!.tenantId)) return json(200, { language: b.language });
     await c.env.sql.run("UPDATE users SET language = ? WHERE tenant_id = ? AND id = ?", [b.language, c.caller!.tenantId, c.caller!.user]);
     return json(200, { language: b.language });
   } },
@@ -396,6 +406,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams)) },
+  { method: "GET", path: "/v1/dashboard", summary: "The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words.", need: "read", run: async (c) => json(200, await dashboard(db(c))) },
   { method: "GET", path: "/v1/insights", summary: "Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier.", need: "read", run: async (c) => json(200, await insights(db(c), c.now)) },
 
   { method: "GET", path: "/v1/documents/{sha256}", summary: "A document the company holds, by its SHA-256 (the export lists them).", need: "read", run: async (c) => {
@@ -651,7 +662,11 @@ async function route(req: Request, env: CloudEnv): Promise<Response> {
       }
       // A try session's event polls write no rate bucket: the company's engine limits those reads itself.
       const tryPoll = tryCaller && req.method === "GET" && hit.r.path === "/v1/engine/events";
-      if (!tryPoll && !(await withinRate(env.sql, `${caller.kind}:${caller.principal}`, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
+      // The demo company's guests share one viewer: each network gets its own bucket, so one busy room never locks out the rest.
+      const demo = isDemoTenant(caller.tenantId);
+      if (demo && hit.r.path.startsWith("/v1/engine")) return err(404, "no such route");
+      const bucket = demo ? `guest:${req.headers.get("cf-connecting-ip") ?? "unknown"}` : `${caller.kind}:${caller.principal}`;
+      if (!tryPoll && !(await withinRate(env.sql, bucket, now, { windowSec: 60, max: rate.perMinute }))) return err(429, "too many requests; wait a minute");
       ctx.caller = caller;
       ctx.db = new TenantDb(env.sql, caller.tenantId);
     }

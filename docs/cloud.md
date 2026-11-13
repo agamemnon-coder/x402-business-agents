@@ -82,6 +82,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/auth/login` | anyone | Finish a passkey sign-in; returns a 15-minute session token. |
 | `POST /v1/auth/enrol` | anyone | Enrol a person's passkey with the single-use enrolment an owner started: the new passkey signs the enrolment's secret. |
 | `POST /v1/auth/invite` | anyone | What an invite is for, from its secret: the company's address and name and the person; nothing is used up. |
+| `POST /v1/auth/guest` | anyone | Try as guest: a read-only session (viewer, 15 minutes) for the demo company, made from demo data (no real money, no real company); no passkey, no e-mail. |
 | `POST /v1/auth/logout` | read | Sign out: every session of the signed-in person ends. |
 | `GET /v1/me` | read | Who is calling: the company, and the key's scopes or the person's role; the person behind the call, whether an owner has a passkey yet, and the company's inbox address once mail is routed (the console's first run uses these). |
 | `POST /v1/company` | admin | Change the company's display name (its address, the slug, stays) or the pages' language for everyone: `{ "name"?, "language"?: "nl" \| "en" }`. |
@@ -97,6 +98,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/transactions/{id}` | read | One movement, with its earlier versions. |
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
+| `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
 | `GET /v1/insights` | read | Payables at a glance: open, due, overdue, waiting, blocked, spend per supplier. |
 | `GET /v1/documents/{sha256}` | read | A document the company holds, by its SHA-256 (the export lists them). |
 | `POST /v1/sync` | sync | The runner's push: vendors, invoices, documents, payments, the transactions register, ledger entries, audit rows. Idempotent. Never passkeys. |
