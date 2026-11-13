@@ -728,7 +728,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (path === "/airwallex" ? !pt.includes(AWX_PAGE_LABEL) || /Replay of the main run/.test(await page.locator("main").innerText()) : !(path === "/visa" ? /\d+ Nov \(latest\) · Airwallex sandbox · test card · test money|7 Nov · Airwallex sandbox · test card · test money/ : /Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/).test(pt)) fail(`${path} ${tag}: its run is not labelled`);
       // /visa before anything is opened (12 Nov, jury panel): "TAP" is on the page once, in the line of the one closed
       // fold at the very end, below the first screen; the basis for "VIC" and the Intelligent Commerce Connect line are
-      // in sight; five facts under the drawing; purchase B's three amounts are equal; the footer cites the run's record.
+      // in sight; four facts under the drawing (the headless browser under the purchase flow); purchase B's three amounts are equal; the footer cites the run's record.
       if (path === "/visa") {
         const c = await page.evaluate(`(() => {
           const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
@@ -746,8 +746,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // Since the jury pass (13 Nov) the TAP fold is the last thing inside the closed details fold: not in sight on load at all.
         if (await page.locator("#visa-tap > summary").isVisible() && !(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
         if (!pt.includes(VISA_ENTRY_LINE) || (!iccRecordIn() && !pt.includes(VISA_ICC_LINE)) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
-        // The five facts under the drawing, in the details fold since the jury pass (13 Nov), and in no fold of their own.
-        if (c.facts !== 5) fail(`/visa ${tag}: ${c.facts} facts under the drawing, not five`);
+        // The four facts under the drawing, in the details fold since the jury pass (13 Nov), and in no fold of their own.
+        // Partner review, 13 Nov: the fifth, the headless browser (sandbox only), sits in sight right under the purchase flow.
+        if (c.facts !== 4) fail(`/visa ${tag}: ${c.facts} facts under the drawing, not four`);
+        if (!(await page.locator(".vh-flow .vh-headless").isVisible()) || !/headless browser in the agent's process/.test(await page.locator(".vh-flow .vh-headless").innerText())) fail(`/visa ${tag}: the headless browser is not said right under the purchase flow`);
         if (c.amounts.length !== 3 || new Set(c.amounts).size !== 1) fail(`/visa ${tag}: purchase B's three amounts are not equal (${c.amounts.join(" / ")})`);
         const inMain = (await page.locator("main").textContent()) ?? "";
         if (!/A scripted run, no Claude call/.test(inMain) || /Agents paid with a single-use Visa|three live runs/.test(inMain)) fail(`/visa ${tag}: the run is not called scripted`);
