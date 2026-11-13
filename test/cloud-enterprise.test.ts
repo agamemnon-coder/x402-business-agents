@@ -103,7 +103,7 @@ describe("the console", () => {
     expect(html).toContain("el('p','',el('b','',t('cs.tok.cards_note')))");
   });
   it("adds no inline script beyond the one with the page's nonce, and no write call for agents", () => {
-    expect([...html.matchAll(/<script[^>]*>/g)].map((m) => m[0])).toEqual([`<script type="module" nonce="n0nce">`]);
+    expect([...html.matchAll(/<script\b[^>]*>/gi)].map((m) => m[0])).toEqual([`<script type="module" nonce="n0nce">`]);
     expect(html).not.toMatch(/\/v1\/agents\/[^'"]*\/(pause|revoke)/);
   });
 });
