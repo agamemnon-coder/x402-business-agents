@@ -64,6 +64,15 @@ const line = (inv: ApInvoiceRow, event: ApEntry["event"], date: string, account:
 });
 
 /** The Dutch purchase VAT code an invoice's own tax amounts to (21% or 9% of its net, within a cent), or null: the engine's own VAT coding. */
+/**
+ * The VAT a supplier abroad charged, by its VAT id's country and the rate it charged: German 19% (13 Nov). Such VAT is
+ * not reclaimable in the Dutch return; it is coded so it counts on its own row, never as Dutch input tax.
+ */
+export function foreignVat(netCents: number, vatCents: number, supplierVatId: string | null | undefined): "PF_DE19" | null {
+  if (!/^DE\d{9}$/.test((supplierVatId ?? "").replace(/\s/g, "").toUpperCase()) || vatCents <= 0) return null;
+  return Math.abs(Math.round((netCents * 19) / 100) - vatCents) <= 1 ? "PF_DE19" : null;
+}
+
 export function dutchVat(netCents: number, vatCents: number): "P21" | "P9" | null {
   if (Math.abs(Math.round((netCents * 21) / 100) - vatCents) <= 1) return "P21";
   if (Math.abs(Math.round((netCents * 9) / 100) - vatCents) <= 1) return "P9";

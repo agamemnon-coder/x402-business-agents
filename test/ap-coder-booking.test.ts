@@ -309,13 +309,15 @@ const PINNED_CSV = `date,invoice_id,event,account,account_name,debit,credit,curr
 2026-11-04,AP-0003,accrual,2100,Accounts payable (supplier invoices),,1190.00,EUR,Lagerhaus Nord GmbH invoice LN-2026-0815
 `;
 const PINNED_LEDGER = [
-  "ap-accrual|AP-0001 #1 6200 D155462 C0 EUR cc=CC300 vat=null:null party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21",
+  // 13 Nov: the German supplier's 19% is coded as foreign VAT from its own VAT id (src/ap/books.ts foreignVat), on its own
+  // row of the VAT overview, never Dutch input tax (Bergtex and Lagerhaus Nord, both German); the only change to these books.
+  "ap-accrual|AP-0001 #1 6200 D155462 C0 EUR cc=CC300 vat=PF_DE19:29538 party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21",
   "ap-accrual|AP-0001 #2 1510 D29538 C0 EUR cc=null vat=null:null party=Bergtex Textil GmbH due=null ref=null entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21: input VAT",
   "ap-accrual|AP-0001 #3 2100 D0 C185000 EUR cc=null vat=null:null party=Bergtex Textil GmbH due=2026-11-16 ref=BTX-2026-21 · Bergtex Textil GmbH entry=Bergtex Textil GmbH invoice BTX-2026-21 (received) / BTX-2026-21 · Bergtex Textil GmbH memo=Bergtex Textil GmbH invoice BTX-2026-21",
   "ap-accrual|AP-0002 #1 6900 D40000 C0 EUR cc=CC300 vat=P21:8400 party=Zeeland Verpakkingen B.V. due=null ref=null entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471",
   "ap-accrual|AP-0002 #2 1510 D8400 C0 EUR cc=null vat=null:null party=Zeeland Verpakkingen B.V. due=null ref=null entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471: input VAT",
   "ap-accrual|AP-0002 #3 2100 D0 C48400 EUR cc=null vat=null:null party=Zeeland Verpakkingen B.V. due=2026-11-17 ref=ZV-4471 · Zeeland Verpakkingen B.V. entry=Zeeland Verpakkingen B.V. invoice ZV-4471 (received) / ZV-4471 · Zeeland Verpakkingen B.V. memo=Zeeland Verpakkingen B.V. invoice ZV-4471",
-  "ap-accrual|AP-0003 #1 6900 D100000 C0 EUR cc=CC300 vat=null:null party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815",
+  "ap-accrual|AP-0003 #1 6900 D100000 C0 EUR cc=CC300 vat=PF_DE19:19000 party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815",
   "ap-accrual|AP-0003 #2 1510 D19000 C0 EUR cc=null vat=null:null party=Lagerhaus Nord GmbH due=null ref=null entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815: input VAT",
   "ap-accrual|AP-0003 #3 2100 D0 C119000 EUR cc=null vat=null:null party=Lagerhaus Nord GmbH due=2026-11-18 ref=LN-2026-0815 · Lagerhaus Nord GmbH entry=Lagerhaus Nord GmbH invoice LN-2026-0815 (received) / LN-2026-0815 · Lagerhaus Nord GmbH memo=Lagerhaus Nord GmbH invoice LN-2026-0815",
 ];

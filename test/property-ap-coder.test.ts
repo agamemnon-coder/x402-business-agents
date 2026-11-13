@@ -18,7 +18,7 @@ const big = (a: string) => BigInt(a.replace(".", ""));
 // ── The company's books, and hostile variants of them ──
 
 const realChart = Object.entries({ ...CHART, ...AP_CHART, ...LEDGER_CHART }).map(([account, name]) => ({ account, name, purchase: /^[56]\d{3}$/.test(account) }));
-const realCodes = Object.values(VAT_CODES).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
+const realCodes = Object.values(VAT_CODES).filter((v) => !v.foreign).map((v) => ({ code: v.code, label: v.label, kind: v.kind, rate: v.rate, reverse: v.reverse === true, deductible: v.deductible === true }));
 const realCentres = Object.entries(COST_CENTRE_NAMES).map(([code, name]) => ({ code, name }));
 
 const ACCOUNTS = ["5000", "6100", "6200", "6900", "1200", "2100", "1510", "4000", "6999", "", "6200 ", "__proto__", "constructor"];

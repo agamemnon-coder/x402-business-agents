@@ -16,6 +16,8 @@ export interface VatCode {
   reverse?: boolean;
   /** Purchase VAT reclaimed as input tax (5b). */
   deductible?: boolean;
+  /** VAT charged in another country (by a supplier registered there): outside the Dutch return, counted on its own row. */
+  foreign?: string;
 }
 
 export const VAT_CODES: Record<string, VatCode> = {
@@ -31,6 +33,9 @@ export const VAT_CODES: Record<string, VatCode> = {
   PRC_EU: { code: "PRC_EU", label: "Purchase from another EU country (reverse charge)", kind: "purchase", rate: 21, rubric: "4b", reverse: true, deductible: true },
   PRC_NONEU: { code: "PRC_NONEU", label: "Purchase from outside the EU (reverse charge)", kind: "purchase", rate: 21, rubric: "4a", reverse: true, deductible: true },
   P0: { code: "P0", label: "Purchase without VAT", kind: "purchase", rate: 0, rubric: null },
+  // A supplier registered for VAT in Germany that charged German VAT (13 Nov): that VAT is Germany's, not on the Dutch
+  // return (5b does not take it). It sits on its own row of the overview, so the line is coded, never guessed into 5b.
+  PF_DE19: { code: "PF_DE19", label: "Foreign VAT (DE 19%), not reclaimable in the Dutch return", kind: "purchase", rate: 19, rubric: null, foreign: "DE" },
 };
 
 /** The VAT on a net amount, rounded half away from zero to whole cents. */
