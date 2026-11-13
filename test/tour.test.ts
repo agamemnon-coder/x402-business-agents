@@ -61,7 +61,9 @@ describe("/tour: four steps, three minutes", () => {
     const main = /<main>[\s\S]*<\/main>/.exec(TOUR_PAGE)![0];
     const words = main.replace(/<[^>]+>/g, " ");
     expect(words).not.toMatch(/\b(relay|MCP|x402|testnet|sandbox|API|payables|passkey|token|OAuth|ledger|webhook|rail|CLI|SDK|JSON|endpoint)s?\b/i);
-    for (const s of TOUR_STEPS) expect(main.match(new RegExp(`<div class="go"><a class="btn[^"]*" href="${s.link.href.replace(/[.?]/g, "\\$&")}"`, "g"))).toHaveLength(1);
+    // Each card's one button, read from the markup (no pattern built from a URL): exactly the steps' links, in order.
+    const buttons = main.split('<div class="go">').slice(1).map((seg) => ({ count: (seg.split("</div>")[0]!.match(/<a /g) ?? []).length, href: /^<a class="btn[^"]*" href="([^"]*)"/.exec(seg)?.[1] ?? null }));
+    expect(buttons).toEqual(TOUR_STEPS.map((s) => ({ count: 1, href: s.link.href })));
     expect(TOUR_PAGE).toContain(".stop .go .btn { height: 52px;");
   });
 
