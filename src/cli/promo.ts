@@ -9,7 +9,7 @@
 //
 // Read-only on the live site: GETs, and the Cloud's read-only "Try as guest" (no company is made).
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
@@ -123,7 +123,9 @@ function mix() {
     + `[${m}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=-3dB,adelay=${ms}|${ms},afade=t=out:st=${TOTAL - 2.5}:d=2.5,apad,atrim=duration=${TOTAL}[mus];`
     + `[mus][key]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350:makeup=1[duck];`
     + `[vo1]volume=1.6[vo2];[vo2][duck]amix=inputs=2:normalize=0:duration=first[mix]`;
-  const measured = parseMeasured(execFileSync("bash", ["-c", `ffmpeg -hide_banner -nostats ${inputs.map((x) => JSON.stringify(x)).join(" ")} -filter_complex ${JSON.stringify(`${graph};[mix]${measureFilter()}[m]`)} -map "[m]" -f null - 2>&1`], { encoding: "utf8", maxBuffer: 1 << 26 }));
+  // loudnorm prints its measurement on stderr; ffmpeg is run directly, no shell.
+  const measure = spawnSync("ffmpeg", ["-hide_banner", "-nostats", ...inputs, "-filter_complex", `${graph};[mix]${measureFilter()}[m]`, "-map", "[m]", "-f", "null", "-"], { encoding: "utf8", maxBuffer: 1 << 26 });
+  const measured = parseMeasured(measure.stderr);
   const file = resolve(OUT, vertical ? "purser-promo-vertical.mp4" : "purser-promo-1080p.mp4");
   execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...inputs, "-filter_complex", `${graph};[mix]${normaliseFilter(measured)}[a]`,
     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "320k", "-t", String(TOTAL), "-movflags", "+faststart", file], { stdio: "inherit" });

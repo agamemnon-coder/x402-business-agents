@@ -45,7 +45,7 @@ describe("the promo film", () => {
 
   it("writes one subtitle per line, in order", () => {
     const srt = promoSrt();
-    expect(srt.match(/-->/g)!.length).toBe(LINES.length);
+    expect(srt.split("\n").filter((l) => /^\d{2}:\d{2}:\d{2},\d{3} \S+ \d{2}:/.test(l)).length).toBe(LINES.length);
     expect(srt.startsWith("1\n00:00:00,500 --> ")).toBe(true);
     expect(srt).toContain("Purser. Try it yourself.");
   });
