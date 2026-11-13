@@ -396,9 +396,28 @@ async function enginePass() {
   await engineApprove(E, proposal);
   await engineProof(E);
   await engineArchive(E);
+  await engineClaude(E);
   ok(errs.length === 0, `engine pass: no console or CSP errors${errs.length ? ` (${errs.join(" | ")})` : ""}`);
   await ctxE.close();
   serverE.close();
+}
+
+/** Settings, Connect Claude: the owner makes a token that may propose; it is shown once, with the Claude Code command. */
+async function engineClaude(E: EnginePass) {
+  const p = E.page;
+  await p.goto(`${E.origin}/#/settings`);
+  await p.waitForSelector("#claude-make");
+  ok((await p.textContent("#claude .once code")) === `${E.origin}/mcp`, "Connect Claude: the page shows Purser's /mcp address");
+  await p.fill("#claude-name", "Claude (finance)");
+  await p.check("#claude-propose");
+  await p.click("#claude-make");
+  await p.waitForSelector("#claude ul.tokens li");
+  const shown = (await p.locator("#claude .once code.cmd").allTextContents()).join(" ");
+  ok(/pck_k[A-Za-z0-9]{12}_/.test(shown) && /claude mcp add --transport http purser .*\/mcp --header "Authorization: Bearer pck_/.test(shown), "Connect Claude: the new token is shown once, with the Claude Code command");
+  ok(/Reads and proposes/.test((await p.textContent("#claude ul.tokens")) ?? ""), "Connect Claude: the token is listed as one that reads and proposes");
+  ok((await p.locator("#view table td", { hasText: "Claude (finance)" }).count()) === 0, "Connect Claude: the token is not listed again among the API keys");
+  ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Connect Claude: nothing is wider than the screen");
+  if (shots) await p.locator("#claude").screenshot({ path: join(shots, "connect-claude-1440.png") });
 }
 
 /** Upload an invoice on the Invoices page and watch the engine read it; a refused file and the same file again. */
@@ -783,6 +802,9 @@ async function guestPass() {
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }
+    // Settings, Connect Claude: the demo company's public read-only token and the steps; no way to make a token.
+    await p.waitForSelector("#claude");
+    ok(/purser-demo-read-only/.test((await p.textContent("#claude")) ?? "") && await p.locator("#claude-make").count() === 0, `${tag}: Connect Claude shows the demo's read-only token and makes none`);
     ok(await p.locator("button", { hasText: /upload|new key|invite/i }).count() === 0, `${tag}: a guest has no button that writes`);
     ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? ` (${errors.slice(0, 2).join(" | ")})` : ""}`);
     if (shots && motion === "no-preference") { await p.goto(`${ORIGIN}/#/overview`); await p.waitForSelector(".dash"); for (let y = 0; y < 8000; y += 400) { await p.mouse.wheel(0, 400); await p.waitForTimeout(150); } await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(2200); await p.screenshot({ path: join(shots, `guest-dashboard-${width}.png`), fullPage: true }); }

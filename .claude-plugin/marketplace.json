@@ -1,0 +1,12 @@
+{
+  "name": "purser",
+  "owner": { "name": "Purser" },
+  "description": "Purser's plugin for Claude Code: your company's books in Claude, read only or with payment proposals the CFO approves.",
+  "plugins": [
+    {
+      "name": "purser",
+      "source": "./plugins/purser",
+      "description": "Read your company's books and agents' decisions in Purser, and propose an invoice's payment for the CFO's Face ID."
+    }
+  ]
+}

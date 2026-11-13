@@ -1150,6 +1150,48 @@ async function booksView(){
 }
 
 // --- Settings ------------------------------------------------------------------------------------------------------
+// Connect Claude (docs/connect-claude.md): the company's own Claude account reads its books through /mcp and, with a
+// token that allows it, proposes an invoice's payment; it never approves or pays. Owners make and revoke tokens here
+// (each shown once); the demo company shows its public read-only token; anyone else sees the steps.
+async function claudeCard(m,owner){
+  const card=el('div','card panel claude');card.id='claude';
+  const url=location.origin+'/mcp';
+  const copyBtn=(text)=>{const b=btn(t('cs.copy_link'),'','copy');b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){}};return b};
+  const codeCmd=(token)=>'claude mcp add --transport http purser '+url+' --header "Authorization: Bearer '+token+'"';
+  const steps=el('ol','steps',[el('li','',t('cs.claude.step1')),el('li','',t('cs.claude.step2')),el('li','',t('cs.claude.step3'))]);
+  const urlRow=el('div','once',[el('b','',t('cs.claude.url')),el('code','cmd',url),el('div','row2',[copyBtn(url)])]);
+  const kids=[el('h2','',t('cs.claude.title')),el('p','',t('cs.claude.lede')),urlRow,steps];
+  if(m.demo){
+    const tok='purser-demo-read-only';
+    kids.push(note(t('cs.claude.demo')),el('div','once',[el('b','',t('cs.claude.demo_token')),el('code','cmd',tok),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(tok)),el('div','row2',[copyBtn(codeCmd(tok))])]));
+    card.replaceChildren(...kids);return card;
+  }
+  if(!owner){kids.push(note(t('cs.claude.owner_only',{name:m.tenant.name})));card.replaceChildren(...kids);return card}
+  const list=el('div','');const out=el('div','');
+  async function draw(){
+    const r=await api('/v1/claude/connectors');
+    const live=r.items.filter(x=>!x.revoked_at&&x.expires_at>new Date().toISOString());
+    if(!live.length){list.replaceChildren(el('p','sub',t('cs.claude.none')));return}
+    const ul=el('ul','plain tokens');
+    for(const x of live){const rv=btn(t('cs.revoke'),'danger','x');
+      rv.onclick=async()=>{if(!confirm(t('cs.claude.revoke_q',{name:x.name})))return;rv.disabled=true;try{await api('/v1/claude/connectors/'+encodeURIComponent(x.id),{method:'DELETE'});out.replaceChildren();await draw()}catch(e){if(!(e instanceof Expired)){rv.disabled=false;out.replaceChildren(note(e.message,'bad'))}}};
+      ul.append(el('li','',[el('b','',data('key',x.name)),' ',el('span','pill'+(x.can_propose?' warn':''),x.can_propose?t('cs.claude.proposes'):t('cs.claude.reads')),el('span','sub',' '+t('cs.expires')+' '+day(x.expires_at)+(x.last_used_at?' · '+t('cs.claude.last_used',{when:stamp(x.last_used_at)}):'')),' ',rv]))}
+    list.replaceChildren(ul);
+  }
+  const name=el('input','field');name.placeholder=t('cs.claude.name_placeholder');name.maxLength=60;name.id='claude-name';
+  const prop=el('input','');prop.type='checkbox';prop.id='claude-propose';
+  const lab=el('label','check',[prop,' ',t('cs.claude.propose')]);lab.htmlFor='claude-propose';
+  const mk=btn(t('cs.claude.make'),'primary','key-round');mk.id='claude-make';
+  mk.onclick=async()=>{if(!name.value.trim())return;mk.disabled=true;
+    try{const r=await api('/v1/claude/connectors',{method:'POST',body:{name:name.value.trim(),propose:prop.checked}});name.value='';prop.checked=false;await draw();
+      out.replaceChildren(el('div','once',[el('b','',t('cs.shown_once')),t('cs.copy_now'),el('code','cmd',r.token),el('div','row2',[copyBtn(r.token)]),el('b','',t('cs.claude.code')),el('code','cmd',codeCmd(r.token)),el('div','row2',[copyBtn(codeCmd(r.token))])]))}
+    catch(e){if(!(e instanceof Expired))out.replaceChildren(note(e.message,'bad'))}finally{mk.disabled=false}};
+  kids.push(el('h2','sub-h',t('cs.claude.tokens')),list,el('div','form-row',[el('div','',[el('label','',t('cs.name')),name]),el('div','',[mk])]),lab,out,note(t('cs.claude.keeps')));
+  card.replaceChildren(...kids);
+  try{await draw()}catch(e){if(!(e instanceof Expired))list.replaceChildren(note(e.message,'bad'))}
+  return card;
+}
+
 async function settingsView(){
   title(t('cs.nav.settings'));
   const m=await me();
@@ -1161,10 +1203,11 @@ async function settingsView(){
   if(owner){const c=langSel(langNames,m.tenant.language||'nl');c.onchange=async()=>{try{await api('/v1/company',{method:'POST',body:{language:c.value}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));if(!m.user||!m.user.language)useLanguage(c.value)}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_company')),c]))}
   if(m.kind==='session'&&m.user){const p=langSel([['',t('cs.language_follow')],...langNames],m.user.language||'');p.onchange=async()=>{try{const r=await api('/v1/me/language',{method:'POST',body:{language:p.value||null}});ME=null;langMsg.replaceChildren(note(t('cs.language_saved'),'ok'));useLanguage(r.language||m.tenant.language||'en')}catch(e){if(!(e instanceof Expired))langMsg.replaceChildren(note(e.message,'bad'))}};langBox.append(el('div','',[el('label','',t('cs.language_mine')),p]))}
   const company=el('div','card panel',[el('h2','',t('cs.company')),dl([[t('cs.name'),m.tenant.name],[t('cs.address'),m.tenant.slug],[t('cs.inbox'),m.inbox||t('cs.not_routed'),'mono']]),langBox.children.length?el('h2','sub-h',t('cs.language')):null,langBox.children.length?langBox:null,langMsg]);
-  if(!owner){view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})));return}
+  if(!owner){const cc=await claudeCard(m,false);view().replaceChildren(head(t('cs.nav.settings')),company,note(t('cs.only_owner',{name:m.tenant.name})),cc);return}
   const people=el('div','card panel');const keys=el('div','card panel');const dataCard=el('div','card panel');const awx=el('div','card panel');awx.id='awx';awx.hidden=true;
   const ints=el('div','card panel');ints.id='integrations';const conn=el('div','card panel');conn.id='connect';conn.hidden=true;
-  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
+  const claude=await claudeCard(m,true);
+  view().replaceChildren(head(t('cs.nav.settings'),t('cs.settings_lede')),company,claude,awx,conn,ints,el('div','split2',[people,keys]),dataCard);
   // Accounts the company already has, connected by OAuth (docs/real-customers.md): only when the cloud offers it. The
   // owner signs in at Airwallex or Moneybird and agrees there; Purser keeps the tokens sealed and never shows them.
   async function drawConn(){
@@ -1274,7 +1317,7 @@ async function settingsView(){
   async function drawKeys(){
     const k=await api('/v1/keys?limit=200');
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.key')),el('th','',t('cs.may')),el('th','',t('cs.expires')),el('th','')])])]);const tb=el('tbody','');
-    for(const x of k.items){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
+    for(const x of k.items.filter(y=>!/^claude/.test(y.purpose||''))){const live=!x.revoked_at&&x.expires_at>new Date().toISOString();const acts=el('td','r acts');
       if(live){const rv=btn(t('cs.revoke'),'danger','x');rv.onclick=async()=>{if(!confirm(t('cs.revoke_confirm',{name:data('key',x.name)})))return;try{await api('/v1/keys/'+encodeURIComponent(x.id),{method:'DELETE'});await drawKeys()}catch(e){if(!(e instanceof Expired))keys.append(note(e.message,'bad'))}};acts.append(rv)}
       tb.append(el('tr','',[el('td','',[el('b','',data('key',x.name)),el('span','sub',' '+x.id)]),el('td','',String(x.scopes||'').split(/[ ,]+/).filter(Boolean).map(sc=>tk('cs.scope.'+sc,sc)).join(', ')),el('td','',live?day(x.expires_at):[el('span','pill bad',x.revoked_at?t('cs.revoked'):t('cs.expired'))]),acts]))}
     tbl.append(tb);
@@ -1404,6 +1447,13 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .btn.ghost:hover { border-color: var(--text); }
 .auth .guest .gsub { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 /* The demo company's ribbon: on every page while a guest looks around. */
+.claude ol.steps { margin: 12px 0 4px; padding-left: 22px; color: var(--text); font-size: 14px; }
+.claude ol.steps li { margin: 6px 0; }
+.claude .once.url, .claude .once { display: flex; flex-direction: column; gap: 8px; }
+.claude .once b { font-size: 13px; }
+.claude code.cmd { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+.claude ul.tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
+.claude ul.tokens li .btn { margin-left: auto; }
 .demo-ribbon { background: #fff7e6; border-bottom: 1px solid #f3dfb5; color: #7a4a00; font-size: 13.5px; }
 .demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
 .demo-ribbon span { flex: 1; line-height: 1.4; }
