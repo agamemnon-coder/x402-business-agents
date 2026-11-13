@@ -52,6 +52,16 @@ describe("the changelog", () => {
     expect(changelog(parseMerges(log), "v1.0-submission", "https://github.com/o/r")).toContain("[#158](https://github.com/o/r/pull/158) Run record");
   });
 
+  it("gives the release notes the same counts, total and per group", () => {
+    const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
+    const notes = readFileSync(join(ROOT, "docs/releases/v1.1-final.md"), "utf8");
+    expect(notes).toContain(`${/, (\d+) in all/.exec(md)![1]} pull requests merged into main`);
+    for (const [, group, body] of md.matchAll(/^## (.+)\n\n([\s\S]*?)(?=\n## |$(?![\s\S]))/gm)) {
+      const n = (body!.match(/^- /gm) ?? []).length;
+      expect({ group, line: new RegExp(`^- ${group!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: ${n}\\b`, "m").test(notes) }).toEqual({ group, line: true });
+    }
+  });
+
   it("is committed, generated, and lists every pull request it counts", () => {
     const md = readFileSync(join(ROOT, "CHANGELOG.md"), "utf8");
     const n = Number(/, (\d+) in all/.exec(md)![1]);
@@ -81,11 +91,13 @@ describe("the README's diagrams and media", () => {
     for (const f of ["cloud-dashboard.gif", "books.gif", "proof.gif"]) expect(existsSync(join(ROOT, "docs/assets/media", f)) && see.includes(f)).toBe(true);
   });
 
-  it("says Connect Claude can read and propose only, with the public demo token and the dated live check", () => {
-    const sec = readme.slice(readme.indexOf("## Connect Claude"), readme.indexOf("\n## ", readme.indexOf("## Connect Claude") + 5));
+  it("says Connect any AI can read and propose only, with the public demo token and the dated live check", () => {
+    const sec = readme.slice(readme.indexOf("## Connect any AI"), readme.indexOf("\n## ", readme.indexOf("## Connect any AI") + 5));
     expect(sec).toContain("it can never approve or pay");
     expect(sec).toContain("`purser-demo-read-only`");
     expect(sec).toMatch(/Checked on 13 November 2026, 06:57 UTC: `tools\/list` .* answers 7 read tools/);
+    // Only Claude was tried live; the other clients are said to come from their own documentation.
+    expect(sec).toContain("have not been tried live against a deployed cloud");
   });
 });
 

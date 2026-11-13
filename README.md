@@ -8,9 +8,9 @@
 
 An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 
-**[Try it in a minute.](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect Claude](#connect-claude) · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](https://youtu.be/kCUsFHrxE-o) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](https://kit11.max-31b.workers.dev/try/sign)
+**[Try it in a minute.](https://kit11.max-31b.workers.dev/try)** · [Proof](https://kit11.max-31b.workers.dev/proof) · [Books](https://kit11.max-31b.workers.dev/books) · [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/) · [Connect any AI](#connect-any-ai) · **[Judge it in 3 minutes →](https://kit11.max-31b.workers.dev/judge)** · [Film, 3:58](https://youtu.be/kCUsFHrxE-o) · [Verify it offline](#verify-it-yourself-in-3-commands) · [The 60-second story](https://kit11.max-31b.workers.dev/try/sign)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 6321 passing](https://img.shields.io/badge/tests-6321%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: hands-on](https://img.shields.io/badge/live%20demo-hands--on-7c6cff)](https://kit11.max-31b.workers.dev/try) ![Metal testnet · Airwallex sandbox · Visa Intelligent Commerce · Claude: test money only](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox%20%C2%B7%20Visa%20Intelligent%20Commerce%20%C2%B7%20Claude-test%20money%20only-555)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Tests: 6329 passing](https://img.shields.io/badge/tests-6329%20passing-brightgreen)](#verify-it-yourself-in-3-commands) [![Live demo: hands-on](https://img.shields.io/badge/live%20demo-hands--on-7c6cff)](https://kit11.max-31b.workers.dev/try) ![Metal testnet · Airwallex sandbox · Visa Intelligent Commerce · Claude: test money only](https://img.shields.io/badge/Metal%20testnet%20%C2%B7%20Airwallex%20sandbox%20%C2%B7%20Visa%20Intelligent%20Commerce%20%C2%B7%20Claude-test%20money%20only-555)
 
 </div>
 
@@ -54,7 +54,7 @@ only. Built with Claude (Anthropic) as the developer, directed and reviewed by M
 
 1. **Pay an invoice yourself:** [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try). A test company of your own; Claude reads a sample invoice, you approve the exact terms with your own passkey, it is paid on a simulated bank and booked. Change what you signed: refused.
 2. **Look around a company:** [Purser Cloud as a guest](https://purser-try.max-31b.workers.dev/), then *Try as guest*: the demo company's dashboard and books, read-only, made-up data, test money.
-3. **Ask your own Claude:** add the custom connector `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect Claude](#connect-claude)).
+3. **Ask your own AI:** add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` and choose the demo company (public token `purser-demo-read-only`): ask "what's waiting for the CFO?". It reads; it cannot approve or pay ([Connect any AI](#connect-any-ai)).
 
 ## Why this is a company
 
@@ -193,7 +193,7 @@ npm run judge -- --check
 ```
 
 - `npm ci` (under a minute): installs the exact versions in the lockfile; every dependency is pinned.
-- `npm test` (4 to 7 min): **6321 tests in 548 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. Four more tests are skipped here: they run only on local D1 (`npm run test:d1`).
+- `npm test` (4 to 7 min): **6329 tests in 549 files, all passing**, on stand-ins for Airwallex, Metal and Claude, every check above included. Four more tests are skipped here: they run only on local D1 (`npm run test:d1`).
 - `npm run judge -- --check` (about 3 s): builds every page in `CHECK_PATHS` (src/cli/judge.ts) from the main run's committed record, offline, and fetches each once.
 - `npm run verify-approval` (under 1 s): checks the receipt of the owner's real passkey approval of 7 November, published on 12 November, offline with Node's own crypto: the passkey signed exactly those terms; change one cent and it says NOT VALID. `npm run verify-receipt -- receipt.json` does the same for the receipt you get after signing on [/try/sign](https://kit11.max-31b.workers.dev/try/sign). Getting the receipt needs the live site and your own passkey.
 
@@ -206,19 +206,19 @@ CI runs the same on every push.
 
 Drawn from the run records and git history by `npm run charts` (scripts/repo-charts.ts); `test/repo-charts.test.ts` redraws them. Every id behind them is on [/proof](https://kit11.max-31b.workers.dev/proof) and in [docs/runs/](docs/runs/README.md).
 
-## Connect Claude
+## Connect any AI
 
-Use your own Claude (claude.ai, Claude Desktop or Claude Code) with a Purser company. Claude reads the books and can propose an invoice's payment; **it can never approve or pay**: every payment still needs the CFO's passkey over the exact terms.
+Use your own AI assistant with a Purser company: Claude (claude.ai, the Claude apps, Claude Code), Cursor, VS Code's agent mode, Gemini CLI, Windsurf, or any client that speaks MCP to a remote server. It reads the books and can propose an invoice's payment; **it can never approve or pay**: every payment still needs the CFO's passkey over the exact terms.
 
-1. In Purser Cloud, Settings, Connect Claude: make a connector token (only an owner signed in with a passkey can).
-2. In Claude, add a custom connector with the address `https://purser-try.max-31b.workers.dev/mcp` (or, in Claude Code, `/plugin marketplace add agamemnon-coder/x402-business-agents` and `/plugin install purser@purser`).
+1. In Purser Cloud, Settings, Connect your AI: make a connector token (only an owner signed in with a passkey can).
+2. In your AI, add the remote MCP server `https://purser-try.max-31b.workers.dev/mcp` (in Claude Code: `/plugin marketplace add agamemnon-coder/x402-business-agents` and `/plugin install purser@purser`).
 3. Sign in with your token, or choose the demo company: its public, read-only token is `purser-demo-read-only` (made-up data from a simulated month, test money; it can propose nothing).
 
-Checked on 13 November 2026, 06:57 UTC: `tools/list` on that address with the demo token answers 7 read tools. Every tool, and what each needs: [docs/connect-claude.md](docs/connect-claude.md).
+Purser shows with its own icon and offers three ready-made prompts: *CFO weekly brief*, *What needs my Face ID?* and *Explain this invoice*. Checked on 13 November 2026, 06:57 UTC: `tools/list` on that address with the demo token answers 7 read tools; the same morning the owner added it in the Claude iOS app (as the owner states it). The other clients are listed from their own documentation and have not been tried live against a deployed cloud. Every client's steps and every tool: [docs/connect-claude.md](docs/connect-claude.md).
 
 ## Built after the kit (test environment, not live)
 
-On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent asks to pay one invoice above its limit and the CFO signs the exact terms with Face ID. The payables inbox below is built to do that for every supplier invoice of a small company. Its code is in this repository, not on this site: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview: the hands-on demo at kit11.max-31b.workers.dev/try (a test company of your own, test money on a simulated bank), and its console at [purser-try.max-31b.workers.dev](https://purser-try.max-31b.workers.dev/), where *Try as guest* opens a demo company read-only (made-up data from a simulated month). The same cloud answers your own Claude at `/mcp` ([Connect Claude](#connect-claude)). The product's own console deployment is another matter: that hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout ran end to end in the Airwallex sandbox on 10 November: EUR 4.84 PAID on a test company's behalf (`593c340b-1752-4537-9ef2-0eb3558897cc`, settlement simulated), with Purser's EUR 0.02 fee, booked in T:0 ([run record](docs/runs/2026-11-10-platform-e2e.md)); an earlier run that morning paid EUR 5.00 with a EUR 0.05 fee (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, [record](docs/runs/2026-11-10-connected-accounts-sandbox.md)). The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
+On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent asks to pay one invoice above its limit and the CFO signs the exact terms with Face ID. The payables inbox below is built to do that for every supplier invoice of a small company. Its code is in this repository, not on this site: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview: the hands-on demo at kit11.max-31b.workers.dev/try (a test company of your own, test money on a simulated bank), and its console at [purser-try.max-31b.workers.dev](https://purser-try.max-31b.workers.dev/), where *Try as guest* opens a demo company read-only (made-up data from a simulated month). The same cloud answers your own Claude at `/mcp` ([Connect any AI](#connect-any-ai)). The product's own console deployment is another matter: that hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout ran end to end in the Airwallex sandbox on 10 November: EUR 4.84 PAID on a test company's behalf (`593c340b-1752-4537-9ef2-0eb3558897cc`, settlement simulated), with Purser's EUR 0.02 fee, booked in T:0 ([run record](docs/runs/2026-11-10-platform-e2e.md)); an earlier run that morning paid EUR 5.00 with a EUR 0.05 fee (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, [record](docs/runs/2026-11-10-connected-accounts-sandbox.md)). The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
 
 - **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
 - **Scanned invoices:** two independent readings must agree on IBAN, total, currency and invoice number; otherwise a person decides.
@@ -241,6 +241,19 @@ On [/try/sign](https://kit11.max-31b.workers.dev/try/sign) the Treasury agent as
   the exact terms.
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a single-use card credential.
 - **Cloudflare:** Workers and Durable Objects run the relay, the site and Purser Cloud's engine (one object per company).
+
+## What changed since the first hand-in (8 Nov)
+
+Every pull request since `v1.0-submission` is in [CHANGELOG.md](CHANGELOG.md); the main lines, each with its record:
+
+- **Try, hands-on:** [/try](https://kit11.max-31b.workers.dev/try) gives you a test company of your own: Claude reads a sample invoice, you approve the exact terms with your own passkey, it is paid on a simulated bank, booked and filed ([one visit, 13 Nov](docs/runs/2026-11-13-try-sample.json)).
+- **Books:** [/books](https://kit11.max-31b.workers.dev/books) is a test company's month: 20 supplier invoices read and coded by Claude, 16 paid on the simulated bank, the books balanced, the CFO's approvals by a software passkey ([record, 13 Nov](docs/runs/2026-11-13-books-month.json)). The VAT overview puts foreign VAT (a German supplier's 19%, not reclaimable in the Dutch return) on its own row (`src/ap/books.ts`, `test/vat-foreign.test.ts`).
+- **Purser Cloud and Connect any AI:** a public guest console, and your own AI over MCP, read and propose only ([above](#connect-any-ai)).
+- **The CFO's real Face ID at Airwallex:** on 13 Nov the owner's own iPhone approved an invoice; Purser created the SWIFT transfer once and Airwallex held it `IN_APPROVAL` for a person; its step to PAID was not done that day ([record](docs/runs/2026-11-13-airwallex-faceid.md)).
+- **Metal:** a passkey account on chain (2 of 2 owners, the second a labelled virtual test passkey) bound, raised and revoked a mandate, and Metal refused a payment over the cap ([record](docs/runs/2026-11-12-faceid-onchain.md)); an invoice token minted, financed and settled, a prototype ([record](docs/runs/2026-11-12-tokenize.md)).
+- **Visa Intelligent Commerce via Airi:** a fourth live run on 13 Nov, 14 of 15 checks; the purchase within the limit was refused with `PURSER_NO_TAP` (no tap in Airi came), and the misused credentials were refused by Purser ([record](docs/runs/2026-11-13-vic-4.md)).
+- **Books elsewhere:** Moneybird sandbox, 0 differences ([record](docs/runs/2026-11-12-moneybird-sandbox.md)); T:0, the main run's books posted ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)).
+- **Quality:** Firefox next to Chromium and WebKit in CI, chaos tests per partner, property tests for tokens and the bookkeeping links, and the suite's own count under [Verify it yourself](#verify-it-yourself-in-3-commands).
 
 ## Releases
 
