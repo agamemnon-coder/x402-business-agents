@@ -10,8 +10,8 @@ import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } fro
 import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
-import { SCALE_CSS, scaleBandHtml, scaleStats } from "./scale.js";
-import { PROOF_RUNS_CSS, proofChainHtml, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
+import { SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
+import { PROOF_RUNS_CSS, PROOF_RUNS_ID, proofChainHtml, proofRunCount, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
@@ -474,6 +474,14 @@ const FACEID_AWX_REACHED = (() => { try { return /Read back with GET: `(IN_APPRO
  * The four cards on /proof (the owner, 13 Nov: "enterprise level"): one structure each, the same height, no icon: the
  * figure, a one-line title, its context (scope and day), and one link to where its record is shown, "Record".
  */
+/**
+ * The strip on /proof: the band's figures, its run count the rows /proof lists below (proofRunCount, the same array),
+ * linked to that list (the orchestrator, 13 Nov: a judge who counts the rows gets the strip's figure).
+ */
+export function proofScaleStats(): ScaleStat[] {
+  return scaleStats({ ...scaleFigures(), liveRuns: proofRunCount() }).map((s) => (s.href === "runs" ? { ...s, href: `#${PROOF_RUNS_ID}`, title: "Every live run listed below, by partner" } : s));
+}
+
 /** The one line under the heading (the owner, 13 Nov: "the proof is what we need"). */
 export const PROOF_LEAD = "What ran live, when, and how to check each run yourself. Sandbox and testnet, test money.";
 
@@ -551,7 +559,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
   ${proofChainHtml()}
-  ${scaleBandHtml(scaleStats(), "What ran, in numbers", { strip: true })}
+  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}
   ${proofRunsHtml()}
   ${guaranteesHtml()}

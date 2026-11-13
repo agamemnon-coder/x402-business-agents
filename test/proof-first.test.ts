@@ -236,8 +236,9 @@ describe("/proof as served: each card shows its strongest claim as its one link 
 describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went on 12 Nov, jury panel)", () => {
   it("has no TAP remark under the figures or anywhere else on the page", () => {
     expect(html).not.toContain('class="septest"');
-    // (The red team's night batch of 2 November stays: it is not the TAP run.)
-    expect(words(dropBlocks(html))).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    // (The red team's night batch of 2 November stays: it is not the TAP run.) Since 13 Nov the live-runs list ends with
+    // one link, "Visa TAP run → /visa" (src/redesign/proofRuns.ts), the only TAP on the page; the fold stays off /proof.
+    expect(words(dropBlocks(html)).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
   // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its

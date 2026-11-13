@@ -19,7 +19,7 @@ import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "playwright";
 import { browserName, gotoLoaded, launchBrowser } from "./support/browser.js";
-import { proofRuns } from "../../src/redesign/proofRuns.js";
+import { proofRuns, TAP_LINK } from "../../src/redesign/proofRuns.js";
 import { startJudge } from "../../src/cli/judge.js";
 import { checkHome } from "./homeStory.js";
 import { CHROME, checkTaps } from "./tapTargets.js";
@@ -1097,7 +1097,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         if (!c?.lead || c.claims.length !== res.length || res.some((re, i) => !re.test(c.claims[i] ?? ""))) fail(`/proof ${tag}: the ${id} card does not show its first claim in sight, then 2–3 facts and its other claims in the fold (${JSON.stringify(c?.claims)})`);
       }
       if (await page.locator(".septest").count()) fail(`/proof ${tag}: a TAP remark under the figures`);
-      if (/\bTAP\b/.test((await page.locator("main").innerText()))) fail(`/proof ${tag}: TAP outside the footer link`);
+      // Since 13 Nov the live-runs list ends with one link, "Visa TAP run → /visa"; the TAP run itself stays on /visa.
+      if (/\bTAP\b/.test((await page.locator("main").innerText()).replace(TAP_LINK, ""))) fail(`/proof ${tag}: TAP outside its one link to /visa`);
       // 12 Nov (merge of #148 into #157): the footer link to /visa went from Proof too; Visa is a section of its own.
       if (await page.locator('footer a.flink[href="visa"]').count()) fail(`/proof ${tag}: a footer link to /visa ("Extra, not an award entry")`);
       // The four tiles under the run's label, Airwallex's among them; the stops' parts sum to their figure. Read once they

@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
 import { isLive, liveRuns, type RunId, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
+import { VISA_TAP_ID } from "./visaOverview.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const pkgScripts = (JSON.parse(readFileSync(new URL("package.json", ROOT), "utf8")) as { scripts: Record<string, string> }).scripts;
@@ -78,6 +79,13 @@ export function verifyOf(r: RunRow): { label: string; href: string } | null {
 export const PROOF_RUNS_ID = "live-runs";
 const NOT_ON_PROOF = new Set(["tap-1"]);
 
+/** How many rows /proof lists: the strip's run count is this number (the orchestrator, 13 Nov: a judge who counts the rows gets the strip's figure). */
+export const proofRunCount = (groups = proofRuns()) => groups.reduce((n, g) => n + g.runs.length, 0);
+
+/** The live runs told elsewhere: the TAP run, on /visa only; one link under the list says where. */
+export const elsewhereRuns = (rows: RunRow[] = liveRuns()) => rows.filter((r) => isLive(r) && NOT_ON_PROOF.has(r.key));
+export const TAP_LINK = "Visa TAP run → /visa";
+
 /** The live runs, newest first inside each group, groups in a fixed order. */
 export function proofRuns(rows: RunRow[] = liveRuns()): { group: ProofGroup; runs: RunRow[] }[] {
   // The TAP run of 2 Nov is told on /visa only, in its own fold (Max, 5 Nov; jury panel, 12 Nov).
@@ -100,7 +108,7 @@ export function proofRunsHtml(groups = proofRuns()): string {
   };
   return `<section class="pruns" id="${PROOF_RUNS_ID}" data-rec="docs/runs" aria-labelledby="h-pruns"><h2 id="h-pruns">${icon("calendar-range", 19)} ${esc("What ran live, by partner")}</h2>
 <p class="pr-note">${esc("Sandbox and testnet runs with test money, each with the id to look up and its record. Rehearsals, control tests and partial runs are on /runs.")}</p>
-${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}</section>`;
+${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}${elsewhereRuns().length ? `\n<p class="pr-more"><a href="visa#${VISA_TAP_ID}">${esc(TAP_LINK)}</a></p>` : ""}</section>`;
 }
 
 // ── 3. The receipt you check offline ───────────────────────────────────────────────────────────────────────────────
@@ -136,6 +144,7 @@ section.pruns { margin: 0 0 28px; }
 section.pruns h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 20px; font-weight: 720; letter-spacing: -.01em; }
 section.pruns h2 svg { color: var(--muted); }
 .pr-note { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); }
+.pr-more { margin: 10px 0 0; font-size: 14px; } .pr-more a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
 section.pruns h3 { margin: 18px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
 ul.prl { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
 ul.prl li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 200px minmax(0, 220px) 200px; column-gap: 14px; align-items: baseline; padding: 12px 16px; border-top: 1px solid var(--border); font-size: 14px; line-height: 1.45; }
