@@ -100,6 +100,8 @@ describe("two companies", () => {
     // The engine's routes that name an invoice or a proposal are in the walk.
     expect(withId.filter((r) => r.path.startsWith("/v1/engine/")).map((r) => `${r.method} ${r.path}`)).toEqual(["POST /v1/engine/invoices/{id}/pay", "GET /v1/engine/proposals/{id}", "POST /v1/engine/proposals/{id}/approve", "POST /v1/engine/proposals/{id}/retry",
       // The hands-on demo's (cloud/src/try/engineRoutes.ts): the signed terms, and the one pay route (a test company's only).
+      // 14 Nov: the sandbox override of a possible duplicate, and Reject (a test company's only).
+      "POST /v1/engine/invoices/{id}/clear", "POST /v1/engine/invoices/{id}/reject",
       "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay",
       // 14 Nov (step 2): Sandbox: move to PAID, a test company's only, like pay.
       "POST /v1/engine/proposals/{id}/payout/simulate"]);
