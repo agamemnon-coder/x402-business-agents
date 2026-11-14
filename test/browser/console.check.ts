@@ -906,16 +906,14 @@ async function guestPass() {
     ok(hidden === 0, `${tag}: no empty band: every card is shown without scrolling (${hidden} hidden)`);
     // The console is not one of the site's pages: its header marks no item ("More" was marked on every page).
     ok(await p.locator('header.top summary.on, header.top a[aria-current="page"]').count() === 0, `${tag}: the site header marks no menu item on the console`);
-    // Review, 13 Nov, at 390 px: the five pages stay on one row that scrolls sideways ("Settings" wrapped), and below
-    // 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
+    // Review, 13 Nov, at 390 px: no page wraps onto a line of its own ("Settings" did), and below 420 px the company chip shows the company's own name whole ("Northwind Outdoor (d…" was cut).
     const tabs = await p.locator("#tabs a").evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
-    ok(new Set(tabs).size === 1, `${tag}: the pages are one row (${tabs.join(", ")})`);
-    // Jury round 2, 13 Nov: at 390 px "Tokenisation" read "Toke…" under the fade; on a phone it says "Tokens" and every
-    // tab is whole, inside the row's visible part (the fade's 28 px kept clear).
-    if (width < 640) {
-      const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => a.getBoundingClientRect().right > r.right - 28 + 1).map((a) => (a as HTMLElement).innerText.trim()); });
-      ok(cut.length === 0 && (await p.locator('#tabs a[data-tab="tokenisation"]').innerText()).trim() === "Tokens", `${tag}: every tab is whole on a phone, "Tokens" included (${JSON.stringify(cut)})`);
-    }
+    // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
+    // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
+    const rows = new Set(tabs).size;
+    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 3 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows of three" : "one row"} (${tabs.join(", ")})`);
+    const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
+    ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
     if (width < 420) {
       const chip = await p.evaluate(() => { const cn = document.querySelector("#co .cn") as HTMLElement | null; return cn ? { text: cn.innerText.trim(), cut: cn.scrollWidth > cn.clientWidth + 1 } : null; });
       ok(chip?.text === "Northwind Outdoor" && !chip.cut, `${tag}: the company chip reads "Northwind Outdoor", whole (${JSON.stringify(chip)})`);

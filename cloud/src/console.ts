@@ -33,7 +33,6 @@ ul.plain li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .apptabs::-webkit-scrollbar { display: none; }
 .apptabs a { padding: 7px 12px; border-radius: 999px; text-decoration: none; color: var(--muted); font-weight: 650; font-size: 14px; white-space: nowrap; }
 .apptabs a:hover { color: var(--text); }
-.apptabs .tl-short { display: none; }
 .apptabs a[aria-current="page"] { color: var(--text); background: var(--sunken); }
 .who-am-i { display: none; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* The tabs never give way: the person and company line shrinks with an ellipsis instead (desktop cut "Instellingen" short). */
@@ -240,10 +239,9 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   /* Jury review, 13 Nov: at 390 px "Tokenisation" was cut to "Token…" with no sign the row scrolls; a fade at the right
      edge says there is more, and the row scrolls on as before. */
   .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
-  /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut. On a phone the tab says "Tokens"; the row
-     then fits, and its full name stays for screen readers. */
-  .appbar nav.apptabs .tl-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .appbar nav.apptabs .tl-short { display: inline; }
+  /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut, and the six pages need about 480 px where a
+     phone has 352. On a phone they are two rows of three, each name whole: no scrolling, no fade, nothing cut. */
+  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -358,7 +356,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation"><span class="tl-long" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</span><span class="tl-short" data-t="cs.nav.tokens_short" aria-hidden="true">${tr("en", "cs.nav.tokens_short")}</span></a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
