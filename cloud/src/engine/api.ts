@@ -72,6 +72,8 @@ export interface EngineApi {
   paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null>;
   /** The company in the product's sync format (the batches a runner's push sends), with no archive files. */
   exportBatch(): Promise<{ format: "purser.cloud-sync/v1"; company: string; made_at: string; batches: Record<string, unknown>[] }>;
+  /** The same records as an A4 PDF a person reads (src/engine/recordsPdf.ts). */
+  exportPdf(): Promise<Uint8Array>;
 }
 
 /**
@@ -87,4 +89,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch", "exportPdf"] as const);

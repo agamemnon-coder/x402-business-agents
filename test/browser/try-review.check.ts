@@ -242,6 +242,14 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   await page.getByRole("button", { name: BOOKS.what }).click();
   await page.getByRole("button", { name: "Your company" }).click();
   await page.getByRole("button", { name: COMPANY.download }).waitFor();
+  // 14 Nov (owner): the records as a PDF from the cloud's own route, its button and the JSON link fitting the width.
+  const dlPdf = page.waitForEvent("download");
+  await page.getByRole("button", { name: COMPANY.download }).click();
+  const pdfDl = await dlPdf;
+  const { readFileSync } = await import("node:fs");
+  const pdfBytes = readFileSync(await pdfDl.path());
+  ok(pdfDl.suggestedFilename() === "purser-test-company-records.pdf" && pdfBytes.subarray(0, 5).toString() === "%PDF-", `${tag}: the records download as a PDF from the cloud's route (${pdfBytes.length} bytes)`);
+  ok(await page.getByRole("button", { name: COMPANY.json }).isVisible(), `${tag}: "${COMPANY.json}" is offered under the button row`);
   await page.getByRole("button", { name: COMPANY.again }).click();
   ok((await heading(page)).startsWith("Your company") && (await page.getByText(COMPANY.againAsk).isVisible()), `${tag}: Start again asks first`);
   await page.getByRole("button", { name: COMPANY.againNo }).click();

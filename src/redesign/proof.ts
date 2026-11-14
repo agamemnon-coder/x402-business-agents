@@ -12,8 +12,8 @@ import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js"
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { SUMMARY_CSS, detailsFold, type SummaryCard } from "./summary.js";
 import { SCALE_CSS, scaleBandHtml, scaleFigures, scaleStats, type ScaleStat } from "./scale.js";
-import { PROOF_RUNS_CSS, PROOF_RUNS_ID, proofChainHtml, proofRunCount, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
-import { liveRunCount } from "./runs.js";
+import { PROOF_RUNS_CSS, PROOF_RUNS_ID, partnerStripHtml, proofChainHtml, proofRunCount, proofRunsHtml, verifyCalloutHtml } from "./proofRuns.js";
+import { COPY_JS, liveRunCount } from "./runs.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
@@ -54,6 +54,10 @@ details.deep section.band { padding: 8px 0 20px; border-top: 0; } details.deep s
 /* The jury's order (12 Nov): the heading, then the guarantees at once; the partners; the run's label with its numbers. */
 .proofp { padding: 18px 0 24px; }
 .proofp h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 740; letter-spacing: -.02em; margin: 8px 0 6px; }
+/* The walkthrough at the top (Max, 14 Nov). */
+.proofp .pwatch { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 18px; }
+.proofp .pwatch a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 650; font-size: 15px; text-decoration: none; }
+.proofp .pwatch a:hover { text-decoration: underline; }
 .proofp .plead { margin: 0 0 18px; font-size: 16.5px; line-height: 1.5; color: var(--muted); max-width: 46em; }
 .proofp > .wrap { max-width: 1120px; }
 .proofp [id] { scroll-margin-top: 80px; }
@@ -566,6 +570,8 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
+  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
+  ${partnerStripHtml(undefined, liveRunCount())}
   ${proofChainHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}
@@ -585,12 +591,12 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${archiveFold(run)}
   ${lifeVisual("tall")}
   ${railsVisual("tall")}`)}
-  <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${TRAILER_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(TRAILER_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
+  <nav class="util" aria-label="More from this run"><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

@@ -14,7 +14,7 @@ before real money: [go-live.md](go-live.md).
                                                       │  R2 (EU): documents, e-mails
                                                       ▲
                      the company's Purser runner ─────┘  push (POST /v1/sync), pull mail (GET /v1/mail)
-                     (agents, inbox, ledger; the only part that touches Airwallex and Metal)
+                     (agents, inbox, ledger; the only part that touches Airwallex and Alta (formerly Metal))
 ```
 
 - Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
@@ -108,7 +108,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
-| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
 | `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
@@ -176,6 +176,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/engine/proposals/{id}/terms` | read | A proposal's exact terms as the passkey signs them: `{ proposal_id, status, terms, canonical, terms_sha256, approved, expires_at }` (the canonical JSON and its SHA-256, the signature's challenge). |
 | `POST /v1/engine/proposals/{id}/pay` | admin | The hands-on demo's one pay route (a test company only; at most 8 KB, 30 a company): `{ terms, credential }`, the terms to pay (only `amount`, `beneficiary_name` and `iban_last4` may differ from the signed ones, else 400) with the signature the browser made at the approval. Two layers answer, always both: the product's verifier on that signature over the sent terms, and the executor's own gate asked with the sent terms written into the payment instruction, inside a transaction that is always rolled back. Only when both say yes is the held payment run, from the stored terms, on the simulated bank (test money). Answers `{ outcome, layers, signed_sha256, sent_sha256, changed, transfers_before, transfers_after, sandbox_calls, settled, request_id }`; `outcome` is `paid`, `refused`, `paid_once`, `not_signed`, `expired` or `failed` (the retry route runs a failed one again). |
 | `GET /v1/engine/export` | read | The company in the product's sync format, as a file (`purser-test-company.json`): `{ format: "purser.cloud-sync/v1", company, made_at, batches }`, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log). No archive files. At most 5 MB; a test company may download it 5 times. |
+| `GET /v1/engine/export.pdf` | read | The same records as an A4 PDF a person reads (`purser-test-company-records.pdf`, 14 Nov): a cover with the totals, each invoice with its trail (read, checked, signed with the passkey, paid, booked), the journal with its totals per currency, the audit log and the documents' and signed terms' SHA-256. Built by the engine from the export alone. A test company may download it 5 times. The JSON export is printed with a 2-space indent and starts with a `readme` field that says what the file is. |
 | `POST /v1/try/start` | anyone | The hands-on deployment only (`HANDS_ON=on`; 404 elsewhere). A test company of your own on the engine, test money on a simulated bank, deleted after 24 hours: `{ token? }` (an event or jury token). Answers 201 `{ tenant, session, visitor_token, expires_at, session_expires_at, company, pool, mode }`; 429 `{ code: "limit" }` past a limit (per keyed address and per pool and day); 503 `{ code: "paused" }` while the switch `starts` is off. Like the renewal and every write of a test company, it must carry this site's `Origin` (the demo's own page); a program without one gets 403. |
 | `POST /v1/try/session` | anyone | The hands-on deployment only. `{ tenant_id, visitor_token }`: a fresh 15-minute session for that test company; `{ session, expires_at, company_expires_at }`, or 410 `{ code: "gone" }` once it was deleted. Limited per company (30 a minute), never per address. |
 | `POST /v1/try/admin` | platform admin | The hands-on deployment's controls: `{ op: "get" }` (the switches, today's counters), `{ op: "set", key, value }` (one switch, refused past its ceiling; logged without the token), `{ op: "token", pool, until }` (an event or jury token, shown once; only its hash is kept). |
@@ -216,7 +217,7 @@ bringing its ledger up to date, so each row arrives reconciled against the books
 | Filter | Values |
 |---|---|
 | `rail` | `airwallex_transfer`, `airwallex_fx`, `airwallex_card`, `airwallex_airi`, `airwallex_receipt`, `metal`, `metal_clearing` |
-| `currency` | `EUR`, `USD`, `GBP`, `USDZ` (Metal testnet) … |
+| `currency` | `EUR`, `USD`, `GBP`, `USDZ` (Alta testnet) … |
 | `from`, `to` | days, `2026-11-01` |
 | `reconciliation` | `matched`, `missing_booking`, `missing_rail_record`, `amount_mismatch`, `not_applicable` |
 | `moved` | `true` (money moved) or `false` (refused, declined, failed, aborted: never counted) |

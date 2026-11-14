@@ -33,7 +33,7 @@ passkey, not a person's Face ID. Nothing was approved in Airwallex's web app.
 
 ## The Airwallex-only run (7 November)
 
-One fresh world on the Airwallex sandbox only: 0 Metal calls, test money, all seven checks passed. [Log](runs/2026-11-07-awx-1.md), [record](demo/airwallex-run.json), [plan and call budget](runs/awx-1-plan.md). Shown on `/airwallex`.
+One fresh world on the Airwallex sandbox only: 0 Alta (formerly Metal) calls, test money, all seven checks passed. [Log](runs/2026-11-07-awx-1.md), [record](demo/airwallex-run.json), [plan and call budget](runs/awx-1-plan.md). Shown on `/airwallex`.
 
 | Step | What Airwallex did | Ids |
 |---|---|---|
@@ -65,7 +65,7 @@ Simulated in this run: SENT and PAID were set through the sandbox's simulation A
 
 ## The Airi run (7 November)
 
-The Sourcing agent buys at our own Airwallex sandbox merchant with a single-use card credential from Airwallex's Airi wallet (airi-cli 0.1.0-beta.4, Airi's test card visa •••• 1111, test money; 0 Metal calls, 0 Claude calls). All five checks passed, in the second attempt in its world. [Log, with every failed attempt](runs/2026-11-07-vic-1.md), [record](demo/airi-run.json).
+The Sourcing agent buys at our own Airwallex sandbox merchant with a single-use card credential from Airwallex's Airi wallet (airi-cli 0.1.0-beta.4, Airi's test card visa •••• 1111, test money; 0 Alta calls, 0 Claude calls). All five checks passed, in the second attempt in its world. [Log, with every failed attempt](runs/2026-11-07-vic-1.md), [record](demo/airi-run.json).
 
 | Purchase | What happened | Ids |
 |---|---|---|
@@ -237,10 +237,10 @@ Run of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md); for the depos
 | Endpoint | What Purser uses it for | Why it is a necessary financial action | Evidence |
 |---|---|---|---|
 | `GET /balances/current` | Reads cash balances. Only `available_amount` counts as spendable. | The Treasury agent's plan depends on free EUR and USD above the floors. | 7 Nov run: 9 calls |
-| `GET /deposits` | Finds a deposit by its `reference`. | Earnings are credited once the on-chain sweep is final. The reference is the Metal transaction hash. | 7 Nov run: 2 calls |
-| `POST /simulation/deposit/create` (**sandbox only**) | Books the sweep as a deposit with the Metal transaction hash as `reference`. | The sandbox cannot receive stablecoins, so this step is **simulated**: 1 USDZ is booked as 1 USD. No real USDZ reaches Airwallex. | Main run: deposit `b3812e05-2afa-4698-8f64-429f9608e0a0`, SETTLED |
+| `GET /deposits` | Finds a deposit by its `reference`. | Earnings are credited once the on-chain sweep is final. The reference is the Alta transaction hash. | 7 Nov run: 2 calls |
+| `POST /simulation/deposit/create` (**sandbox only**) | Books the sweep as a deposit with the Alta transaction hash as `reference`. | The sandbox cannot receive stablecoins, so this step is **simulated**: 1 USDZ is booked as 1 USD. No real USDZ reaches Airwallex. | Main run: deposit `b3812e05-2afa-4698-8f64-429f9608e0a0`, SETTLED |
 
-A credit is booked only after the sweep is final on Metal, and once per `chainId:tx:logIndex` (`test/euroBill.test.ts`).
+A credit is booked only after the sweep is final on Alta, and once per `chainId:tx:logIndex` (`test/euroBill.test.ts`).
 
 ## Global accounts
 

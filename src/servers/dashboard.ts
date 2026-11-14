@@ -288,7 +288,8 @@ export const SECURITY_PAGE = securityPage();
 export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
 /** /docs, "Docs and API" (12 Nov), under "More" too (src/redesign/docs.ts): no script, so a style-only policy. */
 export const DOCS_PAGE = docsPage();
-export const DOCS_CSP = styleOnlyCsp(DOCS_PAGE);
+// /docs carries one small script since 14 Nov: the copy buttons (src/redesign/runs.ts COPY_JS).
+export const DOCS_CSP = DOCS_PAGE.includes("<script>") ? styleAndScriptCsp(DOCS_PAGE) : styleOnlyCsp(DOCS_PAGE);
 /**
  * /status (12 Nov), under "More" too (src/redesign/status.ts). Its one small script reads the site's own /health, so its
  * policy names that script and the style by hash and allows requests to the site itself only (connect-src 'self').

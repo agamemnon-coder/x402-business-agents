@@ -948,7 +948,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = path === "/docs" ? 280 /* 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
+      const budget = path === "/docs" ? 185 /* 14 Nov (Max: less text on /docs): 185, as test/saas-status-docs.test.ts; before: 210 since the review of 12 Nov; +35, 13 Nov: the "Connect your AI" card; +35, jury 13 Nov: Purser Cloud as a guest in it (test/saas-status-docs.test.ts) */ : 90;
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       // /status left "More" on 12 Nov (src/ui/more.ts): a page not in the menu marks nothing there.
@@ -1067,11 +1067,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
         return { order: order.slice(0, 8).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
-      if (first.order !== "h1 p.plead ol.pchain ul.scale aside.pverify section.pruns section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
+      // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
+      if (first.order !== "h1 p.plead p.pwatch p.ptnote ul.ptiles ol.pchain ul.scale aside.pverify" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The chain and the band on the first screen and a half (the band at 1,1xx px as built at 390).
-        if (first.chain < 0 || first.chain >= 400) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, not on the first screen`);
-        if (first.band < 0 || first.band > 1300) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,300 px`);
+        // The partner tiles on the first screen; the chain and the band within the next (14 Nov, the tiles lead: the chain at
+        // 9xx px and the band at 1,3xx px as built at 390; before, the chain under 400 px and the band under 1,300 px).
+        const tiles = await page.evaluate(`(() => { const e = document.querySelector("main ul.ptiles"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (tiles < 0 || tiles >= 400) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
+        if (first.chain < 0 || first.chain >= 1000) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,000 px`);
+        if (first.band < 0 || first.band > 1450) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,450 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1146,7 +1150,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // And beside it, "Trace any payment" and "Download the month-end pack" (Max's last round, 1.2 and 1.3).
       if (!(await page.locator('.util a[href="trace"]', { hasText: "Trace any payment" }).isVisible())) fail(`/proof ${tag}: no visible "Trace any payment"`);
       if (!(await page.locator(".util a[download]", { hasText: "Download the month-end pack" }).isVisible())) fail(`/proof ${tag}: no visible "Download the month-end pack"`);
-      if (!(await page.locator(".util a", { hasText: FILM_LINK }).isVisible())) fail(`/proof ${tag}: no visible "${FILM_LINK}"`);
+      // 14 Nov: the walkthrough moved to the top of the page, beside the trailer.
+      if (!(await page.locator(".pwatch a", { hasText: FILM_LINK }).isVisible())) fail(`/proof ${tag}: no visible "${FILM_LINK}"`);
       if (!(await cfo.isVisible()) || (await cfo.getAttribute("href")) !== "./?autonomy") fail(`/proof ${tag}: no visible "See the CFO's view" to ./?autonomy among the utility links`);
       // The utility links end the page: nothing of <main> comes after them.
       if (!(await page.evaluate(`(() => { const u = document.querySelector("main .util"); return !!u && !u.nextElementSibling && !u.parentElement.nextElementSibling; })()`))) fail(`/proof ${tag}: the utility links are not the last thing on the page`);

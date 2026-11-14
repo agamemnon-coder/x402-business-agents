@@ -113,7 +113,9 @@ describe("the README's diagrams and media", () => {
     const sec = readme.slice(readme.indexOf("## Connect any AI"), readme.indexOf("\n## ", readme.indexOf("## Connect any AI") + 5));
     expect(sec).toContain("it can never approve or pay");
     expect(sec).toContain("`purser-demo-read-only`");
-    expect(sec).toMatch(/Checked on 13 November 2026, 06:57 UTC: `tools\/list` .* answers 7 read tools/);
+    // 14 Nov (the final pass): re-checked live after the cloud's redeploy, 14 read tools; the 13 Nov check of 7 stays as history.
+    expect(sec).toMatch(/Checked on 14 November 2026, 14:44 UTC: `tools\/list` .* answers HTTP 200 with 14 read tools/);
+    expect(sec).toContain("on 13 November, 06:57 UTC, the version deployed then answered 7");
     // Only Claude was tried live; the other clients are said to come from their own documentation.
     expect(sec).toContain("have not been tried live against a deployed cloud");
   });

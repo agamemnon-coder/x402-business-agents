@@ -21,7 +21,7 @@ export const TRY_ENGINE_PATHS: readonly (readonly [methods: readonly string[], p
   [["GET"], /^\/v1\/try\/stage\/stats$/],
   [["POST"], /^\/v1\/try\/stage\/qr$/],
   [["GET"], /^\/v1\/engine$/],
-  [["GET"], /^\/v1\/engine\/(events|samples|suppliers|invoices|vault|vault\/file|export)$/],
+  [["GET"], /^\/v1\/engine\/(events|samples|suppliers|invoices|vault|vault\/file|export|export\.pdf)$/],
   [["POST"], new RegExp(`^/v1/engine/samples/${ID}$`)],
   [["POST"], /^\/v1\/engine\/(compose|passkey\/start|passkey\/finish)$/],
   [["POST"], new RegExp(`^/v1/engine/invoices/${ID}/pay$`)],
