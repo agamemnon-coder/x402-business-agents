@@ -18,6 +18,24 @@ The Kit 11 scenario, run live on 3 November, and the separate runs after it:
 
 **The live runs of 12 and 13 November** (sandbox and testnet, test money; [all runs](runs/README.md)): on Alta, a passkey account whose two owners (the CFO's passkey and a labelled virtual test passkey) signed 2 of 2, and Alta refused a payment over the mandate's cap on chain ([record](runs/2026-11-12-faceid-onchain.md)); at Airwallex, a payout held `IN_APPROVAL` until a person approved it there, then PAID, settlement simulated ([record](runs/2026-11-12-airwallex-two-locks-paid.md)); an invoice token minted, financed and settled on Alta testnet, a prototype with a simulated financier ([record](runs/2026-11-12-tokenize.md)); the books in a Moneybird sandbox, 0 differences ([record](runs/2026-11-12-moneybird-sandbox.md)); and Try with Claude Haiku reading the invoice, on a simulated bank and a test passkey ([record](runs/2026-11-13-try-sample.json)).
 
+## What's live, what's simulated, run by run
+
+Each row from its run record; test money throughout. Every run, newest first: [docs/runs/](runs/README.md).
+
+| What | Status | Date | Record |
+|---|---|---|---|
+| Three Claude agents run a company for a day: 86 Alta payments, 1 card charge, 1 SWIFT transfer | Live: Alta testnet, Airwallex sandbox. Customer, supplier, settlement and second approver simulated | 3 Nov | [main run](runs/2026-11-03-main-run.md) |
+| Airwallex itself declines an agent's card over the CFO's limit | Live, Airwallex sandbox | 7 Nov | [record](runs/2026-11-07-awx-1.md) |
+| An agent pays via Airwallex's Airi with a Visa credential Purser binds to one purchase (the sandbox did not refuse reuse; Purser did); above the limit only after Face ID | Live, Airwallex sandbox, test card | 7, 12 and 13 Nov | [first](runs/2026-11-07-vic-1.md), [reuse not refused](runs/2026-11-12-vic-3.md), [latest](runs/2026-11-13-vic-4.md) |
+| Airwallex's own approval as a second lock: a payout signed in Purser waited `IN_APPROVAL` until a person approved it there, then PAID; later the owner's iPhone approved an invoice, held `IN_APPROVAL` | Live, Airwallex sandbox; 12 Nov a labelled test passkey, settlement simulated; 13 Nov not taken to PAID | 12 and 13 Nov | [PAID](runs/2026-11-12-airwallex-two-locks-paid.md), [iPhone](runs/2026-11-13-airwallex-faceid.md) |
+| Before the CFO is asked, the payee's bank checks the name; one signature covers a batch of two payouts, read back before submit | Live, Airwallex sandbox; no money moved by the name check; a test passkey | 12 Nov | [name check](runs/2026-11-12-airwallex-payee-check.md), [batch](runs/2026-11-12-airwallex-batch-transfer.md) |
+| An agent's limit on chain changes only when two passkeys sign; over the cap, Alta refuses | Live, Alta testnet; the second owner a labelled test passkey | 12 Nov | [record](runs/2026-11-12-faceid-onchain.md) |
+| The books posted to T:0 and to Moneybird, read back | Live, both sandboxes | 10 and 12 Nov | [T:0](runs/2026-11-10-t0-journal-sandbox.md), [Moneybird](runs/2026-11-12-moneybird-sandbox.md) |
+| The hands-on demo: Claude reads a sample invoice | Live Claude; the bank simulated; a test passkey | 13 Nov | [record](runs/2026-11-13-try-sample.json) |
+| Purser's records anchored on chain: one value-0 transaction carries their head; `npm run verify-anchor` prints MATCH | Live, Alta testnet | 13 Nov | [record](runs/2026-11-13-anchor.md) |
+| In Purser Cloud: the payee check, batch approval and reconciliation as product features | Built and tested on stand-ins; not shown switched on in a live run | — | [reconcile-books.md](reconcile-books.md) |
+| Real customers, real money, a second person approving | Not yet | — | [go-live.md](go-live.md) |
+
 ## Where each judging criterion is proven
 
 | Criterion | Where it is proven |
