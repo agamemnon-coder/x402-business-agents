@@ -68,6 +68,9 @@ box.hidden = false;
 btn.addEventListener("click", function () {
   out.className = "t0c-out"; out.textContent = "Checking…"; btn.disabled = true;
   fetch(d.path).then(function (r) { if (!r.ok) throw new Error("the read-back did not load (" + r.status + ")"); return r.json(); }).then(function (rec) {
+    // Only a read-back of the expected shape is checked: entries with a PUR- number and lines of an account, a side and whole cents.
+    var line = function (l) { return l && typeof l.account === "string" && (l.side === "debit" || l.side === "credit") && Number.isSafeInteger(l.cents) && l.cents >= 0; };
+    if (!rec || !Array.isArray(rec.entries) || !rec.entries.every(function (e) { return e && typeof e.je_number === "string" && /^PUR-/.test(e.je_number) && Array.isArray(e.lines) && e.lines.every(line); })) throw new Error("The read-back is not in the expected shape: nothing was checked.");
     var t0 = rec.entries.map(function (e) { return { je_number: e.je_number, atoms_per_unit: 100, lines: e.lines.map(function (l) { return { account_id: l.account, account_number: l.account, line_type: l.side, amount_atoms: l.cents }; }) }; });
     var changed = null;
     if (flip.checked && t0.length) { var e = t0[Math.floor(t0.length / 2)]; e.lines.forEach(function (l) { l.amount_atoms += 1; }); changed = e.je_number; }
