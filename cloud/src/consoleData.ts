@@ -33,10 +33,23 @@ const KNOWN = new Set([...Object.keys(AGENT_DISPLAY), ...Object.keys(AP_AGENT_DI
 
 interface Tx { at: string; direction: string; rail: string; rail_label?: string; amount: string; currency: string; moved: boolean; description: string; approval: { authority: string; required: boolean }; invoice: { ap_id: string | null } | null; booking: { entry_ids: number[] } | null }
 
+/**
+ * What a decision came to, for a badge a CFO reads at a glance (Agents, 14 Nov): paid within the card's limit, declined
+ * by Airwallex, the CFO asked (a proposal), or a plain note.
+ */
+export function outcomeOf(r: Pick<Audit, "event" | "payload_json">): "paid" | "declined" | "asked" | "note" {
+  if (r.event === "card.charge_approved") return "paid";
+  if (r.event === "card.charge_declined") return "declined";
+  if (r.event === "proposal.created" || (r.event === "card.decline_met" && typeof payload(r as Audit).proposal_id === "string") || (r.event === "ap.status" && payload(r as Audit).to === "waiting_cfo")) return "asked";
+  return "note";
+}
+
 /** Each agent the company's records name, newest decisions first. */
 export async function agentsOf(db: TenantDb): Promise<Json> {
   const audit = await db.select<Audit>("audit_rows", {}, { order: ["seq"] });
   const txs = (await db.select<{ body_json: string }>("transactions", {}, { order: ["sort_key"] })).map((r) => JSON.parse(r.body_json) as Tx);
+  // The month the records stand at: the newest movement's (the demo company's simulated month ends in November).
+  const asOfMonth = txs.reduce((m, t) => (t.at > m ? t.at : m), "").slice(0, 7);
   const ids = new Set<string>();
   for (const r of audit) {
     if (KNOWN.has(r.actor)) ids.add(r.actor);
@@ -59,8 +72,10 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const decisions = mine.map((r) => ({ r, f: feedLine(r) })).filter((x) => x.f !== null).reverse().slice(0, 5).map(({ r, f }) => {
       const p = payload(r);
       const by = p.source === "fallback" ? "Purser's code (fallback: no model answered)" : p.source === "claude" ? `Claude${typeof p.model === "string" ? ` (${p.model})` : ""}` : null;
-      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq };
+      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq, outcome: outcomeOf(r) };
     });
+    // Spent on its own card in the month the company's records stand at (its newest movement), against the monthly limit.
+    const spentMonth = moved.filter((t) => t.moved && t.at.slice(0, 7) === asOfMonth && t.currency === String(ip.currency ?? "EUR")).reduce((n, t) => n + Math.round(Number(t.amount) * 100), 0);
     const runs = mine.filter((r) => r.event === "agent.run").map(payload);
     const fallbackRuns = runs.filter((p) => Array.isArray(p.claude_calls) && (p.claude_calls as unknown[]).length === 0).length;
     return {
@@ -68,7 +83,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
       job: (AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? (AP_AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? "",
       models: [...models].sort(),
       may: CAN[id]?.may ?? [], may_not: CAN[id]?.may_not ?? [],
-      card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts } : null,
+      card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts, month: asOfMonth || null, spent_month: asOfMonth ? (spentMonth / 100).toFixed(2) : null } : null,
       rails, spent: moved.filter((t) => t.moved).length, declined: moved.filter((t) => !t.moved).length,
       status, status_since: statusRow?.ts ?? issued?.ts ?? null,
       runs: { total: runs.length, without_model: fallbackRuns },
@@ -81,7 +96,9 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
 /** Records and their labels, word for word as each record carries them. */
 export function tokenisation(): Json {
   const t = TOKENIZE as unknown as { labels: Json; recorded_at: string; invoice: { invoice_no: string; amount: string; currency: string; proposal_id: string; terms_sha256: string; approval: { approved_at: string } }; face_value: { amount: string; unit: string }; discount: { bps: number; price: string }; contract: string; token_id: string; transactions: { key: string; what: string; hash: string; explorer?: string; status: string; at: string }[]; verify: { ok: boolean; settled_on_chain?: boolean } };
-  const step = (keys: string[]) => t.transactions.filter((x) => keys.includes(x.key)).map((x) => ({ what: x.what, status: x.status, at: x.at, hash: x.hash, explorer: x.explorer ?? null }));
+  const step = (keys: string[]) => t.transactions.filter((x) => keys.includes(x.key)).map((x) => ({ key: x.key, what: x.what, status: x.status, at: x.at, hash: x.hash, explorer: x.explorer ?? null }));
+  // The token's life in five stages (Tokenisation, 14 Nov), each the record's own transactions; on chain when every one succeeded.
+  const stage = (key: string, label: string, keys: string[]) => { const txs = step(keys); return { key, label, at: txs[txs.length - 1]?.at ?? null, on_chain: txs.length > 0 && txs.every((x) => x.status === "success"), txs }; };
   const c = CARDS as unknown as { read_at: string; method: string; test_money: boolean; cards: { last4: string; nick_name: string; card_status: string; brand: string; form_factor: string; controls: { transaction_limits?: { currency: string; limits: { amount: number; interval: string }[] }; allowed_merchant_categories?: string[] } }[] };
   const v = VIC as unknown as { run: string; mode: string; label: string; started_at: string; credential_deleted: boolean; purchases: { step: string; what: string; request: { amount: string; currency: string }; outcome?: { status?: string; reason?: string; refusal?: string } | null; mandate_id: string | null; payment_intent_id: string | null }[] };
   return {
@@ -90,6 +107,14 @@ export function tokenisation(): Json {
       recorded_at: t.recorded_at, invoice: { invoice_no: t.invoice.invoice_no, amount: t.invoice.amount, currency: t.invoice.currency, proposal_id: t.invoice.proposal_id, terms_sha256: t.invoice.terms_sha256, approved_at: t.invoice.approval.approved_at },
       face_value: `${t.face_value.amount} ${t.face_value.unit} (the invoice's amount scaled down by ${String(t.labels.face_value_scaled_by ?? "")})`, discount: `${t.discount.bps / 100}% (price ${t.discount.price})`,
       contract: t.contract, token_id: t.token_id,
+      facts: { face_value: { amount: t.face_value.amount, unit: t.face_value.unit, scaled_by: Number(t.labels.face_value_scaled_by ?? 0) || null }, discount: { percent: t.discount.bps / 100, price: t.discount.price } },
+      stages: [
+        stage("minted", "Minted", ["deploy", "mint"]),
+        stage("offered", "Offered", ["offer"]),
+        stage("financed", "Financed", ["financier-approve", "accept"]),
+        stage("approved", "Debtor approved", ["payer-approve"]),
+        stage("settled", "Settled and burned", ["settle"]),
+      ],
       steps: [
         { step: "mint", label: "Minted to the creditor", txs: step(["deploy", "mint"]) },
         { step: "finance", label: "Financed: offered, approved and accepted by the financier", txs: step(["offer", "financier-approve", "accept"]) },
@@ -100,7 +125,8 @@ export function tokenisation(): Json {
     },
     agent_cards: {
       label: `Airwallex sandbox · ${c.test_money ? "test money" : ""}`.replace(/ · $/, ""), read_at: c.read_at, method: c.method,
-      cards: c.cards.map((x) => ({ last4: x.last4, holder: x.nick_name.replace(/\s*\([^)]*\)\s*$/, ""), status: x.card_status, brand: x.brand, form: x.form_factor, limits: (x.controls.transaction_limits?.limits ?? []).map((l) => `${x.controls.transaction_limits!.currency} ${l.amount.toFixed(2)} ${l.interval === "PER_TRANSACTION" ? "a purchase" : l.interval.toLowerCase()}`), merchant_categories: x.controls.allowed_merchant_categories ?? [] })),
+      cards: c.cards.map((x) => ({ last4: x.last4, holder: x.nick_name.replace(/\s*\([^)]*\)\s*$/, ""), status: x.card_status, brand: x.brand, form: x.form_factor, limits: (x.controls.transaction_limits?.limits ?? []).map((l) => `${x.controls.transaction_limits!.currency} ${l.amount.toFixed(2)} ${l.interval === "PER_TRANSACTION" ? "a purchase" : l.interval.toLowerCase()}`),
+        limit_values: { currency: x.controls.transaction_limits?.currency ?? null, per_purchase: x.controls.transaction_limits?.limits.find((l) => l.interval === "PER_TRANSACTION")?.amount.toFixed(2) ?? null, monthly: x.controls.transaction_limits?.limits.find((l) => l.interval === "MONTHLY")?.amount.toFixed(2) ?? null }, merchant_categories: x.controls.allowed_merchant_categories ?? [] })),
       record: `${REPO}docs/runs/airwallex-cards-2026-11-06.json`,
     },
     visa_credential: {
