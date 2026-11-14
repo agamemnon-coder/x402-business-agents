@@ -218,7 +218,7 @@ describe("the engine's chain on the routed rail", () => {
     if (!planned.ok) throw new Error(planned.reason);
     const terms = (await w.host.terms(planned.proposal.id))!;
     // One cent more in the terms: another hash, another challenge; both layers refuse it and nothing moves.
-    const cent = { ...terms.terms, amount: (Number((terms.terms as { amount: string }).amount) + 0.01).toFixed(2) };
+    const cent = { ...terms.terms, amount: (Number((terms.terms as unknown as { amount: string }).amount) + 0.01).toFixed(2) };
     const tampered = await w.acts.approve(w.sign(planned.proposal, challengeFor(sha256Hex(canonicalTerms(cent)))));
     expect(tampered.status).toBe("refused");
     expect(w.awxFake.transfers).toHaveLength(0);
@@ -227,7 +227,7 @@ describe("the engine's chain on the routed rail", () => {
     expect(paid.status).toBe("approved");
     expect(w.awxFake.transfers).toHaveLength(1);
     const tr = w.awxFake.transfers[0]!;
-    expect(tr).toMatchObject({ requestId: (terms.terms as { transfer_request_id: string }).transfer_request_id, metadata: terms.terms_sha256, status: "PAID" });
+    expect(tr).toMatchObject({ requestId: (terms.terms as unknown as { transfer_request_id: string }).transfer_request_id, metadata: terms.terms_sha256, status: "PAID" });
     expect(w.sim.transfers).toHaveLength(0);
     expect(w.guard.spent.get(tr.requestId)).toBe(tr.amountCents);
     const v = (await w.acts.view()).invoices.find((i) => i.invoice_id === w.invoiceId)!;
@@ -250,9 +250,9 @@ describe("the engine's chain on the routed rail", () => {
     const planned = await w.acts.propose(w.invoiceId);
     if (!planned.ok) throw new Error(planned.reason);
     const t = (await w.host.terms(planned.proposal.id))!;
-    const conv = (t.terms as { conversion: { quote_id: string; request_id: string; buy_amount: string; sell_currency: string } }).conversion;
+    const conv = (t.terms as unknown as { conversion: { quote_id: string; request_id: string; buy_amount: string; sell_currency: string } }).conversion;
     expect(conv).toMatchObject({ quote_id: expect.stringMatching(/^awx-q-\d+$/) as string, sell_currency: "USD" });
-    const amount = Number((t.terms as { amount: string }).amount);
+    const amount = Number((t.terms as unknown as { amount: string }).amount);
     expect(Number(conv.buy_amount)).toBeLessThan(amount - 99); // the shortfall: the 100.00 free is not bought again
     expect((await w.acts.approve(w.sign(planned.proposal))).status).toBe("approved");
     expect(w.awxFake.conversions).toHaveLength(1);
@@ -323,7 +323,7 @@ describe("the engine's chain on the routed rail", () => {
     if (!out.ok) throw new Error(out.reason);
     expect(out.not_planned).toEqual([]);
     expect(out.planned).toHaveLength(2);
-    const t = (await w.host.terms(out.proposal.id))!.terms as { kind: string; count: string; totals: Record<string, string>; lines: unknown[] };
+    const t = (await w.host.terms(out.proposal.id))!.terms as unknown as { kind: string; count: string; totals: Record<string, string>; lines: unknown[] };
     expect(t).toMatchObject({ kind: "payment_batch", count: "2" });
     expect(t.lines).toHaveLength(2);
     expect((await w.acts.view()).notes.map((n) => n.label).join(" | ")).toMatch(/Pay all planned on the simulated bank: the batch also pays suppliers at the simulated bank/);

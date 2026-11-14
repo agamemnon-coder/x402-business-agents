@@ -19,6 +19,8 @@ import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
 import { airwallexActions, memoryActStore } from "../../../src/engine/awxActions.js";
 import type { GatewayPort } from "../../../src/airwallex/gateway.js";
+import type { Rails3 } from "../../../src/airwallex/routedRail.js";
+import type { PayeeNameVerifier } from "../../../src/airwallex/payeeName.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
 
@@ -32,6 +34,8 @@ export interface NodeEngineEnv {
   now?: () => Date;
   /** The Airwallex gateway (tests hand in a fake one); absent: every action runs on the simulated bank, labelled. */
   awxGateway?: GatewayPort;
+  /** Local checks only: an in-memory stand-in in Airwallex's place (see ./awxWire.ts). */
+  awxStandIn?: { rail: Rails3; payees: PayeeNameVerifier };
 }
 
 /** A ledger's documents in memory: no file is written anywhere. */
@@ -56,8 +60,8 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
   const bank = standInBank({ load: () => kept.text, save: (text) => { kept.text = text; } });
   const target = cloudTarget(tenant, env.blobs, env.now ?? (() => new Date()));
   const store = memoryActStore();
-  const guard = cloudGuard({ sql: env.sql, tenantId, gateway: !!env.awxGateway, cacheMs: 0 });
-  const awx = wireAirwallex({ bank, store, guard, port: env.awxGateway ?? null });
+  const guard = cloudGuard({ sql: env.sql, tenantId, gateway: !!env.awxGateway || !!env.awxStandIn, cacheMs: 0 });
+  const awx = wireAirwallex({ bank, store, guard, port: env.awxGateway ?? null, ...(env.awxStandIn ? { standIn: env.awxStandIn } : {}) });
   const host = new EngineHost({
     db, reader: parserOnly, rails: awx.rails, payeeVerifier: awx.verifier, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
