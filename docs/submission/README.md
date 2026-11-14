@@ -25,7 +25,7 @@ For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign
 
 ## Description
 
-Characters: **3,902** (the text between the markers, as pasted; 3,928 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,961** (the text between the markers, as pasted; 3,987 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -57,6 +57,9 @@ repository, the hosted preview stays private, and nothing is said to be live.
 Later on 12 November (jury check) the claims were made to agree: Purser Cloud runs publicly as a test preview at
 purser-try (test companies, test money on a simulated bank), so the sentence became "Purser Cloud: a public test preview
 (test companies, simulated bank)." ([cloud.md](../cloud.md)).
+On 14 November (jury, round 3) the Visa line covers all four Visa runs from their records (7 to 14 November, 6 paid)
+and the reused credential Purser refused (vic-5) that the sandbox had accepted (vic-3), in place of the 7 November run
+alone ([visa-1114.md](../plans/visa-1114.md)).
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.
@@ -77,7 +80,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
 - Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
 - Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step.
-- Visa Intelligent Commerce via Airwallex's Airi: every check passes; each confirmed in Airi, above Purser's limit only after Face ID; a disallowed merchant refused first.
+- Visa Intelligent Commerce via Airwallex's Airi (sandbox, 4 runs 7–14 Nov, 6 paid): above Purser's limit only after Face ID; a reused credential refused by Purser before any call (14 Nov), which the sandbox had accepted (12 Nov).
 
 **After the kit.** Airwallex held a test-passkey payout; a person approved; PAID (simulated). Purser Cloud: a public test preview (test companies, simulated bank; Agents and Tokenisation tabs).
 
@@ -100,7 +103,8 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
      booked and filed. Change what you signed: refused.
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
-     Commerce via Airwallex's Airi (7 November; Airwallex sandbox, test card, test money; every check passes). The walkthrough
+     Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
+     credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
      (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
@@ -121,12 +125,13 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.
 - The Airwallex-only run, awx-1 (7 November; sandbox, test money): <https://kit11.max-31b.workers.dev/airwallex#awx-1>
-- Visa Intelligent Commerce via Airwallex's Airi, a live run (7 November; Airwallex sandbox, test card, test money):
-  <https://kit11.max-31b.workers.dev/airwallex#airi-run>
+- Visa Intelligent Commerce via Airwallex's Airi, 4 live runs (7 to 14 November; Airwallex sandbox, test card, test
+  money): <https://kit11.max-31b.workers.dev/visa>; the latest, 14 November:
+  <https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-vic-5.md>
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
-- Outside the entry: Visa TAP, in the closed fold at the foot of <https://kit11.max-31b.workers.dev/visa>. The
+- Outside the entry: Visa TAP, in its own section near the foot of <https://kit11.max-31b.workers.dev/visa>. The
   Sourcing agent signed its card checkout with Visa's Trusted Agent Protocol (TAP) in its own run; Visa TAP: built and
-  verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi run above (Visa
+  verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi runs above (Visa
   Intelligent Commerce).
 
 ## Screenshots

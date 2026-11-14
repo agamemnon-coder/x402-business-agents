@@ -60,7 +60,10 @@ function chip(p: Vic3Purchase, o: { reason?: boolean } = {}): string {
 /** A path of steps; the purchases that ended at a step stand under it. */
 function lane(title: string, cls: string, steps: { name: string; at: Vic3Purchase[] }[]): string {
   const items = steps.map((s, i) => `<li class="vh-s${s.at.length ? " vh-has" : ""}"><span class="vh-n">${esc(s.name)}</span>${s.at.length ? `<span class="vh-at">${s.at.map((p) => chip(p, { reason: outcomeOf(p) !== "paid" && outcomeOf(p) !== "paid-faceid" })).join("")}</span>` : ""}</li>${i < steps.length - 1 ? `<li class="vh-arr" aria-hidden="true">${ARROW}</li>` : ""}`).join("");
-  return `<div class="vh-lane ${cls}"><p class="vh-lt">${esc(title)}</p><ol class="vh-steps">${items}</ol></div>`;
+  // Jury round 3, 14 Nov: a lane no purchase of the run reached says so, rather than standing empty (vic-5 has none
+  // within the limit).
+  const none = steps.every((s) => !s.at.length) ? `<p class="vh-none">${esc("None in this run.")}</p>` : "";
+  return `<div class="vh-lane ${cls}${none ? " vh-empty" : ""}"><p class="vh-lt">${esc(title)}</p><ol class="vh-steps">${items}</ol>${none}</div>`;
 }
 
 /**
@@ -139,6 +142,7 @@ export const VISA_HERO_CSS = `
 .vh-lane { border-left: 3px solid var(--border); padding: 2px 0 2px 12px; }
 .vh-l-ok { border-left-color: var(--ok); } .vh-l-face { border-left-color: var(--accent); } .vh-l-bad { border-left-color: var(--bad); }
 .vh-lt { margin: 0 0 8px; font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.vh-none { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); font-style: italic; }
 .vh-at { display: flex; flex-wrap: wrap; gap: 6px; }
 .vh-c { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; border: 1px solid; font-size: 13px; line-height: 1.3; max-width: 100%; }
 .vh-c b { font-weight: 700; } .vh-am { font-variant-numeric: tabular-nums; }
