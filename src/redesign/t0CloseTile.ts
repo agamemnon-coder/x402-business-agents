@@ -8,10 +8,16 @@ import { closeCheckText, type CloseCheck } from "../accounting/closeGate.js";
 import { entriesOfRecord, recordedCloseCheck, T0_READBACK_FILE, T0_READBACK_PATH, type ReadBackRecord } from "../accounting/t0Readback.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
+import { MESSAGES } from "../ui/i18n.js";
+
+const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 export const T0_CLOSE_ID = "t0-close-check";
 export const T0_CLOSE_HEADING = "Independent ledger check";
-export const T0_CLOSE_RULE = "Books close only when T:0 agrees: one cent off keeps the month open and names the entry.";
+// One wording with Purser Cloud's Books tab (jury scan, 14 Nov): the rule and the source line are its catalogue's own.
+export const T0_CLOSE_RULE = MESSAGES.en["cs.books.t0_rule"];
+/** "Read back from T:0 on 14 Nov 2026, read only. T:0 sandbox, test data.", the day as Cloud writes it. */
+export const t0SourceLine = (iso: string) => MESSAGES.en["cs.books.t0_src"].replace("{day}", DAY.format(new Date(iso)));
 
 export interface T0CloseFacts { check: CloseCheck; text: string; readAt: string; entries: number }
 
@@ -28,7 +34,7 @@ function readRecord(): string | null {
   try { return readFileSync(new URL(`../../${T0_READBACK_FILE}`, import.meta.url), "utf8"); } catch { return null; }
 }
 
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
 
 export const T0_CLOSE_CSS = `.t0c { padding: 16px 18px; display: grid; gap: 6px; border-left: 4px solid var(--ok); }
 .t0c.bad { border-left-color: var(--bad, #b42318); }
@@ -47,7 +53,7 @@ export function t0CloseTileHtml(f: T0CloseFacts | null = t0CloseFacts()): string
 <h2>${icon(ok ? "circle-check" : "triangle-alert", 20)}${esc(T0_CLOSE_HEADING)}</h2>
 <p class="t0c-says">${esc(f.text)}</p>
 <p>${esc(T0_CLOSE_RULE)}</p>
-<p class="t0c-src">${esc(`Read back ${DAY.format(new Date(f.readAt))}, read only. T:0 sandbox, test data.`)}</p>
+<p class="t0c-src">${esc(t0SourceLine(f.readAt))}</p>
 <p class="t0c-links"><a href="${esc(T0_READBACK_PATH.slice(1))}" download>${esc(`Download the read-back (ids, amounts, times)`)}</a><a href="${esc(`${REPO_BLOB}src/accounting/closeGate.ts`)}" target="_blank" rel="noopener">${esc("The check")} ↗</a></p>
 </section>`;
 }

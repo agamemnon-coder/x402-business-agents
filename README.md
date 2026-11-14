@@ -52,7 +52,7 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 | **Alta** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | Testnet, live transactions, test money | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
 | **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | Airwallex sandbox, live calls, test card; a headless browser typed the card into Airwallex's hosted page | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
 | **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | Live calls | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
-| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | Shared sandbox ledger, live calls | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
+| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, checked against our books: every account to the cent, plus the entry count | Shared sandbox ledger, live calls | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
 
 No endorsement implied.
 
@@ -319,7 +319,7 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a Visa credential Purser binds to one purchase (the sandbox did not refuse a reuse or a higher amount, Purser did: [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md)). This is
   the work entered for the Visa Award (Visa confirmed on 7 Nov that the VIC run counts). The Visa TAP work is an extra:
   Visa said on 5 Nov that TAP is not eligible tooling for this hackathon ([rules](docs/rules.md)). [/visa](https://kit11.max-31b.workers.dev/visa)
-- **T:0 (shared sandbox entity):** a general ledger outside Purser. On 10 Nov the main run's books went in as 95 journal entries, debits equal to credits, matched line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)). [/t0](https://kit11.max-31b.workers.dev/t0)
+- **T:0 (shared sandbox entity):** a general ledger outside Purser. On 10 Nov the main run's books went in as 95 journal entries, debits equal to credits ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)); read back on 14 Nov, T:0 agrees: every account to the cent, plus the entry count. [/t0](https://kit11.max-31b.workers.dev/t0)
 - **Cloudflare:** Workers and Durable Objects run the relay, the site and Purser Cloud's engine (one object per company).
 
 ## Repository map

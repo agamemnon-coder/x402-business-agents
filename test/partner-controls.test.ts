@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { T0_READBACK_FILE, type ReadBackRecord } from "../src/accounting/t0Readback.js";
+import { MESSAGES } from "../src/ui/i18n.js";
 import { t0CloseFacts, t0CloseTileHtml, T0_CLOSE_ID, T0_CLOSE_RULE } from "../src/redesign/t0CloseTile.js";
 import { t0Body, t0Data } from "../src/redesign/t0Page.js";
 import { cardScene, visaCardSceneHtml, VISA_CARD_SCENE_ID } from "../src/redesign/visaCardScene.js";
@@ -25,7 +26,9 @@ describe("/t0: the independent ledger check", () => {
     expect(words).toContain("Independent ledger check");
     expect(words).toContain("T:0 agrees: all 95 of our journal entries are in T:0, and every account matches our books to the cent.");
     expect(words).toContain(T0_CLOSE_RULE);
-    expect(words).toContain("Read back 14 Nov, read only. T:0 sandbox, test data.");
+    // 14 Nov (jury scan): one wording with Purser Cloud's Books tab, the day with its year.
+    expect(words).toContain("Read back from T:0 on 14 Nov 2026, read only. T:0 sandbox, test data.");
+    expect(T0_CLOSE_RULE).toBe(MESSAGES.en["cs.books.t0_rule"]);
     expect(words).not.toMatch(/\b95\s*\/\s*95\b|\b95 of 95\b/);
     expect(html).toContain('href="t0-readback.json" download');
     expect(t0Body(t0Data(), { logo: "", pill: "" })).toContain(`id="${T0_CLOSE_ID}"`);

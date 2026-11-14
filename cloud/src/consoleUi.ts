@@ -128,7 +128,7 @@ function t0CloseCard(){
     el('p','says',c.agrees?t('cs.books.t0_agrees',{n:c.entries}):t('cs.books.t0_differs',{n:c.differences})),
     !c.agrees&&c.first?el('p','sub mono',c.first):null,
     el('p','',t('cs.books.t0_rule')),
-    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})),
+    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})+' '+t('cs.books.t0_whose')),
     el('p','links',[dl,pg])])}
 // One currency's balance sheet: liabilities plus equity (capital and this year's result) against assets, in cents.
 const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0);return {left:v.assets_cents||0,right,balanced:(v.assets_cents||0)===right}};
