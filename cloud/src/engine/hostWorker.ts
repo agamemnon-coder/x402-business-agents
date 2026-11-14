@@ -37,6 +37,11 @@ import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
+import { airwallexActions, type ActNote, type ActStore } from "../../../src/engine/awxActions.js";
+import type { GatewayPort } from "../../../src/airwallex/gateway.js";
+import type { Bank } from "../../../src/airwallex/routedRail.js";
+import { cloudGuard } from "./awxGuard.js";
+import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
 import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
@@ -56,6 +61,26 @@ export interface HostEnv {
    * Airwallex sandbox key (cloud/wrangler.try.jsonc). purser-try only; never the product's deployment.
    */
   AWX_FX?: LiveFxSource & PayoutSource;
+  /**
+   * The Airwallex gateway: a service binding to kit11's AwxGateway entrypoint (cloud/wrangler.try.jsonc). Absent: every
+   * action runs on the simulated bank, labelled. The kit11 Worker holds the sandbox key; this Worker never does.
+   */
+  AWX_GATEWAY?: GatewayPort;
+}
+
+/** The Airwallex route table and notes in the object's own SQLite (ids and labels only: never a key, never an account). */
+function doActStore(storage: DoStorage): ActStore {
+  storage.sql.exec("CREATE TABLE IF NOT EXISTS awx_routes (key TEXT PRIMARY KEY, bank TEXT NOT NULL, twin TEXT) WITHOUT ROWID");
+  storage.sql.exec("CREATE TABLE IF NOT EXISTS awx_notes (seq INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, ref TEXT NOT NULL, what TEXT NOT NULL, bank TEXT NOT NULL, label TEXT NOT NULL)");
+  return {
+    get: (key) => {
+      const r = storage.sql.exec("SELECT bank, twin FROM awx_routes WHERE key = ?", key).toArray()[0] as { bank: Bank; twin: string | null } | undefined;
+      return r ? { bank: r.bank, twin: r.twin ?? null } : null;
+    },
+    set: (key, row) => { storage.sql.exec("INSERT INTO awx_routes (key, bank, twin) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET bank = excluded.bank, twin = excluded.twin", key, row.bank, row.twin); },
+    note: (n) => { storage.sql.exec("INSERT INTO awx_notes (at, ref, what, bank, label) VALUES (?, ?, ?, ?, ?)", n.at, n.ref, n.what, n.bank, n.label.slice(0, 400)); },
+    notes: (limit = 50) => storage.sql.exec("SELECT at, ref, what, bank, label FROM awx_notes ORDER BY seq DESC LIMIT ?", limit).toArray() as unknown as ActNote[],
+  };
 }
 
 const FX_NOTES = "CREATE TABLE IF NOT EXISTS awx_fx_notes (quote_id TEXT PRIMARY KEY, note TEXT NOT NULL)";
@@ -123,8 +148,13 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   const payoutFor = payoutOn
     ? (proposalId: string, termsSha256: string, terms: Record<string, unknown>) => sandboxPayout({ ...payoutKit, proposalId, termsSha256, terms })
     : null;
+  // Purser Cloud's Airwallex actions: the simulated bank and the Airwallex sandbox behind one rail, the Cloud's guard in front.
+  // The simulated side is /try's quoting bank when it has one (./liveFx.ts), else the stand-in itself.
+  const actStore = doActStore(storage);
+  const guard = cloudGuard({ sql: d1Sql(env.DB), tenantId, gateway: !!env.AWX_GATEWAY });
+  const awx = wireAirwallex({ bank: rail, store: actStore, guard, port: env.AWX_GATEWAY ?? null });
   const host = new EngineHost({
-    db, reader: parserOnly, rails: { rail, sim: bank }, afterMoney: keepBank,
+    db, reader: parserOnly, rails: awx.rails, afterMoney: keepBank, payeeVerifier: awx.verifier,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     ...withClaude(env, sql, tenantId),
@@ -140,6 +170,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     await host.seed();
     state.set("seeded", new Date().toISOString());
   }
+  const acts = airwallexActions({ host, db, rail: awx.routed, guard, store: actStore, caps: () => guard.caps() });
   /** After an action that followed payments: the bank as it stands now is the one kept. */
   const kept = async <T>(action: Promise<T>): Promise<T> => { try { return await action; } finally { keepBank(); } };
   const api: EngineApi = {
@@ -148,7 +179,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     upload: async (doc) => host.upload(doc),
     invoices: async () => host.invoices(),
     invoice: async (id) => host.invoice(id),
-    propose: async (invoiceId) => host.propose(invoiceId),
+    propose: async (invoiceId) => kept(acts.propose(invoiceId)),
     proposal: async (id) => host.proposal(id),
     // The Worker hands the request's relying party (../hostOrigin.ts); one it may not use is not taken: the object's own is.
     passkeyStart: async (rp) => host.passkeyStart(rp && rpAllowed(rp, own) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
@@ -156,8 +187,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     securityKeyStart: async (a) => host.securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, own) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
     securityKeyFinish: async (a) => host.securityKeyFinish(a),
     proposeSecondKey: async (changes) => host.proposeSecondKey(changes),
-    approve: async (a) => kept(host.approve(a)),
-    retry: async (proposalId) => kept(host.retry(proposalId)),
+    approve: async (a) => kept(acts.approve(a)),
+    retry: async (proposalId) => kept(acts.retry(proposalId)),
     sync: async () => kept(host.sync()),
     events: async (after, limit) => host.events(after, limit),
     vaultFiles: async () => host.vaultFiles(),
@@ -178,7 +209,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     // Step 2 (./livePayout.ts): a paid test payment, once its signature was verified, also asked of the Airwallex sandbox
     // as one transfer (test money), under the switch awx_payout; the note on it comes with the answer.
     paySigned: async (id, sent, credential) => {
-      const out = await kept(host.paySigned(id, sent, credential));
+      const out = await kept(acts.runAt(id, () => host.paySigned(id, sent, credential)));
       if (!payoutFor || !out || "bad" in out || (out.outcome !== "paid" && out.outcome !== "paid_once")) return out;
       const t = host.terms(id);
       if (!t) return out;
@@ -186,6 +217,10 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
       return { ...out, airwallex_payout: note };
     },
     payoutSimulate: async (proposalId) => payoutOn ? simulatePayout({ ...payoutKit, proposalId }) : { ok: false as const, reason: "no_binding" as const, note: null },
+    addSupplier: async (invoiceId, v) => kept(acts.addSupplier(invoiceId, v)),
+    proposeBatch: async (ids) => kept(acts.proposeBatch(ids)),
+    depositIn: async (a) => kept(acts.depositIn(a)),
+    airwallex: async () => acts.view(),
     exportBatch: async () => host.exportBatch(),
     exportPdf: async () => host.exportPdf(),
     // The object does this itself (it must also forget this host); here for the interface's sake.

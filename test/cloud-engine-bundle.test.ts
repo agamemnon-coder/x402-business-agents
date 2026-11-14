@@ -95,6 +95,8 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // 2,441,268; inside the same budget.
   // Then the agents learning from the CFO's past decisions (src/learning, cloud/src/learning.ts, the Agents tab's block in
   // two languages), with main at ba9cf4d merged: 11,678,343 bytes, gzipped 2,493,591; inside the same budget.
+  // Then Purser Cloud's Airwallex actions (the gateway client, the routed rail, the engine's Airwallex adapters in the
+  // object): 11,635,948 bytes with #333 and #330, gzipped 2,456,708 (Cloudflare limits the compressed size: 3 MiB free, 10 MiB paid).
   it("stays under 11.5 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
     expect(bytes).toBeLessThan(11.5 * 1024 * 1024);

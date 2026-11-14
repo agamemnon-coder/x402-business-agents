@@ -2,6 +2,8 @@
 // that holds the relay's state (the runner's last push, the queue, the tickets), so all of them see it in order.
 
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { AwxGatewayDesk, type GatewayEnv } from "./awxGateway.js";
+import type { GatewayAnswer, GatewayRequest } from "../../src/airwallex/gatewayRules.js";
 import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
@@ -22,7 +24,7 @@ import { AWX_EVENTS_PATH, type AwxEventsAnswer } from "./awxEvents.js";
 import { awxBooksResponse, booksCache, isAwxBooksPath } from "./awxBooks.js";
 import type { AwxBadgeCache } from "../../src/finance/awxBadge.js";
 
-export interface Env {
+export interface Env extends GatewayEnv {
   RELAY: DurableObjectNamespace<RelayObject>;
   /** The runner's bearer token, set with `wrangler secret put RELAY_TOKEN` by npm run relay:deploy. */
   RELAY_TOKEN: string;
@@ -234,6 +236,22 @@ export class AwxFx extends WorkerEntrypoint<Env> {
   /** Step 2's labelled "Sandbox: move to PAID": the sandbox's own simulation of the company's transfer. */
   async payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
     return this.payoutStub().awxPayoutSimulate(a);
+  }
+}
+
+/**
+ * The Airwallex gateway for Purser Cloud's actions (./awxGateway.ts): a named entrypoint, reached only through Purser
+ * Cloud's service binding (cloud/wrangler.try.jsonc, AWX_GATEWAY), never by an HTTP request. Allow-listed calls to the
+ * Airwallex sandbox only; writes need AWX_GATEWAY_WRITE=on.
+ */
+export class AwxGateway extends WorkerEntrypoint<Env> {
+  private desk?: AwxGatewayDesk;
+  async call(r: GatewayRequest): Promise<GatewayAnswer> {
+    // Its own key when the owner set one (AWX_ACT_*), else the Worker's one sandbox key; the allow-list, AWX_GATEWAY_WRITE and
+    // Purser Cloud's switch and caps stay the locks either way. The key is read here and handed to the desk only.
+    const id = this.env.AWX_ACT_CLIENT_ID ?? this.env.AIRWALLEX_CLIENT_ID;
+    const key = this.env.AWX_ACT_API_KEY ?? this.env.AIRWALLEX_API_KEY;
+    return (this.desk ??= new AwxGatewayDesk({ AWX_ACT_CLIENT_ID: id, AWX_ACT_API_KEY: key, AWX_GATEWAY_WRITE: this.env.AWX_GATEWAY_WRITE })).call(r);
   }
 }
 

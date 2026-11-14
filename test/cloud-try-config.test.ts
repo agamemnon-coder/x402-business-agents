@@ -38,6 +38,10 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "vars.ORIGIN": [expect.any(String), "https://purser-try.max-31b.workers.dev"],
       // Its own database, created on 12 November: wrangler d1 create purser-try.
       "d1_databases.0.database_id": [base.get("d1_databases.0.database_id"), expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)],
+      // 14 Nov: Purser Cloud's Airwallex actions, through kit11's named entrypoint (no key in this Worker).
+      "services.3.binding": [undefined, "AWX_GATEWAY"],
+      "services.3.service": [undefined, "kit11"],
+      "services.3.entrypoint": [undefined, "AwxGateway"],
       "vars.ENGINE_MODE": [undefined, "test_money"],
       // Capabilities only: lane C's switches decide at run time, and a missing switch is off.
       "vars.HANDS_ON": [undefined, "on"],

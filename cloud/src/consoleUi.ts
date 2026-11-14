@@ -335,7 +335,7 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')),getDoc]),pages]);
   // The payment card where the person acts, or the proof once paid, first; then the checks, the entries it produced; the
   // panel "At work" last; without an engine, the note that the phone approves. On a phone this column comes first.
-  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,eng?awxCard(id):null,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
   view().replaceChildren(back,top,trail,el('div','split inv',[el('div','docs',[paper,doc]),stack]));
   readJournal();
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
