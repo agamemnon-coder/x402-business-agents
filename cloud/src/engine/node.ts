@@ -19,6 +19,7 @@ import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
 import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
+import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -33,6 +34,8 @@ export interface NodeEngineEnv {
    * when handed in (tests and local checks, with a stand-in source), for every company of this process.
    */
   liveFx?: { source: LiveFxSource; allowed: () => Promise<boolean> };
+  /** /try's sandbox payout (./livePayout.ts), the same way: a stand-in source in tests and local checks. */
+  livePayout?: { source: PayoutSource; allowed: () => Promise<boolean> };
 }
 
 /** A ledger's documents in memory: no file is written anywhere. */
@@ -44,7 +47,7 @@ function memoryDocs(): DocStore {
   };
 }
 
-interface Engine { db: DB; host: EngineHost; fxNote: (terms: unknown) => FxQuoteNote | null }
+interface Engine { db: DB; host: EngineHost; fxNote: (terms: unknown) => FxQuoteNote | null; payoutNotes: Map<string, string> }
 
 /** The company's engine, made on first use: its name and language are read once, and the treasury's test money is seeded. */
 async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
@@ -67,7 +70,7 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS } : {}),
   });
   await host.seed();
-  return { db, host, fxNote: (terms) => (fx ? fx.noteFor(terms) : null) };
+  return { db, host, fxNote: (terms) => (fx ? fx.noteFor(terms) : null), payoutNotes: new Map() };
 }
 
 /** A visitor's test company (t_try_...) holds at most this many documents, whatever route brings them. */
@@ -108,6 +111,8 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       forgetPasskey: async (person) => (await host()).forgetPasskey(person),
       samples: async () => (await host()).samples(),
       uploadSample: async (key) => (await host()).uploadSample(key),
+      clearHold: async (id) => (await host()).clearHold(id),
+      rejectHold: async (id) => (await host()).rejectHold(id),
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
       terms: async (id) => {
@@ -117,7 +122,24 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
         const note = t ? fxNote(t.terms) : null;
         return t && note ? { ...t, fx_quote: note } : t;
       },
-      paySigned: async (id, sent, credential) => (await host()).paySigned(id, sent, credential),
+      paySigned: async (id, sent, credential) => {
+        const out = await (await host()).paySigned(id, sent, credential);
+        if (!env.livePayout || !out || "bad" in out || (out.outcome !== "paid" && out.outcome !== "paid_once")) return out;
+        const { host: h, db, payoutNotes } = await engines.get(tenantId)!;
+        const t = h.terms(id);
+        if (!t) return out;
+        const note = await sandboxPayout({
+          company: tenantId, proposalId: id, termsSha256: t.terms_sha256, terms: t.terms as unknown as Record<string, unknown>, source: env.livePayout.source, allowed: env.livePayout.allowed, db,
+          keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } },
+        });
+        return { ...out, airwallex_payout: note };
+      },
+      payoutSimulate: async (proposalId) => {
+        await host();
+        const { db, payoutNotes } = await engines.get(tenantId)!;
+        if (!env.livePayout) return { ok: false as const, reason: "no_binding" as const, note: null };
+        return simulatePayout({ company: tenantId, proposalId, source: env.livePayout.source, allowed: env.livePayout.allowed, db, keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } } });
+      },
       exportBatch: async () => (await host()).exportBatch(),
       exportPdf: async () => (await host()).exportPdf(),
       wipe: async () => {

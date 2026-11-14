@@ -9,6 +9,7 @@ import type { EngineEvent } from "../../../src/engine/events.js";
 import type { InvoiceView, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
 import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
 import type { FxQuoteNote } from "./liveFx.js";
+import type { PayoutNote, SimulateReason } from "./livePayout.js";
 
 export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, PaySignedResult, ProposalView, Settled, SupplierOnFile, TermsView, UploadResult, VaultFile };
 
@@ -63,6 +64,10 @@ export interface EngineApi {
   samples(): Promise<{ key: string; title: string; filename: string }[]>;
   /** A sample through the inbox; null for a key that is not a sample. The document cap applies, in the engine's words. */
   uploadSample(key: string): Promise<UploadResult | null>;
+  /** The hands-on demo's sandbox override of a possible duplicate by the same total (src/engine/host.ts clearHold). */
+  clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
+  /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
+  rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
   suppliers(): Promise<SupplierOnFile[]>;
   /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
@@ -73,7 +78,12 @@ export interface EngineApi {
    */
   terms(proposalId: string): Promise<(TermsView & { fx_quote?: FxQuoteNote }) | null>;
   /** The one pay route: the sent terms with the browser's own signature, through the verifier and the executor's gate; pays only the signed terms. */
-  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null>;
+  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<(PaySignedResult & { airwallex_payout?: PayoutNote }) | { bad: string } | null>;
+  /**
+   * purser-try's "Sandbox: move to PAID" (./livePayout.ts): the proposal's Airwallex sandbox transfer moved by the
+   * sandbox's own simulation; the note as it now stands, or why it was not moved. Elsewhere: { ok: false, no_binding }.
+   */
+  payoutSimulate(proposalId: string): Promise<{ ok: true; note: PayoutNote } | { ok: false; reason: SimulateReason; note: PayoutNote | null }>;
   /** The company in the product's sync format (the batches a runner's push sends), with no archive files. */
   exportBatch(): Promise<{ format: "purser.cloud-sync/v1"; company: string; made_at: string; batches: Record<string, unknown>[] }>;
   /** The same records as an A4 PDF a person reads (src/engine/recordsPdf.ts). */
@@ -93,4 +103,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch", "exportPdf"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "payoutSimulate", "exportBatch", "exportPdf"] as const);

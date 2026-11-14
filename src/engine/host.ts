@@ -15,8 +15,8 @@ import { seedTreasury } from "../agents/euroBill.js";
 import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
 import { docStoreOf } from "../ap/docStore.js";
-import { ingestDocument, type IngestResult } from "../ap/inbox.js";
-import { earlyPayer, payApInvoice, syncPayments } from "../ap/pay.js";
+import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
+import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
@@ -42,7 +42,7 @@ import { sha256, type VaultSink } from "../vault/sink.js";
 import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { invoicePdf } from "./invoicePdf.js";
-import { checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
+import { BILL_TO_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
 import { recordsPdf } from "./recordsPdf.js";
@@ -733,11 +733,68 @@ export class EngineHost {
     return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
   }
 
-  /** A sample through the inbox, as an upload of its PDF; null for a key that is not a sample. */
+  /**
+   * A sample through the inbox, as an upload of its PDF; null for a key that is not a sample. The clean sample a second
+   * time in the same company (14 Nov, owner: "running the demo a second time must always work") is a new invoice from
+   * the same supplier: a fresh number, today's date and its own amount (freshClean), so the standard run is never held
+   * by the visitor's own earlier run. Every other sample stays the very same file, on purpose: they show the holds.
+   */
   uploadSample(key: string): Promise<UploadResult | null> {
     return this.act(async () => {
       const s = (this.deps.samples ?? []).find((x) => x.key === key);
-      return s ? this.ingest({ bytes: Buffer.from(s.base64, "base64"), filename: s.filename, mime: "application/pdf" }) : null;
+      if (!s) return null;
+      const bytes = Buffer.from(s.base64, "base64");
+      if (key === CLEAN_SAMPLE && this.deps.db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(sha256(bytes))) {
+        const fields = this.freshClean();
+        const pdf = await invoicePdf({ fields, supplierKey: supplierKey(fields.supplier.name), billTo: BILL_TO_SAMPLE });
+        return this.ingest({ bytes: pdf, filename: `bergtex-${fields.invoiceNo}.pdf`, mime: "application/pdf" });
+      }
+      return this.ingest({ bytes, filename: s.filename, mime: "application/pdf" });
+    });
+  }
+
+  /**
+   * The clean sample's next run: the n-th re-run is BTX-2026-<30+n> (the first number not yet filed), dated today, due in
+   * 14 days, EUR 12.50 times n more than the clean sample, so it is neither the same invoice nor the same total as any
+   * earlier run (the duplicate checks stay as they are). Test data, the clean sample's supplier and IBAN on file.
+   */
+  private freshClean(): InvoiceFields {
+    const taken = new Set((this.deps.db.prepare("SELECT invoice_no FROM ap_invoices").all() as { invoice_no: string }[]).map((r) => r.invoice_no));
+    let n = 1;
+    while (taken.has(`BTX-2026-${30 + n}`) && n < 500) n++;
+    const day = (plus: number) => new Date(this.now().getTime() + plus * 86_400_000).toISOString().slice(0, 10);
+    return { ...CLEAN, invoiceNo: `BTX-2026-${30 + n}`, amountCents: CLEAN.amountCents + 1_250 * n, issueDate: day(0), dueDate: day(14) };
+  }
+
+  /**
+   * The hands-on demo's sandbox override of a hold (14 Nov, owner): a possible duplicate by the same total (twin_of) is
+   * cleared with the inbox's own person's path (clearPossibleDuplicate: kept per pair, in the audit log as
+   * ap.duplicate_cleared by a person), then checked again; every other check still applies, and nothing is paid before the
+   * passkey signs the exact terms. In production a second person would review it. A match on the invoice number, an exact
+   * duplicate, changed bank details or a new supplier are never cleared this way: those can only be rejected.
+   */
+  clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      try {
+        const next = await this.withClaude(`engine.clear:${id}`, (reader) => clearPossibleDuplicate(this.deps.db, { now: () => this.now(), reader }, id,
+          { by: "You (visitor)", note: "cleared on the hands-on demo (sandbox): a new invoice, not the same one", actor: "human" }));
+        if (next.status === "ready") this.startEarlyPayer(next.id);
+        return { ok: true as const, invoice: this.view(next) };
+      } catch (e) {
+        return { ok: false as const, reason: message(e) };
+      }
+    });
+  }
+
+  /** The hands-on demo's Reject of a held invoice: the inbox's own rejection, with its reason kept; nothing is paid. */
+  rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      try {
+        const next = await rejectApInvoice(this.deps.db, id, "rejected by the visitor on the hands-on demo (sandbox)", {}, this.now());
+        return { ok: true as const, invoice: this.view(next) };
+      } catch (e) {
+        return { ok: false as const, reason: message(e) };
+      }
     });
   }
 

@@ -2,7 +2,7 @@
 // tab, at laptop and phone width. The cloud's gateway is the real one (worker/src/awxRead.ts) over a stand-in for the
 // sandbox that answers ONLY with rows the repo's records hold from earlier live sandbox runs (ids and amounts as recorded:
 // docs/runs/2026-11-12-airwallex-financial-transactions.json, docs/demo/airwallex-run.json, the payee check's record).
-// Views no record holds (balances, rates, receiving accounts, cards) answer HTTP 503 here, so the page shows its
+// Views neither a record nor the live read below holds (receiving accounts, cards) answer HTTP 503 here, so the page shows its
 // "Airwallex sandbox unavailable" state for them: nothing is made up. The live page is read after the deploy.
 // It checks: every card ends live or unavailable (never stuck loading), the reconciliation says "0 differences" only as
 // computed, ids are in full with a copy button, no console or CSP errors, nothing wider than the phone.
@@ -35,10 +35,21 @@ const transfers = run.invoices.filter((i) => i.transfer_id).map((i) => ({ id: i.
 // The beneficiary the recorded runs paid (src/cli/awxDepth.ts, STOCKLINE).
 const beneficiaries = [{ id: "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb", beneficiary: { entity_type: "COMPANY", company_name: "Stockline Data GmbH", bank_details: { iban: "DE02120300000000202051", bank_country_code: "DE", account_currency: "EUR" } } }];
 
+// Balances and rates as the deployed gateway read them live from the sandbox (14 Nov, 18:50 UTC): the four currencies
+// with money, and 42 more at 0 (the sandbox lists every currency it offers); the rates with their currency pair.
+const LIVE_NONZERO = [["CNY", "10000000", "10000000"], ["EUR", "9970627", "9970954.99"], ["GBP", "10001085.5", "10001085.5"], ["USD", "9994630.19", "9994630.19"]];
+const ZERO = ["AED", "ARS", "AUD", "BDT", "BHD", "BOB", "BRL", "CAD", "CHF", "CLP", "COP", "CZK", "DKK", "EGP", "HKD", "HUF", "IDR", "ILS", "INR", "JPY", "KES", "KRW", "LKR", "MAD", "MXN", "MYR", "NGN", "NOK", "NPR", "NZD", "PEN", "PHP", "PKR", "PLN", "RON", "SAR", "SEK", "SGD", "THB", "TRY", "UYU", "VND"];
+const balancesLive = [...LIVE_NONZERO.map(([currency, available, total]) => ({ currency, available_amount: available, pending_amount: 0, reserved_amount: 0, total_amount: total })),
+  ...ZERO.map((currency) => ({ currency, available_amount: 0, pending_amount: 0, reserved_amount: 0, total_amount: 0 }))];
+const ratesLive: Record<string, { rate: number; currency_pair: string }> = { "USD>EUR": { rate: 1.116374, currency_pair: "EURUSD" }, "GBP>EUR": { rate: 0.844602, currency_pair: "EURGBP" }, "EUR>USD": { rate: 1.08768, currency_pair: "EURUSD" } };
+
 const standIn = (async (input: string) => {
-  const p = new URL(input).pathname;
+  const u = new URL(input), p = u.pathname;
+  if (p === "/api/v1/balances/current") return Response.json(balancesLive);
+  if (p === "/api/v1/fx/rates/current") { const sell = u.searchParams.get("sell_currency"), buy = u.searchParams.get("buy_currency"); return Response.json({ sell_currency: sell, buy_currency: buy, ...ratesLive[`${sell}>${buy}`] }); }
   if (p === "/api/v1/authentication/login") return Response.json({ token: "stand-in-token-" + "x".repeat(30) }, { status: 201 });
   if (p === "/api/v1/financial_transactions") return Response.json({ items: ft, has_more: false });
+  if (p.startsWith("/api/v1/transfers/")) { const x = transfers.find((t) => t.id === p.split("/").pop()); return x ? Response.json(x) : Response.json({ code: "not_found" }, { status: 404 }); }
   if (p === "/api/v1/transfers") return Response.json({ items: transfers });
   if (p === "/api/v1/beneficiaries") return Response.json({ items: beneficiaries });
   return Response.json({ code: "unavailable" }, { status: 503 });
@@ -74,13 +85,22 @@ try {
     const states = await page.$$eval(".awcard", (cs) => cs.map((c) => [(c as HTMLElement).dataset.view, c.querySelector(".awlive") ? "live" : c.querySelector(".awbad") ? "unavailable" : "loading"]));
     const st = Object.fromEntries(states);
     ok(Object.values(st).every((s) => s !== "loading"), `${name}: every card ends live or unavailable (${JSON.stringify(st)})`);
-    ok(["reconcile", "financial", "transfers", "beneficiaries", "calls"].every((k) => st[k] === "live"), `${name}: the views the records hold read through the gateway`);
-    ok(["balances", "rates", "accounts", "issuing"].every((k) => st[k] === "unavailable"), `${name}: views no record holds say "Airwallex sandbox unavailable", nothing made up`);
+    ok(["balances", "rates", "reconcile", "financial", "transfers", "beneficiaries", "calls"].every((k) => st[k] === "live"), `${name}: the views the stand-in holds read through the gateway`);
+    ok(["accounts", "issuing"].every((k) => st[k] === "unavailable"), `${name}: views the stand-in does not hold say "Airwallex sandbox unavailable", nothing made up`);
+    // Balances: the four with money first, the 42 at 0 folded into one line.
+    ok(JSON.stringify(await page.$$eval(".aw-balances .awtile .awtl", (n) => n.map((x) => x.textContent))) === JSON.stringify(["EUR", "USD", "GBP", "CNY"]), `${name}: balances with money only, the books' currencies first`);
+    ok((await page.textContent(".aw-balances details.awzero summary"))?.trim() === "42 other currencies at 0.00", `${name}: the zeros folded into one line`);
+    await page.waitForTimeout(1300); // the count-up ends on Airwallex's own figure
+    ok((await page.textContent(".aw-balances .awtile b"))?.includes("9,970,627.00") === true, `${name}: the count-up ends on the real figure (${await page.textContent(".aw-balances .awtile b")})`);
+    // Rates: in the pair's own terms, buy side named.
+    const rates = await page.$$eval(".aw-rates .awtile", (n) => n.map((x) => [x.querySelector(".awtl")!.textContent, x.querySelector("b")!.textContent]));
+    ok(JSON.stringify(rates) === JSON.stringify([["Sell USD, buy EUR", "1 EUR = 1.116374 USD"], ["Sell GBP, buy EUR", "1 EUR = 0.844602 GBP"], ["Sell EUR, buy USD", "1 EUR = 1.08768 USD"]]), `${name}: the rates read the right way round (${JSON.stringify(rates)})`);
+    ok(await page.$eval(".awhead img.awlogo", (i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth === 2435), `${name}: the official logo, its own size, in the header`);
     const rec = await page.textContent(".aw-reconcile .awrec");
     ok(/^0 differences: all \d+ movements match to the cent\.$/.test(rec?.trim() ?? ""), `${name}: the reconciliation says 0 differences as computed (${rec?.trim()})`);
     const ids = await page.$$eval(".aw-transfers code.awid", (cs) => cs.map((c) => c.textContent));
     ok(ids.includes(transfers[0]!.id!) && ids.includes(run.invoices[0]!.approval_sha256), `${name}: transfer ids and approval hashes in full`);
-    ok((await page.$$eval(".aw-transfers .obadge.ok", (b) => b.length)) === transfers.length, `${name}: each recorded transfer's approval hash matches the record`);
+    ok((await page.$$eval(".aw-transfers .awrb.ok", (b) => b.length)) === transfers.length, `${name}: each recorded payout read back live by id, its hash a Match with the CFO's signed one`);
     if (name === "1440") {
       await page.click(".aw-transfers .awcopy");
       ok((await page.evaluate(() => navigator.clipboard.readText())) === transfers[0]!.id, `${name}: the copy button copies the full id`);
@@ -92,7 +112,16 @@ try {
     ok(/\d+ calls to the Airwallex sandbox/.test(callsText ?? ""), `${name}: the calls panel counts the calls (${callsText?.trim()})`);
     ok(!(await page.content()).includes("stand-in-token"), `${name}: no token on the page`);
     ok(errors.length === 0, `${name}: no console or CSP errors${errors.length ? ": " + errors.join(" | ") : ""}`);
-    if (shots) await page.screenshot({ path: join(shots, `console-airwallex-recorded-${name}.png`), fullPage: true });
+    if (shots) await page.screenshot({ path: join(shots, `console-airwallex-standin-${name}.png`), fullPage: true });
+    // The Overview's live card, apart from the demo month.
+    await page.click("#tabs a[data-tab='overview']");
+    await page.waitForSelector(".awov .awlive", { timeout: 15_000 });
+    await page.waitForTimeout(1300);
+    const ov = await page.$eval(".awov", (c) => c.textContent ?? "");
+    ok(/test money/.test(ov) && /simulated month/.test(ov) && /EUR/.test(ov) && /1 EUR = 1\.116374 USD/.test(ov), `${name}: the Overview card shows live balances and a rate, labelled apart from the demo month`);
+    ok(await page.$eval(".awov a.awov-go", (a) => a.getAttribute("href")) === "#/airwallex", `${name}: the Overview card opens the Airwallex tab`);
+    ok((await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)) <= 0, `${name}: the Overview is no wider than the screen`);
+    if (shots) await (await page.$(".awov"))!.screenshot({ path: join(shots, `console-overview-airwallex-standin-${name}.png`) });
     // The Agents tab links here.
     await page.goto(`${ORIGIN}/#/agents`);
     await page.waitForSelector("a[href='#/airwallex']:not([data-tab])");
