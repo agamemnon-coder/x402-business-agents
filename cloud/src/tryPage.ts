@@ -877,7 +877,10 @@ function livePanel(){
   // call is answered by the next row of the same reader or agent ("Answered."); once the answer is in, a call with no answer
   // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
   const rows=[];const shown=new Set();const asks=[];let done=null,n=0;
-  function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.what.textContent=W.asked}
+  // 14 Nov (live QA: "Reader · Claude … · 0.0 s · asked."): an answered call says how long it took by the engine's own
+  // timestamps, and its row keeps its time of day ("+n s"), never a running count stopped at 0.0 s.
+  function answer(k,e){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.t.textContent=a.at;
+    const end=e&&typeof e.ts==='string'?Date.parse(e.ts):NaN,d=end-a.ts;a.what.textContent=isFinite(d)&&d>=50?fill(W.answeredIn,{s:secs(d)}):W.asked}
   function order(){
     const lis=[...list.children];let carry=-Infinity;
     const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.ts!==null)carry=r.ts;return {li,ts:carry,i}});
@@ -885,7 +888,7 @@ function livePanel(){
     if(keyed.some((x,i)=>x.li!==lis[i]))for(const x of keyed)list.append(x.li);
   }
   function settle(ms){done=ms;
-    for(const a of asks)if(!a.answered){askClose(a.id);a.what.textContent=W.noAnswer}
+    for(const a of asks)if(!a.answered){askClose(a.id);a.t.textContent=a.at;a.what.textContent=W.noAnswer}
     order();
     const ts=rows.map((r)=>r.ts).filter((x)=>x!==null);if(ts.length){const last=Math.max(...ts);
       for(const r of rows)if(r.ts!==null)r.t.textContent=atOf(ms-(last-r.ts))}
@@ -900,7 +903,7 @@ function livePanel(){
   function add(items,t0){
     for(const e of items){
       const l=lineOf(e);
-      if(agentRow(e)&&!l.asking)answer(keyOf(e));
+      if(agentRow(e)&&!l.asking)answer(keyOf(e),e);
       // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
       if(!l.lead&&l.text===W.step)continue;
       const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
@@ -909,7 +912,7 @@ function livePanel(){
       const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]);
       list.append(li);
       if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
-      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false});askOpen(id,t)}
+      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,t,at:t.textContent,ts:typeof e.ts==='string'?Date.parse(e.ts):NaN,answered:false});askOpen(id,t)}
       if(!l.fold)say(l.who+' · '+l.text);
     }
     if(done!==null)settle(done);else past();
@@ -965,8 +968,37 @@ function drawResult(box,r,ms){
       // Held or refused (14 Nov, owner): why, big and first; the evidence; the rule; the engine's words, the round trip and
       // the invoice folded.
       const card=invoiceCard(inv);CLAUDE.slot=card.chip;
-      main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
-      box.append(whyNode(why,[...(why.words.length?[el('ul','',why.words.map((w)=>el('li','',w)))]:[]),...(took?[took]:[]),card.node]),main);chipFill();
+      // 14 Nov (owner: "with the sandbox you should always be able to override and try it again"): a possible duplicate by
+      // the same total can be cleared here (the inbox's own person's path), then signed as always; every hold can be
+      // rejected. Other holds (a number match, new bank details, a new supplier) are never cleared this way.
+      const id=encodeURIComponent(inv.id);
+      const clearable=inv.status==='needs_review'&&Array.isArray(inv.findings)&&inv.findings.some((f)=>f&&f.code==='possible_duplicate'&&f.twin_of);
+      const rejectable=['blocked','needs_review','needs_vendor'].indexOf(inv.status)>=0;
+      const said=el('div','');said.setAttribute('role','status');
+      const another=btn(C.work.another,!clearable);another.addEventListener('click',()=>show('invoice'));
+      const clear=clearable?btn(C.work.override,true):null;
+      const reject=rejectable?btn(C.work.reject):null;
+      if(clear)clear.addEventListener('click',async()=>{
+        clear.disabled=true;if(reject)reject.disabled=true;said.replaceChildren();
+        const r2=await api('POST','/v1/engine/invoices/'+id+'/clear');
+        if(S.screen!=='work')return;
+        const next=r2.json&&r2.json.invoice;
+        if(r2.status===200&&next&&next.status==='ready'){show('approve',{invoice:next});return}
+        clear.disabled=false;if(reject)reject.disabled=false;said.replaceChildren(note(words(r2.json,C.work.failed)));
+      });
+      if(reject)reject.addEventListener('click',async()=>{
+        reject.disabled=true;if(clear)clear.disabled=true;said.replaceChildren();
+        const r2=await api('POST','/v1/engine/invoices/'+id+'/reject');
+        if(S.screen!=='work')return;
+        if(r2.status===200){
+          // Rejected: nothing is paid; the way on is another invoice, now the main button.
+          if(clear)clear.remove();reject.remove();overrideNote.remove();another.className='btn primary big';
+          said.replaceChildren(el('p','big',C.work.rejected));another.focus();return}
+        reject.disabled=false;if(clear)clear.disabled=false;said.replaceChildren(note(words(r2.json,C.work.failed)));
+      });
+      const overrideNote=el('p','hint',clear?C.work.overrideNote:'');if(!clear)overrideNote.hidden=true;
+      main=clear||another;
+      box.append(whyNode(why,[...(why.words.length?[el('ul','',why.words.map((w)=>el('li','',w)))]:[]),...(took?[took]:[]),card.node]),said,el('div','acts hold',[clear,reject,clear?another:null,!clear?another:null].filter(Boolean)),overrideNote);chipFill();
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).

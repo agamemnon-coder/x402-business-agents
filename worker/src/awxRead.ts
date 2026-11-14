@@ -24,8 +24,9 @@ import type { Sql } from "./core.js";
 export const AWX_READ_PATH = "/internal/awx-read";
 
 type Method = "GET" | "POST";
-/** Every call this module may make: method, path (a fixed string) and the query keys it may carry. Nothing else. */
-export const AWX_READ_ALLOWED: readonly { method: Method; path: string; query: readonly string[] }[] = [
+/** Every call this module may make: method, path (a fixed string, or one id-shaped pattern) and the query keys it may
+ *  carry. Nothing else. A patterned row is counted under its path ("{id}"), never with the id itself. */
+export const AWX_READ_ALLOWED: readonly { method: Method; path: string; pattern?: RegExp; query: readonly string[] }[] = [
   { method: "POST", path: "/api/v1/authentication/login", query: [] },
   { method: "GET", path: "/api/v1/balances/current", query: [] },
   { method: "GET", path: "/api/v1/global_accounts", query: ["page_num", "page_size"] },
@@ -35,7 +36,15 @@ export const AWX_READ_ALLOWED: readonly { method: Method; path: string; query: r
   { method: "GET", path: "/api/v1/beneficiaries", query: ["page_num", "page_size"] },
   { method: "GET", path: "/api/v1/issuing/cards", query: ["page_num", "page_size"] },
   { method: "GET", path: "/api/v1/issuing/transactions", query: ["page_num", "page_size"] },
+  // One card, by its id: the list carries no spending limits, the card's own record does (live, 14 Nov). Only the card
+  // itself: never /details (the card number), never a write. The pattern is anchored: a UUID and nothing after it.
+  // One transfer, by its id: the live read-back of the recorded run's payouts (their metadata.approval_sha256).
+  { method: "GET", path: "/api/v1/transfers/{id}", pattern: /^\/api\/v1\/transfers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, query: [] },
+  { method: "GET", path: "/api/v1/issuing/cards/{id}", pattern: /^\/api\/v1\/issuing\/cards\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, query: [] },
 ];
+
+/** The table's row for a call, by exact path or by its anchored pattern; none when the call is not listed. */
+const rowFor = (method: string, pathname: string) => AWX_READ_ALLOWED.find((a) => a.method === method && (a.pattern ? a.pattern.test(pathname) : a.path === pathname));
 
 /** A call outside the table: refused before anything is sent. */
 export class AwxReadNotAllowed extends Error {
@@ -53,7 +62,7 @@ const QUERY_VALUE = /^[A-Za-z0-9:+.\-]{1,40}$/;
 export function readAllowedUrl(method: string, url: string): URL {
   let u: URL;
   try { u = new URL(url); } catch { throw new AwxReadNotAllowed(method, "(not a URL)"); }
-  const row = AWX_READ_ALLOWED.find((a) => a.method === method && a.path === u.pathname);
+  const row = rowFor(method, u.pathname);
   const queryOk = !!row && [...u.searchParams].every(([k, v]) => row.query.includes(k) && QUERY_VALUE.test(v)) && new Set([...u.searchParams.keys()]).size === [...u.searchParams.keys()].length;
   if (u.protocol !== "https:" || u.host !== AWX_SANDBOX_HOST || u.port || u.username || u.password || u.hash || !row || !queryOk) throw new AwxReadNotAllowed(method, url);
   return u;
@@ -66,6 +75,9 @@ export const isAwxView = (v: unknown): v is AwxView => typeof v === "string" && 
 
 /** The currency pairs the live rates are read for: the currencies in Purser's books (EUR the base; USD and GBP bills). */
 export const RATE_PAIRS: readonly [sell: string, buy: string][] = [["USD", "EUR"], ["GBP", "EUR"], ["EUR", "USD"]];
+/** The recorded awx-1 run's two payouts (docs/demo/airwallex-run.json; test/awx-live.test.ts holds them equal): read back
+ *  by id on every refresh, so their approval hash stays on the page however many transfers come after them. */
+export const RECORDED_TRANSFER_IDS = ["738a4263-6d6c-4de8-94a3-93da1c175fb4", "4140dee2-6373-4eb4-a71f-bf69130f96a7"] as const;
 /** The window of the recorded awx-1 run (7 Nov), the one Purser's ledger reconciles with Airwallex's financial transactions. */
 export const RUN_WINDOW = { from: "2026-11-07T12:00:00+0000", to: "2026-11-07T14:00:00+0000" } as const;
 
@@ -75,6 +87,10 @@ export const READ_TTL_SECONDS = 45;
 export const READ_PER_MINUTE = 40;
 export const READ_DAILY_CEILING = 1500;
 const TIMEOUT_MS = 8_000;
+/** The newest active cards read one by one for their limits (the list has none). */
+export const CARD_DETAILS = 8;
+/** Financial transactions read in one page: Airwallex's largest page (page_size ≤ 1000). */
+export const FT_PAGE = 1000;
 const TOKEN_EARLY_MS = 60_000;
 const TOKEN_DEFAULT_MS = 25 * 60_000;
 
@@ -141,7 +157,8 @@ export function transfersOf(raw: unknown) {
 export function beneficiariesOf(raw: unknown) {
   return items(raw).map((b) => {
     const ben = obj(b.beneficiary), bank = obj(ben?.bank_details);
-    const name = str(ben?.company_name) ?? [str(ben?.first_name), str(ben?.last_name)].filter(Boolean).join(" ");
+    // The sandbox's beneficiaries carry the payee's name on the bank account (live, 14 Nov), not always company_name.
+    const name = str(ben?.company_name) ?? str(bank?.account_name) ?? [str(ben?.first_name), str(ben?.last_name)].filter(Boolean).join(" ");
     return {
       id: str(b.id, 64), nickname: str(b.nickname), name: name || null, entity_type: str(ben?.entity_type, 20), country: str(bank?.bank_country_code, 2), currency: str(bank?.account_currency, 3),
       bank: str(bank?.bank_name), iban_last4: last4(bank?.iban), account_number_last4: last4(bank?.account_number), methods: (Array.isArray(b.transfer_methods) ? b.transfer_methods : Array.isArray(b.payment_methods) ? b.payment_methods : []).filter((m): m is string => typeof m === "string").slice(0, 4),
@@ -186,6 +203,7 @@ const timeOf = (v: unknown): number | null => {
 /** The read gateway's desk: one per Durable Object instance ("awx-read"), its cache and counters in that instance's SQL. */
 export class AwxReadDesk {
   private token: { value: string; expiresAt: number } | null = null;
+  private loggingIn: Promise<string> | null = null;
   private readonly inFlight = new Map<AwxView, Promise<AwxReadAnswer>>();
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
@@ -242,10 +260,13 @@ export class AwxReadDesk {
         // The newest movements (the last 30 days), and the recorded run's window for the reconciliation.
         const to = new Date(this.now()), from = new Date(this.now() - 30 * 86_400_000);
         const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "+0000");
-        const recent = financialOf(await this.get("/api/v1/financial_transactions", { from_created_at: iso(from), to_created_at: iso(to), page_num: "0", page_size: "50" }));
-        const run = financialOf(await this.get("/api/v1/financial_transactions", { from_created_at: RUN_WINDOW.from, to_created_at: RUN_WINDOW.to, page_num: "0", page_size: "200" }));
-        recent.sort((a, b) => (timeOf(b.created_at) ?? 0) - (timeOf(a.created_at) ?? 0));
-        return { recent: recent.slice(0, 25), run_window: RUN_WINDOW, run };
+        // One page of FT_PAGE (Airwallex's largest) each. has_more is kept: a window with more rows than one page is said
+        // to be cut, and the reconciliation then concludes nothing (cloud/src/awxLive.ts), never "0 differences".
+        const page = async (q: Record<string, string>) => { const j = await this.get("/api/v1/financial_transactions", { ...q, page_num: "0", page_size: String(FT_PAGE) }); return { rows: financialOf(j), more: obj(j)?.has_more === true }; };
+        const recent = await page({ from_created_at: iso(from), to_created_at: iso(to) });
+        const run = await page({ from_created_at: RUN_WINDOW.from, to_created_at: RUN_WINDOW.to });
+        recent.rows.sort((a, b) => (timeOf(b.created_at) ?? 0) - (timeOf(a.created_at) ?? 0));
+        return { recent: recent.rows.slice(0, 25), recent_cut: recent.more, recent_rows: recent.rows.length, run_window: RUN_WINDOW, run: run.rows, run_complete: !run.more };
       }
       case "rates": {
         const rates = [];
@@ -256,12 +277,29 @@ export class AwxReadDesk {
         }
         return { rates };
       }
-      case "transfers": return { transfers: transfersOf(await this.get("/api/v1/transfers", { page_num: "0", page_size: "20" })) };
+      case "transfers": {
+        const transfers = transfersOf(await this.get("/api/v1/transfers", { page_num: "0", page_size: "20" }));
+        const readback = [];
+        for (const id of RECORDED_TRANSFER_IDS) { const t = transfersOf({ items: [await this.get(`/api/v1/transfers/${id}`)] })[0]; if (t) readback.push(t); }
+        return { transfers, readback };
+      }
       case "beneficiaries": return { beneficiaries: beneficiariesOf(await this.get("/api/v1/beneficiaries", { page_num: "0", page_size: "20" })) };
       case "issuing": {
         // Issuing needs its own scope on the key. Without it Airwallex answers 401/403: said so, not hidden.
-        const cards = cardsOf(await this.get("/api/v1/issuing/cards", { page_num: "0", page_size: "20" }, true));
-        const transactions = cardTransactionsOf(await this.get("/api/v1/issuing/transactions", { page_num: "0", page_size: "20" }, true));
+        // Airwallex lists the oldest first (live, 14 Nov): a page of 100, the newest shown. The list carries no spending
+        // limits, so the newest active cards are read one by one (GET /issuing/cards/{id}, at most CARD_DETAILS).
+        const newest = <T>(rows: T[], at: (r: T) => unknown) => [...rows].sort((a, b) => (timeOf(at(b)) ?? 0) - (timeOf(at(a)) ?? 0));
+        const listed = newest(cardsOf(await this.get("/api/v1/issuing/cards", { page_num: "0", page_size: "100" }, true)), (c) => c.created_at).slice(0, 12);
+        const cards = [];
+        let details = 0;
+        for (const c of listed) {
+          if (c.status === "ACTIVE" && details < CARD_DETAILS && c.id && /^[0-9a-f-]{36}$/.test(c.id)) {
+            details++;
+            const full = cardsOf({ items: [await this.get(`/api/v1/issuing/cards/${c.id}`, {}, true)] })[0];
+            cards.push(full ? { ...c, ...Object.fromEntries(Object.entries(full).filter(([, v]) => v !== null && !(Array.isArray(v) && !v.length))) } : c);
+          } else cards.push(c);
+        }
+        const transactions = newest(cardTransactionsOf(await this.get("/api/v1/issuing/transactions", { page_num: "0", page_size: "100" }, true)), (t) => t.at).slice(0, 20);
         return { cards, transactions };
       }
     }
@@ -296,7 +334,8 @@ export class AwxReadDesk {
     const u = new URL(`https://${AWX_SANDBOX_HOST}${path}`);
     for (const [k, v] of Object.entries(query)) u.searchParams.set(k, v);
     const url = readAllowedUrl(method, u.toString());
-    const endpoint = `${method} ${path}`;
+    // Counted by the table's own path: a card's id never reaches the calls panel.
+    const endpoint = `${method} ${rowFor(method, url.pathname)!.path}`;
     this.admit(endpoint);
     let res: Response;
     try {
@@ -309,8 +348,13 @@ export class AwxReadDesk {
     return { status: res.status, json };
   }
 
-  private async bearer(): Promise<string> {
-    if (this.token && this.token.expiresAt - TOKEN_EARLY_MS > this.now()) return this.token.value;
+  /** The bearer token: one login at a time, shared by every view refreshing at once (9 views made up to 9 logins before). */
+  private bearer(): Promise<string> {
+    if (this.token && this.token.expiresAt - TOKEN_EARLY_MS > this.now()) return Promise.resolve(this.token.value);
+    return (this.loggingIn ??= this.login().finally(() => { this.loggingIn = null; }));
+  }
+
+  private async login(): Promise<string> {
     this.token = null;
     const r = await this.call("POST", "/api/v1/authentication/login", {}, { "x-client-id": this.cfg.clientId!, "x-api-key": this.cfg.apiKey! });
     const j = obj(r.json), token = j?.token;
