@@ -204,7 +204,10 @@ describe("/docs: docs and API", () => {
     expect(html).toMatch(/<button type="button" class="cp" data-copy="[^"]+" aria-label="Copy mcp: [^"]+" hidden>/);
     const copies = [...html.matchAll(/<button type="button" class="cp" data-copy="([^"]+)"/g)].map((m) => decode(m[1]!));
     expect(copies).toEqual([PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, MCP_COMMAND, CLOUD_OPENAPI_PATH, "npm run judge"]);
-    expect(WORKS_WITH).toEqual(["Claude", "Cursor", "VS Code", "Gemini CLI"]);
+    // Partner scan, 14 Nov: "any MCP client", Claude's own two as examples; no other vendor on the page.
+    expect(WORKS_WITH).toEqual(["Claude", "Claude Code"]);
+    expect(card(html, "connect-ai")).toContain("works with any MCP client:");
+    expect(card(html, "connect-ai")).not.toMatch(/Cursor|VS Code|Gemini|ChatGPT|Windsurf/);
     for (const c of WORKS_WITH) expect(read("docs/connect-claude.md")).toContain(c);
     expect([.../<ul class="ww">([\s\S]*?)<\/ul>/.exec(card(html, "connect-ai"))![1]!.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1])).toEqual([...WORKS_WITH]);
   });
@@ -648,7 +651,7 @@ describe("/status on the site", () => {
   it("carries the site's icon and link-preview image like the other pages, and says what is real in its own words", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE, DOCS_PAGE]) {
       expect(html).toMatch(/<link rel="icon" href="assets\/favicon\.svg\?v=1113b"/);
-      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113c">/);
+      expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og-1114\.png">/);
     }
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(STATUS_PAGE)?.[1] ?? "");
     expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.");

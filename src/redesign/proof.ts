@@ -16,6 +16,7 @@ import { PROOF_RUNS_CSS, PROOF_RUNS_ID, partnerStripHtml, proofChainHtml, proofR
 import { COPY_JS, liveRunCount } from "./runs.js";
 import { VIC3_RUN_FILE, vic3Lead, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 import { MOTION_JS } from "../ui/motion.js";
+import { altaWords } from "../ui/formerly.js";
 import { runTimes, runTimesLine } from "./runTimes.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
@@ -235,10 +236,11 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
       ...money.filter((e) => e.refused?.by === "recorded").map((e) => li(`Refused · recorded on chain: ${e.amount} test USD to ${e.what}, ${e.refused!.code ?? ""}. Purser refused it before signing; Alta recorded the same refusal on chain`, "no", e.proof)),
       ...money.filter((e) => e.refused?.by === "metal").map((e) => (e.letThrough ? letThroughLi(run.record, e) : li(`Refused by Alta: ${e.what}, ${e.refused!.reason}; nothing moved`, "no", e.proof.href ? e.proof : null))),
       ...mandates.map((m) => li(`New mandate on chain after two signatures: ${m.agent[0]!.toUpperCase()}${m.agent.slice(1)} agent, cap ${m.cap}, budget ${m.budget}`, "ok", m.proof)),
-      ...s.rails.metal.filter((r) => !/^Refused|^Mandate replaced/.test(r.what)).map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
+      ...s.rails.metal.filter((r) => !/^Refused|^Mandate replaced/.test(r.what)).map((r) => li(altaWords(`${r.what}: ${r.detail}`), "", r.proof && { ...r.proof, label: altaWords(r.proof.label) })),
     ],
     airwallex: [
-      ...sandboxRails(s.rails.airwallex).map((r) => li(`${r.what}: ${r.detail}`, "", r.proof)),
+      // Judge scan, 14 Nov: a fee is said with its run and day (the main run's SWIFT fee is not the Try bank's or awx-1's).
+      ...sandboxRails(s.rails.airwallex).map((r) => li(altaWords(`${r.what}: ${r.detail}${/\bfee EUR\b/.test(r.detail) && run.record.run ? ` (${run.record.run})` : ""}`), "", r.proof && { ...r.proof, label: altaWords(r.proof.label) })),
       ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: status ${tapDecline.getStatus}${tapDecline.getStatus === "FAILED" ? " (Airwallex's decline)" : ""}`, href: null })] : []),
       ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
@@ -296,7 +298,11 @@ function t0CardParts(): { lead: Lead[]; what: string; facts: string; items: stri
     lead: [{ text: `${j.posted} journal entries in T:0's ledger, ${j.differences} differences`, href: "t0" }],
     what: `Purser's books of the main run, posted to T:0's shared sandbox entity on ${j.day} and read back line by line. Test data.`,
     facts: fact(String(j.posted), "entries posted") + fact(String(j.differences), "differences") + fact(`${j.debits} USD`, "debits equal credits"),
-    items: [li("The run record", "", { label: T0_JOURNAL_RECORD.replace(/^docs\/runs\//, ""), href: `${REPO_BLOB}${T0_JOURNAL_RECORD}` })],
+    items: [
+      li("The run record", "", { label: T0_JOURNAL_RECORD.replace(/^docs\/runs\//, ""), href: `${REPO_BLOB}${T0_JOURNAL_RECORD}` }),
+      // Partner scan, 14 Nov: how a judge checks a je_prod id without T:0's key (the shared sandbox needs one).
+      li(`To check a T:0 id (je_prod_…): the record lists each beside the Purser entry it came from (PUR-…), with T:0's read-back of ${j.day}, ${j.differences} differences; reading T:0 itself needs T:0's sandbox key`, "", { label: "the ids and the read-back", href: `${REPO_BLOB}${T0_JOURNAL_RECORD}#steps` }),
+    ],
   };
 }
 const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));

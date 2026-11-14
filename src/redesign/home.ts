@@ -50,11 +50,12 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
    is its own slate variant for light grounds (docs/assets/logos/SOURCES.md). */
 .trust .tile { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px; }
 .trust .tile img { display: block; height: 18px; width: auto; }
+.trust .tile.tname.visa { font-size: 13px; font-weight: 650; }
 .trust .tile.tname { font-size: 16px; font-weight: 750; line-height: 1; color: #111827; letter-spacing: -.01em; text-transform: none; }
 .trust .tile img.alta { height: 22px; }
 .trust .tile img.visa { height: 14px; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile img.alta { height: 16px; } .trust .tile img.visa { height: 11px; } }
+@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile.tname.visa { font-size: 11px; } .trust .tile img.alta { height: 16px; } .trust .tile img.visa { height: 11px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -176,7 +177,8 @@ export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms
  * test company of your own on test money, deleted after 24 hours (its start page says "Test money · deleted after
  * 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
-export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
+// Partner scan, 14 Nov: Visa named in full in "Works with" takes a row on a phone, so "test money" moves up into this line.
+export const REASSURE = { sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
@@ -234,6 +236,8 @@ export const AGENT_FLOW: readonly FlowStep[] = [
 export const WORKS_WITH = "Works with";
 /** Beside the partners' marks (review, 13 Nov); the whole line is in every page's "What's real?" (ui.ts MARKS_NOTE). */
 export const NO_ENDORSEMENT = "No endorsement implied";
+/** Visa in the "Works with" row and the Visa line (partner scan, 14 Nov): what Purser used, said in full. */
+export const VISA_WORKS_WITH = "Visa Intelligent Commerce via Airwallex Airi (sandbox)";
 function aboutHtml(): string {
   return `<p class="eyebrow">${esc(ABOUT_HEAD)}</p>
   <h2 class="e-h reveal" id="about">${esc(FLOW_HEAD)}</h2>
@@ -267,7 +271,7 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   // credential check before any Airwallex call (vic-4 F2, docs/runs/2026-11-13-vic-4.json), where the Airi/Airwallex
   // sandbox had accepted it (vic-3); to /visa's section that sets the two side by side.
   const f2 = vic3?.purchases.find((p) => p.step === "F2" && p.outcome?.code === "PURSER_CREDENTIAL_ALREADY_USED" && p.calls.airwallex === 0 && p.mandate_id);
-  if (f2?.mandate_id) rows.push({ partner: "Visa", title: "Visa: reused credential refused", text: "By Purser; the sandbox had accepted it.", icon: "credit-card", id: `${f2.mandate_id.slice(0, 10)}…`, full: f2.mandate_id, href: `visa#${VISA_REUSE_ID}`, external: false });
+  if (f2?.mandate_id) rows.push({ partner: "Visa", title: "Visa: reused credential refused", text: "Purser binds each credential to one purchase.", icon: "credit-card", id: `${f2.mandate_id.slice(0, 10)}…`, full: f2.mandate_id, href: `visa#${VISA_REUSE_ID}`, external: false });
   return rows;
 }
 
@@ -306,7 +310,7 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
  */
 export function visaLineHtml(rows: ProofRow[]): string {
   const v = rows.find((r) => r.partner === "Visa");
-  return v ? `<p class="statnote visal"><a href="${esc(v.href)}">${esc("Visa via Airwallex's Airi: a reused credential refused by Purser; the sandbox had accepted it.")}</a></p>` : "";
+  return v ? `<p class="statnote visal"><a href="${esc(v.href)}">${esc("Visa via Airwallex Airi: a reused credential refused; Purser binds each to one purchase.")}</a></p>` : "";
 }
 
 export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: OwnersRun | null = ownersRun()): Stat[] {
@@ -338,7 +342,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const rows = proofRows(run, awx);
   // The partners' official files (14 Nov, owner), served unaltered from src/ui/logos/ and docs/assets/logos/ as
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
-  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["", "Visa", 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  // Airwallex left this row on 14 Nov (owner): it is the platform, shown by the header's "Built on Airwallex" badge
+  // (src/ui/builtOn.ts); the others work with it.
+  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
   // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">

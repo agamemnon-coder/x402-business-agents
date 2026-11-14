@@ -19,8 +19,8 @@ const snap = JSON.parse(readFileSync(new URL("./fixtures/site-header-1112.json",
 };
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]*)"/g)].map((m) => m[1]!);
-/** The header's markup with every href blanked: the structure, classes and words, nothing else. */
-const shape = (html: string) => html.replace(/href="[^"]*"/g, 'href=""');
+/** The header's markup with every href and src blanked: the structure, classes and words, nothing else. */
+const shape = (html: string) => html.replace(/href="[^"]*"/g, 'href=""').replace(/src="[^"]*"/g, 'src=""');
 
 describe("the site's header, byte for byte as before", () => {
   it("header(key) for every page key, moreHtml, navHtml and their CSS are unchanged", () => {
@@ -92,4 +92,5 @@ describe("the cloud pages carry the site's header", () => {
 /** The header's own CSS (src/redesign/ui.ts HEADER_CSS) in the cloud pages: its first line. */
 const HEADER_CSS_MARK = '/* Header: brand, four tabs and "More" (a <details>, no script), nothing else. */';
 /** The console's policy (cloud/src/console.ts consoleCsp) as it was before the header came (12 Nov), with NONCE for the nonce. */
-const CSP_BEFORE = "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";
+// 14 Nov: images from the site's origin too, for the "Built on Airwallex" badge's logo (src/ui/builtOn.ts), served by the site.
+const CSP_BEFORE = "default-src 'none'; script-src 'nonce-NONCE' 'self'; style-src 'nonce-NONCE'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'";

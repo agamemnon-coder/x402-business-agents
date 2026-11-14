@@ -202,7 +202,8 @@ await page.goto(`${ORIGIN}/#/invoices`);
 await page.waitForSelector(".row:not(.th)");
 await settle();
 await shot("06-facturen");
-ok((await page.$$("img")).length === 0 && (await text()).includes('<img src=x onerror="document.title=\'pwned\'">Evil Supplies'), "a supplier name with HTML shows as text, never as markup");
+// The "Built on Airwallex" badge's logo (src/ui/builtOn.ts) is the page's own image; no other img, none from a supplier.
+ok((await page.$$("img:not(.awx-badge img)")).length === 0 && (await text()).includes('<img src=x onerror="document.title=\'pwned\'">Evil Supplies'), "a supplier name with HTML shows as text, never as markup");
 ok(!(await page.title()).includes("pwned"), "no script from a supplier's text ran");
 
 await page.goto(`${ORIGIN}/#/invoices/${encodeURIComponent(paidId)}`);
@@ -854,8 +855,9 @@ async function engineArchive(E: EnginePass) {
   await p.click("#proof a.arch");
   await p.waitForSelector(".archive details");
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
-  // Seven since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 7 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its seven items");
+  // Eight since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again; Airwallex, live
+  // from the sandbox, joined); the archive is not one.
+  ok(await p.locator("#tabs a").count() === 8 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its eight items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -913,8 +915,8 @@ async function guestPass() {
     // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
     // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
     const rows = new Set(tabs).size;
-    // 14 Nov: seven pages (Invoices and Books apart): on a phone two rows, four and three.
-    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 4 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows, four and three" : "one row"} (${tabs.join(", ")})`);
+    // 14 Nov: eight pages (Invoices and Books apart, and Airwallex): on a phone two rows of four.
+    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 4 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows of four" : "one row"} (${tabs.join(", ")})`);
     const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
     ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
     if (width < 420) {

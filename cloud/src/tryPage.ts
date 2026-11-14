@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -559,7 +559,7 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed'];
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx'];
 const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
@@ -1042,6 +1042,31 @@ function fxCard(note,terms){
   box.setAttribute('data-awx',live?'live':'recorded');
   return box;
 }
+// 14 Nov (step 2): the Paid step's Airwallex card: the sandbox transfer of the signed payment (its id selected whole on a
+// tap, its status, and the signed hash Airwallex keeps in its metadata), or why the simulated bank alone paid.
+function payoutCard(n,sha){
+  const X=C.payoutCard;if(!n||typeof n!=='object'||n.terms_sha256!==sha)return null;
+  const live=n.source==='airwallex-sandbox';const d=el('dl','');
+  const row=(k,v,cls)=>d.append(el('dt','',k),el('dd',cls||'',v));
+  if(live){row(X.transfer,String(n.transfer_id),'mono');row(X.status,String(n.status).replace(/_/g,' '));row(X.amount,cash(n.currency,n.amount));row(X.hash,String(sha),'mono')}
+  const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.simulated),...(live?[d]:[]),
+    el('p','',live?X.liveNote:fill(X.simulatedNote,{why:(typeof n.reason==='string'&&X.why[n.reason])||X.why.unavailable}))]);
+  box.setAttribute('data-awx-payout',live?'live':'simulated');
+  if(live&&n.status!=='PAID'){
+    const said=el('p','hint',X.simulateNote);const b=btn(X.simulate);
+    b.addEventListener('click',async()=>{
+      b.disabled=true;b.textContent=X.simulating;
+      const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(S.proposal&&S.proposal.id||'')+'/payout/simulate');
+      const j=r.status===200?r.json:{};
+      if(j.note&&typeof j.note==='object'&&j.note.terms_sha256===sha){S.awx=j.note;save()}
+      if(j.ok){const again=payoutCard(S.awx,sha);if(again)box.replaceWith(again);return}
+      b.disabled=false;b.textContent=X.simulate;
+      said.textContent=((typeof j.reason==='string'&&X.simWhy[j.reason])||X.simWhy.unavailable)+'. '+X.simulateNote;
+    });
+    box.append(el('p','',b),said);
+  }
+  return box;
+}
 // The full terms, pretty-printed (the passkey signs the SHA-256 of their canonical JSON, the same fields).
 function termsFold(p,terms){
   const pre=el('pre','terms mono');const f=el('details','',[el('summary','',C.approve.terms),el('p','hint',C.approve.termsNote),pre]);
@@ -1175,7 +1200,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     idle();
     if(S.screen!=='approve')return;
     const j=r.json,o=r.status===200?j.outcome:null;
-    if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
+    if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
     const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
     if(o==='paid_once'){said.replaceChildren(el('p','big',Y.paidOnce));main.set(C.books.next,()=>show('did'));return}
@@ -1250,7 +1275,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
   function outcome(r,ms,sent,intro){
     const j=r.json,o=r.status===200?j.outcome:null;
-    if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
+    if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
     // The score's "one-cent change refused" only when the amount alone moved by one cent (review, 14 Nov).
@@ -1360,7 +1385,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
   const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,tail);
+  const awxPaid=payoutCard(S.awx,sha);
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
   // read ends: call() answers status 0 when the network fails, it never throws.
@@ -1529,7 +1555,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, payoutCard: PAYOUT_CARD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],

@@ -117,7 +117,7 @@ describe("the console of a cloud with an engine", () => {
   });
 
   it("keeps the policy it had: the engine's pages need nothing more", () => {
-    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   });
 
   it("carries the engine's words in both languages, and the one script that writes an event's line", () => {
@@ -188,10 +188,10 @@ describe("the console of a cloud with an engine", () => {
     expect(js).toContain("'/v1/engine/vault/file?path='+encodeURIComponent(");
     expect(js).toContain("f.setAttribute('sandbox','allow-scripts')");
     expect(js).toContain("PDF_MAX_BYTES");
-    // A page of its own, reached from links: the menu keeps its seven items (13 Nov: Agents and Tokenisation joined it;
-    // 14 Nov: Invoices and Books are two tabs again).
+    // A page of its own, reached from links: the menu keeps its eight items (13 Nov: Agents and Tokenisation joined it;
+    // 14 Nov: Invoices and Books are two tabs again, and Airwallex, live from the sandbox, joined).
     expect(js).toContain("'/archive':archiveView");
-    expect(html.match(/data-tab="/g)).toHaveLength(7);
+    expect(html.match(/data-tab="/g)).toHaveLength(8);
     expect(html).not.toMatch(/<nav[^>]*>[^]*#\/archive[^]*<\/nav>/);
     expect(js).toContain("a.href='#/archive'");
   });
@@ -296,7 +296,7 @@ describe("the console's language, mark and first run", () => {
     expect(markup).not.toContain('<summary class="on">More</summary>');
     expect(svg("feather", 17)).toContain("<path");
     // Inline, through the page's own icons: the policy stays what it was.
-    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   });
 
   it("marks the first run's steps (numbered, the current one, done ones ticked), with motion off for those who ask", () => {

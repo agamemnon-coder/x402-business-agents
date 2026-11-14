@@ -541,13 +541,14 @@ const foldHtml = (summary: string, inner: string, attrs = "") => `<details class
 const runLog = (file: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">run\u00a0log\u00a0↗</a>`;
 
 /**
- * One line: why the main run's payout went by SWIFT, and the local SEPA payout of the platform run with its fee. The kit
- * gives a fee rule for each SWIFT payout (it does not demand one), so the line says that, with the kit's own figure.
+ * One line: the local SEPA payout of the platform run with its fee. Shown only while the kit's SWIFT fee rule and the
+ * platform run are on record; the rule itself is no longer quoted on the page (partner scan, 14 Nov).
  */
 export function swiftLineHtml(kit: string | null, p: PlatformRun | null): string {
   const fee = /EUR (\d+\.\d{2})/.exec(kit ?? "")?.[1];
   if (!kit || !fee || !p?.local || !p.sepa) return "";
-  return `<p class="awswift" data-rec="${esc(`${KIT_FILE} ${PLATFORM_FACTS_FILE} ${PLATFORM_RUN_FILE}`)}">${esc("Why SWIFT:")} <span title="${esc(`The kit: "${kit}"`)}">${esc(`the hackathon kit's fee rule is for a SWIFT payout, EUR ${fee} each.`)}</span> ${esc("The platform run paid by")} ${link(`#${PLATFORM_FOLD_ID}`, esc("local SEPA transfer"))}${esc(`, Airwallex fee ${p.paid.airwallexFee}.`)}</p>`;
+  // Partner scan, 14 Nov: no "Why SWIFT" sentence (the kit's fee rule); the line keeps the SEPA payout and its fee.
+  return `<p class="awswift" data-rec="${esc(`${PLATFORM_FACTS_FILE} ${PLATFORM_RUN_FILE}`)}">${esc("The platform run paid by")} ${link(`#${PLATFORM_FOLD_ID}`, esc("local SEPA transfer"))}${esc(`, Airwallex fee ${p.paid.airwallexFee}.`)}</p>`;
 }
 
 /** The platform run's fold: the PAID payout with both fees, then the refusals with their cause as the run log gives it. */
