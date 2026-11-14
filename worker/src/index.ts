@@ -8,6 +8,7 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
+import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk } from "./awxPayout.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
@@ -68,6 +69,14 @@ export interface Env {
    * Airwallex from it; any other value, or none, leaves it on. Max sets it himself when needed; no script here does.
    */
   AWX_FX?: string;
+  /**
+   * /try's sandbox payout (worker/src/awxPayout.ts): its own scoped sandbox key (transfers write, balances read), Worker
+   * secrets Max sets himself; no script in this repo sets them. Without both, no payout is ever asked of Airwallex.
+   */
+  AIRWALLEX_PAYOUT_CLIENT_ID?: string;
+  AIRWALLEX_PAYOUT_API_KEY?: string;
+  /** The payout's switch on this Worker: "off" (any case, trimmed) stops every payout call; anything else leaves it to the key and purser-try's awx_payout. */
+  AWX_PAYOUT?: string;
 }
 
 /** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
@@ -86,6 +95,17 @@ export class RelayObject extends DurableObject<Env> {
   private x402?: X402Desk;
   private metal?: MetalInspector;
   private awxFx?: AwxFxDesk;
+  private awxPayout?: AwxPayoutDesk;
+
+  /** /try's sandbox payout, by RPC from the AwxFx entrypoint only: the "awx-payout" instance's desk, with the payout key inside its client. */
+  async awxPayoutCreate(a: PayoutAsk): Promise<PayoutAnswer> {
+    const { AIRWALLEX_PAYOUT_CLIENT_ID: id, AIRWALLEX_PAYOUT_API_KEY: key } = this.env;
+    this.awxPayout ??= new AwxPayoutDesk(this.ctx.storage.sql, {
+      rail: id && key ? new SandboxPayouts({ clientId: id, apiKey: key }) : null,
+      off: (this.env.AWX_PAYOUT ?? "").trim().toLowerCase() === "off",
+    });
+    return this.awxPayout.payout(a);
+  }
 
   /**
    * /try's live FX quote, by RPC from the AwxFx entrypoint only (the Worker routes no request here): the "awx-fx"
@@ -146,6 +166,10 @@ export class RelayObject extends DurableObject<Env> {
 export class AwxFx extends WorkerEntrypoint<Env> {
   async quote(a: AwxFxAsk): Promise<AwxFxAnswer> {
     return this.env.RELAY.get(this.env.RELAY.idFromName("awx-fx")).awxFxQuote(a);
+  }
+  /** Step 2: one sandbox transfer for a test company's signed payment (worker/src/awxPayout.ts), or a fixed reason. */
+  async payout(a: PayoutAsk): Promise<PayoutAnswer> {
+    return this.env.RELAY.get(this.env.RELAY.idFromName("awx-payout")).awxPayoutCreate(a);
   }
 }
 

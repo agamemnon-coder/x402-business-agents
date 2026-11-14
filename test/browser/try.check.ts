@@ -24,7 +24,7 @@ import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, PAYOUT_CARD, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -180,7 +180,11 @@ async function laneC(method: string, path: string, session: string, body: Record
   if (paid.has(`${session} ${id}`)) { send(res, 200, { ...base, outcome: "paid_once", layers: { signature: { verified: true, reason: "" }, executor: { accepted: true, said: "" } }, changed: [], transfers_after: L.transfers(), settled: null }); return true; }
   const a = await cloud("POST", `/v1/engine/proposals/${encodeURIComponent(id)}/approve`, session, { terms_sha256: L.terms_sha256, credential: body.credential });
   if (a.json.status === "approved") paid.add(`${session} ${id}`);
-  send(res, 200, { ...base, outcome: a.json.status === "approved" ? "paid" : "refused", changed: [], transfers_after: L.transfers(), settled: a.json.settled ?? null,
+  // 14 Nov (step 2): the Paid step's Airwallex card, drawn from a stand-in note: the 10 Nov run's recorded sandbox
+  // transfer id (docs/runs/2026-11-10-airwallex-two-locks.md) and its recorded status, for this payment's own amount and
+  // hash. A check's stand-in, not a live transfer (cloud/src/engine/livePayout.ts makes the real one).
+  const awx = a.json.status === "approved" ? { airwallex_payout: { source: "airwallex-sandbox", transfer_id: "4074d684-4704-406c-a527-2832753baf4f", status: "IN_APPROVAL", amount: (L.terms as { amount?: string }).amount, currency: (L.terms as { currency?: string }).currency, request_id: "stand-in", terms_sha256: L.terms_sha256 } } : {};
+  send(res, 200, { ...base, ...awx, outcome: a.json.status === "approved" ? "paid" : "refused", changed: [], transfers_after: L.transfers(), settled: a.json.settled ?? null,
     layers: a.json.status === "approved" ? { signature: { verified: true, reason: "" }, executor: { accepted: true, said: "" } } : { signature: { verified: false, reason: String(a.json.message ?? "") }, executor: { accepted: false, said: "" } } });
   return true;
 }
@@ -636,6 +640,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const head4 = await page.evaluate((u) => (window as unknown as { __blobs: Map<string, Blob> }).__blobs.get(u!)!.slice(0, 4).text(), href);
   ok(href!.startsWith("blob:") && head4 === "%PDF", `${tag}: filed: the receipt opens in a new tab (${pop.url()}) from a blob, and it is a PDF (${head4})`);
   await pop.close();
+  const awxPaid = (await page.locator("section.awx[data-awx-payout]").count()) ? await page.innerText("section.awx[data-awx-payout]") : "";
+  ok(awxPaid.includes(PAYOUT_CARD.live) && awxPaid.includes("4074d684-4704-406c-a527-2832753baf4f") && /in approval/i.test(awxPaid) && awxPaid.includes(PAYOUT_CARD.hash),
+    `${tag}: the Paid step shows the Airwallex sandbox transfer: its id, its status and the signed hash (${awxPaid.replace(/\s+/g, " ").slice(0, 140)})`);
   if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `b3-5-books-${width}-${scheme}.png`), fullPage: true }); }
   await design("5-paid", { full: true, wide: true });
 

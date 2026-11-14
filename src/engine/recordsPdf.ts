@@ -60,6 +60,10 @@ const EVENT_WORDS: Record<string, string> = {
   "passkey.pending": "A new passkey came in",
   "passkey.enrolled": "The approval passkey was set up",
   "fx.rate_checked": "The exchange rate was checked",
+  "airwallex.quote": "The Airwallex sandbox gave a live FX quote",
+  "airwallex.unavailable": "No live Airwallex quote; the recorded rate was used",
+  "airwallex.transfer": "An Airwallex sandbox transfer was made (test money)",
+  "airwallex.payout_skipped": "No Airwallex sandbox transfer; the simulated bank alone paid",
   "policy.version": "The CFO's policy was recorded",
   "proposal.created": "A payment was filed for approval",
   "proposal.approved": "The CFO signed the exact terms with the passkey",
@@ -174,6 +178,11 @@ export function recordsPdf(x: CompanyExport, site: string): Promise<Buffer> {
       [!!received, findings.length ? `Checked by Purser's code: ${findings[0]}` : `Checked by Purser's code: ${String(received ? payload(received).status ?? "" : "").replace(/_/g, " ") || "checked"}`, received ? day(received.ts) : "—"],
       [!!approved, approved ? `Signed with the passkey · terms ${short(terms)}` : markedPaid ? "Not signed here" : "Not signed yet", approved ? `${day(approved.ts)} ${time(approved.ts)}` : ""],
       [String(pay?.body?.status ?? "").toUpperCase() === "PAID", pay ? `Paid on the simulated bank: ${pay.body?.amount ? money(pay.body.currency ?? inv.currency, cents(pay.body.amount) ?? 0) : ""}${pay.body?.fee_actual ? `, fee ${pay.body.fee_actual}` : ""}` : markedPaid ? `Marked paid: ${markedPaid}` : "Not paid yet", b.paid_at ? day(b.paid_at) : ""],
+      // 14 Nov (step 2): the Airwallex sandbox transfer of this signed payment, by its id and status, when one was made.
+      ...((): [boolean, string, string][] => {
+        const t = pid ? r.audit.find((a) => a.event === "airwallex.transfer" && a.subject === pid) : undefined;
+        return t ? [[true, `Airwallex sandbox transfer ${String(payload(t).transfer_id ?? "")} · ${String(payload(t).status ?? "")} (test money)`, `${day(t.ts)} ${time(t.ts)}`]] : [];
+      })(),
       [booked.length > 0, booked.length ? `Booked in the ledger: entries ${booked.map((e) => `#${e.entry_id}`).join(", ")}` : markedPaid ? "Not booked here" : "Not booked yet", ""],
     ];
     const h = 98 + steps.length * 16;

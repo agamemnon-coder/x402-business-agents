@@ -98,7 +98,10 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     expect(index).toMatch(/new SandboxQuotes\(\{ clientId: id, apiKey: key \}\)/);
     // 12 Nov: the generated, git-ignored worker/src/pages.gen.ts is page text, not Worker code: /docs names the two
     // variables an integrator sets. So the scan leaves it out, and the next test holds it to naming only.
-    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$|pages\.gen\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
+    // 14 Nov (step 2): /try's sandbox payout has a key of its own, read only into its own client (worker/src/awxPayout.ts,
+    // test/try-awx-payout.test.ts); it never sees the quote key.
+    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$|awxPayout\.ts$|pages\.gen\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
+    expect(readFileSync(join(root, "worker/src/awxPayout.ts"), "utf8")).not.toMatch(/AIRWALLEX_(CLIENT_ID|API_KEY)\b/);
     expect(others.map((f) => f.slice(root.length))).toEqual([]);
   });
 

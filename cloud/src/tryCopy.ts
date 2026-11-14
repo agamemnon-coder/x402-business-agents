@@ -277,6 +277,23 @@ export const FX_CARD = {
   } as Record<string, string>,
 };
 
+/**
+ * 14 Nov (step 2): the Paid step's Airwallex line: the sandbox transfer of the signed payment (id, status), or why the
+ * simulated bank alone paid. Outside the word budget, as the terms' labels are. {why}: one of `why`.
+ */
+export const PAYOUT_CARD = {
+  live: "Airwallex · sandbox transfer", simulated: "Simulated bank only",
+  transfer: "Transfer", status: "Status", amount: "Amount", hash: "approval_sha256",
+  liveNote: "Test money. Airwallex keeps the hash of the terms you signed in this transfer's metadata.",
+  simulatedNote: "{why}. The payment was made on the simulated bank only.",
+  why: {
+    switched_off: "Sandbox transfers are switched off", no_binding: "Sandbox transfers are not set up here", no_key: "No Airwallex payout key is set",
+    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its one sandbox transfer", over_max: "The amount is above the demo's limit",
+    not_eur: "Only EUR is sent to the sandbox", balance_low: "The sandbox balance does not cover it", unavailable: "Airwallex did not answer", refused: "Airwallex refused the transfer",
+    ambiguous: "Airwallex's answer was unclear; it is asked again, never paid twice", timeout: "Airwallex took too long", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The transfer could not be asked for",
+  } as Record<string, string>,
+};
+
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
 
@@ -717,6 +734,9 @@ export const LIVE = {
     "invoice.fraud_suspected": "The invoice looks like fraud. It was blocked before anything was paid.",
     "airwallex.quote": "Airwallex sandbox: quote {quote_id} at {rate}.",
     "airwallex.quote_plain": "Airwallex sandbox: a live quote.",
+    "airwallex.transfer": "Airwallex sandbox: transfer {transfer_id}, {status}.",
+    "airwallex.transfer_plain": "Airwallex sandbox: a transfer of the signed payment.",
+    "airwallex.payout_skipped": "No Airwallex sandbox transfer: the simulated bank alone paid.",
     "airwallex.unavailable": "Airwallex unavailable, recorded rate used ({rate}).",
     "airwallex.unavailable_plain": "Airwallex unavailable, recorded rate used.",
     "fx.rate_checked": "The exchange rate was compared with the market rate.",
