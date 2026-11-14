@@ -391,6 +391,20 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 .receipt.skel .skr .sk { width: 30%; } .receipt.skel .skr .sk + .sk { width: 40%; }
 .receipt .hashpill { margin-top: 12px; }
 .screen.approve .limit { margin-top: 16px; }
+/* try-steps 2 (live run on three devices, 14 Nov): every control at least 44 px tall on a phone or a touch screen, the folds too; the receipt's
+   skeleton as tall as the receipt and the lines under it. */
+@media (max-width: 1023px), (pointer: coarse) {
+  main .tabs button { min-height: 44px; }
+  .screen:not(.start) .link, .more a, a.proofl:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; }
+  .hint .link, p .link { vertical-align: middle; }
+  .screen:not(.start) details > summary { min-height: 44px; padding: 12px 0; box-sizing: border-box; }
+  .more { line-height: 1.4; }
+}
+.screen:not(.start) details > summary:focus-visible { outline-offset: 0; border-radius: 6px; }
+.receipt.skel .sk.pill { width: 112px; height: 22px; border-radius: 999px; margin-top: 4px; }
+.skl { display: grid; gap: 10px; margin: 16px 0 0; }
+.skl .sk { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.skl .sk:nth-child(1) { width: 85%; } .skl .sk:nth-child(2) { width: 40%; height: 20px; } .skl .sk:nth-child(3) { width: 70%; }
 /* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
 .slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
 @media (max-width: 520px) {
@@ -767,8 +781,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   const loadSamples=(r0)=>{
     samplesIn=false;gate();
     const sk=el('div','samples');sk.setAttribute('aria-hidden','true');
-    for(let i=0;i<3;i++)sk.append(el('span','btn skel'));
-    pick.replaceChildren(el('p','muted',C.invoice.loading),sk);
+    // As many bars as the demo has samples (five), the loading word for screen readers only: no jump when they come.
+    for(let i=0;i<5;i++)sk.append(el('span','btn skel'));
+    pick.replaceChildren(el('p','sr',C.invoice.loading),sk);
     (r0||api('GET','/v1/engine/samples')).then((r)=>{
       if(S.screen!=='invoice')return;
       const items=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
@@ -1071,7 +1086,9 @@ function termsFold(p,terms){
   return f;
 }
 // The receipt's skeleton while the terms are filed: the amount's and three rows' shapes, no value (nothing before its answer).
-function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<3;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));return d}
+// Six rows and the hash's pill, as the receipt has them, and the two lines and the fold under it: no jump when they come.
+function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<6;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));d.append(el('span','sk pill'));
+  return el('div','',[d,el('div','skl',[el('span','sk'),el('span','sk'),el('span','sk')])])}
 screen('approve',{heading:C.approve.heading,draw(box,arg){
   const A=C.approve;const inv=arg&&arg.invoice||null;
   const top=el('div','');const said=el('div','');said.setAttribute('role','status');
@@ -1342,6 +1359,7 @@ const settledErr=(arg)=>{const s=arg&&arg.settled;return s&&typeof s.error==='st
 screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.heading,draw(box,arg){
   const B=C.books;const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
   const pid=S.proposal&&S.proposal.id,invId=S.proposal&&S.proposal.invoice;
+  if(!settledErr(arg))FIN.p=api('GET','/v1/engine/invoices');
   const main=mainButton();
   const err=settledErr(arg);
   if(err){
@@ -1449,13 +1467,17 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   Promise.allSettled(drawn).then(reveal);
 }});
 
+// The invoices as read with the paid screen, for the finish's figures (its paid time and amount), so they never arrive late.
+const FIN={p:null};
 // 6 Your company: the export as a file, start again, and the recorded real runs (links to the site's /runs, dated).
 screen('company',{heading:C.company.heading,draw(box){
   const Y=C.company;
   // 14 Nov (owner: "add a CTA, now it just ends"): a real finish. What the run did, from its own record; the three
   // steps; one primary way on (the real runs) and three quiet links; then the records; then Start again. No form.
   const done=el('p','done',Y.donePlain);
-  api('GET','/v1/engine/invoices').then((r)=>{
+  // The invoices were read when the paid screen was drawn (FIN): the figures are on the finish from its first frame.
+  const fin=FIN.p||api('GET','/v1/engine/invoices');FIN.p=null;
+  fin.then((r)=>{
     if(S.screen!=='company'||r.status!==200||!Array.isArray(r.json.items))return;
     const paid=r.json.items.filter((i)=>i&&i.status==='paid'&&i.proposal);
     const want=S.proposal&&S.proposal.invoice;

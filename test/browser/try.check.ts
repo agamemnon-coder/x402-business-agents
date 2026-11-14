@@ -314,7 +314,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   await page.click(`text=${START.button}`);
   await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
   const send = page.locator(`.btn.primary:has-text("${INVOICE.send}")`);
-  const off = await send.getAttribute("aria-disabled") === "true" && await page.locator(".samples .btn.skel").count() === 3 && await page.locator(".samples .btn:not(.skel)").count() === 0;
+  const off = await send.getAttribute("aria-disabled") === "true" && await page.locator(".samples .btn.skel").count() === 5 && await page.locator(".samples .btn:not(.skel)").count() === 0;
   ok(off, `H3: while the samples are held: screen 1 is drawn, the button is off and the cards a skeleton (${Date.now() - t0} ms after the click)`);
   order.push("tap");
   await send.click();
