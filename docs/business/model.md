@@ -24,9 +24,9 @@ not a finding about where demand is.
   Airwallex app or an embedded partner, if Airwallex agrees. We have no agreement with Airwallex and have not asked
   for one. Airwallex's public pricing page sends "Platform API, Embedded Finance and High Volume use cases" to custom
   pricing [P1], so the cost of that route to us is unknown.
-- **Plus Metal for on-chain agent payments.** For agents that pay per request over x402, the same CFO policy sets a
-  Metal mandate per agent. Metal states that agents can pay "from an account whose owner set spending limits on
-  chain" [P4]. Purser has run on Metal testnet only.
+- **Plus Alta (formerly Metal) for on-chain agent payments.** For agents that pay per request over x402, the same CFO policy sets a
+  Alta mandate per agent. Alta states that agents can pay "from an account whose owner set spending limits on
+  chain" [P4]. Purser has run on Alta testnet only.
 - **Why this channel (our reasoning):** Airwallex itself says agent money movement needs "approvals, permissions, and
   audit trails" enforced "through underlying infrastructure rather than prompts" [P3]. A product that does exactly that
   on Airwallex's own rails is easiest to explain to Airwallex's customers. It also makes us dependent on Airwallex
@@ -98,7 +98,7 @@ agents, in test money: [unit-economics.md](../unit-economics.md).
 
 **Claude per decision: USD 0.0132 for the agents' own calls, USD 0.0157 for every Claude call of the run.** The agents' own calls (`agent_stats`) come to USD 0.3170 for 24 decisions, the figure in [claims.md](../claims.md). The run's whole Claude bill (`snapshot.claude`) is USD 0.3761 for 58 calls: it also sorted and read the documents and ran the Opus reviews for the CFO, USD 0.0592 or 16% of the bill. This model uses the whole bill: USD 0.0065 a call.
 
-**In the main run, Claude made 24 decisions; of the 88 payments, 82 were routine sales and purchases that code handled inside the limits.** The 24 decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute ruling and timing advice, several of which moved no money. The 88 payments are 86 on Metal (41 sales, 41 supplier purchases, 3 refunds, 1 sweep), 1 card charge and 1 SWIFT transfer [R1].
+**In the main run, Claude made 24 decisions; of the 88 payments, 82 were routine sales and purchases that code handled inside the limits.** The 24 decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute ruling and timing advice, several of which moved no money. The 88 payments are 86 on Alta (41 sales, 41 supplier purchases, 3 refunds, 1 sweep), 1 card charge and 1 SWIFT transfer [R1].
 
 **Claude per invoice, an estimate: USD 0.0276. The end-to-end sandbox run made 17 Claude calls for 4 invoices, and a Claude call in the main run cost USD 0.0065 on average at list prices.** That is 4.25 calls an invoice [R3] at the main run's cost per call [R1]. No record holds a measured Claude cost per invoice, so this is an assumption (A3), not a measurement.
 
@@ -113,7 +113,7 @@ agents, in test money: [unit-economics.md](../unit-economics.md).
 | A5 | Hosting | one Cloudflare Workers Paid account per company, USD 5 a month [U2]; usage inside the plan's included amounts; a month of 30 days | An upper bound for a company's own Worker and Durable Object: one account could serve many companies. The check below shows one Durable Object awake all month, and the high scenario's requests, fit inside what the plan includes. |
 | A6 | The runner | runs on Cloudflare too | Today the runner (agents, ledger, keys) is a separate process and the relay is on Cloudflare ([architecture](../architecture.md#the-shape-today)). We assume production moves the runner onto Workers and a Durable Object per company; compute elsewhere is not priced. |
 | A7 | Currency | everything in EUR at EUR 1 = USD 1.1165 [U3] | Claude and Cloudflare charge in USD and the price is in EUR. One rate, the ECB's reference rate of the day we first wrote this. |
-| A8 | Not in the model | the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only. |
+| A8 | Not in the model | the platform costs: Airwallex platform or partner fees, Alta fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set | Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Alta testnet only. |
 
 **Hosting check (A5), at Cloudflare's prices [U2].** The Workers Paid plan costs USD 5 a month per account and includes 10,000,000 Worker requests, 1,000,000 Durable Object requests and 400,000 GB-s of Durable Object duration a month. A Durable Object is billed for 128 MB; awake all 30 days, one uses 324,000 GB-s, inside what is included. At high usage (500 invoices a month), the included requests allow 20,000 Worker requests and 2,000 Durable Object requests per invoice. Hosting is USD 5.00, or €4.48, per company a month.
 
@@ -155,8 +155,8 @@ not put a number on it without one.
   for card and chain, approvals signed over the exact terms, a hash-chained audit log). The more agent features
   Airwallex ships, the more there is for Purser to govern, as an app or partner on the platform. The risk that remains:
   Airwallex could choose to build the approval layer itself.
-- **Dependency on Airwallex and Metal.** Purser's card controls are Airwallex's; its on-chain controls are Metal's.
-  Purser has run only in the Airwallex sandbox and on Metal testnet. A change in either API, in their terms, or in
+- **Dependency on Airwallex and Alta.** Purser's card controls are Airwallex's; its on-chain controls are Alta's.
+  Purser has run only in the Airwallex sandbox and on Alta testnet. A change in either API, in their terms, or in
   their willingness to have a partner on top, changes the product.
 - **Regulatory.** Purser holds no funds of its own (see [claims.md](../claims.md)), but agents moving company money
   touch payment, AI and data rules. [compliance.md](../compliance.md) sets out how Purser supports them; we have had

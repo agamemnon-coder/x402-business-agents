@@ -14,7 +14,7 @@ before real money: [go-live.md](go-live.md).
                                                       │  R2 (EU): documents, e-mails
                                                       ▲
                      the company's Purser runner ─────┘  push (POST /v1/sync), pull mail (GET /v1/mail)
-                     (agents, inbox, ledger; the only part that touches Airwallex and Metal)
+                     (agents, inbox, ledger; the only part that touches Airwallex and Alta (formerly Metal))
 ```
 
 - Purser Cloud moves no real money. Its hands-on deployment runs the engine on test money and a simulated bank. A company's real payments stay with its runner and the
@@ -108,7 +108,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/ledger/entries` | read | Ledger entries with their lines; filter by from, to; paginated. |
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
-| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
 | `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
 | `GET /v1/dashboard` | read | The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words. |
@@ -214,7 +214,7 @@ bringing its ledger up to date, so each row arrives reconciled against the books
 | Filter | Values |
 |---|---|
 | `rail` | `airwallex_transfer`, `airwallex_fx`, `airwallex_card`, `airwallex_airi`, `airwallex_receipt`, `metal`, `metal_clearing` |
-| `currency` | `EUR`, `USD`, `GBP`, `USDZ` (Metal testnet) … |
+| `currency` | `EUR`, `USD`, `GBP`, `USDZ` (Alta testnet) … |
 | `from`, `to` | days, `2026-11-01` |
 | `reconciliation` | `matched`, `missing_booking`, `missing_rail_record`, `amount_mismatch`, `not_applicable` |
 | `moved` | `true` (money moved) or `false` (refused, declined, failed, aborted: never counted) |

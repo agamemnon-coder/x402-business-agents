@@ -106,7 +106,8 @@ describe("the architecture diagram", () => {
   });
 
   it("draws the chain as the code runs it: policy, the passkey over the terms hash, the executor's re-hash, the rails, the audit chain", () => {
-    for (const label of ["Agent", "Policy", "reserveSpend", "Approval", "SHA-256 of the", "Executor", "beginExecution", "Airwallex / Metal", "within the limits", "Audit log, hash-chained"]) {
+    // 14 Nov (the final pass): the diagram's rail says Alta, the chain partner's name since 14 Nov.
+    for (const label of ["Agent", "Policy", "reserveSpend", "Approval", "SHA-256 of the", "Executor", "beginExecution", "Airwallex / Alta", "within the limits", "Audit log, hash-chained"]) {
       expect({ label, found: svg.indexOf(label) >= 0 }).toEqual({ label, found: true });
     }
   });
