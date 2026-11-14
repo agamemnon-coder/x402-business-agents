@@ -5,6 +5,7 @@
 // console's nav has the new tabs, the old Invoices route lands on Books, and the page says what Purser Cloud is.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
+import { feedLine } from "../cloud/src/dashboard.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import TOKENIZE from "../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
@@ -36,6 +37,19 @@ describe("GET /v1/agents", () => {
     expect(r.json.controls).toMatch(/CFO's decision, signed with Face ID/);
   });
 
+  // 14 Nov (Agents a CFO reads in five seconds): spent this month against the monthly limit, and each decision's outcome.
+  it("says what each card spent in the records' month, and what each decision came to", async () => {
+    const by = Object.fromEntries(((await get("/v1/agents")).json.agents as J[]).map((a) => [a.id, a]));
+    expect(by.sourcing.card).toMatchObject({ month: "2026-11", spent_month: "0.00" });
+    expect(by.support.card).toMatchObject({ month: "2026-11", spent_month: "38.00" });
+    expect(by.treasury.card).toMatchObject({ month: "2026-11", spent_month: "15.00" });
+    const out = (a: J) => (a.decisions as J[]).map((d) => [d.outcome, d.text]);
+    expect(out(by.sourcing)).toContainEqual(["paid", "Paid 19.99 EUR at Packwise on its own card, within its limit"]);
+    expect(out(by.sourcing)).toContainEqual(["declined", "Airwallex declined 45.00 EUR at Packwise: over the card's limit"]);
+    expect(out(by.sourcing).filter(([o]) => o === "asked").length).toBeGreaterThanOrEqual(1);
+    expect(out(by.treasury)).toContainEqual(["asked", "AP-0005 filed for the CFO's Face ID"]);
+  });
+
   it("is empty for a company whose records name no agent, and reads only the caller's company", async () => {
     expect((await get("/v1/agents", A.key)).json.agents).toEqual([]);
     expect((await c.req("GET", "/v1/agents", { key: null })).status).toBe(401);
@@ -57,6 +71,21 @@ describe("GET /v1/tokenisation", () => {
     }
     expect(tok.contract).toBe((TOKENIZE as unknown as { contract: string }).contract);
     expect(tok.record).toMatch(/docs\/runs\/2026-11-12-tokenize\.json$/);
+  });
+
+  // 14 Nov (Max: "an intensive upgrade"): the token's life in five stages and its key facts, all from the record.
+  it("gives the token's five stages, each with the record's own transactions, and the face value and discount as numbers", async () => {
+    const tok = (await get("/v1/tokenisation")).json.invoice_token;
+    expect((tok.stages as J[]).map((s) => [s.key, (s.txs as J[]).map((x) => x.key), s.on_chain])).toEqual([
+      ["minted", ["deploy", "mint"], true], ["offered", ["offer"], true], ["financed", ["financier-approve", "accept"], true], ["approved", ["payer-approve"], true], ["settled", ["settle"], true]]);
+    expect(tok.stages[4].at).toBe("2026-11-12T14:09:13.843Z");
+    expect(tok.facts).toEqual({ face_value: { amount: "2.40", unit: "*USDZ", scaled_by: 100 }, discount: { percent: 2, price: "2.35" } });
+    expect(tok.invoice).toMatchObject({ invoice_no: "SLL-2026-11", amount: "240.00", currency: "EUR" });
+    expect(tok.verified).toBe(true);
+  });
+  it("gives each sandbox card's limits as numbers, as Airwallex's controls hold them", async () => {
+    const cards = (await get("/v1/tokenisation")).json.agent_cards.cards as J[];
+    expect(cards.map((c) => c.limit_values)).toEqual([{ currency: "EUR", per_purchase: "46.00", monthly: "100.00" }, { currency: "EUR", per_purchase: "60.00", monthly: "150.00" }, { currency: "EUR", per_purchase: "25.00", monthly: "50.00" }]);
   });
 
   it("labels the cards and the Visa credential as their records do, and keeps each refusal's own reason", async () => {
@@ -93,9 +122,10 @@ describe("Invoices & books: bookings and an invoice's journal", () => {
 
 describe("the console", () => {
   const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
-  it("has the new tabs in order, sends the old Invoices route to Books, and says what Purser Cloud is", () => {
-    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "agents", "books", "transactions", "tokenisation", "settings"]);
-    expect(html).toContain("if(path==='/invoices'){history.replaceState(null,'','#/books'");
+  // 14 Nov (Max: "make it just Invoices"): Invoices has its own tab again and the books have theirs.
+  it("has the tabs in order, Invoices and Books apart, and says what Purser Cloud is", () => {
+    expect([...html.matchAll(/data-tab="([a-z]+)"/g)].map((m) => m[1])).toEqual(["overview", "agents", "invoices", "books", "transactions", "tokenisation", "settings"]);
+    expect(html).toContain("'/invoices':invoicesView,'/books':booksView");
     expect(html).toContain("'/agents':agentsView");
     expect(html).toContain("'/tokenisation':tokensView");
     expect(html).toContain("Purser Cloud is where a company runs Purser: its agents, their limits, its payables and books, and every approval.");
@@ -118,13 +148,19 @@ describe("the console", () => {
   });
   it("shows the 'Purser Cloud is…' box on Overview only, so the phone header stays short (jury, 13 Nov)", () => {
     expect(html.match(/(?<!function )whatCloud\(/g)).toHaveLength(1);
-    expect(html).toContain("view().replaceChildren(...[whatCloud(m),head(t('cs.nav.overview')");
+    // 14 Nov: the next action leads the Overview; the box closes it.
+    expect(html).toContain("nodes.push(whatCloud(m));");
   });
   it("labels the demo's fallback decisions as a simulated month, from its own count (jury, 13 Nov)", async () => {
     expect((await get("/v1/dashboard")).json.agents).toEqual({ decisions: 33, by_fallback: 8 });
     expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).toBe("{a} by the agents · {n} by code when no model answered (simulated month)");
     expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).not.toMatch(/Claude/);
     expect(html).toContain("t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback})");
+    // 14 Nov: it is the Decisions timeline's subtitle now; each row has an icon for who acted (the rail is Airwallex).
+    const feed = (await get("/v1/dashboard")).json.feed as J[];
+    expect(feed.find((f) => f.who === "Purser (Airwallex)")?.by).toBe("rail");
+    expect(feedLine({ seq: 1, ts: "2026-10-15T10:00:00Z", actor: "sourcing", event: "card.charge_declined", subject: "tx_9", payload_json: JSON.stringify({ amount: "45.00", currency: "EUR", merchant: "Packwise", reason: "LIMIT_EXCEEDED" }) })?.by).toBe("rail");
+    expect(feed.find((f) => f.who === "The CFO")?.by).toBe("cfo");
   });
 });
 

@@ -31,14 +31,16 @@ export const agentOf = (t: Pick<Tx, "approval" | "description">): string | null 
 const reasonWords: Record<string, string> = { LIMIT_EXCEEDED: "over the card's limit", MERCHANT_CATEGORY_NOT_ALLOWED: "a merchant category this card may not pay" };
 const who = (actor: string) => (actor === "human" ? "The CFO" : AGENTS.has(actor) && actor !== "claude" ? agentName(actor) : actor === "awx-executor" ? "Purser (Airwallex)" : "Purser's code");
 
-export interface FeedItem { at: string; who: string; text: string; tone: "ok" | "bad" | "info" | "wait"; by: "agent" | "cfo" | "code" }
+// by: who acted, for the Overview's timeline icon (14 Nov): an agent, the CFO, Purser's code, or the rail (Airwallex:
+// what Purser carried out there, and what Airwallex declined).
+export interface FeedItem { at: string; who: string; text: string; tone: "ok" | "bad" | "info" | "wait"; by: "agent" | "cfo" | "code" | "rail" }
 
 /** One audit row in words, or null when it is plumbing (a step marker, a read-back, a setting). */
 export function feedLine(r: Audit): FeedItem | null {
   let p: Record<string, unknown> = {};
   try { p = JSON.parse(r.payload_json) as Record<string, unknown>; } catch { /* words without details */ }
   const s = (k: string) => (typeof p[k] === "string" ? (p[k] as string) : "");
-  const base = { at: r.ts, who: who(r.actor), by: (r.actor === "human" ? "cfo" : AGENTS.has(r.actor) ? "agent" : "code") as FeedItem["by"] };
+  const base = { at: r.ts, who: who(r.actor), by: (r.actor === "human" ? "cfo" : r.actor === "awx-executor" || r.event === "card.charge_declined" ? "rail" : AGENTS.has(r.actor) ? "agent" : "code") as FeedItem["by"] };
   switch (r.event) {
     case "card.charge_approved": return { ...base, text: `Paid ${s("amount")} ${s("currency")} at ${s("merchant")} on its own card, within its limit`, tone: "ok" };
     case "card.charge_declined": return { ...base, text: `Airwallex declined ${s("amount")} ${s("currency")} at ${s("merchant")}: ${reasonWords[s("reason")] ?? s("reason")}`, tone: "bad" };

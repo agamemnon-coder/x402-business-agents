@@ -12,12 +12,13 @@ import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.j
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { tryPageResponse } from "./tryPage.js";
+import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -241,7 +242,8 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
   /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut, and the six pages need about 480 px where a
      phone has 352. On a phone they are two rows of three, each name whole: no scrolling, no fade, nothing cut. */
-  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
+  /* 14 Nov: seven pages (Invoices and Books apart): two rows, four and three. */
+  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */
@@ -356,7 +358,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/books" data-tab="books" data-t="cs.nav.books">${tr("en", "cs.nav.books")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
@@ -451,8 +453,8 @@ function shell(){
   // The demo company (Try as guest): one ribbon on every page says what it is, and offers the way out.
   // Demo from the first paint: a guest session says so when it is stored (S.guest), before /v1/me answers.
   const dm=$('#demo');if(dm){const on=!!(S&&(ME?ME.demo:S.guest));dm.hidden=!on;document.body.classList.toggle('demo',on);footLine()}
-  // An invoice belongs to the Books tab (Invoices & books, 13 Nov): the old Invoices route and an invoice's page light it.
-  const tab0=(location.hash.split('/')[1]||'').split('?')[0];const tab=tab0==='invoices'?'books':tab0;
+  // An invoice's page lights the Invoices tab (14 Nov: Invoices and Books are two tabs again).
+  const tab=(location.hash.split('/')[1]||'').split('?')[0];
   for(const a of document.querySelectorAll('#tabs a'))if(a.dataset.tab===tab){a.setAttribute('aria-current','page');if(a.parentElement.scrollWidth>a.parentElement.clientWidth)a.scrollIntoView({block:'nearest',inline:'nearest'})}else a.removeAttribute('aria-current');
 }
 // A language chosen in the page (the person's own, or the company's for an owner who follows it): remember it in this
@@ -686,38 +688,6 @@ function dashBlock(D){
   // 1440 px, in a page read whole). Reduced motion: the CSS shows all at once.
   requestAnimationFrame(()=>{for(const n of box.querySelectorAll('.rise'))n.classList.add('in')});
   return box}
-async function overviewView(){
-  title(t('cs.nav.overview'));
-  const [m,x,all,D]=await Promise.all([me(),api('/v1/insights'),api('/v1/invoices?limit=200'),api('/v1/dashboard').catch((e)=>{if(e instanceof Expired)throw e;return null})]);shell();
-  const items=all.items||[];
-  const blocked=Object.entries(x.blocked_by_reason||{}).sort((a,b)=>b[1]-a[1]);const nb=blocked.reduce((n,[,c])=>n+c,0);
-  const waits=x.waiting.for_cfo+x.waiting.for_supplier_check+x.waiting.for_a_person;
-  const tiles=el('div','tiles',[
-    tile(t('cs.t.open'),'wallet',money(x.open_net_cents,t('cs.nothing_open')),others(x.open_net_cents)||null),
-    tile(t('cs.t.due7'),'calendar-range',money(x.due_7_days_cents),byCur(x.due_30_days_cents).length?t('cs.x.due30',{amount:byCur(x.due_30_days_cents).map(([c,v])=>cur(c)+' '+cents(v)).join(' · ')}):null),
-    tile(t('cs.t.overdue'),'clock',money(x.overdue_cents),byCur(x.overdue_cents).length?t('cs.x.pay_first'):t('cs.x.in_time'),byCur(x.overdue_cents).length?'alert':'calm'),
-    tile(t('cs.t.waits'),'inbox',String(waits),t('cs.x.waits',{faceid:x.waiting.for_cfo,other:x.waiting.for_a_person+x.waiting.for_supplier_check})),
-    tile(t('cs.t.blocked'),'octagon-x',String(nb),blocked.length?tk('cs.w.f.'+blocked[0][0],t('cs.w.blocked')):t('cs.x.none_blocked'),nb?'alert':'calm')]);
-  // The next thing to do, from the same invoices: the CFO's Face ID first, then what needs a person.
-  const faceid=items.filter(i=>i.status==='waiting_cfo').length,todo=items.filter(i=>['ready','needs_review','needs_vendor'].includes(i.status)).length;
-  const nx=el('a','card next'+(faceid||todo?' act':''));nx.href=faceid?'#/invoices?f=waiting_cfo':'#/invoices?f=act';
-  nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
-    el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),faceid||todo?ic('chevron-right'):null);
-  // When the open invoices fall due, in their main currency (other currencies are said, not mixed in).
-  const open=items.filter(i=>!['paid','rejected'].includes(i.status));const per={};for(const i of open)per[i.currency]=(per[i.currency]||0)+toCents(i.total);
-  const main=Object.entries(per).sort((a,b)=>b[1]-a[1])[0];const days=(d)=>Math.round((Date.parse(d)-Date.parse(today))/86400000);
-  const b=[0,0,0,0];for(const i of open){if(!main||i.currency!==main[0])continue;const n=i.due_date?days(i.due_date):99999;b[n<=0?0:n<=7?1:n<=30?2:3]+=toCents(i.total)}
-  const lab=['cs.due.late','cs.due.d7','cs.due.d30','cs.due.later'];
-  const due=el('div','card panel due',[el('h2','',t('cs.due.title')),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
-    Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
-  const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
-  const w=items.filter(i=>i.status==='waiting_cfo');
-  const wl=el('div','card list');
-  if(!w.length)wl.append(el('div','empty',[el('b','',t('cs.nothing_waits')),t('cs.nothing_waits_sub')]));
-  else{wl.append(rowHead());for(const i of w)wl.append(invoiceRow(i))}
-  view().replaceChildren(...[whatCloud(m),head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),dashBlock(D),el('div','ovtop',[nx,due]),tiles,inbox,
-    el('section','section waits',[el('div','bar',[el('h2','',t('cs.waits_head'))]),wl])].filter(Boolean));
-}
 
 // --- The engine (test money, on its stand-in bank) -----------------------------------------------------------------
 // Only a page whose config says engine true asks /v1/engine: a cloud with no engine answers 404 there, so its page never
@@ -846,10 +816,12 @@ let BOOKED={};
 const FILTERS=[['all',t('filter.all'),()=>true],['open',t('cs.filter.open'),(i)=>!['paid','rejected','blocked'].includes(i.status)],['act',t('filter.act'),(i)=>['ready','needs_review','needs_vendor'].includes(i.status)],['waiting_cfo',t('filter.waiting_cfo'),(i)=>i.status==='waiting_cfo'],['paid',t('filter.paid'),(i)=>i.status==='paid'],['booked',t('cs.filter.booked'),(i)=>!!(BOOKED[i.id]&&BOOKED[i.id].length)],['blocked',t('filter.blocked'),(i)=>i.status==='blocked'],['rejected',t('filter.rejected'),(i)=>i.status==='rejected']];
 async function invoicesView(q,embed){
   if(!embed)title(t('nav.invoices'));
+  // Which invoices the ledger books, for the Booked filter (read with the list since Invoices is its own tab again, 14 Nov).
+  try{BOOKED=(await api('/v1/books/bookings')).bookings||{}}catch(e){if(e instanceof Expired)throw e;BOOKED={}}
   // With an engine: the panel "At work" for everyone, the upload for who may manage the company (an owner).
   const eng=await engineStatus();const write=!!eng&&(await me()).scopes.includes('admin');
   let all=[];let cursor=null;let filter=q&&FILTERS.some(f=>f[0]===q.get('f'))?q.get('f'):'all';
-  const list=el('div','card list');const bar=el('div','bar',[el('h2','',t('nav.invoices'))]);const more=btn(t('cs.load_more'));more.hidden=true;
+  const list=el('div','card list');const bar=el('div','bar'+(embed?'':' chipsbar'),embed?[el('h2','',t('nav.invoices'))]:[]);const more=btn(t('cs.load_more'));more.hidden=true;
   function draw(){
     bar.querySelectorAll('.chip').forEach(c=>c.remove());
     for(const [k,label,fn] of FILTERS){const n=all.filter(fn).length;if(k!=='all'&&!n&&k!=='act')continue;const b=el('button','chip',[label,' ',el('b','',String(n))]);b.type='button';b.setAttribute('aria-pressed',String(filter===k));b.onclick=()=>{filter=k;draw()};bar.append(b)}
@@ -880,55 +852,6 @@ function detailTop(i){
   const late=i.due_date&&i.due_date<today&&!['paid','rejected'].includes(i.status);
   return el('div','dhead',[el('div','who',[el('h1','',i.vendor||t('unknown_supplier')),el('div','meta',[chip(i.status,i.status_words),el('span','',t('dt.invoice',{no:i.invoice_no||t('no_number')})),el('span','','·'),el('span','',i.id),el('span','','·'),el('span','',t('cs.received_on',{date:day(i.received_at)}))])]),
     el('div','money',[el('div','big',[el('small','',cur(i.currency)),'\u00a0'+(amount(i.total)||'–')]),el('div','when',i.status==='paid'&&i.paid_at?t('paid_on',{date:day(i.paid_at)}):i.due_date?t(late?'dt.was_due':'dt.due',{date:day(i.due_date)}):t('dt.no_due'))])])}
-function timelineOf(i){
-  const tl=el('ul','timeline');
-  tl.append(el('li','',[el('b','',t('tl.received')),el('span','',stamp(i.received_at))]));
-  for(const v of i.earlier_versions||[])tl.append(el('li','',[el('b','',t('cs.changed_version',{n:v.version})),el('span','',stamp(v.replaced_at))]));
-  if(i.status==='waiting_cfo')tl.append(el('li','',[el('b','',t('filed_for_face_id')),el('span','',i.proposal_id?t('cs.payment',{id:i.proposal_id}):'')]));
-  if(i.paid_at)tl.append(el('li','',[el('b','',t('paid')),el('span','',stamp(i.paid_at))]));
-  tl.append(el('li','',[el('b','',t('cs.last_update')),el('span','',stamp(i.updated_at))]));
-  return tl}
-async function invoiceView(id){
-  title(t('cs.invoice'));
-  // With an engine, its own view of this invoice too: what it can do with it is the engine's to say, not the read model's.
-  const eng=await engineStatus();
-  const [i,ev]=await Promise.all([api('/v1/invoices/'+encodeURIComponent(id)),eng?api('/v1/engine/invoices').catch((e)=>{if(e instanceof Expired)throw e;return null}):null]);
-  const r=i.reading||{};
-  title((i.vendor||t('cs.invoice'))+' '+(i.invoice_no||i.id));
-  const back=el('a','back',[ic('arrow-left'),' '+t('dt.all')]);back.href='#/books';
-  let top=detailTop(i),tl=timelineOf(i);
-  // With an engine, a paid invoice shows its proof (paid, booked, archived) where the payment card was: first.
-  let proof=eng&&i.status==='paid'?proofCard(i):null;let stack=null;
-  // The read model again, once the engine filed or paid it: the head (its status chip), the timeline and the proof follow.
-  const again=async()=>{const j=await api('/v1/invoices/'+encodeURIComponent(id));if(!top.isConnected)return;const nt=detailTop(j),nl=timelineOf(j);top.replaceWith(nt);tl.replaceWith(nl);top=nt;tl=nl;
-    if(!eng||j.status!=='paid')return;
-    if(pay)for(const x of pay.querySelectorAll('.acts'))x.remove();
-    if(proof){await proof.refresh(j);return}
-    proof=proofCard(j);if(pay&&pay.isConnected)pay.after(proof);else stack.prepend(proof)};
-  const mine=ev&&(ev.items||[]).find((x)=>x.id===id);
-  const pay=mine?payCard({inv:mine,eng,write:(await me()).scopes.includes('admin'),moved:again}):null;
-  const acct=r.iban?'IBAN …'+String(r.iban).slice(-4):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
-  const rc=r.currency||i.currency||'';
-  const read=el('div','card panel',[el('h2','',t('dt.read')),dl([[t('supplier'),r.vendor||i.vendor],[t('cs.vat_number'),r.vat_id],[t('dt.invoice_number'),r.invoice_no||i.invoice_no],[t('dt.invoice_date'),day(r.issue_date||i.issue_date)],[t('dt.due_date'),day(r.due_date||i.due_date)],
-    [t('dt.subtotal'),r.subtotal?ma(rc,r.subtotal):''],[t('dt.vat'),r.tax?ma(rc,r.tax):''],[t('dt.total'),ma(rc,r.total||i.total)],
-    [t('dt.pay_to'),[acct,r.bic?'BIC '+r.bic:''].filter(Boolean).join(' · '),'mono'],[t('dt.bank_country'),r.bank_country],[t('dt.reference'),r.reference],[t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):'']])]);
-  const fs=i.findings||[];const fl=el('ul','findings');
-  if(!fs.length)fl.append(el('li','ok',[ic('circle-check'),el('span','',t('cs.all_passed'))]));
-  for(const f of fs){const m=RES[f.level]||['circle-minus',f.level];fl.append(el('li',f.level,[ic(m[0]),el('span','',[el('b','',m[1]+': '),finding(f)])]))}
-  const checks=el('div','card panel',[el('h2','',t('dt.checks')),fl]);
-  const getDoc=btn(t('cs.download'),'','download');
-  getDoc.onclick=async()=>{getDoc.disabled=true;try{await download('/v1/invoices/'+encodeURIComponent(id)+'/document',(i.invoice_no||i.id).replace(/[^\w.-]+/g,'_')+'.pdf')}catch(e){if(!(e instanceof Expired))getDoc.after(note(e.message,'bad'))}finally{getDoc.disabled=false}};
-  const pages=el('div','pages',[el('p','wait',t('drawing_document'))]);
-  const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')+(i.doc_sha256?' · SHA-256 '+String(i.doc_sha256).slice(0,12)+'…':'')),getDoc]),pages]);
-  // The payment card where the person acts, or the proof once paid, first; the panel "At work" last; without an engine,
-  // the note that the phone approves. On a phone this column comes before the document (.split.inv).
-  const jr=el('div','card panel journal-for',[el('h2','',t('cs.books.journal_for')),el('p','sub',t('loading'))]);
-  api('/v1/books/invoices/'+encodeURIComponent(id)+'/journal').then((j)=>jr.replaceChildren(el('h2','',t('cs.books.journal_for')),journalTable(j.items||[],t('cs.books.no_journal'))),(e)=>{if(!(e instanceof Expired))jr.replaceChildren(el('h2','',t('cs.books.journal_for')),note(e.message,'bad'))});
-  stack=el('div','stack',[pay,proof,read,checks,jr,el('div','card panel',[el('h2','',t('dt.timeline')),tl]),pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
-  view().replaceChildren(back,top,el('div','split inv',[doc,stack]));
-  if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
-  drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages,t('cs.invoice_drawn'));
-}
 
 // --- The proof on a paid invoice (engine only): paid, booked, archived, each from what the read model and the archive say --
 // Every page of a list route (limit 200, its cursor), so nothing is missed on a busy company.
@@ -1147,7 +1070,7 @@ async function transactionsView(){
     for(const r of p.items){const b=el('div','trow');
       const amt=el('span','amt'+(r.flow==='in'?' in':''),[el('span','c',cur(r.currency)),'\u00a0'+(r.flow==='in'?'+':'−')+amount(r.amount)]);if(!r.moved)amt.classList.add('not');
       b.append(el('span','when',day(r.at)),el('span','what',[av(r.counterparty||'?'),el('span','wt',[el('b','',data('counterparty',r.counterparty||'')),el('span','sub',data('description',r.description||''))])]),el('span','rail',[tk('rail.'+r.rail,r.rail_label||r.rail),el('span','sub',r.proof?el('code','idc',String(r.proof).slice(0,18)):t('tx.no_proof_short'))]),amt,
-        el('span','',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
+        el('span','stx',[el('span','pill '+(r.moved?'ok':'bad'),data('status',r.status_words||r.status))]),el('span','',[el('span','pill '+(r.reconciliation==='matched'?'ok':r.reconciliation==='not_applicable'?'':'warn'),tk('rec.'+r.reconciliation,r.reconciliation_words||r.reconciliation))]),el('span',''));
       list.append(b)}
     if(p.next_cursor)list.append(note(t('cs.newest_200')));
   }
@@ -1181,46 +1104,6 @@ async function archiveView(){
 
 // --- Books ---------------------------------------------------------------------------------------------------------
 const RUBRIC=(k)=>tk('cs.rubric.'+k,k);
-async function booksView(q){
-  title(t('cs.nav.books'));
-  try{BOOKED=(await api('/v1/books/bookings')).bookings||{}}catch(e){if(e instanceof Expired)throw e;BOOKED={}}
-  const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
-  const pick=el('select','field');for(const v of qs){const o=el('option','',v);o.value=v;pick.append(o)}
-  const vat=el('div','card panel');const journal=el('div','card panel');
-  // With an engine, its archive is one link away from the books.
-  const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
-  const inv=el('div','books-invoices');
-  const bal=el('div','card panel balance',[el('h2','',t('cs.books.balance')),el('p','sub',t('loading'))]);
-  view().replaceChildren(head(t('cs.nav.books'),ME&&ME.demo?t('cs.books.demo_lede'):t('cs.books.lede'),arch?[arch]:null),inv,el('h2','section-h',t('cs.books.ledger')),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
-  // The balance sheet from the ledger (GET /v1/reports/balance), per currency: what the company owns, owes and is worth.
-  api('/v1/reports/balance').then((b)=>{const rows=[];for(const [c,v] of Object.entries(b.by_currency||{})){rows.push(el('tr','',[el('td','',el('b','',c)),el('td','r',cur(c)+' '+cents(v.assets_cents||0)),el('td','r',cur(c)+' '+cents(v.liabilities_cents||0)),el('td','r',cur(c)+' '+cents(v.equity_cents||0)),el('td','',v.balanced?el('span','ast active',t('cs.books.balanced')):el('span','ast revoked',t('cs.books.not_balanced')))]))}
-    bal.replaceChildren(el('h2','',t('cs.books.balance')),el('p','sub',t('cs.books.balance_at',{day:day(b.to)})),el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',''),el('th','r',t('cs.books.assets')),el('th','r',t('cs.books.liabilities')),el('th','r',t('cs.books.equity')),el('th','','')])),el('tbody','',rows.length?rows:[el('tr','',el('td','',t('cs.no_entries')))])])))},
-    (e)=>{if(!(e instanceof Expired))bal.replaceChildren(el('h2','',t('cs.books.balance')),note(e.message,'bad'))});
-  await invoicesView(q,inv);
-  async function drawVat(){
-    const v=await api('/v1/reports/vat?quarter='+encodeURIComponent(pick.value));
-    const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
-    const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
-    const eur=(c)=>cur('EUR')+' '+cents(c);
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
-    // VAT a supplier abroad charged (13 Nov: German 19%): its own row, outside the Dutch return's boxes and not in 5b.
-    const fv=v.foreign_vat;if(fv&&fv.lines)tb.append(el('tr','',[el('td','',t('cs.vat_foreign',{n:fv.lines})),el('td',''),el('td','r',eur(fv.base_cents)),el('td','r',eur(fv.vat_cents))]));
-    // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
-    if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
-    tbl.append(tb);
-    vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
-      v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
-  }
-  pick.onchange=()=>drawVat().catch(e=>{if(!(e instanceof Expired))vat.append(note(e.message,'bad'))});
-  const j=await api('/v1/ledger/entries?limit=30');
-  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  for(const e of j.items.slice().reverse()){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
-  if(!j.items.length)tb.append(el('tr','',[el('td','',t('cs.no_entries')),el('td',''),el('td',''),el('td','')]));
-  tbl.append(tb);journal.replaceChildren(el('h2','',t('cs.journal')),el('div','scroll',tbl),note(t('cs.journal_note')));
-  await drawVat();
-}
 
 // --- Shared pieces of the enterprise pass (13 Nov) -------------------------------------------------------------------
 // A VAT code in words where Purser knows it (cloud/src/tryCopy.ts vat), else the code itself.
@@ -1229,11 +1112,12 @@ const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
 // The demo company is said by the ribbon and the footer; the card does not say it a third time (jury round 2, 13 Nov).
 function whatCloud(){return el('div','what-cloud',[el('p','',t('cs.what_cloud'))])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
-function journalTable(items,empty){
-  const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
-  const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);
+function journalTable(items,empty,newest){
+  const jl=(td,l)=>{td.dataset.l=l;return td};
+  const tbl=el('table','table jt',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
+  const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);if(newest)es.reverse();
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
@@ -1247,47 +1131,8 @@ const ext=(href,label)=>{const a=el('a','ext',[label,' ',ic('external-link')]);a
 const shortHash=(h)=>String(h||'').slice(0,10)+'…'+String(h||'').slice(-6);
 
 // --- Agents (13 Nov) -------------------------------------------------------------------------------------------------
-async function agentsView(){
-  title(t('cs.nav.agents'));
-  const [m,r]=await Promise.all([me(),api('/v1/agents')]);shell();
-  const cards=(r.agents||[]).map((a)=>{
-    const st=el('span','ast '+String(a.status).replace(/[^a-z]/g,''),[ic(a.status==='active'?'circle-check':a.status==='paused'?'snowflake':'ban'),' '+tk('cs.agents.status.'+a.status,a.status)]);
-    const since=a.status_since?el('span','sub',' '+t('cs.agents.since',{day:day(a.status_since)})):null;
-    const hd=el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',a.name),el('p','sub',a.role+' · '+a.job)]),el('div','ast-wrap',[st,since])]);
-    const lim=a.card?el('ul','pl',[el('li','',[ic('credit-card'),' '+t('cs.agents.card',{last4:a.card.last4})]),a.card.per_purchase?el('li','',t('cs.agents.per_purchase',{amount:cur(a.card.currency)+' '+a.card.per_purchase})):null,a.card.per_month?el('li','',t('cs.agents.per_month',{amount:cur(a.card.currency)+' '+a.card.per_month})):null,a.card.pays_for?el('li','',t('cs.agents.pays_for',{what:a.card.pays_for})):null]):el('p','sub',t('cs.agents.no_card'));
-    const facts=el('div','agrid',[
-      el('div','',[el('h3','',t('cs.agents.model')),a.models.length?el('p','mono',a.models.join(', ')):el('p','sub',t('cs.agents.no_model')),a.runs&&a.runs.total?el('p','sub',t('cs.agents.runs',{n:a.runs.total,k:a.runs.without_model})):null]),
-      el('div','',[el('h3','',t('cs.agents.limits')),lim]),
-      el('div','',[el('h3','',t('cs.agents.rails')),a.rails.length?el('p','',a.rails.join(', ')):el('p','sub',t('cs.agents.no_rail')),a.spent||a.declined?el('p','sub',t('cs.agents.moved',{n:a.spent,k:a.declined})):null]),
-      el('div','',[el('h3','',t('cs.agents.may')),el('ul','can',a.may.map((x)=>el('li','',[ic('circle-check'),el('span','',x)])))]),
-      el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
-    const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','feed',a.decisions.map((d)=>el('li','',[el('span','when num',day(d.at)),el('span','',[d.text,d.decided_by&&!/fallback/.test(d.text)?el('small','by',' · '+t('cs.agents.decided_by',{who:d.decided_by})):null])]))):el('p','sub',t('cs.agents.no_decisions'))]);
-    return el('section','card agent',[hd,facts,dec])});
-  view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede')+(m.demo?' '+t('cs.agents.read_only'):'')),
-    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls'))]);
-}
 
 // --- Tokenisation (13 Nov) -------------------------------------------------------------------------------------------
-async function tokensView(){
-  title(t('cs.nav.tokens'));
-  const [m,r]=await Promise.all([me(),api('/v1/tokenisation')]);shell();
-  const lbl=(s)=>el('span','rlabel',s);
-  const tok=r.invoice_token;const it=tok.invoice;
-  const steps=el('ol','tsteps',tok.steps.map((s)=>el('li','',[el('b','',tk('cs.tok.step.'+s.step,s.step)),el('span','sub',' '+s.label),el('ul','txs',s.txs.map((x)=>el('li','',[el('span',x.status==='success'?'ok':'bad',[ic(x.status==='success'?'circle-check':'triangle-alert')]),el('span','',x.what+' · '+day(x.at)+' · '),x.explorer?ext(x.explorer,el('code','',shortHash(x.hash))):el('code','',shortHash(x.hash))])))])));
-  const invoice=el('section','card panel tok',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
-    el('p','',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),
-    dl([[t('cs.tok.contract'),el('code','',tok.contract),'mono'],[t('cs.tok.token_id'),el('code','',shortHash(tok.token_id)),'mono'],[t('cs.tok.face_value'),tok.face_value],[t('cs.tok.discount'),tok.discount]]),
-    steps,tok.verified?note(t('cs.tok.verified'),'ok'):null,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
-  const c=r.agent_cards;
-  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
-    el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',t('cs.tok.card')),el('th','',t('cs.tok.holder')),el('th','',t('cs.tok.limits')),el('th','',t('cs.tok.status'))])),el('tbody','',c.cards.map((x)=>el('tr','',[el('td','',[el('b','',x.brand+' ••'+x.last4),el('span','sub',' '+x.form.toLowerCase())]),el('td','',x.holder),el('td','',x.limits.join(' · ')),el('td','',[el('span','ast '+(x.status==='ACTIVE'?'active':'paused'),x.status.charAt(0)+x.status.slice(1).toLowerCase()),x.merchant_categories.length?el('span','sub',' '+t('cs.tok.categories',{list:x.merchant_categories.join(', ')})):null])])))])),
-    el('p','links',[ext(c.record,t('cs.tok.record'))])]);
-  const v=r.visa_credential;
-  const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
-    el('ul','viclist',v.purchases.map((p)=>el('li','',[el('b','',p.step),el('span','',' '+p.what+' · '+p.amount),p.outcome?el('span',p.outcome==='succeeded'?'ok':'sub',' · '+p.outcome+(p.reason?': '+p.reason:'')):null]))),
-    v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
-  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
-}
 
 // --- Settings ------------------------------------------------------------------------------------------------------
 // Connect Claude (docs/connect-claude.md): the company's own Claude account reads its books through /mcp and, with a
@@ -1592,6 +1437,7 @@ async function guestIn(fromButton){
   try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go('#/overview')}
   catch(e){if(fromButton)throw e;notice=t('cs.guest.failed',{error:e.message});go('#/sign-in')}
 }
+__UI__
 async function route(){
   const h=location.hash||'#/';const [path,qs]=h.slice(1).split('?');const q=new URLSearchParams(qs||'');
   S=load();shell();
@@ -1620,9 +1466,8 @@ async function route(){
     view().replaceChildren(el('div','skel',[el('span','vh',t('loading')),el('i','sk-h'),el('i','sk-l'),el('div','sk-cards',[el('i',''),el('i',''),el('i','')]),el('i','sk-b')]));
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
-    // The Invoices tab is part of Books now (13 Nov): its old route keeps its filter and lands there.
-    if(path==='/invoices'){history.replaceState(null,'','#/books'+(qs?'?'+qs:''));return route()}
-    const pages={'/overview':overviewView,'/agents':agentsView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    // 14 Nov: Invoices has its tab back (the invoices only); Books holds the ledger, the VAT overview and the exports.
+    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
@@ -1835,7 +1680,7 @@ const nonce = () => {
 };
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + BODY);
+const USED = keysUsedIn(SCRIPT + UI_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -1843,13 +1688,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS));
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS);
   return `<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser Cloud</title>
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;
