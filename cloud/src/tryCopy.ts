@@ -256,7 +256,7 @@ export const PROPOSAL_FIELDS = {
    * final-polish, 13 Nov: the engine converts only the EUR shortfall (needed minus free EUR, src/policy/treasury.ts), so the
    * row says how much of the payment that part is and what it costs in USD.
    */
-  fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell} at {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
+  fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell}; {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
 };
 
 /**
@@ -268,6 +268,8 @@ export const FX_CARD = {
   live: "Airwallex · live sandbox quote",
   recorded: "Airwallex unavailable, recorded rate used",
   quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
+  /** The quote's valid-to, as a date and time. */
+  validTo: "Valid to",
   liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
   recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
   why: {

@@ -88,7 +88,7 @@ p { margin: 0 0 12px; }
 .muted { color: var(--muted); }
 .band { display: flex; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 13px; }
 .band .mode { color: var(--text); font-weight: 600; }
-.band .mode.live { color: var(--claude); }
+.band .mode.live { color: var(--accent); } /* 14 Nov, jury: under "test money", the warm colour read as an error */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 650 15px/1.2 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn.big { min-height: 52px; padding: 0 24px; font-size: 16px; margin-top: 8px; }
@@ -472,7 +472,16 @@ const signKit=(()=>{
     return out.join(' ')+' '+W.vCover;
   };
   const methodOf=(M,ua)=>/iPhone|iPad|iPod/.test(ua)?M.ios:/Android/.test(ua)?M.android:/Macintosh|Mac OS X/.test(ua)?M.mac:/Windows/.test(ua)?M.windows:M.other;
-  return {b64u,fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,changedFields,verdict,methodOf};
+  // A conversion's rate with its units (14 Nov, jury: "at 1.1173" had none). Airwallex states a rate in its currency
+  // pair's convention (EURUSD: USD per EUR); the pair is read from the amounts: the side whose ratio the rate matches
+  // is the quote currency. "1 EUR = 1.1173 USD"; '' when there is no rate.
+  const rateLine=(cv)=>{
+    if(!cv||typeof cv!=='object')return '';const r=Number(cv.client_rate),b=Number(cv.buy_amount),s=Number(cv.sell_amount);
+    if(!(r>0))return '';const rate=String(cv.client_rate);
+    const buyBase=!(b>0&&s>0)||Math.abs(s/b-r)<=Math.abs(b/s-r);
+    return buyBase?'1 '+cv.buy_currency+' = '+rate+' '+cv.sell_currency:'1 '+cv.sell_currency+' = '+rate+' '+cv.buy_currency;
+  };
+  return {b64u,fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,changedFields,verdict,methodOf,rateLine};
 })();
 `;
 
@@ -559,7 +568,7 @@ const W=C.live;
 __EVENT_LINE__
 __SIGN__
 __BOOKS__
-const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf}=signKit;
+const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf,rateLine}=signKit;
 const IC=__ICONS__;
 const lineOf=eventLineOf(W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
@@ -579,7 +588,8 @@ const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return 
 const cash=(cur,amt)=>booksKit.money(cur,amt);
 const say=(text)=>{$('#say').textContent=text};
 const note=(text)=>el('p','note',text);
-const words=(j,fallback)=>typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;
+// The server's sentence, its first letter capitalised (14 Nov, jury: "the locked quote costs…" began lowercase), or the fallback.
+const words=(j,fallback)=>{const s=typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;return s?s[0].toUpperCase()+s.slice(1):s};
 // An icon: an SVG element made here from shape data, one element at a time.
 function icon(name,size){
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -990,7 +1000,7 @@ function drawResult(box,r,ms){
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
-  else box.append(el('p','note',typeof r.json.message==='string'&&r.json.message?r.json.message:C.work.failed));
+  else box.append(el('p','note',words(r.json,C.work.failed)));
   main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
   box.append(main);
 }
@@ -1016,7 +1026,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     pollDone();askClose('skeleton');live.settle(ms);
     if(S.screen!=='work')return;
     // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
-    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
+    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
     result.replaceChildren();drawResult(result,r,ms);
     // Back from the next step returns to this answer, never files the invoice again.
     const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
@@ -1078,7 +1088,7 @@ function factRows(p,inv,terms){
   if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
   // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
   const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
-  if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:String(cv.client_rate||'')})]);
+  if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:rateLine(cv)})]);
   if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
   if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
   const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
@@ -1092,7 +1102,7 @@ function fxCard(note,terms){
   const live=note.source==='airwallex-sandbox';const d=el('dl','');
   const row=(k,v,cls)=>d.append(el('dt','',k),el('dd',cls||'',v));
   if(live)row(X.quote,String(cv.quote_id),'mono');
-  row(X.rate,String(cv.client_rate||''));
+  row(X.rate,rateLine(cv));
   row(X.amounts,fill(X.amountsLine,{buy:cash(cv.buy_currency,cv.buy_amount),sell:cash(cv.sell_currency,cv.sell_amount)}));
   const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.recorded),d]);
   if(live){
@@ -1100,6 +1110,7 @@ function fxCard(note,terms){
     const end=Date.parse(String(cv.valid_to||''));
     const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
     if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
+    if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
   }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
   box.setAttribute('data-awx',live?'live':'recorded');
@@ -1151,7 +1162,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
     if(S.screen!=='approve')return;
-    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){top.replaceChildren();said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren();top.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).

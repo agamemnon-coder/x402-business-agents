@@ -484,8 +484,23 @@ interface Kit {
   changedFields(signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string[];
   verdict(W: typeof COPY.PAY, signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string;
   methodOf(M: typeof COPY.METHOD, ua: string): string;
+  rateLine(cv: unknown): string;
 }
 const kit = new Function(`${SIGN_JS}\nreturn signKit;`)() as Kit;
+
+describe("a conversion's rate with its units (rateLine)", () => {
+  it("Airwallex's EURUSD rate on a buy of EUR for USD reads as USD per EUR", () => {
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "413.38", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "401.45", client_rate: "1.0850" })).toBe("1 EUR = 1.0850 USD");
+  });
+  it("a rate stated the other way round (sell per buy below 1) names the sold currency first", () => {
+    expect(kit.rateLine({ buy_currency: "USD", sell_currency: "EUR", buy_amount: "413.38", sell_amount: "370.00", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+  });
+  it("no rate, nothing", () => {
+    expect(kit.rateLine(null)).toBe("");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", client_rate: "" })).toBe("");
+  });
+});
 const buf = (...b: number[]) => new Uint8Array(b).buffer;
 
 describe("signing and paying, in the page's own script", () => {
