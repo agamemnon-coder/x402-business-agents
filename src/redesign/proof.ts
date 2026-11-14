@@ -5,6 +5,7 @@
 // Airi runs, Airwallex read back, every check (who stopped what, the Face ID decisions: one number, from the run's
 // ledger), the business and the Archive; the utility links last. Nothing typed in by hand.
 
+import { VISA_MEETS_ID } from "./visaStory.js";
 import { COUNT_JS } from "./stats.js";
 import { LIFE_TITLE, REFUSALS_TITLE, VISUAL_CSS, lifecycleSvg, refusalsSvg } from "../visuals/svg.js";
 import { TWO_LOCKS_LOG, airwallexHold, railRefusals } from "../visuals/facts.js";
@@ -267,7 +268,9 @@ function visaCardParts(r: Vic3 | null): { lead: Lead[]; what: string; facts: str
   const guarded = neg.filter((x) => /^PURSER_CREDENTIAL_/.test(x.outcome?.code ?? ""));
   return {
     // One line in sight (owner, 12 Nov); the record's own words for the purchase in the fold.
-    lead: [{ text: `${b.request.currency} ${b.request.amount} above the CFO's limit, paid after Face ID`, href: "visa" }],
+    lead: [{ text: `${b.request.currency} ${b.request.amount} above the CFO's limit, paid after Face ID`, href: "visa" },
+      // Visa judge, 14 Nov: the outcome in one line, to /visa's section on what Visa asks and how Purser meets it.
+      ...(guarded.length === 2 ? [{ text: "A reused credential refused by Purser; how Purser meets what Visa asks", href: `visa#${VISA_MEETS_ID}` }] : [])],
     what: `Visa Intelligent Commerce via Airwallex's Airi, ${dayOf(r.started_at)}: ${b.request.currency} ${b.request.amount} ${b.what}. ${r.label[0]!.toUpperCase()}${r.label.slice(1)}.`,
     facts: fact(`${b.request.currency} ${b.request.amount}`, "paid after Face ID") + (refused.length ? fact(String(refused.length), "refused by Purser before any Airi call") : ""),
     items: [

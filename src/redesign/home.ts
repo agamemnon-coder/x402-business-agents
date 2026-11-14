@@ -7,6 +7,7 @@
 // amount and date is read from the run records (docs/demo/airwallex-run.json, docs/demo/main-run.json) and the hero's
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
+import { VISA_REUSE_ID } from "./visaStory.js";
 import { FILM_LINK, FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
@@ -14,7 +15,7 @@ import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
 import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml } from "./heroFlow.js";
-import { VIC3_RUN_ID, vic3Run, type Vic3Record } from "./vic3Run.js";
+import { vic3Run, type Vic3Record } from "./vic3Run.js";
 import { countOf, esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
 import { homeScaleStats, SCALE_CSS, scaleBandHtml } from "./scale.js";
@@ -240,7 +241,7 @@ export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa"; title: stri
  * 1. Airwallex declined an agent's card over its limit (the Airwallex-only run: the declined charge and the card's
  *    limit as Airwallex returned it), to the site's section with Airwallex's record of it.
  * 2. Metal refused a purchase on chain (the main run), to the transaction on Metal's testnet explorer.
- * 3. Visa Intelligent Commerce: the hash the CFO signed, read back equal at Airi and Airwallex (vic-3), to /visa.
+ * 3. Visa Intelligent Commerce: a reused credential refused by Purser, which the sandbox had accepted (vic-4, vic-3), to /visa.
  * The CFO's own row (the signed hash in Airwallex's record) left Home on 12 Nov to keep it under 180 words: the hero
  * shows that same approval and its hash, and step 3 says the hash is in Airwallex's record.
  */
@@ -254,10 +255,11 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
   if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", title: "Metal refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
-  // Visa Intelligent Commerce (vic-3, 12 Nov): purchase B, above the CFO's limit, paid after Face ID; the signed hash read
-  // back equal in Airi's mandate and in Airwallex's PaymentIntent (docs/runs/2026-11-12-vic-3.json), to /visa's block.
-  const b = vic3?.purchases.find((p) => p.step === "B" && p.outcome?.status === "succeeded" && p.read_back.mandate?.equal && p.read_back.payment_intent?.equal && p.payment_intent_id);
-  if (b?.payment_intent_id) rows.push({ partner: "Visa", title: "Visa: hash read back", text: "Equal at Airi and Airwallex.", icon: "credit-card", id: `${b.payment_intent_id.slice(0, 10)}…`, full: b.payment_intent_id, href: `visa#${VIC3_RUN_ID}`, external: false });
+  // Visa Intelligent Commerce (Visa judge, 14 Nov: the outcome was buried): a reused credential, refused by Purser's
+  // credential check before any Airwallex call (vic-4 F2, docs/runs/2026-11-13-vic-4.json), where the Airi/Airwallex
+  // sandbox had accepted it (vic-3); to /visa's section that sets the two side by side.
+  const f2 = vic3?.purchases.find((p) => p.step === "F2" && p.outcome?.code === "PURSER_CREDENTIAL_ALREADY_USED" && p.calls.airwallex === 0 && p.mandate_id);
+  if (f2?.mandate_id) rows.push({ partner: "Visa", title: "Visa: reused credential refused", text: "By Purser; the sandbox had accepted it.", icon: "credit-card", id: `${f2.mandate_id.slice(0, 10)}…`, full: f2.mandate_id, href: `visa#${VISA_REUSE_ID}`, external: false });
   return rows;
 }
 
@@ -290,6 +292,15 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
  * run (its agent_stats), Metal payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
  * run) and the Visa read-backs (vic-3). A figure whose record lacks it drops out.
  */
+/**
+ * The Visa outcome in one line (Visa judge, 14 Nov: "Purser refused reuse, Airi didn't" was buried), from the proof row
+ * that the records hold (vic-4 F2, vic-3), to /visa's section that sets the two side by side. Nothing without the row.
+ */
+export function visaLineHtml(rows: ProofRow[]): string {
+  const v = rows.find((r) => r.partner === "Visa");
+  return v ? `<p class="statnote visal"><a href="${esc(v.href)}">${esc("Visa via Airwallex's Airi: a reused credential refused by Purser; the sandbox had accepted it.")}</a></p>` : "";
+}
+
 export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: OwnersRun | null = ownersRun()): Stat[] {
   // The owner, 13 Nov ("feels small"): the scale band under it (src/redesign/scale.ts) carries the figures of every run,
   // so the row keeps the one lock that leads: Face ID verified on chain. The main run's 24 decisions, its Metal
@@ -346,6 +357,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
   ${scaleBandHtml(homeScaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
+  ${visaLineHtml(rows)}
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}

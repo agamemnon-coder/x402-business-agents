@@ -146,7 +146,9 @@ describe("purchase B: signed, sent, charged", () => {
   it("shows the terms hash read back from the mandate only when a record holds it; the record of 7 November has none, and nothing is said", () => {
     expect(b.mandate_terms_sha256).toBeUndefined();
     expect(c.rows.map((r) => r.name)).toEqual(["Amount", "Record"]);
-    expect(text(html)).not.toMatch(/read back from Airi/);
+    // The comparison of 7 Nov says nothing of a read-back (14 Nov: scoped to its block; /visa's rows above it speak of
+    // vic-4, whose record holds the read-back).
+    expect(text(vicCompareHtml(c))).not.toMatch(/read back from Airi/);
     // A later record with the hash read back from Airi's mandate: a third row, equal to what the CFO signed.
     const later = structuredClone(rec);
     const lb = later.purchases.find((p) => p.step === "B")!;

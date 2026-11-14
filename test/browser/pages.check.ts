@@ -688,10 +688,11 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // steps, with its ids) starts on the first screen at every width.
       if (path === "/visa") {
         // Since 12 Nov the first proof is the latest live run (vic-3); since the jury pass (13 Nov), its four cards.
-        const top = await page.evaluate(() => Math.round(((document.getElementById("visa-flow") ?? document.querySelector("main ul.sumc") ?? document.getElementById("vic3-run") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
+        // Visa judge, 14 Nov: the story opens with what Visa Intelligent Commerce asks for; it starts on the first screen.
+        const top = await page.evaluate(() => Math.round(((document.getElementById("visa-asks") ?? document.getElementById("visa-flow") ?? document.getElementById("vic-flow"))?.getBoundingClientRect().top ?? Infinity) + window.scrollY));
         if (!(top < h)) fail(`/visa ${tag}: the first proof starts at ${top} px, below the first screen (${h} px)`);
         // The redesign of 13 Nov: the flow, every purchase's outcome and the signed hash read back, each within the page's width.
-        const hero = await page.evaluate(() => ["visa-flow", "visa-outcomes", "visa-hash"].map((id) => { const e = document.getElementById(id); return { id, ok: !!e && e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1 }; }));
+        const hero = await page.evaluate(() => ["visa-asks", "visa-meets", "visa-reuse", "visa-flow", "visa-three-runs", "visa-tap", "visa-not-yet"].map((id) => { const e = document.getElementById(id); return { id, ok: !!e && e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().right <= document.documentElement.clientWidth + 1 }; }));
         for (const x of hero) if (!x.ok) fail(`/visa ${tag}: #${x.id} is missing or wider than the page`);
         // The record and footnote links are tap targets of at least 24 px (13 Nov).
         const small = await page.evaluate(() => [...document.querySelectorAll("main a.pf, main a[data-rec], main .src a, footer a.flink")].filter((a) => (a as HTMLElement).offsetParent).filter((a) => a.getBoundingClientRect().height < 24).map((a) => (a.textContent ?? "").trim().slice(0, 40)));
@@ -720,7 +721,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 710 + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 495 : 445) /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 320 /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 1050 /* +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 495 : 445) /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 320 /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -732,20 +733,21 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // in sight; four facts under the drawing (the headless browser under the purchase flow); purchase B's three amounts are equal; the footer cites the run's record.
       if (path === "/visa") {
         const c = await page.evaluate(`(() => {
-          const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("summary") : null;
-          const main = document.querySelector("main"), last = [...main.querySelectorAll("details")].pop();
+          const tap = document.getElementById("visa-tap"), sum = tap ? tap.querySelector("h2") : null;
+          const main = document.querySelector("main");
           const amounts = [...document.querySelectorAll("#vic-compare .awrow")][0];
-          return { open: !tap || tap.open, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, last: !!tap && last === tap, after: tap ? (() => { const r = document.createRange(); r.setStartAfter(tap); r.setEnd(main, main.childNodes.length); return r.toString().trim(); })() : "?",
+          // Visa judge, 14 Nov: TAP is an open section (in no fold), in sight once scrolled to; what stands above it, read.
+          return { open: !!tap && tap.tagName === "SECTION" && !tap.closest("details") && !!tap.offsetParent, tapTop: sum ? Math.round(sum.getBoundingClientRect().top + window.scrollY) : -1, above: tap ? (() => { const r = document.createRange(); r.setStart(main, 0); r.setEndBefore(tap); const f = r.cloneContents(); f.querySelectorAll("details:not([open]) > :not(summary)").forEach((n) => n.remove()); [...f.querySelectorAll(".vs-row")].filter((li) => /^Agent identity/.test(li.textContent.trim())).forEach((n) => n.remove()); return f.textContent; })() : "?",
             title: document.title, facts: [...document.querySelectorAll("#vic-facts li")].filter((li) => !li.closest("details:not(.sumd)")).length,
             amounts: amounts ? [...amounts.querySelectorAll("code")].map((x) => x.textContent) : [], foot: (() => { const f = document.querySelector("footer").cloneNode(true); f.querySelector("ul.builton")?.remove(); return f.textContent; })() };
-        })()`) as { open: boolean; tapTop: number; last: boolean; after: string; title: string; facts: number; amounts: string[]; foot: string };
+        })()`) as { open: boolean; tapTop: number; above: string; title: string; facts: number; amounts: string[]; foot: string };
         if (c.title !== pageTitle(VISA_TITLE)) fail(`/visa ${tag}: the title is "${c.title}"`);
-        if (c.open || !c.last || c.after !== "") fail(`/visa ${tag}: the TAP fold is open, or not the last thing on the page ("${c.after.slice(0, 60)}")`);
-        // In sight on load TAP is named at most once (its fold's own line; since 13 Nov that line is inside the details
-        // fold, so none), and the fold's line is on the page.
-        if ((pt.match(/\bTAP\b|Trusted Agent Protocol/g) ?? []).length > 1 || !((await page.locator("main").textContent()) ?? "").includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: TAP is named outside the closed fold's own line`);
-        // Since the jury pass (13 Nov) the TAP fold is the last thing inside the closed details fold: not in sight on load at all.
-        if (await page.locator("#visa-tap > summary").isVisible() && !(c.tapTop > h)) fail(`/visa ${tag}: the TAP fold's line is on the first screen (${c.tapTop} px)`);
+        // Visa judge, 14 Nov: TAP shown openly, after the VIC story: an open section headed as outside the entry; above it
+        // TAP is named only in the agent identity row that points to it; it starts below the first screen.
+        if (!c.open) fail(`/visa ${tag}: the TAP section is missing, folded or hidden`);
+        if (/\bTAP\b|Trusted Agent Protocol/.test(c.above)) fail(`/visa ${tag}: TAP is named above its section, outside the agent identity row`);
+        if (!((await page.locator("#visa-tap > h2").textContent()) ?? "").includes(VISA_TAP_HEADING)) fail(`/visa ${tag}: the TAP section's heading is not "${VISA_TAP_HEADING}"`);
+        if (!(c.tapTop > h)) fail(`/visa ${tag}: the TAP section is on the first screen (${c.tapTop} px), above the VIC story`);
         if (!pt.includes(VISA_ENTRY_LINE) || (!iccRecordIn() && !pt.includes(VISA_ICC_LINE)) || pt.split("Intelligent Commerce Connect").length !== 2) fail(`/visa ${tag}: the basis for VIC or the Intelligent Commerce Connect line is not in sight, once`);
         // The four facts under the drawing, in the details fold since the jury pass (13 Nov), and in no fold of their own.
         // Partner review, 13 Nov: the fifth, the headless browser (sandbox only), sits in sight right under the purchase flow.
@@ -862,12 +864,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           const first = main.querySelector("h1, h2, h3");
           const above = (id) => { const e = document.getElementById(id); return !!e && !!tap && !!(e.compareDocumentPosition(tap) & Node.DOCUMENT_POSITION_FOLLOWING); };
           const range = document.createRange(); range.setStart(main, 0); if (tap) range.setEndBefore(tap); else range.setEnd(main, main.childNodes.length);
-          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "vic-facts", "vic-compare", "visa-runs", "airi-run", "airi-run-2", "vic-more"].filter((id) => !above(id)), top: range.toString(),
+          return { first: first ? first.tagName + ": " + first.textContent : "", below: ["vic-flow", "vic-facts", "vic-compare", "visa-runs", "airi-run", "airi-run-2", "vic-more"].filter((id) => !above(id)), top: (() => { const f = range.cloneContents(); [...f.querySelectorAll(".vs-row")].filter((li) => /^Agent identity/.test(li.textContent.trim())).forEach((n) => n.remove()); return f.textContent; })(),
             tap: tap ? tap.textContent.replace(/\\s+/g, " ").trim() : "" };
         })()`) as { first: string; below: string[]; top: string; tap: string };
         if (v.first !== `H1: ${VISA_H1}`) fail(`/visa ${tag}: the page's first heading is "${v.first}", not the VIC heading`);
         if (v.below.length) fail(`/visa ${tag}: not above the TAP fold: ${v.below.join(", ")}`);
-        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP fold`);
+        // Above the TAP section TAP is named only in the agent identity row (Visa judge, 14 Nov), which points to it.
+        if (/\bTAP\b|Trusted Agent Protocol/.test(v.top)) fail(`/visa ${tag}: TAP is named above the TAP section`);
         if (!v.tap.startsWith(`${VISA_TAP_HEADING} Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).`)) fail(`/visa ${tag}: the TAP fold does not open with its line and its status ("${v.tap.slice(0, 120)}")`);
       }
       if (path === "/airwallex" && ((await page.locator("#controls .awcard").count()) !== 3 || (await page.locator("#controls .awrow .k.ok").count()) !== 15)) fail(`/airwallex ${tag}: not three cards with five controls each, all matching the CFO policy`);
