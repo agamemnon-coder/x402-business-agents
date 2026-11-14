@@ -265,7 +265,7 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   it("has the heading, the chain, the band, the offline check and the live runs above \"What Purser guarantees\", the fold after it: no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    // Max, 14 Nov: the walkthrough and the strip of partners, under the lead.
+    // Max, 14 Nov: the walkthrough and the strip of partners, under the lead; Live with Airwallex after the live runs, above the guarantees.
     expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <p class="pwatch">[\s\S]*?<\/p> <p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');

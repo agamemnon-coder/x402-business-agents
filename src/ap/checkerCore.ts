@@ -9,6 +9,7 @@
 // No database, no SDK and no Node modules, so the runner (src/agents/loop.ts runAgent) and a Worker (src/try/claude.ts
 // claudeAgentAsk) run the very same agent. The pattern is src/agents/timingCore.ts.
 
+import { precedentBlock, type Precedent } from "../learning/precedent.js";
 import { z } from "zod";
 import { plainReason, REASON_MAX_CHARS, sentenceCount } from "../agents/timingCore.js";
 import { apiInputSchema } from "../agents/toolSchema.js";
@@ -119,6 +120,11 @@ export interface InvoiceCase {
   expected: ExpectedAmount | null;
   /** YYYY-MM-DD. */
   today: string;
+  /**
+   * The CFO's past decisions on similar cases (src/learning/precedent.ts), given to the agent as data. Absent or empty:
+   * none. Code's checks never read them: a precedent informs the agent and loosens nothing.
+   */
+  precedents?: Precedent[];
 }
 
 // ── Code's checks ──
@@ -550,6 +556,7 @@ export function checkerPrompt(c: InvoiceCase): string {
     `<reading>\n${untagged(JSON.stringify(fields))}\n</reading>`,
     c.invoice.noText ? `The document has no text that could be read: ${c.invoice.noText}.` : `<document>\n${untagged(c.invoice.text.slice(0, CHECKER_TEXT_LIMIT))}\n</document>`,
     ...(cut ? [`The document is longer: only its first ${CHECKER_TEXT_LIMIT} characters are shown. Code's checks ran on all of it.`] : []),
+    ...(c.precedents?.length ? [precedentBlock(c.precedents)] : []),
     "Look things up with your tools, then call decide.",
   ].join("\n");
 }

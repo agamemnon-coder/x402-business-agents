@@ -860,7 +860,7 @@ export const LIVE = {
     "ap.duplicate_cleared": "You confirmed the invoice is not a duplicate.",
     "ap.credit_accepted": "You accepted a credit note of {money}.",
     "ap.credit_accepted_plain": "You accepted a credit note.",
-    "ap.review_note": "A note for a person was added to the invoice.",
+    "ap.review_note": "Purser flagged the invoice for a person to review.",
     "ap.reading_not_used": "A model's reading did not match the document, so Purser's own reading was used.",
     "ap.scan_read": "A scanned invoice was read ({pages} pages).",
     "ap.scan_read_plain": "A scanned invoice was read.",

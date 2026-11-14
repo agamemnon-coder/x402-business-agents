@@ -94,14 +94,14 @@ function agentCard(a,demo,live,CV){
   const rules=el('div','rules',[el('div','',[el('h3','',t('cs.agents.may')),el('ul','can',a.may.map((x)=>el('li','',[ic('circle-check'),el('span','',x)])))]),
     el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
   const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','outs',a.decisions.map((d)=>{const o=OUTCOME[d.outcome]||OUTCOME.note;
-    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',[d.text.replace(/\s*\(code's fallback, no model\)$/,''),/fallback/.test(d.text)||/^Purser's code/.test(d.decided_by||'')?el('small','sub',' · '+t('cs.agents.by_code')):null]),el('time','num',day(d.at))])})):el('p','sub',t('cs.agents.no_decisions'))]);
+    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',[d.text.replace(/\s*\(code's fallback, no model\)$/,''),/fallback/.test(d.text)||/^Purser's code/.test(d.decided_by||'')?el('small','sub',' · '+t('cs.agents.by_code')):null]),el('time','num',day(d.at)),precedentList(d.precedent)])})):el('p','sub',t('cs.agents.no_decisions'))]);
   // The technical record, one click away: the Claude model, its runs, the rails, who decided each of the newest decisions.
   const det=el('details','adet',[el('summary','',t('cs.agents.details')),el('div','agrid',[
     el('div','',[el('h3','',t('cs.agents.model')),a.models.length?el('p','mono',a.models.join(', ')):el('p','sub',t('cs.agents.no_model')),a.runs&&a.runs.total?el('p','sub',t('cs.agents.runs',{n:a.runs.total,k:a.runs.without_model})):null]),
     el('div','',[el('h3','',t('cs.agents.rails')),a.rails.length?el('p','',a.rails.join(', ')):el('p','sub',t('cs.agents.no_rail')),a.spent||a.declined?el('p','sub',t('cs.agents.moved',{n:a.spent,k:a.declined})):null]),
     el('div','',[el('h3','',t('cs.agents.decided')),el('ul','plain',a.decisions.filter((d)=>d.decided_by).map((d)=>el('li','sub',day(d.at)+' · '+d.decided_by)))]),
     a.status_since?el('div','',[el('h3','',t('cs.agents.status_h')),el('p','',tk('cs.agents.status.'+a.status,a.status)+' '+t('cs.agents.since',{day:day(a.status_since)}))]):null])]);
-  return el('section','card agent rise',[hd,top,live?liveCardPanel(live,CV):null,rules,dec,det])}
+  return el('section','card agent rise',[hd,top,live?liveCardPanel(live,CV):null,rules,dec,learnBlock(a,demo),det])}
 // --- The agent's live sandbox card (14 Nov): last four only, live status and limits, newest authorizations with their ids;
 // freeze, unfreeze, limits and a test purchase, each signed with the owner's own passkey over the exact action's hash.
 let cardMsg=null;
@@ -158,6 +158,25 @@ function liveCardPanel(x,CV){
   else if(!CV.can_act)kids.push(el('p','fine',[ic('lock'),t('cs.cards.owner_only')]));
   kids.push(el('p','fine',[ic('lock'),t('cs.cards.never')]),out);
   const box=el('div','lcard',kids);return box}
+// What the agent learns from the CFO's past decisions (14 Nov): the approval rate this month and last, counted from the
+// records; the patterns it suggests, which change nothing until the CFO signs them. Never a trained model.
+function pct(r){return r===null||r===undefined?t('cs.agents.rate_none'):Math.round(r*100)+'%'}
+function rateBar(tl,label){const n=tl.signed+tl.rejected;const m=el('span','rbar');const f=el('span','');f.style.width=(tl.rate===null?0:tl.rate*100).toFixed(1)+'%';m.append(f);
+  return el('div','rrow',[el('span','rlab',label),m,el('span','num rval',n?t('cs.agents.rate_row',{rate:pct(tl.rate),signed:tl.signed,n}):t('cs.agents.rate_none'))])}
+function caseLink(c){const txt=c.ref+(c.counterparty?' · '+c.counterparty:'')+(c.amount?' · '+c.amount:'')+' · '+c.outcome_words;
+  if(c.invoice){const x=el('a','',txt);x.href='#/invoices/'+encodeURIComponent(c.invoice);return x}return el('span','',txt)}
+function precedentList(p){if(!p||!p.cases.length)return null;
+  return el('details','prec',[el('summary','',[ic(p.mode==='learned_from'?'sparkles':'clock'),t(p.mode==='learned_from'?'cs.agents.learned_from':'cs.agents.similar',{n:p.cases.length})]),
+    el('ul','plain',p.cases.map((c)=>el('li','sub',[caseLink(c),c.why&&c.why.length?el('small','',' — '+c.why.join(', ')):null,c.reason?el('small','',' — '+c.reason):null])))])}
+function learnBlock(a,demo){const L=a.learning;if(!L)return null;
+  const rows=L.calibration.filter((r)=>r.all_time.signed+r.all_time.rejected>0);
+  const other=L.calibration.reduce((o,r)=>({expired:o.expired+r.all_time.expired,refused:o.refused+r.all_time.refused,overridden:o.overridden+r.all_time.overridden}),{expired:0,refused:0,overridden:0});
+  const mon=(m)=>MONTHS[Number(m.slice(5,7))-1]+' '+m.slice(0,4);
+  return el('div','alearn',[el('h3','',[ic('sparkles'),t('cs.agents.learn_h')]),el('p','sub',t('cs.agents.learn_sub')),demo?el('p','fine',[ic('flask'),t('cs.agents.learn_demo')]):null,
+    el('p','',L.cases?t('cs.agents.learn_cases',{n:L.cases}):t('cs.agents.learn_none')),
+    rows.length?el('div','rates',[el('h4','',t('cs.agents.rate_h')),...rows.map((r)=>el('div','rgrp',[el('b','',r.kind.charAt(0).toUpperCase()+r.kind.slice(1)),rateBar(r.this_month,t('cs.agents.rate_this')+' · '+mon(r.month)),rateBar(r.last,t('cs.agents.rate_last')+' · '+mon(r.last_month))]))]):null,
+    L.cases?el('p','fine',t('cs.agents.rate_note',{other:t('cs.agents.rate_other',other)})):null,
+    L.suggestions.length?el('div','sugg',[el('h4','',t('cs.agents.sugg_h')),el('ul','plain',L.suggestions.map((s)=>el('li','',[ic(s.key?'zap':'circle-dot'),el('span','',s.text+' ('+s.evidence.join(', ')+')')]))),el('p','fine',[ic('lock'),t('cs.agents.sugg_note')])]):null])}
 async function agentsView(){
   title(t('cs.nav.agents'));
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
@@ -471,6 +490,20 @@ ul.outs time { color: var(--faint); font-size: 12.5px; white-space: nowrap; }
 .obadge { display: inline-flex; align-items: center; gap: 5px; justify-self: start; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
 .obadge svg { width: 13px; height: 13px; }
 .obadge.ok { background: var(--ok-soft); color: var(--ok); } .obadge.bad { background: var(--bad-soft); color: var(--bad); } .obadge.wait { background: var(--warn-soft); color: var(--warn); } .obadge.info { background: var(--sunken); color: var(--muted); }
+/* What the agent learns from the CFO's past decisions (14 Nov). */
+ul.outs details.prec { grid-column: 1 / -1; margin: -2px 0 0; }
+details.prec summary { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--accent); min-height: 28px; }
+details.prec summary svg { width: 13px; height: 13px; } details.prec ul.plain { margin: 4px 0 6px 20px; gap: 4px; } ul.outs details.prec li { display: block; padding: 2px 0; border: 0; font-size: 13px; overflow-wrap: anywhere; } details.prec small { color: var(--muted); }
+.agent .alearn { border-top: 1px solid var(--border); padding: 16px 0 14px; display: grid; gap: 8px; }
+.alearn h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; } .alearn h3 svg { color: var(--accent); }
+.alearn h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 6px 0 4px; font-weight: 650; }
+.alearn p { margin: 0; } .alearn .fine { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12.5px; } .alearn .fine svg { width: 13px; height: 13px; flex: none; }
+.rates { display: grid; gap: 10px; } .rgrp { display: grid; gap: 4px; } .rgrp b { font-size: 14px; }
+.rrow { display: grid; grid-template-columns: 170px minmax(60px, 1fr) 130px; gap: 10px; align-items: center; font-size: 13px; }
+.rrow .rlab { color: var(--muted); } .rrow .rval { text-align: right; white-space: nowrap; }
+.rbar { display: block; height: 8px; border-radius: 99px; background: var(--sunken); overflow: hidden; } .rbar span { display: block; height: 100%; border-radius: 99px; background: var(--ok); }
+.sugg ul.plain li { align-items: flex-start; flex-wrap: nowrap; font-size: 14px; } .sugg ul.plain li svg { flex: none; margin-top: 3px; color: var(--accent); }
+@media (max-width: 640px) { .rrow { grid-template-columns: minmax(0, 1fr) auto; } .rrow .rbar { grid-column: 1 / -1; grid-row: 2; } }
 details.adet { border-top: 1px solid var(--border); padding-top: 12px; }
 details.adet summary::before, details.tokdet summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-right: 10px; transition: transform .15s; }
 details[open].adet summary::before, details[open].tokdet summary::before { transform: rotate(45deg); }
