@@ -8,13 +8,13 @@ import { randomUUID } from "node:crypto";
 import type { AirwallexRail, Currency, MarketRate, Quote, SandboxSim } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS, FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
+import { EUR_FLOOR_CENTS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS, TARGET_FREE_EUR_CENTS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { createProposal, ProposalRefused, type ProposalRow } from "../policy/approvals.js";
 import { checkQuoteAgainstFloor, feeReserveCents, feeReserveOverCap, planInvoice, SWIFT_FEE_RESERVE_CAP_CENTS, proposalExpiry, type TreasuryState } from "../policy/treasury.js";
-import { getSetting, setSetting } from "../world/settings.js";
+import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { freeEurTargetCents } from "../world/options.js";
 import type { FraudFinding } from "../policy/fraud.js";
 import { checkInvoice, ibanSha, type Invoice } from "./invoice.js";
@@ -289,9 +289,9 @@ export async function proposeInvoicePayment(
     const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
     audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {
       pair: "USD/EUR", buy: `EUR ${fromCents(plan.buyEurCents)}`, market_rate: market.rate, market_cost: `USD ${fromCents(market.sellAmountCents)}`,
-      quote_id: quote.quoteId, quote_rate: quote.clientRate, quote_cost: `USD ${fromCents(quote.sellAmountCents)}`, markup_bps: markupBps,
+      quote_id: quote.quoteId, quote_rate: quote.clientRate, quote_cost: `USD ${fromCents(quote.sellAmountCents)}`, markup_bps: markupBps, limit_bps: fxMarkupLimitBps(db),
     }, now);
-    if (markupBps > FX_QUOTE_MAX_MARKUP_BPS) {
+    if (markupBps > fxMarkupLimitBps(db)) {
       const reason = `the locked quote costs USD ${fromCents(quote.sellAmountCents)}, ${(markupBps / 100).toFixed(2)}% above the market's current rate (USD ${fromCents(market.sellAmountCents)}); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception`;
       audit(db, "treasury", "invoice.escalated", inv.invoice_no, { reason, quote_id: quote.quoteId }, now);
       return { kind: "escalated", reason };
