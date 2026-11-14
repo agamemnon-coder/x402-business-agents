@@ -106,8 +106,11 @@ const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${i
 /** A value to paste, with a copy button (Max, 14 Nov: "less text, more clear and concrete"). The button is rendered
  *  hidden; the script shows it where there is a clipboard, so without script the value simply stays selectable. */
 const chip = (label: string, value: string) => `<span class="cchip"><span class="k">${esc(label)}</span>${code(value)}<button type="button" class="cp" data-copy="${esc(value)}" aria-label="${esc(`Copy ${label.toLowerCase()}: ${value}`)}" hidden>${icon("copy", 15)}</button></span>`;
-/** The AI clients the connector's guide names (docs/connect-claude.md), as small chips. */
-export const WORKS_WITH = ["Claude", "Cursor", "VS Code", "Gemini CLI"] as const;
+/**
+ * "Any MCP client", with Claude's own two as examples (partner scan, 14 Nov: no other vendor named on the page); the
+ * full list of clients stays in docs/connect-claude.md.
+ */
+export const WORKS_WITH = ["Claude", "Claude Code"] as const;
 /**
  * Each tool's purpose in a few words, for the grid (Max, 14 Nov). Keyed by the server's own names: a tool the code adds
  * without one here is an error where the page is built, so the grid never drops or invents a tool. The title and the
@@ -165,7 +168,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
     <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
     <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip("Demo token", DEMO_TOKEN)}</div>
-    <ul class="ww"><li class="l">${readToolCount()} read tools · works with</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
+    <ul class="ww"><li class="l">${readToolCount()} read tools · works with any MCP client:</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
     <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Try as guest (test money)")}</div>
     ${foldHtml("Connect Claude, step by step", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,

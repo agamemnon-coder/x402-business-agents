@@ -159,4 +159,4 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
 
 ## 4:52–4:58 · End card (x16)
 
-- End card, 6 s: kit11.max-31b.workers.dev · Try it yourself · Test money only: Airwallex sandbox · Metal testnet · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs). (drawn by the cut)
+- End card, 6 s: kit11.max-31b.workers.dev · Try it yourself · Test money only: Airwallex sandbox · Alta testnet (formerly Metal) · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs). (drawn by the cut)

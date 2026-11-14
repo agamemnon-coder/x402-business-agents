@@ -113,19 +113,21 @@ const STRIP: readonly { name: string; label?: string; rail: "sandbox" | "testnet
 ];
 /** A group's anchor in the timeline. */
 export const groupId = (g: ProofGroup) => `pg-${g.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
-/** Per partner: how many of /proof's live runs it took part in (a run with two partners counts for each), the latest
- *  one, and what kind of live it was. A partner with no live run gets no tile. */
+/** Per partner: the runs listed in its own group of the timeline below (judge scan, 14 Nov: one source, so a tile's
+ *  count is the count its group's "Show all" opens), the latest one, and what kind of live it was. The books' group
+ *  holds T:0's and Moneybird's runs, each tile counting its own. A partner with no live run gets no tile. */
 export function partnerTiles(groups = proofRuns()): PartnerTile[] {
-  const rows = groups.flatMap((g) => g.runs);
   return STRIP.map((p) => {
-    const mine = rows.filter(p.has).sort((a, b) => b.iso.localeCompare(a.iso));
+    const mine = (groups.find((g) => g.group === p.group)?.runs ?? []).filter(p.has).sort((a, b) => b.iso.localeCompare(a.iso));
     return mine.length ? { name: p.label ?? p.name, runs: mine.length, latest: mine[0]!, badge: `Live · ${p.rail}`, href: `#${groupId(p.group)}` } : null;
   }).filter((t): t is PartnerTile => !!t);
 }
 /** The strip, with one line saying how it counts: `runs`, the site's one live-run count (src/redesign/runs.ts). */
-export function partnerStripHtml(tiles = partnerTiles(), runs?: number): string {
+export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed = proofRuns().reduce((n, g) => n + g.runs.length, 0)): string {
   if (!tiles.length) return "";
-  return `${runs === undefined ? "" : `<p class="ptnote">${esc(`${runs} live runs. A run with several partners counts under each.`)}</p>`}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
+  // One source (judge scan, 14 Nov): the tiles and the timeline count the same rows; the TAP run is told on /visa only.
+  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
+  return `${note ? `<p class="ptnote">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
 }
 
 /** A long id, short in sight: its start and end; the whole id on hover and in the copy button. */

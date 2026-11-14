@@ -105,16 +105,16 @@ export function vicRules(run: AiriRunRecord, controls: Vic2Record | null): VicRu
 
 const dayLong = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
 
-/** The folded row: what it is and is not, the table, whose checks these are, and the source of Visa's words. */
+/** The folded row: what it is and is not, the table, whose checks these are, and the Visa page it paraphrases. */
 export function vicRulesHtml(rows: VicRuleRow[]): string {
   if (rows.length === 0) return "";
   const where = (r: VicRuleRow) => `<small>${r.ran ? `<a class="pf" href="#${esc(r.ran.anchor)}">${esc(r.ran.text)}</a> · ` : ""}<a class="pf" href="${esc(`${REPO_BLOB}${r.source}`)}" target="_blank" rel="noopener">${esc("code")} ↗</a></small>`;
-  const quoted = (r: VicRuleRow) => `<small>${r.quotes.map((q, i) => esc(`${r.labels?.[i] ? `${r.labels[i]}: ` : ""}“${q}”`)).join(" · ")}</small>`;
-  const row = (r: VicRuleRow) => `<div class="awrow"><span class="k">${esc(r.topic)}</span><span><b class="lbl">${esc("Purser")}</b>${esc(r.purser)}${where(r)}</span><span><b class="lbl">${esc("Visa")}</b>${esc(r.visa)}${quoted(r)}</span></div>`;
+  // Partner scan, 14 Nov: Visa's rules paraphrased, with the link below; the verbatim quotes stay in the code (VicRuleRow.quotes), off the page.
+  const row = (r: VicRuleRow) => `<div class="awrow"><span class="k">${esc(r.topic)}</span><span><b class="lbl">${esc("Purser")}</b>${esc(r.purser)}${where(r)}</span><span><b class="lbl">${esc("Visa")}</b>${esc(r.visa)}</span></div>`;
   const sections = [...new Set(rows.map((r) => r.section))];
   return `<details class="fold" id="${VIC_RULES_ID}"><summary>${esc(VIC_RULES_SUMMARY)}</summary>
 <p>${esc("A comparison with Visa's published rules, not an implementation of them: Purser does not call Visa's API. It reached Visa Intelligent Commerce through Airwallex's Airi.")}</p>
-<div class="awcard vr"><div class="awhead"><span>${esc("Rule")}</span><span>${esc("The CFO's policy in Purser")}</span><span>${esc("Visa Intelligent Commerce (v2), in Visa's words")}</span></div>
+<div class="awcard vr"><div class="awhead"><span>${esc("Rule")}</span><span>${esc("The CFO's policy in Purser")}</span><span>${esc("Visa Intelligent Commerce (v2), as Visa describes it")}</span></div>
 ${rows.map(row).join("\n")}</div>
 <p>${esc("The checks on the left are Purser's own. Whether Airi or Visa enforce the rules on the right for this credential was not tested.")}</p>
 <p class="src">${esc("Visa's rules: ")}<a class="pf" href="${esc(VIC_DOCS.url)}" target="_blank" rel="noopener">${esc(VIC_DOCS.title)} ↗</a>${esc(` (${sections.join(", ")}), developer.visa.com, read ${dayLong(VIC_DOCS.read)}.`)}</p></details>`;

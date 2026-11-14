@@ -1,6 +1,7 @@
 // /try's live FX quote (14 Nov), on the kit11 Worker's side (worker/src/awxFx.ts): the desk the AwxFx entrypoint asks.
 // It holds the caps (a day in all, a day per test company), the cache, the switch, and never passes on the key, the
 // token or Airwallex's words. Its one call is fxQuote.ts's allow-listed quote; no network here: Airwallex is a fake fetch.
+import { stripJsonComments } from "./support/wranglerConfig.js";
 import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { describe, expect, it, vi } from "vitest";
@@ -129,8 +130,10 @@ describe("the AwxFx entrypoint: reachable only through the binding", () => {
   });
   it("purser-try binds the entrypoint and holds no Airwallex key", () => {
     const cfg = readFileSync(new URL("../cloud/wrangler.try.jsonc", import.meta.url), "utf8");
-    // One entry of the services list (14 Nov: Cloud's Airwallex actions bind AwxGateway beside it).
-    expect(cfg).toMatch(/"services": \[[^\]]*\{ "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" \}/);
+    // 14 Nov: one services array, shared with the live Airwallex tab's read gateway (AWX_READ, entrypoint AwxRead).
+    const services = (JSON.parse(stripJsonComments(cfg)) as { services: { binding: string; service: string; entrypoint: string }[] }).services;
+    expect(services).toContainEqual({ binding: "AWX_FX", service: "kit11", entrypoint: "AwxFx" });
+    expect(cfg.match(/"services"/g)).toHaveLength(1);
     expect(readFileSync(new URL("../cloud/src/engine/liveFx.ts", import.meta.url), "utf8")).not.toMatch(/AIRWALLEX_|apiKey|x-api-key/i);
   });
 });
