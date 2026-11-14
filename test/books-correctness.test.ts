@@ -1,6 +1,6 @@
 // The books, after the CFO review (14 Nov): VAT at no Dutch rate never lands on Dutch input VAT (1510, box 5b), and an
 // invoice that reads "Paid" leaves nothing open on 2100.
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -12,6 +12,7 @@ import { apInvoice, setStatus, type ApInvoiceRow } from "../src/ap/store.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { toCents } from "../src/lib/money.js";
 import { syncLedger } from "../src/ledger/feed.js";
+import { inBaseCurrency, statementView, type BooksStatementFile } from "../src/vault/statementPdf.js";
 import { NL } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -83,5 +84,29 @@ describe("an invoice seeded as paid (a test company's history, no money moved)",
   it("a paid invoice with no payout that was not seeded gets no invented settlement", async () => {
     const inv = await seeded("marked paid by a person");
     expect(apJournal(db).filter((e) => e.invoice_id === inv.id && e.event === "payment")).toEqual([]);
+  });
+});
+
+describe("another currency in the company's statement", () => {
+  const file = (JSON.parse(readFileSync(new URL("../docs/runs/2026-11-13-books-month.json", import.meta.url), "utf8")) as { books: BooksStatementFile }).books;
+  it("the GBP expenses and their reverse charge are in the EUR statement at the conversion's rate, and money in transit is cleared", () => {
+    const { file: eur, note } = inBaseCurrency(file);
+    expect(note).toBe("GBP translated into EUR at the rate of the conversion that bought it: EUR 982.80 for GBP 840.00 (1.17), so money in transit is cleared.");
+    expect(eur.balance.map((b) => b.currency)).toEqual(["EUR", "USD"]);
+    expect(eur.balance[0]!.accounts.some((a) => a.account === "1590")).toBe(false);
+    const pnl = eur.pnl.find((p) => p.currency === "EUR")!;
+    // EUR 2,750.00 on 6150 already, plus GBP 840.00 at 1.17.
+    expect(pnl.accounts.find((a) => a.account === "6150")!.amount).toBe("3732.80");
+    expect(Number(pnl.expense)).toBeCloseTo(Number(file.pnl[0]!.expense) + 982.8, 2);
+    // GBP 176.40 reverse charge, both sides: EUR 206.39 (176.40 x 1.17 = 206.388).
+    const a = (n: string) => Number(eur.balance[0]!.accounts.find((x) => x.account === n)!.amount);
+    expect(a("1510") - Number(file.balance[0]!.accounts.find((x) => x.account === "1510")!.amount)).toBeCloseTo(206.39, 2);
+    expect(a("2210") - Number(file.balance[0]!.accounts.find((x) => x.account === "2210")!.amount)).toBeCloseTo(206.39, 2);
+    expect(statementView(file)!.balances).toBe(true);
+  });
+  it("leaves the file as it is when no single conversion explains money in transit", () => {
+    const two = structuredClone(file);
+    two.balance[2]!.accounts.push({ account: "1590", name: "Money in transit", type: "asset", amount: "-10.00" });
+    expect(inBaseCurrency(two)).toEqual({ file: two, note: null });
   });
 });
