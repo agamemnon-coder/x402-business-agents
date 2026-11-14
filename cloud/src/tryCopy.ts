@@ -268,6 +268,8 @@ export const FX_CARD = {
   live: "Airwallex · live sandbox quote",
   recorded: "Airwallex unavailable, recorded rate used",
   quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
+  /** The quote's valid-to as a date and time, and the company's FX limit ({pct}: a percent with two decimals). */
+  validTo: "Valid to", limit: "Limit", limitLine: "FX quote at most {pct}% over Airwallex's market rate",
   liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
   recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
   why: {

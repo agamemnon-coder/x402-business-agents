@@ -1071,7 +1071,7 @@ function factRows(p,inv,terms){
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
 // or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
-function fxCard(note,terms){
+function fxCard(note,terms,limitBps){
   const X=C.fxCard;const cv=terms&&terms.conversion&&typeof terms.conversion==='object'?terms.conversion:null;
   if(!cv||!note||typeof note!=='object'||note.quote_id!==cv.quote_id)return null;
   const live=note.source==='airwallex-sandbox';const d=el('dl','');
@@ -1085,8 +1085,10 @@ function fxCard(note,terms){
     const end=Date.parse(String(cv.valid_to||''));
     const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
     if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
+    if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
   }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
+  if(typeof limitBps==='number'&&limitBps>0)row(X.limit,fill(X.limitLine,{pct:(limitBps/100).toFixed(2)}));
   box.setAttribute('data-awx',live?'live':'recorded');
   return box;
 }
@@ -1134,14 +1136,14 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
     if(S.screen!=='approve')return;
-    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){top.replaceChildren();said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
-    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
+    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms,tr.status===200?tr.json.fx_limit_bps:null);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
       el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
     stage();

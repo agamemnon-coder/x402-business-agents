@@ -16,6 +16,7 @@ import HelveticaBold from "pdfkit/standard-fonts/HelveticaBold";
 import HelveticaOblique from "pdfkit/standard-fonts/HelveticaOblique";
 import Courier from "pdfkit/standard-fonts/Courier";
 import CourierBold from "pdfkit/standard-fonts/CourierBold";
+import { TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
 import { useDocStore } from "../../../src/ap/docStore.js";
 import { usePdfReader } from "../../../src/ap/pdfText.js";
 import { readPdfInline } from "../../../src/ap/pdfTextInline.js";
@@ -113,7 +114,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     ...withClaude(env, sql, tenantId),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
     // Speed (12 Nov): on Pay no Claude review note for a try company; code writes it (the Payer agent's reason is on screen).
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true } : {}),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS } : {}),
     // Speed (13 Nov, the owner's yes): the Payer proposes while the invoice is filed; Pay reads that answer when it is
     // finished and the plan is the same case. Its calls count against the same caps, and it runs only with room to spare.
     earlyPayer: true,

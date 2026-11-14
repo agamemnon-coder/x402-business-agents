@@ -159,7 +159,7 @@ async function laneC(method: string, path: string, session: string, body: Record
     // The note on the terms' FX quote, as the engine gives it (cloud/src/engine/liveFx.ts).
     const tenant = visitors.get(session)?.id;
     const real = tenant ? await env.engine!(tenant).terms(id) : null;
-    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at, ...(real?.fx_quote ? { fx_quote: real.fx_quote } : {}) });
+    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at, ...(real?.fx_quote ? { fx_quote: real.fx_quote } : {}), ...(real?.fx_limit_bps ? { fx_limit_bps: real.fx_limit_bps } : {}) });
     return true;
   }
   if (method !== "POST" || what !== "pay") return false;
@@ -551,8 +551,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov: the Airwallex card: the quote the terms carry, its id and rate, and a countdown to its valid-to.
   const cv = (L0.terms as unknown as { conversion: { quote_id: string; client_rate: string } | null }).conversion;
   const awx = (await page.locator("section.awx").count()) ? await page.innerText("section.awx") : "";
-  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(cv.client_rate) && /\b1[45]:\d\d\b/.test(awx),
-    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate and the time left (${awx.replace(/\s+/g, " ").slice(0, 160)})`);
+  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(cv.client_rate) && /\b1[45]:\d\d\b/.test(awx)
+    && awx.includes(FX_CARD.validTo) && awx.includes(FX_CARD.limitLine.replace("{pct}", "0.50")),
+    // This server's companies are not t_try_ tenants: the default 0.50%; a try company's 1.50% is test/try-fx-limit.test.ts.
+    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate, the time left, its valid-to and the company's FX limit (${awx.replace(/\s+/g, " ").slice(0, 400)})`);
   await shot2("3-approve");
   // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
   // 12 Nov (one tap): the held approval's answer is drawn, and the pay call starts by itself with the terms as signed and
@@ -822,7 +824,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
 
 // Part 2: the poller, on Chromium's stand-in clock, with every /v1 answer stubbed in the page.
 const T0 = new Date("2026-11-12T12:00:00Z").getTime();
-interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number }
+interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null }
 async function poller(stubs: Stubs) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
@@ -850,6 +852,8 @@ Object.defineProperty(Document.prototype,'visibilityState',{configurable:true,ge
       await new Promise<void>((r) => { gate.release = r; });
       return fulfil(route, 200, { kind: "invoice", sha256: "0".repeat(64), invoice: { id: "AP-0001", status: "ready", status_words: "Ready to pay", payable: true, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", currency: "EUR", total: "1850.00", due_date: "2026-11-26", read_by: "parser", findings: [], doc_sha256: "0".repeat(64), proposal: null } });
     }
+    const o = stubs.other?.(what);
+    if (o) return fulfil(route, o.status, o.body);
     return fulfil(route, 404, { error: "no such stub" });
   });
   await page.goto(`${ORIGIN}/try`);
@@ -985,6 +989,19 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await p.page.click(`button:has-text("${LIVE.allSteps}")`);
   ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
+  await p.ctx.close();
+}
+{
+  // Live, 14 Nov: a filing Purser refuses on Approve (409, a quote above the FX limit) says why, offers to file it again,
+  // and leaves no receipt skeleton shimmering beside it.
+  const why = "the locked quote costs USD 413.38, 2.00% above the market's current rate (USD 405.27); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception";
+  const p = await poller({ events: () => ({ status: 200, body: { items: [], next: 0 } }), session: () => ({ status: 200, body: {} }),
+    other: (what) => what === "POST /v1/engine/invoices/AP-0001/pay" ? { status: 409, body: { error: why, code: "conflict" } } : what === "GET /v1/engine" ? { status: 200, body: { passkey: null } } : null });
+  p.release();
+  await settle(p.page);
+  await p.page.click(`text=${WORK.pay}`);
+  await p.page.waitForSelector(`button:has-text("${APPROVE.fileAgain}")`, { timeout: 10_000 });
+  ok(await p.page.locator(".receipt.skel, .skl").count() === 0 && (await p.page.textContent("main"))!.includes(why), "Approve refused (409): the reason and File it again, and no receipt skeleton left");
   await p.ctx.close();
 }
 
