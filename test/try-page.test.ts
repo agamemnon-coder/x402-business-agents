@@ -19,7 +19,8 @@ import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 const html = tryPage("n0nce", { origin: ORIGIN, rpId: RP });
 const script = (() => {
   const blocks = scriptBlocks(html);
-  expect(blocks).toHaveLength(1);
+  // 14 Nov: the page script, then the visual layer's own module (cloud/src/try/visuals.ts).
+  expect(blocks).toHaveLength(2);
   return scriptBody(blocks[0]!);
 })();
 /** A word is a run of non-space characters with a letter or a digit in it ("·" and "…" are not words). */
@@ -40,7 +41,7 @@ describe("GET /try", () => {
     expect(n).not.toBe(/'nonce-([^']+)'/.exec(b.headers.get("content-security-policy")!)![1]);
     expect(csp).toBe(consoleCsp(n));
     const page = await a.text();
-    expect(scriptBlocks(page)).toHaveLength(1);
+    expect(scriptBlocks(page)).toHaveLength(2);
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
     // The same headers as the console's page, the policy's nonce aside.

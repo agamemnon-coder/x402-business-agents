@@ -6,7 +6,7 @@
 //   paid stamp), the next one glows, and a refusal (the checks holding the invoice, a changed term refused at the
 //   signature) turns the line red at that stage. Nothing is assumed.
 // - Three charts on the company screen (the finish), inline SVG, no library, each from this test company's own records:
-//   the stand-in bank's money from the start to now (GET /v1/engine for now, the ledger's bank lines for what moved),
+//   the simulated bank's money from the start to now (GET /v1/engine for now, the ledger's bank lines for what moved),
 //   spend by expense account (the ledger's debits on expense accounts), and the invoices' checks (GET
 //   /v1/engine/invoices: passed or held). A chart whose reads fail or are empty is not drawn; nothing is made up.
 // - Micro-animations: the charts' totals count up, a check mark draws on each passed stage, cards fade in. The pay
@@ -20,7 +20,7 @@ export const VIS = {
   flow: { invoice: "Invoice", readClaude: "Claude reads", readCode: "Code reads", checks: "Purser checks", passkey: "Your passkey", bankAwx: "Airwallex (sandbox)", bankTest: "Test bank", booked: "Booked", label: "Where the money is" },
   charts: "Your test company in numbers",
   source: "From this test company's own records. Test money.",
-  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "In", now: "Now", note: "Now is the stand-in bank's balance; each step is the ledger's bank lines." },
+  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "In", now: "Now", note: "Now is the simulated bank's balance; each step is the ledger's bank lines." },
   spend: { head: "Spend by account", note: "Debits on expense accounts in the ledger." },
   checks: { head: "Invoices checked", passed: "Passed", held: "Held", of: "invoices" },
 } as const;
@@ -151,7 +151,7 @@ async function charts(box){
   const [eng,es,inv]=await Promise.all([get('/v1/engine'),all('/v1/ledger/entries'),get('/v1/engine/invoices')]);
   if(!sec.isConnected)return;
   const lines=(es||[]).flatMap((e)=>Array.isArray(e.lines)?e.lines.map((l)=>Object.assign({e},l)):[]);
-  // Bank: the currency the payments went out in; now from the stand-in bank, what moved from the ledger's bank lines.
+  // Bank: the currency the payments went out in; now from the simulated bank, what moved from the ledger's bank lines.
   const bank=lines.filter((l)=>String(l.account||'').startsWith('12'));
   // The supplier payments' currency: a bank credit in an entry that debits payables (2100); else the first bank credit.
   const cur=(bank.find((l)=>l.credit_cents&&(l.e.lines||[]).some((x)=>String(x.account)==='2100'&&x.debit_cents))||bank.find((l)=>l.credit_cents)||{}).currency;
