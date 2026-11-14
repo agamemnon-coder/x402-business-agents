@@ -1021,6 +1021,9 @@ function mainButton(){
   return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false;b.disabled=false},off(label){b.textContent=label;act=null;b.disabled=true}};
 }
 
+// The suppliers on file, read once (the approval's IBAN row).
+let SUPP=null;
+const suppliersOnFile=()=>(SUPP||(SUPP=api('GET','/v1/engine/suppliers').then((r)=>r.status===200&&Array.isArray(r.json.items)?r.json.items:[]).catch(()=>[]))).then((x)=>{if(!x.length)SUPP=null;return x});
 // The terms being prepared for an invoice (started from screen 2's answer), taken once by screen 3.
 const PREP=new Map();
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
@@ -1031,14 +1034,24 @@ function factRows(p,inv,terms){
   const m=payee?/^(.*), IBAN \S*?(\w{2,8})$/.exec(String(payee[1])):null;
   const pairs=[];
   if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
-  if(m)pairs.push([C.proposal.account,'…'+m[2]]);
+  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
+  // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four, its BIC and the invoice number. The terms sign the
+  // payee on file (beneficiary_id), its IBAN's last four and its BIC; the whole IBAN is that payee's, from the suppliers
+  // on file, shown once it matches by name and last four (until then, its last four).
+  const last4=T&&typeof T.iban_last4==='string'?T.iban_last4:m?m[2]:'';
+  let ibanDd=null;
+  if(last4){ibanDd=el('dd','mono','…'+last4);pairs.push([C.proposal.iban,ibanDd]);
+    const name=T&&T.beneficiary_name?String(T.beneficiary_name):m?m[1]:'';
+    suppliersOnFile().then((list)=>{const sup=list.find((x)=>x&&typeof x.iban==='string'&&x.name===name&&x.iban.replace(/\s/g,'').slice(-4)===last4);if(sup&&ibanDd)ibanDd.textContent=sup.iban.replace(/\s/g,'').replace(/(.{4})/g,'$1 ').trim()})}
+  if(T&&typeof T.bic==='string'&&T.bic)pairs.push([C.proposal.bic,T.bic]);
+  // The terms' invoice_no is the ledger's key, '<number> · <supplier>': the number alone here (the payee is its own row).
+  if(T&&typeof T.invoice_no==='string'&&T.invoice_no)pairs.push([C.proposal.invoiceNo,T.invoice_no.split(' · ')[0]]);
   if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
   // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
-  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
   if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:String(cv.client_rate||'')})]);
   if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
   if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
-  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
+  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),typeof v==='string'?el('dd','',v):v);
   return {amount,list:d};
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),

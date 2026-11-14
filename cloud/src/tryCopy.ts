@@ -325,6 +325,8 @@ export const APPROVE = {
  */
 export const PROPOSAL_FIELDS = {
   account: "Account ending", due: "Due", amount: "Amount", payee: "Payee",
+  /** A CFO's eye (14 Nov): the payee's whole IBAN, its BIC and the invoice number on the terms. */
+  iban: "IBAN", bic: "BIC", invoiceNo: "Invoice number",
   /**
    * try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap.
    * final-polish, 13 Nov: the engine converts only the EUR shortfall (needed minus free EUR, src/policy/treasury.ts), so the
@@ -708,10 +710,10 @@ export const LIVE = {
   booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
   /** The same without a VAT id on the invoice: the rate only, and that a person codes it ({pct}: a whole percent). */
   /**
-   * 14 Nov (judges: the step said "without a VAT code" while the ledger showed VAT on 1510): the books put this VAT on
-   * input VAT (1510) all the same (src/ap/books.ts codedEntries); the line says so, so the log and the ledger agree.
+   * 14 Nov (judges: the step said "booked without a VAT code" while the ledger showed a VAT line): the VAT itself is
+   * booked, only without a code (src/ap/books.ts codedEntries decides its account); the line says so, naming no account.
    */
-  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; the VAT is booked to input VAT (1510) without a code, for the accountant to check",
+  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; the VAT is booked without a code, for the accountant to check",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
   /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */

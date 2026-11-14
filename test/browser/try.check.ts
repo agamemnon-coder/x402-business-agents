@@ -509,6 +509,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.approve, `${tag}: the steps say Approve`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag} screen 3: focus on the heading`);
   ok((await page.textContent(".amount")) === "EUR 1,850.00", `${tag}: the amount, large, once (${await page.textContent(".amount")})`);
+  // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four (the payee on file the terms sign), its BIC and the
+  // invoice number, among the signed terms.
+  await page.waitForFunction(() => [...document.querySelectorAll(".receipt dl.read dd")].some((d) => /^DE89 3704 0044 0532 0130 00$/.test(d.textContent ?? "")), null, { timeout: 15_000 });
+  const rows = Object.fromEntries(await page.locator(".receipt dl.read dt").evaluateAll((dts) => dts.map((dt) => [dt.textContent, dt.nextElementSibling?.textContent])));
+  ok(rows.IBAN === "DE89 3704 0044 0532 0130 00" && rows.BIC === SUPPLIER.bic && /^[A-Z]+-[\d-]+$/.test(rows["Invoice number"] ?? ""), `${tag}: the terms show the payee's IBAN, BIC and invoice number (${JSON.stringify(rows)})`);
   const st = await keptState(page);
   const pid = (st.proposal as { id: string }).id;
   const L0 = (await ledgerOf(visitor.session, pid))!;
