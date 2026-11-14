@@ -79,7 +79,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
 </head>
 <body>
 <script type="application/json" id="film-data">__FILM_JSON__</script>
-<h1 class="sr">Purser: the earlier animation (30 October). The walkthrough (4:58): https://youtu.be/mp9fmOYfBWc</h1>
+<h1 class="sr">Purser: the earlier animation (30 October). The walkthrough: https://youtu.be/mp9fmOYfBWc</h1>
 <div id="stage"><div class="foot"><span id="foot-l"></span><span id="foot-r"></span></div></div>
 <script>
 (function () {
@@ -87,7 +87,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   var D = JSON.parse(document.getElementById("film-data").textContent);
   var stage = document.getElementById("stage");
   var q = new URLSearchParams(location.search);
-  // Labelled as what it is (jury QA, 6 Nov, Q3): the earlier animation, not the walkthrough (4:58, YouTube, FILM_URL).
+  // Labelled as what it is (jury QA, 6 Nov, Q3): the earlier animation, not the walkthrough (YouTube, FILM_URL).
   document.getElementById("foot-l").textContent = "The earlier animation of 30 October, not the walkthrough (youtu.be/mp9fmOYfBWc) · recorded runs · test money";
   document.getElementById("foot-r").textContent = D.data.company + " · " + D.data.run + "; Ask Purser, the receive policy, the red team and the Lab from their own runs";
 

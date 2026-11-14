@@ -42,12 +42,17 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
 .walk { margin: 4px 0 0; font-size: 15px; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
-.trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 24px; }
+.trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
-/* Jury review, 13 Nov: the partners in plain text (their logos were recoloured, against their brand rules). */
-.trust b { font-size: 17px; font-weight: 700; color: var(--muted); letter-spacing: -.01em; }
+/* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;
+   no filter, no recolour, no crop). The Airwallex, Metal and Visa files are dark marks with no light version; Claude's
+   is its own slate variant for light grounds (docs/assets/logos/SOURCES.md). */
+.trust .tile { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px; }
+.trust .tile img { display: block; height: 18px; width: auto; }
+.trust .tile img.metal { height: 16px; }
+.trust .tile img.visa { height: 14px; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-@media (max-width: 640px) { .trust { gap: 12px 18px; } .trust b { font-size: 16px; } }
+@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile img.metal { height: 12px; } .trust .tile img.visa { height: 11px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -191,10 +196,10 @@ export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud a
 /**
  * The Kit 11 core run in one line (review, 13 Nov: Home told only the payables story): the main run of 3 Nov, its
  * company, its Metal payments, Claude's decisions and the purchase Metal refused on chain, each from the main run's
- * record; then the walkthrough (4:58, FILM_URL, FILM_LINK).
+ * record; then the walkthrough (FILM_URL, FILM_LINK; no duration in the words since 14 Nov, owner).
  */
 /** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
-export const FILM_HOME = "The walkthrough, 4:58";
+export const FILM_HOME = "The walkthrough";
 export function kit11Html(run: AgentRun = agentRun()): string {
   const st = metalStory(run.record), sp = split(run.record), r = st.refusal;
   const company = (run.record as { company?: unknown }).company;
@@ -329,8 +334,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
   const rows = proofRows(run, awx);
-  // The partners by name only (jury review, 13 Nov): no logo, so no mark is ever recoloured or altered.
-  const partners = ["Airwallex", "Visa", "Metal", "Claude"] as const;
+  // The partners' official files (14 Nov, owner), served unaltered from src/ui/logos/ and docs/assets/logos/ as
+  // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
+  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, "visa"], ["logo-metal.svg", "Metal", 114, 36, "metal"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
@@ -339,7 +345,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
     <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map((p) => `<b>${esc(p)}</b>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>

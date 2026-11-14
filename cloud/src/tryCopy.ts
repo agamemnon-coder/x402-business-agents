@@ -37,7 +37,7 @@ export const START = {
   /** Under the button. */
   fine: "Test money · deleted after 24 h",
   /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
-  walk: "Or watch the walkthrough (4:58)",
+  walk: "Or watch the walkthrough",
   /** Under the card, small and grey. */
   trust: "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   starting: "Starting…",
@@ -446,11 +446,11 @@ export const VISIBLE = {
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
-// and +5 for the walkthrough link (on YouTube, 4:58; 13 Nov, owner; since jury round 2: "Or watch the walkthrough (4:58)").
+// and +5 for the walkthrough link (on YouTube; 13 Nov, owner; "Or watch the walkthrough", +4 since 14 Nov: no duration).
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
 // 14 Nov (a tester's questions): the approval says the limit plainly ("Every invoice waits for your signature here,
 // whatever its amount.", +10 words), so its states with the terms are pinned at their counts.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

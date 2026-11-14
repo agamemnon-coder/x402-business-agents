@@ -375,7 +375,7 @@ export function hostileSplit(file = HOSTILE_RECORD_FILE): HostileSplit | null {
   return { calls: j.calls, tool: j.blocked_by_tool, enforce: j.overridden_at_enforce, refused: j.refused, stood: j.stood, unsafe: j.unsafe, cases: j.cases?.length ?? 0 };
 }
 /**
- * The one wording of the split, on every page and in the promo film (the final review, 13 Nov: /security and /claude
+ * The one wording of the split, on every page (the final review, 13 Nov: /security and /claude
  * said it three ways; Max, 14 Nov: every one of the calls accounted for): "318 refused, 52 made stricter, 10 allowed as
  * they were (within the rules): 0 unsafe". The three parts are every call (hostileSplit checks they add up); "allowed as
  * they were" is the record's `stood`, each a payment the policy lets the agent make alone; "unsafe" is the ledger's

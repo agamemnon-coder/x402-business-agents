@@ -105,7 +105,7 @@ alone ([visa-1114.md](../plans/visa-1114.md)).
      Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
      credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
-     (4:58; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
+     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
      data, test money) with its Agents and Tokenisation tabs, and Invoices & books in one tab. Approval alerts by
@@ -120,7 +120,7 @@ alone ([visa-1114.md](../plans/visa-1114.md)).
 
 ## Links
 
-- Video, the walkthrough (4:58; an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
+- Video, the walkthrough (an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.

@@ -123,7 +123,7 @@ describe("one tagline (Q8)", () => {
 });
 
 describe("the film (Q3)", () => {
-  it("/film says it is the earlier animation of 30 October, and points to the walkthrough (4:58)", () => {
+  it("/film says it is the earlier animation of 30 October, and points to the walkthrough (no duration since 14 Nov, owner)", () => {
     expect(pages.film).toContain("<title>Purser: the earlier animation (30 October)</title>");
     expect(pages.film).toContain("The earlier animation of 30 October, not the walkthrough (youtu.be/mp9fmOYfBWc)");
     expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");

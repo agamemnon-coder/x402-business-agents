@@ -39,11 +39,11 @@ describe("README badges", () => {
   });
 
   // The buttons above the badges, restored 13 Nov, evening (owner): Try it on /try, the proof, the walkthrough (film
-  // v10, 4:58, on YouTube; the old film's button and its 3:58 are gone).
+  // v10, on YouTube; the old film's button and its 3:58 are gone; no duration in the words since 14 Nov, owner).
   it("puts three buttons above the badges: Try on /try, the proof, the walkthrough", () => {
     const buttons = readme.split("\n").find((l) => l.includes("Watch_the_walkthrough")) ?? "";
     expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/mp9fmOYfBWc"]);
-    expect([...buttons.matchAll(/alt="([^"]+)"/g)].map((m) => m[1])).toEqual(["Try it: a test company of your own, 2 minutes", "See the proof: every id", "Watch the walkthrough, 4:58 (AI voice and music: ElevenLabs)"]);
+    expect([...buttons.matchAll(/alt="([^"]+)"/g)].map((m) => m[1])).toEqual(["Try it: a test company of your own, 2 minutes", "See the proof: every id", "Watch the walkthrough on YouTube (AI voice and music: ElevenLabs)"]);
     expect(buttons).toContain("style=for-the-badge");
     expect(readme.indexOf(buttons)).toBeLessThan(readme.indexOf(badgeLine));
     expect(readme).not.toContain("kCUsFHrxE-o");
@@ -54,7 +54,7 @@ describe("README badges", () => {
   it("puts the live demo's line under the badges, then three proofs with their records, and says test money only", () => {
     const lines = readme.split("\n");
     const at = lines.indexOf(badgeLine);
-    expect(lines[at + 2]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough, 4:58](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(lines[at + 2]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     const proofs = lines.slice(at + 3).filter((l) => l.startsWith("- **")).slice(0, 3);
     expect(proofs.map((l) => /^- \*\*([^.:]+)/.exec(l)![1])).toEqual(["Face ID or a passkey signs the exact terms", "Limits are enforced in 3 layers", "The audit chain is anchored on chain"]);
     for (const l of proofs) expect({ l: l.slice(0, 40), record: /\[record\]\(docs\/runs\/[^)]+\)/.test(l) }).toEqual({ l: l.slice(0, 40), record: true });
