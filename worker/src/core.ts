@@ -9,6 +9,7 @@ import { normalizeCode } from "../../src/passkey/code.js";
 import { publicHealth, publicStatus, type Health } from "../../src/ops/publicHealth.js";
 import type { RecordedAgents } from "../../src/try/recorded.js";
 import type { MetalRecorded } from "./metalInspector.js";
+import { AWX_EVENTS_PATH, AwxEventFeed } from "./awxEvents.js";
 
 export type SqlValue = string | number | null;
 export interface Sql {
@@ -393,6 +394,8 @@ interface TicketRow {
 
 export class Relay {
   private readonly now: () => Date;
+  /** The live Airwallex events feed (./awxEvents.ts): four fields of each verified webhook, the last 50. */
+  private readonly events: AwxEventFeed;
 
   /** liveRun: a live run is declared (the Worker's LIVE_RUN variable), so /health keeps the alarm however long the runner is silent. */
   /**
@@ -411,6 +414,7 @@ export class Relay {
     this.sql.exec("CREATE TABLE IF NOT EXISTS sessions (id_hash TEXT PRIMARY KEY, credential TEXT NOT NULL, expires INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS session_challenges (challenge TEXT PRIMARY KEY, expires INTEGER NOT NULL)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS cred_counters (credential TEXT PRIMARY KEY, counter INTEGER NOT NULL)");
+    this.events = new AwxEventFeed(this.sql);
   }
 
   /** The viewer key: the fixed one, or with MFA on this week's or last week's (it expires). */
@@ -551,6 +555,13 @@ export class Relay {
       const live = path === "/health" ? await this.liveAgentsToday() : null;
       return json(h.status, live ? { ...h.body, live_agents_today: live } : h.body);
     }
+    // The live Airwallex events feed: public, read-only, four fields of each verified webhook (./awxEvents.ts).
+    if (path === AWX_EVENTS_PATH) {
+      if (req.method !== "GET" && req.method !== "HEAD") return error(405, "method not allowed");
+      const r = json(200, this.events.list(this.now(), !!this.opts.webhookSecret));
+      r.headers.set("cache-control", "public, max-age=10");
+      return r;
+    }
     // An address that keeps failing the viewer key or the webhook signature is refused before either is checked,
     // so guessing is slowed and shows up (HF1). The runner's route has its own token and is not counted.
     if ((path === "/hooks/airwallex" || path.startsWith("/api/")) && this.failedTooOften(req)) {
@@ -644,6 +655,8 @@ export class Relay {
     try { v = JSON.parse(text); } catch { return error(400, "malformed event"); }
     if (!isObject(v) || typeof v.id !== "string" || v.id.length > 128) return error(400, "malformed event");
     this.sql.exec("INSERT INTO hooks (id, ts, signature, body, received_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING", v.id, ts, signature, text, this.now().toISOString());
+    // The public feed keeps four fields of it (type, object id, times), never the body (./awxEvents.ts).
+    this.events.record(v, this.now());
     // A flood cannot grow the store: the oldest events go first (the runner's poll still finds their transactions).
     this.sql.exec("DELETE FROM hooks WHERE id IN (SELECT id FROM hooks ORDER BY received_at DESC, id DESC LIMIT -1 OFFSET ?)", MAX_HOOKS);
     return json(200, { received: true });
