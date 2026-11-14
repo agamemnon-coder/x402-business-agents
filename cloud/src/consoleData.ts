@@ -33,10 +33,23 @@ const KNOWN = new Set([...Object.keys(AGENT_DISPLAY), ...Object.keys(AP_AGENT_DI
 
 interface Tx { at: string; direction: string; rail: string; rail_label?: string; amount: string; currency: string; moved: boolean; description: string; approval: { authority: string; required: boolean }; invoice: { ap_id: string | null } | null; booking: { entry_ids: number[] } | null }
 
+/**
+ * What a decision came to, for a badge a CFO reads at a glance (Agents, 14 Nov): paid within the card's limit, declined
+ * by Airwallex, the CFO asked (a proposal), or a plain note.
+ */
+export function outcomeOf(r: Pick<Audit, "event" | "payload_json">): "paid" | "declined" | "asked" | "note" {
+  if (r.event === "card.charge_approved") return "paid";
+  if (r.event === "card.charge_declined") return "declined";
+  if (r.event === "proposal.created" || (r.event === "card.decline_met" && typeof payload(r as Audit).proposal_id === "string") || (r.event === "ap.status" && payload(r as Audit).to === "waiting_cfo")) return "asked";
+  return "note";
+}
+
 /** Each agent the company's records name, newest decisions first. */
 export async function agentsOf(db: TenantDb): Promise<Json> {
   const audit = await db.select<Audit>("audit_rows", {}, { order: ["seq"] });
   const txs = (await db.select<{ body_json: string }>("transactions", {}, { order: ["sort_key"] })).map((r) => JSON.parse(r.body_json) as Tx);
+  // The month the records stand at: the newest movement's (the demo company's simulated month ends in November).
+  const asOfMonth = txs.reduce((m, t) => (t.at > m ? t.at : m), "").slice(0, 7);
   const ids = new Set<string>();
   for (const r of audit) {
     if (KNOWN.has(r.actor)) ids.add(r.actor);
@@ -59,8 +72,10 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const decisions = mine.map((r) => ({ r, f: feedLine(r) })).filter((x) => x.f !== null).reverse().slice(0, 5).map(({ r, f }) => {
       const p = payload(r);
       const by = p.source === "fallback" ? "Purser's code (fallback: no model answered)" : p.source === "claude" ? `Claude${typeof p.model === "string" ? ` (${p.model})` : ""}` : null;
-      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq };
+      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq, outcome: outcomeOf(r) };
     });
+    // Spent on its own card in the month the company's records stand at (its newest movement), against the monthly limit.
+    const spentMonth = moved.filter((t) => t.moved && t.at.slice(0, 7) === asOfMonth).reduce((n, t) => n + Math.round(Number(t.amount) * 100), 0);
     const runs = mine.filter((r) => r.event === "agent.run").map(payload);
     const fallbackRuns = runs.filter((p) => Array.isArray(p.claude_calls) && (p.claude_calls as unknown[]).length === 0).length;
     return {
@@ -68,7 +83,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
       job: (AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? (AP_AGENT_DISPLAY as Record<string, { job: string }>)[id]?.job ?? "",
       models: [...models].sort(),
       may: CAN[id]?.may ?? [], may_not: CAN[id]?.may_not ?? [],
-      card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts } : null,
+      card: issued ? { last4: String(ip.last4 ?? ""), currency: String(ip.currency ?? "EUR"), per_purchase: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) ?? null, per_month: perMonth ?? null, pays_for: String(ip.nickname ?? "").replace(/^[a-z]+ agent:\s*/i, "").replace(/\s*\([^)]*\)\s*$/, ""), issued_at: issued.ts, month: asOfMonth || null, spent_month: asOfMonth ? (spentMonth / 100).toFixed(2) : null } : null,
       rails, spent: moved.filter((t) => t.moved).length, declined: moved.filter((t) => !t.moved).length,
       status, status_since: statusRow?.ts ?? issued?.ts ?? null,
       runs: { total: runs.length, without_model: fallbackRuns },

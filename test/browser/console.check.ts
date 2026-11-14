@@ -853,8 +853,8 @@ async function engineArchive(E: EnginePass) {
   await p.click("#proof a.arch");
   await p.waitForSelector(".archive details");
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
-  // Six since 13 Nov (Agents and Tokenisation joined; Invoices became part of Invoices & books); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 6 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its six items");
+  // Seven since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again); the archive is not one.
+  ok(await p.locator("#tabs a").count() === 7 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its seven items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
