@@ -1,7 +1,7 @@
 // The Worker entry: pages are served straight from the bundle; every /api/ request goes to the one Durable Object
 // that holds the relay's state (the runner's last push, the queue, the tickets), so all of them see it in order.
 
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
@@ -13,6 +13,7 @@ import { PAGES } from "./pages.gen.js";
 import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
 import { tryEngineResponse } from "./tryEngine.js";
+import { AWX_READ_PATH, AwxReadDesk, isAwxView, type AwxReadAnswer } from "./awxRead.js";
 
 export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -62,6 +63,8 @@ export interface Env {
    * the paths its page calls go there (./tryEngine.ts). Without it the site answers /try with its own page.
    */
   TRY_ENGINE?: Fetcher;
+  /** Purser Cloud's live Airwallex tab (./awxRead.ts): "off" (any case, trimmed) stops every read; anything else, or none, leaves it on. */
+  AWX_READ?: string;
 }
 
 /** The try-sign instance's answer to the relay's /health: today's spend on its live agents. Not a public path. */
@@ -76,6 +79,7 @@ export class RelayObject extends DurableObject<Env> {
   private trySign?: TrySignDesk;
   private x402?: X402Desk;
   private metal?: MetalInspector;
+  private awxRead?: AwxReadDesk;
 
   /** The try-sign instance's desk, made on its first request (it holds only its own tables). */
   private trySignDesk(): TrySignDesk {
@@ -104,6 +108,8 @@ export class RelayObject extends DurableObject<Env> {
     if (path === X402_PATH) return (this.x402 ??= new X402Desk(this.ctx.storage.sql, { settle: this.env.X402_TESTNET_SETTLE, payTo: this.env.X402_PAY_TO })).fetch(req);
     // The mandate inspector's own instance holds only the RPC URL and the switch, inside the desk.
     if (path === METAL_INSPECTOR_PATH) return (this.metal ??= new MetalInspector(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: inspectorOff(this.env.METAL_INSPECTOR) ? "switched off" : null, recorded: PAGES.metalRecorded ?? null })).fetch(req);
+    // Purser Cloud's live Airwallex reads (./awxRead.ts): their own instance, reached only through the AwxRead entrypoint.
+    if (path === AWX_READ_PATH) return (this.awxRead ??= new AwxReadDesk(this.ctx.storage.sql, { clientId: this.env.AIRWALLEX_CLIENT_ID, apiKey: this.env.AIRWALLEX_API_KEY, off: (this.env.AWX_READ ?? "").trim().toLowerCase() === "off" })).fetch(req);
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
       relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
@@ -113,6 +119,19 @@ export class RelayObject extends DurableObject<Env> {
         return r.ok ? ((await r.json()) as { usd: number; budget_usd: number }) : null;
       },
     })).fetch(req);
+  }
+}
+
+/**
+ * Purser Cloud's way to the Airwallex sandbox (14 Nov): a named entrypoint that only a service binding reaches
+ * (cloud/wrangler.try.jsonc, AWX_READ with entrypoint "AwxRead"); no HTTP request can call it, and the Worker routes
+ * no outside path to AWX_READ_PATH. It answers one read-only view at a time (./awxRead.ts): never a key, never a token.
+ */
+export class AwxRead extends WorkerEntrypoint<Env> {
+  async read(view: string): Promise<AwxReadAnswer | { error: string }> {
+    if (!isAwxView(view)) return { error: "no such view" };
+    const r = await this.env.RELAY.get(this.env.RELAY.idFromName("awx-read")).fetch(`https://relay.internal${AWX_READ_PATH}?view=${view}`);
+    return (await r.json()) as AwxReadAnswer;
   }
 }
 

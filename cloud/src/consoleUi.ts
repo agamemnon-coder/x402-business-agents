@@ -107,7 +107,9 @@ async function agentsView(){
   const [m,r]=await Promise.all([me(),api('/v1/agents')]);shell();
   const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo));
   view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede2')+(m.demo?' '+t('cs.agents.read_only'):'')),
-    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls'))]);
+    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls')),
+    // 14 Nov: the agents' cards as the Airwallex sandbox holds them now, with their limits and authorizations.
+    el('p','links',[(()=>{const a=el('a','ext',[ic('credit-card'),' '+t('cs.awl.agents_link'),' ',ic('chevron-right')]);a.href='#/airwallex';return a})()])]);
   requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
 }
 

@@ -23,6 +23,7 @@ import { platformCompanies } from "./platformView.js";
 import { accountOf, bindingOf, onboardingLink, openAccount, PlatformRefused, receiveAccountEvent, refreshAccount, type AwxPlatformEnv } from "./awxPlatform.js";
 import { accessToken, ConnectRefused, connections, disconnect, finishConnect, receivePartnerEvent, startConnect, type ConnectEnv } from "./connect.js";
 import { isProvider, type OAuthProviderName } from "../../src/lib/oauth.js";
+import { AWX_VISITOR_PER_MINUTE, awxLiveView, isAwxLiveView, type AwxReadBinding } from "./awxLive.js";
 import { cloudHealth, companyStatus, HealthReport, MonitorRefused, notify, receiveReport, removeWebhook, setWebhook, webhookOf, type Outbound } from "./monitor.js";
 import type { EngineApi } from "./engine/api.js";
 import { engineRoutes } from "./engine/routes.js";
@@ -105,6 +106,11 @@ export interface CloudEnv {
    * account and its Moneybird administration. Absent (the default): the /v1/connect routes answer 404.
    */
   connect?: ConnectEnv;
+  /**
+   * The live Airwallex tab (cloud/src/awxLive.ts): the site Worker's read-only gateway to the Airwallex sandbox, through
+   * a service binding (AWX_READ). Purser Cloud holds no Airwallex key. Absent: each view says the sandbox is unavailable.
+   */
+  awxRead?: AwxReadBinding;
 }
 
 interface Ctx { env: CloudEnv; req: Request; url: URL; now: Date; params: string[]; caller: Caller | null; db: TenantDb | null }
@@ -462,6 +468,15 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
+  { method: "GET", path: "/v1/airwallex-live/{view}", summary: "The live Airwallex tab, read-only, from the Airwallex sandbox (test money) through the site Worker's gateway: balances, accounts, financial, rates, transfers, beneficiaries, issuing, calls, or reconcile (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions). Each answer says when it was read, or why the sandbox is unavailable.", need: "read", run: async (c) => {
+    const view = c.params[0]!;
+    if (!isAwxLiveView(view)) return notFound("such Airwallex view");
+    // Its own cap per visitor (one network, or one key), under the route's own: the gateway also caps all visitors together.
+    const who = isDemoTenant(c.caller!.tenantId) ? `ip:${c.req.headers.get("cf-connecting-ip") ?? "unknown"}` : `${c.caller!.kind}:${c.caller!.principal}`;
+    if (!(await withinRate(c.env.sql, `awx-live:${who}`, c.now, { windowSec: 60, max: AWX_VISITOR_PER_MINUTE }))) return err(429, "too many Airwallex reads; wait a minute");
+    // The demo company reads its pages as of the month's end; the sandbox is read now, and says when.
+    return json(200, await awxLiveView(c.env.awxRead, view, new Date()));
+  } },
   { method: "GET", path: "/v1/books/bookings", summary: "For each supplier invoice, the ledger entries that book it (its accrual and its payment).", need: "read", run: async (c) => json(200, { bookings: await bookingsOf(db(c)) }) },
   { method: "GET", path: "/v1/books/invoices/{id}/journal", summary: "The ledger entries that book one supplier invoice, with their lines.", need: "read", run: async (c) => { const items = await journalOf(db(c), c.params[0]!); return items ? json(200, { items }) : err(404, "no such invoice"); } },
   { method: "GET", path: "/v1/dashboard", summary: "The start screen in one answer, every figure counted from the company's own rows: cash in and out by day, spend by who started it, approvals per week, invoices by state, and the newest decisions in words.", need: "read", run: async (c) => json(200, await dashboard(db(c), isDemoTenant(c.caller!.tenantId) ? { asOf: c.now.toISOString() } : {})) },
