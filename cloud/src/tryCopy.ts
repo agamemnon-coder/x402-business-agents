@@ -24,30 +24,88 @@ export const BAND = {
 };
 
 /**
- * Screen 0. The text describes the product, never this visit: what this visit runs on is in the band, from the answer.
- * Beside it the illustration (cloud/src/scene.ts: its words are aria-hidden, the image has one name; not counted here);
- * under the card the trust line: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
+ * Screen 0 (14 Nov, owner: "the crown jewel for partners; the start screen must look enterprise-grade"): one headline that
+ * says what the visit does in two minutes, the three steps as a picture (Read, Check, You sign) and what happens when one
+ * cent is changed, one button, a quiet trailer link, and the partners as their official logos (Visa as text) with "No
+ * endorsement implied". "Face ID" in the headline is the device's word on an iPhone; the steps say any passkey works.
  */
 export const START = {
-  heading: "Run a company's payables with Purser.",
-  text: "AI agents check each invoice on Purser's real engine. You sign the exact terms.",
+  eyebrow: "Hands-on · about 2 minutes",
+  /** "Your passkey": true on every device (Face ID, Touch ID, a fingerprint or Windows Hello is the device's own word). */
+  heading: "Sign an invoice with your passkey. Then change one cent.",
+  text: "Purser refuses it: your signature covers the exact terms.",
+  /** The three steps as a picture, each a word and one short line; then what a one-cent change gets. */
+  flow: [
+    { name: "Read", line: "AI agents read it." },
+    { name: "Check", line: "Purser's code checks it." },
+    { name: "You sign", line: "Face ID or any passkey." },
+  ],
+  flowEnd: "One cent changed: refused",
   button: "Start with a test company",
-  /**
-   * Under the button, first (jury review, 13 Nov): what the visit is and how long. "Your passkey", not "Face ID": the flow
-   * signs with the device's own passkey (Face ID, Touch ID or Windows Hello, by device), so Face ID alone is not true.
-   */
-  what: "About 2 minutes: read an invoice, sign it with your passkey, see it booked.",
-  /** Under the button. */
-  fine: "Test money · deleted after 24 h",
-  /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
-  walk: "Or watch the walkthrough",
-  /** Under the card, small and grey. */
-  trust: "Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.",
+  /** Under the button, small. */
+  fine: "Purser's real engine · test money · deleted after 24 h",
+  /** Beside the button, quiet: the trailer on YouTube (TRAILER_URL, src/config/brand.ts). */
+  trailer: "Watch the 90 s trailer",
+  /** The partners' row: their official logos (Visa named in text), then the note. */
+  worksWith: "Works with",
+  formerly: "(formerly Metal)",
+  visa: "Visa via Airwallex Airi",
+  runs_note: "Sandbox and testnet runs. No endorsement implied.",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
   /** Under the server's sentence (in the text's place) when it is busy, at its limit or paused (429, 503). */
   runs: "Watch the recorded runs",
+};
+
+/**
+ * On every screen after the start, beside the band (14 Nov, owner): a link to the same step in a live run on /proof
+ * (STEP_PROOF, cloud/src/try/run.ts). A fixed legend, like the step names: outside each screen's count.
+ */
+export const SAME_STEP = { label: "Same step, live" };
+
+/**
+ * The run's clock and score (14 Nov, owner: "a run timer and a small end score; a Share button"). The clock is figures
+ * only, in the band (outside the count). The score is on the finish screen, counted there. Never a fraction.
+ */
+export const RUN = {
+  clock: "Your run time",
+  head: "Your run",
+  time: "start to finish",
+  steps: "steps passed",
+  refused: "one-cent change refused",
+  tryCent: "Try the one-cent change",
+  share: "Share",
+  copied: "Link copied",
+  /** Where the clipboard is not allowed: the link itself, to copy by hand. */
+  copyThis: "Copy this link:",
+  /** The text shared with the link (not on the page): the time line with the run's time, the cent line only when it was refused. */
+  shareText: "I signed an invoice with my passkey on Purser, on test money.",
+  shareTime: "My run: {time}.",
+  shareTitle: "Purser",
+  shareCent: "Then I changed one cent: refused.",
+};
+
+/**
+ * ?tour=1 (14 Nov, owner: "an auto-guided tour mode for judges"): one tip per screen in a small card, the control it
+ * means lit, and Next, which presses that control. Shown only with ?tour=1; outside the word budget (an overlay a judge
+ * asks for), each tip at most 14 words (test/try-run.test.ts).
+ */
+export const GUIDE = {
+  label: "Guided tour",
+  next: "Next",
+  end: "End tour",
+  tips: {
+    start: "Start a test company of your own. Nothing real moves.",
+    invoice: "Pick a sample invoice and file it.",
+    work: "Agents read it, Purser's code checks it. Next takes the step it offers.",
+    approve: "Sign the exact terms with Face ID or your passkey.",
+    books: "Paid with test money. Now try to cheat: change what you signed.",
+    pay: "Next changes the amount by one cent and asks to pay.",
+    refused: "Refused: your signature covers only the exact terms. See your score.",
+    did: "What Purser did for you, step by step.",
+    company: "Your score. Share it, or see the same steps in a live run.",
+  } as Record<string, string>,
 };
 
 /** Screen 1. One main button under both tabs files the sample picked or the invoice written. Sample titles, suppliers
@@ -480,10 +538,10 @@ export const ENDED = {
  */
 export const VISIBLE = {
   start: [
-    [START.heading, START.text, START.button, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.text, START.starting, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.failed, START.button, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.runs, START.button, START.what, START.fine, START.walk, START.trust],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
+    [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
+    [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -577,11 +635,13 @@ export const VISIBLE = {
   company: [
     // 14 Nov (owner): the finish. The result (its figures are data), the three steps, the way on and its quiet links,
     // the records (the PDF, the JSON link), Start again, the recorded runs' fold.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
     // Start again asks first: the question and its two answers in place of the link.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
+    // 14 Nov (owner): the score without the one-cent change: its link in the refusal's place.
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.tryCent, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -622,7 +682,11 @@ export const VISIBLE = {
 // Partner scan, 14 Nov: the start screens +3 for "No endorsement implied."; Airwallex left the "Works with" line (it is the platform, "Built on Airwallex").
 // 14 Nov (owner: "always be able to override and try it again"): every hold can be rejected (+1, "work 4" to "work 6");
 // a possible duplicate by the same total can be cleared in the sandbox ("work 10") or rejected ("work 11").
-export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 63, "start 2": 63, "start 3": 57, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "work 10": 91, "work 11": 73, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov (owner: "the start screen must look enterprise-grade; do more"): the start is a headline, the three steps as a
+// picture with a word each, the one-cent refusal, the trailer link and the partners' logos with "No endorsement implied"
+// ("start 0" to "start 3", +15 to +20). The finish adds the run's score and Share ("company 0" to "company 3", +13 each);
+// "company 4" is the score before the one-cent change, its link in the refusal's place. Each pinned at its count.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
