@@ -86,10 +86,10 @@ describe("the page", () => {
   });
 
   // 14 Nov (in-app browsers): also the passkey prompt's 30 s limit and Copy link's 1.5 s wait for the clipboard.
-  it("uses a timer only for polling, the session's renewal, the running time of an open Claude call, the passkey's limit and Copy link", () => {
+  it("uses a timer only for polling, the session's renewal, the running time of an open Claude call, the passkey's limit, Copy link and the live quote's countdown", () => {
     const uses = [...script.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
     expect(uses.length).toBeGreaterThanOrEqual(3);
-    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer)$/);
+    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer|quoteTimer)$/);
     expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},30000\)/);
     expect(script).toMatch(/pollTimer=setTimeout\(/);
     expect(script).toMatch(/renewTimer=setTimeout\(/);

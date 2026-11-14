@@ -47,10 +47,14 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       // Next to its D1 database (WEUR), not next to the visitor: each request makes several D1 calls in a row (12 Nov, speed).
       "placement.mode": [undefined, "targeted"],
       "placement.region": [undefined, "aws:eu-central-1"],
-      // The live Airwallex tab (14 Nov): the site Worker's read-only sandbox gateway, a named entrypoint; no key here.
-      "services.0.binding": [undefined, "AWX_READ"],
+      // /try's live FX quote (14 Nov): the kit11 Worker's named entrypoint, which holds the Airwallex sandbox key; no key here.
+      "services.0.binding": [undefined, "AWX_FX"],
       "services.0.service": [undefined, "kit11"],
-      "services.0.entrypoint": [undefined, "AwxRead"],
+      "services.0.entrypoint": [undefined, "AwxFx"],
+      // The live Airwallex tab (14 Nov): the site Worker's read-only sandbox gateway, a named entrypoint; no key here.
+      "services.1.binding": [undefined, "AWX_READ"],
+      "services.1.service": [undefined, "kit11"],
+      "services.1.entrypoint": [undefined, "AwxRead"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));

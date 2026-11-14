@@ -38,14 +38,18 @@
     "HANDS_ON": "on",
     "ENGINE_CLAUDE": "on"
   },
-  // The live Airwallex tab (cloud/src/awxLive.ts): the site Worker's read-only gateway to the Airwallex sandbox, a named
-  // entrypoint (worker/src/index.ts, AwxRead) that no HTTP request can reach. This Worker holds no Airwallex key: only
-  // kit11 does, and it answers views without one. Deploy kit11 with the entrypoint first; without it each view says the
-  // sandbox is unavailable.
-  "services": [{ "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" }],
   // The engine: one Durable Object per company (cloud/src/engine/object.ts), on its own SQLite. A class is SQLite-backed
   // only from its first deploy, and a deploy with a migration cannot be rolled back past it.
   "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "CompanyEngine" }] },
+  // /try's live FX quote (cloud/src/engine/liveFx.ts): the kit11 Worker's named entrypoint AwxFx, which holds the
+  // Airwallex sandbox key and the caps (worker/src/awxFx.ts). No key here. Deploy kit11 with AwxFx first.
+  // The live Airwallex tab (cloud/src/awxLive.ts): the site Worker's read-only gateway to the Airwallex sandbox, a named
+  // entrypoint (worker/src/index.ts, AwxRead) that no HTTP request can reach; it answers views without a key. Without it
+  // each view says the sandbox is unavailable.
+  "services": [
+    { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
+    { "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" }
+  ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
   "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },

@@ -76,9 +76,13 @@ export class SandboxQuotes implements FxSource {
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
 
-  constructor(private readonly cfg: { clientId: string; apiKey: string; fetchImpl?: typeof fetch; now?: () => number }) {
+  private readonly timeoutMs: number;
+
+  /** timeoutMs: how long one call may take (8 s by default; /try's live quote asks for less, worker/src/awxFx.ts). */
+  constructor(private readonly cfg: { clientId: string; apiKey: string; fetchImpl?: typeof fetch; now?: () => number; timeoutMs?: number }) {
     this.fetchImpl = cfg.fetchImpl ?? ((...a) => fetch(...a));
     this.now = cfg.now ?? (() => Date.now());
+    this.timeoutMs = cfg.timeoutMs ?? TIMEOUT_MS;
   }
 
   /** The one way out: the table decides, then fetch. Answers are read as JSON; failures become fixed reasons. */
@@ -86,7 +90,7 @@ export class SandboxQuotes implements FxSource {
     const url = allowedUrl(method, `https://${AWX_SANDBOX_HOST}${path}`);
     let res: Response;
     try {
-      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(TIMEOUT_MS) });
+      res = await this.fetchImpl(url.toString(), { method, headers: { ...headers, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(this.timeoutMs) });
     } catch {
       throw new QuoteUnavailable("the Airwallex sandbox did not answer");
     }
@@ -107,6 +111,22 @@ export class SandboxQuotes implements FxSource {
   }
 
   async quote(a: { buyCurrency: string; sellCurrency: string; buyAmount: string }): Promise<FxQuote> {
+    return toQuote(await this.quoteAnswer(a), a);
+  }
+
+  /**
+   * /try's live quote (worker/src/awxFx.ts): the same one call, and Airwallex's own rate from the same answer
+   * (awx_rate, else mid_rate), which the engine checks the quote's markup against. No second call, no other path.
+   */
+  async quoteAndMarket(a: { buyCurrency: string; sellCurrency: string; buyAmount: string }): Promise<{ quote: FxQuote; market_rate: string }> {
+    const j = await this.quoteAnswer(a);
+    const quote = toQuote(j, a);
+    const market = marketRateOf(j);
+    if (!market) throw new QuoteUnavailable("the Airwallex sandbox's quote carried no market rate");
+    return { quote, market_rate: market };
+  }
+
+  private async quoteAnswer(a: { buyCurrency: string; sellCurrency: string; buyAmount: string }): Promise<Record<string, unknown>> {
     if (!/^[A-Z]{3}$/.test(a.buyCurrency) || !/^[A-Z]{3}$/.test(a.sellCurrency) || !twoDecimals(a.buyAmount)) throw new QuoteUnavailable("not a quote this page asks for");
     for (let attempt = 0; attempt < 2; attempt++) {
       const token = await this.bearer();
@@ -115,7 +135,7 @@ export class SandboxQuotes implements FxSource {
       // A token Airwallex no longer takes: drop it and log in once more.
       if (r.status === 401 && attempt === 0) { this.token = null; continue; }
       if (r.status < 200 || r.status >= 300 || !r.json) throw new QuoteUnavailable(`the Airwallex sandbox gave no quote (HTTP ${r.status})`);
-      return toQuote(r.json, a);
+      return r.json;
     }
     throw new QuoteUnavailable("the Airwallex sandbox gave no quote");
   }
@@ -130,4 +150,14 @@ export function toQuote(j: Record<string, unknown>, asked: { buyCurrency: string
     throw new QuoteUnavailable("the Airwallex sandbox's quote was not in the expected form");
   }
   return { quote_id: quoteId, sell_currency: asked.sellCurrency, buy_currency: asked.buyCurrency, buy_amount: buy, sell_amount: sell, client_rate: rate, valid_to_at: validTo, source: "airwallex-sandbox" };
+}
+
+/** Airwallex's own rate in a quote's answer, before the client's markup (awx_rate), else its mid rate; null when neither is a plain rate. */
+export function marketRateOf(j: Record<string, unknown>): string | null {
+  for (const k of ["awx_rate", "mid_rate"]) {
+    const v = j[k];
+    const s = typeof v === "number" && Number.isFinite(v) && v > 0 ? String(v) : typeof v === "string" && /^\d{1,6}(\.\d{1,12})?$/.test(v) && Number(v) > 0 ? v : null;
+    if (s) return s;
+  }
+  return null;
 }
