@@ -47,7 +47,7 @@ Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sand
 | **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
 | **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
 
-Text names only; no endorsement implied.
+No endorsement implied.
 
 ## Gallery
 

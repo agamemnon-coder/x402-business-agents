@@ -58,12 +58,13 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg"');
-    // Jury round 2, 13 Nov: the film's own length (298.0 s), and the partners as text only, never a logo image.
+    // Jury round 2, 13 Nov: the film's own length (298.0 s) (the partners were text only until 14 Nov).
     expect(README).toContain("*The walkthrough · AI voice and music: ElevenLabs*"); // no duration in the words since 14 Nov (owner)
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
     expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied');
-    expect(README).toContain("Text names only; no endorsement implied.");
+    expect(README).toContain("\n\nNo endorsement implied.\n\n"); // under the partners table; "Text names only" gone since the logos came back (14 Nov)
+    expect(README).not.toContain("Text names only");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
