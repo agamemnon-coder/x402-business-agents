@@ -628,7 +628,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(early === 0 && await outcomeShown() === 0 && stand.payAnswers === answered4, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held`);
   const res = await payRes;
   const rawText = await res.text();
-  await page.waitForSelector(".stamp");
+  await page.waitForSelector(".why .head"); // 14 Nov: the reason first; the stamp is in the fold
   stand.payDelay = 0;
   ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
   // 14 Nov (owner): the reason first, signed beside asked with the changed value marked, one plain line; the rest in the fold.

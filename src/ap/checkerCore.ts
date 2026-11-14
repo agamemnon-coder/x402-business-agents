@@ -17,6 +17,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { accountKey, chooseRoute, payableCurrency, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
 import { assessAgainst, skeleton, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
+import { TWIN_DAYS, UNUSUAL_FACTOR } from "../config/checkNumbers.js";
 import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
@@ -122,10 +123,9 @@ export interface InvoiceCase {
 
 // ── Code's checks ──
 
-/** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
-export const UNUSUAL_FACTOR = 2;
-/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number (past a month). */
-export const TWIN_DAYS = 45;
+// UNUSUAL_FACTOR and TWIN_DAYS live in src/config/checkNumbers.ts, without imports, so /try's words quote them (14 Nov) without
+// pulling the checks into the Worker's bundle.
+export { TWIN_DAYS, UNUSUAL_FACTOR };
 
 const MONEY = /^\d+\.\d{2}$/;
 const DAY_MS = 86_400_000;

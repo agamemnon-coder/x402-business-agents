@@ -3,7 +3,7 @@
 // page's script reads them from here; it has no words of its own. This page does not use the shared catalogue
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
-import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/ap/checkerCore.js";
+import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
 
 /**
  * The page's frame: the brand mark.
