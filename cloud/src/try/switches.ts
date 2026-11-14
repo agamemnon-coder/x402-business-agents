@@ -7,10 +7,17 @@
 import type { Sql } from "../store.js";
 import { EXTRA_SWITCHES } from "./extraSwitches.js";
 
+/**
+ * Purser Cloud's Airwallex actions (cloud/src/engine/awxGuard.ts): off while missing. awx_act lets a signed-in company's
+ * new suppliers, quotes, conversions, payouts, batches and deposits run at the Airwallex sandbox; awx_act_try lets a /try
+ * visitor's test company too. Both need the daily caps below set above 0.
+ */
+export const AWX_ACT_SWITCHES = ["awx_act", "awx_act_try"] as const;
+
 export type Switches = Record<string, string>;
 
 /** On or off; a missing row is off. */
-export const ON_OFF = ["starts", "claude", "agents", "rail_awx", "rail_metal", "own_upload", ...EXTRA_SWITCHES] as const;
+export const ON_OFF = ["starts", "claude", "agents", "rail_awx", "rail_metal", "own_upload", ...EXTRA_SWITCHES, ...AWX_ACT_SWITCHES] as const;
 
 /** Whole numbers with a ceiling no `set` may pass; a missing row is 0 unless it has a default here. */
 export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
@@ -33,6 +40,9 @@ export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
   awx_calls_day: { ceiling: 1_500, fallback: 0 },
   awx_eur_day: { ceiling: 10_000, fallback: 0 },
   metal_calls_day: { ceiling: 1_000, fallback: 0 },
+  // Purser Cloud's Airwallex actions, in cents a UTC day (EUR, USD, GBP counted together; a missing row is 0: nothing moves).
+  awx_act_company_cents_day: { ceiling: 100_000, fallback: 0 },
+  awx_act_global_cents_day: { ceiling: 500_000, fallback: 0 },
 };
 
 export type Pool = "public" | "event" | "jury";

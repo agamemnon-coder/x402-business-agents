@@ -1,7 +1,9 @@
 // The Worker entry: pages are served straight from the bundle; every /api/ request goes to the one Durable Object
 // that holds the relay's state (the runner's last push, the queue, the tickets), so all of them see it in order.
 
-import { DurableObject } from "cloudflare:workers";
+import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
+import { AwxGatewayDesk, type GatewayEnv } from "./awxGateway.js";
+import type { GatewayAnswer, GatewayRequest } from "../../src/airwallex/gatewayRules.js";
 import { notFoundResponse, pageResponse, Relay } from "./core.js";
 import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
@@ -14,7 +16,7 @@ import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
 import { tryEngineResponse } from "./tryEngine.js";
 
-export interface Env {
+export interface Env extends GatewayEnv {
   RELAY: DurableObjectNamespace<RelayObject>;
   /** The runner's bearer token, set with `wrangler secret put RELAY_TOKEN` by npm run relay:deploy. */
   RELAY_TOKEN: string;
@@ -113,6 +115,18 @@ export class RelayObject extends DurableObject<Env> {
         return r.ok ? ((await r.json()) as { usd: number; budget_usd: number }) : null;
       },
     })).fetch(req);
+  }
+}
+
+/**
+ * The Airwallex gateway for Purser Cloud's actions (./awxGateway.ts): a named entrypoint, reached only through Purser
+ * Cloud's service binding (cloud/wrangler.try.jsonc, AWX_GATEWAY), never by an HTTP request. Allow-listed calls to the
+ * Airwallex sandbox only; writes need AWX_GATEWAY_WRITE=on.
+ */
+export class AwxGateway extends WorkerEntrypoint<Env> {
+  private desk?: AwxGatewayDesk;
+  async call(r: GatewayRequest): Promise<GatewayAnswer> {
+    return (this.desk ??= new AwxGatewayDesk(this.env)).call(r);
   }
 }
 

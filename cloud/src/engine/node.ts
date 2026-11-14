@@ -17,6 +17,10 @@ import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
+import { airwallexActions, memoryActStore } from "../../../src/engine/awxActions.js";
+import type { GatewayPort } from "../../../src/airwallex/gateway.js";
+import { cloudGuard } from "./awxGuard.js";
+import { wireAirwallex } from "./awxWire.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -26,6 +30,8 @@ export interface NodeEngineEnv {
   origin: string;
   /** The cloud's clock, for what the read model stamps; the engine itself runs on the real clock, as its executor does. */
   now?: () => Date;
+  /** The Airwallex gateway (tests hand in a fake one); absent: every action runs on the simulated bank, labelled. */
+  awxGateway?: GatewayPort;
 }
 
 /** A ledger's documents in memory: no file is written anywhere. */
@@ -37,7 +43,7 @@ function memoryDocs(): DocStore {
   };
 }
 
-interface Engine { db: DB; host: EngineHost }
+interface Engine { db: DB; host: EngineHost; acts: ReturnType<typeof airwallexActions> }
 
 /** The company's engine, made on first use: its name and language are read once, and the treasury's test money is seeded. */
 async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
@@ -49,14 +55,17 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
   const kept = { text: null as string | null };
   const bank = standInBank({ load: () => kept.text, save: (text) => { kept.text = text; } });
   const target = cloudTarget(tenant, env.blobs, env.now ?? (() => new Date()));
+  const store = memoryActStore();
+  const guard = cloudGuard({ sql: env.sql, tenantId, gateway: !!env.awxGateway, cacheMs: 0 });
+  const awx = wireAirwallex({ bank, store, guard, port: env.awxGateway ?? null });
   const host = new EngineHost({
-    db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => { kept.text = bankToText(bank); },
+    db, reader: parserOnly, rails: awx.rails, payeeVerifier: awx.verifier, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(env.blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true } : {}),
   });
   await host.seed();
-  return { db, host };
+  return { db, host, acts: airwallexActions({ host, db, rail: awx.routed, guard, store, caps: () => guard.caps() }) };
 }
 
 /** A visitor's test company (t_try_...) holds at most this many documents, whatever route brings them. */
@@ -75,21 +84,22 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       }
       return (await e).host;
     };
+    const acts = async () => { await host(); return (await engines.get(tenantId)!).acts; };
     return {
       status: async () => (await host()).status(),
       seed: async () => (await host()).seed(),
       upload: async (doc) => (await host()).upload(doc),
       invoices: async () => (await host()).invoices(),
       invoice: async (id) => (await host()).invoice(id),
-      propose: async (invoiceId) => (await host()).propose(invoiceId),
+      propose: async (invoiceId) => (await acts()).propose(invoiceId),
       proposal: async (id) => (await host()).proposal(id),
       passkeyStart: async (rp) => (await host()).passkeyStart(rp && rpAllowed(rp, env) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
       passkeyFinish: async (a) => (await host()).passkeyFinish(a),
       securityKeyStart: async (a) => (await host()).securityKeyStart({ label: a.label, ...(a.rp && rpAllowed(a.rp, env) ? { rp: { rpId: a.rp.rpId, origin: a.rp.origin } } : {}) }),
       securityKeyFinish: async (a) => (await host()).securityKeyFinish(a),
       proposeSecondKey: async (changes) => (await host()).proposeSecondKey(changes),
-      approve: async (a) => (await host()).approve(a),
-      retry: async (proposalId) => (await host()).retry(proposalId),
+      approve: async (a) => (await acts()).approve(a),
+      retry: async (proposalId) => (await acts()).retry(proposalId),
       sync: async () => (await host()).sync(),
       events: async (after, limit) => (await host()).events(after, limit),
       vaultFiles: async () => (await host()).vaultFiles(),
@@ -100,7 +110,11 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
       terms: async (id) => (await host()).terms(id),
-      paySigned: async (id, sent, credential) => (await host()).paySigned(id, sent, credential),
+      paySigned: async (id, sent, credential) => { const h = await host(); return (await acts()).runAt(id, () => h.paySigned(id, sent, credential)); },
+      addSupplier: async (invoiceId, v) => (await acts()).addSupplier(invoiceId, v),
+      proposeBatch: async (ids) => (await acts()).proposeBatch(ids),
+      depositIn: async (a) => (await acts()).depositIn(a),
+      airwallex: async () => (await acts()).view(),
       exportBatch: async () => (await host()).exportBatch(),
       exportPdf: async () => (await host()).exportPdf(),
       wipe: async () => {

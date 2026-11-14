@@ -48,6 +48,10 @@ import { recordsPdf } from "./recordsPdf.js";
 import { beginExecution } from "../policy/approvals.js";
 import { batchesFor } from "../cloudsync/client.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
+import { checkThenProposePayeeAdd, recordPayeeAddVerification, requestPayeeAddForInvoice } from "../ap/vendors.js";
+import { payApInvoices } from "../ap/batchPay.js";
+import { FakePayeeNames, STAND_IN_LABEL, type PayeeNameVerifier } from "../airwallex/payeeName.js";
+import { matchReceipt } from "../agents/receivables.js";
 
 /** The reader that always takes the parser: no model is asked, and the invoice says it was read by the parser. */
 export const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no model is asked: the parser reads" }) } as Asker;
@@ -97,6 +101,12 @@ export interface EngineDeps {
    * for it on the simulated bank, and the audit row says so. Default false; only a try company turns it on.
    */
   seedPaid?: boolean;
+  /**
+   * Who asks the payee's bank whether a new supplier's account carries its name (Purser Cloud: Airwallex's
+   * verify_account through the gateway, falling back to the labelled stand-in). Absent: the stand-in, labelled
+   * "stand-in, test world: no bank was asked" wherever its answer is shown.
+   */
+  payeeVerifier?: () => PayeeNameVerifier;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -156,6 +166,9 @@ export interface Settled {
   /** What failed, in the engine's words; null when nothing did. */
   error: string | null;
 }
+
+/** A new supplier's bank check as a page shows it. */
+export interface NameCheckView { vendor: string; code: string; match: string | null; label: string; checked_at: string; source: "airwallex" | "stand-in" }
 
 export interface VaultFile { path: string; kind: string; bytes: number; sha256: string; added_at: string }
 
@@ -844,6 +857,84 @@ export class EngineHost {
       if (status === "EXECUTED") return finish(signature.verified && sentSha === base.signed_sha256 ? "paid_once" : "refused", layers, null);
       if (/expired/i.test(executor.said ?? "")) return finish("expired", layers, null);
       return finish("refused", layers, null);
+    });
+  }
+
+  // ---- Purser Cloud's Airwallex actions (14 Nov): a new supplier, one batch for every ready invoice, money in ----
+
+  /**
+   * A new supplier from an invoice waiting for it: the owner's record of how the account was confirmed (a contact the
+   * company already had) and the supplier's address, then the payee's bank is asked whether the account carries the
+   * supplier's name, then a payee_add proposal for the CFO's passkey. Approved, the executor adds the supplier at the
+   * bank (Airwallex's schema, validation and create, through the host's rails) and checks the invoice again.
+   */
+  addSupplier(invoiceId: string, v: { by: string; how: string; address: { street: string; city: string; postcode: string } }): Promise<{ ok: true; proposal: ProposalView; name_check: NameCheckView | null } | { ok: false; reason: string; name_check: NameCheckView | null }> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      const now = this.now();
+      try {
+        const open = db.prepare("SELECT add_id, status FROM payee_adds WHERE source = ? AND status IN ('REQUESTED', 'VERIFIED') ORDER BY created_at DESC LIMIT 1").get(invoiceId) as { add_id: string; status: string } | undefined;
+        const req = open ?? requestPayeeAddForInvoice(db, invoiceId, "human", now);
+        if ((open?.status ?? "REQUESTED") === "REQUESTED") recordPayeeAddVerification(db, req.add_id, { by: v.by, how: v.how, actor: "human", address: v.address }, now);
+        const verifier = this.deps.payeeVerifier?.() ?? Object.assign(new FakePayeeNames(), { confirmAll: true });
+        const p = await checkThenProposePayeeAdd(db, verifier, req.add_id, "human", now);
+        const proposal = this.proposal(p.proposal_id);
+        if (!proposal) return { ok: false, reason: `${p.proposal_id} was filed but is not in the ledger`, name_check: null };
+        return { ok: true, proposal, name_check: this.lastNameCheck() };
+      } catch (e) {
+        return { ok: false, reason: message(e), name_check: this.lastNameCheck() };
+      } finally {
+        this.deps.afterMoney?.();
+      }
+    });
+  }
+
+  /** The payee's bank's latest answer on a new supplier, and who asked it (Airwallex, or the labelled stand-in). */
+  private lastNameCheck(): NameCheckView | null {
+    const r = this.deps.db.prepare("SELECT vendor, code, match, label, checked_at FROM payee_name_checks ORDER BY checked_at DESC, rowid DESC LIMIT 1").get() as Omit<NameCheckView, "source"> | undefined;
+    return r ? { ...r, source: r.label.startsWith(STAND_IN_LABEL) ? "stand-in" : "airwallex" } : null;
+  }
+
+  /**
+   * Pay all ready invoices with one passkey signature: each is planned as on its own (its own exact terms, FX for its
+   * shortfall), then one batch over them is filed; the CFO signs the batch's total and lines. Invoices that cannot be
+   * planned are named with the reason and left out.
+   */
+  proposeBatch(invoiceIds: string[]): Promise<{ ok: true; proposal: ProposalView; planned: { id: string; proposal_id: string }[]; not_planned: { id: string; reason: string }[] } | { ok: false; reason: string; not_planned?: { id: string; reason: string }[] }> {
+    return this.act(async () => {
+      const { db, rails } = this.deps;
+      try {
+        const out = await payApInvoices(db, rails.rail, invoiceIds, this.now());
+        if (!out.batch) return { ok: false, reason: "none of the invoices could be planned", not_planned: out.notPlanned };
+        const proposal = this.proposal(out.batch.proposal_id);
+        if (!proposal) return { ok: false, reason: `${out.batch.proposal_id} was filed but is not in the ledger` };
+        return { ok: true, proposal, planned: out.planned, not_planned: out.notPlanned };
+      } catch (e) {
+        return { ok: false, reason: message(e) };
+      } finally {
+        this.deps.afterMoney?.();
+      }
+    });
+  }
+
+  /**
+   * Money in: a deposit on the bank's simulation (test money) into the company's USD account, recorded once and booked
+   * as a payment that names no invoice (held in suspense, 2900, until someone says what it is).
+   */
+  depositIn(a: { amountCents: number; reference: string; payer: string }): Promise<{ ok: true; deposit_id: string; status: string; amount: string; currency: string; settled: Settled } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      const { db, rails } = this.deps;
+      try {
+        if (!Number.isSafeInteger(a.amountCents) || a.amountCents <= 0) return { ok: false, reason: "an amount above zero" };
+        const d = await rails.sim.simulateDeposit({ globalAccountId: await rails.rail.usdGlobalAccountId(), amountCents: a.amountCents, reference: a.reference, payerName: a.payer });
+        const now = this.now();
+        matchReceipt(db, { deposit_id: d.id, global_account_id: null, currency: d.currency, amount_cents: d.amountCents, reference: d.reference, payer: a.payer, received_at: now.toISOString() }, now);
+        this.deps.afterMoney?.();
+        const settled = await this.settle(null);
+        return { ok: true, deposit_id: d.id, status: d.status, amount: fromCents(d.amountCents), currency: d.currency, settled };
+      } catch (e) {
+        return { ok: false, reason: message(e) };
+      }
     });
   }
 

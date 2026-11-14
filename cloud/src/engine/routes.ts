@@ -52,6 +52,14 @@ const Credential = z.record(z.string(), z.unknown());
 const PasskeyFinish = z.object({ code: z.string().min(1).max(32), credential: Credential }).strict();
 const Approve = z.object({ terms_sha256: z.string().regex(/^[0-9a-f]{64}$/, "the SHA-256 of the terms, in hex"), credential: Credential }).strict();
 
+const Supplier = z.object({
+  how: z.string().trim().min(20, "say how the account was confirmed: who you called, on which number from your own records").max(300),
+  street: z.string().trim().min(1).max(120), city: z.string().trim().min(1).max(80), postcode: z.string().trim().min(1).max(20),
+}).strict();
+const Batch = z.object({ invoice_ids: z.array(z.string().min(1).max(64)).min(1).max(20) }).strict();
+/** Money in on the bank's simulation: at most 500.00 at a time (the daily caps apply on top at Airwallex). */
+const DepositIn = z.object({ amount: z.string().regex(/^\d{1,3}\.\d{2}$/, "an amount such as 25.00, at most 500.00") }).strict();
+
 /** Standard base64 into bytes, refused before it is decoded when it is not base64 or holds more than the limit. */
 function documentBytes(base64: string): Uint8Array {
   const pad = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
@@ -168,6 +176,29 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
       const out = await e.retry(c.params[0]!);
       return out.status === "retried" ? json(200, out) : err(409, out.message);
+    }) },
+    // Purser Cloud's Airwallex actions (src/engine/awxActions.ts): each at the Airwallex sandbox when the admin's switch
+    // and the daily caps allow it, else on the simulated bank, labelled. Test money either way; every payment still
+    // waits for the CFO's passkey over its exact terms (POST /v1/engine/proposals/{id}/approve).
+    { method: "GET", path: "/v1/engine/airwallex", summary: "Which bank each invoice was planned and paid at (the Airwallex sandbox or the simulated bank, test money either way), with Airwallex's ids: the payee (beneficiary id), the payee's bank check, the quote and conversion for a shortfall, the transfer (id, request_id, status, approval hash), a batch; the caps used today; and the labels of every fallback. { airwallex: { on, why }, caps, invoices, deposits, notes }.", need: "read", run: on(async (_c, e) => json(200, await e.airwallex())) },
+    { method: "POST", path: "/v1/engine/invoices/{id}/supplier", summary: "A new supplier from an invoice waiting for one (a session only): { how, street, city, postcode }, how you confirmed the account on a contact you already had. The payee's bank is asked whether the account carries the supplier's name (Airwallex's account verification, or a labelled stand-in), then a payee_add proposal waits for the CFO's passkey; once signed, the supplier is added at the bank (Airwallex: schema, validation, create). Answers { proposal, name_check }; 409 with the reason and the check when it is refused.", need: "admin", run: on(async (c, e) => {
+      const user = signedIn(c);
+      const b = await kit.body(c, Supplier, 4_000);
+      const out = await e.addSupplier(c.params[0]!, { by: await displayName(c, user), how: b.how, address: { street: b.street, city: b.city, postcode: b.postcode } });
+      return out.ok ? json(201, out) : json(409, { error: out.reason, name_check: out.name_check });
+    }) },
+    { method: "POST", path: "/v1/engine/batch", summary: "Pay all approved: { invoice_ids } (1 to 20 ready invoices). Each is planned as on its own (its own exact terms, FX for its shortfall only), then one batch proposal over them waits for one passkey signature over the batch's totals and every line. At the Airwallex sandbox the signed batch runs as one batch transfer. Answers { proposal, planned, not_planned }; 409 when none could be planned.", need: "admin", run: on(async (c, e) => {
+      const b = await kit.body(c, Batch, 4_000);
+      const out = await e.proposeBatch(b.invoice_ids);
+      return out.ok ? json(201, out) : json(409, { error: out.reason, not_planned: out.not_planned ?? [] });
+    }) },
+    { method: "POST", path: "/v1/engine/deposit", summary: "Money in (a session only): { amount } up to 500.00 USD, a deposit on the bank's simulation into the company's USD account (the Airwallex sandbox's deposit simulation, or the simulated bank), recorded once and booked as a payment that names no invoice (held in suspense). Test money. Answers { deposit_id, status, amount, currency, settled }.", need: "admin", run: on(async (c, e) => {
+      signedIn(c);
+      const b = await kit.body(c, DepositIn, 1_000);
+      const cents = Math.round(Number(b.amount) * 100);
+      if (!(cents > 0 && cents <= 50_000)) return err(400, "an amount above 0.00 and at most 500.00");
+      const out = await e.depositIn({ amountCents: cents, reference: `PURSER-IN-${Date.now().toString(36).toUpperCase()}`, payer: "Test customer (simulation)" });
+      return out.ok ? json(201, out) : err(409, out.reason);
     }) },
     { method: "POST", path: "/v1/engine/sync", summary: "Follow the payments, book them, archive and feed the read model again; safe to repeat. Answers where things stand (ledger_entries, vault_added, fed, error).", need: "admin", run: on(async (_c, e) => json(200, await e.sync())) },
     { method: "GET", path: "/v1/engine/events", summary: "What the engine did, oldest first: ?after=<seq>&limit=<1 to 200>; { items, next }, where next is the seq to ask after. An event carries a short list of fields, never a bank account. 429 slow_down with retry_ms past 2 reads a second per company.", need: "read", run: on(async (c, e) => {
