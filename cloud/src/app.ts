@@ -6,7 +6,7 @@ import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
 import { randomToken } from "./crypto.js";
-import { allTransactions, BadRequest, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
+import { allTransactions, BadRequest, booksStatementPdf, insights, invoiceDocument, ledgerEntries, listInvoices, listPayments, listTransactions, listVendors, oneInvoice, oneTransaction, paged, report, transactionSummary } from "./read.js";
 import { registerCsv } from "../../src/money/registerShape.js";
 import { SCHEMA } from "./schema.js";
 import type { Blobs, Sql } from "./store.js";
@@ -459,6 +459,12 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/transactions/export.csv", summary: "The register as CSV, the same filters; one line per movement.", need: "read", run: async (c) => new Response(registerCsv(await allTransactions(db(c), c.url.searchParams)), { status: 200, headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": 'attachment; filename="transactions.csv"', "cache-control": "no-store", "x-content-type-options": "nosniff" } }) },
   { method: "GET", path: "/v1/transactions/{id}", summary: "One movement, with its earlier versions.", need: "read", run: async (c) => { const r = await oneTransaction(db(c), c.params[0]!); return r ? json(200, r) : notFound("transaction"); } },
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
+  { method: "GET", path: "/v1/books/statement.pdf", summary: "The books as one PDF: the balance sheet and profit and loss of this year to today, from the ledger (the same layout as /books).", need: "read", run: async (c) => {
+    const t = await c.env.sql.first<{ name: string }>("SELECT name FROM tenants WHERE id = ?", [c.caller!.tenantId]);
+    const pdf = await booksStatementPdf(db(c), t?.name ?? "", c.now.toISOString().slice(0, 10));
+    if (!pdf) return json(409, { error: "no_statement", message: "The ledger holds nothing that balances to put in a statement yet." });
+    return new Response(new Uint8Array(pdf), { status: 200, headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="books-${c.now.toISOString().slice(0, 10)}.pdf"`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  } },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },

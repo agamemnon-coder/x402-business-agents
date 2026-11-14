@@ -146,6 +146,14 @@ describe("the demo company's balance sheet", () => {
     const firstMove = rest.map((e) => e.posting_date).sort()[0]!;
     for (const o of opening) expect(o.posting_date < firstMove).toBe(true);
   });
+  // QA, 14 Nov: the Books tab offers the books as one PDF, from this company's own ledger.
+  it("serves the books as a PDF to anyone who may read them, from this company's ledger", async () => {
+    const r = await c.req("GET", "/v1/books/statement.pdf", { key: guest });
+    expect(r.status).toBe(200);
+    expect(r.res.headers.get("content-type")).toBe("application/pdf");
+    expect((await c.req("GET", "/v1/books/statement.pdf", { key: null })).status).toBe(401);
+    expect(html).toContain("download('/v1/books/statement.pdf','books-'+today+'.pdf')");
+  });
   it("lists every ledger entry in the journal, by date, newest first", () => {
     expect(html).toContain("const all=await everyPage('/v1/ledger/entries')");
     expect(html).toContain("const byDateNewest=(es)=>es.slice().sort((a,b)=>String(b.posting_date).localeCompare(String(a.posting_date))||b.entry_id-a.entry_id)");

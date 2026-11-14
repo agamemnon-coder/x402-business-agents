@@ -3,6 +3,7 @@
 
 import { ageingFrom, balanceSheetFrom, isClosingKey, profitAndLossFrom, quarterRange, trialFrom, vatOverviewFrom, type PostedLine } from "../../src/ledger/reports.js";
 import { totalsOf, type TxRow } from "../../src/money/registerShape.js";
+import { statementPdf, statementView, type BooksStatementFile } from "../../src/vault/statementPdf.js";
 import type { Cond, TenantDb, Where } from "./tenant.js";
 
 export class BadRequest extends Error {}
@@ -115,6 +116,29 @@ export async function report(db: TenantDb, name: string, q: URLSearchParams, now
     case "receivables": return ageingFrom(all, "receivables", day(q.get("as_of"), "as_of") ?? today);
     default: throw new BadRequest(`no report ${name}`);
   }
+}
+
+/**
+ * The books as one PDF (Books tab, 14 Nov): the balance sheet and profit and loss of the year to a day, from the cloud's
+ * own ledger, through the same view and layout as /books (src/vault/statementPdf.ts). Null when the ledger has nothing
+ * that balances to show (statementView refuses figures that do not add up).
+ */
+export async function booksStatementPdf(db: TenantDb, company: string, to: string): Promise<Buffer | null> {
+  const all = await lines(db);
+  const signed = (c: number) => `${c < 0 ? "-" : ""}${(Math.abs(c) / 100).toFixed(2)}`;
+  const bs = Object.entries(balanceSheetFrom(all, to)).sort(([a], [b]) => a.localeCompare(b));
+  const pl = profitAndLossFrom(all, { from: `${to.slice(0, 4)}-01-01`, to });
+  const file: BooksStatementFile = {
+    company, day: to, record: "", pdf: "", invoices_checked: 0, cash: [],
+    balance: bs.map(([currency, b]) => ({ currency, assets: signed(b.assets_cents), liabilities: signed(b.liabilities_cents), equity: signed(b.equity_cents), result: signed(b.result_cents), balanced: b.balanced,
+      accounts: b.accounts.map((a) => ({ account: a.account, name: a.name, type: a.type, amount: signed(a.cents) })) })),
+    pnl: Object.entries(pl).sort(([a], [b]) => a.localeCompare(b)).map(([currency, p]) => ({ currency, revenue: signed(p.revenue_cents), expense: signed(p.expense_cents), result: signed(p.result_cents),
+      // The statement lists expenses by account and revenue as one total (statementView).
+      accounts: p.accounts.filter((a) => a.type === "expense").map((a) => ({ account: a.account, name: a.name, amount: signed(a.cents) })) })),
+    sorted: { eval: "", ran_at: "", rows: [] },
+  };
+  const view = statementView(file);
+  return view && view.balances ? statementPdf(view) : null;
 }
 
 /** The payables picture from the cloud's invoices: open per currency, due soon, overdue, blocked, spend per supplier. */

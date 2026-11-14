@@ -127,7 +127,10 @@ async function booksView(){
   // With an engine, its archive is one link away from the books.
   const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
   const bal=el('div','card panel balance',[el('h2','',t('cs.books.balance')),el('p','sub',t('loading'))]);
-  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),arch?[arch]:null),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
+  // The books as one PDF (QA, 14 Nov): the balance sheet and profit and loss from this ledger (GET /v1/books/statement.pdf).
+  const pdfBtn=btn(t('cs.books.pdf'),'primary','download');const pdfSaid=el('div','');pdfSaid.setAttribute('role','status');
+  pdfBtn.onclick=async()=>{pdfBtn.disabled=true;pdfSaid.replaceChildren();try{await download('/v1/books/statement.pdf','books-'+today+'.pdf')}catch(e){if(!(e instanceof Expired))pdfSaid.replaceChildren(note(e.message,'bad'))}finally{pdfBtn.disabled=false}};
+  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),pdfSaid,el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
@@ -145,12 +148,13 @@ async function booksView(){
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
     const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
     const eur=(c)=>cur('EUR')+' '+cents(c);
-    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),el('td','r',eur(r.base_cents)),el('td','r',eur(r.vat_cents))]))}
+    const lr=(v0,l)=>{const d=el('td','r',v0);d.dataset.l=l;return d};
+    for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),lr(eur(r.base_cents),t('cs.base')),lr(eur(r.vat_cents),t('dt.vat'))]))}
     // VAT a supplier abroad charged (13 Nov: German 19%): its own row, outside the Dutch return's boxes and not in 5b.
-    const fv=v.foreign_vat;if(fv&&fv.lines)tb.append(el('tr','',[el('td','',t('cs.vat_foreign',{n:fv.lines})),el('td',''),el('td','r',eur(fv.base_cents)),el('td','r',eur(fv.vat_cents))]));
+    const fv=v.foreign_vat;if(fv&&fv.lines)tb.append(el('tr','',[el('td','',t('cs.vat_foreign',{n:fv.lines})),el('td','sh'),lr(eur(fv.base_cents),t('cs.base')),lr(eur(fv.vat_cents),t('dt.vat'))]));
     // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
     if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td',''),el('td',''),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td',''),el('td',''),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td',''),el('td',''),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
     tbl.append(tb);
     vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
       v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
@@ -504,6 +508,15 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
 }
 @media (prefers-reduced-motion: no-preference) and (max-width: 760px) { .tlife .tprog { animation-name: growy; transform-origin: top; } }
 @keyframes growy { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+/* Books on a phone (QA, 14 Nov): the VAT overview stacks, each rubric a block with its base and VAT named. */
+@media (max-width: 640px) {
+  table.vat thead { display: none; } table.vat, table.vat tbody { display: block; }
+  table.vat tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  table.vat td { display: block; padding: 0; border: 0; } table.vat td:first-child { grid-column: 1 / -1; overflow-wrap: anywhere; } table.vat td.sh { display: none; }
+  table.vat td.r { text-align: right; white-space: nowrap; grid-column: 2; } table.vat td.r:empty { display: none; }
+  table.vat td.r[data-l]::before { content: attr(data-l) ' '; color: var(--faint); font-size: 12px; font-weight: 600; }
+  table.vat tr.tot { grid-template-columns: minmax(0, 1fr) auto; } table.vat tr.tot td:first-child { grid-column: 1; }
+}
 /* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
 /* Tokenisation: three steps side by side, the hashes in a fold; the Visa runs with their outcome. */
