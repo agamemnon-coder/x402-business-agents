@@ -27,6 +27,8 @@ const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wis
 // picture (hero-*.webp) moved to the gallery.
 const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a>`;
 
+const README_BUILT_ON = "**Built on Airwallex.** Purser's agent cards and payments run on Airwallex's API (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).";
+
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
     expect(FIRST_SCREEN).toEqual([WHAT_IT_IS, ...DIFFERENTIATORS, TRY_IT]);
@@ -49,7 +51,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
-    expect(lines.slice(5, badges - 2)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
+    // 14 Nov (Max): "Built on Airwallex" right under the title, in words, factual (no partnership or endorsement implied).
+    expect(lines.slice(5, badges - 2)).toEqual(["", README_BUILT_ON, "", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
+    expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
+    expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // 14 Nov (Max, the README and repo upgrade): four buttons, the trailer first; five project badges, then the partners' row.
     expect(lines[badges - 2]).toContain("Watch_the_walkthrough-5_min");
     expect(lines[badges - 2]).toMatch(/^<a href="https:\/\/youtu\.be\/n3HLVGROJc4">/);
