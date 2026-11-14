@@ -305,6 +305,38 @@ describe("the records the tab checks against", () => {
   });
 });
 
+describe("FX rates read the right way round (live, 14 Nov)", () => {
+  it("follows Airwallex's currency pair, whichever side is bought: never '1 BUY = rate SELL' blindly", async () => {
+    const { rateWords, annotateRates } = await import("../cloud/src/awxLive.js");
+    // As read live: buying EUR with USD and buying USD with EUR, both quoted as EURUSD (the spread between them).
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.116374", pair: "EURUSD" })).toEqual({ base: "EUR", quote: "USD", says: "1 EUR = 1.116374 USD" });
+    expect(rateWords({ sell_currency: "EUR", buy_currency: "USD", rate: "1.08768", pair: "EURUSD" })).toEqual({ base: "EUR", quote: "USD", says: "1 EUR = 1.08768 USD" });
+    expect(rateWords({ sell_currency: "GBP", buy_currency: "EUR", rate: "0.844602", pair: "EURGBP" })).toEqual({ base: "EUR", quote: "GBP", says: "1 EUR = 0.844602 GBP" });
+    // A pair that does not name both currencies, or none at all: no "1 X = Y" is said.
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.1", pair: "GBPUSD" })).toBeNull();
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.1", pair: null })).toBeNull();
+    const a = annotateRates({ rates: [{ sell_currency: "USD", buy_currency: "EUR", rate: "1.116374", pair: "EURUSD" }] }) as { rates: { says: string }[] };
+    expect(a.rates[0]!.says).toBe("1 EUR = 1.116374 USD");
+  });
+});
+
+describe("the tab's look: the official logo, the Overview card", () => {
+  it("embeds the Airwallex wordmark byte for byte", async () => {
+    const { AIRWALLEX_LOGO_DATA_URL } = await import("../cloud/src/awxLogo.gen.js");
+    const file = readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url));
+    expect(AIRWALLEX_LOGO_DATA_URL).toBe(`data:image/png;base64,${file.toString("base64")}`);
+  });
+  it("puts the live card on the Overview, labelled apart from the demo month, and the logo in the console's script", async () => {
+    const { consolePage } = await import("../cloud/src/console.js");
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
+    expect(html).toContain("nx,awlOverview(),dash]");
+    expect(html).toContain("const AWL_LOGO=\"data:image/png;base64,");
+    expect(html).not.toContain("__AWL_LOGO__");
+    const { MESSAGES } = await import("../src/ui/i18n.js");
+    expect(MESSAGES.en["cs.awl.ov_sub"]).toMatch(/Airwallex sandbox: test money.*demo company's simulated month/);
+  });
+});
+
 describe("the cloud's check of the gateway's answer", () => {
   it("drops an answer that is not the sandbox's or that carries a secret-looking field", () => {
     const now = new Date();

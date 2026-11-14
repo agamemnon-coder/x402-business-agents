@@ -96,6 +96,25 @@ export function annotateBeneficiaries(data: Record<string, unknown>): Record<str
   return { beneficiaries, payee_check_record: `${REPO}docs/runs/2026-11-12-airwallex-payee-check.json` };
 }
 
+/**
+ * A live rate in words that cannot be read the wrong way round. Airwallex quotes /fx/rates/current in its currency
+ * pair's own terms (currency_pair "EURUSD": US dollars for one euro), whichever side is bought: read live on 14 Nov,
+ * buying EUR with USD gave 1.116374 and buying USD with EUR gave 1.08768, both under "EURUSD" (the spread between them).
+ * So the words follow the pair: "1 EUR = 1.116374 USD". Without a pair that names the two currencies, no "1 X = Y" is said.
+ */
+export function rateWords(r: { sell_currency?: unknown; buy_currency?: unknown; rate?: unknown; pair?: unknown }): { base: string; quote: string; says: string } | null {
+  const pair = typeof r.pair === "string" ? r.pair : "", buy = String(r.buy_currency ?? ""), sell = String(r.sell_currency ?? ""), rate = String(r.rate ?? "");
+  if (!/^[A-Z]{6}$/.test(pair) || !/^\d+(\.\d+)?$/.test(rate)) return null;
+  const base = pair.slice(0, 3), quote = pair.slice(3);
+  if (!((base === buy && quote === sell) || (base === sell && quote === buy))) return null;
+  return { base, quote, says: `1 ${base} = ${rate} ${quote}` };
+}
+
+/** Rates with their words (rateWords): the page shows "Buy EUR with USD · 1 EUR = 1.116374 USD". */
+export function annotateRates(data: Record<string, unknown>): Record<string, unknown> {
+  return { rates: list(data, "rates").map((r) => ({ ...r, ...(rateWords(r) ?? { base: null, quote: null, says: null }) })) };
+}
+
 /** Cards with their agent, from the nickname Purser gave each card ("sourcing agent: …"). */
 export function annotateIssuing(data: Record<string, unknown>): Record<string, unknown> {
   const agentOf = (nick: unknown) => { const m = /^([a-z][a-z -]{1,30}?) agent\b/i.exec(String(nick ?? "")); return m ? m[1]!.toLowerCase() : null; };
@@ -134,5 +153,6 @@ export async function awxLiveView(gw: AwxReadBinding | undefined, view: AwxLiveV
   if (view === "transfers") return { ...a, data: annotateTransfers(a.data) };
   if (view === "beneficiaries") return { ...a, data: annotateBeneficiaries(a.data) };
   if (view === "issuing") return { ...a, data: annotateIssuing(a.data) };
+  if (view === "rates") return { ...a, data: annotateRates(a.data) };
   return a;
 }
