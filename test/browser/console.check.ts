@@ -826,7 +826,8 @@ async function engineProof(E: EnginePass) {
   await p.reload();
   await p.waitForSelector("#proof .pb.archived:not(.wait)", { timeout: 15_000 });
   ok(await p.locator("#pay").count() === 0 && await p.locator(".stack > #proof:first-child").count() === 1, "proof: a paid invoice has no payment card; the proof is first in the column");
-  const at = async () => p.evaluate(() => { const a = document.querySelector("#proof")!.getBoundingClientRect(), d = document.querySelector(".docv")!.getBoundingClientRect(); return { proofTop: a.top, docTop: d.top, proofLeft: a.left, docLeft: d.left }; });
+  // 14 Nov: the document column opens with the invoice as a document, the PDF under it; the column is what is measured.
+  const at = async () => p.evaluate(() => { const a = document.querySelector("#proof")!.getBoundingClientRect(), d = document.querySelector(".split.inv > .docs")!.getBoundingClientRect(); return { proofTop: a.top, docTop: d.top, proofLeft: a.left, docLeft: d.left }; });
   const wide = await at();
   ok(wide.docLeft < wide.proofLeft && Math.abs(wide.docTop - wide.proofTop) < 40, `proof: at 1440 px the document stays on the left and the proof on the right, as before (${JSON.stringify(wide)})`);
   await p.setViewportSize({ width: 390, height: 844 });
@@ -912,7 +913,8 @@ async function guestPass() {
     // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
     // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
     const rows = new Set(tabs).size;
-    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 3 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows of three" : "one row"} (${tabs.join(", ")})`);
+    // 14 Nov: seven pages (Invoices and Books apart): on a phone two rows, four and three.
+    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 4 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows, four and three" : "one row"} (${tabs.join(", ")})`);
     const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
     ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
     if (width < 420) {
@@ -923,7 +925,7 @@ async function guestPass() {
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);
     ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
-    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".feed li").count() >= 8, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
+    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".tline li").count() >= 8 /* 14 Nov: the decisions are a timeline (.tline), six in view */, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }

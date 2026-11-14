@@ -51,15 +51,15 @@ async function overviewView(){
   const due=el('section','card dcard rise due',[el('div','dh',[el('h2','',t('cs.due.title'))]),main?segbar(b.map((v,k)=>({l:t(lab[k]),v,t:cur(main[0])+' '+cents(v)})),t('cs.due.title')):el('p','lede',t('cs.due.none')),
     Object.keys(per).length>1?el('p','fine',t('cs.due.other_cur')):null]);
   const inbox=m.inbox?el('p','inbox',[ic('mail'),t('cs.mail_to'),el('b','mono',m.inbox)]):null;
-  const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),nx,k];
+  const dash=el('div','dash',[k]);const nodes=[head(t('cs.nav.overview'),t('cs.overview_lede',{name:m.tenant.name||''})),nx,dash];
   if(D&&D.cash&&D.cash.length){
     const wide=innerWidth>=980,full=view().clientWidth||960;const cashW=Math.round(wide?full*0.64-40:full-40),weekW=Math.round(wide?full*0.5-44:full-40);
     const sub=D.agents.by_fallback?t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback}):t('cs.dash.decisions_sub');
-    nodes.push(el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
+    dash.append(el('div','dgrid g1',[dcard('cash',t('cs.dash.cash_title'),t('cs.dash.cash_sub',{cur:cur(D.currency),date:dday(D.since)}),el('div','cv',[cashChart(D,cashW)])),
         dcard('inv',t('cs.dash.inv_title'),t('cs.dash.inv_sub',{cur:cur(D.currency)}),invoiceRing(D))]),
       el('div','dgrid g1',[dcard('feedc',t('cs.dash.feed_title'),sub,timeline(D,6)),el('div','stack',[due,dcard('weeks',t('cs.dash.appr_title'),t('cs.dash.appr_sub'),el('div','',[el('div','cv',[weekChart(D,Math.round(wide?full*0.36-40:weekW))]),el('ul','klegend',[el('li','',[el('i','cfo'),t('cs.dash.appr_cfo')]),el('li','',[el('i','alone'),t('cs.dash.appr_alone')])])]))])]),
       dcard('spend',t('cs.dash.spend_title'),t('cs.dash.spend_sub',{cur:cur(D.currency)}),spendBars(D)));
-  }else nodes.push(due);
+  }else dash.append(due);
   if(inbox)nodes.push(inbox);
   nodes.push(whatCloud(m));
   view().replaceChildren(...nodes);

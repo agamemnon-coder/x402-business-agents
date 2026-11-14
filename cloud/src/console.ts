@@ -242,7 +242,8 @@ button.linkish { border: 0; background: none; padding: 0; font: inherit; color: 
   .appbar nav.apptabs { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 28px; }
   /* Jury round 2, 13 Nov: the fade was not enough, "Toke…" still read as cut, and the six pages need about 480 px where a
      phone has 352. On a phone they are two rows of three, each name whole: no scrolling, no fade, nothing cut. */
-  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
+  /* 14 Nov: seven pages (Invoices and Books apart): two rows, four and three. */
+  .appbar nav.apptabs { display: grid; grid-template-columns: repeat(4, auto); justify-content: space-between; row-gap: 2px; overflow: visible; -webkit-mask-image: none; mask-image: none; padding-right: 0; margin-right: 0; }
   .auth { margin-top: 3vh; padding: 20px; }
 }
 /* The engine (test money): the upload as one quiet row (the payables pages' drop zone), and the panel "At work". */

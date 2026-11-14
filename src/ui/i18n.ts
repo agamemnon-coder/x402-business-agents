@@ -2338,7 +2338,7 @@ const NL: { readonly [K in Key]: string } = {
   "cs.ov.payables": "Openstaande facturen",
   "cs.ov.overdue": "Te laat: {amount}",
   "cs.ov.none_overdue": "Niets te laat",
-  "cs.ov.faceid": "Wacht op de Face ID van de CFO",
+  "cs.ov.faceid": "Wacht op Face ID van de CFO",
   "cs.ov.nothing_waits": "Niets wacht",
   "cs.agents.lede2": "Per agent de kaart, de limieten en wat hij besliste. De limieten zijn van de CFO: een wijziging is een voorstel dat de CFO met Face ID tekent.",
   "cs.agents.card_status.active": "Actief",
