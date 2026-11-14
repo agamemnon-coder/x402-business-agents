@@ -76,10 +76,13 @@ describe("the books", () => {
     expect(sum(apJournal(db), "debit")).toBe(sum(apJournal(db), "credit"));
   });
 
-  it("leaves blocked and waiting invoices out of the books", async () => {
-    await add(NL, "nl.pdf");
-    await add(EN.replace("VAT 19% EUR 295.38", "VAT 19% EUR 295.00"), "bad.pdf");
-    expect(apJournal(db)).toEqual([]);
+  it("leaves blocked invoices out of the books; one waiting for its new supplier is owed already, so it is accrued", async () => {
+    const waiting = await add(NL, "nl.pdf");
+    const bad = await add(EN.replace("VAT 19% EUR 295.38", "VAT 19% EUR 295.00"), "bad.pdf");
+    expect(apInvoice(db, waiting)!.status).toBe("needs_vendor");
+    expect(apJournal(db).some((e) => e.invoice_id === bad)).toBe(false);
+    // The CFO review, 14 Nov: owed from the day it came in (on the payables list), so on the balance sheet too.
+    expect(apJournal(db).filter((e) => e.invoice_id === waiting).map((e) => e.event)).toEqual(["accrual", "accrual", "accrual"]);
   });
 
   it("exports the journal and the invoices as CSV with fixed columns", async () => {

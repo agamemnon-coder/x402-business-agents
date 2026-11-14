@@ -166,14 +166,16 @@ describe("an invoice that comes in with the flag on", () => {
     expect(apInvoice(db, other)!.coding).toMatchObject({ source: "fallback", overridden_by: null });
   });
 
-  it("codes only an invoice that is bookable: a new supplier's waits until it is, and a credit note never is", async () => {
+  it("codes only an invoice that is bookable: a new supplier's is coded as it comes in (it is accrued), once, and a credit note never is", async () => {
     const waiting = scriptedCoder([[code("6200", null, "Storage is booked as goods from the manufacturer.")]]);
     const id = await ingest(DE, waiting);
+    // The CFO review, 14 Nov: waiting for its new supplier to be verified, it is already owed, so accrued and coded.
     expect(apInvoice(db, id)!.status).toBe("needs_vendor");
-    expect([waiting.asked, codings()]).toEqual([0, []]);
+    expect(waiting.asked).toBe(1);
     onFile(db, "ben_lagerhaus", "Lagerhaus Nord GmbH", "DE75512108001245126199", "BYLADEM1001");
     const [next] = await recheck(db, { ...deps, coder: waiting }, [id]);
     expect(next!.status).toBe("ready");
+    // Not coded a second time once the supplier is on file.
     expect(waiting.asked).toBe(1);
     // German VAT at 19%: the agent left the VAT to a person, and its account stands.
     expect(apInvoice(db, id)!.coding).toMatchObject({ source: "claude", status: "needs_review", lines: [{ account: "6200", vat_code: null, vat_cents: 19000 }] });
