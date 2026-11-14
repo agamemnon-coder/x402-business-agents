@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE } from "./airwallexProducts.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
+import { T0_CLOSE_CSS, t0CloseTileHtml } from "./t0CloseTile.js";
 
 export const T0_JOURNAL_RECORD = "docs/runs/2026-11-10-t0-journal-sandbox.md";
 export const T0_FIRST_RECORD = "docs/runs/2026-11-03-t0-sandbox.md";
@@ -82,7 +83,8 @@ export const t0Data = (): T0Data => ({
   refusals: t0Refusals(read(T0_FIRST_RECORD), read(T0_SECOND_RECORD)),
 });
 
-export const T0_CSS = `.t0r { padding: 16px 18px; display: grid; gap: 4px; }
+export const T0_CSS = `${T0_CLOSE_CSS}
+.t0r { padding: 16px 18px; display: grid; gap: 4px; }
 .t0r h2 { font-size: 19px; line-height: 1.25; margin: 0 0 4px; }
 .t0r ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
 .t0r li { font-size: 15.5px; line-height: 1.45; padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
@@ -156,6 +158,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
   ${stats}
+  ${t0CloseTileHtml()}
   ${sandbox}
   ${flow}
   <p class="vbasis">${esc("T:0 is an outside ledger. It must agree with ours to the cent, so the CFO need not take our word.")}</p>
