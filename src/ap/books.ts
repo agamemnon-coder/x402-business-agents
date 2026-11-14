@@ -50,10 +50,16 @@ export interface BookkeepingSink {
 
 const MONEY = /^\d+\.\d{2}$/;
 
-/** Whether an invoice belongs in the books: checked clean (ready, waiting or paid), or clean but for a currency paid by hand. */
+/**
+ * Whether an invoice belongs in the books: checked clean (ready, waiting or paid), clean but for a currency paid by
+ * hand, or clean but waiting for its new supplier to be verified (needs_vendor: the invoice is owed from the day it came
+ * in, so it is accrued; paying it still waits for the supplier check and the CFO. The CFO review, 14 Nov: ZV-4471 was
+ * open on the payables list but not on the balance sheet).
+ */
 export function bookable(inv: Pick<ApInvoiceRow, "status" | "findings" | "total">): boolean {
   if (!MONEY.test(inv.total)) return false;
   if (inv.status === "ready" || inv.status === "waiting_cfo" || inv.status === "paid") return true;
+  if (inv.status === "needs_vendor") return inv.findings.every((f) => f.level === "warn" || f.level === "wait");
   return inv.status === "needs_review" && inv.findings.every((f) => f.level === "warn" || f.code === "currency_not_paid" || f.code === "country_not_paid");
 }
 
@@ -138,7 +144,11 @@ function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: st
   }
   // VAT under a foreign code (PF_DE19) is that country's VAT, reclaimed through the EU refund: 1515, never 1510 (5b).
   const vat = c.lines.reduce((s, l) => s + l.vat_cents, 0);
-  const abroad = groups.reduce((s, g) => s + (g.vat_code !== null && VAT_CODES[g.vat_code]?.foreign ? g.vat : 0), 0);
+  // Not Dutch input VAT, so never 1510 (5b): VAT under a foreign code, and VAT on an uncoded group at no Dutch rate (the
+  // CFO review, 14 Nov: a German 19% with no VAT id read went to 1510 while the Coder's own line said "no VAT code").
+  // Line by line, so two Dutch rates on one uncoded group stay Dutch.
+  const abroad = groups.reduce((s, g) => s + (g.vat_code !== null && VAT_CODES[g.vat_code]?.foreign ? g.vat : 0), 0)
+    + c.lines.reduce((s, l) => s + ((l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id)) === null && l.vat_cents > 0 && l.net_cents > 0 && !dutchVat(l.net_cents, l.vat_cents) ? l.vat_cents : 0), 0);
   if (vat - abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat - abroad, 0, `${memo}: input VAT`));
   if (abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, abroad, 0, `${memo}: foreign VAT to reclaim`));
   for (const self of owed) {
@@ -160,8 +170,9 @@ export function accrualEntries(inv: ApInvoiceRow): ApEntry[] {
   const memo = `${inv.vendor} invoice ${inv.invoice_no}`;
   const coding = bookedCoding(inv);
   if (coding) return codedEntries(inv, coding, date, memo);
-  // A German supplier's 19% (PF_DE19, by its own VAT id) is Germany's VAT: 1515, to reclaim through the EU refund, not 5b.
-  const abroad = tax > 0 && accrualVatCode(total - tax, tax, inv.reading?.vat_id) === "PF_DE19";
+  // Only VAT at a Dutch rate is Dutch input VAT (1510, box 5b). Any other VAT (a German supplier's 19%, with or without
+  // its VAT id read) is not reclaimable in the Dutch return: 1515, never 1510 (the CFO review, 14 Nov).
+  const abroad = tax > 0 && dutchVat(total - tax, tax) === null;
   return [
     line(inv, "accrual", date, inv.gl_account, total - tax, 0, memo),
     ...(tax ? [abroad
@@ -212,6 +223,24 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
   return out;
 }
 
+/** The reason the try engine gives the sample it marks paid with no money moved (src/engine/host.ts seedPaidOriginal). */
+export const SEEDED_PAID_REASON = "seeded:";
+
+/**
+ * A paid invoice that no payout settled because it was seeded as paid before the test company started (simulated, no
+ * money moved): its settlement, so it does not stay open on 2100 while it reads "Paid" (the CFO review, 14 Nov). What
+ * was owed is closed against owner's equity (3000), as the opening balances are. Any other invoice: nothing.
+ */
+export function seededSettlementEntries(db: DB, inv: ApInvoiceRow): ApEntry[] {
+  if (inv.status !== "paid" || !MONEY.test(inv.total)) return [];
+  const seeded = db.prepare("SELECT 1 FROM audit_log WHERE subject = ? AND event = 'ap.status' AND json_extract(payload_json, '$.to') = 'paid' AND substr(json_extract(payload_json, '$.reason'), 1, ?) = ?")
+    .get(inv.id, SEEDED_PAID_REASON.length, SEEDED_PAID_REASON);
+  if (!seeded) return [];
+  const date = (inv.paid_at ?? inv.updated_at).slice(0, 10);
+  const memo = `${inv.vendor} invoice ${inv.invoice_no}: paid before this test company started (simulated, no money moved)`;
+  return [line(inv, "payment", date, AP_ACCOUNTS.payable, toCents(inv.total), 0, memo), line(inv, "payment", date, "3000", 0, toCents(inv.total), memo)];
+}
+
 /**
  * Why this invoice must not be booked, or null: it was approved under a signed proposal and its stored terms no longer
  * hash to the hash the CFO signed, or name another amount or currency than the invoice (the books' lock, master list 77).
@@ -224,7 +253,11 @@ export function bookingRefusal(db: DB, inv: ApInvoiceRow): string | null {
 /** Every payables entry, in order: what the export and the insight read. */
 export function apJournal(db: DB): ApEntry[] {
   // An invoice whose signed terms changed after the CFO's approval is not booked here either (src/ledger/termsLock.ts).
-  return apInvoices(db).flatMap((inv) => (bookable(inv) && !bookingRefusal(db, inv) ? [...accrualEntries(inv), ...(inv.status === "paid" ? paymentEntries(db, inv) : [])] : []));
+  return apInvoices(db).flatMap((inv) => {
+    if (!bookable(inv) || bookingRefusal(db, inv)) return [];
+    const paid = inv.status === "paid" ? paymentEntries(db, inv) : [];
+    return [...accrualEntries(inv), ...(paid.length ? paid : seededSettlementEntries(db, inv))];
+  });
 }
 
 const csv = (header: string[], rows: string[][]) => [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n") + "\n";

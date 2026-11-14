@@ -182,10 +182,10 @@ describe("the accrual of a coded invoice", () => {
   // The /try sample (src/engine/tryWorld.ts): Bergtex's 19% with no VAT id on the invoice. Code does not know the
   // country, so nothing changes in its booking (1510, as the recorded sample shows); the Coder's row records the rate,
   // and the step says it plainly (final-polish, 13 Nov).
-  it("the /try sample, no VAT id: booked as before on 1510, and the Coder's row records 19% as left for the accountant", async () => {
+  it("the /try sample, no VAT id: its 19% is no Dutch rate, so 1515, never 1510 (the CFO review, 14 Nov); the Coder's row records 19% as left for the accountant", async () => {
     const inv = await coded(invoiceText(CLEAN), [{ line_no: 1, account: "6200", vat_code: null, cost_centre: "CC100" }]);
     expect(inv.reading?.vat_id ?? "").toBe("");
-    expect(accrualEntries(inv).map(brief)).toEqual(["6200|1554.62||CC100|||", "1510|295.38|||||input VAT", "2100||1850.00||||"]);
+    expect(accrualEntries(inv).map(brief)).toEqual(["6200|1554.62||CC100|||", "1515|295.38|||||foreign VAT to reclaim", "2100||1850.00||||"]);
     const row = db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.coded' AND subject = ?").get(inv.id) as { payload_json: string };
     expect(JSON.parse(row.payload_json)).toMatchObject({ books_vat_code: null, uncoded_vat_pct: 19 });
   });

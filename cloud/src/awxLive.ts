@@ -124,7 +124,8 @@ export function annotateRates(data: Record<string, unknown>): Record<string, unk
 /** Cards with their agent, from the nickname Purser gave each card ("sourcing agent: …"). */
 export function annotateIssuing(data: Record<string, unknown>): Record<string, unknown> {
   const agentOf = (nick: unknown) => { const m = /^([a-z][a-z -]{1,30}?) agent\b/i.exec(String(nick ?? "")); return m ? m[1]!.toLowerCase() : null; };
-  return { cards: list(data, "cards").map((c) => ({ ...c, agent: agentOf(c.nickname) })), transactions: list(data, "transactions") };
+  return { cards: list(data, "cards").map((c) => ({ ...c, agent: agentOf(c.nickname) })), transactions: list(data, "transactions"),
+    cards_read: data.cards_read ?? null, cards_cut: data.cards_cut === true, transactions_read: data.transactions_read ?? null, transactions_cut: data.transactions_cut === true };
 }
 
 /**

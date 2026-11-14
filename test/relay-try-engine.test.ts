@@ -20,7 +20,7 @@ const PAGE_CALLS: [string, string][] = [
   ["GET", "/try"], ["HEAD", "/try"],
   ["POST", "/v1/try/start"], ["POST", "/v1/try/session"],
   ["GET", "/v1/engine"], ["GET", "/v1/engine/events?after=0&limit=200"], ["GET", "/v1/engine/samples"], ["POST", "/v1/engine/samples/clean"],
-  ["GET", "/v1/engine/suppliers"], ["POST", "/v1/engine/compose"], ["GET", "/v1/engine/invoices"], ["POST", "/v1/engine/invoices/AP-0001/pay"],
+  ["GET", "/v1/engine/suppliers"], ["POST", "/v1/engine/compose"], ["GET", "/v1/engine/invoices"], ["POST", "/v1/engine/invoices/AP-0001/pay"], ["POST", "/v1/engine/invoices/AP-0001/clear"], ["POST", "/v1/engine/invoices/AP-0001/reject"],
   ["GET", "/v1/engine/proposals/P-0001"], ["GET", "/v1/engine/proposals/P-0001/terms"], ["POST", "/v1/engine/proposals/P-0001/approve"],
   ["POST", "/v1/engine/proposals/P-0001/pay"], ["POST", "/v1/engine/proposals/P-0001/retry"], ["POST", "/v1/engine/passkey/start"],
   ["POST", "/v1/engine/passkey/finish"], ["GET", "/v1/engine/vault"], ["GET", "/v1/engine/vault/file?path=a.pdf"], ["GET", "/v1/engine/export"], ["GET", "/v1/engine/export.pdf"],

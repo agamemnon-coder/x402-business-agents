@@ -330,6 +330,49 @@ describe("the records the tab checks against", () => {
   });
 });
 
+describe("issuing lists, oldest first: read to the last page for the newest (live, 14 Nov)", () => {
+  const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  /** n cards and n authorizations, created one day apart from 1 Oct, listed oldest first in pages of 100. */
+  function paged(n: number) {
+    const calls: string[] = [];
+    const day = (k: number) => new Date(Date.parse("2026-10-01T00:00:00Z") + k * 3_600_000).toISOString().replace("Z", "+0000");
+    const fetchImpl = (async (input: string, init: RequestInit) => {
+      const u = new URL(input), p = u.pathname;
+      calls.push(`${String(init.method)} ${p}${u.search}`);
+      if (p === "/api/v1/authentication/login") return Response.json({ token: TOKEN }, { status: 201 });
+      const page = Number(u.searchParams.get("page_num") ?? 0), size = Number(u.searchParams.get("page_size") ?? 100);
+      const idx = Array.from({ length: n }, (_, k) => k).slice(page * size, page * size + size);
+      if (p === "/api/v1/issuing/cards") return Response.json({ items: idx.map((k) => ({ card_id: uuid(k), card_status: "ACTIVE", nick_name: `sourcing agent: card ${k}`, card_number: `************${String(k).padStart(4, "0")}`, created_at: day(k) })), has_more: (page + 1) * size < n });
+      if (p.startsWith("/api/v1/issuing/cards/")) return Response.json({ card_id: p.split("/").pop(), card_status: "ACTIVE", authorization_controls: { transaction_limits: { currency: "EUR", limits: [{ amount: 50, interval: "PER_TRANSACTION" }] } } });
+      if (p === "/api/v1/issuing/transactions") return Response.json({ items: idx.map((k) => ({ transaction_id: `tx-${k}`, card_id: uuid(k), transaction_type: "AUTHORIZATION", status: "APPROVED", transaction_amount: -1, transaction_currency: "EUR", transaction_date: day(k) })), has_more: (page + 1) * size < n });
+      return Response.json({}, { status: 404 });
+    }) as unknown as typeof fetch;
+    return { d: new AwxReadDesk(sqlOver(new Database(":memory:")), { clientId: CLIENT, apiKey: KEY, fetchImpl, now: () => Date.parse("2026-11-14T19:00:00Z") }), calls };
+  }
+  type Iss = { cards: { last4: string }[]; transactions: { id: string }[]; cards_cut: boolean; transactions_cut: boolean; cards_read: number };
+
+  it("reads every page until has_more is false, and shows the newest, which are on the last page", async () => {
+    const { d, calls } = paged(150);
+    const data = ((await d.read("issuing")) as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as Iss;
+    expect(data.cards[0]!.last4).toBe("0149");
+    expect(data.transactions[0]!.id).toBe("tx-149");
+    expect(data).toMatchObject({ cards_cut: false, transactions_cut: false, cards_read: 150 });
+    expect(calls.filter((c) => c.startsWith("GET /api/v1/issuing/cards?")).map((c) => new URL(`https://x${c.slice(4)}`).searchParams.get("page_num"))).toEqual(["0", "1"]);
+    // Only the parameters the repo's own Airwallex code uses on these lists.
+    expect(calls.filter((c) => /issuing\/(cards|transactions)\?/.test(c)).every((c) => /^GET \S+\?page_num=\d+&page_size=100$/.test(c))).toBe(true);
+  });
+
+  it("stops after ISSUING_PAGES pages and says the list is cut, never 'newest' of all", async () => {
+    const { ISSUING_PAGES } = await import("../worker/src/awxRead.js");
+    const { d, calls } = paged(ISSUING_PAGES * 100 + 50);
+    const data = ((await d.read("issuing")) as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as Iss;
+    expect(data).toMatchObject({ cards_cut: true, transactions_cut: true, cards_read: ISSUING_PAGES * 100 });
+    expect(calls.filter((c) => c.startsWith("GET /api/v1/issuing/cards?")).length).toBe(ISSUING_PAGES);
+    const { MESSAGES } = await import("../src/ui/i18n.js");
+    expect(MESSAGES.en["cs.awl.iss_cut"]).toMatch(/first \{n\}.*there are more/);
+  });
+});
+
 describe("the recorded payouts read back live by id", () => {
   it("pins the run record's two transfer ids in the gateway", async () => {
     const { RECORDED_TRANSFER_IDS } = await import("../worker/src/awxRead.js");
