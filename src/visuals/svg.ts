@@ -330,10 +330,11 @@ const MARK_PATHS = ["M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8
 /** The small line under it: what the line means, as docs/security.md says it ("nothing above the limits is paid"). */
 export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face ID or a passkey."] as const;
 /**
- * The "Built with" line, in words only (the final partner review, 13 Nov: no partner marks on the card, and Visa by the
- * product the build used): the partners' names in the site's ink colours, no logos.
+ * "Built on" and the official Airwallex logo (the owner, 14 Nov: the product is built on Airwallex, and the link preview
+ * should say so). The file is src/ui/logos/airwallex.png, unaltered, drawn at `h` px high (its own proportions, 2435 ×
+ * 334), lower than Purser's 60 px mark. The other partners are on the site's "Works with" line, not on the card.
  */
-export const SOCIAL_BUILT_WITH = { x: 72, y: 540, label: "Built with", names: ["Airwallex", "Alta", "Visa Intelligent Commerce", "Claude"] } as const;
+export const SOCIAL_BUILT_ON = { x: 72, y: 528, label: "Built on", logo: "src/ui/logos/airwallex.png", w: 2435, h: 334, height: 34 } as const;
 
 /**
  * The link preview and the repository's social preview (the owner, 13 Nov: readable at thumbnail size). 1200×630, on
@@ -341,8 +342,13 @@ export const SOCIAL_BUILT_WITH = { x: 72, y: 540, label: "Built with", names: ["
  * on the right a small version of the payment's path (the agent asks, the payment is above its limit, Face ID, then
  * paid or never paid), drawn with the site's own icons, and the "Built with" line in words.
  */
-export function socialSvg(_site?: string): string {
+export function socialSvg(_site?: string, logo?: string): string {
   const { width: W, height: H } = SOCIAL_SIZE;
+  // "Built on" in words, then the logo file as an <image> (a data: URI of the file's own bytes), its baseline-centred box.
+  const builtOn = (href: string) => {
+    const b = SOCIAL_BUILT_ON, lw = Math.round((b.height * b.w) / b.h);
+    return `<text class="s-bw" x="${b.x}" y="${b.y + 9}">${esc(b.label)}</text><image href="${href}" x="${b.x + 104}" y="${b.y - b.height / 2 - 2}" width="${lw}" height="${b.height}" preserveAspectRatio="xMidYMid meet"><title>Airwallex</title></image>`;
+  };
   const ic = (name: string, x: number, y: number, size: number, cls: string) => `<g class="${cls}">${icon(name, size).replace('<svg class="i"', `<svg class="i" x="${x}" y="${y}"`)}</g>`;
   // The path, right: a card with three steps and two endings.
   const cx = 756, cy = 64, cw = 372, ch = 502, nx = cx + 28, nw = cw - 56, nh = 74;
@@ -374,7 +380,7 @@ export function socialSvg(_site?: string): string {
     text(72, 268, ["AI agents spend."], "s-line", 0),
     text(72, 358, ["You sign off."], "s-line s-line2", 0),
     text(72, 428, [...SOCIAL_SUB], "s-sub", 40),
-    `<text class="s-bw" x="${SOCIAL_BUILT_WITH.x}" y="${SOCIAL_BUILT_WITH.y}">${esc(SOCIAL_BUILT_WITH.label)} <tspan class="s-bwn">${esc(SOCIAL_BUILT_WITH.names.join(" · "))}</tspan></text>`,
+    ...(logo ? [builtOn(logo)] : []),
     `<rect class="s-card" x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="28"/>`,
     link(ys[0]!), link(ys[1]!), fork,
     step(ys[0]!, "bot", "The agent asks to pay", "by card or by transfer"),
@@ -388,7 +394,7 @@ export function socialSvg(_site?: string): string {
 .pv .s-name { font-size: 38px; font-weight: 760; letter-spacing: -.025em; fill: #0b1220; }
 .pv .s-line { font-size: 80px; font-weight: 800; letter-spacing: -.04em; fill: #0b1220; } .pv .s-line2 { fill: #4f46e5; }
 .pv .s-sub { font-size: 31px; font-weight: 520; letter-spacing: -.01em; fill: #3b4456; }
-.pv .s-bw { font-size: 21px; font-weight: 560; fill: #586174; } .pv .s-bwn { font-weight: 680; fill: #0b1220; }
+.pv .s-bw { font-size: 26px; font-weight: 600; letter-spacing: -.01em; fill: #3b4456; }
 .pv .s-card { fill: #ffffff; stroke: #e3e6ec; stroke-width: 1.5; filter: drop-shadow(0 18px 40px rgba(16, 24, 40, .10)); }
 .pv .s-node { fill: #f1f3f7; } .pv .s-hot { fill: #eef0ff; stroke: #4f46e5; stroke-width: 2.5; }
 .pv .s-ic { fill: #ffffff; } .pv .s-ic-hot { fill: #4f46e5; }
@@ -399,6 +405,6 @@ export function socialSvg(_site?: string): string {
 .pv .s-e { font-size: 21px; font-weight: 750; } .pv .s-e-ok { fill: #0b7d43; } .pv .s-e-bad { fill: #c5363c; }
 .pv .s-es { font-size: 17px; font-weight: 600; fill: #0b1220; }`;
   const grad = `<defs><radialGradient id="s-grad" cx="88%" cy="18%" r="75%"><stop offset="0" stop-color="#e4e7ff" stop-opacity=".9"/><stop offset="1" stop-color="#f7f8fa" stop-opacity="0"/></radialGradient></defs>`;
-  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE} ${SOCIAL_SUB.join(" ")}`, body: `${grad}
+  return svg({ w: W, h: H, id: "social", title: "Purser", desc: `Purser. ${SOCIAL_LINE} ${SOCIAL_SUB.join(" ")}${logo ? " Built on Airwallex." : ""}`, body: `${grad}
 ${out.join("\n")}`, standalone: "light" }).replace("</style>", `\n${css}</style>`);
 }

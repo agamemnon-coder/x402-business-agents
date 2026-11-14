@@ -8,6 +8,7 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
+import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk, type SimulateAnswer } from "./awxPayout.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
@@ -74,6 +75,15 @@ export interface Env {
    * Airwallex from it; any other value, or none, leaves it on. Max sets it himself when needed; no script here does.
    */
   AWX_FX?: string;
+  /**
+   * /try's sandbox payout (worker/src/awxPayout.ts): its own scoped sandbox key (transfers write, balances read), Worker
+   * secrets Max sets himself; no script in this repo sets them. Without both, the existing sandbox key is used (Max may
+   * widen it instead); purser-try's switch awx_payout keeps every payout off until it is set.
+   */
+  AIRWALLEX_PAYOUT_CLIENT_ID?: string;
+  AIRWALLEX_PAYOUT_API_KEY?: string;
+  /** The payout's switch on this Worker: "off" (any case, trimmed) stops every payout call; anything else leaves it to the key and purser-try's awx_payout. */
+  AWX_PAYOUT?: string;
 }
 
 /** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
@@ -94,6 +104,29 @@ export class RelayObject extends DurableObject<Env> {
   private awxRead?: AwxReadDesk;
   private awxBooks?: AwxBadgeCache;
   private awxFx?: AwxFxDesk;
+  private awxPayout?: AwxPayoutDesk;
+
+  /** /try's sandbox payout, by RPC from the AwxFx entrypoint only: the "awx-payout" instance's desk, with the payout key inside its client. */
+  private payoutDesk(): AwxPayoutDesk {
+    // Its own payout key when both are set; else the Worker's existing sandbox key (widened by Max). Either way the
+    // client's own allow-list (four sandbox calls) is the guard, not the key's scopes.
+    const own = this.env.AIRWALLEX_PAYOUT_CLIENT_ID && this.env.AIRWALLEX_PAYOUT_API_KEY;
+    const { id, key } = own
+      ? { id: this.env.AIRWALLEX_PAYOUT_CLIENT_ID, key: this.env.AIRWALLEX_PAYOUT_API_KEY }
+      : { id: this.env.AIRWALLEX_CLIENT_ID, key: this.env.AIRWALLEX_API_KEY };
+    return (this.awxPayout ??= new AwxPayoutDesk(this.ctx.storage.sql, {
+      rail: id && key ? new SandboxPayouts({ clientId: id, apiKey: key }) : null,
+      off: (this.env.AWX_PAYOUT ?? "").trim().toLowerCase() === "off",
+    }));
+  }
+
+  async awxPayoutCreate(a: PayoutAsk): Promise<PayoutAnswer> {
+    return this.payoutDesk().payout(a);
+  }
+  /** The visitor's "Sandbox: move to PAID" for its company's own transfer (the sandbox's simulation). */
+  async awxPayoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
+    return this.payoutDesk().simulatePaid(a);
+  }
 
   /**
    * /try's live FX quote, by RPC from the AwxFx entrypoint only (the Worker routes no request here): the "awx-fx"
@@ -181,8 +214,19 @@ export class AwxRead extends WorkerEntrypoint<Env> {
  * quote for a test company, or a fixed reason. A named entrypoint has no public URL: only a Worker bound to it calls it.
  */
 export class AwxFx extends WorkerEntrypoint<Env> {
+  private payoutStub() {
+    return this.env.RELAY.get(this.env.RELAY.idFromName("awx-payout"));
+  }
   async quote(a: AwxFxAsk): Promise<AwxFxAnswer> {
     return this.env.RELAY.get(this.env.RELAY.idFromName("awx-fx")).awxFxQuote(a);
+  }
+  /** Step 2: one sandbox transfer for a test company's signed payment (worker/src/awxPayout.ts), or a fixed reason. */
+  async payout(a: PayoutAsk): Promise<PayoutAnswer> {
+    return this.payoutStub().awxPayoutCreate(a);
+  }
+  /** Step 2's labelled "Sandbox: move to PAID": the sandbox's own simulation of the company's transfer. */
+  async payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
+    return this.payoutStub().awxPayoutSimulate(a);
   }
 }
 

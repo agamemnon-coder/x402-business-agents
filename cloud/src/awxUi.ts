@@ -5,8 +5,24 @@
 // Every value is put on the page as text (el() and textContent), never as HTML. The console's script carries this at
 // __UI__ (cloud/src/console.ts), next to the other views.
 
+import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
+
 export const AWX_UI_JS = String.raw`
 // --- Airwallex (live, sandbox) ------------------------------------------------------------------------------------
+// The official wordmark, unaltered, as "Built on Airwallex" (cloud/src/awxLogo.gen.ts).
+const AWL_LOGO=__AWL_LOGO__;
+function awlLogo(cls){const i=el('img','awlogo'+(cls?' '+cls:''));i.src=AWL_LOGO;i.alt='Airwallex';i.decoding='async';return i}
+const awlPill=()=>el('span','awpill',[el('i',''),t('cs.awl.pill')]);
+// A figure counts up once, from 0, when the page is in view and motion is allowed; it always ends on Airwallex's own
+// figure (set again after the animation's time, so a tab hidden half way never keeps a figure that is not the real one).
+function awlCount(node,v,fmt){node.textContent=fmt(v);const target=Number(v);if(!isFinite(target)||target===0||RM()||document.visibilityState!=='visible')return;
+  const t0=performance.now(),d=800;node.textContent=fmt((0).toFixed(2));
+  const step=(n)=>{const k=Math.min(1,(n-t0)/d);if(k>=1){node.textContent=fmt(v);return}node.textContent=fmt((target*(1-Math.pow(1-k,3))).toFixed(2));requestAnimationFrame(step)};
+  requestAnimationFrame(step);setTimeout(()=>{node.textContent=fmt(v)},d+400)}
+const awlSkel=()=>{const s=el('div','awskel',[el('i',''),el('i',''),el('i','')]);s.setAttribute('aria-hidden','true');return s};
+// The currencies of Purser's books first, then the rest by code.
+const AWL_ORDER=['EUR','USD','GBP'];const awlOrder=(a,b)=>{const i=AWL_ORDER.indexOf(a.currency),j=AWL_ORDER.indexOf(b.currency);return (i<0?9:i)-(j<0?9:j)||String(a.currency).localeCompare(String(b.currency))};
+const awlZero=(x)=>!(Number(x.total)||Number(x.available)||Number(x.pending)||Number(x.reserved));
 const AWL_VIEWS=['balances','rates','reconcile','financial','transfers','beneficiaries','accounts','issuing','calls'];
 const awlTime=(iso)=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleTimeString(L.lang==='nl'?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'UTC'})+' UTC'};
 // An id in full, in a code face, with a copy button: what a judge can check at Airwallex.
@@ -19,7 +35,7 @@ function awlTable(heads,rows){const tb=el('tbody','',rows);return el('div','awsc
 const awlTd=(v,cls)=>el('td',cls||'',v instanceof Node?v:v===null||v===undefined||v===''?'—':String(v));
 // One card: its title, what it reads, then the live answer or the plain reason it has none.
 function awlCard(key,icon,titleKey,subText){
-  const body=el('div','awbody',el('p','sub',t('cs.awl.loading')));const stamp=el('span','awstamp');
+  const body=el('div','awbody',awlSkel());const stamp=el('span','awstamp');
   const card=el('section','card panel awcard aw-'+key,[el('div','th',[el('h2','',[ic(icon),' '+t(titleKey)]),stamp]),subText?el('p','sub',subText):null,body]);
   card.dataset.view=key;return {card,body,stamp}}
 function awlUnavailable(slot,a,retry){slot.stamp.replaceChildren(el('span','awbad',[ic('triangle-alert'),t('cs.awl.unavailable')]));
@@ -27,9 +43,17 @@ function awlUnavailable(slot,a,retry){slot.stamp.replaceChildren(el('span','awba
   slot.body.replaceChildren(el('div','awdown',[el('b','',t('cs.awl.unavailable')),el('p','sub',a&&a.reason?String(a.reason):t('cs.awl.no_answer')),again]))}
 function awlLive(slot,a){slot.stamp.replaceChildren(el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(a.read_at)})]))}
 const AWL_RENDER={
-  balances(d){const b=d.balances||[];if(!b.length)return el('p','sub',t('cs.awl.empty'));
-    return el('div','awtiles',b.map((x)=>el('div','awtile',[el('span','awtl',x.currency),el('b','num',awlAmt(x.currency,x.available)),el('span','sub',t('cs.awl.bal_detail',{total:awlAmt('',x.total),pending:awlAmt('',x.pending)}))])))},
-  rates(d){return el('div','awtiles',(d.rates||[]).map((r)=>el('div','awtile',[el('span','awtl',r.sell_currency+' → '+r.buy_currency),el('b','num',String(r.rate)),el('span','sub',t('cs.awl.rate_detail',{sell:r.sell_currency,rate:String(r.rate),buy:r.buy_currency}))])))},
+  balances(d){const all=d.balances||[];if(!all.length)return el('p','sub',t('cs.awl.empty'));
+    // The sandbox holds a row for every currency it offers (46 live, 14 Nov): the ones with money first and big, the
+    // ones at 0 folded into one line that opens.
+    const b=all.filter((x)=>!awlZero(x)).sort(awlOrder),z=all.filter(awlZero);
+    if(!b.length)return el('p','awcalm',t('cs.awl.bal_all_zero',{n:z.length}));
+    const tiles=el('div','awtiles',b.map((x)=>{const v=el('b','num');awlCount(v,x.available,(n)=>awlAmt('',n));
+      return el('div','awtile big',[el('span','awtl',x.currency),v,el('span','sub',t('cs.awl.bal_detail',{total:awlAmt('',x.total),pending:awlAmt('',x.pending)}))])}));
+    const zeros=z.length?el('details','awzero',[el('summary','',t('cs.awl.bal_zero',{n:z.length})),el('div','chips',z.map((x)=>el('span','mchip',x.currency)))]):null;
+    return el('div','',[el('p','awline',t('cs.awl.bal_line',{n:b.length})),tiles,zeros])},
+  rates(d){return el('div','awtiles',(d.rates||[]).map((r)=>el('div','awtile big',[el('span','awtl',t('cs.awl.rate_buy',{buy:r.buy_currency,sell:r.sell_currency})),
+    el('b','num',r.says||String(r.rate)),el('span','sub',r.says?t('cs.awl.rate_pair',{pair:r.base+'/'+r.quote}):t('cs.awl.rate_nopair'))])))},
   reconcile(d){
     const ok=d.computed&&d.differences===0&&d.checked>0;
     const sum=el('div','awrec '+(ok?'ok':'bad'),[ic(ok?'circle-check':'triangle-alert'),el('b','',ok?t('cs.awl.rec_zero',{n:d.checked}):t('cs.awl.rec_diff',{d:d.differences,m:d.matched,n:d.checked}))]);
@@ -39,12 +63,15 @@ const AWL_RENDER={
     const oos=Object.entries(d.out_of_scope||{});if(oos.length)extra.push(el('p','sub',t('cs.awl.out_scope',{list:oos.map(([k,v])=>k+' '+v).join(', ')})));
     return el('div','',[sum,el('p','sub',t('cs.awl.rec_rows',{rows:d.airwallex_rows,from:awlDay(d.window&&d.window.from)})),awlTable([[t('cs.awl.col.invoice')],[t('cs.awl.col.kind')],[t('cs.awl.col.awx_id')],[t('cs.awl.col.ledger')],[t('cs.awl.col.airwallex')],[t('cs.awl.col.result')],[t('cs.awl.col.reason')]],rows),...extra,el('p','links',[ext(d.ledger.url,t('cs.awl.ledger_record',{run:d.ledger.run}))])])},
   financial(d){const r=d.recent||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
-    return awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.type')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.status')],[t('cs.awl.col.source')],[t('cs.awl.col.date')]],
-      r.map((f)=>el('tr','',[awlTd(awlId(f.id)),awlTd(f.transaction_type||f.source_type),awlTd(awlAmt(f.currency,f.amount),'num r'),awlTd(f.status),awlTd(awlId(f.source_id)),awlTd(awlDay(f.created_at),'num')])))},
+    return el('div','',[d.recent_cut?el('p','sub',t('cs.awl.ft_cut',{n:d.recent_rows})):null,awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.type')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.status')],[t('cs.awl.col.source')],[t('cs.awl.col.date')]],
+      r.map((f)=>el('tr','',[awlTd(awlId(f.id)),awlTd(f.transaction_type||f.source_type),awlTd(awlAmt(f.currency,f.amount),'num r'),awlTd(f.status),awlTd(awlId(f.source_id)),awlTd(awlDay(f.created_at),'num')])))])},
   transfers(d){const r=d.transfers||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
     const hash=(x)=>{if(!x.approval_sha256)return el('span','sub',t('cs.awl.no_hash'));const w=el('div','awhash',[awlId(x.approval_sha256)]);
       if(x.recorded)w.append(el('span','obadge '+(x.recorded.matches?'ok':'bad'),[ic(x.recorded.matches?'circle-check':'ban'),t(x.recorded.matches?'cs.awl.hash_match':'cs.awl.hash_differs',{inv:x.recorded.invoice})]));return w};
-    return el('div','',[el('p','sub',t('cs.awl.with_hash',{n:d.with_approval_hash,all:r.length})),awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.status')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.beneficiary')],[t('cs.awl.col.approval')],[t('cs.awl.col.date')]],
+    // The headline: each recorded payout read back live by id, Airwallex's hash next to the one the CFO signed.
+    const rb=(d.readback||[]).map((x)=>el('div','awrb '+(x.matches?'ok':'bad'),[el('div','awrbh',[el('span','obadge '+(x.matches?'ok':'bad'),[ic(x.matches?'circle-check':'ban'),t(x.matches?'cs.awl.rb_match':'cs.awl.rb_differs')]),el('b','',x.invoice),el('span','sub',[x.status||'',' · ',awlAmt(x.currency,x.amount)])]),
+      dl([[t('cs.awl.col.id'),awlId(x.id)],[t('cs.awl.rb_awx'),awlId(x.airwallex_sha256)],[t('cs.awl.rb_signed'),awlId(x.signed_sha256)]])]));
+    return el('div','',[rb.length?el('div','awrbs',[el('h3','tsec',t('cs.awl.rb_title')),...rb]):null,el('p','sub',t('cs.awl.with_hash',{n:d.with_approval_hash,all:r.length})),awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.status')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.beneficiary')],[t('cs.awl.col.approval')],[t('cs.awl.col.date')]],
       r.map((x)=>el('tr','',[awlTd(awlId(x.id)),awlTd(x.status),awlTd(awlAmt(x.currency,x.amount),'num r'),awlTd(awlId(x.beneficiary_id)),awlTd(hash(x)),awlTd(awlDay(x.created_at),'num')]))),el('p','links',[ext(d.record.url,t('cs.awl.run_record',{run:d.record.run}))])])},
   beneficiaries(d){const r=d.beneficiaries||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
     const chk=(b)=>b.payee_check?el('span','obadge '+(b.payee_check.match==='FULL_MATCH'?'ok':'wait'),t('cs.awl.check_recorded',{match:b.payee_check.match,day:awlDay(b.payee_check.at)})):el('span','sub',b.status?b.status:t('cs.awl.no_check'));
@@ -68,7 +95,7 @@ const AWL_META={balances:['wallet','cs.awl.balances','cs.awl.balances_sub'],rate
   financial:['receipt','cs.awl.financial','cs.awl.financial_sub'],transfers:['arrow-up-right','cs.awl.transfers','cs.awl.transfers_sub'],beneficiaries:['users','cs.awl.beneficiaries','cs.awl.beneficiaries_sub'],
   accounts:['landmark','cs.awl.accounts','cs.awl.accounts_sub'],issuing:['credit-card','cs.awl.issuing','cs.awl.issuing_sub'],calls:['clock','cs.awl.calls','cs.awl.calls_sub']};
 async function awlLoad(key,slot){
-  slot.body.replaceChildren(el('p','sub',t('cs.awl.loading')));slot.stamp.replaceChildren();
+  slot.body.replaceChildren(awlSkel());slot.stamp.replaceChildren();
   let a;try{a=await api('/v1/airwallex-live/'+key)}catch(e){if(e instanceof Expired)throw e;a={source:'unavailable',reason:e.message}}
   if(!a||a.source!=='airwallex-sandbox'){awlUnavailable(slot,a,()=>awlLoad(key,slot));return a}
   awlLive(slot,a);try{slot.body.replaceChildren(AWL_RENDER[key](a.data||{}))}catch(e){awlUnavailable(slot,{reason:t('cs.awl.no_answer')},()=>awlLoad(key,slot))}
@@ -76,7 +103,7 @@ async function awlLoad(key,slot){
 // The live events feed: what Airwallex sent the site's webhook, signature verified, newest first (worker/src/awxEvents.ts).
 const awlWhen=(iso)=>iso?awlDay(iso)+' '+awlTime(iso):'—';
 async function awlEvents(slot){
-  slot.body.replaceChildren(el('p','sub',t('cs.awl.loading')));slot.stamp.replaceChildren();
+  slot.body.replaceChildren(awlSkel());slot.stamp.replaceChildren();
   let a;try{a=await api('/v1/airwallex-live/events')}catch(e){if(e instanceof Expired)throw e;a={source:'unavailable',reason:e.message}}
   if(!a||a.source!=='airwallex-webhooks'){awlUnavailable(slot,a,()=>awlEvents(slot));return}
   const ev=a.events||[];
@@ -84,6 +111,22 @@ async function awlEvents(slot){
   if(!ev.length){slot.body.replaceChildren(el('p','sub',a.receiving?t('cs.awl.ev_none'):t('cs.awl.ev_off')));return}
   slot.body.replaceChildren(awlTable([[t('cs.awl.col.event')],[t('cs.awl.col.object')],[t('cs.awl.col.received')],[t('cs.awl.ev_verified')]],
     ev.map((x)=>el('tr','',[awlTd(el('span','awev',[el('b','',x.topic),el('code','',x.type)])),awlTd(awlId(x.object_id||x.event_id)),awlTd(awlWhen(x.received_at),'num'),awlTd(el('span','obadge ok',[ic('circle-check'),t('cs.awl.ev_verified')]))]))))}
+// The Overview's live card (14 Nov): the Airwallex sandbox's money and one rate, read now, apart from the demo month.
+function awlOverview(){
+  const body=el('div','awov-b',awlSkel()),stamp=el('span','awstamp');
+  const go=el('a','awov-go',[t('cs.awl.ov_open'),' ',ic('arrow-right')]);go.href='#/airwallex';
+  const card=el('section','card awov rise',[el('div','awov-h',[awlLogo('sm'),awlPill(),stamp]),el('p','sub awov-s',t('cs.awl.ov_sub')),body,go]);
+  (async()=>{try{
+    const [b,r]=await Promise.all([api('/v1/airwallex-live/balances'),api('/v1/airwallex-live/rates')]);
+    if(b.source!=='airwallex-sandbox'){body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
+    stamp.replaceChildren(el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(b.read_at)})]));
+    const nz=((b.data&&b.data.balances)||[]).filter((x)=>!awlZero(x)).sort(awlOrder).slice(0,3);
+    const rate=r.source==='airwallex-sandbox'?((r.data&&r.data.rates)||[]).find((x)=>x.says):null;
+    const figs=nz.map((x)=>{const v=el('b','num');awlCount(v,x.available,(n)=>awlAmt('',n));return el('div','awov-f',[el('span','awtl',x.currency),v])});
+    body.replaceChildren(el('div','awov-row',[...(figs.length?figs:[el('p','awcalm',t('cs.awl.bal_all_zero',{n:((b.data&&b.data.balances)||[]).length}))]),
+      rate?el('div','awov-f rate',[el('span','awtl',t('cs.awl.rate_buy',{buy:rate.buy_currency,sell:rate.sell_currency})),el('b','num',rate.says)]):null]));
+  }catch(e){if(!(e instanceof Expired))body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}})();
+  return card}
 async function airwallexView(){
   title(t('cs.nav.awx'));
   const m=await me();shell();
@@ -91,13 +134,18 @@ async function airwallexView(){
   const slots={};for(const k of AWL_VIEWS){const [i,h,s]=AWL_META[k];slots[k]=awlCard(k,i,h,t(s))}
   const evSlot=awlCard('events','inbox','cs.awl.events',t('cs.awl.events_sub'));
   const grid=(ks,cls)=>el('div','awgrid '+(cls||''),ks.map((k)=>slots[k].card));
-  view().replaceChildren(head(t('cs.nav.awx'),t('cs.awl.lede')),badges,m.demo?note(t('cs.awl.demo_note')):null,
-    grid(['balances','rates'],'two'),slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card);
+  const top=el('div','head awhead',[el('div','',[el('div','awbrand',[awlLogo(),awlPill()]),el('h1','',t('cs.awl.h1')),el('p','lede',t('cs.awl.lede'))])]);
+  view().replaceChildren(top,badges,m.demo?note(t('cs.awl.demo_note')):null,
+    slots.balances.card,slots.rates.card,slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card);
+  // The cards rise in one after another; with reduced motion the CSS shows them at once.
+  AWL_VIEWS.forEach((k,n)=>{const c=slots[k].card;c.classList.add('rise');c.style.transitionDelay=(n*60)+'ms'});
+  evSlot.card.classList.add('rise');evSlot.card.style.transitionDelay='180ms';
+  requestAnimationFrame(()=>{for(const k of AWL_VIEWS)slots[k].card.classList.add('in');evSlot.card.classList.add('in')});
   // The calls panel last, so it counts this visit's reads.
   await Promise.all([...AWL_VIEWS.filter((k)=>k!=='calls').map((k)=>awlLoad(k,slots[k]).catch((e)=>{if(e instanceof Expired)throw e})),awlEvents(evSlot).catch((e)=>{if(e instanceof Expired)throw e})]);
   await awlLoad('calls',slots.calls);
 }
-`;
+`.replace("__AWL_LOGO__", () => JSON.stringify(AIRWALLEX_LOGO_DATA_URL));
 
 export const AWX_UI_CSS = `
 /* The Airwallex tab (14 Nov): live sandbox cards, ids in full with a copy button, tables that scroll inside their card. */
@@ -144,7 +192,47 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .aw-events .awscroll { max-height: 460px; overflow-y: auto; }
 .aw-events .awt thead th { position: sticky; top: 0; z-index: 1; }
 .awev { display: inline-grid; gap: 2px; } .awev code { font-size: 12px; color: var(--muted); }
+.awrbs { display: grid; gap: 10px; margin-bottom: 14px; }
+.awrb { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.awrb.ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); background: color-mix(in srgb, var(--ok) 5%, var(--surface)); }
+.awrb.bad { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); }
+.awrbh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.awrb dl.read code.awid { word-break: break-all; white-space: normal; }
 .awcalls { margin: 4px 0 0; font-size: 15px; } .awcalls b { font-size: 22px; }
 @media (max-width: 900px) { .awgrid.two { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .awt { min-width: 560px; } code.awid { font-size: 11px; } }
+/* 14 Nov, the polish: the logo, a live dot that pulses, a skeleton while loading, big figures, the Overview card. */
+.awbrand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+img.awlogo { height: 22px; width: auto; display: block; }
+img.awlogo.sm { height: 16px; }
+.awpill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
+.awpill i, .awlive i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; flex: none; }
+.awskel { display: grid; gap: 10px; padding: 4px 0; }
+.awskel i { display: block; height: 14px; border-radius: 6px; background: var(--sunken); }
+.awskel i:nth-child(1) { width: 62%; height: 22px; } .awskel i:nth-child(2) { width: 88%; } .awskel i:nth-child(3) { width: 45%; }
+.awtile.big b { font-size: clamp(19px, 2vw, 26px); letter-spacing: -.01em; white-space: nowrap; overflow-wrap: normal; }
+.aw-balances .awtiles, .aw-rates .awtiles { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+#view > .awcard.aw-balances { margin-top: 16px; }
+.awline { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.awcalm { margin: 4px 0; color: var(--muted); }
+details.awzero { margin-top: 12px; }
+details.awzero summary { cursor: pointer; color: var(--muted); font-size: 13.5px; font-weight: 600; }
+details.awzero .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.card.awov { padding: 18px 20px; margin: 0 0 16px; display: grid; gap: 10px; border-color: color-mix(in srgb, var(--ok) 30%, var(--border)); }
+.awov-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.awov-h .awstamp { margin-left: auto; }
+.awov-s { margin: 0; }
+.awov-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.awov-f { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--sunken); min-width: 0; }
+.awov-f b { font-size: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.awov-f.rate b { font-size: 16px; }
+.awov-go { justify-self: start; display: inline-flex; align-items: center; gap: 6px; font-weight: 650; color: var(--accent); text-decoration: none; }
+.awov-go:hover { text-decoration: underline; }
+@media (prefers-reduced-motion: no-preference) {
+  .awpill i::after, .awlive i::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); animation: awpulse 1.8s ease-out infinite; }
+  @keyframes awpulse { 0% { transform: scale(1); opacity: .6; } 100% { transform: scale(2.8); opacity: 0; } }
+  .awskel i { background: linear-gradient(90deg, var(--sunken) 0%, color-mix(in srgb, var(--sunken) 40%, var(--surface)) 50%, var(--sunken) 100%); background-size: 200% 100%; animation: awshimmer 1.2s linear infinite; }
+  @keyframes awshimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+}
+@media (max-width: 520px) { .awtile.big b { font-size: 20px; } .aw-balances .awtiles, .aw-rates .awtiles { grid-template-columns: minmax(0, 1fr); } .awov-h .awstamp { margin-left: 0; } }
 `;
