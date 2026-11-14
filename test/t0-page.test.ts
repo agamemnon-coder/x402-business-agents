@@ -62,8 +62,8 @@ describe("/t0", () => {
     const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
     const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
     const j = t0Journal(journalMd)!;
-    expect(figs).toEqual([String(j.posted), String(j.differences), `${j.statements!.difference} USD`]);
-    expect(figs).toEqual(["95", "0", "0.00 USD"]);
+    expect(figs).toEqual([String(j.posted), String(j.differences), `${j.debits} USD`]);
+    expect(figs).toEqual(["95", "0", "21,141,221.86 USD"]);
     expect([...stats.matchAll(/href="([^"]+)"/g)]).toHaveLength(3);
     expect(text(main)).toContain("Our books, in a real ledger");
   });
@@ -80,10 +80,13 @@ describe("/t0", () => {
     const lead = /<table class="t0a t0lead">([\s\S]*?)<\/table>/.exec(main)![1]!;
     expect([...lead.matchAll(/<tbody>[\s\S]*?<\/tbody>/g)].join("").match(/<tr>/g)).toHaveLength(5);
     expect(lead.match(/✓/g)).toHaveLength(5);
+    expect(lead.match(/<th scope="row">/g)).toHaveLength(5);
     const all = /<details class="fold"><summary>Show all accounts<\/summary>([\s\S]*?)<\/details>/.exec(main)![1]!;
     expect(all.match(/<tr>/g)!.length - 1).toBe(j.accounts.length);
+    expect(all).toContain("ours: 1200 Airwallex EUR");
     expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).not.toContain("✓");
-    expect(text(main)).toContain("Net balances; the record holds no single journal lines.");
+    expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).toContain("differs");
+    expect(text(main)).toContain("Net debit; credits show as minus.");
   });
 
   it("shows T:0's balance sheet, its sum checked by code, and the owner funding explained when it matches", () => {
@@ -93,7 +96,8 @@ describe("/t0", () => {
     expect(ownerFunding(j)).toBe(true);
     const t = text(main);
     expect(t).toContain("Assets 26,447,805.98 = liabilities 3,807,739.87 + equity 22,640,066.11 USD");
-    expect(t).toContain("Financing: 21,140,636.23 USD, exactly our owner funding.");
+    expect(t).toContain("Shared entity: these totals include other teams.");
+    expect(t).toContain("Financing, 21,140,636.23 USD, is only our owner funding.");
   });
 
   it("keeps the history and what is not done folded, and says what T:0 is", () => {
@@ -103,7 +107,7 @@ describe("/t0", () => {
       "A second push posted 0 and skipped 95: re-running is safe."]) expect(t).toContain(line);
     const history = /<details class="fold"><summary>How it got there<\/summary>[\s\S]*?<\/details>/.exec(main)![0];
     expect(text(history)).toContain("3 Nov: refused, 403");
-    expect(t).toContain("T:0 is an outside general ledger.");
+    expect(t).toContain("T:0 is an outside ledger.");
     // Every record it links is in the repository.
     for (const href of [...main.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => h.startsWith(REPO_BLOB))) {
       expect(existsSync(new URL(`../${href.slice(REPO_BLOB.length).replace(/#.*$/, "")}`, import.meta.url)), href).toBe(true);

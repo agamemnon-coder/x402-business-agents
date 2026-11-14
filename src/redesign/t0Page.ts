@@ -18,7 +18,7 @@ export const T0_LABEL = "T:0 sandbox, test data";
 
 const read = (file: string): string | null => { try { return readFileSync(new URL(`../../${file}`, import.meta.url), "utf8"); } catch { return null; } };
 
-export interface T0Account { account: string; code: string; name: string; ours: string; t0: string }
+export interface T0Account { account: string; code: string; name: string; ours: string; t0: string; our?: string }
 export interface T0Journal {
   posted: number; day: string; firstId: string; differences: number; built: number; debits: string; secondPush: { posted: number; skipped: number } | null;
   accounts: T0Account[];
@@ -35,8 +35,8 @@ export function t0Journal(md: string | null): T0Journal | null {
   if (!head || !diff || !debits) return null;
   const second = /posted (\d+) and skipped (\d+)/.exec(md);
   // T:0's account names, from the record's trial balance ("| 11120 Operating Checking Account #2 | 1200 ... | ... |").
-  const names = new Map([...md.matchAll(/^\| (\d{5}) ([^|(][^|]*?) \| [^|]+ \| [^|]+ \|$/gm)].map((m) => [m[1]!, m[2]!]));
-  const accounts = [...md.matchAll(/^\| (\d{5}) \(([^)]+)\) \| (-?[\d,.]+) \| (-?[\d,.]+) \|$/gm)].map((m) => ({ account: `${m[1]} (${m[2]})`, code: m[1]!, name: names.get(m[1]!) ?? m[1]!, ours: m[3]!, t0: m[4]! }));
+  const rows = [...md.matchAll(/^\| (\d{5}) ([^|(][^|]*?) \| ([^|]+?) \| [^|]+ \|$/gm)], names = new Map(rows.map((m) => [m[1]!, m[2]!])), ourOf = new Map(rows.map((m) => [m[1]!, m[3]!]));
+  const accounts = [...md.matchAll(/^\| (\d{5}) \(([^)]+)\) \| (-?[\d,.]+) \| (-?[\d,.]+) \|$/gm)].map((m) => ({ account: `${m[1]} (${m[2]})`, code: m[1]!, name: names.get(m[1]!) ?? m[1]!, ...(ourOf.has(m[1]!) ? { our: ourOf.get(m[1]!)! } : {}), ours: m[3]!, t0: m[4]! }));
   const samples = [...md.matchAll(/^\| `(PUR-[0-9a-f]+)` \(([^)]+)\) \| `(je_prod_\w+)` \|$/gm)].map((m) => ({ ours: m[1]!, what: m[2]!, t0: m[3]! }));
   const bs = /Balance sheet balances[^|]*\| Yes: ([\d,.]+) = ([\d,.]+) \+ ([\d,.]+) USD, difference ([\d.]+)/.exec(md);
   const fin = /Cash flow, financing activities \| ([\d,.]+) USD: exactly the owner funding/.exec(md);
@@ -93,7 +93,7 @@ export const T0_CSS = `.t0r { padding: 16px 18px; display: grid; gap: 4px; }
 .t0p .t0flow { padding: 14px; }
 table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
 table.t0a th, table.t0a td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
-table.t0a th { font-size: 13px; color: var(--muted); font-weight: 600; }
+table.t0a thead th { font-size: 13px; color: var(--muted); font-weight: 600; } table.t0a tbody th { font-weight: 400; } table.t0a tbody th small { display: block; font-size: 12.5px; color: var(--muted); }
 table.t0a th:first-child { width: 40%; }
 table.t0a td.ok { color: var(--ok); white-space: nowrap; }
 table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } table.t0a th.c, table.t0a td.c { width: 2em; text-align: center; }
@@ -106,29 +106,29 @@ table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } 
   .t0flow .node:nth-child(3) { animation-delay: 1.5s; } .t0flow .node:nth-child(5) { animation-delay: 3s; } .t0flow .node:nth-child(7) { animation-delay: 4.5s; }
 }
 @keyframes t0-lit { 0%, 30%, 100% { box-shadow: inset 0 0 0 1px transparent; } 8%, 22% { box-shadow: inset 0 0 0 2px var(--accent); } }
-@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; table-layout: auto; } table.t0a th:first-child { width: auto; } table.t0a td:first-child { overflow-wrap: break-word; } }`;
+@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; table-layout: auto; } table.t0a th:first-child { width: auto; } table.t0a tbody th { overflow-wrap: break-word; } }`;
 
 const link = (file: string, label: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const li = (t: string) => `<li>${esc(t)}</li>`;
 const node = (ic: string, title: string, sub: string, tone = "") => `<div class="node ${tone}"><span class="ic">${icon(ic, 22)}</span><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
 const arrow = `<span class="arrow" aria-hidden="true">${icon("arrow-right", 22)}</span>`;
 /** Table rows: T:0's account, ours, T:0's; a check only where the two are the same, to the cent. */
-export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0">[], codes = false): string => accounts.map((a) => {
+export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0" | "our">[], codes = false): string => accounts.map((a) => {
   const same = cents(a.ours) === cents(a.t0);
-  return `<tr><td>${esc(codes ? `${a.code} ${a.name}` : a.name)}</td><td class="n">${esc(a.ours)}</td><td class="n">${esc(a.t0)}</td><td class="c${same ? " ok" : ""}">${same ? '<span aria-label="same">✓</span>' : ""}</td></tr>`;
+  return `<tr><th scope="row">${esc(codes ? `${a.code} ${a.name}` : a.name)}${codes && a.our ? `<small>${esc(`ours: ${a.our}`)}</small>` : ""}</th><td class="n">${esc(a.ours)}</td><td class="n">${esc(a.t0)}</td><td class="c${same ? " ok" : ""}">${same ? '<span role="img" aria-label="same">✓</span>' : esc("differs")}</td></tr>`;
 }).join("");
-const head = `<thead><tr><th scope="col">${esc("Account")}</th><th scope="col" class="n">${esc("Ours")}</th><th scope="col" class="n">T:0</th><th scope="col" class="c"><span class="vh">${esc("Same")}</span></th></tr></thead>`;
+const head = `<thead><tr><th scope="col">${esc("Account")}</th><th scope="col" class="n">${esc("Ours")}</th><th scope="col" class="n">T:0</th><th scope="col" class="c" aria-label="Same"></th></tr></thead>`;
 
 /** The body of /t0: three figures, the flow, the accounts and the balance sheet; the history and the ids folded. */
 export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: string }): string {
   const j = d.journal, p = d.platform, s = j?.statements ?? null;
   const rec = `${T0_JOURNAL_RECORD}#read-back-and-second-push-10-nov-2-more-t0-calls`;
   const stat = (n: string, label: string, ic: string, href: string) => `<li class="ok"><span class="st-ic">${icon(ic, 20)}</span><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
-  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}${s && balances(s) ? stat(`${s.difference} USD`, "balance sheet gap", "landmark", `${T0_JOURNAL_RECORD}#t0s-own-statements-10-nov-0900-utc`) : ""}</ul>` : "";
-  const flow = j ? `<div class="flow card t0flow" role="img" aria-label="${esc("Purser's books are posted to T:0's general ledger, read back line by line, and match")}">${[node("file-check", "Purser's books", "double-entry"), arrow, node("database", "T:0's ledger", "each entry posted"), arrow, node("arrow-left-right", "Read back", "every line"), arrow, node("circle-check", "Match", "to the cent", "ok")].join("")}</div>` : "";
-  const lead = j?.accounts.length ? `<section class="t0r card" aria-labelledby="t0-acc"><h2 id="t0-acc">${esc("Ours and T:0's, per account, USD")}</h2><table class="t0a t0lead">${head}<tbody>${t0Rows(j.accounts.slice(0, 5))}</tbody></table>
-  <p class="vbasis">${esc("Net balances; the record holds no single journal lines.")}</p>${j.accounts.length > 5 ? `<details class="fold"><summary>${esc("Show all accounts")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table></details>` : ""}</section>` : "";
-  const bs = j && s && balances(s) ? `<section class="t0r card t0bs" aria-labelledby="t0-bs"><h2 id="t0-bs">${esc(`T:0's balance sheet, ${j.day}`)}</h2><p class="eq">${esc(`Assets ${s.assets} = liabilities ${s.liabilities} + equity ${s.equity} USD`)}</p>${ownerFunding(j) ? `<p>${esc(`Financing: ${s.financing} USD, exactly our owner funding.`)}</p>` : ""}</section>` : "";
+  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}${stat(`${j.debits} USD`, "debits, equal to credits", "landmark", rec)}</ul>` : "";
+  const flow = j ? `<div class="flow card t0flow" role="img" aria-label="${esc("Purser's books are posted to T:0's general ledger, read back line by line, and match")}">${[node("file-check", "Purser's books", "double-entry"), arrow, node("database", "T:0's ledger", "posted"), arrow, node("arrow-left-right", "Read back", "every line"), arrow, node("circle-check", "Match", "to the cent", "ok")].join("")}</div>` : "";
+  const lead = j?.accounts.length ? `<section class="t0r card" aria-labelledby="t0-acc"><h2 id="t0-acc">${esc("Per account, USD")}</h2><table class="t0a t0lead">${head}<tbody>${t0Rows(j.accounts.slice(0, 5))}</tbody></table>
+  <p class="vbasis">${esc("Net debit; credits show as minus.")}</p>${j.accounts.length > 5 ? `<details class="fold"><summary>${esc("Show all accounts")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table></details>` : ""}</section>` : "";
+  const bs = j && s && balances(s) ? `<section class="t0r card t0bs" aria-labelledby="t0-bs"><h2 id="t0-bs">${esc(`T:0's balance sheet, ${j.day}`)}</h2><p class="eq">${esc(`Assets ${s.assets} = liabilities ${s.liabilities} + equity ${s.equity} USD`)}</p><p>${esc("Shared entity: these totals include other teams.")}</p>${ownerFunding(j) ? `<p>${esc(`Financing, ${s.financing} USD, is only our owner funding.`)}</p>` : ""} ${link(`${T0_JOURNAL_RECORD}#t0s-own-statements-10-nov-0900-utc`, "record")}</section>` : "";
   const history = [
     ...d.refusals.map((r) => `<li>${esc(`${r.day}: refused, ${r.code}: ${r.why}.`)} ${link(r.record, "record")}</li>`),
     j ? `<li>${esc(`${j.day}: all ${j.posted} entries posted, one at a time, each with an idempotency key.`)} ${link(T0_JOURNAL_RECORD, "record")}</li>` : "",
@@ -139,7 +139,6 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
     "Accounts are made in T:0's app; its API cannot create them.",
     "One rate per currency, given by us; no daily rate source yet.",
     ...(p?.refusedCode ? [`A supplier bill on T:0's payables account needs a T:0 vendor (refused, ${p.refusedCode.split(" ")[0]}).`] : []),
-    ...(s ? ["The entity is shared with other teams, so T:0's totals hold their entries too."] : []),
   ];
   const sends = [
     li("One journal entry per entry of Purser's books, debits equal to credits, dated by the movement's day."),
@@ -148,7 +147,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
     li("Test money on Metal (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
     `<li>${link(T0_DOC, "How it works, and the account map")}</li>`,
   ];
-  const ids = [j ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${x.what}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
+  const ids = [j && !j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${x.what}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
   const fold = (title: string, items: string[]) => items.length ? `<details class="fold"><summary>${esc(title)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
@@ -156,7 +155,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   ${flow}
   ${lead}
   ${bs}
-  <p class="vbasis">${esc("T:0 is an outside general ledger. It must agree with our books to the cent, so the CFO need not take our word.")}</p>
+  <p class="vbasis">${esc("T:0 is an outside ledger. It must agree with ours to the cent, so the CFO need not take our word.")}</p>
   <div class="folds card">${fold("How it got there", history)}${fold("Not done", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
   <a class="open" href="proof">All the proof</a>
 </div></main>`;
