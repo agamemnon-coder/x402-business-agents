@@ -137,7 +137,7 @@ describe("/t0", () => {
   });
 
   it("has one script (the close check), its hash in the policy with connect-src 'self', and is served by the bundle, the Worker and the judge", () => {
-    expect(T0_PAGE.match(/<script>/g)).toHaveLength(1);
+    expect(T0_PAGE.split("<script>").length - 1).toBe(1);
     expect(T0_CSP).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
     const pages = buildPages() as unknown as Pages;
     expect(pages.t0).toBe(T0_PAGE);

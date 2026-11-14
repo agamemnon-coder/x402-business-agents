@@ -14,7 +14,10 @@ import { T0_CSP, T0_PAGE, VISA_CSP, VISA_PAGE } from "../src/servers/dashboard.j
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const inBrowser = <T>(file: string, name: string): T => runInNewContext(`${browserCode(file)}\n${name}`, { URL }) as T;
-const scriptHash = (html: string) => `'sha256-${createHash("sha256").update(/<script>([\s\S]*?)<\/script>/.exec(html)![1]!, "utf8").digest("base64")}'`;
+/** The page's one inline script (the bare "<script>" tag the page builder writes), as the policy hashes it. */
+const inlineScript = (html: string) => { const at = html.indexOf("<script>") + "<script>".length; return html.slice(at, html.indexOf("</script>", at)); };
+const scriptCount = (html: string) => html.split("<script>").length - 1;
+const scriptHash = (html: string) => `'sha256-${createHash("sha256").update(inlineScript(html), "utf8").digest("base64")}'`;
 
 describe("browserCode", () => {
   it("strips types and exports, and refuses a module that imports a value", () => {
@@ -65,7 +68,7 @@ describe("/visa: Purser's credential check, run live on the recorded purchase", 
     expect(text(VISA_PAGE)).toContain("Purser's check runs live; the purchase is the recorded sandbox run of 14 Nov; no Airi or Airwallex call.");
     expect(LIVE_CHECK_LABEL).toContain("{day}");
     expect(VISA_PAGE).toContain(VISA_CARD_SCENE_JS);
-    expect(VISA_PAGE.match(/<script>/g)).toHaveLength(1);
+    expect(scriptCount(VISA_PAGE)).toBe(1);
     expect(VISA_CSP).toContain(`script-src ${scriptHash(VISA_PAGE)}`);
     expect(VISA_CSP).not.toMatch(/connect-src|unsafe/);
   });
@@ -98,7 +101,7 @@ describe("/t0: the close check, run in the browser on the read-back", () => {
     for (const w of [T0_RUN.button, T0_RUN.toggle]) expect(text(T0_PAGE)).toContain(w);
     expect(T0_PAGE).toContain(T0_CLOSE_JS);
     expect(T0_CLOSE_JS).toContain("Month stays open: ");
-    expect(T0_PAGE.match(/<script>/g)).toHaveLength(1);
+    expect(scriptCount(T0_PAGE)).toBe(1);
     expect(T0_CSP).toContain(`script-src ${scriptHash(T0_PAGE)}`);
     expect(T0_CSP).toContain("connect-src 'self'");
   });

@@ -36,7 +36,7 @@ export function visibleWords(html: string): number {
   let main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? html;
   // Drawings nest (an icon inside the stage): remove the innermost first, until none is left.
   for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<svg\b[^>]*>(?:(?!<svg\b)[\s\S])*?<\/svg>/g, " "); }
-  main = main.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ");
+  main = main.replace(/<script\b[\s\S]*?<\/script\b[^>]*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\b[^>]*>/gi, " ");
   // A fold shows only its summary. Folds nest (14 Nov, /visa's "What Visa asks for" holds the flow's own fold): the
   // innermost first, until none is left, so an outer fold's closing tag is never taken for an inner one's.
   for (let prev = ""; prev !== main;) { prev = main; main = main.replace(/<details\b[^>]*>\s*<summary[^>]*>((?:(?!<details\b)[\s\S])*?)<\/summary>(?:(?!<details\b)[\s\S])*?<\/details>/g, " $1 "); }
