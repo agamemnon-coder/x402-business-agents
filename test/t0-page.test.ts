@@ -62,9 +62,9 @@ describe("/t0", () => {
     const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
     const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
     const j = t0Journal(journalMd)!;
-    expect(figs).toEqual([String(j.posted), String(j.differences), `${j.debits} USD`]);
-    expect(figs).toEqual(["95", "0", "21,141,221.86 USD"]);
-    expect([...stats.matchAll(/href="([^"]+)"/g)]).toHaveLength(3);
+    expect(figs).toEqual([String(j.posted), String(j.differences)]);
+    expect(figs).toEqual(["95", "0"]);
+    expect([...stats.matchAll(/href="([^"]+)"/g)]).toHaveLength(2);
     expect(text(main)).toContain("Our books, in a real ledger");
   });
 
@@ -74,19 +74,30 @@ describe("/t0", () => {
     expect(T0_CSS).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{[^}]*\.t0flow/);
   });
 
-  it("shows the accounts ours against T:0's, five in sight and the rest behind Show all, a check only where they match", () => {
+  // Jury round 3 (14 Nov): the sandbox's amounts are millions where every other page shows tens of euros. In sight, one
+  // plain line says so, with the owner funding read from the record; no amount of millions is in sight.
+  it("says plainly that the amounts are the sandbox's test balances, and keeps every amount of millions folded", () => {
+    const j = t0Journal(journalMd)!;
+    const funding = j.accounts.find((a) => a.code === "32000")!.ours.replace(/^-/, "");
+    expect(funding).toBe("21,140,636.23");
+    expect(text(main)).toContain(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding} USD of owner funding. No real money. What counts is 0 differences.`);
+    expect(journalMd).toContain("The balances are sandbox test money: the Airwallex sandbox balances");
+    const sight = inSight(main).join(" ");
+    expect(sight.match(/\d{1,3}(,\d{3}){2,}\.\d{2}/g)).toEqual([funding]);
+  });
+
+  it("folds the accounts ours against T:0's, a check only where they match", () => {
     const j = t0Journal(journalMd)!;
     expect(j.accounts.map((a) => a.name)).toEqual(["Operating Checking Account #2", "Savings Account #1", "Payment Processor #1", "Money in Transit", "Common Stock", "Services Revenue", "Third-Party Services & Licenses", "Software Subscriptions", "Bank Charges & Fees"]);
-    const lead = /<table class="t0a t0lead">([\s\S]*?)<\/table>/.exec(main)![1]!;
-    expect([...lead.matchAll(/<tbody>[\s\S]*?<\/tbody>/g)].join("").match(/<tr>/g)).toHaveLength(5);
-    expect(lead.match(/✓/g)).toHaveLength(5);
-    expect(lead.match(/<th scope="row">/g)).toHaveLength(5);
-    const all = /<details class="fold"><summary>Show all accounts<\/summary>([\s\S]*?)<\/details>/.exec(main)![1]!;
+    const all = /<details class="fold t0acc"><summary>Show the accounts, USD<\/summary>([\s\S]*?)<\/details>/.exec(main)![1]!;
     expect(all.match(/<tr>/g)!.length - 1).toBe(j.accounts.length);
+    expect(all.match(/✓/g)).toHaveLength(j.accounts.length);
+    expect(all.match(/<th scope="row">/g)).toHaveLength(j.accounts.length);
+    expect(text(all)).toContain("Debits and credits: 21,141,221.86 USD each, the same as our books.");
     expect(all).toContain("ours: 1200 Airwallex EUR");
     expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).not.toContain("✓");
     expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).toContain("differs");
-    expect(text(main)).toContain("Net debit; credits show as minus.");
+    expect(text(main)).toContain("Net debit per account; credits show as minus. Sandbox test money.");
   });
 
   it("shows T:0's balance sheet, its sum checked by code, and the owner funding explained when it matches", () => {
@@ -94,7 +105,7 @@ describe("/t0", () => {
     expect(balances(j.statements!)).toBe(true);
     expect(balances({ ...j.statements!, equity: "1.00" })).toBe(false);
     expect(ownerFunding(j)).toBe(true);
-    const t = text(main);
+    const t = text(/<details class="fold t0bs">[\s\S]*?<\/details>/.exec(main)![0]);
     expect(t).toContain("Assets 26,447,805.98 = liabilities 3,807,739.87 + equity 22,640,066.11 USD");
     expect(t).toContain("Shared entity: these totals include other teams.");
     expect(t).toContain("Financing, 21,140,636.23 USD, is only our owner funding.");
