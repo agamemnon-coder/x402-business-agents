@@ -11,6 +11,10 @@ import { merchantById } from "../airi/policy.js";
 import { NOT_ALLOWED_URL } from "../airi/vic1.js";
 import { airiRun } from "./airiRun.js";
 import { browserCode } from "./browserCode.js";
+import { HEADLESS_LINE } from "./vicFacts.js";
+
+/** How the sandbox checkout was paid, said in sight on the first screen (its first sentence; the whole line is in the flow). */
+const HEADLESS_FIRST = `${HEADLESS_LINE.split("; the sandbox")[0]}.`;
 import { REPO_BLOB } from "./metalStory.js";
 import { esc } from "./ui.js";
 import { VIC3_RUN_FILE } from "./vic3Run.js";
@@ -136,7 +140,7 @@ export function visaCardSceneHtml(s: CardScene | null = cardScene()): string {
 <li><b>${esc("Signed terms")}</b><span>${esc(`The agent asks to buy for ${p.currency} ${p.amount} at ${p.merchant}. Purser writes the exact terms (${p.proposal}).`)}</span></li>
 <li><b>${esc("Face ID")}</b><span>${esc("Above the CFO's limit, the CFO signs the SHA-256 of those terms with Face ID.")}</span><span class="vcs-say">${code(`${p.hash.slice(0, 16)}…`)}</span></li>
 <li><b>${esc("Airi tap")}</b><span>${esc("Airi's mandate carries that hash. Purser reads it back, equal, before a tap in Airi releases the credential.")}</span><span class="vcs-say">${code(p.mandate)}</span></li>
-<li><b>${esc("Paid")}</b><span>${esc("The credential pays on Airwallex's checkout.")} <span class="ok">${esc("SUCCEEDED")}</span></span><span class="vcs-say">${code(p.intent)}</span></li>
+<li><b>${esc("Paid")}</b><span>${esc("The credential pays on Airwallex's checkout.")} <span class="ok">${esc("SUCCEEDED")}</span></span><span class="vcs-say">${code(p.intent)}</span><span class="vcs-say vh-headless">${esc(HEADLESS_FIRST)}</span></li>
 </ol>
 <p class="vcs-sub">${esc("Then the same credential, misused: Purser refuses it before any Airwallex call.")}</p>
 <ul class="vcs-ref">
