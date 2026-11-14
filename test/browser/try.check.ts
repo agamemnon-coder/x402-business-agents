@@ -471,7 +471,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });
   const result = (await page.textContent(".result")) ?? "";
   ok(result.includes(WORK.ready), `${tag}: the engine's answer says ready to pay`);
-  ok(/Answered in \d+\.\d s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
+  ok(/Answered in (<0\.1|\d+\.\d) s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
   await page.waitForTimeout(1500);
   ok(await page.locator(".live li").count() > 0, `${tag}: the engine's steps are in the live panel`);
   ok(await page.locator(".live li:visible").count() <= 3, `${tag}: the live panel shows at most three rows`);
