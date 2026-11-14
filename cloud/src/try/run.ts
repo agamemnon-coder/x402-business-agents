@@ -291,6 +291,8 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .band .clock { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .band .bx { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
 .band:not(:has(.same)) .bx { margin-left: 8px; }
+/* Recording mode (/try?present=1, cloud/src/try/presentMode.ts) shows its own run figures and fits 1080p: no clock or link here. */
+body.present .band .bx { display: none; }
 .band .bx:empty { display: none; }
 .band .same { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 /* The finish's score. */
