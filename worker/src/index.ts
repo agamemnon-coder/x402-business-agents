@@ -71,7 +71,8 @@ export interface Env {
   AWX_FX?: string;
   /**
    * /try's sandbox payout (worker/src/awxPayout.ts): its own scoped sandbox key (transfers write, balances read), Worker
-   * secrets Max sets himself; no script in this repo sets them. Without both, no payout is ever asked of Airwallex.
+   * secrets Max sets himself; no script in this repo sets them. Without both, the existing sandbox key is used (Max may
+   * widen it instead); purser-try's switch awx_payout keeps every payout off until it is set.
    */
   AIRWALLEX_PAYOUT_CLIENT_ID?: string;
   AIRWALLEX_PAYOUT_API_KEY?: string;
@@ -99,7 +100,12 @@ export class RelayObject extends DurableObject<Env> {
 
   /** /try's sandbox payout, by RPC from the AwxFx entrypoint only: the "awx-payout" instance's desk, with the payout key inside its client. */
   async awxPayoutCreate(a: PayoutAsk): Promise<PayoutAnswer> {
-    const { AIRWALLEX_PAYOUT_CLIENT_ID: id, AIRWALLEX_PAYOUT_API_KEY: key } = this.env;
+    // Its own payout key when both are set; else the Worker's existing sandbox key (widened by Max). Either way the
+    // client's own allow-list (four sandbox calls) is the guard, not the key's scopes.
+    const own = this.env.AIRWALLEX_PAYOUT_CLIENT_ID && this.env.AIRWALLEX_PAYOUT_API_KEY;
+    const { id, key } = own
+      ? { id: this.env.AIRWALLEX_PAYOUT_CLIENT_ID, key: this.env.AIRWALLEX_PAYOUT_API_KEY }
+      : { id: this.env.AIRWALLEX_CLIENT_ID, key: this.env.AIRWALLEX_API_KEY };
     this.awxPayout ??= new AwxPayoutDesk(this.ctx.storage.sql, {
       rail: id && key ? new SandboxPayouts({ clientId: id, apiKey: key }) : null,
       off: (this.env.AWX_PAYOUT ?? "").trim().toLowerCase() === "off",

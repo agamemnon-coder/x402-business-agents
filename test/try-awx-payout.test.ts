@@ -136,9 +136,10 @@ describe("the payout desk: one per company, never twice, capped", () => {
 
 describe("the entrypoint and the keys", () => {
   const index = readFileSync(new URL("../worker/src/index.ts", import.meta.url), "utf8");
-  it("the payout key is its own, read only into the payout client; the instance is reached only from the AwxFx entrypoint", () => {
+  it("the payout key (its own, or the existing sandbox key) is read only into the payout client; the instance is reached only from the AwxFx entrypoint", () => {
     expect(index).toMatch(/new SandboxPayouts\(\{ clientId: id, apiKey: key \}\)/);
-    expect(index).toMatch(/AIRWALLEX_PAYOUT_CLIENT_ID: id, AIRWALLEX_PAYOUT_API_KEY: key/);
+    // Its own key when both are set, else the existing sandbox key (the parent's call, 14 Nov: Max may widen that one).
+    expect(index).toMatch(/\? \{ id: this\.env\.AIRWALLEX_PAYOUT_CLIENT_ID, key: this\.env\.AIRWALLEX_PAYOUT_API_KEY \}\n\s+: \{ id: this\.env\.AIRWALLEX_CLIENT_ID, key: this\.env\.AIRWALLEX_API_KEY \}/);
     expect(index.match(/idFromName\("awx-payout"\)/g)).toHaveLength(1);
     expect(index.slice(index.indexOf("export class AwxFx"), index.indexOf("export default"))).toContain('idFromName("awx-payout")');
     // The quote client still gets only the quote key.
