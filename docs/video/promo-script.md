@@ -15,7 +15,7 @@ v2, 1:06.5, 1920×1080 and 1080×1920, 60 fps. The code is `src/film/promo.ts`; 
 | 0:31.9 | Over the agent's cap? Metal refused it. On chain. | 0.06 test USD vs the 0.05 cap; chain; REFUSED ON CHAIN, mandate_cap_exceeded, tx 0xe6d9c7ea…585df4, 12 Nov (docs/runs/2026-11-12-faceid-onchain.md) |
 | 0:37.3 | The audit chain, anchored on chain. | Blocks link; the anchor drops; head aaaf56a1…, height 701, tx 0xaa93f270…, 13 Nov (docs/runs/2026-11-13-anchor.md) |
 | 0:40.2 | Fifty-three attacks. Money moved: zero. | 53 zero-trust attacks, money moved 0 (docs/zero-trust/report.json) |
-| 0:44.3 | A hostile model. Three hundred and eighty tool calls. Zero unsafe. | 380 hostile tool calls, 370 stopped or tightened by code (318 refused, 52 made stricter), 0 unsafe (docs/evals/ap-hostile.json); then the recap, one refusal per beat |
+| 0:44.3 | A hostile model. Three hundred and eighty tool calls. Zero unsafe. | 380 hostile tool calls: 318 refused, 52 made stricter, 10 allowed as they were (within the rules), 0 unsafe (docs/evals/ap-hostile.json); then the recap, one refusal per beat |
 | 0:55.6 | Your agents do the work. Your CFO signs the exceptions. | Split screen: Cloud's pages racing | the phone, still |
 | 1:01.1 | Purser. Try it yourself. | End card: kit11.max-31b.workers.dev/try; Full walkthrough: youtu.be/mp9fmOYfBWc; small type |
 

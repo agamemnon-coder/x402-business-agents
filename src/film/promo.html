@@ -616,9 +616,9 @@
         [...document.querySelectorAll(".hl")].forEach((l, i) => { l.style.left = `${((-(lt * (900 + i * 60)) + i * 300) % (W + 700) + W + 700) % (W + 700) - 600}px`; l.style.opacity = String(0.4 * (1 - p(lt, 3.6, 0.6))); });
         rise($("hoK"), lt, 0.0, 0.25); rise($("hoL"), lt, 0.4, 0.3);
         // The site's wording of the split (src/redesign/partners.ts hostileWords), each part from the record.
-        $("hoRef").textContent = `${group(Math.round(r * easeIO(p(lt, 1.9, 1.4))))} stopped or tightened by code`;
+        $("hoRef").textContent = `${group(Math.round(Number(D.hostile.tool.text) * easeIO(p(lt, 1.9, 1.4))))} refused · ${D.hostile.enforce.text} made stricter`;
         rise($("hoRef"), lt, 1.8, 0.3, 20);
-        $("hoSplit").textContent = `${D.hostile.tool.text} refused · ${D.hostile.enforce.text} made stricter`;
+        $("hoSplit").textContent = `${D.hostile.stood.text} allowed as they were (within the rules)`;
         rise($("hoSplit"), lt, 3.0, 0.3, 14);
         slam($("hoZero"), lt, 4.4, 0.2, -5);
         break;
