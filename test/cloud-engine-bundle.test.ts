@@ -88,9 +88,12 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // 13 November 2026: 11 MB. Connect Claude (cloud/src/claude/: the MCP server, its OAuth sign-in, the console's card)
   // added 46,909 bytes to main's 10,967,092 (11,014,001; gzipped 2,270,989). Cloudflare's limit is on the compressed
   // Worker (3 MB free, 10 MB paid), which the second check holds well under.
-  it("stays under 11 MB, and under 3 MB gzipped", () => {
+  // 14 November 2026: 11.5 MB. The live Airwallex tab (cloud/src/awxLive.ts, awxUi.ts, its words in two languages and the
+  // pure reconciliation, src/finance/awxReconcile.ts) added 35,928 bytes to main's 11,499,047 (fcb63fd): 11,534,975,
+  // gzipped 2,428,999. The compressed limit is unchanged.
+  it("stays under 11.5 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(11 * 1024 * 1024);
+    expect(bytes).toBeLessThan(11.5 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });
