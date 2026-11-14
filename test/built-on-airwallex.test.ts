@@ -57,6 +57,11 @@ describe("the Built on Airwallex badge", () => {
       }
     }
     expect(cloudConsole).toMatch(/<p class="foot-awx wrap"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
+    // On a phone, signed out (the landing), in the app bar's empty left, so the sign-in card keeps the first screen;
+    // /try's start lays its line over the band's empty top for the same reason (test/browser/console.check.ts, try.check.ts).
+    expect(cloudConsole).toMatch(/<span class="awx-app"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
+    expect(cloudConsole).toContain(".signed-out .awx-app { display: inline-flex; }");
+    expect(cloudTry).toContain("body:has(.screen.start) .awx-row { position: absolute; top: 65px;");
     // The cloud's pages may load images from the site, for this logo; nothing else in the policy moved.
     expect(consoleCsp("N")).toContain(`img-src 'self' data: blob: ${SITE_ORIGIN};`);
     // The header is the site's own function, so every page draws it alike.

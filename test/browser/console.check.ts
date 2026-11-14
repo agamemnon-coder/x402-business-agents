@@ -202,7 +202,8 @@ await page.goto(`${ORIGIN}/#/invoices`);
 await page.waitForSelector(".row:not(.th)");
 await settle();
 await shot("06-facturen");
-ok((await page.$$("img")).length === 0 && (await text()).includes('<img src=x onerror="document.title=\'pwned\'">Evil Supplies'), "a supplier name with HTML shows as text, never as markup");
+// The "Built on Airwallex" badge's logo (src/ui/builtOn.ts) is the page's own image; no other img, none from a supplier.
+ok((await page.$$("img:not(.awx-badge img)")).length === 0 && (await text()).includes('<img src=x onerror="document.title=\'pwned\'">Evil Supplies'), "a supplier name with HTML shows as text, never as markup");
 ok(!(await page.title()).includes("pwned"), "no script from a supplier's text ran");
 
 await page.goto(`${ORIGIN}/#/invoices/${encodeURIComponent(paidId)}`);

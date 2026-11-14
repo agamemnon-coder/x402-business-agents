@@ -67,6 +67,9 @@ body:has(.screen.start) h1 { margin-top: 0; }
 body:has(.screen.start) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
 body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 16px 12px 40px; }
 body:has(.screen.start) .trust { margin-top: auto; }
+/* "Built on Airwallex" on a phone (src/ui/builtOn.ts): on the start, over the band's empty top, out of the flow, so the
+   card and the trust line keep the first screen; on the other screens its own line under the header. */
+@media (max-width: 759px) { body:has(.screen.start) .awx-row { position: absolute; top: 65px; left: 0; right: 0; z-index: 2; } }
 .start .lede { margin: 0 0 18px; font-size: 16.5px; }
 .start .btn.big { margin-top: 0; width: 100%; }
 .start .btn .i { vertical-align: 0; }

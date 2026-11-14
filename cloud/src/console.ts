@@ -343,6 +343,10 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 .hero, .trust { display: none; }
 .signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
 .signed-out #foot, .signed-out .foot-awx { display: none; }
+/* "Built on Airwallex" on a phone: signed out, in the app bar's empty left (the site's own line under the header would
+   push the sign-in card below the first screen); signed in, the footer's badge. */
+.awx-app { display: none; }
+@media (max-width: 759px) { body .awx-row { display: none; } .signed-out .awx-app { display: inline-flex; } }
 .signed-out { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
 .signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
@@ -361,7 +365,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 const BODY = `
 ${siteHeader(null)}
 <div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
-<span class="spacer"></span>
+<span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</span><span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap">${svg("flask", 15)}<span data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><a href="#/sign-in" id="demo-out" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</a></div></div>

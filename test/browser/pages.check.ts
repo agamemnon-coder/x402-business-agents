@@ -1073,7 +1073,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // The partner tiles on the first screen; the chain and the band within the next (14 Nov, the tiles lead: the chain at
         // 9xx px and the band at 1,3xx px as built at 390; before, the chain under 400 px and the band under 1,300 px).
         const tiles = await page.evaluate(`(() => { const e = document.querySelector("main ul.ptiles"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (tiles < 0 || tiles >= 400) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
+        // 440 since 14 Nov: the "Built on Airwallex" line under the header on a phone (src/ui/builtOn.ts) adds 36 px.
+        if (tiles < 0 || tiles >= 440) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
         if (first.chain < 0 || first.chain >= 1000) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,000 px`);
         if (first.band < 0 || first.band > 1450) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,450 px`);
         const closed = await targets();
