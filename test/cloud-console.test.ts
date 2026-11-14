@@ -116,7 +116,7 @@ describe("the console of a cloud with an engine", () => {
   });
 
   it("keeps the policy it had: the engine's pages need nothing more", () => {
-    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   });
 
   it("carries the engine's words in both languages, and the one script that writes an event's line", () => {
@@ -295,7 +295,7 @@ describe("the console's language, mark and first run", () => {
     expect(markup).not.toContain('<summary class="on">More</summary>');
     expect(svg("feather", 17)).toContain("<path");
     // Inline, through the page's own icons: the policy stays what it was.
-    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
+    expect(consoleCsp("N")).toBe("default-src 'none'; script-src 'nonce-N' 'self'; style-src 'nonce-N'; img-src 'self' data: blob: https://kit11.max-31b.workers.dev; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'");
   });
 
   it("marks the first run's steps (numbered, the current one, done ones ticked), with motion off for those who ask", () => {

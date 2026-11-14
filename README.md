@@ -4,6 +4,8 @@
 
 # Purser · AI agents spend. You sign off.
 
+**Built on Airwallex.** Purser's agent cards and payments run on Airwallex's API (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
+
 **Purser is the control layer between a company's AI agents and its money: an agent pays on its own within the limits the CFO set, and anything above them waits for the CFO's Face ID or passkey on the exact terms.**
 
 An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.

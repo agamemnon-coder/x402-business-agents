@@ -11,10 +11,11 @@ import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "..
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
+import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
-import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
+import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
@@ -341,7 +342,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
    enterprise, clearly not the /try demo) the band is a calm panel, what Purser Cloud is in three lines, not /try's scene. */
 .hero, .trust { display: none; }
 .signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
-.signed-out #foot { display: none; }
+.signed-out #foot, .signed-out .foot-awx { display: none; }
 .signed-out { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
 .signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
@@ -367,7 +368,8 @@ ${siteHeader(null)}
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
-<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
+<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
+<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
@@ -1506,6 +1508,7 @@ main { padding: 32px 0 72px; }
 table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
 .test { background: #fff7e6; border: 1px solid #f3dfb5; }
 #foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
+.foot-awx { margin-top: 0; padding-bottom: 28px; }
 /* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
 .signed-out { background: #ffffff; }
 .signed-out .hero { background: #f8f9fb; border-right: 1px solid var(--border); align-content: center; justify-items: center; }
@@ -1742,7 +1745,7 @@ export const pdfViewCsp = (n: string, origin: string) =>
   `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${n}' ${origin}/assets/pdfjs.mjs; worker-src blob:; style-src 'nonce-${n}'; img-src blob: data:; font-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'`;
 
 export const consoleCsp = (n: string) =>
-  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob: ${SITE_ORIGIN}; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
