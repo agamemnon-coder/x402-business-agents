@@ -1,8 +1,8 @@
 // /try's FX limit (14 Nov, live): the Airwallex sandbox prices its quotes about 1% over its own market rate, so at the
 // default limit (FX_QUOTE_MAX_MARKUP_BPS, 0.50%) every live quote escalated and /try stopped at Approve. A try company's
 // seed sets its own limit to 1.50% (TRY_FX_QUOTE_MAX_MARKUP_BPS, setting fx.max_markup_bps); every other company keeps
-// 0.50%. A quote 1% over goes through Approve to paid; one 2% over still escalates with the same reason. The terms'
-// view says the limit, for the Approve card. The source is a fake of the AwxFx entrypoint: no network.
+// 0.50%. A quote 1% over is used live and goes through Approve to paid; one over the company's limit falls back to the
+// recorded rate (cloud/src/engine/liveFx.ts, over_limit, #339) at the same limit. The terms' view says the limit. The source is a fake of the AwxFx entrypoint: no network.
 import { describe, expect, it } from "vitest";
 import { useDocStore } from "../src/ap/docStore.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../src/config/policy.js";
@@ -68,19 +68,20 @@ describe("/try's FX limit: 1.50% for a try company, 0.50% everywhere else", () =
     expect(paid).toMatchObject({ status: "approved", settled: { invoice_status: "paid" } });
   });
 
-  it("the same quote at a company without the setting (0.50%) escalates", async () => {
+  it("the same quote at a company without the setting (0.50%): over the limit, so the recorded rate is used (#339), never a 409", async () => {
     const { h, invoiceId } = await company(over(100));
     const p = await h.propose(invoiceId);
-    expect(p.ok).toBe(false);
-    expect(JSON.stringify(p)).toMatch(/1\.00% above the market's current rate/);
+    expect(p.ok).toBe(true);
+    const view = h.terms((p as { proposal: { id: string } }).proposal.id)!;
+    expect((view.terms as unknown as { conversion: { quote_id: string } }).conversion.quote_id).not.toBe("q-100-0000-0000-000000000000");
+    expect(view.fx_limit_bps).toBe(50);
   });
 
-  it("a live quote 2.00% over still escalates at the try company, with the same reason", async () => {
-    const { db, h, invoiceId } = await company(over(200), TRY_FX_QUOTE_MAX_MARKUP_BPS);
+  it("a live quote 2.00% over at the try company: over its 1.50%, so the recorded rate is used (over_limit), never a 409", async () => {
+    const { h, invoiceId } = await company(over(200), TRY_FX_QUOTE_MAX_MARKUP_BPS);
     const p = await h.propose(invoiceId);
-    expect(p.ok).toBe(false);
-    expect(JSON.stringify(p)).toMatch(/the locked quote costs USD [\d,.]+, 2\.00% above the market's current rate \(USD [\d,.]+\); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception/);
-    const checked = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'fx.rate_checked'").get() as { payload_json: string }).payload_json);
-    expect(checked).toMatchObject({ markup_bps: 200, limit_bps: 150 });
+    expect(p.ok).toBe(true);
+    const view = h.terms((p as { proposal: { id: string } }).proposal.id)!;
+    expect((view.terms as unknown as { conversion: { quote_id: string } }).conversion.quote_id).not.toBe("q-200-0000-0000-000000000000");
   });
 });
