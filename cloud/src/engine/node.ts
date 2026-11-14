@@ -23,6 +23,7 @@ import type { Rails3 } from "../../../src/airwallex/routedRail.js";
 import type { PayeeNameVerifier } from "../../../src/airwallex/payeeName.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
+import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -36,6 +37,11 @@ export interface NodeEngineEnv {
   awxGateway?: GatewayPort;
   /** Local checks only: an in-memory stand-in in Airwallex's place (see ./awxWire.ts). */
   awxStandIn?: { rail: Rails3; payees: PayeeNameVerifier };
+  /**
+   * /try's live FX quote (./liveFx.ts), as purser-try has it through its AWX_FX binding for its test companies; here,
+   * when handed in (tests and local checks, with a stand-in source), for every company of this process.
+   */
+  liveFx?: { source: LiveFxSource; allowed: () => Promise<boolean> };
 }
 
 /** A ledger's documents in memory: no file is written anywhere. */
@@ -47,7 +53,7 @@ function memoryDocs(): DocStore {
   };
 }
 
-interface Engine { db: DB; host: EngineHost; acts: ReturnType<typeof airwallexActions> }
+interface Engine { db: DB; host: EngineHost; acts: ReturnType<typeof airwallexActions>; fxNote: (terms: unknown) => FxQuoteNote | null }
 
 /** The company's engine, made on first use: its name and language are read once, and the treasury's test money is seeded. */
 async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
@@ -59,9 +65,14 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
   const kept = { text: null as string | null };
   const bank = standInBank({ load: () => kept.text, save: (text) => { kept.text = text; } });
   const target = cloudTarget(tenant, env.blobs, env.now ?? (() => new Date()));
+  const notes = new Map<string, string>();
+  const fx = env.liveFx
+    ? withLiveFx(bank, { company: tenantId, source: env.liveFx.source, allowed: env.liveFx.allowed, db, keep: { get: (id) => notes.get(id) ?? null, set: (id, n) => { notes.set(id, n); } } })
+    : null;
+  const rail = fx ? fx.rail : bank;
   const store = memoryActStore();
   const guard = cloudGuard({ sql: env.sql, tenantId, gateway: !!env.awxGateway || !!env.awxStandIn, cacheMs: 0 });
-  const awx = wireAirwallex({ bank, store, guard, port: env.awxGateway ?? null, ...(env.awxStandIn ? { standIn: env.awxStandIn } : {}) });
+  const awx = wireAirwallex({ bank: rail, store, guard, port: env.awxGateway ?? null, ...(env.awxStandIn ? { standIn: env.awxStandIn } : {}) });
   const host = new EngineHost({
     db, reader: parserOnly, rails: awx.rails, payeeVerifier: awx.verifier, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -69,7 +80,7 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true } : {}),
   });
   await host.seed();
-  return { db, host, acts: airwallexActions({ host, db, rail: awx.routed, guard, store, caps: () => guard.caps() }) };
+  return { db, host, acts: airwallexActions({ host, db, rail: awx.routed, guard, store, caps: () => guard.caps() }), fxNote: (terms) => (fx ? fx.noteFor(terms) : null) };
 }
 
 /** A visitor's test company (t_try_...) holds at most this many documents, whatever route brings them. */
@@ -113,7 +124,13 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       uploadSample: async (key) => (await host()).uploadSample(key),
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
-      terms: async (id) => (await host()).terms(id),
+      terms: async (id) => {
+        await host();
+        const { host: h, fxNote } = await engines.get(tenantId)!;
+        const t = h.terms(id);
+        const note = t ? fxNote(t.terms) : null;
+        return t && note ? { ...t, fx_quote: note } : t;
+      },
       paySigned: async (id, sent, credential) => { const h = await host(); return (await acts()).runAt(id, () => h.paySigned(id, sent, credential)); },
       addSupplier: async (invoiceId, v) => (await acts()).addSupplier(invoiceId, v),
       proposeBatch: async (ids) => (await acts()).proposeBatch(ids),

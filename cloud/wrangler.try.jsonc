@@ -41,10 +41,15 @@
   // The engine: one Durable Object per company (cloud/src/engine/object.ts), on its own SQLite. A class is SQLite-backed
   // only from its first deploy, and a deploy with a migration cannot be rolled back past it.
   "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "CompanyEngine" }] },
-  // Purser Cloud's Airwallex actions (14 Nov): the kit11 Worker's named entrypoint AwxGateway (worker/src/index.ts), the
+  // /try's live FX quote (cloud/src/engine/liveFx.ts): the kit11 Worker's named entrypoint AwxFx, which holds the
+  // Airwallex sandbox key and the caps (worker/src/awxFx.ts). No key here. Deploy kit11 with AwxFx first.
+    // Purser Cloud's Airwallex actions (14 Nov): the kit11 Worker's named entrypoint AwxGateway (worker/src/index.ts), the
   // one holder of the sandbox key. Not an HTTP route: only a Worker bound to it can call it. Off until the admin's
   // switch awx_act and the daily caps are set (cloud/src/engine/awxGuard.ts) and kit11 has AWX_GATEWAY_WRITE=on.
-  "services": [{ "binding": "AWX_GATEWAY", "service": "kit11", "entrypoint": "AwxGateway" }],
+  "services": [
+    { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
+    { "binding": "AWX_GATEWAY", "service": "kit11", "entrypoint": "AwxGateway" }
+  ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
   "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },

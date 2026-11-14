@@ -12,6 +12,7 @@ import type { NameCheckView } from "../../../src/engine/host.js";
 import type { AwxView } from "../../../src/engine/awxActions.js";
 
 export type { AwxView, NameCheckView };
+import type { FxQuoteNote } from "./liveFx.js";
 
 export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, PaySignedResult, ProposalView, Settled, SupplierOnFile, TermsView, UploadResult, VaultFile };
 
@@ -70,8 +71,11 @@ export interface EngineApi {
   suppliers(): Promise<SupplierOnFile[]>;
   /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
   compose(input: ComposeInput): Promise<UploadResult | ComposeRefusal>;
-  /** A proposal's stored terms, their canonical text and hash, and whether an approval is stored. */
-  terms(proposalId: string): Promise<TermsView | null>;
+  /**
+   * A proposal's stored terms, their canonical text and hash, and whether an approval is stored; fx_quote: on purser-try,
+   * the note on the FX quote the terms carry (./liveFx.ts), not part of what is signed (the terms themselves are).
+   */
+  terms(proposalId: string): Promise<(TermsView & { fx_quote?: FxQuoteNote }) | null>;
   /** The one pay route: the sent terms with the browser's own signature, through the verifier and the executor's gate; pays only the signed terms. */
   paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null>;
   // Purser Cloud's Airwallex actions (src/engine/awxActions.ts): each at the Airwallex sandbox when the admin's switch

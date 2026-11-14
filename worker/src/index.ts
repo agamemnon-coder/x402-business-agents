@@ -9,6 +9,7 @@ import { goResponse } from "./go.js";
 import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
+import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
@@ -64,7 +65,15 @@ export interface Env extends GatewayEnv {
    * the paths its page calls go there (./tryEngine.ts). Without it the site answers /try with its own page.
    */
   TRY_ENGINE?: Fetcher;
+  /**
+   * /try's live FX quote (worker/src/awxFx.ts, the AwxFx entrypoint): "off" (any case, trimmed) stops every call to
+   * Airwallex from it; any other value, or none, leaves it on. Max sets it himself when needed; no script here does.
+   */
+  AWX_FX?: string;
 }
+
+/** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
+const AWX_FX_TIMEOUT_MS = 2_500;
 
 /** The try-sign instance's answer to the relay's /health: today's spend on its live agents. Not a public path. */
 export const LIVE_AGENTS_PATH = "/internal/try-sign/live-agents";
@@ -78,6 +87,20 @@ export class RelayObject extends DurableObject<Env> {
   private trySign?: TrySignDesk;
   private x402?: X402Desk;
   private metal?: MetalInspector;
+  private awxFx?: AwxFxDesk;
+
+  /**
+   * /try's live FX quote, by RPC from the AwxFx entrypoint only (the Worker routes no request here): the "awx-fx"
+   * instance's desk, with its own sandbox quote client (the key stays inside it) and its caps.
+   */
+  async awxFxQuote(a: AwxFxAsk): Promise<AwxFxAnswer> {
+    const { AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key } = this.env;
+    this.awxFx ??= new AwxFxDesk(this.ctx.storage.sql, {
+      source: id && key ? new SandboxQuotes({ clientId: id, apiKey: key, timeoutMs: AWX_FX_TIMEOUT_MS }) : null,
+      off: (this.env.AWX_FX ?? "").trim().toLowerCase() === "off",
+    });
+    return this.awxFx.quote(a);
+  }
 
   /** The try-sign instance's desk, made on its first request (it holds only its own tables). */
   private trySignDesk(): TrySignDesk {
@@ -115,6 +138,16 @@ export class RelayObject extends DurableObject<Env> {
         return r.ok ? ((await r.json()) as { usd: number; budget_usd: number }) : null;
       },
     })).fetch(req);
+  }
+}
+
+/**
+ * The named entrypoint purser-try binds to (cloud/wrangler.try.jsonc, AWX_FX): one method, a live Airwallex sandbox
+ * quote for a test company, or a fixed reason. A named entrypoint has no public URL: only a Worker bound to it calls it.
+ */
+export class AwxFx extends WorkerEntrypoint<Env> {
+  async quote(a: AwxFxAsk): Promise<AwxFxAnswer> {
+    return this.env.RELAY.get(this.env.RELAY.idFromName("awx-fx")).awxFxQuote(a);
   }
 }
 

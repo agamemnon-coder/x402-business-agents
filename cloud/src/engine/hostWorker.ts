@@ -41,6 +41,8 @@ import type { GatewayPort } from "../../../src/airwallex/gateway.js";
 import type { Bank } from "../../../src/airwallex/routedRail.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
+import { withLiveFx, type LiveFxSource } from "./liveFx.js";
+import { on, readSwitches } from "../try/switches.js";
 
 /** What the host needs of the object: its storage. */
 export interface HostCtx { storage: DoStorage & { deleteAll(): Promise<void> } }
@@ -52,6 +54,11 @@ export interface HostEnv {
   ENGINE_CLAUDE?: string;
   /** The demo's own capped Claude key, a secret of the Worker (wrangler secret put); never in a file or a log. */
   KIT11_ANTHROPIC_API_KEY?: string;
+  /**
+   * /try's live FX quote (./liveFx.ts): a service binding to the kit11 Worker's AwxFx entrypoint, which holds the
+   * Airwallex sandbox key (cloud/wrangler.try.jsonc). purser-try only; never the product's deployment.
+   */
+  AWX_FX?: LiveFxSource;
   /**
    * The Airwallex gateway: a service binding to kit11's AwxGateway entrypoint (cloud/wrangler.try.jsonc). Absent: every
    * action runs on the simulated bank, labelled. The kit11 Worker holds the sandbox key; this Worker never does.
@@ -73,6 +80,8 @@ function doActStore(storage: DoStorage): ActStore {
     notes: (limit = 50) => storage.sql.exec("SELECT at, ref, what, bank, label FROM awx_notes ORDER BY seq DESC LIMIT ?", limit).toArray() as unknown as ActNote[],
   };
 }
+
+const FX_NOTES = "CREATE TABLE IF NOT EXISTS awx_fx_notes (quote_id TEXT PRIMARY KEY, note TEXT NOT NULL)";
 
 let runtimeReady = false;
 /**
@@ -105,13 +114,28 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   // The stand-in bank: the one this object kept, when it has been here before.
   const bank = standInBank({ load: () => state.get("bank"), save: (text) => state.set("bank", text) });
   const keepBank = () => state.set("bank", bankToText(bank));
-  // Purser Cloud's Airwallex actions: the simulated bank and the Airwallex sandbox behind one rail, the Cloud's guard in front.
-  const actStore = doActStore(storage);
-  const guard = cloudGuard({ sql: d1Sql(env.DB), tenantId, gateway: !!env.AWX_GATEWAY });
-  const awx = wireAirwallex({ bank, store: actStore, guard, port: env.AWX_GATEWAY ?? null });
   const blobs = env.DOCS ? r2Blobs(env.DOCS) : sqlBlobs(sql);
   const target = cloudTarget(new TenantDb(sql, tenantId), blobs, () => new Date());
   const own = { rpId: env.RP_ID, origin: env.ORIGIN };
+  // A test company with the AwxFx binding: its quotes asked of the Airwallex sandbox (./liveFx.ts), under the switch
+  // awx_fx; each quote it locks noted (live, or the recorded rate and why) in the object's own table, and logged.
+  storage.sql.exec(FX_NOTES);
+  const fx = env.AWX_FX && tenantId.startsWith("t_try_")
+    ? withLiveFx(bank, {
+      company: tenantId, source: env.AWX_FX, db,
+      allowed: async () => on(await readSwitches(sql), "awx_fx"),
+      keep: {
+        get: (id) => (storage.sql.exec("SELECT note FROM awx_fx_notes WHERE quote_id = ?", id).toArray()[0]?.note as string | undefined) ?? null,
+        set: (id, note) => { storage.sql.exec("INSERT INTO awx_fx_notes (quote_id, note) VALUES (?, ?) ON CONFLICT(quote_id) DO UPDATE SET note = excluded.note", id, note); },
+      },
+    })
+    : null;
+  const rail = fx ? fx.rail : bank;
+  // Purser Cloud's Airwallex actions: the simulated bank and the Airwallex sandbox behind one rail, the Cloud's guard in front.
+  // The simulated side is /try's quoting bank when it has one (./liveFx.ts), else the stand-in itself.
+  const actStore = doActStore(storage);
+  const guard = cloudGuard({ sql: d1Sql(env.DB), tenantId, gateway: !!env.AWX_GATEWAY });
+  const awx = wireAirwallex({ bank: rail, store: actStore, guard, port: env.AWX_GATEWAY ?? null });
   const host = new EngineHost({
     db, reader: parserOnly, rails: awx.rails, afterMoney: keepBank, payeeVerifier: awx.verifier,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -157,7 +181,12 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     uploadSample: async (key) => host.uploadSample(key),
     suppliers: async () => host.suppliers(),
     compose: async (input) => host.compose(input),
-    terms: async (id) => host.terms(id),
+    // The terms, and beside them the note on the quote they carry (live from the Airwallex sandbox, or the recorded rate).
+    terms: async (id) => {
+      const t = host.terms(id);
+      const note = t && fx ? fx.noteFor(t.terms) : null;
+      return t && note ? { ...t, fx_quote: note } : t;
+    },
     paySigned: async (id, sent, credential) => kept(acts.runAt(id, () => host.paySigned(id, sent, credential))),
     addSupplier: async (invoiceId, v) => kept(acts.addSupplier(invoiceId, v)),
     proposeBatch: async (ids) => kept(acts.proposeBatch(ids)),

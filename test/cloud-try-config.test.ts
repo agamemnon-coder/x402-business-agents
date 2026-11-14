@@ -39,9 +39,9 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       // Its own database, created on 12 November: wrangler d1 create purser-try.
       "d1_databases.0.database_id": [base.get("d1_databases.0.database_id"), expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)],
       // 14 Nov: Purser Cloud's Airwallex actions, through kit11's named entrypoint (no key in this Worker).
-      "services.0.binding": [undefined, "AWX_GATEWAY"],
-      "services.0.service": [undefined, "kit11"],
-      "services.0.entrypoint": [undefined, "AwxGateway"],
+      "services.1.binding": [undefined, "AWX_GATEWAY"],
+      "services.1.service": [undefined, "kit11"],
+      "services.1.entrypoint": [undefined, "AwxGateway"],
       "vars.ENGINE_MODE": [undefined, "test_money"],
       // Capabilities only: lane C's switches decide at run time, and a missing switch is off.
       "vars.HANDS_ON": [undefined, "on"],
@@ -51,6 +51,10 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       // Next to its D1 database (WEUR), not next to the visitor: each request makes several D1 calls in a row (12 Nov, speed).
       "placement.mode": [undefined, "targeted"],
       "placement.region": [undefined, "aws:eu-central-1"],
+      // /try's live FX quote (14 Nov): the kit11 Worker's named entrypoint, which holds the Airwallex sandbox key; no key here.
+      "services.0.binding": [undefined, "AWX_FX"],
+      "services.0.service": [undefined, "kit11"],
+      "services.0.entrypoint": [undefined, "AwxFx"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));
