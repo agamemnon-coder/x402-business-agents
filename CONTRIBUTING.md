@@ -1,7 +1,7 @@
 # Contributing
 
 Purser is a hackathon project (Airwallex Agentic Banking Hackathon, Starter Kit 11) that runs on test money only: the
-Airwallex sandbox and Metal testnet. Issues and pull requests are welcome.
+Airwallex sandbox and Alta (formerly Metal) testnet. Issues and pull requests are welcome.
 
 ## Before you open a pull request
 
@@ -9,7 +9,7 @@ Airwallex sandbox and Metal testnet. Issues and pull requests are welcome.
 npm ci
 npm run typecheck
 npm run lint
-npm test                    # stand-ins for Airwallex, Metal and Claude; no network, no keys
+npm test                    # stand-ins for Airwallex, Alta and Claude; no network, no keys
 npm run judge -- --check    # every page built offline from the committed records
 ```
 
