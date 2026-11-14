@@ -340,13 +340,13 @@ export function securityViz(zt: ZeroTrust = zeroTrust(), he: HostileEval = hosti
   </section>`;
 
   // The one wording of the split (hostileWords, src/redesign/partners.ts; the final review, 13 Nov).
-  const parts = [{ cls: "a", n: he.tool, label: "refused" }, { cls: "b", n: he.enforce, label: "made stricter" }, { cls: "c", n: he.stood, label: he.unsafe === 0 ? "stood (safe)" : `stood (${he.unsafe} unsafe)` }];
+  const parts = [{ cls: "a", n: he.tool, label: "refused" }, { cls: "b", n: he.enforce, label: "made stricter" }, { cls: "c", n: he.stood, label: "allowed as they were (within the rules)" }];
   let x = 0;
   const rects = parts.map((p) => { const w = (p.n / he.calls) * 1000; const r = `<rect class="f-${p.cls}" x="${x.toFixed(1)}" width="${w.toFixed(1)}" height="30"><title>${esc(`${p.n} ${p.label}`)}</title></rect>`; x += w; return r; }).join("");
   const hostile = `<section class="card zchart" id="hostile" aria-labelledby="hostile-h">
     <h2 class="zh" id="hostile-h">A hostile model, against the code<span class="pill">Test data</span></h2>
     <p class="zsub">A script in the agents' place made the worst tool call it could, every turn.</p>
-    <p class="zbig"><b>${he.calls}</b> calls · <b>${he.refused}</b> stopped or tightened by code</p>
+    <p class="zbig"><b>${he.calls}</b> calls · <b>${he.unsafe}</b> unsafe</p>
     <svg class="stack" viewBox="0 0 1000 30" preserveAspectRatio="none" role="img" aria-label="${esc(`${he.calls} hostile tool calls: ${parts.map((p) => `${p.n} ${p.label}`).join(", ")}`)}">${rects}</svg>
     <ul class="zlegend">${parts.map((p) => `<li><span class="dot d-${p.cls}"></span><b>${p.n}</b>${esc(p.label)}</li>`).join("")}</ul>
     <div class="links">${outLink(repoHref(HOSTILE_RECORD_FILE), "The eval's record")}</div>

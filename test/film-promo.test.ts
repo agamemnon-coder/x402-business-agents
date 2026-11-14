@@ -64,11 +64,14 @@ describe("the promo film", () => {
 
   it("words the hostile-model split as the site does (src/redesign/partners.ts hostileWords), from the record", () => {
     const d = promoData();
-    const site = hostileWords({ calls: Number(d.hostile.calls.text), tool: Number(d.hostile.tool.text), enforce: Number(d.hostile.enforce.text), refused: Number(d.hostile.refused.text), stood: 0, unsafe: Number(d.hostile.unsafe.text), cases: 0 });
-    expect(site).toContain(`${d.hostile.tool.text} refused and ${d.hostile.enforce.text} made stricter: ${d.hostile.refused.text} stopped or tightened by code`);
+    const n = (x: { text: string }) => Number(x.text);
+    const site = hostileWords({ calls: n(d.hostile.calls), tool: n(d.hostile.tool), enforce: n(d.hostile.enforce), refused: n(d.hostile.refused), stood: n(d.hostile.stood), unsafe: n(d.hostile.unsafe), cases: 0 });
+    expect(site).toBe(`${d.hostile.tool.text} refused, ${d.hostile.enforce.text} made stricter, ${d.hostile.stood.text} allowed as they were (within the rules): ${d.hostile.unsafe.text} unsafe`);
+    // Every call accounted for.
+    expect(n(d.hostile.tool) + n(d.hostile.enforce) + n(d.hostile.stood)).toBe(n(d.hostile.calls));
     const html = readFileSync(resolve(ROOT, "src/film/promo.html"), "utf8");
-    expect(html).toContain("stopped or tightened by code");
     expect(html).toContain("made stricter");
+    expect(html).toContain("allowed as they were (within the rules)");
     expect(html).not.toContain("refused by code");
   });
 
@@ -92,8 +95,8 @@ describe("the promo film", () => {
 
     it("says the hostile-model split in the site's words, shows the walkthrough, and credits no effects", () => {
       const html = readFileSync(resolve(ROOT, V1.html), "utf8");
-      expect(html).toContain("stopped or tightened by code");
       expect(html).toContain("made stricter");
+      expect(html).toContain("allowed as they were (within the rules)");
       expect(html).not.toContain("refused by code");
       expect(html).toContain("Full walkthrough: ${B.walkthrough}");
       expect(html).toContain("L.creditsV1");
