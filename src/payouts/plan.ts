@@ -10,7 +10,7 @@ import { randomUUID } from "node:crypto";
 import type { AnyQuote, Balance, MarketRate, PayoutRail } from "../airwallex/port.js";
 import { AirwallexAmbiguous, AirwallexError } from "../airwallex/client.js";
 import { audit } from "../audit/log.js";
-import { FX_QUOTE_MAX_MARKUP_BPS, INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS } from "../config/policy.js";
+import { INVOICE_PROPOSAL_TTL_MS, QUOTE_SAFETY_MS } from "../config/policy.js";
 import type { DB } from "../db/open.js";
 import { fromCents, toCents } from "../lib/money.js";
 import { sha256Hex, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
@@ -19,7 +19,7 @@ import { createProposal, ProposalRefused, type ProposalRow } from "../policy/app
 import { counterpartyAllowed, feeReserveDefaultCents, frozen, policyValue } from "../policy/rules.js";
 import { heldPayoutCents, owedPlatformFeeCents } from "../policy/payoutLock.js";
 import { proposalExpiry } from "../policy/treasury.js";
-import { getSetting } from "../world/settings.js";
+import { fxMarkupLimitBps, getSetting } from "../world/settings.js";
 import { referenceProblem, routeLimitReason, type Method } from "./routes.js";
 import { platformFeeCents, platformPlan } from "../airwallex/binding.js";
 import { withOrigin, type Origin } from "../provenance/origin.js";
@@ -227,9 +227,9 @@ export async function proposeSupplierPayment(
     const markupBps = Math.round(((quote.sellAmountCents - market.sellAmountCents) / market.sellAmountCents) * 10_000);
     audit(db, "treasury", "fx.rate_checked", inv.invoice_no, {
       pair: `${funding}/${cur}`, buy: `${cur} ${fromCents(buy)}`, market_rate: market.rate, market_cost: `${funding} ${fromCents(market.sellAmountCents)}`,
-      quote_id: quote.quoteId, quote_rate: quote.clientRate, quote_cost: `${funding} ${fromCents(quote.sellAmountCents)}`, markup_bps: markupBps,
+      quote_id: quote.quoteId, quote_rate: quote.clientRate, quote_cost: `${funding} ${fromCents(quote.sellAmountCents)}`, markup_bps: markupBps, limit_bps: fxMarkupLimitBps(db),
     }, now);
-    if (markupBps > FX_QUOTE_MAX_MARKUP_BPS) {
+    if (markupBps > fxMarkupLimitBps(db)) {
       return escalate(`the locked quote costs ${funding} ${fromCents(quote.sellAmountCents)}, ${(markupBps / 100).toFixed(2)}% above the market's current rate (${funding} ${fromCents(market.sellAmountCents)}); options: ask for a new quote later, or approve the dearer quote as an exception`, { quote_id: quote.quoteId });
     }
     const fundingFree = freeCents(db, balances, funding);
