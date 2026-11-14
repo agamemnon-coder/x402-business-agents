@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -217,6 +217,15 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .receipt dl.read { gap: 0; margin: 0; }
 .receipt dl.read dt, .receipt dl.read dd { padding: 8px 0; border-top: 1px dashed var(--border); }
 .receipt dl.read dd { text-align: right; font-weight: 600; }
+/* 14 Nov: the Airwallex card beside the terms: the live sandbox quote they carry, or the recorded rate and why. */
+.awx { margin: 0 0 12px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+.awx.live { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.awx h3 { margin: 0 0 6px; font-size: 15px; }
+.awx dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0 0 6px; font-size: 14px; }
+.awx dt { color: var(--muted); }
+.awx dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
+.awx dd.mono { font-weight: 500; font-size: 13px; user-select: all; -webkit-user-select: all; }
+.awx p { margin: 0; font-size: 13px; color: var(--muted); }
 .hashpill { display: inline-block; margin: 10px 0 0; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
 .btn.asking { animation: ring 1.3s ease-out infinite; }
 .tick { display: flex; align-items: center; gap: 8px; color: var(--ok); font-weight: 700; }
@@ -1000,6 +1009,27 @@ function factRows(p,inv,terms){
   const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
   return {amount,list:d};
 }
+// 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
+// or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
+function fxCard(note,terms){
+  const X=C.fxCard;const cv=terms&&terms.conversion&&typeof terms.conversion==='object'?terms.conversion:null;
+  if(!cv||!note||typeof note!=='object'||note.quote_id!==cv.quote_id)return null;
+  const live=note.source==='airwallex-sandbox';const d=el('dl','');
+  const row=(k,v,cls)=>d.append(el('dt','',k),el('dd',cls||'',v));
+  if(live)row(X.quote,String(cv.quote_id),'mono');
+  row(X.rate,String(cv.client_rate||''));
+  row(X.amounts,fill(X.amountsLine,{buy:cash(cv.buy_currency,cv.buy_amount),sell:cash(cv.sell_currency,cv.sell_amount)}));
+  const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.recorded),d]);
+  if(live){
+    const left=el('dd','');d.append(el('dt','',X.valid),left);
+    const end=Date.parse(String(cv.valid_to||''));
+    const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
+    if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
+    box.append(el('p','',X.liveNote));
+  }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
+  box.setAttribute('data-awx',live?'live':'recorded');
+  return box;
+}
 // The full terms, pretty-printed (the passkey signs the SHA-256 of their canonical JSON, the same fields).
 function termsFold(p,terms){
   const pre=el('pre','terms mono');const f=el('details','',[el('summary','',C.approve.terms),el('p','hint',C.approve.termsNote),pre]);
@@ -1048,9 +1078,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
-    const f=factRows(p,inv,terms);
+    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
+      ...(awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
     stage();
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
@@ -1481,7 +1511,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],

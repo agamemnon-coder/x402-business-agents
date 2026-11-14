@@ -259,6 +259,24 @@ export const PROPOSAL_FIELDS = {
   fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell} at {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
 };
 
+/**
+ * 14 Nov: screen 3's Airwallex card, beside the terms (outside the word budget, as the terms' own labels are): the live
+ * sandbox quote the terms carry (cloud/src/engine/liveFx.ts), or, when there is none, the recorded rate and why.
+ * {sell}, {buy}: amounts; {left}: minutes and seconds; {why}: one of `why`.
+ */
+export const FX_CARD = {
+  live: "Airwallex · live sandbox quote",
+  recorded: "Airwallex unavailable, recorded rate used",
+  quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
+  liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
+  recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
+  why: {
+    switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
+    day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
+    timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
+  } as Record<string, string>,
+};
+
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
 
@@ -585,7 +603,7 @@ export const LIVE = {
   step: "Purser recorded a step.",
   /** Added to every line where money moves. */
   money: "simulated bank · test money",
-  who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser" },
+  who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser", airwallex: "Airwallex sandbox" },
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
   /**
@@ -697,6 +715,10 @@ export const LIVE = {
     "treasury.seeded_plain": "The test company's account was filled.",
     "invoice.escalated": "The payment could not be planned. A person looks at it.",
     "invoice.fraud_suspected": "The invoice looks like fraud. It was blocked before anything was paid.",
+    "airwallex.quote": "Airwallex sandbox: quote {quote_id} at {rate}.",
+    "airwallex.quote_plain": "Airwallex sandbox: a live quote.",
+    "airwallex.unavailable": "Airwallex unavailable, recorded rate used ({rate}).",
+    "airwallex.unavailable_plain": "Airwallex unavailable, recorded rate used.",
     "fx.rate_checked": "The exchange rate was compared with the market rate.",
     "fx.converted": "Currency was exchanged: {money} bought.",
     "fx.converted_plain": "Currency was exchanged.",
