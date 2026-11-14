@@ -472,8 +472,8 @@ export function describeTerms(t: Obj, names: Record<string, string>): Facts {
     return {
       approvable: true, title: back ? "Return a held payment" : "Accept a held payment",
       sentence: back
-        ? `Send the ${str(t.amount)} test USD that Metal held in quarantine back to its sender ${str(t.originator)}. Nothing else moves.`
-        : `Accept the ${str(t.amount)} test USD from ${str(t.originator)}, held by Metal in quarantine, into the sweep wallet. Only accept it if you know who sent it and why.`,
+        ? `Send the ${str(t.amount)} test USD that Alta held in quarantine back to its sender ${str(t.originator)}. Nothing else moves.`
+        : `Accept the ${str(t.amount)} test USD from ${str(t.originator)}, held by Alta in quarantine, into the sweep wallet. Only accept it if you know who sent it and why.`,
       amount: `${str(t.amount)} test USD`, margin: null, recipient: back ? str(t.originator) : `the sweep wallet ${str(t.to)}`,
       rows: [["From", str(t.originator)], ["Amount", `${str(t.amount)} test USD`], ["Goes to", back ? `its sender ${str(t.to)}` : `the sweep wallet ${str(t.to)}`], ["Held in", `transaction ${str(t.tx_hash).slice(0, 10)}…`]],
       short: back ? "returning it" : "accepting it", warnings: back ? [] : ["Money from someone you do not know can be a mistake or an attempt to mix funds with yours."],
@@ -693,7 +693,7 @@ export function whyYou(t: Obj, policy: { key: string; value: string }[] = [], fo
     : kind === "policy_change" ? "The CFO policy changes only with your Face ID."
     : kind === "payee_change" ? "A supplier's bank details change only with your Face ID."
     : kind === "payee_add" ? "A new supplier is paid only after your Face ID."
-    : kind === "quarantine_release" ? "Money Metal held in quarantine moves only with your Face ID."
+    : kind === "quarantine_release" ? "Money Alta held in quarantine moves only with your Face ID."
     : kind === "task_card" ? (cardEur ? `Without your Face ID, a task card is issued only when you ask at the runner, up to ${cardEur} EUR.` : "A task card is issued only with your Face ID.")
     : kind === "airi_purchase" ? "An agent's purchase through Airi starts only with your Face ID."
     : kind === "icc_purchase" ? "A payment credential is requested for an agent only with your Face ID."

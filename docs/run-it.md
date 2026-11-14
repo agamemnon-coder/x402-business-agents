@@ -4,14 +4,14 @@ Moved from the project README. Back to the [README](../README.md).
 
 ## Run it
 
-Requirements: Node 22.13+ (or 24), a Metal testnet RPC endpoint from the
-[Metal console](https://console-testnet.metalntwx.com), Airwallex sandbox API keys, and optionally an Anthropic API key.
+Requirements: Node 22.13+ (or 24), an Alta (formerly Metal) testnet RPC endpoint from the
+[Alta console](https://console-testnet.metalntwx.com), Airwallex sandbox API keys, and optionally an Anthropic API key.
 
 ```sh
 npm install
 cp .env.example .env      # fill in; never commit it. Or export the variables in your shell.
 npm test                  # unit and contract tests, no network
-npm run health            # Metal RPC, finality, x402 facilitator, Airwallex sandbox, Claude key
+npm run health            # Alta RPC, finality, x402 facilitator, Airwallex sandbox, Claude key
 npm run demo:all          # the whole story, live; pauses for each approval
 ```
 

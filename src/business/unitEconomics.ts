@@ -114,8 +114,8 @@ export const ASSUMPTIONS: readonly Assumption[] = [
     inputs: ["usdPerEur"],
   },
   {
-    id: "A8", what: "Not in the model", value: "the platform costs: Airwallex platform or partner fees, Metal fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set",
-    why: "Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Metal testnet only.",
+    id: "A8", what: "Not in the model", value: "the platform costs: Airwallex platform or partner fees, Alta fees on mainnet, the cost of collecting our own invoices, support and people. On the revenue side: the fee per payout, which has no rate set",
+    why: "Airwallex prices platform use on request [P1], so the cost is unknown; Purser has run on Alta testnet only.",
     inputs: [],
   },
 ];
@@ -321,7 +321,7 @@ export function sectionMarkdown(u: UnitEconomics = unitEconomics()): string {
     "",
     `**Claude per decision: USD ${f.agentOwnPerDecisionUsd} for the agents' own calls, USD ${f.allInPerDecisionUsd} for every Claude call of the run.** The agents' own calls (\`agent_stats\`) come to USD ${f.agentOwnUsd} for ${f.decisions} decisions, the figure in [claims.md](../claims.md). The run's whole Claude bill (\`snapshot.claude\`) is USD ${f.allInUsd} for ${f.claudeCalls} calls: it also sorted and read the documents and ran the Opus reviews for the CFO, USD ${f.notInAgentStatsUsd} or ${f.notInAgentStatsShare} of the bill. This model uses the whole bill: USD ${f.perCallUsd} a call.`,
     "",
-    `**${paymentsLine(u)}** The ${f.decisions} decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute ruling and timing advice, several of which moved no money. The ${f.payments} payments are ${u.measured.paymentParts.metal} on Metal (${u.measured.paymentParts.sales} sales, ${u.measured.paymentParts.purchases} supplier purchases, ${u.measured.paymentParts.refunds} refunds, ${u.measured.paymentParts.sweeps} sweep), ${u.measured.paymentParts.cards} card charge and ${u.measured.paymentParts.transfers} SWIFT transfer [R1].`,
+    `**${paymentsLine(u)}** The ${f.decisions} decisions are not one per payment: they are the agents' checks, plans, proposals, a dispute ruling and timing advice, several of which moved no money. The ${f.payments} payments are ${u.measured.paymentParts.metal} on Alta (${u.measured.paymentParts.sales} sales, ${u.measured.paymentParts.purchases} supplier purchases, ${u.measured.paymentParts.refunds} refunds, ${u.measured.paymentParts.sweeps} sweep), ${u.measured.paymentParts.cards} card charge and ${u.measured.paymentParts.transfers} SWIFT transfer [R1].`,
     "",
     `**${invoiceLine(u)}** That is ${f.callsPerInvoice} calls an invoice [R3] at the main run's cost per call [R1]. No record holds a measured Claude cost per invoice, so this is an assumption (A3), not a measurement.`,
     "",

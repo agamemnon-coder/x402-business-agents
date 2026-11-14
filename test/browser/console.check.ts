@@ -206,7 +206,7 @@ ok((await page.$$("img")).length === 0 && (await text()).includes('<img src=x on
 ok(!(await page.title()).includes("pwned"), "no script from a supplier's text ran");
 
 await page.goto(`${ORIGIN}/#/invoices/${encodeURIComponent(paidId)}`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
 await settle();
 await shot("07-factuur-detail");
 const detail = await text();
@@ -229,7 +229,7 @@ ok(reach.length === 0, `the PDF frame reaches neither the console's session nor 
 ok(await page.evaluate(() => { try { return (document.querySelector("iframe.pdfframe") as HTMLIFrameElement).contentDocument === null; } catch { return true; } }), "the console cannot reach into the PDF frame either (an opaque origin)");
 await shot("16-factuur-met-pdf");
 await page.goto(`${ORIGIN}/#/invoices/AP-9001`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
 ok((await page.$$("script")).length === 1 && (await text()).includes("<script>alert(1)</script> looks like"), "a finding's text with a script tag shows as text");
 
 await page.goto(`${ORIGIN}/#/transactions`);
@@ -598,7 +598,7 @@ async function engineUpload(E: EnginePass) {
 
   // The invoice's own page opens, with the document drawn.
   await p.click(`a.row[href="#/invoices/${id}"]`);
-  await p.waitForSelector("text=What Purser read");
+  await p.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
   await p.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
   ok((await p.textContent("main"))!.includes("Bergtex Textil GmbH"), "engine pass: the uploaded invoice's page opens, its PDF drawn");
   await E.settle();
@@ -826,7 +826,8 @@ async function engineProof(E: EnginePass) {
   await p.reload();
   await p.waitForSelector("#proof .pb.archived:not(.wait)", { timeout: 15_000 });
   ok(await p.locator("#pay").count() === 0 && await p.locator(".stack > #proof:first-child").count() === 1, "proof: a paid invoice has no payment card; the proof is first in the column");
-  const at = async () => p.evaluate(() => { const a = document.querySelector("#proof")!.getBoundingClientRect(), d = document.querySelector(".docv")!.getBoundingClientRect(); return { proofTop: a.top, docTop: d.top, proofLeft: a.left, docLeft: d.left }; });
+  // 14 Nov: the document column opens with the invoice as a document, the PDF under it; the column is what is measured.
+  const at = async () => p.evaluate(() => { const a = document.querySelector("#proof")!.getBoundingClientRect(), d = document.querySelector(".split.inv > .docs")!.getBoundingClientRect(); return { proofTop: a.top, docTop: d.top, proofLeft: a.left, docLeft: d.left }; });
   const wide = await at();
   ok(wide.docLeft < wide.proofLeft && Math.abs(wide.docTop - wide.proofTop) < 40, `proof: at 1440 px the document stays on the left and the proof on the right, as before (${JSON.stringify(wide)})`);
   await p.setViewportSize({ width: 390, height: 844 });
@@ -853,8 +854,8 @@ async function engineArchive(E: EnginePass) {
   await p.click("#proof a.arch");
   await p.waitForSelector(".archive details");
   ok((await p.textContent("main h1"))?.trim() === "Archive", "archive: the page opens from the proof's link, with its title");
-  // Six since 13 Nov (Agents and Tokenisation joined; Invoices became part of Invoices & books); the archive is not one.
-  ok(await p.locator("#tabs a").count() === 6 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its six items");
+  // Seven since 14 Nov (Agents and Tokenisation joined on 13 Nov; Invoices and Books are two tabs again); the archive is not one.
+  ok(await p.locator("#tabs a").count() === 7 && await p.locator("#tabs a[aria-current]").count() === 0, "archive: the menu keeps its seven items");
   const files = (await apiAs(E, "/v1/engine/vault")).files as VaultFile[];
   ok(files.length >= 2 && await p.locator(".archive ul.files li").count() === files.length, `archive: every file of GET /v1/engine/vault is in the tree (${files.length})`);
   const tree = await p.$$eval(".archive details", (ds) => ds.map((d) => { let depth = 0; for (let x = d.parentElement; x; x = x.parentElement) if (x.tagName === "DETAILS") depth++; return { name: d.querySelector("summary")?.textContent ?? "", depth, open: (d as HTMLDetailsElement).open }; }));
@@ -912,7 +913,8 @@ async function guestPass() {
     // Jury round 2, 13 Nov: on a phone the six pages are two rows of three (they need about 480 px of a 390 px screen;
     // one scrolling row cut "Toke…" even under a fade); wider, one row. Either way every tab is whole, inside the bar.
     const rows = new Set(tabs).size;
-    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 3 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows of three" : "one row"} (${tabs.join(", ")})`);
+    // 14 Nov: seven pages (Invoices and Books apart): on a phone two rows, four and three.
+    ok(width < 640 ? rows === 2 && tabs.filter((t) => t === tabs[0]).length === 4 : rows === 1, `${tag}: the pages are ${width < 640 ? "two rows, four and three" : "one row"} (${tabs.join(", ")})`);
     const cut = await p.evaluate(() => { const nav = document.querySelector("#tabs") as HTMLElement; const r = nav.getBoundingClientRect(); return [...nav.querySelectorAll("a")].filter((a) => { const b = a.getBoundingClientRect(); return b.right > Math.min(r.right, innerWidth) + 1 || b.left < -1 || a.scrollWidth > a.clientWidth + 1; }).map((a) => (a as HTMLElement).innerText.trim()); });
     ok(cut.length === 0, `${tag}: every tab is whole, none cut or off the screen (${JSON.stringify(cut)})`);
     if (width < 420) {
@@ -923,7 +925,7 @@ async function guestPass() {
     await p.evaluate(() => scrollTo(0, 0));
     await p.waitForTimeout(1600);
     ok(await p.isVisible("#demo") && /Demo company/.test((await p.textContent("#demo")) ?? ""), `${tag}: the demo ribbon says what it is`);
-    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".feed li").count() >= 8, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
+    ok(await p.locator(".kpis .kpi").count() === 4 && await p.locator("svg.chart path.line").count() === 1 && await p.locator("svg.ring .seg").count() >= 2 && await p.locator(".sbars li").count() >= 2 && await p.locator(".tline li").count() >= 8 /* 14 Nov: the decisions are a timeline (.tline), six in view */, `${tag}: the dashboard's figures, cash line, invoices ring, spend bars and decisions`);
     ok(await p.evaluate(() => [...document.querySelectorAll(".rise")].every((n) => getComputedStyle(n).opacity === "1")), `${tag}: every part has risen in`);
     ok(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${tag}: nothing is wider than the screen`);
     for (const tab of ["invoices", "transactions", "books", "settings"]) { await p.goto(`${ORIGIN}/#/${tab}`); await p.waitForTimeout(900); }

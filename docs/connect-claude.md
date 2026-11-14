@@ -11,7 +11,8 @@ that is `https://purser-try.max-31b.workers.dev/mcp`.
 
 **What ran live, and where.** On 13 November 2026, 06:57 UTC, `tools/list` there with the demo company's token answered
 the 7 read tools of the version deployed then (this version has 14; see *Which clients were verified*). The same morning the owner added Purser as a connector in the **Claude iOS app**: its 7 tools showed,
-and `agent_decisions` answered through that connector. No
+and `agent_decisions` answered through that connector. On 14 November 2026, 14:44 UTC, after the cloud was redeployed,
+`tools/list` there with the demo token answered HTTP 200 with this version's 14 read tools, each marked read-only. No
 other client below has been tried live against a deployed cloud. Each is listed because its own documentation describes
 remote MCP servers this way (read 13 Nov). The whole sign-in and protocol run in this repository's checks on a cloud in
 the test process (`test/cloud-claude.test.ts`, `test/browser/connector.check.ts`, which also connects with the official

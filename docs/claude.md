@@ -3,7 +3,7 @@
 Claude decides the exceptions; routine buying and selling per query is code.
 
 Purser runs three Claude agents. Each is its own tool-use loop: Claude sees its goal, what happened and its tools, and
-picks the next step. Code runs every tool call through its checks and tells the agent why when it refuses. Metal and
+picks the next step. Code runs every tool call through its checks and tells the agent why when it refuses. Alta (formerly Metal) and
 Airwallex hold their own limits, and anything beyond them waits for the CFO's Face ID on the exact terms. No agent
 holds a key, sees a card number, names a payee code does not know, or approves.
 
@@ -11,7 +11,7 @@ holds a key, sees a card number, names a payee code does not know, or approves.
 
 | Agent | Model | What it decides | Its tools | What holds it |
 |---|---|---|---|---|
-| Sourcing ([`sourcingProfile.ts`](../src/autonomy/sourcingProfile.ts)) | Claude Haiku | Its buy rule when a supplier's price moves; buying a report or software; asking the CFO for a higher card limit | `market`, `set_buy_policy`, `buy_report`, `buy_software`, `ask_card_raise`, `send_message`, `finish` | Code refuses a buy rule over the mandate's cap or under the margin; Metal refuses a payment over the mandate on chain; Airwallex declines a card charge over the card's limits; a raise is a proposal for the CFO's Face ID |
+| Sourcing ([`sourcingProfile.ts`](../src/autonomy/sourcingProfile.ts)) | Claude Haiku | Its buy rule when a supplier's price moves; buying a report or software; asking the CFO for a higher card limit | `market`, `set_buy_policy`, `buy_report`, `buy_software`, `ask_card_raise`, `send_message`, `finish` | Code refuses a buy rule over the mandate's cap or under the margin; Alta refuses a payment over the mandate on chain; Airwallex declines a card charge over the card's limits; a raise is a proposal for the CFO's Face ID |
 | Treasury ([`teamProfiles.ts`](../src/autonomy/teamProfiles.ts)) | Claude Opus | A new split of the agents' mandates after a price rise; how to pay a euro invoice; when to sweep earnings | `position`, `design_rebalance`, `plan_invoice`, `sweep_earnings`, `send_message`, `finish` | The mandates stay within their shared total of 20.00 test USD; a mandate change and an invoice payment are proposals the CFO signs with Face ID; nothing changes on chain before that |
 | Support ([`teamProfiles.ts`](../src/autonomy/teamProfiles.ts)) | Claude Sonnet | A customer's dispute: which orders to refund itself and which to send to the CFO | `settle_dispute`, `send_message`, `finish` | A refund only for a sale code's own data check finds wrong, only to the customer, within the automatic limits (0.10 each, 0.20 per dispute); the rest goes to the CFO |
 
@@ -64,7 +64,7 @@ request id, and 8 that sort, read or review documents. 24 of 24 decisions by Cla
 
 Against the €285.00 the agents paid in euros in that run (card spend and the SWIFT transfer), that is **$1.320 of AI
 per €1,000 paid**. The cost per €1,000 is high because the run paid little in euros: most of its payments were small
-test-USD payments on Metal, decided by code per query.
+test-USD payments on Alta, decided by code per query.
 
 How it stays cheap: Haiku wherever it is enough (it sorts every document and runs Sourcing); effort `low` for
 document readings and short tasks, `medium` for the agents' wakes; a cached system prompt; structured outputs, so no

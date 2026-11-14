@@ -1,7 +1,7 @@
 # The Kit 11 agents: Claude decides inside the mandate, the rails enforce it
 
 Each of Kit 11's three agents has its own Claude loop with typed tools (`src/agents/loop.ts`). Inside its mandate it
-acts on its own; every tool call goes through the same code checks as before, and Metal and Airwallex enforce the
+acts on its own; every tool call goes through the same code checks as before, and Alta (formerly Metal) and Airwallex enforce the
 limits. When Claude is not there, fails, refuses, cannot satisfy the checks, or leaves its job unfinished (the Support
 agent must refund or escalate every sale code finds wrong, and send a "refund all" request to the CFO), code's fixed
 decision takes over, as in every earlier run, and the log says so.
@@ -12,7 +12,7 @@ Wednesday 4 November, 23:00).
 
 | Agent | Model | What it decides | Its tools | What code checks (the agent cannot get past it) |
 |---|---|---|---|---|
-| Sourcing (`src/agents/sourcingAgent.ts`) | Haiku | When Stockline's price notice arrives: check the offer against its mandate, serve the next query, see whether Metal lets the purchase through, tell Treasury what it needs | `check_offer`, `try_purchase` (once), `notify_treasury` | Metal refuses a purchase over the mandate's cap on chain; no tool changes a cap, a budget or a payee |
+| Sourcing (`src/agents/sourcingAgent.ts`) | Haiku | When Stockline's price notice arrives: check the offer against its mandate, serve the next query, see whether Alta lets the purchase through, tell Treasury what it needs | `check_offer`, `try_purchase` (once), `notify_treasury` | Alta refuses a purchase over the mandate's cap on chain; no tool changes a cap, a budget or a payee |
 | Treasury (`src/agents/treasuryAgent.ts`) | Opus | The answer to the price rise: new budgets inside 20.00, the Sourcing cap, one or two sell prices, its advice | `submit_plan` | Total at most 20.00; Sourcing's cap exactly the new price; Sourcing's budget never shrinks and covers spend plus one purchase; Support unchanged; Treasury keeps room for the sweep; each price has a margin; a safe replace order. A refused plan goes back with the reasons, three tries, then code's fixed plan. Nothing changes on chain until the CFO and the controller sign with their passkeys |
 | Support (`src/agents/supportAgent.ts`) | Sonnet | A customer's dispute: check each order and each delivered stock check, refund the wrong ones itself, send the rest to the CFO with its advice | `verify_order`, `check_data`, `refund`, `escalate_to_cfo` | A refund only for a sale in the dispute that code's own data check finds wrong, within the automatic limits (0.10 each, 0.20 per dispute); no tool takes a payee, so a planted line can make the agent ask, never pay |
 
@@ -31,7 +31,7 @@ result:** across the agents-on dry runs (dry-17 to dry-21) Sourcing decided as e
 purchase; fixed in code), Treasury and Support in 5 of 5. Two misses on other
 models, kept as they ran: Haiku as the Support agent, asked to refund orders outside the dispute, refunded the right
 three but never sent the rest to the CFO (0 of 3; code refused all nine stray calls); Sonnet as the Sourcing agent once
-chose not to try a purchase it knew Metal would refuse (2 of 3), and code then served the query as before. Opus and
+chose not to try a purchase it knew Alta would refuse (2 of 3), and code then served the query as before. Opus and
 Sonnet rebalance (12 / 4 / 4 or 14 / 2 / 4); Haiku as Treasury often leaves the budgets as they are, which is why
 Treasury runs on Opus. Found by the
 evals and fixed: two Treasury rules that contradicted each other once Treasury had swept (Opus and Sonnet said so
@@ -74,10 +74,10 @@ audit rows only (`src/dashboard/trace.ts`), so the trace is as trustworthy as th
 With the agents on, the Sourcing agent (Haiku) has two purchases in step 11: the next customer's stock check from
 Stockline and Packwise's Starter plan. It reads each supplier's checkout (`supplier_terms`) and pays each once (`pay`)
 on the rail it picks, with a reason. **Code checks the supplier accepts that rail before anything is paid**
-(`SUPPLIER_RAILS` in `src/config/policy.ts`): Stockline takes only x402 on Metal (paid under the Sourcing mandate on
+(`SUPPLIER_RAILS` in `src/config/policy.ts`): Stockline takes only x402 on Alta (paid under the Sourcing mandate on
 chain), Packwise only a card (charged to the Sourcing agent's Airwallex card). A wrong rail is refused with the reason
 ("Stockline accepts only x402 on Metal …") and the agent may try again; a second payment to the same supplier is
-refused; a refusal by the rail itself (Metal's mandate, Airwallex's decline) is the rail's answer and is not retried on
+refused; a refusal by the rail itself (Alta's mandate, Airwallex's decline) is the rail's answer and is not retried on
 another rail. If the agent stops with a purchase left, code sends it back once; still unfinished, code pays the rest on
 the registry's rail, and the run counts as a fallback. Every choice is a `purchase.rail_chosen` row with the chain tx or
 the Airwallex id, and the run has its own trace.
@@ -92,7 +92,7 @@ Code: `src/agents/railChoice.ts`; wired into `npm run cards -- scenario` when `K
 each): Haiku 20/20, Sonnet 20/20, Opus 20/20, 1 November. Fresh review the same morning: nothing that moves money wrongly; fixed the wording of
 a stopped or in-doubt purchase (never "not charged" when it may have been), a run that fails after the agent paid both
 now counts as the agent's choice, the declined-card eval now fails a second try (re-run 30/30), and `--case` refuses
-an unknown case. Known: with the agents on, `cards -- scenario` needs the Metal world (it serves a stock check); code's
+an unknown case. Known: with the agents on, `cards -- scenario` needs the Alta world (it serves a stock check); code's
 fallback payments come after the run, so the trace shows them only in its decision row.
 
 ## A card decline starts the agent (block 5.2)
@@ -129,13 +129,13 @@ name says to wait until next year): 90/90 on Haiku, Sonnet and Opus; every model
 With the agents on, the CFO can pause one agent instead of all (the emergency stop stays for all). The Agents page has
 "Pause this agent"; the phone shows the change and Face ID signs it. An approved pause does three things, in this
 order, so that a failure always leaves the agent stopped: Purser's switch goes on (its payments are refused before
-signing), its Airwallex card goes inactive, and its **Metal mandate is revoked on chain** (`mandate revoke`), so even
+signing), its Airwallex card goes inactive, and its **Alta mandate is revoked on chain** (`mandate revoke`), so even
 a signed payment would be refused there (testnet, 31 October: a payment under the revoked mandate was refused with
 `mandate_revoked`). Resuming binds its mandate again: that re-grants spending power, so it is a mandate change and
 takes **both passkeys** when four eyes is on; the mandate is restored on chain first, and only then does the switch go
 off. Code: `src/policy/pause.ts`, `src/metal/pauseChain.ts`; tests: `test/agent-pause.test.ts`.
 
-**What Metal allows, found on testnet.** A revoked mandate cannot be replaced ("already revoked; bind the new
+**What Alta allows, found on testnet.** A revoked mandate cannot be replaced ("already revoked; bind the new
 credential"), and a replacement must leave room above what was spent, so a "zero-room" pause is not possible either.
 So resuming binds a fresh mandate with the same cap and **what was left of the budget**: the agent's lifetime limit on
 chain stays what the CFO approved. That fresh mandate's spend starts at nothing, so **a rebalance after a resume counts
@@ -147,7 +147,7 @@ price rise: `npm run rebalance -- --from treasury --to support --amount 0.50 --r
 exactly that right after the resume (`test/agent-pause.test.ts`).
 
 **Fresh review of 4.1 and 4.2 (31 October, evening).** No way was found for a paused agent, or a document it reads, to
-get money moved: every payment path (Metal purchases, refunds, sweeps, card purchases and holds, invoice payments)
+get money moved: every payment path (Alta purchases, refunds, sweeps, card purchases and holds, invoice payments)
 checks the pause before signing. Fixed, each with a test: a retried revoke could record an older revoked mandate (now
 the one bound last); a rebalance that left the resumed agent out could push the chain's budgets past 20.00 (now any
 rebalance after any resume is refused); a revoke cut off by a crash left no alarm (now a health alarm, and the runner

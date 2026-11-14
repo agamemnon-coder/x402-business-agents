@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 24 920 372" width="920" height="372" role="img" aria-labelledby="t d">
   <title id="t">How Purser checks an agent's payment</title>
-  <desc id="d">An agent's payment first meets Purser's policy check. Within the limits the agent pays itself, under its own Metal mandate or Airwallex card limit. Beyond them it becomes a proposal: the CFO's passkey signs the SHA-256 of the exact terms, an executor re-hashes the terms and runs only if they match, then calls Airwallex or Metal. Every step appends a row to a hash-chained audit log.</desc>
+  <desc id="d">An agent's payment first meets Purser's policy check. Within the limits the agent pays itself, under its own Alta (formerly Metal) mandate or Airwallex card limit. Beyond them it becomes a proposal: the CFO's passkey signs the SHA-256 of the exact terms, an executor re-hashes the terms and runs only if they match, then calls Airwallex or Alta. Every step appends a row to a hash-chained audit log.</desc>
   <style>
     .bg { fill: #ffffff; }
     .box { fill: #f6f8fa; stroke: #d1d9e0; stroke-width: 1.5; }
@@ -33,7 +33,7 @@
   </defs>
   <rect class="bg" x="0" y="24" width="920" height="372" rx="8"/>
 
-  <!-- Within the limits: no approval, the agent pays itself; Metal and Airwallex hold their own limit too. -->
+  <!-- Within the limits: no approval, the agent pays itself; Alta and Airwallex hold their own limit too. -->
   <path class="a" d="M278,120 V64 H824 V116" marker-end="url(#m)"/>
   <text class="l" x="551" y="56" text-anchor="middle">within the limits: no approval; the agent pays under its own mandate or card limit</text>
 
@@ -64,7 +64,7 @@
   <text class="s" x="642" y="208" text-anchor="middle">no match: no run</text>
 
   <rect class="box" x="758" y="120" width="132" height="110" rx="8"/>
-  <text class="h" x="824" y="146" text-anchor="middle" style="font-size:14px">Airwallex / Metal</text>
+  <text class="h" x="824" y="146" text-anchor="middle" style="font-size:14px">Airwallex / Alta</text>
   <text class="s" x="824" y="170" text-anchor="middle">card limits, FX,</text>
   <text class="s" x="824" y="188" text-anchor="middle">SWIFT; mandate</text>
   <text class="s" x="824" y="206" text-anchor="middle">on chain refuses</text>
