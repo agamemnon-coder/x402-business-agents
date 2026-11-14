@@ -95,7 +95,8 @@ export const GUARANTEES_CSS = `/* What Purser guarantees, as cards (Max, 14 Nov:
 .gtee summary::-webkit-details-marker { display: none; } .gtee summary::before { content: "▸"; margin-right: 6px; } .gtee details[open] summary::before { content: "▾"; }
 .gtee details p { margin: 6px 0 8px; line-height: 1.5; }
 .gtee .src { display: flex; flex-wrap: wrap; gap: 6px; }
-.gtee .src a { display: inline-block; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--sunken); color: var(--text); font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }`;
+.gtee .src a { display: inline-block; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--sunken); color: var(--text); font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+@media (max-width: 899px) { .gtee .src a { padding-block: 3px; border-width: 10px 0; border-color: transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--border); } }`;
 
 const ext = (href: string) => /^https:\/\//.test(href);
 const link = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? ' target="_blank" rel="noopener"' : ""}>${esc(label)}${ext(href) ? " ↗" : ""}</a>`;

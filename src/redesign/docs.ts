@@ -135,11 +135,11 @@ ol.pchain.n5 { margin: 0; }
 .pc .promise { font-size: 17px; font-weight: 600; line-height: 1.45; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
 .cchip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 0 0 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--sunken); }
-.cchip .k { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+.cchip .k { font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .cchip code { min-width: 0; overflow-wrap: anywhere; }
 .cchip .cp { flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
 .cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); } .cchip .cp[hidden] { display: none; }
-.ww { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.ww { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--muted); }
 .ww li { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; }
 .ww li.l { padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
 ul.tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -166,7 +166,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
     <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip("Demo token", DEMO_TOKEN)}</div>
     <ul class="ww"><li class="l">${readToolCount()} read tools · works with</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
-    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Purser Cloud (test money)")}</div>
+    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Try as guest (test money)")}</div>
     ${foldHtml("Connect Claude, step by step", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
