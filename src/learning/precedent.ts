@@ -208,7 +208,8 @@ export const OUTCOME_WORDS: Record<Outcome, string> = {
 };
 
 /** No planted tag ends the block early: names from outside parties lose any tag. */
-const untag = (s: string) => s.replace(/<\s*\/?\s*[a-z_]+\s*>/gi, "").replace(/\s+/g, " ").trim().slice(0, 200);
+// Whole tags go first, then any "<" or ">" left over: a split or partial tag cannot survive.
+const untag = (s: string) => s.replace(/<\s*\/?\s*[a-z_]+\s*>/gi, "").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 200);
 
 /** One precedent as a line: its id, day, supplier, amount, kind and outcome, with the CFO's reason when there is one. */
 export function precedentLine(p: Precedent): string {
