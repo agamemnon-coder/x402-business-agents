@@ -747,8 +747,9 @@ export class EngineHost {
   }
 
   /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
-  samples(): { key: string; title: string; filename: string }[] {
-    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
+  samples(): { key: string; title: string; filename: string; expect?: Sample["expect"]; row?: Sample["row"] }[] {
+    // 14 Nov (inbox table): each sample's row (what its document says) and the engine's measured outcome for it.
+    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename, ...(s.expect ? { expect: s.expect } : {}), ...(s.row ? { row: s.row } : {}) }));
   }
 
   /**

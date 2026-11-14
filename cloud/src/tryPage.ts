@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -321,6 +321,8 @@ table.lines .side { display: none; color: var(--muted); font-size: 12px; font-we
   table.lines td { border-top: 0; padding: 5px 0; }
   table.lines td.en { grid-column: 1 / -1; }
   table.lines td.acct { white-space: normal; overflow-wrap: anywhere; }
+/* Recording mode (1080p, no scroll): the receipt's ids and its PDF button stay on the normal page only. */
+body.present p.ids, body.present .acts.pdfl, body.present .xfer { display: none; }
   table.lines td.r { padding-left: 0; }
   table.lines td.r.none { display: none; }
   table.lines .side { display: inline; }
@@ -419,6 +421,50 @@ ul.checks li.ok .i { color: var(--ok); }
 ul.checks li.next { color: var(--muted); }
 ul.checks li.next .i { color: var(--accent); }
 .sha { font-size: 12.5px; color: var(--muted); }
+/* 14 Nov (enterprise sheet): screen 1's samples as an inbox table (the row is the button), the approval as a sheet, the
+   paid screen as a receipt. One 8 px rhythm, hairline borders, tabular figures right-aligned. */
+.ihead, .samples.inbox .btn.row { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, 1.1fr); column-gap: 16px; align-items: center; }
+.ihead { padding: 0 16px 8px; font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.samples.inbox { gap: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.samples.inbox .btn.row { border: 0; border-radius: 0; border-top: 1px solid var(--border); padding: 12px 16px; min-height: 56px; background: var(--surface); text-align: left; font-weight: 500; }
+.samples.inbox .btn.row:first-child { border-top: 0; }
+.samples.inbox .btn.row[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); border-color: var(--border); }
+.samples.inbox .c { min-width: 0; }
+.samples.inbox .sup { display: grid; gap: 2px; }
+.samples.inbox .vn { font-weight: 650; }
+.samples.inbox .st { font-size: 13px; color: var(--muted); font-weight: 500; }
+.samples.inbox .sh { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.samples.inbox .no { font-size: 13px; color: var(--muted); }
+.samples.inbox .amt, .ihead .amt { text-align: right; font-variant-numeric: tabular-nums; }
+.samples.inbox .amt { font-weight: 600; }
+.samples.inbox .due { color: var(--muted); font-size: 14px; }
+@media (min-width: 1024px) { body:has(.samples.inbox) main { max-width: 880px; } }
+.rchip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; white-space: nowrap; border: 1px solid transparent; }
+.rchip.ok { background: var(--ok-soft); color: var(--ok); }
+.rchip.warn { background: var(--sunken); color: var(--text); border-color: var(--border); }
+.rchip.bad { background: var(--bad-soft); color: var(--bad); }
+@media (max-width: 720px) {
+  .ihead { display: none; }
+  .samples.inbox .btn.row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "sup risk" "meta amt"; row-gap: 6px; }
+  .samples.inbox .sup { grid-area: sup; } .samples.inbox .risk { grid-area: risk; justify-self: end; } .samples.inbox .amt { grid-area: amt; }
+  .samples.inbox .no { grid-area: meta; } .samples.inbox .due { display: none; }
+}
+.receipt.sheet { padding: 16px; }
+.sheet-h { margin: 0 0 8px; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.receipt.sheet dl.read.payee { margin: 0 0 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.receipt.sheet dl.read.payee dt, .receipt.sheet dl.read.payee dd { border-top: 0; padding: 4px 0; }
+.receipt.sheet .amount { margin: 8px 0 8px; }
+.acts.sign { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+.acts.sign .btn.big { margin-top: 0; }
+.btn.quiet { background: none; border-color: var(--border); color: var(--text); }
+p.ids { margin: 8px 0 0; font-size: 13px; }
+/* The receipt's journal: account names wrap, so the debit and credit columns always show (a long name pushed Credit out). */
+body:not(.present) table.lines td.acct { white-space: normal; overflow-wrap: anywhere; }
+/* Recording mode (1080p, no scroll): the receipt's ids and its PDF button stay on the normal page only. */
+body.present p.ids, body.present .acts.pdfl, body.present .xfer { display: none; }
+@media (min-width: 1024px) { body:has(.screen.books) main { max-width: 880px; } }
+.acts.pdfl { margin-top: 8px; }
+@media (max-width: 520px) { .acts.sign .btn { width: 100%; } }
 /* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
 .slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
 @media (max-width: 520px) {
@@ -797,17 +843,23 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         const again=el('button','link',C.invoice.retry);again.type='button';
         again.addEventListener('click',()=>loadSamples());
         pick.replaceChildren(el('p','hint calm',[C.invoice.failed,' ',again]));return}
-      const list=el('div','samples');list.setAttribute('role','group');
+      const list=el('div','samples inbox');list.setAttribute('role','group');
+      const I=C.inbox.cols;const head=el('div','ihead',[el('span','c sup',I.supplier),el('span','c no',I.no),el('span','c amt',I.amount),el('span','c due',I.due),el('span','c risk',I.risk)]);head.setAttribute('aria-hidden','true');
       for(const s of items){
         // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
         const hint=C.invoice.hints[s.key];const first=!list.children.length;
         const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
-        const b=btn([el('span','st',[title,first?el('span','here',C.invoice.startHere):null]),sh]);b.setAttribute('aria-pressed','false');
+        // 14 Nov (inbox table): the row is the button: supplier (with the sample's title and its line), number, amount,
+        // due date and the risk the engine measured for it.
+        const rw=s.row&&typeof s.row==='object'?s.row:null,rk=riskOf(s.expect);
+        const b=btn([el('span','c sup',[el('span','vn',rw?String(rw.vendor):title),el('span','st',[rw?title:'',first?el('span','here',C.invoice.startHere):null]),sh]),
+          el('span','c no mono',rw?String(rw.invoice_no):''),el('span','c amt',rw?cash(rw.currency,rw.amount):''),el('span','c due',rw&&rw.due_date?dateOf(rw.due_date):''),
+          el('span','c risk',rk?el('span','rchip '+rk.tone,rk.label):'')]);if(rw)b.classList.add('row');b.setAttribute('aria-pressed','false');
         // The title is the button's name; its line is its description.
         b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
         list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
-      pick.replaceChildren(list);samplesIn=true;gate();
+      pick.replaceChildren(...(items.some((x)=>x&&x.row)?[head]:[]),list);samplesIn=true;gate();
       if(queued){queued=false;gate();file()}
     });
   };
@@ -1122,6 +1174,7 @@ function factRows(p,inv,terms){
   const m=payee?/^(.*), IBAN \S*?(\w{2,8})$/.exec(String(payee[1])):null;
   const pairs=[];
   if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
+  // 14 Nov (approval sheet): the payee's rows (name, IBAN, BIC, invoice number) in their own block, the rest of the terms under the amount.
   const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
   // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four, its BIC and the invoice number. The terms sign the
   // payee on file (beneficiary_id), its IBAN's last four and its BIC; the whole IBAN is that payee's, from the suppliers
@@ -1134,13 +1187,14 @@ function factRows(p,inv,terms){
   if(T&&typeof T.bic==='string'&&T.bic)pairs.push([C.proposal.bic,T.bic]);
   // The terms' invoice_no is the ledger's key, '<number> · <supplier>': the number alone here (the payee is its own row).
   if(T&&typeof T.invoice_no==='string'&&T.invoice_no)pairs.push([C.proposal.invoiceNo,T.invoice_no.split(' · ')[0]]);
+  const nPayee=pairs.length;
   if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
   // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
   if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:rateLine(cv)})]);
   if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
   if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
-  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),typeof v==='string'?el('dd','',v):v);
-  return {amount,list:d};
+  const dl=(ps,cls)=>{const d=el('dl',cls);for(const [k,v] of ps)d.append(el('dt','',k),typeof v==='string'?el('dd','',v):v);return d};
+  return {amount,payee:dl(pairs.slice(0,nPayee),'read payee'),list:dl(pairs.slice(nPayee),'read')};
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
 // or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
@@ -1207,6 +1261,12 @@ function fxHoldOf(why){
   if(!m)return null;const F=C.fxHold;const q=m[1]+' '+m[2];
   return {tone:'hold',code:'fx_markup',head:F.head,rows:[[F.quote,q+' · '+fill(F.over,{pct:m[3]}),q],[F.market,m[4]+' '+m[5],'']],said:'',rule:fill(F.rule,{limit:F.limitPct}),words:[why]};
 }
+// A sample's risk, from the engine's measured outcome for it (its kind, finding or status): a label and a tone.
+function riskOf(x){
+  if(!x||typeof x!=='object')return null;const R=C.inbox.risk;
+  const k=x.kind==='duplicate_document'?'duplicate_document':typeof x.finding==='string'&&R[x.finding]?x.finding:x.status==='ready'?'clean':null;
+  return k?{label:R[k],tone:k==='clean'?'ok':k==='possible_fraud'||k==='duplicate_document'?'bad':'warn'}:null;
+}
 // The receipt's skeleton while the terms are filed: the amount's and three rows' shapes, no value (nothing before its answer).
 // Six rows and the hash's pill, as the receipt has them, and the two lines and the fold under it: no jump when they come.
 function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<6;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));d.append(el('span','sk pill'));
@@ -1220,7 +1280,10 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   // The way out of a browser that cannot sign: shown without passkeys, or after a refusal that came at once (no prompt
   // was shown): open this page in Safari or Chrome, its address to copy.
   const card=openCard();card.hidden=true;let stuck=false;
-  box.append(top,said,main.node,card,live.node);
+  // The sheet's two actions: sign (the main button), or go back without signing (nothing is signed or paid).
+  const notNow=btn(A.notNow);notNow.classList.add('quiet');notNow.hidden=true;notNow.addEventListener('click',()=>show('invoice'));
+  const acts=el('div','acts sign',[main.node,notNow]);
+  box.append(top,said,acts,card,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
   // A request still out after 30 s: one calm line under the button (from the poller's tick), gone when it returns.
@@ -1253,12 +1316,13 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(S.screen!=='approve')return;
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
     const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms,tr.status===200?tr.json.fx_limit_bps:null);
-    top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
+    top.replaceChildren(el('div','receipt sheet',[el('p','sheet-h',A.sheet),f.payee,el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
       el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,' ',el('span','mono sha',fill(A.signsSha,{sha:String(p.terms_sha256||'').slice(0,8)})),saves]));
     stage();
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
   function stage(again){
+    notNow.hidden=false;
     card.hidden=!(stuck||!hasPasskeys());
     if(!hasPasskeys()){said.replaceChildren(note(A.noPasskey));main.set(A.again,()=>stage(true));return}
     saves.hidden=!!(eng&&eng.passkey);
@@ -1301,7 +1365,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   }
   // The passkey's prompt opens on the tap itself: nothing is asked of the server before navigator.credentials.get.
   async function approve(){
-    said.replaceChildren();busy(A.waiting);const t0=performance.now();
+    said.replaceChildren();notNow.hidden=true;busy(A.waiting);const t0=performance.now();
     let signed;
     try{signed=await withTimeout((signal)=>signTerms(p.challenge,eng.passkey.credential_id,signal))}catch(e){failedPasskey(e,t0);return}
     // The ring stays while the approval is sent; the tick shows as soon as its answer is in.
@@ -1523,7 +1587,13 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     cheat.disabled=true;cheat.classList.add('asking');cheat.textContent=C.pay.loading;show('pay')})}
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
-  const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  // 14 Nov (receipt): the records as a PDF, the same export as screen 6, here beside the receipt.
+  const pdf=btn(C.receipt.download);pdf.classList.add('quiet');const pdfSaid=el('p','hint');pdfSaid.hidden=true;
+  pdf.addEventListener('click',async()=>{if(pdf.disabled)return;pdf.disabled=true;pdf.textContent=C.receipt.downloading;
+    const g=await fetchFile('/v1/engine/export.pdf');if(S.screen!=='books')return;pdf.disabled=false;pdf.textContent=C.receipt.download;
+    if(g.status!==200||!g.blob){pdfSaid.hidden=false;pdfSaid.textContent=words(g.json||{},C.receipt.failed);return}pdfSaid.hidden=true;
+    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company-records.pdf';a.hidden=true;box.append(a);a.click();a.remove()});
+  const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','acts pdfl',[pdf]),pdfSaid,el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
   const awxPaid=payoutCard(S.awx,sha);
   box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
   const drawn=[];
@@ -1557,6 +1627,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       if(!p){paid.replaceChildren(wait(B.noPayment));return}
       const tx=txOf(p,txs.items||[]);const fee=feeOf(p,tx);const ok=isPaid(p);
       const d=el('dl','read');d.append(el('dt','',B.fee),el('dd','',fee?[money(fee.currency,fee.amount),' ',el('small','muted',B.feeWhy)]:'—'));
+      if(p.id)d.append(el('dt','xfer',C.receipt.transfer),el('dd','mono xfer',String(p.id)));
       paid.replaceChildren(block('paid',ok?B.paid:B.payment,[el('p','amount',money(p.currency,p.amount)),el('p','',el('span','pill'+(ok?' ok':' bad'),String(p.status||''))),d],ok?'ok':'bad'));
     }));
     drawn.push(all.then(([v,ps,txs,es])=>{
@@ -1574,7 +1645,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
           const amt=(cents,side)=>{const d=el('td','r');if(cents){d.append(el('span','side',side+' '),money(l.currency,fromCents(cents)))}else d.className='r none';return d};
           tb.append(el('tr',ac.role==='vat'?'vatl':'',[el('td','acct',[el('span','mono',String(l.account||'')),role?el('span','role',' · '+role):null]),amt(l.debit_cents,B.dr),amt(l.credit_cents,B.cr)]))}}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
-      booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
+      const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?'#'+e.entry_id:'').filter(Boolean);
+      booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),ids.length?el('p','ids',[el('span','muted',C.receipt.entries+' '),el('span','mono',ids.join(', '))]):null,el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
     }));
   }
@@ -1706,7 +1778,7 @@ export const testsPassing = (): string => (SUITE as { passed: number }).passed.t
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
