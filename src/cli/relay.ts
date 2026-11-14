@@ -23,7 +23,7 @@ import { recoverRecordPulls } from "../agents/sourcing.js";
 import { resumeInterrupted } from "../policy/saga.js";
 import { health, RECONCILE_EVERY_MS } from "../ops/health.js";
 import { openEnrolment } from "../passkey/ledger.js";
-import { relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
+import { enrolLink, relayConfig, viewerLink, type RelayConfig, mfaOn } from "../relay/config.js";
 import { startLocalRelay } from "../relay/local.js";
 import { RelayRunner } from "../relay/runner.js";
 import { Tools } from "../claude/tools.js";
@@ -93,7 +93,8 @@ if (mfaOn()) {
 }
 if (args.includes("--enrol")) {
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, replace: args.includes("--replace") });
-  console.log(`ENROL    on the phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
+  // One link: the enrolment page with the viewer key and this runner's pin, so the phone needs no viewer link first.
+  console.log(`ENROL    on the phone open ${enrolLink(cfg, signer.publicSpki)} and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries)`);
 }
 
 // Block 1 (KIT11_PASSKEY_OWNERS=on): an approved owners_execute is relayed behind the owners call budget

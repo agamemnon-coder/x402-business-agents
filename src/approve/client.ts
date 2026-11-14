@@ -1088,6 +1088,11 @@ function keyChangePanel(app: HTMLElement, v: Extract<RunnerVerdict, { state: "ne
 }
 
 const NEEDS_LINK = "This device needs the viewer link. Open the link Claude gave you once on this phone, then come back.";
+/**
+ * /enrol opened without the viewer key (14 Nov: the owner typed the code and only then met "needs its viewer link"):
+ * said before anything is typed, with the one link that fixes it.
+ */
+export const ENROL_NEEDS_KEY = "This phone does not have this run's key yet. Open the enrol link the runner printed (it ends in #view=…): it carries the key, then type the code here.";
 
 /**
  * A guest without the viewer link: say what this page is and where to look instead, without asking the relay (which
@@ -1884,6 +1889,12 @@ function enrolPage(): void {
   const step = (n: string) => { flow.dataset.step = n; };
   step("1");
   app.replaceChildren(flow);
+  // Without the key every enrolment call is refused (401): say so now, not after the code is typed.
+  if (!viewKey && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+    status.textContent = ENROL_NEEDS_KEY;
+    status.classList.add("alarm");
+    go.disabled = true;
+  }
   go.addEventListener("click", async () => {
     go.disabled = true;
     status.textContent = "Checking the code…";

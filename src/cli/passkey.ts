@@ -4,7 +4,7 @@
 
 import { openDb } from "../db/open.js";
 import { confirmPasskey, openEnrolment, pendingPasskeys } from "../passkey/ledger.js";
-import { relayConfig } from "../relay/config.js";
+import { enrolLink, relayConfig } from "../relay/config.js";
 
 const db = openDb();
 const [cmd, fp] = process.argv.slice(2);
@@ -20,7 +20,7 @@ if (cmd === "add") {
   if (!fp) { console.error("usage: npm run passkey -- add <name>   (lower-case, e.g. anna)"); process.exit(2); }
   const cfg = await relayConfig();
   const { window, code } = openEnrolment(db, { rpId: cfg.rpId, origin: cfg.origin, addPerson: fp });
-  console.log(`ENROL    ${fp}: on their phone open ${cfg.url}/enrol and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries); the runner must be running`);
+  console.log(`ENROL    ${fp}: on their phone open ${enrolLink(cfg)} and type ${code} (valid until ${window.expires_at.slice(11, 19)} UTC, five tries); the runner must be running`);
   process.exit(0);
 }
 const active = db.prepare("SELECT label, credential_id, enrolled_at FROM passkeys WHERE status = 'ACTIVE' ORDER BY enrolled_at").all() as { label: string; credential_id: string; enrolled_at: string }[];
