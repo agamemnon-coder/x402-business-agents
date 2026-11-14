@@ -1,5 +1,5 @@
 // The live reconciliation badge on /proof and Home (14 Nov): "Purser's books = Airwallex's transactions · checked
-// <time>". The awx-read instance (./awxRead.ts) reads Airwallex's financial transactions for the recorded run's window;
+// <time>". Its own instance ("awx-books", ./index.ts) asks the awx-read instance (./awxRead.ts), which reads Airwallex's financial transactions for the recorded run's window;
 // the same comparison Purser Cloud's Airwallex tab runs (cloud/src/awxLive.ts reconcileView, the runner's own code in
 // src/finance/awxReconcile.ts) turns them into a badge (src/finance/awxBadge.ts), kept 5 minutes. Public, read-only,
 // counts only: no amount, no id, no key. As JSON for /proof's script, and as an image for Home (whose script reaches no

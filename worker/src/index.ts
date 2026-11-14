@@ -143,7 +143,8 @@ export class RelayObject extends DurableObject<Env> {
     // Purser Cloud's live Airwallex reads (./awxRead.ts): their own instance, reached only through the AwxRead entrypoint.
     if (path === AWX_READ_PATH) return this.awxReadDesk().fetch(req);
     // The reconciliation badge on /proof and Home (./awxBooks.ts): the same instance's reads, kept 5 minutes.
-    if (isAwxBooksPath(path)) return awxBooksResponse(req, (this.awxBooks ??= booksCache(() => this.awxReadDesk().read("financial"))));
+    // Its own instance ("awx-books"): it can only ask the gateway's instance for the financial view, and answers counts.
+    if (isAwxBooksPath(path)) return awxBooksResponse(req, (this.awxBooks ??= booksCache(async () => (await this.env.RELAY.get(this.env.RELAY.idFromName("awx-read")).fetch(`https://relay.internal${AWX_READ_PATH}?view=financial`)).json())));
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
       relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
@@ -206,8 +207,8 @@ export default {
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health and /health/live are the relay's too: it knows when the runner last synced (B7).
-    // The live Airwallex badge: the awx-read instance, where the sandbox reads and their caps are (./awxBooks.ts).
-    if (isAwxBooksPath(path)) return env.RELAY.get(env.RELAY.idFromName("awx-read")).fetch(req);
+    // The live Airwallex badge (./awxBooks.ts): its own instance, which asks the gateway for one view; never the gateway itself.
+    if (isAwxBooksPath(path)) return env.RELAY.get(env.RELAY.idFromName("awx-books")).fetch(req);
     if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === AWX_EVENTS_PATH || path === "/health" || path === "/health/live") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return notFoundResponse(PAGES);
   },
