@@ -61,8 +61,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 4]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
-    expect(lines.slice(badges + 5, badges + 9)).toEqual(["", "</div>", "", "## Watch it"]);
-    const order = ["## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Verify it yourself in 3 commands", "## Enterprise"].map((h) => lines.indexOf(h));
+    // 14 Nov (jury scan): the 3-command quick start right under the header, on the first screen, then where things are.
+    expect(lines.slice(badges + 5, badges + 9)).toEqual(["", "</div>", "", "## Verify it yourself in 3 commands"]);
+    const order = ["## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Enterprise"].map((h) => lines.indexOf(h));
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     // 14 Nov (Max): the walkthrough and the trailer side by side, each with its thumbnail in the trailer's style.
