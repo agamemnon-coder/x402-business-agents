@@ -34,6 +34,7 @@ function sandbox(o: { issuing?: number; down?: boolean; ftItems?: unknown[] } = 
     if (p === "/api/v1/global_accounts") return Response.json({ items: [{ id: "ga_1", account_name: "Northwind Outdoor", account_number: "12345678", iban: "GB33BUKB20201555555555", country_code: "GB", status: "ACTIVE", institution: { name: "Test Bank" }, swift_code: "TESTGB2L" }] });
     if (p === "/api/v1/financial_transactions") return Response.json({ items: o.ftItems ?? FT_ITEMS, has_more: false });
     if (p === "/api/v1/fx/rates/current") return Response.json({ sell_currency: u.searchParams.get("sell_currency"), buy_currency: u.searchParams.get("buy_currency"), rate: 0.885, currency_pair: "USDEUR", created_at: "2026-11-14T10:00:00+0000" });
+    if (p.startsWith("/api/v1/transfers/")) { const inv = RUN.invoices.find((i) => i.transfer_id === p.split("/").pop()); return inv ? Response.json({ id: inv.transfer_id, status: "PAID", transfer_amount: 240, transfer_currency: "EUR", metadata: { approval_sha256: inv.approval_sha256 } }) : Response.json({ code: "not_found" }, { status: 404 }); }
     if (p === "/api/v1/transfers") return Response.json({ items: RUN.invoices.filter((i) => i.transfer_id).map((i, k) => ({ id: i.transfer_id, status: "PAID", transfer_amount: 240, transfer_currency: "EUR", metadata: { approval_sha256: k === 0 ? i.approval_sha256 : "0".repeat(64) }, created_at: "2026-11-07T12:12:00+0000" })) });
     if (p === "/api/v1/beneficiaries") return Response.json({ items: [{ id: "ben_1", nickname: "Stockline", beneficiary: { entity_type: "COMPANY", company_name: "Stockline Data GmbH", bank_details: { iban: "DE02120300000000202051", bank_country_code: "DE", account_currency: "EUR" } }, transfer_methods: ["LOCAL"] }] });
     if (p === "/api/v1/issuing/cards" || p === "/api/v1/issuing/transactions") {
@@ -125,6 +126,30 @@ describe("the read gateway (AwxReadDesk)", () => {
     expect(sb.calls.filter((c) => c.url.includes("/fx/rates/current")).length).toBe(3); // three pairs, once
   });
 
+  it("logs in once when every view refreshes at the same time (no login stampede)", async () => {
+    const { d, sb } = desk();
+    await Promise.all(AWX_VIEWS.filter((v) => v !== "calls").map((v) => d.read(v)));
+    expect(sb.calls.filter((c) => c.url.endsWith("/authentication/login")).length).toBe(1);
+  });
+
+  it("reads financial transactions in Airwallex's largest page and says when a window is cut", async () => {
+    const cut = sandbox();
+    const orig = cut.fetchImpl;
+    const fetchImpl = (async (input: string, init: RequestInit) => {
+      if (new URL(input).pathname === "/api/v1/financial_transactions") { await orig(input, init); return Response.json({ items: FT_ITEMS, has_more: true }); }
+      return orig(input, init);
+    }) as unknown as typeof fetch;
+    const d = new AwxReadDesk(sqlOver(new Database(":memory:")), { clientId: CLIENT, apiKey: KEY, fetchImpl, now: () => Date.parse("2026-11-14T10:00:00Z") });
+    const a = await d.read("financial");
+    const data = (a as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as { recent_cut: boolean; run_complete: boolean };
+    expect(data).toMatchObject({ recent_cut: true, run_complete: false });
+    expect(cut.calls.filter((c) => c.url.includes("financial_transactions")).every((c) => new URL(c.url).searchParams.get("page_size") === "1000")).toBe(true);
+    // The reconciliation concludes nothing from part of a window.
+    const r = reconcileView(a as AwxLiveAnswer, new Date());
+    expect(r).toMatchObject({ view: "reconcile", source: "unavailable", reason: expect.stringMatching(/nothing is concluded/) });
+    expect(JSON.stringify(r)).not.toMatch(/differences/);
+  });
+
   it("counts every call by endpoint, without its query or any id", async () => {
     const { d } = desk();
     await d.read("rates");
@@ -182,6 +207,81 @@ describe("the read gateway (AwxReadDesk)", () => {
   });
 });
 
+describe("Airwallex's answers as the live sandbox gives them (read 14 Nov after the deploy)", () => {
+  const OLD = "ca2def06-1de3-4167-ad40-c30e6353599d", NEW = "0b9d6c1e-2f3a-4b5c-8d7e-9f0a1b2c3d4e", CLOSED = "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f";
+  /** The list without limits and oldest first; each card's own record with its controls; authorizations oldest first. */
+  function liveShapes() {
+    const calls: string[] = [];
+    const fetchImpl = (async (input: string, init: RequestInit) => {
+      const u = new URL(input), p = u.pathname;
+      calls.push(`${String(init.method)} ${p}`);
+      if (p === "/api/v1/authentication/login") return Response.json({ token: TOKEN }, { status: 201 });
+      if (p === "/api/v1/issuing/cards") return Response.json({ items: [
+        { card_id: OLD, card_status: "ACTIVE", nick_name: "sourcing agent: data subscriptions", card_number: "************8366", created_at: "2026-10-29T14:44:53.292+0000" },
+        { card_id: CLOSED, card_status: "CLOSED", nick_name: "task T-0001: flight", card_number: "************8653", created_at: "2026-10-30T09:00:00.000+0000" },
+        { card_id: NEW, card_status: "ACTIVE", nick_name: "sourcing agent: warehouse and data software (3efefc)", card_number: "************1423", created_at: "2026-11-03T06:06:27.783+0000" },
+      ] });
+      if (p.startsWith("/api/v1/issuing/cards/")) {
+        const id = p.split("/").pop();
+        return Response.json({ card_id: id, card_status: "ACTIVE", authorization_controls: { transaction_limits: { currency: "EUR", limits: [{ amount: 46, interval: "PER_TRANSACTION" }, { amount: 100, interval: "MONTHLY" }] }, allowed_merchant_categories: ["5734"] } });
+      }
+      if (p === "/api/v1/issuing/transactions") return Response.json({ items: [
+        { transaction_id: "tx-old", card_id: OLD, transaction_type: "AUTHORIZATION", status: "FAILED", transaction_amount: -45, transaction_currency: "EUR", failure_reason: "LIMIT_EXCEEDED", transaction_date: "2026-10-29T14:45:28.541+0000" },
+        { transaction_id: "tx-new", card_id: NEW, transaction_type: "AUTHORIZATION", status: "APPROVED", transaction_amount: -29.99, transaction_currency: "EUR", transaction_date: "2026-11-06T10:00:00.000+0000" },
+      ] });
+      if (p === "/api/v1/beneficiaries") return Response.json({ items: [
+        { id: "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb", nickname: "Stockline Data GmbH EUR SWIFT", beneficiary: { entity_type: "COMPANY", bank_details: { bank_country_code: "DE", account_currency: "EUR", iban: "DE02120300000000202051" } }, transfer_methods: ["SWIFT"] },
+        { id: "2fdac779-877a-418a-8ade-d21764af7558", nickname: "Bergtex Textil GmbH EUR SWIFT", beneficiary: { entity_type: "COMPANY", bank_details: { account_name: "Bergtex Textil GmbH", bank_country_code: "DE", account_currency: "EUR" } }, transfer_methods: ["SWIFT"] },
+      ] });
+      return Response.json({ code: "not_found" }, { status: 404 });
+    }) as unknown as typeof fetch;
+    const d = new AwxReadDesk(sqlOver(new Database(":memory:")), { clientId: CLIENT, apiKey: KEY, fetchImpl, now: () => Date.parse("2026-11-14T19:00:00Z") });
+    return { d, calls };
+  }
+
+  it("reads one card's own record (by id, GET only) for its limits; never the card number's /details", () => {
+    expect(readAllowedUrl("GET", `${HOST}/api/v1/issuing/cards/${NEW}`).pathname).toBe(`/api/v1/issuing/cards/${NEW}`);
+    for (const [m, url] of [["GET", `${HOST}/api/v1/issuing/cards/${NEW}/details`], ["GET", `${HOST}/api/v1/issuing/cards/${NEW}/`], ["GET", `${HOST}/api/v1/issuing/cards/not-a-card`],
+      ["GET", `${HOST}/api/v1/issuing/cards/${NEW}?x=1`], ["POST", `${HOST}/api/v1/issuing/cards/${NEW}`], ["POST", `${HOST}/api/v1/issuing/cards/${NEW}/update`], ["GET", `${HOST}/api/v1/issuing/cards/${NEW.toUpperCase()}`]] as const) {
+      expect(() => readAllowedUrl(m, url), `${m} ${url}`).toThrow(AwxReadNotAllowed);
+    }
+  });
+
+  it("shows the newest cards first, with the limits from each active card's own record, and the newest authorizations first", async () => {
+    const { d, calls } = liveShapes();
+    const a = await d.read("issuing");
+    expect(a.source).toBe("airwallex-sandbox");
+    const data = (a as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as { cards: { id: string; last4: string; status: string; currency: string | null; limits: { amount: string; interval: string }[]; nickname: string }[]; transactions: { id: string }[] };
+    expect(data.cards.map((c) => c.last4)).toEqual(["1423", "8653", "8366"]);
+    expect(data.cards[0]).toMatchObject({ id: NEW, status: "ACTIVE", currency: "EUR", limits: [{ amount: "46", interval: "PER_TRANSACTION" }, { amount: "100", interval: "MONTHLY" }], nickname: expect.stringMatching(/^sourcing agent/) });
+    expect(data.cards[1]).toMatchObject({ status: "CLOSED", limits: [] }); // a closed card is not read one by one
+    expect(data.transactions.map((t) => t.id)).toEqual(["tx-new", "tx-old"]);
+    expect(calls.filter((c) => c.startsWith("GET /api/v1/issuing/cards/"))).toEqual([`GET /api/v1/issuing/cards/${NEW}`, `GET /api/v1/issuing/cards/${OLD}`]);
+    expect(calls.some((c) => c.endsWith("/details"))).toBe(false);
+  });
+
+  it("counts a card's read under {id}: no card id ever reaches the calls panel", async () => {
+    const { d } = liveShapes();
+    await d.read("issuing");
+    const c = await d.read("calls");
+    const s = JSON.stringify(c);
+    expect(s).toContain('"GET /api/v1/issuing/cards/{id}"');
+    expect(s).not.toContain(NEW);
+    expect(s).not.toContain(OLD);
+  });
+
+  it("names a beneficiary from its bank account when Airwallex gives no company name, and finds the recorded payee check by its nickname", async () => {
+    const { d } = liveShapes();
+    const a = await d.read("beneficiaries");
+    const data = (a as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as { beneficiaries: { name: string | null; nickname: string }[] };
+    expect(data.beneficiaries.map((b) => b.name)).toEqual([null, "Bergtex Textil GmbH"]);
+    const { annotateBeneficiaries } = await import("../cloud/src/awxLive.js");
+    const ann = annotateBeneficiaries(data as unknown as Record<string, unknown>) as { beneficiaries: { payee_check: { match: string; source: string } | null }[] };
+    expect(ann.beneficiaries[0]!.payee_check).toMatchObject({ match: "NOT_MATCHED", source: "recorded" });
+    expect(ann.beneficiaries[1]!.payee_check).toBeNull();
+  });
+});
+
 describe("the reconciliation: Purser's ledger of the run against Airwallex's financial transactions", () => {
   const live = (items: unknown[]): AwxLiveAnswer => ({ view: "financial", source: "airwallex-sandbox", host: "api.sandbox.airwallex.com", read_at: "2026-11-14T10:00:00.000Z", cache_seconds: 45, data: { run: items, run_window: RUN_WINDOW } });
   const asRows = (items: typeof FT_ITEMS) => items.map((i) => ({ ...i, amount: String(i.amount), fee: String(i.fee), net: String(i.net) }));
@@ -227,6 +327,71 @@ describe("the records the tab checks against", () => {
     expect(AWX_RUN_RECORDED).toEqual({ run: run.run, invoices: run.invoices.map(pick) });
     const pc = JSON.parse(readFileSync(new URL("../docs/runs/2026-11-12-airwallex-payee-check.json", import.meta.url), "utf8")) as { audit: { ts: string; event: string; subject: string | null; payload: { match?: string; label?: string } }[] };
     expect(PAYEE_CHECKS_RECORDED).toEqual(pc.audit.filter((a) => a.subject && /^payee\.name_check/.test(a.event)).map((a) => ({ name: a.subject, match: a.payload.match ?? null, label: a.payload.label ?? null, at: a.ts })));
+  });
+});
+
+describe("the recorded payouts read back live by id", () => {
+  it("pins the run record's two transfer ids in the gateway", async () => {
+    const { RECORDED_TRANSFER_IDS } = await import("../worker/src/awxRead.js");
+    expect([...RECORDED_TRANSFER_IDS]).toEqual(RUN.invoices.filter((i) => i.transfer_id).map((i) => i.transfer_id));
+  });
+  it("reads only GET /transfers/{id} (a UUID), never a write or a sub-path", () => {
+    const id = RUN.invoices.find((i) => i.transfer_id)!.transfer_id!;
+    expect(readAllowedUrl("GET", `${HOST}/api/v1/transfers/${id}`).pathname).toBe(`/api/v1/transfers/${id}`);
+    for (const [m, u] of [["POST", `${HOST}/api/v1/transfers/${id}`], ["GET", `${HOST}/api/v1/transfers/${id}/cancel`], ["POST", `${HOST}/api/v1/transfers/${id}/cancel`], ["GET", `${HOST}/api/v1/transfers/create`]] as const) expect(() => readAllowedUrl(m, u), `${m} ${u}`).toThrow(AwxReadNotAllowed);
+  });
+  it("puts Airwallex's metadata.approval_sha256 next to the hash the CFO signed, with Match", async () => {
+    const { d } = desk();
+    const { annotateTransfers } = await import("../cloud/src/awxLive.js");
+    const a = await d.read("transfers") as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>;
+    const rb = (annotateTransfers(a.data as Record<string, unknown>) as { readback: { invoice: string; airwallex_sha256: string; signed_sha256: string; matches: boolean }[] }).readback;
+    expect(rb.map((x) => [x.invoice, x.matches])).toEqual(RUN.invoices.filter((i) => i.transfer_id).map((i) => [i.invoice_no, true]));
+    expect(rb[0]!.airwallex_sha256).toBe(rb[0]!.signed_sha256);
+    // A hash one character off is "Differs", never a match.
+    const off = annotateTransfers({ readback: [{ id: RUN.invoices[0]!.transfer_id, approval_sha256: RUN.invoices[0]!.approval_sha256.replace(/.$/, (c) => (c === "0" ? "1" : "0")) }] }) as { readback: { matches: boolean }[] };
+    expect(off.readback[0]!.matches).toBe(false);
+  });
+});
+
+describe("contrast", () => {
+  it("the console's faint text is at least 4.5:1 on white (axe, 14 Nov)", () => {
+    const src = readFileSync(new URL("../cloud/src/console.ts", import.meta.url), "utf8");
+    const hex = /--faint: (#[0-9a-f]{6});/.exec(src)![1]!;
+    const lum = (h: string) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!; };
+    expect((1 + 0.05) / (lum(hex) + 0.05)).toBeGreaterThanOrEqual(4.5);
+    expect((lum("#f4f5f7") + 0.05) / (lum(hex) + 0.05)).toBeGreaterThanOrEqual(4.5); // on the sunken grey too
+  });
+});
+
+describe("FX rates read the right way round (live, 14 Nov)", () => {
+  it("follows Airwallex's currency pair, whichever side is bought: never '1 BUY = rate SELL' blindly", async () => {
+    const { rateWords, annotateRates } = await import("../cloud/src/awxLive.js");
+    // As read live: buying EUR with USD and buying USD with EUR, both quoted as EURUSD (the spread between them).
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.116374", pair: "EURUSD" })).toEqual({ base: "EUR", quote: "USD", says: "1 EUR = 1.116374 USD" });
+    expect(rateWords({ sell_currency: "EUR", buy_currency: "USD", rate: "1.08768", pair: "EURUSD" })).toEqual({ base: "EUR", quote: "USD", says: "1 EUR = 1.08768 USD" });
+    expect(rateWords({ sell_currency: "GBP", buy_currency: "EUR", rate: "0.844602", pair: "EURGBP" })).toEqual({ base: "EUR", quote: "GBP", says: "1 EUR = 0.844602 GBP" });
+    // A pair that does not name both currencies, or none at all: no "1 X = Y" is said.
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.1", pair: "GBPUSD" })).toBeNull();
+    expect(rateWords({ sell_currency: "USD", buy_currency: "EUR", rate: "1.1", pair: null })).toBeNull();
+    const a = annotateRates({ rates: [{ sell_currency: "USD", buy_currency: "EUR", rate: "1.116374", pair: "EURUSD" }] }) as { rates: { says: string }[] };
+    expect(a.rates[0]!.says).toBe("1 EUR = 1.116374 USD");
+  });
+});
+
+describe("the tab's look: the official logo, the Overview card", () => {
+  it("embeds the Airwallex wordmark byte for byte", async () => {
+    const { AIRWALLEX_LOGO_DATA_URL } = await import("../cloud/src/awxLogo.gen.js");
+    const file = readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url));
+    expect(AIRWALLEX_LOGO_DATA_URL).toBe(`data:image/png;base64,${file.toString("base64")}`);
+  });
+  it("puts the live card on the Overview, labelled apart from the demo month, and the logo in the console's script", async () => {
+    const { consolePage } = await import("../cloud/src/console.js");
+    const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
+    expect(html).toContain("nx,awlOverview(),dash]");
+    expect(html).toContain("const AWL_LOGO=\"data:image/png;base64,");
+    expect(html).not.toContain("__AWL_LOGO__");
+    const { MESSAGES } = await import("../src/ui/i18n.js");
+    expect(MESSAGES.en["cs.awl.ov_sub"]).toMatch(/Airwallex sandbox: test money.*demo company's simulated month/);
   });
 });
 

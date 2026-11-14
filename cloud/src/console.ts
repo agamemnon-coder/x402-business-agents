@@ -12,12 +12,13 @@ import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.j
 import { fromB64 } from "./crypto.js";
 import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
+import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
 import { t0CloseLine } from "./t0Close.js";
-import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
+import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
@@ -344,7 +345,11 @@ ol.stepper li.done .n .ic { display: inline-flex; }
    enterprise, clearly not the /try demo) the band is a calm panel, what Purser Cloud is in three lines, not /try's scene. */
 .hero, .trust { display: none; }
 .signed-out .hero { display: grid; flex: 1 0 auto; min-height: 34vh; min-height: 34svh; padding: 16px 12px 44px; }
-.signed-out #foot { display: none; }
+.signed-out #foot, .signed-out .foot-awx { display: none; }
+/* "Built on Airwallex" on a phone: signed out, in the app bar's empty left (the site's own line under the header would
+   push the sign-in card below the first screen); signed in, the footer's badge. */
+.awx-app { display: none; }
+@media (max-width: 759px) { body .awx-row { display: none; } .signed-out .awx-app { display: inline-flex; } }
 .signed-out { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
 .signed-out main { position: relative; z-index: 1; margin-top: -28px; padding: 0; }
 .signed-out .auth { margin: 0 auto; border-radius: 16px; }
@@ -363,14 +368,15 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 const BODY = `
 ${siteHeader(null)}
 <div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
-<span class="spacer"></span>
+<span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</span><span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap">${svg("flask", 15)}<span data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><a href="#/sign-in" id="demo-out" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</a></div></div>
 <div class="hero"><div class="side"><h2 data-t="cs.side.title">${tr("en", "cs.side.title")}</h2><p data-t="cs.side.sub">${tr("en", "cs.side.sub")}</p><ul>${(["cs.side.1", "cs.side.2", "cs.side.3"] as const).map((k) => `<li>${svg("circle-check", 18)}<span data-t="${k}">${tr("en", k)}</span></li>`).join("")}</ul></div></div>
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
-<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>`;
+<p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
+<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
@@ -1498,7 +1504,7 @@ const CLOUD_CSS = `
 .skel .sk-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } .skel .sk-cards i { height: 96px; }
 @media (prefers-reduced-motion: no-preference) { .skel i { animation: skp 1.4s ease-in-out infinite; } }
 @keyframes skp { 50% { opacity: .55; } }
-:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #8a93a1; --r: 12px; }
+:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #667085; --r: 12px; }
 body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
 header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .appbar .wrap { min-height: 52px; }
@@ -1511,6 +1517,7 @@ main { padding: 32px 0 72px; }
 table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
 .test { background: #fff7e6; border: 1px solid #f3dfb5; }
 #foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
+.foot-awx { margin-top: 0; padding-bottom: 28px; }
 /* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
 .signed-out { background: #ffffff; }
 .signed-out .hero { background: #f8f9fb; border-right: 1px solid var(--border); align-content: center; justify-items: center; }
@@ -1751,7 +1758,7 @@ export const pdfViewCsp = (n: string, origin: string) =>
   `sandbox allow-scripts; default-src 'none'; script-src 'nonce-${n}' ${origin}/assets/pdfjs.mjs; worker-src blob:; style-src 'nonce-${n}'; img-src blob: data:; font-src data: blob:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'self'`;
 
 export const consoleCsp = (n: string) =>
-  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
+  `default-src 'none'; script-src 'nonce-${n}' 'self'; style-src 'nonce-${n}'; img-src 'self' data: blob: ${SITE_ORIGIN}; font-src 'self'; connect-src 'self'; frame-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'`;
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
