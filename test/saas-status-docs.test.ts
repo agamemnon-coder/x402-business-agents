@@ -204,7 +204,10 @@ describe("/docs: docs and API", () => {
     expect(html).toMatch(/<button type="button" class="cp" data-copy="[^"]+" aria-label="Copy mcp: [^"]+" hidden>/);
     const copies = [...html.matchAll(/<button type="button" class="cp" data-copy="([^"]+)"/g)].map((m) => decode(m[1]!));
     expect(copies).toEqual([PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, MCP_COMMAND, CLOUD_OPENAPI_PATH, "npm run judge"]);
-    expect(WORKS_WITH).toEqual(["Claude", "Cursor", "VS Code", "Gemini CLI"]);
+    // Partner scan, 14 Nov: "any MCP client", Claude's own two as examples; no other vendor on the page.
+    expect(WORKS_WITH).toEqual(["Claude", "Claude Code"]);
+    expect(card(html, "connect-ai")).toContain("works with any MCP client:");
+    expect(card(html, "connect-ai")).not.toMatch(/Cursor|VS Code|Gemini|ChatGPT|Windsurf/);
     for (const c of WORKS_WITH) expect(read("docs/connect-claude.md")).toContain(c);
     expect([.../<ul class="ww">([\s\S]*?)<\/ul>/.exec(card(html, "connect-ai"))![1]!.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1])).toEqual([...WORKS_WITH]);
   });

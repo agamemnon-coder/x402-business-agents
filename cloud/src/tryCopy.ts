@@ -42,7 +42,7 @@ export const START = {
   /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
   walk: "Or watch the walkthrough",
   /** Under the card, small and grey. */
-  trust: "Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
+  trust: "Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
@@ -257,6 +257,24 @@ export const PROPOSAL_FIELDS = {
    * row says how much of the payment that part is and what it costs in USD.
    */
   fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell} at {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
+};
+
+/**
+ * 14 Nov: screen 3's Airwallex card, beside the terms (outside the word budget, as the terms' own labels are): the live
+ * sandbox quote the terms carry (cloud/src/engine/liveFx.ts), or, when there is none, the recorded rate and why.
+ * {sell}, {buy}: amounts; {left}: minutes and seconds; {why}: one of `why`.
+ */
+export const FX_CARD = {
+  live: "Airwallex · live sandbox quote",
+  recorded: "Airwallex unavailable, recorded rate used",
+  quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
+  liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
+  recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
+  why: {
+    switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
+    day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
+    timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
+  } as Record<string, string>,
 };
 
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
@@ -564,7 +582,8 @@ export const VISIBLE = {
 // under a new number, "work 5" new bank details, "work 6" a new supplier; the round trip moved into the fold. Screen 4's
 // refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
 // 14 Nov: +2 on each start state, the trust line's "Alta (formerly Metal)" (Metal renamed itself).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// Partner scan, 14 Nov: the start screens +3 for "No endorsement implied."; Airwallex left the "Works with" line (it is the platform, "Built on Airwallex").
+export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 63, "start 2": 63, "start 3": 57, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -587,7 +606,7 @@ export const LIVE = {
   step: "Purser recorded a step.",
   /** Added to every line where money moves. */
   money: "simulated bank · test money",
-  who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser" },
+  who: { claude: "Claude", code: "Purser's code", you: "You", purser: "Purser", airwallex: "Airwallex sandbox" },
   /** Task A6: the payables agents' decisions, each its own step on the "At work" panel. */
   agents: { "ap.checker_decided": "Checker agent", "ap.coded": "Coder agent", "ap.payer_proposed": "Payer agent" } as Record<string, string>,
   /**
@@ -699,6 +718,10 @@ export const LIVE = {
     "treasury.seeded_plain": "The test company's account was filled.",
     "invoice.escalated": "The payment could not be planned. A person looks at it.",
     "invoice.fraud_suspected": "The invoice looks like fraud. It was blocked before anything was paid.",
+    "airwallex.quote": "Airwallex sandbox: quote {quote_id} at {rate}.",
+    "airwallex.quote_plain": "Airwallex sandbox: a live quote.",
+    "airwallex.unavailable": "Airwallex unavailable, recorded rate used ({rate}).",
+    "airwallex.unavailable_plain": "Airwallex unavailable, recorded rate used.",
     "fx.rate_checked": "The exchange rate was compared with the market rate.",
     "fx.converted": "Currency was exchanged: {money} bought.",
     "fx.converted_plain": "Currency was exchanged.",

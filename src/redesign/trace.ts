@@ -10,6 +10,7 @@
 // A page with no script: the picker is a list of links (#<payment id>), and the chosen payment's chain is shown by CSS
 // (:target); with none chosen, the SWIFT transfer's is. The URL is /trace; /trace#<payment id> opens one payment.
 
+import { altaWords } from "../ui/formerly.js";
 import { readFileSync } from "node:fs";
 import { doubleEntry, type Posting } from "../accounting/books.js";
 import { checkChainLinks } from "../audit/log.js";
@@ -176,7 +177,7 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
     const lines = t.journal.filter((l) => l.source === sourceOf[p.kind] && l.proof === p.rail_id);
     const booked: Posting[] = postings.filter((x) => lines.some((l) => l.ref === x.ref && l.description === x.description && l.date === x.date && l.proof === x.proof));
     add("booking", booked.length ? "shown" : "none", booked.length
-      ? booked.map((x) => `${x.entry} ${x.debit_cents ? "debit" : "credit"} ${x.account} ${x.account_name}: ${fromCents(x.debit_cents || x.credit_cents)} ${unitOf(x.currency)}`).join("; ")
+      ? booked.map((x) => `${x.entry} ${x.debit_cents ? "debit" : "credit"} ${x.account} ${altaWords(x.account_name)}: ${fromCents(x.debit_cents || x.credit_cents)} ${unitOf(x.currency)}`).join("; ")
       : "No journal line names this payment.", [...new Set(booked.map((x) => x.entry))].map((e) => ({ label: "entry", value: e })));
 
     // 8. The audit row.

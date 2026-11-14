@@ -4,7 +4,7 @@
 // claimed, no quotes, no design-partner call, no person named.
 import { describe, expect, it } from "vitest";
 import { DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL } from "../src/config/brand.js";
-import { ABOUT_HEAD, AGENT_FLOW, AGENT_SETS_NOTE, FLOW_HEAD, NO_ENDORSEMENT, WORKS_WITH, homePage } from "../src/redesign/home.js";
+import { ABOUT_HEAD, AGENT_FLOW, AGENT_SETS_NOTE, FLOW_HEAD, NO_ENDORSEMENT, VISA_WORKS_WITH, WORKS_WITH, homePage } from "../src/redesign/home.js";
 import { MARKS_NOTE } from "../src/redesign/ui.js";
 import { textOutsideTags } from "./support/scriptBlocks.js";
 
@@ -42,9 +42,10 @@ describe("About Purser on Home", () => {
     expect(trust).not.toContain("logo-airwallex");
     // 14 Nov: Metal is now Alta, its wordmark shown with the Alta team's OK (docs/evidence/logo-permissions.md); Visa as
     // text on its tile (owner's decision); Metal's old mark is gone.
-    expect(trust).toContain('<span class="tile tname visa">Visa</span>');
+    // Partner scan, 14 Nov: Visa named for what Purser used.
+    expect(trust).toContain('<span class="tile tname visa">Visa Intelligent Commerce via Airwallex Airi (sandbox)</span>');
     expect(trust).not.toMatch(/logo-metal|logo-visa/);
-    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} Visa ${NO_ENDORSEMENT}`);
+    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} ${VISA_WORKS_WITH} ${NO_ENDORSEMENT}`);
     expect(ON).not.toMatch(/filter: (brightness|invert|grayscale)|mix-blend-mode/);
     expect(ON).toMatch(/\.trust \.tile \{[^}]*background: #ffffff/);
     // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).
