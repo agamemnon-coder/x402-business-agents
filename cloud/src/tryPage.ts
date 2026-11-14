@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INAPP, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
@@ -139,7 +139,7 @@ dl.read dt { color: var(--muted); }
 dl.read dd { margin: 0; overflow-wrap: anywhere; }
 /* The rail of the seven steps, on top of every screen after the start: a dot per step on one line, the steps done
    filled, the current one lit with a halo and its name beside the rail. */
-.progw { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px; }
+.progw { display: flex; align-items: center; gap: 12px; margin: 6px 0 26px; }
 .prog { flex: 1; display: flex; list-style: none; margin: 0; padding: 0; }
 .prog li { flex: 1; display: grid; place-items: center; height: 16px; background: linear-gradient(var(--border), var(--border)) center / 100% 2px no-repeat; }
 .prog li:first-child { background-size: 50% 2px; background-position: right center; }
@@ -148,7 +148,15 @@ dl.read dd { margin: 0; overflow-wrap: anywhere; }
 .prog li.done { background-image: linear-gradient(var(--accent), var(--accent)); }
 .prog li.done::before { background: var(--accent); border-color: var(--accent); }
 .prog li.on::before { width: 13px; height: 13px; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
-.stepname { font-size: 12.5px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.prog li { position: relative; }
+.prog li .lbl { position: absolute; top: 19px; left: 50%; transform: translateX(-50%); font-size: 10.5px; line-height: 1; color: var(--muted); white-space: nowrap; }
+.prog li.on .lbl { color: var(--accent); font-weight: 700; }
+.inapp { margin: 16px 0 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent) 8%, transparent); text-align: left; }
+.inapp .big { margin: 0 0 4px; font-weight: 700; }
+.inapp p { margin: 4px 0; }
+.inapp .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.inapp .row .btn { min-height: 44px; }
+.inapp a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
 /* Screens 1 to 6 in the start's look: the brand's band behind the top of the page, each screen in a soft card that
    slides in; a card inside it is a quiet panel. */
 body:not(:has(.screen.start)) { background: radial-gradient(70% 300px at 8% 0, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) no-repeat, linear-gradient(180deg, var(--accent-soft), var(--bg) 360px) no-repeat, var(--bg); }
@@ -568,8 +576,9 @@ function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','ban
 function steps(name){
   const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
   const ol=el('ol','prog');ol.setAttribute('aria-label',fill(C.steps.where,{n:at+1,of:order.length}));
-  for(let i=0;i<order.length;i++){const li=el('li',i<at?'done':i===at?'on':'');if(i===at)li.setAttribute('aria-current','step');ol.append(li)}
-  return el('div','progw',[ol,el('span','stepname',C.steps.names[name])]);
+  // Each dot with its word, small; the current one marked (14 Nov, a tester: "what are the other dots?").
+  for(let i=0;i<order.length;i++){const li=el('li',i<at?'done':i===at?'on':'',el('span','lbl',C.steps.names[order[i]]||C.steps.start));if(i===at)li.setAttribute('aria-current','step');ol.append(li)}
+  return el('div','progw',ol);
 }
 // The rail moved on without a new screen (screen 3 lights Pay when its pay call starts).
 function rail(name){const o=$('#main .progw'),n=steps(name);if(o&&n)o.replaceWith(n)}
@@ -611,7 +620,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
   const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
   // The walkthrough link right under the button (jury round 2, 13 Nov), then what the visit is.
-  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));
+  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));if(inApp())box.append(inappCard(false));
   b.addEventListener('click',async()=>{
     b.disabled=true;label(C.start.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -871,10 +880,33 @@ screen('work',{heading:C.work.heading,draw(box,arg){
 
 // The passkey: whether this device can make one, and its word for it (a guess from the platform, never proven).
 const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
+// In-app browsers (WhatsApp, Instagram, Facebook, LinkedIn, Line, WeChat, Snapchat, TikTok, the Google app, Android web
+// views): their own web view, where a passkey cannot be made or used. Read from the user agent's own tokens.
+const INAPP_UA=/\b(FBAN|FBAV|FB_IAB|FBIOS|Instagram|WhatsApp|LinkedInApp|MicroMessenger|Snapchat|Twitter|TikTok|BytedanceWebview|musical_ly|Pinterest|GSA)\b|\bLine\/|;\s?wv\)/;
+const inApp=()=>INAPP_UA.test(navigator.userAgent||'');
+const onIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent||'');
+// The card: open this page in Safari or Chrome; Copy link (the address, as it is); on an iPhone, how; the walkthrough.
+function inappCard(withFilm=true){
+  const I=C.inapp;const said=el('span','hint','');
+  const b=el('button','btn',I.copy);b.type='button';
+  b.addEventListener('click',async()=>{
+    // The clipboard may refuse or never answer in an in-app browser: 1.5 s, then the fallback, then the address itself.
+    let done=false;try{await Promise.race([navigator.clipboard.writeText(location.href),new Promise((_,no)=>{const copyTimer=setTimeout(()=>no(new Error('slow')),1500);return copyTimer})]);done=true}catch(e){}
+    if(!done){const t=document.createElement('textarea');t.value=location.href;t.setAttribute('readonly','');document.body.append(t);t.select();try{done=document.execCommand('copy')}catch(e){}t.remove()}
+    said.textContent=done?I.copied:location.href;
+  });
+  const film=el('a','',I.film);film.href=C.film;film.target='_blank';film.rel='noopener';
+  return el('div','inapp',[el('p','big',I.title),el('p','muted',I.why),onIOS()?el('p','hint',I.ios):null,el('div','row',[b,said]),withFilm?el('p','',film):null]);
+}
+// A passkey prompt given up after 30 s: some in-app web views leave it open without ever showing it.
+async function withTimeout(fn){
+  const ac=new AbortController();let late=false;const passkeyTimer=setTimeout(()=>{late=true;ac.abort()},30000);
+  try{return await fn(ac.signal)}catch(e){if(late){const x=new Error('timeout');x.name='PasskeyTimeout';throw x}throw e}finally{clearTimeout(passkeyTimer)}
+}
 const method=()=>methodOf(C.method,navigator.userAgent||'');
 // The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
-async function signTerms(challenge,credentialId){
-  const c=await navigator.credentials.get({publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:120000}});
+async function signTerms(challenge,credentialId,signal){
+  const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:30000}});
   return signedOf(c);
 }
 // The one pay request (screen 3's pay as signed, screen 4's fields): POST .../pay with payBody's {terms, credential}.
@@ -925,7 +957,10 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   const filing=fill(A.filing,{method:method()});
   const main=mainButton();main.off(filing);
   const live=livePanel();
-  box.append(top,said,main.node,live.node);
+  // The way out of a browser that cannot sign: shown in an in-app browser, without passkeys, or after a refusal that
+  // came at once (no prompt was shown).
+  const card=inappCard();card.hidden=true;let stuck=false;
+  box.append(top,said,main.node,card,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
   // A request still out after 30 s: one calm line under the button (from the poller's tick), gone when it returns.
@@ -956,14 +991,21 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
     const f=factRows(p,inv,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      termsFold(p,terms),el('p','muted',[A.signs,saves]));
+      el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
     stage();
   }
-  function stage(){
-    if(!hasPasskeys()){main.node.hidden=true;said.replaceChildren(note(A.noPasskey));return}
+  // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
+  function stage(again){
+    card.hidden=!(inApp()||stuck||!hasPasskeys());
+    if(!hasPasskeys()){said.replaceChildren(note(A.noPasskey));main.set(A.again,()=>stage(true));return}
     saves.hidden=!!(eng&&eng.passkey);
-    if(!eng||!eng.passkey){main.set(A.create,createPasskey);return}
-    main.set(fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
+    if(!eng||!eng.passkey){main.set(again?A.again:A.create,createPasskey);return}
+    main.set(again?A.again:fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
+  }
+  // A failed prompt: a plain line (timed out, cancelled or failed), the card when it came at once, and Try again.
+  function failedPasskey(e,t0){
+    idle();if(performance.now()-t0<1500)stuck=true;
+    said.replaceChildren(note(e&&e.name==='PasskeyTimeout'?A.timeout:cancelled(e)?A.cancelled:A.failed));stage(true);
   }
   // Two taps, each opening its own prompt: create (it uses up the tap's user activation, so Safari would refuse a
   // second prompt in the same tap), then approve. Labels say what runs: the start request keeps the button's own label
@@ -972,11 +1014,11 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     said.replaceChildren();
     const s=await api('POST','/v1/engine/passkey/start');
     if(s.status!==200||!s.json.user){said.replaceChildren(note(words(s.json,A.failed)));stage();return}
-    let made;busy(A.waiting);
-    try{made=await navigator.credentials.create({publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
+    let made;busy(A.waiting);const t0=performance.now();
+    try{made=await withTimeout((signal)=>navigator.credentials.create({signal,publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
       challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
-      authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}})}
-    catch(e){idle();said.replaceChildren(note(cancelled(e)?A.cancelled:A.failed));stage();return}
+      authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:30000}}))}
+    catch(e){failedPasskey(e,t0);return}
     busy(A.saving);saves.hidden=true;
     const f=await track(api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)}));
     idle();
@@ -995,9 +1037,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   }
   // The passkey's prompt opens on the tap itself: nothing is asked of the server before navigator.credentials.get.
   async function approve(){
-    said.replaceChildren();busy(A.waiting);
+    said.replaceChildren();busy(A.waiting);const t0=performance.now();
     let signed;
-    try{signed=await signTerms(p.challenge,eng.passkey.credential_id)}catch(e){idle();said.replaceChildren(note(A.cancelled));stage();return}
+    try{signed=await withTimeout((signal)=>signTerms(p.challenge,eng.passkey.credential_id,signal))}catch(e){failedPasskey(e,t0);return}
     // The ring stays while the approval is sent; the tick shows as soon as its answer is in.
     busy(A.approving);
     const r=await track(api('POST','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/approve',{terms_sha256:p.terms_sha256,credential:signed}));
@@ -1348,7 +1390,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, inapp: INAPP, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],

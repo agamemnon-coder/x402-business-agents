@@ -91,6 +91,18 @@ export const SFX: readonly { at: number; kind: SfxKind; gain?: number }[] = [
   ...CUTS.map((at) => ({ at: at - 0.05, kind: "whoosh" as const, gain: 0.55 })),
 ];
 
+/**
+ * A cut of the promo: its narration, scenes, music placement, effects and frame page. V2 is the default (this file);
+ * V1 (src/film/promoV1.ts) is v1.1, v1's cut with the record fixes. Both are checked by checkPromo.
+ */
+export interface Cut {
+  name: string; total: number; lines: readonly Line[]; scenes: readonly Scene[];
+  /** The music take placed `at` seconds into the film, starting `from` seconds into the take. */
+  music: { at: number; from: number };
+  sfx: readonly { at: number; kind: SfxKind; gain?: number }[]; cuts: readonly number[]; html: string;
+}
+export const V2: Cut = { name: "v2", total: TOTAL, lines: LINES, scenes: SCENES, music: { at: 0, from: MUSIC_FROM }, sfx: SFX, cuts: CUTS, html: "src/film/promo.html" };
+
 /** A figure on screen: the text shown, the record it comes from, and the string that must be found there. */
 export interface Figure { text: string; source: string; find: string }
 
@@ -119,8 +131,8 @@ export function promoData() {
   const f = (text: string, source: string, find = text): Figure => ({ text, source, find });
   const attacks = num(ZT, "attacks_run"), stopped = num(ZT, "attacks_stopped"), moved = num(ZT, "attacks_where_money_moved");
   const calls = num(HOSTILE, "calls"), refused = num(HOSTILE, "refused"), unsafe = num(HOSTILE, "unsafe");
-  const tool = num(HOSTILE, "blocked_by_tool"), enforce = num(HOSTILE, "overridden_at_enforce");
-  if (tool + enforce !== refused) throw new Error(`promo: ${HOSTILE}: blocked_by_tool and overridden_at_enforce do not add up to refused`);
+  const tool = num(HOSTILE, "blocked_by_tool"), enforce = num(HOSTILE, "overridden_at_enforce"), stood = num(HOSTILE, "stood");
+  if (tool + enforce !== refused || tool + enforce + stood !== calls) throw new Error(`promo: ${HOSTILE}: its parts do not add up to its calls`);
   if (stopped !== attacks) throw new Error(`promo: ${ZT} says ${stopped} of the attacks stopped, not all; the line "all stopped" cannot be said`);
   const d = {
     cent: { from: f("EUR 1,850.00", "src/try/sign.ts", "1,850"), to: f("EUR 1,850.01", "src/redesign/walk.ts", "One cent off: refused"), refused: f("Refused", "src/try/sign.ts", "Refused by Purser") },
@@ -142,11 +154,12 @@ export function promoData() {
       block: f("27469355", ANCHOR, "block 27469355"), tx: f("0xaa93f270…", ANCHOR, "0xaa93f270"), date: f("13 Nov 2026", ANCHOR, "2026-11-13"),
     },
     attacks: { run: f(String(attacks), ZT, `"attacks_run": ${attacks}`), moved: f(String(moved), ZT, `"attacks_where_money_moved": ${moved}`) },
-    // The site's one wording of the split (src/redesign/partners.ts hostileWords): "318 refused and 52 made stricter:
-    // 370 stopped or tightened by code". The film says the same, so a judge who compares the two sees one count.
+    // The site's one wording of the split (src/redesign/partners.ts hostileWords): "318 refused, 52 made stricter, 10
+    // allowed as they were (within the rules): 0 unsafe". The film says the same, every call accounted for.
     hostile: {
       calls: f(String(calls), HOSTILE, `"calls": ${calls}`), refused: f(String(refused), HOSTILE, `"refused": ${refused}`), unsafe: f(String(unsafe), HOSTILE, `"unsafe": ${unsafe}`),
       tool: f(String(tool), HOSTILE, `"blocked_by_tool": ${tool}`), enforce: f(String(enforce), HOSTILE, `"overridden_at_enforce": ${enforce}`),
+      stood: f(String(stood), HOSTILE, `"stood": ${stood}`),
     },
   };
   return d;
@@ -165,6 +178,8 @@ export const LABELS = {
   hostile: "A script in the model's place makes the worst call it can · test data",
   endorse: "Airwallex, Metal and Claude named in text only · No endorsement implied",
   credits: "Voice and music: AI-generated (ElevenLabs) · sound effects made in code",
+  /** v1.1 has no sound effects. */
+  creditsV1: "Voice and music: AI-generated (ElevenLabs)",
 } as const;
 
 /** Names the film must never show or say (it names partners in text only, and no one else's product). */
@@ -173,7 +188,8 @@ const NOT_SAID = /\b(stripe|ramp|brex|paypal|mastercard|revolut|wise|coinbase|op
 const FRACTION = /\b\d+\s*(?:\/|of)\s*\d+\b/;
 
 /** Problems with the cut: empty when it may be rendered. */
-export function checkPromo(): string[] {
+export function checkPromo(cut: Cut = V2): string[] {
+  const { lines: LINES, scenes: SCENES, total: TOTAL, sfx: SFX } = cut;
   const out: string[] = [];
   let data: PromoData;
   try { data = promoData(); } catch (e) { return [(e as Error).message]; }
@@ -207,6 +223,6 @@ const stamp = (s: number) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`;
 };
 /** The narration as English subtitles, one cue per line, on the take's own length. */
-export function promoSrt(): string {
-  return LINES.map((l, i) => `${i + 1}\n${stamp(l.at)} --> ${stamp(l.at + l.dur + 0.15)}\n${l.words.replace("... ", " … ")}\n`).join("\n");
+export function promoSrt(cut: Cut = V2): string {
+  return cut.lines.map((l, i) => `${i + 1}\n${stamp(l.at)} --> ${stamp(l.at + l.dur + 0.15)}\n${l.words.replace("... ", " … ")}\n`).join("\n");
 }

@@ -371,15 +371,17 @@ export function hostileSplit(file = HOSTILE_RECORD_FILE): HostileSplit | null {
   const url = new URL(`../../${file}`, import.meta.url);
   if (!existsSync(url)) return null;
   const j = JSON.parse(readFileSync(url, "utf8")) as { calls: number; refused: number; blocked_by_tool: number; overridden_at_enforce: number; stood: number; unsafe: number; cases?: unknown[] };
-  if (j.blocked_by_tool + j.overridden_at_enforce !== j.refused || j.refused + j.stood !== j.calls) throw new Error(`${file}: its parts do not add up to its totals`);
+  if (j.blocked_by_tool + j.overridden_at_enforce !== j.refused || j.blocked_by_tool + j.overridden_at_enforce + j.stood !== j.calls) throw new Error(`${file}: its parts do not add up to its totals`);
   return { calls: j.calls, tool: j.blocked_by_tool, enforce: j.overridden_at_enforce, refused: j.refused, stood: j.stood, unsafe: j.unsafe, cases: j.cases?.length ?? 0 };
 }
 /**
- * The one wording of the split, on every page (the final review, 13 Nov: /security and /claude said it three ways):
- * "318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe)". "Safe" only when the ledger's
- * verdict found none unsafe.
+ * The one wording of the split, on every page and in the promo film (the final review, 13 Nov: /security and /claude
+ * said it three ways; Max, 14 Nov: every one of the calls accounted for): "318 refused, 52 made stricter, 10 allowed as
+ * they were (within the rules): 0 unsafe". The three parts are every call (hostileSplit checks they add up); "allowed as
+ * they were" is the record's `stood`, each a payment the policy lets the agent make alone; "unsafe" is the ledger's
+ * verdict.
  */
-export const hostileWords = (h: HostileSplit) => `${h.tool} refused and ${h.enforce} made stricter: ${h.refused} stopped or tightened by code; ${h.stood} stood (${h.unsafe === 0 ? "safe" : `${h.unsafe} unsafe`})`;
+export const hostileWords = (h: HostileSplit) => `${h.tool} refused, ${h.enforce} made stricter, ${h.stood} allowed as they were (within the rules): ${h.unsafe} unsafe`;
 
 /**
  * The eval's line, as a visitor reads it; "" when there is no record. It names its scope (review round 1, 12 Nov: the
