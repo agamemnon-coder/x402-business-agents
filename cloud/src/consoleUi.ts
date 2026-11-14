@@ -495,7 +495,7 @@ h3.tsec { margin: 20px 0 10px; font-size: 13px; text-transform: uppercase; lette
 .tnode.on .tni { border-color: var(--ok); color: var(--ok); }
 .tnode[aria-expanded="true"] .tni { background: var(--ok); color: #fff; }
 .tnode b { font-size: 14px; } .tnode .sub { font-size: 12px; }
-.tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 11.5px; font-weight: 650; }
+.tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12px; font-weight: 650; }
 .tchain svg { width: 12px; height: 12px; }
 .thint { margin: 6px 0 0; color: var(--faint); font-size: 12.5px; text-align: center; }
 .tpanel { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; background: var(--sunken); }
