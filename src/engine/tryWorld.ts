@@ -76,13 +76,15 @@ Betalingskenmerk: ZV-4471`;
 export const PAID_ORIGINAL: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-17", amountCents: 162_000, issueDate: "2026-11-02", dueDate: "2026-12-14" };
 /** The sample whose PDF is the paid original (seeded into each test company before the visitor arrives). */
 export const PAID_SAMPLE = "again";
+/** The clean sample: a second run in the same company files a fresh invoice (src/engine/host.ts uploadSample). */
+export const CLEAN_SAMPLE = "clean";
 
 /**
  * The tray, in order. Each outcome holds in a fresh test company, in any order: the duplicates meet the seeded paid
  * original, not a sample the visitor filed first (try-fixes, 13 Nov: a fresh company answered "Ready to pay" for both).
  */
 export const SAMPLE_SOURCES: { key: string; title: string; filename: string; text: string; fields?: InvoiceFields; expect: Sample["expect"] }[] = [
-  { key: "clean", title: "A supplier's invoice", filename: "bergtex-BTX-2026-21.pdf", text: invoiceText(CLEAN), fields: CLEAN, expect: { kind: "invoice", status: "ready" } },
+  { key: CLEAN_SAMPLE, title: "A supplier's invoice", filename: "bergtex-BTX-2026-21.pdf", text: invoiceText(CLEAN), fields: CLEAN, expect: { kind: "invoice", status: "ready" } },
   { key: PAID_SAMPLE, title: "An invoice you already paid, sent again", filename: "bergtex-BTX-2026-17.pdf", text: invoiceText(PAID_ORIGINAL), fields: PAID_ORIGINAL, expect: { kind: "duplicate_document" } },
   { key: "renumbered", title: "A paid invoice under a new number", filename: "bergtex-BTX-2026-17A.pdf", text: invoiceText({ ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }), fields: { ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }, expect: { kind: "invoice", status: "needs_review", finding: "possible_duplicate" } },
   { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf", text: invoiceText({ ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }), fields: { ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }, expect: { kind: "invoice", status: "blocked", finding: "possible_fraud" } },

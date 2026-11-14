@@ -91,12 +91,13 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // 14 November 2026: 11.5 MB. The live Airwallex tab (cloud/src/awxLive.ts, awxUi.ts, its words in two languages and the
   // pure reconciliation, src/finance/awxReconcile.ts) added 35,928 bytes to main's 11,499,047 (fcb63fd): 11,534,975,
   // gzipped 2,428,999. The compressed limit is unchanged.
-  // 14 November 2026: 12 MB. The agents learning from the CFO's past decisions (src/learning, cloud/src/learning.ts, the
-  // Agents tab's block in two languages) took this build, with main merged in, to 11,587,940 bytes (gzipped 2,446,107).
-  // The limit that counts, 3 MB compressed, is unchanged and still well clear.
-  it("stays under 12 MB, and under 3 MB gzipped", () => {
+  // Then /try's sandbox payout (cloud/src/engine/livePayout.ts, step 2) on main at 4ae6d29: 11,577,033 bytes, gzipped
+  // 2,441,268; inside the same budget.
+  // Then the agents learning from the CFO's past decisions (src/learning, cloud/src/learning.ts, the Agents tab's block in
+  // two languages), with main at ba9cf4d merged: 11,678,343 bytes, gzipped 2,493,591; inside the same budget.
+  it("stays under 11.5 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
-    expect(bytes).toBeLessThan(12 * 1024 * 1024);
+    expect(bytes).toBeLessThan(11.5 * 1024 * 1024);
     expect(gzipped).toBeLessThan(3 * 1024 * 1024);
   });
 });
