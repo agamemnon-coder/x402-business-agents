@@ -14,6 +14,8 @@ import * as pdfkit from "pdfkit";
 import Helvetica from "pdfkit/standard-fonts/Helvetica";
 import HelveticaBold from "pdfkit/standard-fonts/HelveticaBold";
 import HelveticaOblique from "pdfkit/standard-fonts/HelveticaOblique";
+import Courier from "pdfkit/standard-fonts/Courier";
+import CourierBold from "pdfkit/standard-fonts/CourierBold";
 import { useDocStore } from "../../../src/ap/docStore.js";
 import { usePdfReader } from "../../../src/ap/pdfText.js";
 import { readPdfInline } from "../../../src/ap/pdfTextInline.js";
@@ -48,11 +50,15 @@ export interface HostEnv {
 }
 
 let runtimeReady = false;
-/** Once per isolate: the PDF reader without a worker thread, and the three fonts the archive's PDFs use (pdfkit's browser build carries none). */
+/**
+ * Once per isolate: the PDF reader without a worker thread, and the fonts the engine's PDFs use (pdfkit's browser build
+ * carries none): Helvetica for the archive's and the records', Courier for the records' fingerprints (14 Nov: without
+ * it the records PDF failed in the Worker; test/engine-pdf-fonts.test.ts holds the two lists equal).
+ */
 function prepareRuntime(): void {
   if (runtimeReady) return;
   usePdfReader(readPdfInline);
-  (pdfkit as unknown as { registerStdFonts(...fonts: unknown[]): void }).registerStdFonts(Helvetica, HelveticaBold, HelveticaOblique);
+  (pdfkit as unknown as { registerStdFonts(...fonts: unknown[]): void }).registerStdFonts(Helvetica, HelveticaBold, HelveticaOblique, Courier, CourierBold);
   runtimeReady = true;
 }
 
