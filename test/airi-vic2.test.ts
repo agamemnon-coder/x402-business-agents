@@ -125,7 +125,7 @@ describe("the guards", () => {
     expect(() => rail.showPasskeyUrl("x", { actionId: "a", merchant: "m", amount: "1.00", currency: "EUR" })).toThrow(Vic2Stop);
   });
 
-  it("the runner must hold the lock here and run without the Airi rail, Airwallex keys or Metal", () => {
+  it("the runner must hold the lock here and run without the Airi rail, Airwallex keys or Alta", () => {
     const lock = { host: "h1", pid: 42 } as RunnerLock;
     const env = (e: RunnerEnv | null) => () => e;
     const clean: RunnerEnv = { rail: null, airwallexKeys: false, metal: false };

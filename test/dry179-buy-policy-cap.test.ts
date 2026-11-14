@@ -1,11 +1,11 @@
 // dry-179, acceptance item 5 (2 November): the Sourcing agent had set its own buy policy {stockline, max_price 0.03}.
 // After the silent rise to 0.04, purchase #17 was refused by that buy policy ("over the 0.03 the Sourcing agent's
-// policy allows") before Purser's mandate-cap pre-check ever saw it: no mandate_cap_exceeded, no record of Metal's
+// policy allows") before Purser's mandate-cap pre-check ever saw it: no mandate_cap_exceeded, no record of Alta's
 // refusal on chain, and Max's one let-through stayed armed with nothing to catch.
 // Now Purser's pre-check comes first: when both would refuse, the refusal recorded is the mandate's cap, so the
 // record pull and the let-through happen as designed. The buy policy still refuses everything it refused that the
 // mandate would allow (never looser), and now also on the amount actually signed. Only the one armed let-through, over
-// the mandate's cap, passes the policy's max_price on its way to Metal; the policy's supplier choice still applies.
+// the mandate's cap, passes the policy's max_price on its way to Alta; the policy's supplier choice still applies.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodePaymentRequiredHeader } from "@x402/core/http";
 import type { DB } from "../src/db/open.js";
@@ -19,7 +19,7 @@ vi.mock("../src/metal/mandate.js", async (orig) => ({
   boundCapUnits: () => 3n * 10n ** 16n,
 }));
 // The offer at signing is the ledger's upstream price; Purser's guard decides whether anything is signed; a signed
-// payment over 0.03 meets "Metal", which refuses it on the cap.
+// payment over 0.03 meets "Alta", which refuses it on the cap.
 vi.mock("../src/metal/pay.js", async (orig) => ({
   ...(await orig<object>()),
   payUnderMandate: async (_m: unknown, _url: string, _init: unknown, guard?: (cents: number, payTo: string) => string | null) => {
@@ -96,7 +96,7 @@ describe("dry-179: Purser's mandate-cap pre-check before the Sourcing agent's ow
     expect(db.prepare("SELECT outcome, refusal_reason LIKE 'mandate_cap_exceeded:%' AS cap FROM upstream_purchases").all()).toEqual([{ outcome: "REFUSED", cap: 1 }]);
     // Honest about who refused: Purser, against the mandate; and that the agent's policy would have refused it too.
     expect(refusedRows(db)).toEqual([expect.objectContaining({ refused_by: "purser", buy_policy_also_refuses: "0.03" })]);
-    // Metal's record of the same refusal on chain, once (Metal QA's record pull).
+    // Alta's record of the same refusal on chain, once (Alta QA's record pull).
     expect(state.onChain).toEqual([4]);
     expect(n(db, "SELECT COUNT(*) AS n FROM audit_log WHERE event = 'upstream.refused_on_chain'")).toBe(1);
     // The Sourcing agent hears of a cap refusal (so it asks Treasury), not of its own policy.
@@ -106,7 +106,7 @@ describe("dry-179: Purser's mandate-cap pre-check before the Sourcing agent's ow
     expect(n(db, "SELECT COUNT(*) AS n FROM upstream_purchases WHERE refusal_reason LIKE 'buy_policy:%'")).toBe(0);
   });
 
-  it("with the let-through armed, that purchase goes to Metal once (Metal refuses it, recorded), then Purser refuses again", async () => {
+  it("with the let-through armed, that purchase goes to Alta once (Alta refuses it, recorded), then Purser refuses again", async () => {
     const db = world({ supplier: "stockline", max_price: "0.03" });
     const a = armed(db);
     price(db, "0.04");
@@ -226,7 +226,7 @@ describe("dry-179 item 8: the Sourcing agent's purchases while a replace of its 
     expect(state.onChain).toEqual([]);
   });
 
-  it("over the cap, armed: the hold comes first, so nothing goes to Metal and the arm is not used up", async () => {
+  it("over the cap, armed: the hold comes first, so nothing goes to Alta and the arm is not used up", async () => {
     const db = world({ supplier: "stockline", max_price: "0.03" });
     const a = armed(db);
     openReplace(db);

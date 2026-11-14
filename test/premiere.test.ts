@@ -43,7 +43,8 @@ describe("the premiere's figures are the main run's record's", () => {
     expect([fact("price.old"), fact("price.new"), fact("price.cap")]).toEqual(["0.02", "0.04", "0.03"]);
     expect(screen("05-price")).toMatchObject({ from: "0.02", to: "0.04", capValue: "0.03", tx: "0x2e92f9cb…1871", txWhere: "testnet.metalntwx.com · 11:23:33 UTC" });
     // The run's own label, word for word, and the short honest line Max asked for.
-    expect(screen("05-price").label).toBe(DEFENSE_IN_DEPTH);
+    // 14 Nov: the site says Alta (Metal renamed itself); the recorded premiere keeps the name it was made with.
+    expect(screen("05-price").label).toBe(DEFENSE_IN_DEPTH.replace(/\bAlta\b/g, "Metal"));
     expect(screen("05-price").letThrough).toBe("Let through on purpose. Purser normally refuses first.");
   });
 
@@ -287,7 +288,7 @@ describe("the premiere's figures are the main run's record's", () => {
     expect(CORE_LINE.join(" ")).toBe("Claude explains and proposes, the rules in code hold every limit, and a person signs before money moves beyond them.");
     // The film was recorded on 5 November with this line; on 6 November Max moved the README's core line to the
     // three locks, so the film keeps its own line and the README carries the new one.
-    expect(README).toContain("**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**"); // "a passkey (Face ID on iPhone)" since 13 Nov: attestation is none
+    expect(README).toContain("**Claude agents propose and pay; Purser's code, Airwallex and Alta each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**"); // Alta since 14 Nov (Metal renamed itself); "a passkey (Face ID on iPhone)" since 13 Nov: attestation is none
     expect(screen("02-purser").core).toEqual(CORE_LINE);
     // The narrator's opening, word for word, from the script: in the third person, who built it.
     expect([...data.voice["01-hook"]!, ...data.voice["02-purser"]!].map((l) => l.text).join(" ")).toBe("AI agents are starting to spend money. So who signs off? This is Purser, built by Max Geurtsen.");

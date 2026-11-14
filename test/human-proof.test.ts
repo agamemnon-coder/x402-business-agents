@@ -1,4 +1,4 @@
-// "Signed by a real person": Metal proves the customer's owner key bound the mandate; it does not prove a person holds
+// "Signed by a real person": Alta proves the customer's owner key bound the mandate; it does not prove a person holds
 // that key. Purser's optional addition: the customer's owner confirms the mandate with a passkey (user verification,
 // e.g. Face ID), and the seller checks that confirmation. Each test breaks if a confirmation counts that should not.
 import { describe, expect, it } from "vitest";

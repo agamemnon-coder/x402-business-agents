@@ -153,7 +153,7 @@ describe("the pages", () => {
       expect(side).toContain(c.airwallex);
     }
     // No card id beyond its last four characters, no card number beyond its last four digits.
-    // A transaction hash in a link to Metal's explorer (/proof's live runs, 13 Nov) is not a card's number.
+    // A transaction hash in a link to Alta's explorer (/proof's live runs, 13 Nov) is not a card's number.
     for (const html of [pages.proof!, pages.airwallex!]) expect(html.replace(/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}/g, "")).not.toMatch(/\d{12,}/);
   });
 });

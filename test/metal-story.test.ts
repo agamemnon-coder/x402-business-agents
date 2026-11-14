@@ -1,10 +1,10 @@
 // /metal as one story (jury panel, 12 Nov; pictures first since the owner's redesign, 13 Nov; src/redesign/metalMandates.ts),
 // every figure and link from a record: one picture of a paid and a refused payment under the same mandate; the charts
-// (budget and spend per mandate, the payments by kind, the refusals); the four mandates as cards, the table folded, each cap linking the transaction that set it (the trace of the main run's ledger, and Metal's
+// (budget and spend per mandate, the payments by kind, the refusals); the four mandates as cards, the table folded, each cap linking the transaction that set it (the trace of the main run's ledger, and Alta's
 // own MandateBound events in the check of 12 November); the spend from that read-only check, labelled as recorded until a
 // live read answers; the 86 payments recomputed from the main run's record and its payment-by-payment check; #24's
 // refusal as it ran; who signed the replaces on chain (one owner key, held by the runner: the chain did not check Face
-// ID); what else ran on Metal, each dated with its own record and none of it the main run's, the hold said as not
+// ID); what else ran on Alta, each dated with its own record and none of it the main run's, the hold said as not
 // finished; both refusals decoded, with the raw log beside them.
 import { COUNT_JS } from "../src/redesign/stats.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -99,7 +99,7 @@ describe("the four mandates, one table", () => {
     expect(rows.filter((r) => r.how === "replace").map((r) => r.agent).sort()).toEqual(["sourcing", "treasury"]);
   });
 
-  it("agrees with Metal's own MandateBound events, read on 12 November: cap, budget, payee and expiry of the bind and the replace", () => {
+  it("agrees with Alta's own MandateBound events, read on 12 November: cap, budget, payee and expiry of the bind and the replace", () => {
     expect(insp.bindings.map((b) => b.agent).sort()).toEqual(["support", "treasury"]);
     for (const b of insp.bindings) {
       const r = rows.find((x) => x.agent === b.agent)!;
@@ -114,7 +114,7 @@ describe("the four mandates, one table", () => {
     expect(live.recorded_on).toBe("2026-11-12");
     // The final review (13 Nov): a recorded answer says so plainly; the live wording is hidden until a live read succeeds.
     expect(text(cards)).toContain(`Spent: a recorded snapshot from 12 Nov (block ${live.block}), not a live read.`);
-    expect(cards).toContain(`<span id="mlive-rec">It answers with the recorded snapshot from 12 Nov (block ${live.block}) until a live Metal testnet read is set up, and says so.</span><span id="mlive-how" hidden>Read live: one read for everyone every 15 minutes`);
+    expect(cards).toContain(`<span id="mlive-rec">It answers with the recorded snapshot from 12 Nov (block ${live.block}) until a live Alta testnet read is set up, and says so.</span><span id="mlive-how" hidden>Read live: one read for everyone every 15 minutes`);
     expect(METAL_INSPECT_JS).toMatch(/a\.source === "chain"[\s\S]*how\.hidden = false;[\s\S]*rec\.hidden = true;/);
     expect(cards).toContain(`data-rec="${METAL_INSPECTOR_RECORD}"`);
     for (const m of live.mandates) {
@@ -138,7 +138,7 @@ describe("the four mandates, one table", () => {
     expect(METAL_PAGE).toContain(`<script>\n${METAL_INSPECT_JS + COUNT_JS}</script>`);
     expect(METAL_INSPECT_JS).toContain('fetch("api/metal/mandates"');
     expect(METAL_INSPECT_JS).toContain('a.source === "chain"');
-    expect(METAL_INSPECT_JS).toContain("Spent: read live from Metal testnet at ");
+    expect(METAL_INSPECT_JS).toContain("Spent: read live from Alta testnet at ");
     expect(METAL_INSPECT_JS).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|\.style\b/);
     // Every place an agent's spend shows (its card, its bars, the table) is updated; a bar's length only as an attribute.
     expect(METAL_INSPECT_JS).toContain(`all('[data-spent="' + m.agent + '"]')`);
@@ -148,13 +148,13 @@ describe("the four mandates, one table", () => {
 });
 
 describe("the payments, the refusal and the replace", () => {
-  it("counts 86 payments on Metal, each kind summed from the record's flows", () => {
+  it("counts 86 payments on Alta, each kind summed from the record's flows", () => {
     const paid = rec.snapshot.flows.filter((f) => f.rail === "metal" && !f.refused);
     const n = (kind: string) => paid.filter((f) => f.kind === kind).reduce((k, f) => k + (f.count ?? 1), 0);
     expect(story.payments).toMatchObject({ sales: n("sale"), purchases: n("upstream"), refunds: n("refund"), sweeps: n("sweep") });
     expect(story.payments.total).toBe(n("sale") + n("upstream") + n("refund") + n("sweep"));
     expect(story.payments.total).toBe(86);
-    expect(text(grid)).toContain(`${story.payments.total} Metal payments, each its own transaction`);
+    expect(text(grid)).toContain(`${story.payments.total} Alta payments, each its own transaction`);
     // One stacked bar, its four parts in proportion, each with its count beside its colour in the legend.
     expect(grid).toContain(`aria-label="${n("sale")} sales, ${n("upstream")} supplier purchases, ${n("refund")} refunds and ${n("sweep")} sweep"`);
     expect(text(/<ul class="mlegend">[\s\S]*?<\/ul>/.exec(grid)![0]).trim()).toBe(`${n("sale")} sales ${n("upstream")} supplier purchases ${n("refund")} refunds ${n("sweep")} sweep`);
@@ -163,7 +163,8 @@ describe("the payments, the refusal and the replace", () => {
     expect(widths[0]! / widths[1]!).toBeCloseTo(n("sale") / n("upstream"), 1);
   });
 
-  it("matches the run's payment-by-payment check against the chain: every Metal payment matched, none skipped", () => {
+  it("matches the run's payment-by-payment check against the chain: every Alta payment matched, none skipped", () => {
+    // The QA document (docs/runs, a record) keeps the name Metal had then.
     const qa = read(MAIN_RUN_CHECK);
     const row = (kind: string) => new RegExp(`\\| Metal ${kind} \\| (\\d+) \\| (\\d+) \\| (\\d+) \\| 0 \\| 0 \\|`).exec(qa);
     expect(Number(row("sale")?.[1])).toBe(story.payments.sales);
@@ -175,7 +176,7 @@ describe("the payments, the refusal and the replace", () => {
     expect(existsSync(new URL(`../${MAIN_RUN_CHECK}`, import.meta.url))).toBe(true);
   });
 
-  it("tells #24 as it ran: the facilitator's 402, then the refusal recorded on chain, the tx Metal decodes as MandateRefused", () => {
+  it("tells #24 as it ran: the facilitator's 402, then the refusal recorded on chain, the tx Alta decodes as MandateRefused", () => {
     const onChain = rec.ledger.events.find((e) => e.event === "upstream.refused_on_chain")!;
     const let1 = rec.ledger.events.find((e) => e.event === "upstream.let_through" && e.subject === onChain.subject)!;
     expect(story.refusal).toEqual({ seq: "24", amount: String(onChain.payload.amount), cap: String(let1.payload.bound_cap), code: "mandate_cap_exceeded", proof: { label: expect.any(String), href: `${EXPLORER}/tx/${String(onChain.payload.tx)}` },
@@ -183,14 +184,14 @@ describe("the payments, the refusal and the replace", () => {
     const t = text(grid);
     expect(t).toContain(`#24: ${story.refusal!.amount} > cap ${story.refusal!.cap}`);
     // The card says it in one line (12 Nov); the 402 and the record call, word for word, are in the decoded fold.
-    expect(t).toContain("Our own check was off for this test. Metal refused it on chain; nothing moved.");
-    expect(text(decoded)).toContain("Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: 0.04 *USDZ over the cap at the time, 0.03. Nothing moved.");
+    expect(t).toContain("Our own check was off for this test. Alta refused it on chain; nothing moved.");
+    expect(text(decoded)).toContain("Our own check was off for this one test. Alta's facilitator answered 402; a second call had Alta record the refusal on chain: 0.04 *USDZ over the cap at the time, 0.03. Nothing moved.");
     expect(grid).toContain(`href="${story.refusal!.proof.href}"`);
     const d = insp.refusals.find((x) => x.purchase === "24")!;
     expect({ tx: d.tx, mandate: d.event.mandate, amount: d.event.amount, reason: d.event.reason_name }).toEqual({ tx: String(onChain.payload.tx), mandate: String(onChain.payload.mandate), amount: "0.04", reason: "OverPerPaymentCap" });
     // What the explorer shows beside the link (jury review, 7 Nov, #3), in the decoded fold.
     const m = String(onChain.payload.mandate);
-    expect(refusalNote(story.refusal)).toBe(`On the explorer: log #0 is Metal's MandateRefused event (undecoded there); topic 1 is the Sourcing mandate ${m.slice(0, 8)}…${m.slice(-4)} and its data carries ${String(onChain.payload.amount)}.`);
+    expect(refusalNote(story.refusal)).toBe(`On the explorer: log #0 is Alta's MandateRefused event (undecoded there); topic 1 is the Sourcing mandate ${m.slice(0, 8)}…${m.slice(-4)} and its data carries ${String(onChain.payload.amount)}.`);
     expect(text(decoded)).toContain(refusalNote(story.refusal)!);
     expect(refusalNote(null)).toBeNull();
     expect(refusalNote({ ...story.refusal!, mandate: "" })).toBeNull();
@@ -213,10 +214,10 @@ describe("the payments, the refusal and the replace", () => {
     if (ownersRun()) expect(steps[1]).toContain(`${FACEID_SEPARATE_RUN} ↓`);
     expect(FACEID_SEPARATE_RUN).toBe("In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).");
     expect(METAL_PAGE).not.toContain("Since 12 Nov it does");
-    expect(steps[2]).toBe("Old mandate refused #37 on the old mandate: refused by Metal's facilitator (mandate_revoked), no transaction.");
+    expect(steps[2]).toBe("Old mandate refused #37 on the old mandate: refused by Alta's facilitator (mandate_revoked), no transaction.");
     for (const e of replaced) expect(grid).toContain(`href="${EXPLORER}/tx/${String(e.payload.tx)}"`);
     expect(rec.snapshot.refusals.some((r) => /#37 .*revoked by a replacement/.test(r.reason))).toBe(true);
-    expect(t).toContain("#37 on the old mandate: refused by Metal's facilitator (mandate_revoked), no transaction.");
+    expect(t).toContain("#37 on the old mandate: refused by Alta's facilitator (mandate_revoked), no transaction.");
     // Never that a phone signed anything on chain.
     expect(text(main)).not.toMatch(/phone (signed|signs)|signed (it )?(with|on) (a|the|the CFO's) phone|Face ID signed (it )?on chain/i);
   });
@@ -246,7 +247,7 @@ describe("the payments, the refusal and the replace", () => {
 
 describe("an explorer link", () => {
   const TX = `0x${"ab".repeat(32)}`;
-  it("is a tx or an address on Metal's testnet explorer, its host compared exactly", () => {
+  it("is a tx or an address on Alta's testnet explorer, its host compared exactly", () => {
     expect(explorerLink(`${EXPLORER}/tx/${TX}`)).toEqual({ kind: "tx", id: TX });
     expect(explorerLink(`${EXPLORER}/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc`)).toEqual({ kind: "address", id: "0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc" });
   });
@@ -260,14 +261,14 @@ describe("an explorer link", () => {
   });
 });
 
-describe("what else ran on Metal, folded, each a separate run", () => {
+describe("what else ran on Alta, folded, each a separate run", () => {
   const rows = coverageRows();
   const own = read("docs/demo/metal.json") + read("docs/runs/passkey-owners.json");
 
   it("dates each run and links its own transaction, none of them the main run's", () => {
     expect(also).not.toBe("");
     const hold = holdState(read(METAL_HOLD_RECORD));
-    expect(text(also)).toMatch(hold?.finished ? /^ ?Also on Metal: 6 separate runs / : /^ ?Also on Metal: 5 separate runs, and a hold, not finished/);
+    expect(text(also)).toMatch(hold?.finished ? /^ ?Also on Alta: 6 separate runs / : /^ ?Also on Alta: 5 separate runs, and a hold, not finished/);
     expect(rows.map((r) => r.feature)).toEqual(["Two owners, both must sign", "Passkeys as the owners", "Money from strangers held", "Clearing", "Send policy", "Hold for an approved amount"]);
     const runs = separateRuns(), withHold = own + read(METAL_HOLD_RECORD);
     for (const r of rows.filter((x) => x.status === "done")) {

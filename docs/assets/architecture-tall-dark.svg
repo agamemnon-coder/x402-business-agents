@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" class="pv pv-arch-tall" viewBox="0 0 400 1439" width="400" height="1439" role="img" aria-labelledby="pv-arch-tall-t pv-arch-tall-d">
-<title id="pv-arch-tall-t">Purser: who can stop a payment</title><desc id="pv-arch-tall-d">AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Metal, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.</desc>
+<title id="pv-arch-tall-t">Purser: who can stop a payment</title><desc id="pv-arch-tall-d">AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Alta, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.</desc>
 <style>.pv{--bg:#0a0c11;--surface:#12151d;--sunken:#191d27;--border:#262b37;--text:#eef1f6;--muted:#a4adbd;--faint:#858fa1;--accent:#8b85ff;--accent-soft:#23224a;--ok:#3ccf82;--ok-soft:#12291e;--bad:#ff6b70;--bad-soft:#341a1c;--metal:#2dd4bf;--metal-soft:#0f2a28;--awx:#ff8a4c;--awx-soft:#33200f;--claude:#ef9a76;--claude-soft:#33221b;--a-sourcing:#60a5fa}
 .pv { display: block; width: 100%; height: auto; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; }
 .pv .pv-bg { fill: var(--bg); }
@@ -82,7 +82,7 @@
 <text class="t-h2 t-awx" x="42" y="884"><tspan x="42" dy="0">Airwallex</tspan></text>
 <text class="t-s" text-anchor="end" x="358" y="884"><tspan x="358" dy="0">Approvals, card limits</tspan></text>
 <rect class="pv-metal" x="28" y="909" width="344" height="44" rx="10"/>
-<text class="t-h2 t-metal" x="42" y="936"><tspan x="42" dy="0">Metal</tspan></text>
+<text class="t-h2 t-metal" x="42" y="936"><tspan x="42" dy="0">Alta</tspan></text>
 <text class="t-s" text-anchor="end" x="358" y="936"><tspan x="358" dy="0">Mandate cap on chain</tspan></text>
 <rect class="pv-airi" x="28" y="961" width="344" height="44" rx="10"/>
 <text class="t-h2 t-airi" x="42" y="988"><tspan x="42" dy="0">Visa via Airi</tspan></text>

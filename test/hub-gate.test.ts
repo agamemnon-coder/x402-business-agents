@@ -1,6 +1,6 @@
 // Phase D, the hub gate (src/hub/gate.ts, src/hub/consult.ts, wired into beginExecution and the executor dispatch).
 // The hub is an EXTRA gate: it never replaces the person's approval. Every case runs against a fake hub (a fetch
-// stand-in); nothing here reaches a real hub, Airwallex, Metal or Anthropic.
+// stand-in); nothing here reaches a real hub, Airwallex, Alta or Anthropic.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({ refunds: [] as unknown[] }));

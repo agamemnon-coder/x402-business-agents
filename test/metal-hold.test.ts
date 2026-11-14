@@ -1,4 +1,4 @@
-// The CFO-approved hold on Metal: reserve exactly the signed amount, show the chain refuses one unit more, capture the
+// The CFO-approved hold on Alta: reserve exactly the signed amount, show the chain refuses one unit more, capture the
 // exact amount. No network: the deps are fakes that record what would be sent.
 import { describe, expect, it } from "vitest";
 import { budgetedTransport, runApprovedHold, type HoldDeps, type HoldPlan } from "../src/metal/hold.js";
@@ -21,7 +21,7 @@ function fake(over: Partial<{ simOk: boolean }> = {}) {
   return { deps, calls, held: () => held };
 }
 
-describe("CFO-approved hold on Metal", () => {
+describe("CFO-approved hold on Alta", () => {
   it("reserves exactly the approved amount, proves one unit more is refused, captures the exact amount", async () => {
     const f = fake();
     const r = await runApprovedHold(plan, f.deps);
@@ -51,7 +51,7 @@ describe("CFO-approved hold on Metal", () => {
   });
 });
 
-describe("Metal RPC budget", () => {
+describe("Alta RPC budget", () => {
   it("answers eth_chainId locally and stops past the budget", async () => {
     const seen: string[] = [];
     const b = budgetedTransport("http://127.0.0.1:9", 0, (m) => seen.push(m));

@@ -68,8 +68,8 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     expect(readFileSync(join(root, "src/cli/relay-deploy.ts"), "utf8").match(/\["secret", "put", "([A-Z_]+)"\]/g)).toEqual(['["secret", "put", "RELAY_TOKEN"]']);
   });
 
-  // The same guard for two more names: the Anthropic key is a Worker secret Max sets himself, and Metal's keyed RPC URL
-  // is never one (the Worker reads no Metal RPC); no script, config or workflow here puts either.
+  // The same guard for two more names: the Anthropic key is a Worker secret Max sets himself, and Alta's keyed RPC URL
+  // is never one (the Worker reads no Alta RPC); no script, config or workflow here puts either.
   it("no code in the repo writes METAL_RPC_URL or ANTHROPIC_API_KEY into the Worker's secrets or vars", () => {
     const names = /METAL_RPC_URL|ANTHROPIC_API_KEY/;
     for (const f of all) {

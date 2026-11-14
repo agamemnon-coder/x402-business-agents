@@ -1,4 +1,4 @@
-// The live commands over real HTTP, as a live run reaches Metal: no injected request, so `runLive` builds its own
+// The live commands over real HTTP, as a live run reaches Alta: no injected request, so `runLive` builds its own
 // transport (viem's http, one attempt per request) from METAL_RPC_URL. Here that URL is a JSON-RPC server on this
 // machine (a random port on 127.0.0.1) that hands every request to the in-memory chain. It holds the wiring a unit
 // test cannot: the request shapes on the wire, a revert's reason coming back through a JSON-RPC error, one attempt

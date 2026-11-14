@@ -1,8 +1,8 @@
-// Metal finality certificates as evidence (enterprise item 3). The fixture is a real certificate fetched from Metal
+// Alta finality certificates as evidence (enterprise item 3). The fixture is a real certificate fetched from Alta
 // testnet on 30 October 2026 (block 10067584). Checked here: the header hashes to the block and carries its number,
 // the signer bitmap matches the signer count, the signers reach the quorum of the PINNED validator count. Not checked:
-// the BLS signature, which needs validator keys Metal has not published for testnet; so a stored certificate is what
-// Metal's RPC reported. They are fetched and stored while the node still keeps them (about 2 hours).
+// the BLS signature, which needs validator keys Alta has not published for testnet; so a stored certificate is what
+// Alta's RPC reported. They are fetched and stored while the node still keeps them (about 2 hours).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
@@ -14,7 +14,7 @@ const TX = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
 const at = new Date("2026-10-30T21:30:00Z");
 
 describe("checking a finality certificate", () => {
-  it("accepts Metal's real certificate for its block and says what it did not check", () => {
+  it("accepts Alta's real certificate for its block and says what it did not check", () => {
     const c = checkCertificate(real, BLOCK);
     expect(c).toMatchObject({ ok: true, header_matches: true, number_matches: true, bitmap_matches: true, quorum: { signers: 3, participants: 4, needed: 3, met: true } });
     expect(c.not_checked).toMatch(/BLS signature.*reported/);

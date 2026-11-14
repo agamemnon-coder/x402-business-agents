@@ -1,4 +1,4 @@
-// The call budget of a live owners run (Face ID signs on chain). The owner agrees a number of Metal calls before
+// The call budget of a live owners run (Face ID signs on chain). The owner agrees a number of Alta calls before
 // anything runs. Breaks if a command could run without the owner's go, a budget and a log; if a call is logged after
 // it is sent, or not at all; if the budget is counted per process instead of per world (one log, every process); or
 // if the call that would go over the number is sent anyway. No network: the log is a file in a temp folder.

@@ -73,8 +73,8 @@ function opened(db: DB, email = EMAIL, at = T0): string {
 const onFile = (db: DB, id: string) => db.prepare("INSERT OR IGNORE INTO disputes (dispute_id, customer, email_sha256, created_at) VALUES (?, ?, 'h', 'now')").run(id, PAYER);
 
 /**
- * Metal, as far as a refund's pull goes: a payment id is paid at most once (a second pull of it answers "already
- * paid", nothing sent). `lose`: that pull reaches Metal and pays, but its answer never comes back (s2 killed at
+ * Alta, as far as a refund's pull goes: a payment id is paid at most once (a second pull of it answers "already
+ * paid", nothing sent). `lose`: that pull reaches Alta and pays, but its answer never comes back (s2 killed at
  * runFlow's 15-minute timeout). `answers`: a speed-limit refusal for a payment id, once per entry.
  */
 function metal() {
@@ -83,7 +83,7 @@ function metal() {
   const lose = new Set<string>();
   const answers = new Map<string, "VELOCITY"[]>();
   let reached: () => void = () => undefined;
-  /** Resolves once a lost pull has reached Metal (and paid): the moment the killed run stops. */
+  /** Resolves once a lost pull has reached Alta (and paid): the moment the killed run stops. */
   const lost = new Promise<void>((ok) => { reached = ok; });
   const pull: Puller = async ({ paymentId }) => {
     pulls.set(paymentId, (pulls.get(paymentId) ?? 0) + 1);
@@ -98,7 +98,7 @@ function metal() {
 const carrier = (pid: number, alive: () => boolean): Carrier => ({ pid, start: `s${pid}`, alive });
 
 /** What s2 hands carryOut for a dispute (src/cli/s2.ts: refundOne, state, the shared automatic limits, refundedCents,
- *  the CFO's proposal): the real refund executor on the stand-in Metal. */
+ *  the CFO's proposal): the real refund executor on the stand-in Alta. */
 function s2exec(db: DB, id: string, pull: Puller, made: number[][] = []): DecisionExec {
   return {
     refund: async (seq, opts) => {
@@ -125,7 +125,7 @@ const escalation = (db: DB, id = ID) => db.prepare("SELECT seq, ts, actor, event
 /**
  * The half-finished settlement (finding 1's case): the Support agent's settle_dispute runs s2 for the dispute; s2
  * records code's decision (#1, #2, #3 within the automatic limits) and starts paying: #1 is paid, #2's pull reaches
- * Metal but s2 is killed at runFlow's 15-minute timeout before its answer comes back. The tool hands the dispute to
+ * Alta but s2 is killed at runFlow's 15-minute timeout before its answer comes back. The tool hands the dispute to
  * the CFO ("the settlement did not complete").
  */
 async function halfFinished() {
@@ -163,7 +163,7 @@ describe("review 2, MEDIUM 1: the escalation row states the refunds the ledger h
       ["none of its own (another dispute's and an undisputed refund only)", [[1, "PAID", "D-0ther000"], [2, "PAID", null]], "none"],
       ["paid", [[1, "PAID", ID]], "#1 refunded (0.05 USDZ)"],
       ["pending", [[1, "PENDING", ID]], "#1 sent, not yet confirmed (0.05 USDZ)"],
-      ["held", [[1, "HELD", ID]], "#1 sent, held at Metal, not refunded yet (0.05 USDZ)"],
+      ["held", [[1, "HELD", ID]], "#1 sent, held at Alta, not refunded yet (0.05 USDZ)"],
       ["started", [[1, "PROPOSED", ID]], "#1 started, outcome not yet recorded (0.05 USDZ)"],
       ["refused", [[1, "REFUSED", ID]], "#1 refused (nothing paid)"],
       ["mixed", [[1, "PAID", ID], [2, "PENDING", ID], [3, "PAID", ID], [4, "REFUSED", ID], [5, "PAID", "D-0ther000"]], "#1, #3 refunded (0.10 USDZ); #2 sent, not yet confirmed (0.05 USDZ); #4 refused (nothing paid)"],
@@ -182,7 +182,7 @@ describe("review 2, MEDIUM 1: the escalation row states the refunds the ledger h
   it("(b) property: for any refunds in the ledger, the row lists exactly this dispute's, each under its own outcome and amount", () => {
     const OUTCOMES = ["PAID", "PENDING", "HELD", "PROPOSED", "REFUSED"] as const;
     const WORDS: Record<string, (typeof OUTCOMES)[number]> = {
-      "refunded": "PAID", "sent, not yet confirmed": "PENDING", "sent, held at Metal, not refunded yet": "HELD", "started, outcome not yet recorded": "PROPOSED", "refused (nothing paid)": "REFUSED",
+      "refunded": "PAID", "sent, not yet confirmed": "PENDING", "sent, held at Alta, not refunded yet": "HELD", "started, outcome not yet recorded": "PROPOSED", "refused (nothing paid)": "REFUSED",
     };
     fc.assert(fc.property(
       fc.array(fc.record({ outcome: fc.constantFrom(...OUTCOMES), under: fc.constantFrom("this", "other", "none"), cents: fc.integer({ min: 1, max: 9 }) }), { maxLength: 8 }),
@@ -225,7 +225,7 @@ describe("review 2, MEDIUM 1: the escalation row states the refunds the ledger h
     expect(asked).toEqual([]);
     expect([...m.pulls.entries()]).toEqual(pullsBefore);
     // The person's s2 carries out the recorded decision (the killed run is gone): #2 is pulled again under its own
-    // payment id (Metal: already paid, nothing sent), #3 once, #1 not at all.
+    // payment id (Alta: already paid, nothing sent), #3 once, #1 not at all.
     const d = await carryOut(db, ID, s2exec(db, ID, m.pull), () => undefined, carrier(5151, () => false));
     expect(d).toMatchObject({ status: "DONE", paid: [1, 2, 3], handover: [] });
     expect([...m.pulls.entries()]).toEqual([["refund-1", 1], ["refund-2", 2], ["refund-3", 1]]);

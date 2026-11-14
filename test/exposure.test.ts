@@ -1,5 +1,5 @@
 // 1.1: the maximum exposure, computed from the policy by Purser's own code. Per agent and in all, per day and per
-// month: the card's limit (Airwallex, EUR), the mandate's budget (Metal, *USDZ, test USD), and what the agent may pay
+// month: the card's limit (Airwallex, EUR), the mandate's budget (Alta, *USDZ, test USD), and what the agent may pay
 // alone under Purser's policy beyond those (the Treasury agent's task cards without Face ID). EUR and USD stay apart;
 // a total in EUR only at the main run's recorded rate. Every number here is read from the policy code or the record,
 // never typed in.
@@ -140,7 +140,8 @@ describe("the CFO's view, the README and step 0 show identical numbers", () => {
   });
   it("step 0's page carries the same words before a world opens: \"Worst case\" in sight, the rest in the fold", async () => {
     const { trySignPage, TRY_POLICY } = await import("../src/try/sign.js");
-    const html = trySignPage();
+    // 14 Nov: the page's first mention reads "Alta (formerly Metal)" (src/ui/formerly.ts).
+    const html = trySignPage().replace("Alta (formerly Metal)", "Alta");
     const { esc } = await import("../src/redesign/ui.js");
     const block = /<div class="pexpo" id="p-expo"[^>]*>([\s\S]*?)<\/div>/.exec(html)![1]!;
     // The test world's own figure (Max, 7 Nov: it counts what the Treasury agent may pay alone), by the Worker's code,

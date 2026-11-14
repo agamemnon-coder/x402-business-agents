@@ -56,13 +56,16 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(badges + 3, badges + 7)).toEqual(["", "</div>", "", "## Watch it"]);
     const order = ["## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Verify it yourself in 3 commands", "## Enterprise"].map((h) => lines.indexOf(h));
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
-    expect(lines.some((l) => l.startsWith("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
-    expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg"');
+    expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
+    // 14 Nov (Max): the walkthrough and the trailer side by side, each with its thumbnail in the trailer's style.
+    expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="docs/assets/readme/walkthrough-thumb.jpg"');
+    expect(README).toContain('<a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg"');
     // Jury round 2, 13 Nov: the film's own length (298.0 s) (the partners were text only until 14 Nov).
-    expect(README).toContain("*The walkthrough · AI voice and music: ElevenLabs*"); // no duration in the words since 14 Nov (owner)
+    expect(README).toContain("| [The walkthrough](https://youtu.be/mp9fmOYfBWc) · AI voice and music: ElevenLabs | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |"); // no duration on the walkthrough since 14 Nov (owner); the trailer beside it
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
-    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied');
+    // 14 Nov: Alta's wordmark in the row (the Alta team's OK); Visa and Cloudflare in text (the owner's decision).
+    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied');
     expect(README).toContain("\n\nNo endorsement implied.\n\n"); // under the partners table; "Text names only" gone since the logos came back (14 Nov)
     expect(README).not.toContain("Text names only");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);

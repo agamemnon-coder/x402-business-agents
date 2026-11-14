@@ -4,7 +4,7 @@
 // (who decides, who enforces); one stat row, every figure from a run record; the last buttons. The honesty rules of the
 // jury panel (A1 to A10) still hold: no recorded run called live, simulated and test money said once each outside the
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
-import { FILM_LINK, FILM_URL } from "../src/config/brand.js";
+import { FILM_LINK, FILM_URL, TRAILER_LINK } from "../src/config/brand.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
@@ -99,7 +99,7 @@ describe("Home, the enterprise pass", () => {
       expect(text(/<p class="hf-note">[\s\S]*?<\/p>/.exec(main)![0])).toBe(`${FLOW_NOTE} ${WHATS_REAL}`);
       expect(main).toContain(`<a href="#real" data-real>${WHATS_REAL}</a>`);
       // Above the stat row the only date is the card's due date; from there on each figure names its run's day (jury,
-      // 13 Nov: which run a figure comes from), the Face ID tile its run on Metal testnet and the footer the Visa run.
+      // 13 Nov: which run a figure comes from), the Face ID tile its run on Alta testnet and the footer the Visa run.
       const DATE = /\b\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|\b20\d\d-\d\d-\d\d/g;
       const out = outsideFold(html), at = out.indexOf('<article class="e-statrec"');
       expect(text(out.slice(0, at)).match(DATE)).toEqual([SAMPLE.invoice.due]);
@@ -138,7 +138,7 @@ describe("Home, the enterprise pass", () => {
     const run = agentRun(), rows = proofRows();
     expect(rows.map((r) => [r.partner, r.title, r.text])).toEqual([
       ["Airwallex", "Airwallex declined the card", "EUR 45.00 over a 30.00 limit."],
-      ["Metal", "Metal refused it on chain", "Over its cap."],
+      ["Alta", "Alta refused it on chain", "Over its cap."],
       // Visa judge, 14 Nov: the outcome the judge found buried, to /visa#visa-reuse (vic-4 F2, vic-3).
       ["Visa", "Visa: reused credential refused", "By Purser; the sandbox had accepted it."],
     ]);
@@ -153,7 +153,7 @@ describe("Home, the enterprise pass", () => {
     const owners = JSON.parse(read("docs/runs/2026-11-12-faceid-onchain.json")) as { ran_at: string; threshold: number; owners: { virtual: boolean }[]; proposals: { what: string; status: string }[] };
     expect(owners.owners.some((o) => o.virtual)).toBe(true);
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
-    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, each signed by two passkeys on chain (Metal testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}; one a test key)`]]);
+    expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, each signed by two passkeys on chain (Alta testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}; one a test key)`]]);
     expect(homeStats(run, [], null)).toEqual([]);
     // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
     const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
@@ -165,7 +165,7 @@ describe("Home, the enterprise pass", () => {
     expect([...band.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(homeScaleStats().map((x) => x.href));
     for (const s of homeScaleStats()) expect(scaleStats()).toContainEqual(s);
     for (const html of [ON, OFF]) expect(mainOf(html)).toContain(`<article class="e-statrec" data-rec="${STAT_RECORDS}">`);
-    expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Metal"]);
+    expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Alta"]);
     expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(ON)![0])).toBe(LOCKS_HEAD);
   });
 
@@ -193,14 +193,15 @@ describe("Home, the enterprise pass", () => {
     for (const html of [ON, OFF]) {
       // The walkthrough on YouTube (13 Nov) is the one "Watch" on Home: its own link, to FILM_URL; no Watch block or tab.
       expect(html).toContain(`<a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
-      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_LINK, " ");
+      // 14 Nov: the trailer (TRAILER_LINK) beside it is the other "Watch".
+      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_LINK, " ").replace(TRAILER_LINK, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
       expect(html).not.toMatch(/Extra, not an award entry|What comes next/);
     }
   });
 
-  it("keeps the full list in the What's real? fold: the hero's run, the Airwallex run's note, the Metal test, the second approver", () => {
+  it("keeps the full list in the What's real? fold: the hero's run, the Airwallex run's note, the Alta test, the second approver", () => {
     const fold = text(/<details class="real"[\s\S]*?<\/details>/.exec(ON)![0]);
     for (const line of [SECOND_APPROVER, CHAIN_TEST, AWX.note, "one /try run of its sample invoice on"]) expect({ line, found: fold.includes(line) }).toEqual({ line, found: true });
   });

@@ -152,11 +152,11 @@ export function statusPage(mode: StatusMode = "hosted"): string {
     body, css: STATUS_CSS, ...(mode === "hosted" ? { js: STATUS_JS } : {}),
     source: "Source: this site's own /health (worker/src/core.ts) and each run's record, as /runs lists them (src/redesign/runs.ts).",
     real: mode === "hosted" ? [
-      "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
+      "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
       "The live part is this site's own /health, read by your browser when the page opens.",
       "No live run in progress is the normal state: the hosted pages replay the recorded run.",
     ] : [
-      "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
+      "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
       "This offline copy has no runner and no /health, so it shows no live status.",
     ],
   });

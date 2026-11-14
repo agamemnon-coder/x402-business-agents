@@ -4,7 +4,7 @@
 // (QR to /try/sign), the proof, what is real and what is not, Claude, the road to production, the links. Every figure
 // comes from packFacts() and the main run's record through src/redesign/run.ts, the same functions the pages use;
 // test/pitch.test.ts checks the deck against the record. The font, the screenshots and the QR code are embedded, so the
-// PDF needs no network. No logos: "Built on Airwallex and Metal" as text (Max, 5 Nov).
+// PDF needs no network. No logos: "Built on Airwallex and Alta" as text (Max, 5 Nov).
 
 import { readFileSync } from "node:fs";
 import type { PackFacts } from "./facts.js";
@@ -33,8 +33,8 @@ export const CORE_LINE = "Claude explains and proposes, the rules in code hold e
 export const RULE_LINE = "Inside its limits an agent pays alone; beyond them, the CFO signs.";
 /** The main run's stops in one sentence (Max, 5 Nov), the site's own (run.ts stopsLine). */
 export { stopsLine };
-/** Metal's refusal of #24, said one way everywhere (review round, 5 Nov). */
-export const REFUSAL_LINE = "Metal refused it; the refusal is recorded on chain.";
+/** Alta's refusal of #24, said one way everywhere (review round, 5 Nov). */
+export const REFUSAL_LINE = "Alta refused it; the refusal is recorded on chain.";
 /**
  * T:0, one sentence everywhere (README, form, claims, docs/t0.md, the run log): posted on 10 Nov
  * (docs/runs/2026-11-10-t0-journal-sandbox.md). Earlier keys were refused: 403 CAPI71 on 3 Nov, 401 CAPI11 on 5 Nov.
@@ -44,8 +44,8 @@ export const T0_STATUS = "T:0: 95 journal entries posted to T:0's shared sandbox
 export const T0_SHORT = "T:0: 95 journal entries posted to its shared sandbox, 0 differences with our books; a second push posted none; its own balance sheet balances.";
 /** The two-locks run (10 and 12 Nov, docs/runs/2026-11-12-airwallex-two-locks-paid.md), as honest as its record. */
 export const TWO_LOCKS_LINE = "Two locks on one payout (10 and 12 Nov): a labelled test passkey signed the terms, Airwallex held the transfer IN_APPROVAL until the owner approved it in Airwallex's web app; then PAID (sandbox, settlement simulated).";
-/** What of the main run is on Metal testnet (README, checked against the chain on 5 Nov), in one sentence for a slide. */
-export const METAL_LINE = "Metal testnet: 86 payments and 6 mandate transactions, on chain, checkable; no clearing in this run.";
+/** What of the main run is on Alta testnet (README, checked against the chain on 5 Nov), in one sentence for a slide. */
+export const METAL_LINE = "Alta testnet: 86 payments and 6 mandate transactions, on chain, checkable; no clearing in this run.";
 
 /** Screenshots by name (data URIs), as npm run submission takes them. */
 export type DeckShots = Record<"landing" | "dashboard" | "metal" | "live" | "disputes" | "books" | "phoneOptions" | "phoneConfirm" | "rails" | "inspector" | "fourEyes" | "compliance" | "try" | "overview" | "claude" | "result" | "dispute" | "refuse" | "decline" | "max" | "watch" | "proof" | "visa", string>;
@@ -95,8 +95,8 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       extra: `<p class="lead what">${esc(WHAT_IT_IS)}</p>
         <p class="kitrun">${esc(KIT11_RUN_LINE)}</p>
         <div class="stats four">${stat(`${m.by_claude}/${m.decisions}`, `decisions by Claude, ${m.fallbacks} fallbacks`)}${stat(m.stop_figure, m.stop_sub)}${stat(String(m.face_id), "decisions signed with Face ID (+1 co-signature)")}${stat(`${m.face_to_paid_s} s`, "from Face ID to PAID; the settlement is simulated in the sandbox")}</div>
-        <p class="src">One live run, 3 November 2026: Metal testnet and the Airwallex sandbox, test money only.</p>
-        <p class="built">Built on Airwallex and Metal, with Claude.</p>`,
+        <p class="src">One live run, 3 November 2026: Alta testnet and the Airwallex sandbox, test money only.</p>
+        <p class="built">Built on Airwallex and Alta, with Claude.</p>`,
     },
     {
       kicker: "The problem",
@@ -119,7 +119,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
           <div class="box"><b>Agent</b><small>a Claude agent explains and proposes</small></div><span class="arrow">→</span>
           <div class="box"><b>Rules</b><small>Purser's code checks each proposal</small></div><span class="arrow">→</span>
           <div class="box accent"><b>Person</b><small>Face ID on the exact terms, beyond the limits</small></div><span class="arrow">→</span>
-          <div class="box"><b>Airwallex · Metal</b><small>card controls · mandates on chain</small></div><span class="arrow">→</span>
+          <div class="box"><b>Airwallex · Alta</b><small>card controls · mandates on chain</small></div><span class="arrow">→</span>
           <div class="box"><b>Books</b><small>hash-chained audit log; <!-- T0-STATUS -->T:0: 95 entries posted (sandbox)<!-- /T0-STATUS --></small></div>
         </div>
         <p class="kit">Northwind Outdoor, ${esc(NORTHWIND_LINE)}. Three agents (${m.kit11.map((k) => esc(k.agent.replace(/ agent$/, ""))).join(", ")}), 20.00 test USD between them.</p>`,
@@ -162,12 +162,12 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         <p class="src">Read on ${esc(hash?.readAt.slice(0, 10) ?? "")} from the sandbox: <code>${esc(hash?.file ?? "")}</code> and the cards' record beside it. Also on /proof and /airwallex; the Airi run on /airwallex, /visa and /proof (<code>docs/demo/airi-run.json</code>).</p>`,
     },
     {
-      kicker: "Metal proof · testnet",
+      kicker: "Alta proof · testnet",
       title: "Every id is published",
       points: [
-        `<b>${esc(sentence("Metal"))}</b>`,
-        `${esc(m.stop_line)}${m.metal_detail ? ` Metal's ${m.stops.metal}: ${esc(m.metal_detail)}.` : ""}`,
-        `On chain, checkable: Metal's refusal <code>${esc(short(m.let_through_tx))}</code>; the mandate replacements ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}; the sweep <code>${esc(short(sweepTx))}</code>`,
+        `<b>${esc(sentence("Alta"))}</b>`,
+        `${esc(m.stop_line)}${m.metal_detail ? ` Alta's ${m.stops.metal}: ${esc(m.metal_detail)}.` : ""}`,
+        `On chain, checkable: Alta's refusal <code>${esc(short(m.let_through_tx))}</code>; the mandate replacements ${replaced.map((t) => `<code>${esc(short(t))}</code>`).join(", ")}; the sweep <code>${esc(short(sweepTx))}</code>`,
         `Published: FX <code>${esc(shortId(conversion))}</code>, SWIFT <code>${esc(shortId(m.licence_transfer))}</code>, deposit <code>${esc(shortId(deposit))}</code>; card raise ${esc(m.card_raise.proposal)}, EUR ${esc(m.card_raise.from)} → ${esc(m.card_raise.to)}, then Airwallex authorization <code>${esc(shortId(m.card_raise.auth))}</code>`,
       ],
       pic: shot(s.dispute, `The main run, 3 November (/watch): #${m.refunded.join(", #")} refunded, each on chain; "refund the other ${rest}" rejected by Max with Face ID`),
@@ -181,7 +181,7 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
         "Our benchmark: Haiku alone is as good on everyday cases, and misread one harder dispute.",
         "No key reaches Claude, and Claude approves nothing; code checks each proposal first.",
       ],
-      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 86 Metal payments + 1 card charge; $0.0132 = Claude's cost per decision"),
+      pic: shot(s.proof, "/proof, the main run: 24/24 decisions by Claude; 86 Alta payments + 1 card charge; $0.0132 = Claude's cost per decision"),
     },
     {
       kicker: "Security and tests",
@@ -234,9 +234,9 @@ export function deckHtml(f: PackFacts, s: DeckShots, qrSvg: string): string {
       title: "From test rails to production",
       wide: true,
       extra: `<div class="timeline row3">
-        <div><b>Now</b><span>Airwallex sandbox · Metal testnet · test money · one company per ledger</span></div>
+        <div><b>Now</b><span>Airwallex sandbox · Alta testnet · test money · one company per ledger</span></div>
         <div><b>Next</b><span>test the demand with finance teams · production Airwallex · a real second approver · keys in a KMS, Postgres, a pager on /health</span></div>
-        <div><b>Then</b><span>Metal mainnet · four eyes by default · an outside SOC 2 audit</span></div>
+        <div><b>Then</b><span>Alta mainnet · four eyes by default · an outside SOC 2 audit</span></div>
       </div>
       <p class="lead small-lead">${esc(CORE_LINE)}</p>
       <div class="end"><div class="qr small-qr">${qrSvg}</div><dl class="links">

@@ -1,4 +1,4 @@
-// examples/metal-dispute-desk is the Dispute desk's decision logic, packaged for any seller on Metal. Purser imports it
+// examples/metal-dispute-desk is the Dispute desk's decision logic, packaged for any seller on Alta. Purser imports it
 // rather than keeping a copy (src/seller/disputeDesk.ts, src/seller/evidence.ts, src/policy/refunds.ts). Each test here
 // breaks if Purser and the example could decide differently: the same functions, the same case table, the same evidence
 // from the same ledger, and the example's own copy of the two money helpers equal to src/lib/money.ts.

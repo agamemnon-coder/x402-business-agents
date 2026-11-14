@@ -254,7 +254,7 @@ describe("dashboard snapshot", () => {
     expect(s.budgets.agents.map((a) => [a.agent, a.policy_cap])).toEqual([["sourcing", "0.03"], ["support", null], ["treasury", null]]);
     expect(s.feed[1]).toMatchObject({ text: "CFO policy: Sourcing agent: most per payment changed from no extra limit to 0.03 USDZ (P-0004)", tone: "approval" });
     expect(s.refusals[0]).toMatchObject({ what: "Supplier purchase refused", reason: "Purchase of stock check #42 refused by the CFO policy before signing: 0.04 USDZ is over the sourcing limit of 0.03 USDZ" });
-    // A card limit is in euros, a mandate limit in Metal's test dollars.
+    // A card limit is in euros, a mandate limit in Alta's test dollars.
     audit(db, "human", "policy.changed", "card.support.per_tx", { key: "card.support.per_tx", label: "Support agent's card: most per purchase", from: "60.00", to: "80.00", proposal_id: "P-0005" });
     expect(buildSnapshot(db, t0).feed[0]!.text).toBe("CFO policy: Support agent's card: most per purchase changed from 60.00 EUR to 80.00 EUR (P-0005)");
     expect(summarize("policy_change", JSON.stringify({ changes: [{ label: "Sourcing agent: most per payment", from: "", to: "0.03" }, { label: "EUR reserve floor", from: "500.00", to: "800.00" }] })))

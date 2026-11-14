@@ -38,7 +38,7 @@ export const MORE_LINKS: readonly MoreLink[] = [
   { key: "books", label: "Books", href: "books", group: "product" },
   // 12 Nov (owner): Status is out of the menu and the footer; /status itself still answers.
   { key: "airwallex", label: "Airwallex", href: "airwallex", group: "partner" },
-  { key: "metal", label: "Metal", href: "metal", group: "partner" },
+  { key: "metal", label: "Alta", href: "alta", group: "partner" },
   { key: "visa", label: "Visa", href: "visa", group: "partner" },
   { key: "claude", label: "Claude", href: "claude", group: "partner" },
 ];

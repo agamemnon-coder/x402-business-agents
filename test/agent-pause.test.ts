@@ -1,4 +1,4 @@
-// 4.2 Pause one agent with Face ID: the CFO stops one agent, not all. Pausing really revokes the agent's Metal mandate
+// 4.2 Pause one agent with Face ID: the CFO stops one agent, not all. Pausing really revokes the agent's Alta mandate
 // on chain and freezes its Airwallex card; Purser refuses its payments before signing. Resuming re-grants spending
 // power, so it is a mandate change: four eyes when that is on, and the chain is restored before the switch goes off.
 // Only with the agents switch on. Fake chain here; the real one is checked on testnet in a dry run.
@@ -42,7 +42,7 @@ describe("pause one agent (agents on)", () => {
   beforeEach(() => { process.env.KIT11_AGENTS = "on"; db = openDb(":memory:"); });
   afterEach(() => { delete process.env.KIT11_AGENTS; });
 
-  it("pausing revokes the agent's Metal mandate, freezes its card, and refuses its payments before signing", async () => {
+  it("pausing revokes the agent's Alta mandate, freezes its card, and refuses its payments before signing", async () => {
     const c = chain();
     await pause(db, "support", "on", c);
     expect(c.calls).toEqual(["revoke support"]);

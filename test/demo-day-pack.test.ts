@@ -69,7 +69,7 @@ describe("the Q&A (docs/submission/qa.md)", () => {
 
 describe("the seven near-certain questions (qa.md, 27 to 33)", () => {
   const qa = read("docs/submission/qa.md");
-  const QS = ["What if Claude makes a mistake?", "Why not a spending limit or 2FA?", "Do you hold money? Are you regulated?", "Why Metal?",
+  const QS = ["What if Claude makes a mistake?", "Why not a spending limit or 2FA?", "Do you hold money? Are you regulated?", "Why Alta?",
     "How do you make money?", "Customers?", "What is real and what is simulated?"];
   const block = (q: string) => {
     const at = qa.indexOf(`. ${q}\n`);
@@ -110,7 +110,7 @@ describe("the seven near-certain questions (qa.md, 27 to 33)", () => {
   it("says plainly: no paying customers yet, design partners wanted, tokens not live, no licence", () => {
     const t = prose(qa.slice(qa.indexOf("### 27. ")));
     const tokenizeRun = readdirSync(new URL("../docs/runs/", import.meta.url)).some((f) => /tokeni[sz]/i.test(f) && /\.md$/.test(f));
-    expect(t).toContain(tokenizeRun ? "the one invoice-token run on Metal testnet" : "have not run live yet");
+    expect(t).toContain(tokenizeRun ? "the one invoice-token run on Alta testnet" : "have not run live yet");
     for (const s of ["no paying customers", "looking for design partners", "not licensed, certified or audited", "no legal advice"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
   });
 });
@@ -168,15 +168,15 @@ describe("the Demo Day runbook, cheat sheet and after-submission list", () => {
     const path = raw.slice(raw.indexOf("## 5. The 3-minute demo path"), raw.indexOf("## 6. "));
     const rows = path.split("\n").filter((l) => /^\| \d\. /.test(l)).map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
     expect(rows.map((r) => r[0]!.replace(/^\d\. /, ""))).toEqual(["The problem", "The invoice", "Forged IBAN refused", "Face ID, then Airwallex",
-      "T:0, Moneybird and the vault", "The token on Metal", "The agent overview", "The proof"]);
+      "T:0, Moneybird and the vault", "The token on Alta", "The agent overview", "The proof"]);
     const times = rows.map((r) => r[1]!.split("–"));
     expect(times[0]![0]).toBe("0:00");
     expect(times.at(-1)![1]).toBe("3:00");
     for (let i = 1; i < times.length; i++) expect(times[i]![0]).toBe(times[i - 1]![1]);
     for (const r of rows) expect({ step: r[0], url: r[2]!.length > 0 && /\/|http/.test(r[2]!), fallback: r[4]!.length > 0 }).toEqual({ step: r[0], url: true, fallback: true });
-    // The token on Metal is said by its record's status.
+    // The token on Alta is said by its record's status.
     const tokenizeRun = readdirSync(new URL("../docs/runs/", import.meta.url)).some((f) => /tokeni[sz]/i.test(f) && /\.md$/.test(f));
-    expect(prose(rows[5]!.join(" "))).toContain(tokenizeRun ? "one prototype run on Metal testnet" : "live run pending");
+    expect(prose(rows[5]!.join(" "))).toContain(tokenizeRun ? "one prototype run on Alta testnet" : "live run pending");
   });
 
   it("prints the cheat sheet on one A4 page, with the three sentences", () => {
@@ -244,7 +244,7 @@ describe("the Demo Day video script (docs/submission/demo-day-video.md)", () => 
   it("names the beats the organiser asked for and says the stand-ins and what has not run plainly", () => {
     const said = beats.map((b) => b.says).join(" ");
     for (const s of ["bank account has changed", "over the agent's limit", "Face ID", "change one cent", "Airwallex", "PAID, with settlement simulated",
-      "Moneybird", "vault", "Airwallex declined it", "Metal refused it", "test money", "Exact next", "looking for design partners", "Try it yourself"]) {
+      "Moneybird", "vault", "Airwallex declined it", "Alta refused it", "test money", "Exact next", "looking for design partners", "Try it yourself"]) {
       expect({ s, said: said.includes(s) }).toEqual({ s, said: true });
     }
     const next = beats.find((b) => b.title === "What's next")!.says;

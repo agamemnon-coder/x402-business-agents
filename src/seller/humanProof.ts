@@ -1,6 +1,6 @@
-// "Signed by a real person", as far as it can be proven. Metal proves that the customer's mandate was bound on its
+// "Signed by a real person", as far as it can be proven. Alta proves that the customer's mandate was bound on its
 // account by the account's owner key; it does not prove that a person holds that key. This is Purser's optional
-// addition, not enforced by Metal: the customer's owner registers a passkey with the seller once, and confirms each
+// addition, not enforced by Alta: the customer's owner registers a passkey with the seller once, and confirms each
 // mandate with it (user verification, such as Face ID). The seller checks the signature itself, over a challenge
 // derived from the mandate's reference, so a confirmation of one mandate never counts for another.
 

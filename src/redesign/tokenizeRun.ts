@@ -2,7 +2,7 @@
 // exists (docs/runs/<date>-tokenize.json, written by `npm run tokenize -- record` from the run's own ledger and call
 // log). Without a record the page is byte for byte what it was. Everything in the block is read from the record: the
 // day of the run and the day of the approval, the price and the face value, the scale, the count and every link; the
-// words follow what the record says ran (minted, financed, settled, verified) and its labels (prototype, Metal
+// words follow what the record says ran (minted, financed, settled, verified) and its labels (prototype, Alta
 // testnet, the financier simulated, the face value divided). It says "the CFO approved" only when the record links a
 // committed run record that names the approving passkey; a passkey without a test label is not proof of a person. No new style: the card is the one /airwallex uses for a separate run (READBACK_CSS, already in the
 // partner pages' one stylesheet). test/tokenize-record.test.ts holds both states.
@@ -24,7 +24,7 @@ export function tokenizeRunFile(names: string[] = readdirSync(RUNS)): string | n
 
 export interface TokenizeRun { file: string; rec: TokenizeRunRecord }
 
-/** The record when it is one this block may show: a labelled prototype run on Metal testnet whose mint landed. */
+/** The record when it is one this block may show: a labelled prototype run on Alta testnet whose mint landed. */
 export function tokenizeRun(file: string | null = tokenizeRunFile()): TokenizeRun | null {
   if (!file) return null;
   const rec = JSON.parse(readFileSync(new URL(`../../${file}`, import.meta.url), "utf8")) as TokenizeRunRecord;
@@ -51,14 +51,14 @@ export function tokenizeRunSentence(rec: TokenizeRunRecord): string {
   const financed = landed(rec, "accept") && rec.received.creditor ? ` A simulated financier bought it for ${rec.received.creditor} test USD` : "";
   const settled = landed(rec, "settle") && rec.received.holder ? `the debtor paid its holder ${rec.received.holder}` : "";
   const money = financed && settled ? `${financed}; ${settled}.` : financed ? `${financed}.` : settled ? ` The debtor paid its holder ${rec.received.holder} test USD.` : ` Its face value is ${rec.face_value.amount} test USD.`;
-  return `${dayOf(rec.date)}, a separate Metal testnet run. ${by}${on} became a token.${money} Amounts are scaled down ${rec.labels.face_value_scaled_by}× for testnet.`;
+  return `${dayOf(rec.date)}, a separate Alta testnet run. ${by}${on} became a token.${money} Amounts are scaled down ${rec.labels.face_value_scaled_by}× for testnet.`;
 }
 
 /** The block, or "" when there is no record to show. */
 export function tokenizeRunBlock(run: TokenizeRun | null = tokenizeRun()): string {
   if (!run) return "";
   const { rec, file } = run;
-  // The run's own transactions (the funding transfers stay in the record), each with its link to Metal's explorer.
+  // The run's own transactions (the funding transfers stay in the record), each with its link to Alta's explorer.
   const txs = rec.transactions.filter((t) => !t.key.startsWith("fund-") && t.status === "success" && explorerLink(t.explorer)?.kind === "tx");
   const verified = rec.verify?.ok === true;
   // The hidden h2 keeps the page's headings in order (h1, h2, h3), as /airwallex does above its read-back cards.
@@ -66,5 +66,5 @@ export function tokenizeRunBlock(run: TokenizeRun | null = tokenizeRun()): strin
 <p>${esc(tokenizeRunSentence(rec))}</p>
 ${verified ? `<span class="awm ok">${icon("circle-check", 16)}${esc("Chain record verified")}</span>` : ""}
 <details class="fold"><summary>${esc(`${txs.length} transaction${txs.length === 1 ? "" : "s"}`)}</summary><ul class="awc">${txs.map((t) => `<li>${esc(t.what)} <a class="pf" href="${esc(t.explorer)}" target="_blank" rel="noopener">${esc(shortHash(t.hash))} ↗</a></li>`).join("")}</ul>
-<p class="src">${esc(`Prototype · test money · ${rec.calls.used} requests to Metal testnet${rec.calls.budget_total ? ` of a budget of ${rec.calls.budget_total}` : ""} · `)}<a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc("run record")} ↗</a></p></details></div></div>`;
+<p class="src">${esc(`Prototype · test money · ${rec.calls.used} requests to Alta testnet${rec.calls.budget_total ? ` of a budget of ${rec.calls.budget_total}` : ""} · `)}<a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">${esc("run record")} ↗</a></p></details></div></div>`;
 }

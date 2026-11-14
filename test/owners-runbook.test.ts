@@ -181,7 +181,7 @@ describe("the runbook of the live Face ID run", () => {
     // The runner's own word for the budget's unit is the plan's: lines in the call log.
     expect(prose).toContain("Expect: `owners   relays behind the call budget: <used> of <budget> lines in the call log used in this world`");
     expect(prose).toContain("Expect: `CALLS            <used> of <budget> lines in the call log used in this world (this command: <n>); …`");
-    expect(prose).not.toMatch(/Metal calls/);
+    expect(prose).not.toMatch(/Alta calls/);
     // Both signed, relayed too late: the approval is void and the proposal expired, as beginExecution has it.
     expect(prose).toMatch(/Signed in time but relayed too late \([^)]*\): the approval is void and the proposal is EXPIRED\. Either way, run the same propose command again/);
     expect(read("src/policy/approvals.ts")).toMatch(/expireIfDue\(db, p, now\), p\.expires_at\) : null;[\s\S]{0,120}expired at \$\{expired\}; approval void/);

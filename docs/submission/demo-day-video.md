@@ -78,12 +78,12 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 
 ### Beat 6 · 1:38–2:05 · An agent overspends, and the rails refuse
 
-- **Screen:** the agent overview: the Sourcing agent's Airwallex card decline (`LIMIT_EXCEEDED`), then Metal's refusal
+- **Screen:** the agent overview: the Sourcing agent's Airwallex card decline (`LIMIT_EXCEEDED`), then Alta's refusal
   and its transaction on the testnet explorer.
-- **Max says:** "Agents have limits of their own. In one run, an agent tried a 45 euro purchase on its own Airwallex card, with a limit of 30. Airwallex declined it. In another, an agent tried to pay over its Metal mandate, with our own check switched off on purpose. Metal refused it, on chain."
+- **Max says:** "Agents have limits of their own. In one run, an agent tried a 45 euro purchase on its own Airwallex card, with a limit of 30. Airwallex declined it. In another, an agent tried to pay over its Alta mandate, with our own check switched off on purpose. Alta refused it, on chain."
 - **Source:** [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md) (EUR 45.00 on a 30.00 limit, declined
   `LIMIT_EXCEEDED` by Airwallex); [docs/runs/2026-11-03-main-run.md](../runs/2026-11-03-main-run.md) (#24 let through
-  by our own flag; Metal refused it, tx `0x2e92f9cb…1871`, testnet).
+  by our own flag; Alta refused it, tx `0x2e92f9cb…1871`, testnet).
 
 ### Beat 7 · 2:05–2:20 · The outcome
 
@@ -95,11 +95,11 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 ### Beat 8 · 2:20–2:42 · What's next
 
 - **Screen:** one plain list, typed on screen as Max says it (no slide): Purser Cloud for small businesses; Moneybird
-  (sandbox run); Exact (next); invoice tokens on Metal (one prototype run on testnet, the financier simulated); design partners wanted.
-- **Max says:** "What's next. Purser Cloud for small businesses. Books in Moneybird, which ran in its sandbox, and Exact next. Invoice tokens on Metal: one prototype run on testnet so far. And we are looking for design partners."
+  (sandbox run); Exact (next); invoice tokens on Alta (one prototype run on testnet, the financier simulated); design partners wanted.
+- **Max says:** "What's next. Purser Cloud for small businesses. Books in Moneybird, which ran in its sandbox, and Exact next. Invoice tokens on Alta: one prototype run on testnet so far. And we are looking for design partners."
 - **Source:** [docs/cloud.md](../cloud.md) (Purser Cloud); [docs/runs/2026-11-12-moneybird-sandbox.md](../runs/2026-11-12-moneybird-sandbox.md)
   (Moneybird sandbox run); [docs/erp.md](../erp.md) (Exact Online not tested against a live system yet);
-  [docs/runs/2026-11-12-tokenize.md](../runs/2026-11-12-tokenize.md) (one prototype run on Metal testnet,
+  [docs/runs/2026-11-12-tokenize.md](../runs/2026-11-12-tokenize.md) (one prototype run on Alta testnet,
   12 November: mint, finance, settle; the financier simulated; test money);
   [docs/business/README.md](../business/README.md) (no pilots, no revenue).
 
@@ -118,9 +118,9 @@ Rules for these words, checked by `test/demo-day-pack.test.ts`:
 | The demo company, its suppliers and the bank on the hands-on page are stand-ins | Beat 1 and 5 screens (the labels on the page) |
 | Airwallex is the sandbox, settlement simulated, test money | Beat 5 words; Beat 7 words |
 | The vault is tested, not yet run live | Beat 5 words |
-| Metal is testnet | Beat 6 screen (the testnet explorer) and source |
+| Alta is testnet | Beat 6 screen (the testnet explorer) and source |
 | Exact has not run | Beat 8: "Exact next" |
-| Invoice tokens on Metal ran once, as a prototype, with a simulated financier | Beat 8: "one prototype run on testnet so far"; the screen |
+| Invoice tokens on Alta ran once, as a prototype, with a simulated financier | Beat 8: "one prototype run on testnet so far"; the screen |
 | No customers | Beat 8: "we are looking for design partners" |
 
 The token beat follows its record: `docs/runs/2026-11-12-tokenize.md` (12 November) is on main, so beat 8 says one

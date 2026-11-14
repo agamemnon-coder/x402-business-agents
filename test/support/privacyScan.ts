@@ -31,7 +31,7 @@ const PATTERNS: [string, RegExp][] = [
   ["a credential or assertion field", /"(credential_id|credentialId|assertion|assertion_sha256|attestation|attestationObject|clientDataJSON|authenticatorData|signature|public_key|beneficiary_id|iban|passkey|email|email_sha256|token|secret|private_key|view_key|nonce)"\s*:/i],
   ["a passkey label", /\(passkey [A-Za-z0-9_-]+\)/],
 ];
-// The project's own hosts, Metal's explorer and the SVG namespace. Purser Cloud under More is the project's own
+// The project's own hosts, Alta's explorer and the SVG namespace. Purser Cloud under More is the project's own
 // deployment (purser-try, 12 Nov), so its host is one of ours; the Try tab is the site's own /try (TRY_URL).
 const HOSTS = ["testnet.metalntwx.com", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "www.w3.org"];
 

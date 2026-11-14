@@ -25,7 +25,7 @@ function fake(turns: Call[][]): { client: Anthropic; prompts: string[] } {
 const T0 = new Date("2026-11-03T10:00:00Z");
 const looked: string[] = [];
 const profile: AgentProfile = {
-  name: "sourcing", display: "the Sourcing agent", model: "claude-haiku-5-5", goal: "keep stock data fresh at the best price", rules: "Metal enforces your mandate.",
+  name: "sourcing", display: "the Sourcing agent", model: "claude-haiku-5-5", goal: "keep stock data fresh at the best price", rules: "Alta enforces your mandate.",
   observe: async () => "Supplier A 0.03, supplier B 0.035.", tickMs: 600_000,
   tools: () => [{ name: "look", description: "d", input: z.strictObject({}), run: async () => { looked.push("x"); return { text: "looked" }; } }],
   fallback: async () => "code kept the buy policy as it was",

@@ -1,4 +1,4 @@
-// The live, read-only Metal mandate inspector (worker/src/metalInspector.ts, GET /api/metal/mandates): its decoder
+// The live, read-only Alta mandate inspector (worker/src/metalInspector.ts, GET /api/metal/mandates): its decoder
 // against the real answers of the check of 12 November (docs/runs/2026-11-12-metal-inspector.json), and its limits with a
 // stand-in RPC that records every call: one answer for everyone within the TTL, a hard ceiling of calls a UTC day checked
 // before each call (concurrent visits included), the switch, a missing URL, every kind of RPC failure, and the URL never
@@ -23,7 +23,7 @@ const ACCOUNT = RECORD.account.address;
 // Made up, and spelled so no scanner takes it for a real credential: it stands for a provider URL with its access value.
 const URL_WITH_KEY = "https://rpc.example.invalid/v2/FAKE0path0value0123456789?x=FAKE0query0value987";
 
-/** A stand-in Metal RPC: answers as the chain did on 12 November, counts every call, and can be told to fail. */
+/** A stand-in Alta RPC: answers as the chain did on 12 November, counts every call, and can be told to fail. */
 function standIn(mode: "ok" | "throw" | "http500" | "rpcError" | "malformed" = "ok") {
   const calls: { method: string; params: unknown[] }[] = [];
   const answers = new Map(RECORD.read.mandates.map((m) => [m.call.data, m.result_hex]));
@@ -51,7 +51,7 @@ function desk(o: { mode?: Parameters<typeof standIn>[0]; rpcUrl?: string | undef
 const get = (d: MetalInspector, method = "GET") => d.fetch(new Request(`https://kit11.example${METAL_INSPECTOR_PATH}`, { method }));
 const clock = (start = "2026-11-13T10:00:00.000Z") => { let t = Date.parse(start); return { now: () => new Date(t), add: (s: number) => { t += s * 1000; } }; };
 
-describe("the Metal inspector's decoder, against the chain's own answers of 12 November", () => {
+describe("the Alta inspector's decoder, against the chain's own answers of 12 November", () => {
   it("reads the three mandates as the chain answered: bound on Northwind's account, not revoked, the spend and payments", () => {
     for (const m of RECORD.read.mandates) {
       expect(mandatesCalldata(m.ref)).toBe(m.call.data);
@@ -89,13 +89,13 @@ describe("the Metal inspector's decoder, against the chain's own answers of 12 N
   });
 });
 
-describe("the Metal inspector's limits, with a stand-in RPC", () => {
+describe("the Alta inspector's limits, with a stand-in RPC", () => {
   it("reads the chain once (1 block number, 3 mandates) and answers everyone from that read until the TTL is over", async () => {
     const c = clock(), { rpc, d } = desk({ now: c.now });
     const first = (await (await get(d)).json()) as InspectorAnswer;
     expect(first).toMatchObject({ source: "chain", reason: null, block: RECORD.read.block, account: ACCOUNT, calls_today: 4, ceiling: INSPECTOR_DAILY_CEILING, cache_seconds: INSPECTOR_TTL_SECONDS });
     expect(first.read_at).toBe(c.now().toISOString());
-    expect(first.says).toBe(`Read live from Metal testnet at ${first.read_at.slice(11, 16)} UTC, block ${RECORD.read.block}.`);
+    expect(first.says).toBe(`Read live from Alta testnet at ${first.read_at.slice(11, 16)} UTC, block ${RECORD.read.block}.`);
     expect(first.mandates.map((m) => [m.agent, m.bound, m.revoked, m.spent, m.payments])).toEqual([["sourcing", true, false, "1.18", 41], ["support", true, false, "0.15", 3], ["treasury", true, false, "0.69", 1]]);
     expect(first.check).toMatchObject({ method: "eth_call", to: ACCOUNT, block: RECORD.read.block_hex });
     expect(rpc.calls.map((x) => x.method)).toEqual(["eth_blockNumber", "eth_call", "eth_call", "eth_call"]);

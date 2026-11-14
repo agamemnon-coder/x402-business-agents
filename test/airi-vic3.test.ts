@@ -270,7 +270,7 @@ describe("vic-3 live guards and the page", () => {
     expect(vic3LiveRefusals("live", { ...ok, VIC3_GO: "no" })).toEqual([expect.stringContaining("VIC3_GO=yes")]);
     expect(vic3LiveRefusals("preflight", { ...ok, VIC3_GO: undefined })).toEqual([expect.stringContaining("VIC3_GO=yes")]);
   });
-  it("refuses an Airwallex budget above 20, a Metal URL, another world's ledger, no Claude key", () => {
+  it("refuses an Airwallex budget above 20, a Alta URL, another world's ledger, no Claude key", () => {
     expect(vic3LiveRefusals("live", { ...ok, AIRWALLEX_CALL_BUDGET: "21" })).toEqual([expect.stringContaining("from 1 to 20")]);
     expect(vic3LiveRefusals("live", { ...ok, METAL_RPC_URL: "x" })).toHaveLength(1);
     expect(vic3LiveRefusals("live", { ...ok, KIT11_DB: "data/vic-1.sqlite" })).toHaveLength(1);

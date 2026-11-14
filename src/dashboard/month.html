@@ -109,7 +109,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>Purser</a><nav class="nav" aria-label="Main"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month" class="on" aria-current="page">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+<header class="top"><a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>Purser</a><nav class="nav" aria-label="Main"><a href="./">Overview</a><a href="try">Try it</a><a href="alta">Alta</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month" class="on" aria-current="page">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <header>
   <h1 class="sub">Northwind Outdoor · a month in 90 seconds</h1>
   <p class="honest" id="honest"></p>
@@ -149,7 +149,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   var N = M.days.length, perDay = SECONDS / N;
   var t = 0, playing = true, last = null;
 
-  // Money in the words a CFO uses: euros as €, Metal's USDZ as test USD; only amounts beside a currency change.
+  // Money in the words a CFO uses: euros as €, Alta's USDZ as test USD; only amounts beside a currency change.
   function words(t) {
     var amt = "(-?\\d{1,3}(?:,\\d{3})*(?:\\.\\d{2})|-?\\d+\\.\\d{2})";
     var grp = function (a) { a = a.replace(/,/g, ""); var neg = a.charAt(0) === "-"; if (neg) a = a.slice(1); var p = a.split("."); return (neg ? "−" : "") + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "." + p[1]; };
@@ -170,7 +170,7 @@ details { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
 
   document.getElementById("honest").textContent = M.assumptions[0] + " Month " + M.month + ", seed " + M.seed + ".";
   if (M.clearing) {
-    document.getElementById("clearing-note").textContent = "Summit's " + int(M.clearing.payments) + " payments by Metal clearing: " + M.clearing.clearing_tx + " transactions on chain (weekly deposits and withdrawals) instead of " + int(M.clearing.exact_tx) + " with a transfer per query.";
+    document.getElementById("clearing-note").textContent = "Summit's " + int(M.clearing.payments) + " payments by Alta clearing: " + M.clearing.clearing_tx + " transactions on chain (weekly deposits and withdrawals) instead of " + int(M.clearing.exact_tx) + " with a transfer per query.";
   }
   M.assumptions.slice(1).forEach(function (a) { document.getElementById("assumptions").appendChild(el("li", "", [a])); });
 

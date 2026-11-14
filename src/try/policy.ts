@@ -4,7 +4,7 @@
 //                   world's payment check (worker/src/trySign.ts checkPayment) under it;
 //   Airwallex       the card's authorization_controls as IssuingRest sends them when it issues the card
 //                   (src/airwallex/cardBody.ts), from the limits as rules.ts reads them (src/policy/cardRules.ts);
-//   Metal           the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts):
+//   Alta           the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts):
 //                   cap = the limit per purchase, budget = the limit per month, the agent's payee, expiry = the end date.
 // Looser, field by field (Max's rules): a higher limit per purchase or per month, more merchant categories, more
 // currencies, a later end date, a lower reserve floor, a higher "may pay alone up to". For the amounts and the floor
@@ -200,7 +200,7 @@ export function cardOf(p: WorldPolicy, agent: Agent): { limits: CardLimits; cont
 }
 
 /**
- * Test addresses for the mandates' principal and payees: shaped like Metal addresses, starting 0x7e57 ("test"), and
+ * Test addresses for the mandates' principal and payees: shaped like Alta addresses, starting 0x7e57 ("test"), and
  * Purser's own accounts are none of them. Nothing is sent to them or anywhere.
  */
 export const TEST_PRINCIPAL = "0x7e57000000000000000000000000000000000000";

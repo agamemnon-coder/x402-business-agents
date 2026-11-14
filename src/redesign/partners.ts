@@ -51,6 +51,7 @@ const CSS = `.pp { padding: 26px 0 24px; }
 .phd h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 780; letter-spacing: -.03em; flex: 1 1 100%; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex: none; }
 .logo.dark { background: #191919; border-color: #191919; } .logo img { display: block; height: 15px; width: auto; }
+.logo.tname { font-weight: 700; font-size: 15px; color: #111827; }
 .logo.txt { background: var(--surface); color: var(--text); font-weight: 750; font-size: 14px; white-space: nowrap; }
 .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; padding: 18px; }
 .node { flex: 1 1 150px; display: grid; gap: 4px; align-content: start; padding: 14px; border-radius: 16px; background: var(--sunken); min-width: 0; }
@@ -108,11 +109,11 @@ const moneyOf = (run: AgentRun) => run.events.filter((e): e is Extract<Ev, { k: 
 const ext = (p: { label: string; href: string | null }, label = p.label) => p.href ? `<a class="pf" href="${esc(p.href)}" target="_blank" rel="noopener">${esc(label)} ↗</a>` : "";
 
 /**
- * Every Metal transaction of the main run, one line each (review 9 Nov: "86 payments, each its own transaction" could not
+ * Every Alta transaction of the main run, one line each (review 9 Nov: "86 payments, each its own transaction" could not
  * be clicked one by one). From the trace derived from the main run's ledger (docs/demo/main-run-trace.json), which the
  * tests hold to the record; no chain call.
  */
-/** The main run's Metal transactions as a list on GitHub (made by metalTxList(), held to the trace by its test). */
+/** The main run's Alta transactions as a list on GitHub (made by metalTxList(), held to the trace by its test). */
 export const METAL_TX_LIST = "docs/runs/2026-11-03-main-run-metal-transactions.md";
 /** That list as Markdown. */
 export function metalTxList(): string {
@@ -133,21 +134,25 @@ export function metalTxs(): { what: string; tx: string }[] {
  */
 export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | null = tokenizeRun()): string {
   const metal = JSON.parse(readFileSync(new URL("../../docs/demo/metal.json", import.meta.url), "utf8")) as { features: { title: string; docs: { label: string; href: string }[] }[] };
-  const used = metal.features.filter((f) => /mandate per agent|Replace and revoke|x402|facilitator|Refunds as mandate|Sweep after finality|Four eyes/i.test(f.title));
+  // The features' titles and doc labels are our own words, recorded in docs/demo/metal.json before Metal renamed itself
+  // Alta (14 Nov): shown under the new name; the file keeps the old one.
+  const alta = (t: string) => t.replace(/\bMetal\b/g, "Alta");
+  const used = metal.features.filter((f) => /mandate per agent|Replace and revoke|x402|facilitator|Refunds as mandate|Sweep after finality|Four eyes/i.test(f.title))
+    .map((f) => ({ ...f, title: alta(f.title), docs: f.docs.map((d) => ({ ...d, label: alta(d.label) })) }));
   // One honest story (jury panel, 12 Nov; src/redesign/metalMandates.ts): the four mandates with their spend, read live
   // by the read-only inspector or labelled as recorded; the payments; the refusal as it ran; who signed on chain; what
-  // else ran on Metal, each dated, the unfinished hold said as such. The live proof's fold keeps every line but one:
+  // else ran on Alta, each dated, the unfinished hold said as such. The live proof's fold keeps every line but one:
   // "A mandate per agent, on chain" states the end terms beside the first bind's link; the table links each term's own
   // transaction instead.
   const p = partnerProof(run), pay = payments(run.record), story = metalStory(run.record);
   const folds = fold("The live proof, with every tx", [...(pay.sums && pay.onChain === story.payments.total ? [plainLi(`${pay.line}.`)] : []), ...p.metal.filter((li) => !li.includes("A mandate per agent, on chain"))])
     + fold(`All ${metalTxs().length} transactions`, [`<li>${ext({ label: "Each with its link to the explorer", href: `${REPO_BLOB}${METAL_TX_LIST}` })}</li>`])
-    + fold("The Metal features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
-    + fold("What is simulated", [plainLi("Test money on Metal testnet only (*USDZ)."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions."),
+    + fold("The Alta features we use, and their docs", used.map((f) => docsLi(f.title, f.docs)))
+    + fold("What is simulated", [plainLi("Test money on Alta testnet only (*USDZ)."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions."),
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
   const body = metalBody(run.record, { logo: LOGO.metal, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
-  return page({ title: "Metal", description: "How Purser uses Metal: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
@@ -160,12 +165,12 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   const hash = hashTravel(run.record), cards = cardsReadback(), rows = cards ? cardControlRows(run.record, cards) : [];
   // One story about Airwallex's own products (jury panel, 12 Nov; src/redesign/airwallexProducts.ts): a tile per product
   // on top, each from its own run's record; the hash block under them; everything else folded. The main run's flow
-  // (Metal earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
+  // (Alta earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
   // and /visa show. Proof's "Policy and card side by side" opens the cards' fold (#controls, or #card-<agent>).
   const body = airwallexBody(run, {
     logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : "",
     awx1: awxRunBlock(), airi: airiRunBlock() + vic2RunBlock(undefined, { short: true }),
-    picture: [node("zap", "Metal earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
+    picture: [node("zap", "Alta earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
       node("circle-check", licence ? `${eur} by SWIFT, accepted` : "SWIFT, accepted", licence ? `Airwallex accepted it with the signed hash; ${SANDBOX_SETTLED}` : "", "ok")].join(""),
     mainProof: p.airwallex, deposit: booked?.amount ?? null, depositDocs: airwallexData().features.find((f) => f.id === "deposit")?.docs ?? [],
@@ -440,7 +445,7 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true)}, each run dated` }] : []),
-    { name: "Metal", href: "metal", proof: `${st.payments.total} payments on testnet (main run)` },
+    { name: "Alta", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },

@@ -1,11 +1,11 @@
 {
-  "_fixture": "Made by test/support/tokenizeWorld.ts sampleRunRecord on the in-memory chain: not a live run; its hashes are not on Metal testnet. For test/metal-onchain.test.ts only.",
+  "_fixture": "Made by test/support/tokenizeWorld.ts sampleRunRecord on the in-memory chain: not a live run; its hashes are not on Alta testnet. For test/metal-onchain.test.ts only.",
   "kind": "tokenize-run",
   "recorded_at": "2026-11-12T10:00:00.000Z",
   "date": "2026-11-12",
   "labels": {
     "prototype": true,
-    "network": "Metal testnet",
+    "network": "Alta testnet",
     "chain_id": 63825,
     "test_money": true,
     "financier": "simulated",
