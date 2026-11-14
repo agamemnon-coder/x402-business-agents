@@ -39,6 +39,7 @@ import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
 import { FILM_URL, TRAILER_LINK, TRAILER_URL } from "../../src/config/brand.js";
+import { presentExtra } from "./try/presentMode.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -956,6 +957,8 @@ async function withTimeout(fn){
 }
 const method=()=>methodOf(C.method,navigator.userAgent||'');
 const cap1=(s)=>s?s[0].toUpperCase()+s.slice(1):s;
+// An answer drawn below the fold is scrolled into view (the sticky nav kept clear by scroll-padding-top), gently unless reduced.
+const inView=(n)=>{const r=n.getBoundingClientRect();if(r.top>=0&&r.top<innerHeight*0.6)return;let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}n.scrollIntoView({block:'start',behavior:calm?'auto':'smooth'})};
 // The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
 async function signTerms(challenge,credentialId,signal){
   const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:30000}});
@@ -1199,7 +1202,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const j=r.json,o=r.status===200?j.outcome:null;
     if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
-    if(o==='refused'){intro.hidden=true;out.replaceChildren(refused(r,ms,sent));return}
+    // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
+    if(o==='refused'){intro.hidden=true;const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
     if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
@@ -1471,7 +1475,8 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read and check each invoice, and you approve what is above their limit with your passkey. Test money on a simulated bank, deleted after 24 hours.";
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
-export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
+/** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
+export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
   const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
@@ -1486,13 +1491,13 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }): strin
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}</style></head><body>
+<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}${extra ? extra.css : ""}</style></head><body>
 ${siteHeader("try")}
 <div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
 <p class="trust">${escAttr(START.trust)}</p>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
-<script type="module" nonce="${n}">${script}</script>
+${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}</script>
 </body></html>`;
 }
 
@@ -1503,7 +1508,8 @@ const PAGE_HEADERS = {
 };
 
 /** GET /try: the page under the console's policy, with a fresh nonce. */
-export function tryPageResponse(_req: Request, _url: URL, env: CloudEnv): Response {
+export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Response {
   const n = nonce();
-  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+  // Recording mode for the Demo Day walkthrough (cloud/src/try/presentMode.ts): a flag only; the page is otherwise the same.
+  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, url.searchParams.get("present") === "1" ? presentExtra() : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
 }
