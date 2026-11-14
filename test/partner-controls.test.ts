@@ -76,7 +76,7 @@ describe("Purser Cloud's Books: the same check", () => {
     const html = consolePage("n", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
     const cfg = JSON.parse(/<meta name="purser-cloud" content="([^"]+)">/.exec(html)![1]!.replace(/&quot;/g, '"').replace(/&amp;/g, "&")) as { t0Close?: { agrees: boolean; entries: number } };
     expect(cfg.t0Close).toMatchObject({ agrees: true, entries: 95 });
-    for (const k of ["cs.books.t0_h", "cs.books.t0_agrees", "cs.books.t0_rule", "cs.books.t0_src", "cs.books.t0_download"]) expect((html.match(new RegExp(`"${k.replace(/\./g, "\\.")}"`, "g")) ?? []).length).toBe(2);
+    for (const k of ["cs.books.t0_h", "cs.books.t0_agrees", "cs.books.t0_rule", "cs.books.t0_src", "cs.books.t0_download"]) expect(html.split(`"${k}"`).length - 1).toBe(2);
     expect(html).toContain("t0CloseCard()");
   });
 });
