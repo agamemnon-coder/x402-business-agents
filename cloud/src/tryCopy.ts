@@ -198,6 +198,21 @@ export const WORK = {
   tookBy: "{model} read it; answered in {s} s, measured in your browser.",
 };
 
+/**
+ * 14 Nov (receipt): screen 5 as a receipt: the ids that tie it to the ledger (the payment's transfer, the journal
+ * entries' numbers) and the records as a PDF (the same export as screen 6).
+ */
+export const RECEIPT = { transfer: "Transfer", entries: "Entries", download: "Download the records (PDF)", downloading: "Preparing the PDF…", failed: "The PDF could not be made. Try again." };
+
+/**
+ * 14 Nov (inbox table): screen 1's samples as an inbox: the columns, and each sample's risk as the engine measured it
+ * for that sample (src/engine/tryWorld.ts expect: its kind, status and finding), never a guess.
+ */
+export const INBOX = {
+  cols: { supplier: "Supplier", no: "Invoice no.", amount: "Amount", due: "Due", risk: "Risk" },
+  risk: { clean: "Clean", duplicate_document: "Already paid", possible_duplicate: "Possible duplicate", possible_fraud: "New bank details", new_supplier: "New supplier" } as Record<string, string>,
+};
+
 /** 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed), by code. */
 export const WORK_CHECKS: Record<string, string> = { not_paid_before: "Not paid before (same supplier and number)", bank_on_file: "Bank details match the ones on file", known_supplier: "Known supplier" };
 
@@ -358,7 +373,9 @@ export const APPROVE = {
    * 14 Nov (judges: this read as if agents never pay alone, against the headline): in this demo the limit is zero, so
    * every invoice waits; with a CFO's limit set, an agent pays alone below it (the main run on /proof, run live).
    */
-  limit: "Demo limit: zero, so every invoice waits for you. Below a CFO's limit, agents pay alone.",
+  limit: "Agent limit EUR 0 in this demo · above it, your passkey. With a CFO's limit set, agents pay alone below it.",
+  /** 14 Nov (approval sheet): its label, and the way back without signing (nothing is signed or paid; the terms expire). */
+  sheet: "Approval sheet", notNow: "Don't sign",
   /** Once the receipt is in: the start of the exact terms' SHA-256 ({sha}: its first 8 hex characters). */
   signsSha: "(SHA-256 {sha}…)",
   fileAgain: "File it again",
@@ -640,26 +657,26 @@ export const VISIBLE = {
   approve: [
     [APPROVE.heading, APPROVE.filing],
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.create],
     // The fold open: what the passkey signs, above the terms (the terms themselves are data).
-    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.signsSha, APPROVE.create],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.waiting],
+    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.waiting],
     // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approve.replace("{method}", METHOD.windows)],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.approving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.noPasskey, APPROVE.again, OPEN.copy, OPEN.copied],
     // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.paying, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.failed, PAY.retry],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.paidOnce, BOOKS.next],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.failed, APPROVE.fileAgain],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, PAY.failed, APPROVE.fileAgain],
     // 14 Nov: a passkey that failed, was cancelled or gave no answer: a plain line and Try again; refused at once (no
     // prompt was shown): "open this page in Safari or Chrome" and its address to copy.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.cancelled, APPROVE.again],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.timeout, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.cancelled, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.sheet, APPROVE.notNow, APPROVE.signs, APPROVE.signsSha, APPROVE.timeout, APPROVE.again],
   ],
   pay: [
     [PAY.heading, PAY.loading],
@@ -757,7 +774,7 @@ export const VISIBLE = {
 // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs ("work 2"; "work 12" read by Claude).
 // The integration of 14 Nov (try-integ-1114) re-pinned every state at its count. The start adds "What's real here"
 // (owner: "fill and lift it"), four proof chips: "start 0" to "start 3", +37 each.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 63, "approve 4": 63, "approve 9": 59, "approve 10": 56, "approve 11": 62, "approve 12": 61, "approve 13": 56, "approve 14": 55, "approve 15": 65, "approve 5": 53, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 51, "approve 7": 49, "approve 8": 50, "approve 16": 51, "company 4": 79 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 79, "approve 3": 48 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
