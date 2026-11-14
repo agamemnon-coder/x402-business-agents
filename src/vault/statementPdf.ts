@@ -25,6 +25,8 @@ export interface StatementView {
   revenue: number; expenses: StatementLine[]; totalExpenses: number;
   /** No revenue, yet the output VAT account holds VAT: reverse charge, shown as such. */
   reverseCharge: boolean;
+  /** How another currency's lines came into this statement (inBaseCurrency), in words; null when none did. */
+  translated: string | null;
   sorted: { date: string; supplier: string; number: string; total: string; cents: number | null; currency: string; booking: string; account: string; vat: string; costCentre: string; reason: string }[];
 }
 
@@ -44,12 +46,61 @@ export const REVERSE_CHARGE_NAME = "VAT payable, reverse charge";
 export const REVERSE_CHARGE_LINE = "No sales this month: the VAT payable is reverse charge, the VAT the company owes on services bought from suppliers in other countries; the same amount is reclaimed as input VAT.";
 const chartName = (account: string) => plainName(account, LEDGER_ACCOUNTS[account] ?? "");
 
+const TRANSIT_ACCOUNT = "1590";
+const cents2 = (c: number) => `${c < 0 ? "-" : ""}${Math.floor(Math.abs(c) / 100)}.${String(Math.abs(c) % 100).padStart(2, "0")}`;
+
+/**
+ * The file with another currency's lines brought into the first (the company's) currency, so its P&L holds every
+ * expense and nothing is left parked on money in transit (the CFO review, 14 Nov: the GBP 840 of expenses were left
+ * out of the EUR P&L and EUR 982.80 sat on 1590). Translated at the rate of the conversion that bought that currency:
+ * what money in transit holds on each side (EUR 982.80 for GBP 840.00 is 1.17), the rate on the day it was bought.
+ * Only when exactly one other currency has money in transit, of the opposite sign, and the translated statement still
+ * balances to the cent; otherwise the file is returned as it is and that currency is shown on its own.
+ */
+export function inBaseCurrency(f: BooksStatementFile): { file: BooksStatementFile; note: string | null } {
+  const base = f.balance[0];
+  const transitOf = (b: BooksStatementFile["balance"][number]) => centsOf(b.accounts.find((a) => a.account === TRANSIT_ACCOUNT)?.amount ?? "0.00") ?? 0;
+  if (!base) return { file: f, note: null };
+  const baseTransit = transitOf(base);
+  const others = f.balance.slice(1).filter((b) => transitOf(b) !== 0);
+  if (baseTransit === 0 || others.length !== 1 || Math.sign(transitOf(others[0]!)) === Math.sign(baseTransit)) return { file: f, note: null };
+  const o = others[0]!, ot = transitOf(o);
+  const tr = (c: number) => Math.round((c * baseTransit) / -ot);
+  const merge = <T extends { account: string; amount: string }>(into: T[], from: T[]) => {
+    const out = into.map((a) => ({ ...a }));
+    for (const a of from) {
+      const c = tr(centsOf(a.amount) ?? NaN);
+      if (!Number.isFinite(c)) return null;
+      const had = out.find((x) => x.account === a.account);
+      if (had) had.amount = cents2((centsOf(had.amount) ?? 0) + c); else out.push({ ...a, amount: cents2(c) });
+    }
+    return out.filter((a) => (centsOf(a.amount) ?? 0) !== 0 || a.account !== TRANSIT_ACCOUNT);
+  };
+  const accounts = merge(base.accounts, o.accounts);
+  const bp = f.pnl.find((x) => x.currency === base.currency), op = f.pnl.find((x) => x.currency === o.currency);
+  const pnlAccounts = bp && op ? merge(bp.accounts, op.accounts) : bp?.accounts ?? null;
+  if (!accounts || !pnlAccounts || !bp) return { file: f, note: null };
+  const expense = (centsOf(bp.expense) ?? 0) + (op ? tr(centsOf(op.expense) ?? 0) : 0), revenue = (centsOf(bp.revenue) ?? 0) + (op ? tr(centsOf(op.revenue) ?? 0) : 0);
+  const sum = (type: string) => accounts.filter((a) => a.type === type).reduce((n, a) => n + (centsOf(a.amount) ?? 0), 0);
+  const result = revenue - expense;
+  // Translated line by line, the cents must still add up; when rounding breaks that, nothing is translated.
+  if (sum("asset") !== sum("liability") + sum("equity") + result || pnlAccounts.reduce((n, a) => n + (centsOf(a.amount) ?? 0), 0) !== expense) return { file: f, note: null };
+  const file: BooksStatementFile = {
+    ...f,
+    balance: [{ ...base, accounts, assets: cents2(sum("asset")), liabilities: cents2(sum("liability")), equity: cents2(sum("equity")), result: cents2(result), balanced: true }, ...f.balance.slice(1).filter((b) => b !== o)],
+    pnl: [{ ...bp, accounts: pnlAccounts, expense: cents2(expense), revenue: cents2(revenue), result: cents2(result) }, ...f.pnl.filter((x) => x !== bp && x !== op)],
+  };
+  const rate = (baseTransit / -ot).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  return { file, note: `${o.currency} translated into ${base.currency} at the rate of the conversion that bought it: ${base.currency} ${cents2(baseTransit)} for ${o.currency} ${cents2(-ot)} (${rate}), so money in transit is cleared.` };
+}
+
 /**
  * The statement as both /books and the PDF show it, from the file; null when the file does not hold one. The balance
  * check is recomputed here, from the lines: assets = liabilities + equity + this year's result, and that result equal
  * to the P&L's.
  */
-export function statementView(f: BooksStatementFile): StatementView | null {
+export function statementView(given: BooksStatementFile): StatementView | null {
+  const { file: f, note: translated } = inBaseCurrency(given);
   const b = f.balance[0], p = f.pnl.find((x) => x.currency === b?.currency);
   if (!b || !p) return null;
   const result = centsOf(b.result), revenue = centsOf(p.revenue), expense = centsOf(p.expense);
@@ -65,7 +116,7 @@ export function statementView(f: BooksStatementFile): StatementView | null {
   const totalAssets = sum(assets), totalLiabilities = sum(liabilities), totalEquity = sum(equity) + result, totalExpenses = sum(expenses);
   const asOf = f.cash?.length ? f.cash.reduce((d, c) => (c.day > d ? c.day : d), f.day) : f.day;
   return {
-    company: f.company, currency: b.currency, asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity, result, reverseCharge,
+    company: f.company, currency: b.currency, asOf, assets, liabilities, equity, totalAssets, totalLiabilities, totalEquity, result, reverseCharge, translated,
     balances: b.balanced && totalAssets === totalLiabilities + totalEquity && result === revenue - expense && totalExpenses === expense,
     revenue, expenses, totalExpenses,
     sorted: f.sorted.rows.filter((r) => r.supplier && r.number && r.date && r.total && r.reason).map((r) => ({
@@ -142,6 +193,10 @@ export function statementPdf(v: StatementView): Promise<Buffer> {
   if (v.balances) {
     doc.font("Helvetica-Bold").fontSize(9.5).fillColor(OK).text(`Balances: total assets ${fmt(v.totalAssets)} = total liabilities and equity ${fmt(v.totalLiabilities + v.totalEquity)}`, L, y + 2);
     y += 20;
+  }
+  if (v.translated) {
+    doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text(v.translated, L, y, { width: W });
+    y = doc.y + 6;
   }
 
   heading("Profit and loss, 2026");

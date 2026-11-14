@@ -89,6 +89,8 @@ export const READ_DAILY_CEILING = 1500;
 const TIMEOUT_MS = 8_000;
 /** The newest active cards read one by one for their limits (the list has none). */
 export const CARD_DETAILS = 8;
+/** Pages of 100 read from the issuing lists (cards, transactions), oldest first, to reach the newest. */
+export const ISSUING_PAGES = 5;
 /** Financial transactions read in one page: Airwallex's largest page (page_size ≤ 1000). */
 export const FT_PAGE = 1000;
 const TOKEN_EARLY_MS = 60_000;
@@ -286,10 +288,25 @@ export class AwxReadDesk {
       case "beneficiaries": return { beneficiaries: beneficiariesOf(await this.get("/api/v1/beneficiaries", { page_num: "0", page_size: "20" })) };
       case "issuing": {
         // Issuing needs its own scope on the key. Without it Airwallex answers 401/403: said so, not hidden.
-        // Airwallex lists the oldest first (live, 14 Nov): a page of 100, the newest shown. The list carries no spending
-        // limits, so the newest active cards are read one by one (GET /issuing/cards/{id}, at most CARD_DETAILS).
+        // Airwallex lists the oldest first (live, 14 Nov), so the newest are on the last page: pages of 100 are read until
+        // has_more is false, at most ISSUING_PAGES; a list longer than that is said to be cut (the newest of the first
+        // ISSUING_PAGES pages), never called the newest. Only page_num and page_size, the parameters the repo's own
+        // Airwallex code uses on these lists (src/airwallex/issuing.ts). The list carries no spending limits, so the newest
+        // active cards are read one by one (GET /issuing/cards/{id}, at most CARD_DETAILS).
         const newest = <T>(rows: T[], at: (r: T) => unknown) => [...rows].sort((a, b) => (timeOf(at(b)) ?? 0) - (timeOf(at(a)) ?? 0));
-        const listed = newest(cardsOf(await this.get("/api/v1/issuing/cards", { page_num: "0", page_size: "100" }, true)), (c) => c.created_at).slice(0, 12);
+        const allPages = async (path: string) => {
+          const rows: unknown[] = [];
+          let more = false;
+          for (let page = 0; page < ISSUING_PAGES; page++) {
+            const j = await this.get(path, { page_num: String(page), page_size: "100" }, true);
+            rows.push(...items(j));
+            more = obj(j)?.has_more === true;
+            if (!more) break;
+          }
+          return { rows, cut: more };
+        };
+        const cardPages = await allPages("/api/v1/issuing/cards");
+        const listed = newest(cardsOf({ items: cardPages.rows }), (c) => c.created_at).slice(0, 12);
         const cards = [];
         let details = 0;
         for (const c of listed) {
@@ -299,8 +316,9 @@ export class AwxReadDesk {
             cards.push(full ? { ...c, ...Object.fromEntries(Object.entries(full).filter(([, v]) => v !== null && !(Array.isArray(v) && !v.length))) } : c);
           } else cards.push(c);
         }
-        const transactions = newest(cardTransactionsOf(await this.get("/api/v1/issuing/transactions", { page_num: "0", page_size: "100" }, true)), (t) => t.at).slice(0, 20);
-        return { cards, transactions };
+        const txPages = await allPages("/api/v1/issuing/transactions");
+        const transactions = newest(cardTransactionsOf({ items: txPages.rows }), (t) => t.at).slice(0, 20);
+        return { cards, transactions, cards_read: cardPages.rows.length, cards_cut: cardPages.cut, transactions_read: txPages.rows.length, transactions_cut: txPages.cut };
       }
     }
   }
