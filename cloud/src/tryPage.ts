@@ -1594,8 +1594,9 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     if(g.status!==200||!g.blob){pdfSaid.hidden=false;pdfSaid.textContent=words(g.json||{},C.receipt.failed);return}pdfSaid.hidden=true;
     const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company-records.pdf';a.hidden=true;box.append(a);a.click();a.remove()});
   const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','acts pdfl',[pdf]),pdfSaid,el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  // 14 Nov (round 3): the Airwallex line sits under the amount it paid, not above it.
   const awxPaid=payoutCard(S.awx,sha);
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,el('div','slot payout',awxPaid?[awxPaid]:[]),booked,filed,tail);
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
   // read ends: call() answers status 0 when the network fails, it never throws.

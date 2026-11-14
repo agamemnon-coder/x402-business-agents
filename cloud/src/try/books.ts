@@ -26,7 +26,7 @@ export const DID = {
   vat: "VAT",
   invoice: "Invoice",
   payment: "Payment",
-  roles: { expense: "expense", vat: "VAT", creditors: "creditors", bank: "bank" },
+  roles: { expense: "Expense", vat: "VAT", creditors: "Creditors", bank: "Bank" },
   notIn: "Not in yet.",
   /** A sample company, read only: never the visitor's own test company (try-fixes, 13 Nov). */
   cloud: "See a sample company in Purser Cloud",

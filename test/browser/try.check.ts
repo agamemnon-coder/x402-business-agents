@@ -768,7 +768,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const didAccounts = await page.locator(".did-step table.lines tbody td span.mono").allTextContents();
   ok(didAccounts.slice().sort().join() === apiLines.map((l) => l.account).sort().join(), `${tag}: did: booked, every journal line the ledger holds for this invoice (${didAccounts.join(" ")})`);
   const roles = await page.locator(".did-step table.lines tbody td span.role").allTextContents();
-  ok(["expense", "VAT", "creditors", "bank"].every((r) => roles.includes(r)), `${tag}: did: the lines named expense, VAT, creditors and bank (${roles.join(", ")})`);
+  ok(["Expense", "VAT", "Creditors", "Bank"].every((r) => roles.includes(r)), `${tag}: did: the lines named Expense, VAT, Creditors and Bank (${roles.join(", ")})`);
   // Every amount ends where its column's heading ends (the VAT row like the others).
   // The text's own right edge (a range over the cell's text) against the heading's (plain loops: no named functions in
   // the page, which tsx would wrap in a helper the page does not have).
