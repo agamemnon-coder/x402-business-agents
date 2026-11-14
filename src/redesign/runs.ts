@@ -675,7 +675,8 @@ const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp s
 @keyframes mo-pulse-in { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); } 100% { box-shadow: 0 0 0 7px transparent; } }
 .runsp details.ftp ul { margin: 6px 0 0; padding-left: 24px; font-size: 14px; } .runsp details.ftp .mo-count { font-variant-numeric: tabular-nums; }`;
 
-const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
+/** The copy buttons (button.cp with data-copy): hidden without a clipboard. Shared with /docs (14 Nov). */
+export const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   if (!navigator.clipboard) { b.hidden = true; return; }
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
 });`;

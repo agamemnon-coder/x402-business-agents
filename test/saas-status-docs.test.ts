@@ -16,7 +16,9 @@ import { TRY_URL } from "../src/redesign/ui.js";
 import { openDb } from "../src/db/open.js";
 import { agentId } from "../src/platform/externalAgents.js";
 import { agentApiServer } from "../src/platform/mcpServer.js";
-import { CLOUD_DEMO_URL, CLOUD_PREVIEW_LINE, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, agentTools, docsPage, readToolCount } from "../src/redesign/docs.js";
+import { CLOUD_DEMO_URL, CLOUD_PREVIEW_LINE, CLOUD_OPENAPI_PATH, MCP_COMMAND, MCP_ENV, TOOL_PURPOSE, WORKS_WITH, agentTools, docsPage, readToolCount } from "../src/redesign/docs.js";
+import { COPY_JS } from "../src/redesign/runs.js";
+import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP } from "../src/ui/more.js";
 import { LIVE_RUN_EXPECTED_MS, RUNNER_DOWN_AFTER_MS } from "../src/ops/publicHealth.js";
 import { RUNS_TITLE, liveRuns } from "../src/redesign/runs.js";
 import { STATUS_RUNS, latestRuns, runLabels, statusPage } from "../src/redesign/status.js";
@@ -86,11 +88,14 @@ describe("/docs: docs and API", () => {
     // The page's list is the server's: the same names, titles and descriptions, in the same order.
     expect(agentTools()).toEqual(tools);
     const api = card(html, "agent-api");
-    expect([...api.matchAll(/<li data-tool="([a-z_]+)"><code>([a-z_]+)<\/code> ([^<]+)<\/li>/g)].map((m) => [m[1], m[2], decode(m[3]!)])).toEqual(tools.map((t) => [t.name, t.name, t.title]));
+    // Max, 14 Nov: the grid shows each tool's name and its purpose in a few words; every tool has one (none dropped, none
+    // invented); the title and the description, the code's own words, are in the fold.
+    expect(Object.keys(TOOL_PURPOSE).sort()).toEqual(tools.map((t) => t.name).sort());
+    expect([...api.matchAll(/<li data-tool="([a-z_]+)"><code>([a-z_]+)<\/code> ([^<]+)<\/li>/g)].map((m) => [m[1], m[2], decode(m[3]!)])).toEqual(tools.map((t) => [t.name, t.name, TOOL_PURPOSE[t.name]]));
     // No tool beside them anywhere on the page: every snake_case name in code marks is one of the server's.
     expect([...new Set([...html.matchAll(/<code>([a-z]+(?:_[a-z]+)+)<\/code>/g)].map((m) => m[1]))].sort()).toEqual(tools.map((t) => t.name).sort());
     const fold = /<details class="fold"><summary>What each tool does<\/summary>([\s\S]*?)<\/details>/.exec(api)?.[1] ?? "";
-    expect([...fold.matchAll(/<li><code>([a-z_]+)<\/code>: ([^<]+)<\/li>/g)].map((m) => [m[1], decode(m[2]!)])).toEqual(tools.map((t) => [t.name, t.description]));
+    expect([...fold.matchAll(/<li><code>([a-z_]+)<\/code>, ([^<:]+): ([^<]+)<\/li>/g)].map((m) => [m[1], decode(m[2]!), decode(m[3]!)])).toEqual(tools.map((t) => [t.name, t.title, t.description]));
     // What the tools cannot do, as the server's own file says it.
     expect(read("src/platform/mcpServer.ts")).toContain("no tool approves, sets a limit or touches another agent's card");
     // 12 Nov (review): the guide the card links, and docs/claude.md, name the same tools and count them right.
@@ -154,7 +159,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(280);
+    expect(visibleWords(set)).toBeLessThanOrEqual(185);
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -187,8 +192,21 @@ describe("/docs: docs and API", () => {
   // 210 since the review of 12 Nov: an aside on the project name next to the variable names (6 words; removed again in the final review, 13 Nov).
   // 245 since 13 Nov (owner): the "Connect your AI" card, its sentence, the demo token and its link (35 words). 280 since
   // the jury the same day: Purser Cloud as a guest in the card, its link, and its steps with Claude folded (274 as built).
-  it("stays within 280 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(280);
+  // 185 since 14 Nov (Max: "so much text for docs, it should be a bit less and more clear and concrete"): one promise
+  // per card, the values as chips, the tools as a grid, a five-step drawing; the rest folded (181 as built, from 274).
+  it("draws the path from your AI to the rails, gives each value to paste a copy button, and names the AI clients as chips", () => {
+    expect(html).toMatch(/<ol class="pchain n5" aria-label="From your AI to the rails">/);
+    const steps = [.../<ol class="pchain n5"[\s\S]*?<\/ol>/.exec(html)![0].matchAll(/<b>([^<]+)<\/b>/g)].map((m) => decode(m[1]!));
+    expect(steps).toEqual(["Your AI", "MCP", "Purser", "CFO's Face ID", "The rails"]);
+    const copies = [...html.matchAll(/<button type="button" class="cp" data-copy="([^"]+)"/g)].map((m) => decode(m[1]!));
+    expect(copies).toEqual([PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, MCP_COMMAND, CLOUD_OPENAPI_PATH, "npm run judge"]);
+    expect(WORKS_WITH).toEqual(["Claude", "Cursor", "VS Code", "Gemini CLI"]);
+    for (const c of WORKS_WITH) expect(read("docs/connect-claude.md")).toContain(c);
+    expect([.../<ul class="ww">([\s\S]*?)<\/ul>/.exec(card(html, "connect-ai"))![1]!.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1])).toEqual([...WORKS_WITH]);
+  });
+
+  it("stays within 185 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(185);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });
@@ -216,12 +234,14 @@ describe("/docs: docs and API", () => {
 describe("/docs on the site", () => {
   const pages = buildPages() as Pages;
 
-  it("is built once and served as it is, by the Worker's bundle and the judge server, under a style-only policy (no script)", () => {
+  // 14 Nov (Max: "more clear and concrete"): one small script, the copy buttons, under a hash-based policy.
+  it("is built once and served as it is, by the Worker's bundle and the judge server, its one script the copy buttons under a hash-based policy", () => {
     expect(DOCS_PAGE).toBe(docsPage());
     expect(pages.docs).toBe(DOCS_PAGE);
-    expect(scriptBlocks(DOCS_PAGE)).toEqual([]);
+    expect(scriptBlocks(DOCS_PAGE).length).toBe(1);
+    expect(scriptBlocks(DOCS_PAGE)[0]).toContain(COPY_JS);
     expect((DOCS_PAGE.match(/<style>/g) ?? []).length).toBe(1);
-    expect(DOCS_CSP).toMatch(STYLE_ONLY);
+    expect(DOCS_CSP).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
     expect(pages.csp.docs).toBe(DOCS_CSP);
     const res = pageResponse(new Request("https://x.test/docs"), pages)!;
     expect({ status: res.status, type: res.headers.get("content-type"), csp: res.headers.get("content-security-policy") }).toEqual({ status: 200, type: "text/html; charset=utf-8", csp: DOCS_CSP });

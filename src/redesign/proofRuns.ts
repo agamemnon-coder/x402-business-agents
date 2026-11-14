@@ -127,7 +127,8 @@ export function verifyCalloutHtml(): string {
 <p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p></div></aside>`;
 }
 
-export const PROOF_RUNS_CSS = `
+/** The chain's own rules, shared with /docs' diagram (14 Nov). */
+export const PROOF_CHAIN_CSS = `
 /* The proof chain (the owner, 13 Nov). */
 ol.pchain { list-style: none; margin: 4px 0 24px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 ol.pchain li { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px 16px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
@@ -136,6 +137,9 @@ ol.pchain b { font-size: 15.5px; font-weight: 680; }
 ol.pchain small { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
 ol.pchain .pc-arr { position: absolute; right: -16px; top: 24px; z-index: 1; color: var(--faint); background: var(--bg); border-radius: 50%; }
 @media (max-width: 760px) { ol.pchain { grid-template-columns: 1fr; gap: 16px; } ol.pchain li { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 2px; align-items: center; padding: 12px 14px; } ol.pchain .pc-ic { grid-row: 1 / span 2; width: 32px; height: 32px; } ol.pchain small { grid-column: 2; } ol.pchain .pc-arr { right: auto; left: 24px; top: auto; bottom: -19px; transform: rotate(90deg); } }
+`;
+
+export const PROOF_RUNS_CSS = `${PROOF_CHAIN_CSS}
 /* The receipt anyone can check offline. */
 aside.pverify { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 28px; padding: 16px 18px; border: 1px solid var(--accent); border-radius: 14px; background: var(--accent-soft); }
 aside.pverify > svg { flex: none; color: var(--accent); margin-top: 2px; }
