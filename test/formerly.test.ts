@@ -50,10 +50,11 @@ describe("the site after the rename", () => {
     }
   });
 
-  it("serves /alta as /metal, on the Worker and on the judge's server; the nav says Alta", () => {
-    expect(read("worker/src/core.ts")).toContain('if (path === "/metal" || path === "/alta") return page(pages.metal, pages.csp.metal);');
-    expect(read("src/cli/judge.ts")).toContain('app.get(["/metal", "/alta"], page(METAL_CSP, () => METAL_PAGE));');
-    expect(read("src/servers/dashboard.ts")).toContain('app.get(["/metal", "/alta"]');
+  it("serves the page at /alta, and /metal answers 301 to it, on the Worker and on the judge's server; the nav says Alta", () => {
+    expect(read("worker/src/core.ts")).toContain('if (path === "/alta") return page(pages.metal, pages.csp.metal);');
+    expect((pages as { moved: Record<string, string> }).moved["/metal"]).toBe("/alta");
+    expect(read("src/cli/judge.ts")).toContain('app.get("/alta", page(METAL_CSP, () => METAL_PAGE));');
+    expect(read("src/servers/dashboard.ts")).toContain('app.get("/metal", (_req, res) => { res.redirect(301, "/alta"); });');
     expect(/<nav[\s\S]*?<\/nav>/.exec(html(pages.home))![0]).toMatch(/>Alta</);
   });
 
@@ -61,8 +62,9 @@ describe("the site after the rename", () => {
     expect(read("docs/submission/README.md")).toContain("entered for the Metal Award and the Visa Award");
     for (const [k, h] of served) expect({ k, mark: h.includes("logo-metal.svg") }).toEqual({ k, mark: false });
     expect(BUILT_WITH.map((l) => l.name)).not.toContain("Metal");
-    expect(LEFT_OUT.map((l) => l.name)).toContain("Alta (formerly Metal)");
-    expect(read("docs/evidence/logo-permissions.md")).toContain("may not be used without our prior written");
+    expect(BUILT_WITH.find((l) => l.name === "Alta")?.file).toBe("src/ui/logos/alta.svg");
+    expect(LEFT_OUT.map((l) => l.name)).not.toContain("Alta (formerly Metal)");
+    expect(read("docs/evidence/logo-permissions.md")).toContain("Alta logo shown with the Alta team's OK in the Airwallex hackathon Slack, 14 Nov 2026");
   });
 
   it("leaves the run records as they were written", () => {

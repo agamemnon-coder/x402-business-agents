@@ -113,7 +113,7 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
   if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Alta's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
   if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: "Airwallex sandbox API calls logged", title: `Airwallex sandbox API calls in the call logs of ${f.airwallexCalls.records} run records; runs without a call log add none`, icon: "landmark", href: "airwallex" });
-  if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "metal" });
+  if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
   if (f.claudeCalls) out.push({ n: f.claudeCalls, label: "Claude calls with request ids", title: "Distinct Anthropic request ids in the run and eval records", icon: "bot", href: "claude" });
   if (f.refusals) out.push({ n: f.refusals, label: "refusals on record", title: "Audit rows of a refusal, a decline, a rejection or a fraud stop in the run records: over a limit, at the rail, on chain", icon: "ban", href: "proof#stops", tone: "bad" });
   return out;

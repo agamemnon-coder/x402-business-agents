@@ -148,8 +148,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     // Since the review at 390 px (12 Nov) the latest live run leads, so the label beside the heading is its date, marked latest.
     expect(text(head)).toContain(visaLatestLabel(airiRun()!, vic3Run()!.started_at));
     expect(visaLatestLabel(airiRun()!, vic3Run()!.started_at)).toBe(`14 Nov (latest) · ${String(rec.label).split(", ").join(" · ")}`);
-    // 12 Nov (wire-in): the mark is Visa's official file (docs/evidence/logo-permissions.md), its name in alt.
-    expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
+    // 14 Nov (owner's decision): Visa's name as text, no logo image (docs/evidence/logo-permissions.md).
+    expect(head).toContain('<span class="logo tname">Visa</span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
     // the control test, the folded rows, and last the TAP fold.
     // Redesign, 13 Nov: the latest run's line, its flow, every purchase's outcome and the signed hash read back; the entry

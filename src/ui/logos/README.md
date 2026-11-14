@@ -28,6 +28,11 @@ Both are dark marks on a transparent ground (no light version in either kit), so
 ## Alta (formerly Metal), 14 November 2026
 
 Metal renamed itself Alta (its team, in the hackathon's Slack, 14 Nov). `metal.svg` is kept byte for byte but no longer
-shown. No Alta logo file is used: alta.finance has no brand kit, and its terms (https://alta.finance/terms, read 14 Nov
-2026) say the Alta logos "may not be used without our prior written consent". Alta appears as text on a neutral tile.
-Details: docs/evidence/logo-permissions.md.
+shown.
+
+| File | Source | Fetched | SHA-256 | Use |
+|---|---|---|---|---|
+| alta.svg | The header wordmark on https://alta.finance/ (the first inline `<svg viewBox="0 0 475 250">`), byte for byte as served, with an XML header line | 2026-11-14 | `d42b4102ccf305dd72483d5f2ca8bf5e7e64a21540dc23e72488e8e5420acf9e` | Shown with the Alta team's OK in the Airwallex hackathon Slack, 14 Nov 2026 (confirmed by the project owner; screenshot kept by the owner). For the hackathon. No endorsement implied. |
+
+No fill in the file (the site colours it with CSS): it draws black, on the neutral light tile. Details:
+docs/evidence/logo-permissions.md.

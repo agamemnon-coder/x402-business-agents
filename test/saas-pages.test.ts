@@ -132,7 +132,7 @@ describe("/security: security and trust", () => {
 
   it("limits: outside the prompt, per agent, at Airwallex (card controls) and on Alta (a mandate on chain)", () => {
     expect(inSight("s-limits")).toBe("Limits outside the prompt Card controls per agent at Airwallex, and a mandate per agent on Alta's chain. Card controls, read back A refusal on chain How");
-    expect(card(html, "s-limits")).toContain('<a class="pf" href="airwallex#controls">Card controls, read back</a><a class="pf" href="metal">A refusal on chain</a>');
+    expect(card(html, "s-limits")).toContain('<a class="pf" href="airwallex#controls">Card controls, read back</a><a class="pf" href="alta">A refusal on chain</a>');
     // The anchor exists on /airwallex.
     expect(buildPages().airwallex).toMatch(/id="controls"/);
     expect(folded("s-limits")).toMatch(/Airwallex: The CFO policy's limits[^.]*are written to each agent's card as Airwallex's own controls and read back\./);
@@ -406,7 +406,7 @@ describe("the page on the site, and the one that went", () => {
       return { more: /<summary class="on">More<\/summary>/.test(nav), tabs: [...nav.matchAll(/<a href="(\w+)" class="on" aria-current="page">/g)].map((m) => m[1]) };
     };
     for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE]] as const) {
-      expect({ key, ...state(html), here: html.includes(`<a href="${key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
+      expect({ key, ...state(html), here: html.includes(`<a href="${key === "metal" ? "alta" : key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
     }
     expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: [] });
     expect(state(PROOF_PAGE)).toEqual({ more: false, tabs: ["proof"] });

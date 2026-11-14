@@ -389,7 +389,7 @@ export function securityCards(): SecurityCard[] {
       line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
       // 12 Nov: the Face ID on chain run (a passkey account on Alta testnet; the second owner a labelled virtual test
       // passkey), the answer to "the chain did not check Face ID".
-      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("metal#faceid-onchain", "Passkeys sign on chain (P-256)")] : [])],
+      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("alta#faceid-onchain", "Passkeys sign on chain (P-256)")] : [])],
       fold: { summary: "How", lines: [esc(terms.how), code(terms), ...(ownersRun() ? [esc("On Alta testnet, 12 Nov: a passkey account changed an agent's mandate only with both owners' passkeys, and checked them on chain; the second owner was a labelled virtual test passkey.")] : [])] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
       more: {
@@ -412,7 +412,7 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-limits", icon: "sliders-horizontal", title: "Limits outside the prompt",
       line: esc("Card controls per agent at Airwallex, and a mandate per agent on Alta's chain."),
-      links: [siteLink("airwallex#controls", "Card controls, read back"), siteLink("metal", "A refusal on chain")],
+      links: [siteLink("airwallex#controls", "Card controls, read back"), siteLink("alta", "A refusal on chain")],
       fold: { summary: "How", lines: [`Airwallex: ${esc(cards.how)} ${code(cards)}`, `Alta: ${esc(chain.how)} ${code(chain)}`] },
     },
     {
@@ -460,7 +460,7 @@ export function securityCards(): SecurityCard[] {
       // "No customer money" (docs/compliance.md), not "no funds of its own": in the sandbox run Purser's own platform
       // account funded the test company and took the test fee (docs/airwallex-platform.md). Review, 12 Nov.
       line: esc("Each company's money stays in its own Airwallex account, and on chain there is no personal data."),
-      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run"), siteLink("metal", "See it on Alta's testnet")],
+      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run"), siteLink("alta", "See it on Alta's testnet")],
       fold: { summary: "How", lines: [
         quoted(FUNDS_LINE),
         esc("In the sandbox run a payout was made on behalf of a test company's own connected account, with test money."),

@@ -177,6 +177,9 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
  */
 export const FILM_URL = "https://youtu.be/mp9fmOYfBWc";
 export const FILM_LINK = "Watch the walkthrough";
+/** The trailer (14 Nov, Max: 1:30, 4K; AI voice and music: ElevenLabs): a second, shorter option beside the walkthrough. */
+export const TRAILER_URL = "https://youtu.be/n3HLVGROJc4";
+export const TRAILER_LINK = "Watch the trailer (1:30)";
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**

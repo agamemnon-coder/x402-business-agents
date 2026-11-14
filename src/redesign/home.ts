@@ -8,7 +8,7 @@
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { FILM_LINK, FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { FILM_LINK, FILM_URL, TRAILER_LINK, TRAILER_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -42,6 +42,7 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
 .walk { margin: 4px 0 0; font-size: 15px; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
+.walk a.film + a.film { margin-left: 14px; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 /* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;
@@ -50,9 +51,10 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .trust .tile { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px; }
 .trust .tile img { display: block; height: 18px; width: auto; }
 .trust .tile.tname { font-size: 16px; font-weight: 750; line-height: 1; color: #111827; letter-spacing: -.01em; text-transform: none; }
+.trust .tile img.alta { height: 22px; }
 .trust .tile img.visa { height: 14px; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile img.visa { height: 11px; } }
+@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile img.alta { height: 16px; } .trust .tile img.visa { height: 11px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -336,9 +338,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const rows = proofRows(run, awx);
   // The partners' official files (14 Nov, owner), served unaltered from src/ui/logos/ and docs/assets/logos/ as
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
-  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, "visa"], ["", "Alta", 0, 0, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
-  // Alta (formerly Metal, renamed 14 Nov): no official file we may use (its terms: the logos "may not be used without
-  // our prior written consent"; no brand kit on alta.finance), so its tile carries the name as text.
+  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["", "Visa", 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
@@ -346,7 +347,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="what">${esc(HOME_SUB)}</p>
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
+    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}

@@ -45,7 +45,7 @@ export const GUARANTEES: readonly Guarantee[] = [
     id: "g-chain", promise: "An agent cannot pay past its on-chain budget.", by: "Alta (on chain)",
     how: "A mandate per agent: a cap per payment, a total budget, one payee and an end date; Alta's facilitator refuses anything outside it.",
     source: "src/policy/mandates.ts", test: "test/executors-mandate.test.ts",
-    evidence: { label: "Main run: a purchase refused on chain (our own check switched off once to test it)", href: "metal" },
+    evidence: { label: "Main run: a purchase refused on chain (our own check switched off once to test it)", href: "alta" },
   },
   {
     id: "g-once", promise: "An invoice is paid once.", by: "Purser's code",

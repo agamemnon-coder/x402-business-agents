@@ -107,7 +107,8 @@ Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Sla
      Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
      credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
-     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
+     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>, or the trailer (1:30):
+     <https://youtu.be/n3HLVGROJc4>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
      data, test money) with its Agents and Tokenisation tabs, and Invoices & books in one tab. Approval alerts by
@@ -123,6 +124,7 @@ Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Sla
 ## Links
 
 - Video, the walkthrough (an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
+- Trailer (1:30; AI voice and music: ElevenLabs): <https://youtu.be/n3HLVGROJc4>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.
@@ -130,7 +132,7 @@ Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Sla
 - Visa Intelligent Commerce via Airwallex's Airi, 4 live runs (7 to 14 November; Airwallex sandbox, test card, test
   money): <https://kit11.max-31b.workers.dev/visa>; the latest, 14 November:
   <https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-vic-5.md>
-- Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.0-submission`)
+- Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.1-submission`)
 - Outside the entry: Visa TAP, in its own section near the foot of <https://kit11.max-31b.workers.dev/visa>. The
   Sourcing agent signed its card checkout with Visa's Trusted Agent Protocol (TAP) in its own run; Visa TAP: built and
   verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi runs above (Visa

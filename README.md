@@ -18,9 +18,9 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 ## Watch it
 
-<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg" alt="Purser: the walkthrough on YouTube" width="100%"></a>
-
-*The walkthrough · AI voice and music: ElevenLabs* · [youtu.be/mp9fmOYfBWc](https://youtu.be/mp9fmOYfBWc) · test money only
+| [The walkthrough](https://youtu.be/mp9fmOYfBWc) · AI voice and music: ElevenLabs | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |
+|---|---|
+| <a href="https://youtu.be/mp9fmOYfBWc"><img src="docs/assets/readme/walkthrough-thumb.jpg" alt="Purser: the walkthrough on YouTube" width="100%"></a> | <a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg" alt="Purser: the trailer on YouTube" width="100%"></a> |
 
 ## How it works in 3 steps
 
@@ -30,7 +30,6 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 **Not signed is never paid.**
 
-
 - **Face ID or a passkey signs the exact terms.** The approval is a signature over the SHA-256 of the terms; change one cent and it no longer verifies. The owner's real approval of 7 November is checked offline by `npm run verify-approval` ([record](docs/runs/2026-11-07-awx-1.md)).
 - **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Alta's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Alta refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Alta testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
 - **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Alta testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md)).
@@ -39,13 +38,13 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 
 ## Built with
 
-| Partner | What Purser uses | Proof |
-|---|---|---|
-| **Airwallex** (sandbox) | agent cards and limits, FX, SWIFT payouts, its approval as a second lock, the payee name check | [the card decline](docs/runs/2026-11-07-awx-1.md), [two locks](docs/runs/2026-11-12-airwallex-two-locks-paid.md), [name check](docs/runs/2026-11-12-airwallex-payee-check.md) |
-| **Alta** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
-| **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
-| **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
-| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
+| Partner | What Purser uses | Live or simulated | Proof |
+|---|---|---|---|
+| **Airwallex** (sandbox) | agent cards and limits, FX, SWIFT payouts, its approval as a second lock, the payee name check | Sandbox, live calls; SWIFT settlement simulated through the sandbox's simulation API | [the card decline](docs/runs/2026-11-07-awx-1.md), [two locks](docs/runs/2026-11-12-airwallex-two-locks-paid.md), [name check](docs/runs/2026-11-12-airwallex-payee-check.md) |
+| **Alta** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | Testnet, live transactions, test money | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
+| **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | Airwallex sandbox, live calls, test card; a headless browser typed the card into Airwallex's hosted page | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
+| **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | Live calls | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
+| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | Shared sandbox ledger, live calls | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
 
 No endorsement implied.
 
@@ -87,7 +86,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format.
 
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6664 tests passing**, 4 skipped, in 594 files (the last full run, on commit `6a522270`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6664 tests passing**, 4 skipped, in 594 files (the last full run, on commit `808ce247`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
@@ -327,7 +326,7 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 
 ## Who does what
 
-<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile; and Alta (formerly Metal), named in text: its logo needs Alta's written consent. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
 
 - **Built by Max Geurtsen** (Claude by Anthropic as the developer, directed and reviewed by Max): Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.

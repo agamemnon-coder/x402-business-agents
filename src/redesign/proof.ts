@@ -23,7 +23,7 @@ import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, SPLIT_LINE } from "../config/brand.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, TRAILER_LINK, TRAILER_URL, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
 import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
@@ -205,14 +205,15 @@ const fact = (v: string, l: string) => `<span class="fact"><b>${esc(v)}</b> ${es
 const mark = (file: string, name: string, w: number, dark = false) => `<span class="logo${dark ? " dark" : ""}"><img src="assets/${file}" alt="${name}" width="${w}" height="15"></span>`;
 /** /proof's partner cards (owner, 12 Nov: "each partner card with its logo"): the same marks, beside the name (alt empty: the name is the heading). T:0 has no logo file: its name alone. */
 const CARD_MARK: Record<string, string> = {
-  airwallex: mark("logo-airwallex.png", "", 109), visa: mark("logo-visa.png", "", 46), claude: mark("logo-claude.png", "", 69, true),
+  airwallex: mark("logo-airwallex.png", "", 109), visa: `<span class="logo tname">Visa</span>`, metal: mark("logo-alta.svg", "", 29), claude: mark("logo-claude-slate.svg", "", 69),
 };
 export const LOGO = {
-  // Alta (formerly Metal): its name as text, no logo file (see src/ui/logos/README.md).
-  metal: `<span class="logo tname">Alta</span>`,
+  // Alta (formerly Metal): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
+  metal: mark("logo-alta.svg", "Alta", 29),
   airwallex: mark("logo-airwallex.png", "Airwallex", 109),
-  claude: mark("logo-claude.png", "Claude", 69, true),
-  visa: mark("logo-visa.png", "Visa", 46),
+  // 14 Nov (owner): Claude's press-kit SVG (docs/assets/logos/SOURCES.md); Visa as text, no logo image.
+  claude: mark("logo-claude-slate.svg", "Claude", 69),
+  visa: `<span class="logo tname">Visa</span>`,
 };
 
 /**
@@ -311,7 +312,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   const recOf: Record<string, string> = { visa: VIC3_RECORD, t0: T0_JOURNAL_RECORD };
   const card = (id: "metal" | "airwallex" | "claude" | "visa" | "t0", name: string, what: string, facts: string, items: string[], extra = "") => {
     const [first, ...rest] = leads[id] ?? [];
-    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
+    return `<article class="pcard card" id="${id}"${recOf[id] ? ` data-rec="${recOf[id]}"` : ""}><div class="ph">${CARD_MARK[id] ?? ""}<h3>${esc(name)}</h3></div>${first ? leadHtml([{ text: first.text, href: first.href }]) : ""}<details class="fold"><summary>Show the live proof</summary><div class="facts">${facts}</div>${first?.note && !first.links?.length ? `<p class="note">${esc(first.note)}</p>` : ""}${leadHtml(first?.links?.length ? leads[id]! : rest)}<p class="what">${esc(what)}</p>${extra}${items.length ? `<ul class="pl">${items.join("")}</ul>` : ""}<a class="open" href="${id === "metal" ? "alta" : id}">More<span class="vh"> about ${esc(name)}</span> ${icon("arrow-right", 14)}</a></details></article>`;
   };
   const cardsMatch = /^((?:\d+ of \d+|All \d+|Both)) cards carry the CFO's policy$/.exec(lead.airwallex.find((l) => / cards carry the CFO's policy$/.test(l.text))?.text ?? "");
   // Owner, 12 Nov: Airwallex, Visa, Alta, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Alta, Claude). (The signed hash was the Airwallex card's
@@ -518,7 +519,7 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
     const virtual = owners.rec.owners.some((x) => x.virtual);
     // Its strongest number (the owner, 13 Nov): the limit changes the account ran, each only after every passkey signed.
     const changes = steps.filter((x) => x.key === "bind" || x.key === "replace" || x.key === "revoke").length;
-    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Passkeys (P-256) verified on chain", tone: "ok", href: "metal#faceid-onchain", rec: owners.file,
+    if (refused && paid) out.push({ icon: "scan-face", fig: `${changes} changes`, title: "Passkeys (P-256) verified on chain", tone: "ok", href: "alta#faceid-onchain", rec: owners.file,
       text: `Alta testnet, ${dayShortUtc(owners.rec.ran_at)}: each limit change only after ${owners.rec.threshold} of ${owners.rec.owners.length} passkeys signed${virtual ? "; co-signer a test key" : ""}.` });
   }
   const hold = airwallexHold(), ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
@@ -584,7 +585,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${archiveFold(run)}
   ${lifeVisual("tall")}
   ${railsVisual("tall")}`)}
-  <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
+  <nav class="util" aria-label="More from this run"><a class="open" href="${FILM_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(FILM_LINK)} ↗</a><a class="open" href="${TRAILER_URL}" target="_blank" rel="noopener">${icon("play", 14)}${esc(TRAILER_LINK)} ↗</a><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.

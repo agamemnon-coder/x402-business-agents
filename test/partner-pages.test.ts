@@ -160,7 +160,7 @@ describe("the partner pages", () => {
       const levels = [...String(html).matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
       expect({ name, skips: levels.filter((l, i) => i > 0 && l > levels[i - 1]! + 1) }).toEqual({ name, skips: [] });
     }
-    expect([...String(pages.proof).matchAll(/<a class="open" href="(metal|airwallex|claude)">More<span class="vh"> about ([A-Za-z]+)<\/span>/g)].map((m) => m[2]!.toLowerCase())).toEqual(["airwallex", "alta", "claude"]);
+    expect([...String(pages.proof).matchAll(/<a class="open" href="(alta|airwallex|claude)">More<span class="vh"> about ([A-Za-z]+)<\/span>/g)].map((m) => m[2]!.toLowerCase())).toEqual(["airwallex", "alta", "claude"]);
     // /metal since 12 Nov (jury panel): its table's and its cards' links are 44 px tall, as a phone's tap target.
     expect(String(pages.metal)).toContain(".mtab td a.pf, .mcov td a.pf { display: inline-flex; align-items: center; min-height: 44px; }");
     expect(String(pages.metal)).toContain(".mc .tx2 a.pf { display: inline-flex; align-items: center; min-height: 44px; }");

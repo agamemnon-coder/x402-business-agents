@@ -9,7 +9,7 @@ import { countOf } from "../src/redesign/ui.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE } from "../src/config/brand.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE, TRAILER_URL } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
@@ -163,7 +163,9 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       // The name as text, never a logo; then the first lead of proofLeads(record) as the card's main link, and nothing
       // else in sight: no other link above the fold.
       // 12 Nov (owner): each card's partner mark beside its name (alt empty: the name is the heading).
-      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${id}\\.(png|svg)" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
+      // 14 Nov (owner): Alta's wordmark (logo-alta.svg) and Claude's press-kit SVG (logo-claude-slate.svg).
+      const file = { airwallex: "airwallex\\.png", metal: "alta\\.svg", claude: "claude-slate\\.svg" }[id];
+      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
       const sight = first.slice(0, first.indexOf('<details class="fold">'));
       expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${lead0.href}"${out ? ' target="_blank" rel="noopener"' : ""}>${lead0.text}${out ? " ↗" : ""}</a></li></ul>`);
       expect(card.replace(/<span class="logo( dark)?"><img [^>]*><\/span>/, "")).not.toMatch(/<img /);
@@ -183,7 +185,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       expect(fold.indexOf('<p class="what">')).toBeGreaterThan(at);
       // The partner's page, last in the fold.
       expect(fold.endsWith("</a></details></article>")).toBe(true);
-      expect(fold.slice(fold.lastIndexOf("<a "))).toContain(`<a class="open" href="${id}">More<span class="vh"> about ${name}</span>`);
+      expect(fold.slice(fold.lastIndexOf("<a "))).toContain(`<a class="open" href="${id === "metal" ? "alta" : id}">More<span class="vh"> about ${name}</span>`);
     });
   }
 
@@ -368,7 +370,7 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
 describe("/proof's utility links: one quiet row at the end", () => {
   it("links the film, the CFO's view, the trace and the month-end pack, in that order, and nowhere above", () => {
     const at = main.indexOf('<nav class="util"'), util = main.slice(at);
-    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([FILM_URL, CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);
+    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([FILM_URL, TRAILER_URL, CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]); // the trailer beside the walkthrough since 14 Nov
     const text = words(util), above = words(main.slice(0, at));
     let from = -1;
     for (const label of [FILM_LINK, CFO_VIEW_LINK, TRACE_LINK, PACK_LINK]) {
@@ -439,7 +441,7 @@ describe("/proof's words in sight", () => {
     // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
     expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(845);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1220); // 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    expect(visibleWords(html)).toBeLessThanOrEqual(1230); // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
