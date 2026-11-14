@@ -282,6 +282,7 @@ export const FX_CARD = {
     switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
     day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
     timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
+    over_limit: "Airwallex's sandbox quote was over Purser's 0.50% FX limit",
   } as Record<string, string>,
 };
 
@@ -659,8 +660,11 @@ export const LIVE = {
    * supplier's German VAT id (src/ap/books.ts codedEntries) and book it to 1515 (final-polish, 13 Nov).
    */
   booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
-  /** The same without a VAT id on the invoice: the rate only, and that a person codes it ({pct}: a whole percent). */
-  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; booked without a VAT code for the accountant to check",
+  /**
+   * The same without a VAT id on the invoice: the rate only, the account the books post it to (1515: VAT at no Dutch rate
+   * is never Dutch input VAT, src/ap/books.ts, the CFO review 14 Nov), and that a person codes it ({pct}: a whole percent).
+   */
+  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; booked to 1515 (not reclaimable in the Dutch return), without a VAT code, for the accountant to check",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
   /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */

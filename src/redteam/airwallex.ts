@@ -108,7 +108,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   async createTransfer(t: NewTransfer): Promise<Transfer> {
     this.calls.push("createTransfer");
     if (this.transfers.some((x) => x.requestId === t.requestId)) throw new Error("duplicate request_id");
-    const fee = SANDBOX_SWIFT_FEE_CENTS;
+    const fee = this.swiftEurFeeCents;
     if (this.bal.EUR.availableCents < t.amountCents + fee) throw Object.assign(new Error("balance_insufficient"), { code: "balance_insufficient" });
     this.bal.EUR.availableCents -= t.amountCents + fee;
     this.bal.EUR.reservedCents += t.amountCents + fee;
@@ -146,7 +146,7 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
     // As at Airwallex: a transfer in its approval workflow cannot be moved on by the simulation API.
     if (t.status.startsWith("APPROVAL_") || t.status === "IN_APPROVAL") throw Object.assign(new Error(`transfer ${id} is ${t.status}`), { code: "invalid_status" });
     t.status = to;
-    if (to === "PAID") this.balOf(t.currency).reservedCents -= t.amountCents + (t.fee?.cents ?? SANDBOX_SWIFT_FEE_CENTS);
+    if (to === "PAID") this.balOf(t.currency).reservedCents -= t.amountCents + (t.fee?.cents ?? this.swiftEurFeeCents);
     if (to === "PAID" && t.applicationFee && !this.platformFees.some((f) => f.requestId === t.requestId)) {
       this.platformFees.push({ requestId: t.requestId, amountCents: t.applicationFee.cents, currency: t.applicationFee.currency, destination: "acct_purser_platform", reference: t.reference ?? "" });
     }
@@ -164,6 +164,11 @@ export class FakeAirwallex implements AirwallexRail, SandboxSim, PayoutRail {
   refuseNextBeneficiary: string | null = null;
   /** Lose the answer to the next beneficiary create (the beneficiary is still made). */
   loseNextBeneficiaryAnswer = false;
+  /**
+   * The SWIFT fee on a EUR transfer (cents): SANDBOX_SWIFT_FEE_CENTS unless a world sets the fee a recorded run was
+   * charged (the demo company replays awx-1, whose sandbox fee was EUR 13.50: cloud/scripts/guestSeed.ts).
+   */
+  swiftEurFeeCents = SANDBOX_SWIFT_FEE_CENTS;
   /** The stand-in's fee per method and currency, charged to the payer in the transfer's currency (no real fee data). */
   payoutFeeCents: Record<string, number> = { "SWIFT:EUR": SANDBOX_SWIFT_FEE_CENTS, "SWIFT:USD": 1500, "SWIFT:GBP": 1200, "SWIFT:CNY": 10_000, "SWIFT:TRY": 45_000 };
 

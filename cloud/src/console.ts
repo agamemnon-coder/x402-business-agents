@@ -10,6 +10,7 @@ import { EVENT_LINE_JS } from "../../src/ui/engineEvents.js";
 import { consoleKeys, DATA_NL, I18N_JS, keysUsedIn, MESSAGES, t as tr } from "../../src/ui/i18n.js";
 import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.js";
 import { fromB64 } from "./crypto.js";
+import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
@@ -381,6 +382,8 @@ ${siteHeader(null)}
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
 const LS=__CATALOGUES__;
+// The chart's account names, beside each number in a journal (the CFO review, 14 Nov): "2100 Accounts payable".
+const ACCT=__ACCOUNTS__;
 // English unless Dutch was chosen on purpose: the person's own language (on their account), else a choice made in this
 // page (kept in this browser). The company's language is not a reason: the cloud stores Dutch for every new company
 // by default, so it cannot tell a choice from the default. The key older pages wrote (on their own, not on a
@@ -933,7 +936,7 @@ function proofCard(i0){
     const even=Object.keys({...dr,...cr}).every((c)=>(dr[c]||0)===(cr[c]||0));
     const tb=el('tbody','');
     for(const e of mine){const h=el('td','','#'+e.entry_id+' · '+day(e.posting_date)+' · '+data('journal',e.description||''));h.colSpan=3;tb.append(el('tr','en',[h]));
-      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+      for(const l of e.lines||[])tb.append(el('tr','ln',[el('td','',l.account+(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
     const tbl=el('table','table',[el('thead','',[el('tr','',[el('th','',t('cs.eng.account')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])]),tb]);
     // The head of the ledger chain: the newest entry's own hash, as the read model holds it (a session may not ask /v1/sync/state).
     const head=es.v[es.v.length-1];
@@ -1129,7 +1132,7 @@ function journalTable(items,empty,newest){
   const tbl=el('table','table jt',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);if(newest)es.reverse();
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.
@@ -1704,7 +1707,8 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
+  const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
   return `<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">

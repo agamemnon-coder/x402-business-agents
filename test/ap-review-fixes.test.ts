@@ -85,7 +85,9 @@ describe("the books for a new supplier's invoice", () => {
     const sink = new MemorySink();
     const withSink: InboxDeps = { ...deps, sink };
     const id = await add(DE, withSink);
-    expect(sink.entries).toEqual([]);
+    // Owed from the day it came in (the CFO review, 14 Nov): its accrual reaches the sink before its supplier is verified.
+    const accrued = sink.entries.filter((e) => e.event === "accrual").length;
+    expect(accrued).toBeGreaterThan(0);
     const p = proposeSupplier(id);
     decideAs(p.proposal_id, "APPROVED");
     // As the executor runs it: no sink at hand.
@@ -99,7 +101,8 @@ describe("the books for a new supplier's invoice", () => {
     else await executeInvoicePayment(db, awx, awx, out.proposal.proposal_id);
     await syncPayments(db, { now: () => now, sink });
     expect(apInvoice(db, id)!.status).toBe("paid");
-    expect(sink.entries.map((e) => e.event)).toContain("accrual");
+    // The accrual once, not again when the supplier was added or the invoice paid.
+    expect(sink.entries.filter((e) => e.event === "accrual").length).toBe(accrued);
     expect(balance(sink.entries)).toBe(0);
     expect(balance(sink.entries, "2100")).toBe(0);
     // A second sync pushes nothing again.

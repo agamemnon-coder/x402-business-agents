@@ -202,11 +202,13 @@ describe("a batch of twelve documents, from the folder to the end, with no manua
       "Bergtex Textil GmbH BTX-2026-21": "paid", "Bergtex Textil GmbH BTX-2026-31": "paid", "Stockline Data GmbH SLL-2026-11": "paid",
       "Lagerhaus Nord GmbH LN-2026-0815": "paid", "Pinecrest Outdoor Supply LLC PC-7781": "paid",
       "Zeeland Verpakkingen B.V. ZV-4471": "needs_vendor",
-      "Bergtex Textil GmbH BTX-2027-01": "needs_review", "Bergtex Textil GmbH BTX-2026-21 #2": "blocked", "Bergtex Textil GmbH BTX-2026-51": "blocked",
+      // The new Lithuanian bank account: once a SEPA country is paid (14 Nov), the bank-change check is no longer hidden
+      // behind "no route to this country", and it blocks.
+      "Bergtex Textil GmbH BTX-2027-01": "blocked", "Bergtex Textil GmbH BTX-2026-21 #2": "blocked", "Bergtex Textil GmbH BTX-2026-51": "blocked",
       ...Object.fromEntries(Object.entries(end).filter(([k]) => !/BTX-2026-21|BTX-2026-31|SLL|LN-2026|PC-7781|ZV-4471|BTX-2027-01|BTX-2026-51/.test(k)).map(([k]) => [k, "needs_review"])),
     });
     // The same file twice is one invoice; the same number under another file is blocked as its copy; the wrong sum is
-    // blocked; the new bank account, the credit note and the scan wait for a person.
+    // blocked, and so is the new bank account; the credit note and the scan wait for a person.
     const rows = apInvoices(w.db);
     expect(rows).toHaveLength(11);
     expect(rows.filter((i) => i.invoice_no === "BTX-2026-21").map((i) => i.status).sort()).toEqual(["blocked", "paid"]);

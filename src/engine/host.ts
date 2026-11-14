@@ -13,6 +13,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
 import { actionsFor } from "../ap/detail.js";
+import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
 import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
@@ -393,7 +394,7 @@ export class EngineHost {
     const now = this.now();
     const out = await ingestDocument(db, { dir: NO_FOLDER, reader: parserOnly, now: () => now, agents: false }, { bytes, filename: s.filename, mime: "application/pdf", source: "upload" });
     const inv = firstInvoice(out);
-    if (inv) setStatus(db, inv.id, "paid", "system", { paid_at: now.toISOString(), reason: "seeded: paid before this test company started (simulated, no money moved)" }, now);
+    if (inv) setStatus(db, inv.id, "paid", "system", { paid_at: now.toISOString(), reason: `${SEEDED_PAID_REASON} paid before this test company started (simulated, no money moved)` }, now);
   }
 
   /** A document through the inbox: filed, read and checked. What the inbox refuses (not a PDF, too large) is thrown. */

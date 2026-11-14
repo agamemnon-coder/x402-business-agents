@@ -15,7 +15,7 @@ import { COUNT_JS } from "./stats.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { T0_JOURNAL_RECORD, t0Journal, type T0Journal } from "./t0Page.js";
 import { countOf, esc, icon } from "./ui.js";
-import { statementView, type BooksStatementFile, type StatementLine, type StatementView } from "../vault/statementPdf.js";
+import { inBaseCurrency, statementView, type BooksStatementFile, type StatementLine, type StatementView } from "../vault/statementPdf.js";
 
 import { centsOf, REVERSE_CHARGE_LINE } from "../vault/statementPdf.js";
 export { centsOf, plainName } from "../vault/statementPdf.js";
@@ -172,14 +172,15 @@ export function otherCurrencies(f: BooksStatementFile): string {
 }
 
 function statementCards(v: StatementView, f: BooksStatementFile): string {
-  const others = otherCurrencies(f);
+  // A currency translated into the statement's own (inBaseCurrency) is not listed again as kept apart.
+  const others = otherCurrencies(inBaseCurrency(f).file);
   const balance = `<section class="bk-card" aria-labelledby="bk-bs"><h2 id="bk-bs">${icon("database", 19)}${esc("Balance sheet")}<span class="tag">${esc(`at ${dayShort(v.asOf)} · ${v.currency}`)}</span></h2>
 <table class="bk-st"><tbody>
 ${tr("grp", "Assets", null)}${lines(v.assets)}${tr("sub", "Total assets", v.totalAssets)}
 ${tr("grp", "Liabilities", null)}${lines(v.liabilities)}${tr("sub", "Total liabilities", v.totalLiabilities)}
 ${tr("grp", "Equity", null)}${lines(v.equity)}${tr("ln", "Result this year", v.result)}${tr("sub", "Total equity", v.totalEquity)}
 ${tr("tot", "Total liabilities and equity", v.totalLiabilities + v.totalEquity)}</tbody></table>
-<p class="bk-ok">${icon("check", 17)}${esc(`Balances: ${money(v.totalAssets)} = ${money(v.totalLiabilities + v.totalEquity)}`)}</p>${v.reverseCharge ? `<p class="sub">${esc(REVERSE_CHARGE_LINE)}</p>` : ""}${others ? `<p class="sub">${esc(others)}</p>` : ""}</section>`;
+<p class="bk-ok">${icon("check", 17)}${esc(`Balances: ${money(v.totalAssets)} = ${money(v.totalLiabilities + v.totalEquity)}`)}</p>${v.reverseCharge ? `<p class="sub">${esc(REVERSE_CHARGE_LINE)}</p>` : ""}${v.translated ? `<p class="sub">${esc(v.translated)}</p>` : ""}${others ? `<p class="sub">${esc(others)}</p>` : ""}</section>`;
   const pnl = `<section class="bk-card" aria-labelledby="bk-pl"><h2 id="bk-pl">${icon("trending-up", 19)}${esc("Profit and loss")}<span class="tag">${esc(`2026 · ${v.currency}`)}</span></h2>
 <table class="bk-st"><tbody>
 ${tr("", "Revenue", v.revenue)}${tr("grp", "Expenses", null)}${lines(v.expenses)}${tr("sub", "Total expenses", v.totalExpenses)}
