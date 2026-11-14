@@ -193,7 +193,7 @@ in `src/config/brand.ts`.
 Live, and labelled: on the first screen Claude Sonnet reads the supplier's invoice, Purser's code checks the reading
 and writes the terms from it, and Claude Opus advises as the Treasury agent; on "Try to trick the agent" Claude Sonnet
 reads each fake invoice live. When a live call cannot answer, the page says so, with a recorded real answer or code's
-own reading, labelled with the reason, never silently. All live calls on the page share a budget of USD 10 a day, with
+own reading, labelled with the reason, never silently. All live calls on the page share a budget of USD 50 a day, with
 limits per address and a timeout of 8 s a call, and a switch on the server stops them all.
 
 **Evidence:** [/try/sign](https://kit11.max-31b.workers.dev/try/sign), "What's real?"; `worker/src/trySign.ts`;

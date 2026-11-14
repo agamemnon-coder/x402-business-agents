@@ -37,7 +37,7 @@ The models read documents as data, with no field for a payee or an approval, and
 
 ## 6. Are the agents on the hands-on page really live?
 
-Yes, and labelled: Claude Sonnet reads the invoice live and Claude Opus advises on the timing, within a shared budget of USD 10 a day and 8 seconds a call. When a live call cannot answer, the page shows a recorded real answer or code's own reading, labelled with the reason.
+Yes, and labelled: Claude Sonnet reads the invoice live and Claude Opus advises on the timing, within a shared budget of USD 50 a day and 8 seconds a call. When a live call cannot answer, the page shows a recorded real answer or code's own reading, labelled with the reason.
 
 **Source:** [docs/submission/qa.md](../qa.md), question 18; `worker/src/agentLine.ts`
 
