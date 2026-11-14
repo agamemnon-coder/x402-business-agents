@@ -178,7 +178,7 @@ describe("the Worker's stub of a company's engine", () => {
   it("has every action of the interface, each one call across the stub with the company's id", async () => {
     const engine = engineStubs(ns)(A);
     expect(Object.keys(engine).sort()).toEqual([...ENGINE_METHODS].sort());
-    expect(ENGINE_METHODS).toHaveLength(27);
+    expect(ENGINE_METHODS).toHaveLength(28); // 14 Nov: exportPdf, the records as a PDF
     expect(ENGINE_METHODS).toContain("retry");
     answer = { ok: true, value: { items: [], next: 7 } };
     expect(await engine.events(7, 50)).toEqual({ items: [], next: 7 });

@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -38,7 +38,7 @@ import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
-import { FILM_URL } from "../../src/config/brand.js";
+import { FILM_URL, TRAILER_LINK, TRAILER_URL } from "../../src/config/brand.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -50,7 +50,7 @@ export const PROOF_URL = new URL("/proof", RUNS_URL).href;
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; } /* 14 Nov: a focus that scrolls keeps its control clear of the sticky nav */
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
 /* 12 Nov: the page's own brand line gave way to the site's header (cloud/src/siteHeader.ts, its style after this one). */
@@ -292,6 +292,21 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
 .blk.sk-blk .w1 { width: 55%; } .blk.sk-blk .w2 { width: 80%; height: 1.8em; } .blk.sk-blk .w3 { width: 40%; }
 .cloudl { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 .cloudl .hint { margin-top: 6px; font-size: 13px; }
+.jsonl { margin: 10px 0 0; font-size: 14px; }
+/* 14 Nov (owner): screen 6 as a finish: the result, the three steps ticking in, the way on, then the records. */
+.done { margin: 0 0 16px; font-size: 19px; line-height: 1.4; font-weight: 650; }
+ul.did .dic svg { animation: pop .5s ease-out both; animation-delay: .25s; }
+ul.did li:nth-child(2) .dic svg { animation-delay: .37s; } ul.did li:nth-child(3) .dic svg { animation-delay: .49s; }
+.acts.next { margin-top: 18px; }
+.btn.proofl { gap: 8px; }
+.more { margin: 12px 0 0; font-size: 14px; color: var(--muted); line-height: 1.8; }
+.more a { font-weight: 600; }
+.more .sep { color: var(--faint); }
+.records { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
+.records .muted { margin: 0; font-size: 14px; }
+.records .acts { margin-top: 10px; }
+.records .link.json { font-size: 14px; }
+.againl { margin: 16px 0 0; font-size: 14px; }
 .confirm { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--sunken); }
 .confirm .acts { margin-top: 8px; }
 /* The ledger: amounts right-aligned in tabular figures; the side's word only on a phone, where each line stacks. */
@@ -1365,11 +1380,29 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
 
 // 6 Your company: the export as a file, start again, and the recorded real runs (links to the site's /runs, dated).
 screen('company',{heading:C.company.heading,draw(box){
-  const Y=C.company;const main=mainButton();main.set(Y.download,download);
-  const line=el('p','muted',Y.line);
+  const Y=C.company;
+  // 14 Nov (owner: "add a CTA, now it just ends"): a real finish. What the run did, from its own record; the three
+  // steps; one primary way on (the real runs) and three quiet links; then the records; then Start again. No form.
+  const done=el('p','done',Y.donePlain);
+  api('GET','/v1/engine/invoices').then((r)=>{
+    if(S.screen!=='company'||r.status!==200||!Array.isArray(r.json.items))return;
+    const paid=r.json.items.filter((i)=>i&&i.status==='paid'&&i.proposal);
+    const want=S.proposal&&S.proposal.invoice;
+    const inv=paid.find((i)=>i.id===want)||paid[paid.length-1];
+    const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
+    if(inv&&isFinite(ms)&&ms>=0)done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)});
+  });
+  const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
+  const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
+  const rails=out('btn primary big proofl',[el('span','',Y.rails),icon('arrow-right',18)],PROOF);
+  const more=el('p','more',[out('',C.trailer.label,C.trailer.url),el('span','sep',' · '),out('',Y.cloud,C.finish.cloud),el('span','sep',' · '),out('',Y.star,C.finish.repo)]);
+  // The records: the PDF a person reads, the JSON for developers.
+  const dl=btn(Y.download);const line=el('p','muted');line.hidden=true;
+  const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
+  dl.addEventListener('click',()=>download(false));
   // A new company: this one is forgotten in this tab (the server deletes it after 24 hours), and the start shown.
   // Start again asks first (try-fixes, 13 Nov): one tap must not lose the company in this tab.
-  const again=btn(Y.again);
+  const again=el('button','link again',Y.again);again.type='button';
   const ask=el('div','confirm',[el('p','',Y.againAsk)]);ask.hidden=true;ask.setAttribute('role','alertdialog');
   const yes=btn(Y.againYes),no=btn(Y.againNo);ask.append(el('div','acts',[yes,no]));
   again.addEventListener('click',()=>{ask.hidden=false;again.hidden=true;no.focus()});
@@ -1377,20 +1410,22 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  // What this visit did: filed, signed, paid (three icons, named for screen readers as one list).
-  const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
-  const proof=el('a','proofl',[el('span','',Y.proof),icon('external-link',14)]);proof.href=PROOF;proof.rel='noopener';proof.target='_blank';
-  box.append(did,line,el('div','acts',[main.node,again,proof]),ask,el('details','',[el('summary','',Y.runs),runs]));
-  async function download(){
-    main.off(Y.downloading);
-    const g=await fetchFile('/v1/engine/export');
+  box.append(done,did,el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
+  // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
+  // "more", never a form, and nothing collected on this page.
+  async function download(asJson){
+    if(dl.disabled||json.disabled)return;
+    dl.disabled=true;json.disabled=true;if(!asJson)dl.textContent=Y.downloading;
+    const g=await fetchFile(asJson?'/v1/engine/export':'/v1/engine/export.pdf');
     if(S.screen!=='company')return;
-    main.set(Y.download,download);
-    if(g.status!==200||!g.blob){line.replaceChildren(el('span','note',words(g.json||{},Y.failed)));return}
-    line.textContent=Y.line;
-    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company.json';a.hidden=true;box.append(a);a.click();a.remove();
+    dl.disabled=false;json.disabled=false;dl.textContent=Y.download;
+    if(g.status!==200||!g.blob){line.hidden=false;line.replaceChildren(el('span','note',words(g.json||{},Y.failed)));return}
+    line.hidden=true;
+    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||(asJson?'purser-test-company.json':'purser-test-company-records.pdf');a.hidden=true;box.append(a);a.click();a.remove();
   }
 }});
+// The time from upload to paid, as people say it: 42 s, 1 min 42 s.
+const took=(ms)=>{const s=Math.max(1,Math.round(ms/1000));return s<60?s+' s':Math.floor(s/60)+' min'+(s%60?' '+(s%60)+' s':'')};
 
 // 5b What Purser did with it (cloud/src/try/books.ts): filed, booked, matched, then what next.
 __DID__
@@ -1437,7 +1472,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
