@@ -121,3 +121,17 @@ describe("an invoice waiting for its new supplier to be verified", () => {
     expect(bookable({ status: "blocked", findings: [{ level: "block", code: "duplicate", detail: "" }], total: "484.00" } as never)).toBe(false);
   });
 });
+
+describe("a SEPA supplier's EUR", () => {
+  it("is paid locally by IBAN in every SEPA country, with the IBAN's own length checked; a country outside SEPA still has no route", async () => {
+    const { chooseRoute, validateDetails } = await import("../src/payouts/routes.js");
+    for (const [country, iban] of [["BE", "BE68539007547034"], ["FR", "FR1420041010050500013M02606"], ["IE", "IE29AIBK93115212345678"]] as const) {
+      const d = { country, currency: "EUR", accountName: "Supplier SA", iban };
+      const r = chooseRoute(d);
+      expect(r.ok && r.route).toMatchObject({ country, method: "LOCAL", currency: "EUR", clearing: "SEPA" });
+      expect(validateDetails(d, (r as { route: never }).route)).toEqual([]);
+      expect(validateDetails({ ...d, iban: iban.slice(0, -1) }, (r as { route: never }).route)[0]).toMatch(/IBAN has \d+ characters/);
+    }
+    expect(chooseRoute({ country: "BR", currency: "EUR", accountName: "Fornecedor", iban: "BR1800360305000010009795493C1" }).ok).toBe(false);
+  });
+});
