@@ -96,20 +96,20 @@ Running it live (sandbox keys, an Alta RPC): [run-it.md](../run-it.md).
 
 | Folder | What | Files |
 |---|---|---|
-| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 699 |
-| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 110 |
+| `src/` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | 704 |
+| `cloud/` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | 112 |
 | `worker/` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | 18 |
 | `contracts/` | Solidity contracts used on Alta testnet, with their ABIs | 7 |
-| `test/` | Unit, integration and browser checks | 679 |
-| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 475 |
+| `test/` | Unit, integration and browser checks | 682 |
+| `docs/` | Run logs, records, security, plans (the generated visuals in `docs/assets/` not counted) | 477 |
 | `fixtures/` | Test invoices, including the hostile ones (bank change, look-alike, injection) | 20 |
 
 ## Tests and CI
 
-- **6698 tests passed**, 4 skipped, in 597 files, on commit `c9dd9d8b` ([summary](../assets/test-summary.json)); CI runs them on every push.
-- 593 test files under `test/`, 17 browser checks (Playwright, 390 and 1440 px), 2 workflows.
+- **6724 tests passed**, 4 skipped, in 600 files, on commit `a5c8fef` ([summary](../assets/test-summary.json)); CI runs them on every push.
+- 596 test files under `test/`, 17 browser checks (Playwright, 390 and 1440 px), 2 workflows.
 - CI steps (from `.github/workflows/ci.yml`): Tests with coverage, per area; Engine tests through the Durable Object handle; Hostile-model eval of the payables agents (the line /claude shows); Relay Worker type check; Cloud tests on local D1; npm run judge (no keys, no ledger); Guest pages in Chromium (/, /demo, /month at 390 and 1440 px); Agent trace in Chromium (390 and 1440 px, light and dark); /try/sign in Chromium (360, 390 and 1440 px, light and dark; layout after signing and after the tamper); The CFO's phone pages in Chromium (enrol, approve in every state, policy; 390 and 1440 px, light and dark); Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px); /try when the passkey fails (no WebAuthn, refused, cancelled, a silent prompt) in Chromium at phone size; Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client); /try/sign in WebKit (390 px light, 1440 px dark; up to the passkey step where WebKit has WebAuthn); Playwright Firefox, with its system libraries; Guest pages in Firefox (360, 390, 768 and 1440 px, light and dark); /try/sign in Firefox (360, 390 and 1440 px, light and dark; signed with the software passkey); gitleaks, whole history of this commit; SBOM (CycloneDX, runtime dependencies); Semgrep (blocking; public sets plus .semgrep/purser.yml).
-- 82 dated run logs in [runs/](../runs/).
+- 83 dated run logs in [runs/](../runs/).
 
 ## Limits, and what is simulated
 
