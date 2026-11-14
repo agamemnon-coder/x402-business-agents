@@ -437,8 +437,8 @@ async function run(db: DB, deps: AiriDeps, row: Row, recheck: () => boolean, now
     audit(db, "system", "airi.credential_received", subject, { ...ids, mandate_id: mandate.mandateId, status: safe(receipt.status), token_type: safe(receipt.tokenType), token_expiration: safe(receipt.tokenExpiration) }, now);
     say(`AIRI TAPPED ${row.action_id}: credential received (kept in a private file for this checkout only)`);
 
-    // 5. Purser's check that this credential pays this purchase only, at its amount, once (src/airi/credentialGuard.ts).
-    const misuse = credentialUseRefusal(db, { mandateId: mandate.mandateId, actionId: row.action_id, amount: terms.amount, currency: terms.currency });
+    // 5. Purser's check that this credential pays this purchase only, at its amount and merchant, once (src/airi/credentialGuard.ts).
+    const misuse = credentialUseRefusal(db, { mandateId: mandate.mandateId, actionId: row.action_id, amount: terms.amount, currency: terms.currency, merchantUrl: terms.merchant.url });
     if (misuse) {
       await cancelQuietly(deps, db, row, mandate.mandateId, misuse.reason, now);
       return refuse(db, row, "purser", misuse.code, `${misuse.reason}; the mandate was cancelled and the checkout not asked`, now, mandate.mandateId);
