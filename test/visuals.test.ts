@@ -20,8 +20,11 @@ describe("visual files", () => {
   });
   it("hold no images, scripts, outside references or brand marks", () => {
     for (const [path, body] of Object.entries(files)) {
-      expect(body, path).not.toMatch(/<image|<script|<foreignObject|xlink:href|url\((?!#)|@import|data:/i);
-      const links = [...body.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
+      // The one exception (14 Nov, owner): the link preview's "Built on" carries the official Airwallex logo, the file's
+      // own bytes as a data: URI (test/site-meta.test.ts holds them equal); nothing else.
+      const own = path.endsWith("social-preview.svg") ? body.replace(/<image href="data:image\/png;base64,[A-Za-z0-9+/=]+"/, "<logo") : body;
+      expect(own, path).not.toMatch(/<image|<script|<foreignObject|xlink:href|url\((?!#)|@import|data:/i);
+      const links = [...own.matchAll(/href="([^"]+)"/g)].map((m) => m[1]!);
       for (const l of links) expect(l, path).toMatch(/^https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main\/docs\/runs\//);
       expect(body, path).not.toMatch(/certified|endorsed|partnered with/i);
     }

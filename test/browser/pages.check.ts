@@ -714,7 +714,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // budget of test/site-v4.test.ts, for the three folded lines under the Airi runs.
       // /airwallex 374 since 12 Nov (jury panel): the Airi run's summary says "A scripted run, no Claude call".
       // /metal: 230 only while a run record of the invoice token exists (12 Nov), for its one block (50 words in sight).
-      // The frame (header and footer): 25 words, 26 since 12 Nov: More and the footer's four product links added five
+      // The frame (header and footer): 28 since 14 Nov (the header's "Built on" badge, +2); 25 words, 26 since 12 Nov: More and the footer's four product links added five
       // words (18 at 360 and 390 px, 19 at 768 and 1440). The pages' own budgets are main's.
       // /metal: 275 since the jury panel of 12 Nov, for its four mandates in one table (each figure a word; its column
       // heads show from 700 px); 325 with the invoice token's block.
@@ -723,7 +723,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
       const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 465 /* 465 with the headless-browser line in sight; 440 since the partner scan, 14 Nov evening: the VIC story in four steps first, the rest folded (437 on screen as built); 1205 before: +125, 14 Nov: the partner review's card-rail scene (main, 1,191 as built) and the partner scan's full title and one credential label (1,205 as built), as test/site-v4.test.ts; +30, jury round 3, 14 Nov: the production sentence and "None in this run."; +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 506 : 456) /* +6, partner and judge scans 14 Nov: "Purser's entry for the Metal Award." and which mandate each figure is (532 on screen as built); +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 325 /* +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
-      if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
+      if (words > budget + 28) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
       // /airwallex (jury panel, 12 Nov) shows several runs, each dated on its own tile: its label is true for all of them,
@@ -1037,7 +1037,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const words = (await page.evaluate(() => document.body.innerText)).split(/\s+/).filter((x) => /\w/.test(x)).length - stripWords;
       // 375 since the 12 Nov wire-in ("Face ID signs on chain", +50; test/site-v4.test.ts).
       // +8, partner and judge scans 14 Nov: the Metal Award line and which mandate each figure is (529 on screen as built).
-      if (words > 503 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 503 plus the frame`);
+      if (words > 503 + 28) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 503 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
       if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Alta testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
@@ -1077,7 +1077,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // The partner tiles on the first screen; the chain and the band within the next (14 Nov, the tiles lead: the chain at
         // 9xx px and the band at 1,3xx px as built at 390; before, the chain under 400 px and the band under 1,300 px).
         const tiles = await page.evaluate(`(() => { const e = document.querySelector("main ul.ptiles"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        if (tiles < 0 || tiles >= 400) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
+        // 440 since 14 Nov: the "Built on Airwallex" line under the header on a phone (src/ui/builtOn.ts) adds 36 px.
+        if (tiles < 0 || tiles >= 440) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
         if (first.chain < 0 || first.chain >= 1000) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,000 px`);
         if (first.band < 0 || first.band > 1450) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,450 px`);
         const closed = await targets();

@@ -11,6 +11,7 @@ import { TAGLINE_LINE, previewTags } from "../ui/meta.js";
 import { MORE_CSS, footerLinks, menuItemOf, moreHtml, type PageKey } from "../ui/more.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { ICON_VERSION } from "../ui/brand/mark.js";
+import { AIRWALLEX_LOGO_PATH, BUILT_ON_CSS, builtOnBadge } from "../ui/builtOn.js";
 
 const EXTRA: Record<string, Icon> = {
   copy: [["rect", { width: "14", height: "14", x: "8", y: "8", rx: "2", ry: "2" }], ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" }]],
@@ -107,7 +108,11 @@ nav.tabs .pmore > summary { padding: 7px 12px 7px 14px; }
 @media (max-width: 420px) { .brand span.nm { display: none; } }
 @media (max-width: 380px) { nav.tabs > a { padding: 7px 7px; } nav.tabs .pmore > summary { padding: 7px 5px 7px 7px; } }
 @media (max-width: 340px) { nav.tabs > a { padding: 7px 5px; font-size: 14px; } nav.tabs .pmore > summary { padding: 7px 4px 7px 5px; font-size: 14px; gap: 2px; } }
-@media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }`;
+@media (max-width: 430px) { .brand, nav.tabs > a, nav.tabs summary { display: inline-flex; align-items: center; min-height: 44px; } }
+/* "Built on Airwallex": beside the brand from 760 px, else on its own line under the header. */
+${BUILT_ON_CSS}
+.awx-row { display: none; }
+@media (max-width: 759px) { header.top .awx-h { display: none; } .awx-row { display: flex; justify-content: center; padding: 10px 16px 0; } }`;
 
 export const CSS = `${TOKENS}
 @media (min-width: 720px) { :root { --gut: 32px; } }
@@ -268,8 +273,12 @@ export function header(current: PageKey | null, links?: HeaderLinks): string {
   const item = menuItemOf(current);
   // Without `links` every href is the site's own, unchanged (test/site-header-shared.test.ts holds the output byte for byte).
   const to = (key: string, href: string) => (links ? links.here[key] ?? new URL(href, `${links.base}/`).href : href);
-  return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>
-<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>`;
+  // "Built on Airwallex" (14 Nov, src/ui/builtOn.ts): beside the brand from 760 px; on a phone, on its own line under
+  // the header (the header's five items already fill a 360 px line), not sticky.
+  const awx = (cls: string) => builtOnBadge({ href: to("airwallex", "airwallex"), cls, ...(links ? { src: `${links.base}${AIRWALLEX_LOGO_PATH}` } : {}) });
+  return `<header class="top"><div class="wrap"><a class="brand" href="${to("brand", "home")}" aria-label="Purser, home"><span class="mk">${icon("feather", 17)}</span><span class="nm">Purser</span></a>${awx("awx-h")}
+<nav class="tabs" aria-label="Main">${TABS.map(([k, label, href]) => `<a href="${to(k, href)}"${k === item ? ' class="on" aria-current="page"' : ""}>${label}</a>`).join("")}${moreHtml(current, links && ((l) => to(l.key, l.href)))}</nav></div></header>
+<div class="awx-row">${awx("awx-m")}</div>`;
 }
 
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
