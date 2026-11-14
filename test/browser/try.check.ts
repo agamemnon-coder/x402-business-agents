@@ -19,10 +19,12 @@ import { join } from "node:path";
 import type { BrowserContext, Page, Route } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
+import type { LiveFxSource } from "../../cloud/src/engine/liveFx.js";
+import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, GUIDE, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -49,7 +51,20 @@ const env: CloudEnv = {
   sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "t".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
   rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
 };
-env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN });
+// 14 Nov: /try's live FX quote (cloud/src/engine/liveFx.ts). No network here: kit11's AwxFx entrypoint is stood in for by
+// a source that answers with the main run's recorded Airwallex sandbox quote id and rate (src/try/examples.ts), for
+// exactly the amount asked, valid 15 minutes. It is a check's stand-in, not a live quote. fxDown: it answers unavailable.
+const REC_FX = recordedQuote();
+const fxStand = { down: false, asked: 0 };
+const fxSource: LiveFxSource = {
+  quote: async (a) => {
+    fxStand.asked++;
+    if (fxStand.down) return { ok: false, reason: "unavailable" };
+    const sell = (Math.ceil(Number(a.buyAmount) * Number(REC_FX.client_rate) * 100) / 100).toFixed(2);
+    return { ok: true, quote: { quote_id: REC_FX.quote_id, buy_currency: a.buyCurrency, sell_currency: a.sellCurrency, buy_amount: a.buyAmount, sell_amount: sell, client_rate: REC_FX.client_rate, valid_to_at: new Date(Date.now() + 15 * 60_000).toISOString() }, market_rate: REC_FX.client_rate };
+  },
+};
+env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN, liveFx: { source: fxSource, allowed: async () => true } });
 const cloud = async (method: string, path: string, key: string | null, body?: unknown) => {
   const r = await handle(new Request(`${ORIGIN}${path}`, { method, headers: { ...(key ? { authorization: `Bearer ${key}` } : {}), "content-type": "application/json" }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }), env);
   const text = await r.text();
@@ -141,7 +156,10 @@ async function laneC(method: string, path: string, session: string, body: Record
   if (!L) { send(res, 404, { error: "no proposal" }); return true; }
   if (method === "GET" && what === "terms") {
     const { canonicalTerms } = await import("../../src/lib/terms.js");
-    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at });
+    // The note on the terms' FX quote, as the engine gives it (cloud/src/engine/liveFx.ts).
+    const tenant = visitors.get(session)?.id;
+    const real = tenant ? await env.engine!(tenant).terms(id) : null;
+    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at, ...(real?.fx_quote ? { fx_quote: real.fx_quote } : {}) });
     return true;
   }
   if (method !== "POST" || what !== "pay") return false;
@@ -530,6 +548,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(((await cloud("GET", "/v1/engine", visitor.session)).json.passkey as { credential_id?: string } | null)?.credential_id !== undefined, `${tag}: the engine holds the approval passkey the browser made`);
   ok(!(await page.innerText("#main")).includes(APPROVE.saves.replace("{host}", "localhost")), `${tag}: once it exists, the saving sentence goes`);
   await screenChecks(page, `${tag} screen 3 (approve)`, width, 1, false);
+  // 14 Nov: the Airwallex card: the quote the terms carry, its id and rate, and a countdown to its valid-to.
+  const cv = (L0.terms as unknown as { conversion: { quote_id: string; client_rate: string } | null }).conversion;
+  const awx = (await page.locator("section.awx").count()) ? await page.innerText("section.awx") : "";
+  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(cv.client_rate) && /\b1[45]:\d\d\b/.test(awx),
+    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate and the time left (${awx.replace(/\s+/g, " ").slice(0, 160)})`);
   await shot2("3-approve");
   // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
   // 12 Nov (one tap): the held approval's answer is drawn, and the pay call starts by itself with the terms as signed and

@@ -71,6 +71,7 @@ const eventLineOf=(W)=>{
     // An agent's working rows go in the fold: its tool calls, words and run, and a Claude call made in one of its turns.
     const fold=name.indexOf('agent.')===0||((asking||name==='claude.read')&&!!(code(f.agent)||num(f.turn)||/^(checker|coder|payer)$/.test(String(e.actor))));
     if(PERSON.test(name)){who=W.who.you;tag=null}
+    if(name.indexOf('airwallex.')===0)who=W.who.airwallex;
     if(SIGN.test(name))tag='sign';else if(MONEY.test(name))tag='money';
     // An agent's own sentence and code's, as the server masked and cut them (text nodes only, never markup).
     // A line the Coder left without a VAT code that the books coded from the supplier's German VAT id (final-polish, 13 Nov).
@@ -82,7 +83,7 @@ const eventLineOf=(W)=>{
     const one=(s)=>s.replace(/((?:\b[A-Z]\.){2,})\./g,'$1');
     const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
       action:said2(W.actions,f.action),outcome:said2(W.actions,f.outcome),reason:said(f.reason),enforced:said(f.enforced)||said(f.refused)||(abroad?W.booksVat:open?fill(W.uncodedVat,{pct:open}):''),
-      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:'',cap:code(f.reason)&&own(W.caps,f.reason)?W.caps[f.reason]:''};
+      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:'',quote_id:/^[A-Za-z0-9-]{1,64}$/.test(String(f.quote_id))?String(f.quote_id):'',rate:/^\d{1,6}(\.\d{1,12})?$/.test(String(f.client_rate))?String(f.client_rate):'',cap:code(f.reason)&&own(W.caps,f.reason)?W.caps[f.reason]:''};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;
