@@ -255,7 +255,7 @@ export function stagePage(n: string, origin: string): string {
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 

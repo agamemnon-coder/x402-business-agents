@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pdfOf } from "../src/e2e/documents.js";
-import { SAMPLE_SOURCES, samplePdf, samplesFile } from "../src/engine/tryWorld.js";
+import { rowOf, SAMPLE_SOURCES, samplePdf, samplesFile } from "../src/engine/tryWorld.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -40,13 +40,16 @@ describe("the sample tray", () => {
     const s = await visitor();
     const r = await c.req("GET", "/v1/engine/samples", { key: s });
     expect(r.status).toBe(200);
-    expect(r.json.items).toEqual([
+    expect((r.json.items as Record<string, unknown>[]).map(({ key, title, filename }) => ({ key, title, filename }))).toEqual([
       { key: "clean", title: "A supplier's invoice", filename: "bergtex-BTX-2026-21.pdf" },
       { key: "again", title: "An invoice you already paid, sent again", filename: "bergtex-BTX-2026-17.pdf" },
       { key: "renumbered", title: "A paid invoice under a new number", filename: "bergtex-BTX-2026-17A.pdf" },
       { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf" },
       { key: "unknown", title: "An invoice from a new supplier", filename: "zeeland-ZV-4471.pdf" },
     ]);
+    // 14 Nov (inbox table): each sample's row as its document says it, and the engine's measured outcome for it.
+    expect((r.json.items as { key: string; row: unknown; expect: unknown }[]).map((x) => [x.key, x.row, x.expect])).toEqual(SAMPLE_SOURCES.map((x) => [x.key, rowOf(x), x.expect]));
+    expect((r.json.items as { row: { vendor: string; invoice_no: string; amount: string; due_date: string } }[])[4]!.row).toEqual({ vendor: "Zeeland Verpakkingen B.V.", invoice_no: "ZV-4471", currency: "EUR", amount: "484.00", due_date: "2026-11-30" });
     expect((await c.req("POST", "/v1/engine/samples/nope", { key: s })).status).toBe(404);
   });
 

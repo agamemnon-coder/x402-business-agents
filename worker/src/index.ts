@@ -8,6 +8,8 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
+import { AwxCardsDesk } from "./awxCards.js";
+import type { CardsAnswer, CardsAsk } from "../../src/airwallex/cardGate.js";
 import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk, type SimulateAnswer } from "./awxPayout.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
@@ -81,6 +83,11 @@ export interface Env {
   AIRWALLEX_PAYOUT_API_KEY?: string;
   /** The payout's switch on this Worker: "off" (any case, trimmed) stops every payout call; anything else leaves it to the key and purser-try's awx_payout. */
   AWX_PAYOUT?: string;
+  /**
+   * The agents' live sandbox cards (./awxCards.ts, the AwxCards entrypoint): "on" lets card writes and the purchase
+   * simulation through (create a card, freeze or unfreeze it, set its limits). Off when missing; reads need only the key.
+   */
+  AWX_CARDS_WRITE?: string;
 }
 
 /** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
@@ -209,6 +216,19 @@ export class AwxFx extends WorkerEntrypoint<Env> {
   /** Step 2's labelled "Sandbox: move to PAID": the sandbox's own simulation of the company's transfer. */
   async payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
     return this.payoutStub().awxPayoutSimulate(a);
+  }
+}
+
+/**
+ * The agents' live sandbox cards (14 Nov): the named entrypoint purser-try binds to (cloud/wrangler.try.jsonc,
+ * AWX_CARDS). No HTTP request reaches it. One method; every call to Airwallex on the card allow-list
+ * (src/airwallex/cardGate.ts); the answer carries the last four digits at most, never a key, a token or card data.
+ */
+let cardsDesk: AwxCardsDesk | undefined;
+export class AwxCards extends WorkerEntrypoint<Env> {
+  async ask(a: CardsAsk): Promise<CardsAnswer> {
+    cardsDesk ??= new AwxCardsDesk({ AIRWALLEX_CLIENT_ID: this.env.AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY: this.env.AIRWALLEX_API_KEY, AWX_CARDS_WRITE: this.env.AWX_CARDS_WRITE });
+    return cardsDesk.ask(a);
   }
 }
 

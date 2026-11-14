@@ -144,18 +144,16 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
     await pick(page, "An invoice with new bank details");
     await page.unroute("**/v1/engine/samples/bank");
     await page.waitForTimeout(1500);
-    await page.getByRole("button", { name: LIVE.allSteps }).click();
+    const all = page.getByRole("button", { name: LIVE.allSteps }); if (await all.isVisible()) await all.click();
     const rows = await page.locator("ol.live li").evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
-    ok(rows.length === 4 && !rows.some((r) => r.includes(LIVE.ev["claude.asking"]!)), `${tag}: held: no row stays on "asking…" (${rows.join(" | ")})`);
-    // 14 Nov (live QA): an answered call says how long it took by the engine's own clock ("Answered in 1.2 s."), or "Answered."
-    // when the engine wrote both rows in the same instant; never a running count stopped at 0.0 s.
-    const isAnswered = (r: string) => (r.includes(LIVE.asked) || /Answered in \d+\.\d s\./.test(r)) && !r.includes(LIVE.noAnswer);
-    ok(rows.filter(isAnswered).length === 1 && rows.filter((r) => r.includes(LIVE.noAnswer)).length === 1 && !rows.some((r) => / 0\.0 s/.test(r)), `${tag}: held: the answered call says how long it took, the other "${LIVE.noAnswer}" (${rows.join(" | ")})`);
-    ok(rows[2]!.includes("answered live") && rows[3]!.includes("came in and was checked"), `${tag}: held: the rows in the engine's time order`);
+    // Round 2 (14 Nov, jury): the reader's two calls and its answer are one row ("Reader · Claude Haiku 5.5 · 2 calls").
+    ok(rows.length === 2 && !rows.some((r) => r.includes(LIVE.ev["claude.asking"]!)), `${tag}: held: no row stays on "asking…" (${rows.join(" | ")})`);
+    ok(rows[0]!.startsWith(`${LIVE.reader} · Claude Haiku 5.5 · ${LIVE.calls.replace("{n}", "2")}`) && rows[0]!.includes(LIVE.ev["claude.read"]!) && !rows[0]!.includes(LIVE.noAnswer), `${tag}: held: the reader's calls are one row, with its answer (${rows[0]})`);
+    ok(rows[1]!.includes("came in and was checked"), `${tag}: held: the rows in the engine's time order`);
     const secs = (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1]));
     const before = secs.join(",");
     await page.waitForTimeout(1200);
-    ok(secs.length === 4 && secs[0]! > 0 && secs.every((x, i) => Number.isFinite(x) && (i === 0 || x > secs[i - 1]!)) && (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1])).join(",") === before, `${tag}: held: the times rise row by row and nothing keeps counting (${before})`);
+    ok(secs.length === 2 && secs[0]! > 0 && secs.every((x, i) => Number.isFinite(x) && (i === 0 || x > secs[i - 1]!)) && (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1])).join(",") === before, `${tag}: held: the times rise row by row and nothing keeps counting (${before})`);
     await page.unroute(/\/v1\/engine\/events\?/);
     await page.getByRole("button", { name: WORK.another }).click();
   }
@@ -177,7 +175,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   await page.getByRole("button", { name: LIVE.allSteps }).click();
   const live = await page.locator("ol.live").innerText();
   ok(!live.includes(LIVE.step), `${tag}: no "${LIVE.step}" row`);
-  ok(live.split("answered live").length === 2, `${tag}: Claude's answer is one row, not two`);
+  ok(live.split("Answered live").length === 2, `${tag}: Claude's answer is one row, not two`);
   const rows = await page.locator("ol.live li").evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
   const codeRow = rows.find((r) => r.startsWith("Checker agent · Purser's code")) ?? "";
   ok(codeRow.includes("Decided: ask the CFO, because the amount") && !codeRow.includes(LIVE.ownWords), `${tag}: a code check's reason is plain, never "${LIVE.ownWords}"; its action in words`);
@@ -185,7 +183,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   ok(rows.some((r) => r.includes(`6200 expense, VAT ${LIVE.noVat}`)), `${tag}: the Coder's VAT line says Purser's code books it, as the ledger does`);
   ok(rows.some((r) => r.includes("pay on 28 Nov 2026 by a SWIFT bank transfer")), `${tag}: the Payer's date and rail in words`);
   ok(!/\b(?!asking…)\w+…/.test(live) && !/ask_cfo|ask cfo|bank swift/.test(live), `${tag}: no raw values, no word cut off`);
-  const answered = /Answered in ([\d.]+) s/.exec(await page.locator(".result").innerText())?.[1];
+  const answered = /[Aa]nswered in ([\d.]+) s/.exec(await page.locator(".result").innerText())?.[1];
   const times = await page.locator("ol.live li .t").allInnerTexts();
   ok(answered !== undefined && times.at(-1) === `+${answered} s`, `${tag}: the last row's time (${times.at(-1)}) is "Answered in ${answered} s": one clock`);
   const pay = page.getByRole("button", { name: WORK.pay });
@@ -203,7 +201,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   const create = page.getByRole("button", { name: APPROVE.create });
   await create.waitFor({ timeout: 30_000 });
   text = await page.locator("main").innerText();
-  ok(/Conversion\s+EUR [\d,]+\.\d{2} of it funded from the USD balance \(USD [\d,]+\.\d{2} at \d\.\d{4}\)/.test(text), `${tag}: the approval shows the conversion`);
+  ok(/Conversion\s+EUR [\d,]+\.\d{2} of it funded from the USD balance \(USD [\d,]+\.\d{2}; 1 EUR = \d\.\d{4,6} USD\)/.test(text), `${tag}: the approval shows the conversion`);
   ok(/Bank fee\s+at most EUR 20\.00/.test(text), `${tag}: the approval shows the fee's cap`);
   ok(/Sign before\s+\d{1,2} [A-Z][a-z]{2} \d{4}, \d{2}:\d{2}/.test(text), `${tag}: the approval shows its deadline`);
   ok(/Due\s+30 Nov 2026/.test(text), `${tag}: dates as 30 Nov 2026`);
