@@ -1372,7 +1372,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
   const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,el('div','slot payout'),booked,filed,tail);
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,tail);
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
   // read ends: call() answers status 0 when the network fails, it never throws.
