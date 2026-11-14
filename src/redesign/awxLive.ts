@@ -41,7 +41,7 @@ export const AWX_LIVE_CSS = `
 .axl-badge .axl-bt { display: grid; gap: 2px; min-width: 0; }
 .axl-badge.ok { background: var(--ok-soft); border-color: var(--ok); } .axl-badge.ok .axl-dot { background: var(--ok); }
 .axl-badge.amber { background: #fdf3e1; border-color: #a35f00; } .axl-badge.amber .axl-dot { background: #a35f00; }
-.axl-list { margin-left: auto; font-weight: 600; }
+.axl-list { margin-left: auto; font-weight: 600; display: inline-flex; align-items: center; min-height: 44px; }
 .axl-h { margin: 18px 0 6px; font-size: 16px; }
 .axl-state { color: var(--muted); margin: 0 0 8px; }
 .axl-ev { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -51,8 +51,8 @@ export const AWX_LIVE_CSS = `
 .axl-ev .axl-id { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .axl-ev .axl-id code { font-size: 12px; word-break: break-all; background: var(--sunken); padding: 2px 6px; border-radius: 6px; }
 .axl-ev .axl-ok { color: var(--ok); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.axl-ev button { font: inherit; font-size: 12px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; flex: none; }
-.axl-more { margin-top: 10px; font-size: 14px; } .axl-more span { color: var(--muted); }
+.axl-ev button { font: inherit; font-size: 13px; min-height: 44px; min-width: 64px; padding: 2px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; flex: none; }
+.axl-more { margin-top: 10px; font-size: 14px; } .axl-more a { display: inline-flex; align-items: center; min-height: 44px; } .axl-more span { display: block; color: var(--muted); }
 @media (max-width: 520px) { .axl-ev li { grid-template-columns: minmax(0, 1fr); } .axl-ev .axl-w { text-align: left; } .axl-list { grid-column: 2; margin-left: 0; } }
 `;
 
@@ -92,7 +92,7 @@ export const AWX_LIVE_JS = `(function () {
 
 /** Home's badge: an image the site draws (no script, no fetch), linking to the block on /proof. */
 export function awxHomeBadgeHtml(): string {
-  return `<p class="h-axl"><a href="proof#${AWX_LIVE_ID}"><img src="${BOOKS_SVG}" width="360" height="56" alt="${esc(`${AWX_BADGE_TITLE}: checked live against the Airwallex sandbox`)}" loading="lazy" decoding="async"></a></p>`;
+  return `<p class="h-axl"><a href="proof#${AWX_LIVE_ID}" aria-label="${esc(`${AWX_BADGE_TITLE}, checked live: see it on the proof page`)}"><img src="${BOOKS_SVG}" width="360" height="56" alt="${esc(`${AWX_BADGE_TITLE}: checked live against the Airwallex sandbox`)}" loading="lazy" decoding="async"></a></p>`;
 }
 
 export const AWX_HOME_BADGE_CSS = `

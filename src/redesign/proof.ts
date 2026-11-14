@@ -580,10 +580,10 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
   ${partnerStripHtml(undefined, liveRunCount())}
   ${proofChainHtml()}
-  ${awxLiveHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}
   ${proofRunsHtml()}
+  ${awxLiveHtml()}
   ${guaranteesHtml()}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${lifeVisual("wide")}
   ${railsVisual("wide")}
