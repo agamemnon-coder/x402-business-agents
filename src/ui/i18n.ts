@@ -1149,7 +1149,6 @@ const EN = {
   "cs.books.not_balanced": "Not balanced",
   // Purser Cloud, the CFO's pass (14 Nov): Overview, Agents, Invoices, Books and an invoice as a document.
   "cs.nav.ledger": "Books",
-  "cs.ov.show_all": "Show all {n}",
   "cs.ov.show_less": "Show fewer",
   "cs.ov.review": "Review",
   "cs.ov.go_open": "Open",
@@ -1162,7 +1161,6 @@ const EN = {
   "cs.agents.lede2": "Each agent's card, its limits and what it decided. The limits are the CFO's: a change is a proposal the CFO signs with Face ID.",
   "cs.agents.card_status.active": "Active",
   "cs.agents.card_status.frozen": "Frozen",
-  "cs.agents.virtual": "Virtual card",
   "cs.agents.card_demo": "Simulated card",
   "cs.agents.spent_of": "{spent} of {cap} spent in {month}",
   "cs.agents.limits_h": "Card limits",
@@ -1201,6 +1199,14 @@ const EN = {
   "cs.inv.vat_amt": "VAT",
   "cs.inv.all": "All invoices",
   "cs.tok.ids": "Contract, token and transaction ids",
+  "cs.ov.show_newest": "Show the newest {n}",
+  "cs.ov.n_suppliers": "{n} suppliers",
+  "cs.agents.card_status.closed": "Closed",
+  "cs.agents.by_code": "by Purser's code, no model",
+  "cs.inv.rejected_cfo": "Rejected by the CFO",
+  "cs.inv.to_file": "Next: filed for the CFO",
+  "cs.inv.accrued": "Payable booked on receipt",
+  "cs.inv.as_read": "As read; no cost line booked",
 } as const;
 
 export type Key = keyof typeof EN;
@@ -2325,7 +2331,6 @@ const NL: { readonly [K in Key]: string } = {
   "cs.books.not_balanced": "Sluit niet",
   // Purser Cloud, the CFO's pass (14 Nov): Overview, Agents, Invoices, Books and an invoice as a document.
   "cs.nav.ledger": "Boeken",
-  "cs.ov.show_all": "Toon alle {n}",
   "cs.ov.show_less": "Toon minder",
   "cs.ov.review": "Bekijken",
   "cs.ov.go_open": "Openen",
@@ -2338,7 +2343,6 @@ const NL: { readonly [K in Key]: string } = {
   "cs.agents.lede2": "Per agent de kaart, de limieten en wat hij besliste. De limieten zijn van de CFO: een wijziging is een voorstel dat de CFO met Face ID tekent.",
   "cs.agents.card_status.active": "Actief",
   "cs.agents.card_status.frozen": "Bevroren",
-  "cs.agents.virtual": "Virtuele kaart",
   "cs.agents.card_demo": "Gesimuleerde kaart",
   "cs.agents.spent_of": "{spent} van {cap} uitgegeven in {month}",
   "cs.agents.limits_h": "Kaartlimieten",
@@ -2377,6 +2381,14 @@ const NL: { readonly [K in Key]: string } = {
   "cs.inv.vat_amt": "Btw",
   "cs.inv.all": "Alle facturen",
   "cs.tok.ids": "Contract-, token- en transactie-id's",
+  "cs.ov.show_newest": "Toon de nieuwste {n}",
+  "cs.ov.n_suppliers": "{n} leveranciers",
+  "cs.agents.card_status.closed": "Gesloten",
+  "cs.agents.by_code": "door de code van Purser, geen model",
+  "cs.inv.rejected_cfo": "Afgewezen door de CFO",
+  "cs.inv.to_file": "Volgende: naar de CFO",
+  "cs.inv.accrued": "Schuld geboekt bij ontvangst",
+  "cs.inv.as_read": "Zoals gelezen; geen kostenregel geboekt",
 };
 
 export const MESSAGES: { readonly [L in Lang]: { readonly [K in Key]: string } } = { en: EN, nl: NL };

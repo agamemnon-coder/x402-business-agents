@@ -25,7 +25,7 @@ export interface StatementView {
   revenue: number; expenses: StatementLine[]; totalExpenses: number;
   /** No revenue, yet the output VAT account holds VAT: reverse charge, shown as such. */
   reverseCharge: boolean;
-  sorted: { date: string; supplier: string; number: string; total: string; currency: string; booking: string; reason: string }[];
+  sorted: { date: string; supplier: string; number: string; total: string; cents: number | null; currency: string; booking: string; account: string; vat: string; costCentre: string; reason: string }[];
 }
 
 /** "977.59" or "-33.99" to cents; null when it is not an amount. */
@@ -69,18 +69,28 @@ export function statementView(f: BooksStatementFile): StatementView | null {
     balances: b.balanced && totalAssets === totalLiabilities + totalEquity && result === revenue - expense && totalExpenses === expense,
     revenue, expenses, totalExpenses,
     sorted: f.sorted.rows.filter((r) => r.supplier && r.number && r.date && r.total && r.reason).map((r) => ({
-      date: r.date!, supplier: r.supplier!, number: r.number!, total: centsOf(r.total!) === null ? r.total! : fmt(centsOf(r.total!)!), currency: r.currency ?? "EUR", reason: r.reason!,
+      date: r.date!, supplier: r.supplier!, number: r.number!, total: centsOf(r.total!) === null ? r.total! : fmt(centsOf(r.total!)!), cents: centsOf(r.total!), currency: r.currency ?? "EUR", reason: r.reason!,
+      account: `${r.account} ${chartName(r.account)}`, vat: r.vat ? (VAT_CODES[r.vat]?.label ?? r.vat) : "", costCentre: r.cost_centre ? `${r.cost_centre} ${COST_CENTRE_NAMES[r.cost_centre] ?? ""}`.trim() : "",
       booking: [`${r.account} ${chartName(r.account)}`, r.vat ? `VAT ${VAT_CODES[r.vat]?.label ?? r.vat}` : "", r.cost_centre ? `${r.cost_centre} ${COST_CENTRE_NAMES[r.cost_centre] ?? ""}`.trim() : ""].filter(Boolean).join("  ·  "),
     })),
   };
 }
 
 const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4f46e5", OK = "#0b7d43", BAND = "#f1f3f7";
+/** Text as drawn: no soft hyphen and no zero-width character, which a viewer may draw as a stray dot (Max, 14 Nov). */
+export const clean = (t: string): string => t.normalize("NFC").replace(/[\u00AD\u200B-\u200F\u2060\uFEFF]/g, "");
+/** Claude's reason in one short line under its row: about 140 characters, cut at a word; the whole reason is in the appendix. */
+export function shortReason(t: string, max = 140): string {
+  const c = clean(t).replace(/\s+/g, " ").trim();
+  if (c.length <= max) return c;
+  const cut = c.slice(0, max - 1);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max - 20)).replace(/[\s,;:.]+$/, "")}…`;
+}
 const fmt = (cents: number) => `${cents < 0 ? "-" : ""}${Math.floor(Math.abs(cents) / 100).toLocaleString("en-US")}.${String(Math.abs(cents) % 100).padStart(2, "0")}`;
 
 export function statementPdf(v: StatementView): Promise<Buffer> {
   const at = new Date(`${v.asOf}T00:00:00Z`);
-  const doc = new PDFDocument({ size: "A4", margin: 50, info: { Title: `${v.company}: balance sheet and profit and loss`, Author: "Purser", Creator: "Purser", Producer: "Purser", CreationDate: at, ModDate: at } });
+  const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true, info: { Title: `${v.company}: balance sheet and profit and loss`, Author: "Purser", Creator: "Purser", Producer: "Purser", CreationDate: at, ModDate: at } });
   const chunks: Buffer[] = [];
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<Buffer>((r) => doc.on("end", () => r(Buffer.concat(chunks))));
@@ -144,28 +154,83 @@ export function statementPdf(v: StatementView): Promise<Buffer> {
   row("Result", v.revenue - v.totalExpenses, { bold: true, rule: "double" });
 
   if (v.sorted.length) {
+    // "Invoices, sorted by Claude" (Max, 14 Nov: "looks unorganised"): a header block with the totals, then one table
+    // (Supplier | Date | Invoice no | Account | VAT | Cost centre | Amount), Claude's reason cut to one short line under
+    // each row, and the whole reasons in an appendix. Every figure is the run record's.
     doc.addPage();
     y = 50;
     heading("Invoices, sorted by Claude");
-    doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Claude chose the account, VAT code and cost centre of each; code checked every choice before it was booked. Claude's own reason under each.", L, y, { width: W });
+    const days = v.sorted.map((s) => s.date).sort();
+    const totals = new Map<string, number>();
+    for (const s of v.sorted) if (s.cents !== null) totals.set(s.currency, (totals.get(s.currency) ?? 0) + s.cents);
+    const facts: [string, string][] = [["Company", clean(v.company)], ["Period", days[0] === days[days.length - 1] ? days[0]! : `${days[0]} to ${days[days.length - 1]}`],
+      ["Invoices", String(v.sorted.length)], ["Total", [...totals].map(([c, n]) => `${c} ${fmt(n)}`).join(", ")]];
+    doc.rect(L, y, W, 54).fill(BAND);
+    const fws = [150, 130, 55, 160];
+    let fx = L + 10;
+    facts.forEach(([k, val], i) => {
+      doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text(k.toUpperCase(), fx, y + 9, { width: fws[i]! - 12, characterSpacing: 0.6, lineBreak: false });
+      doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text(val, fx, y + 22, { width: fws[i]! - 12 });
+      fx += fws[i]!;
+    });
+    y += 60;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor("#7a4a00").text("Made-up data · test money", L, y);
+    doc.font("Helvetica").fontSize(8.5).fillColor(MUTED).text("Claude chose the account, VAT code and cost centre of each invoice; Purser's code checked every choice before it was booked.", L, y + 12, { width: W });
     y = doc.y + 10;
-    for (const s of v.sorted) {
-      if (y > 730) { doc.addPage(); y = 50; }
+    // The columns, in points; the amount right-aligned.
+    const cols = [{ k: "Supplier", w: 96 }, { k: "Date", w: 52 }, { k: "Invoice no", w: 64 }, { k: "Account", w: 90 }, { k: "VAT", w: 68 }, { k: "Cost centre", w: 60 }, { k: "Amount", w: 65, right: true }];
+    const xs: number[] = [];
+    cols.reduce((x, c) => { xs.push(x); return x + c.w; }, L);
+    const head = () => {
+      doc.rect(L, y, W, 18).fill(INK);
+      cols.forEach((c, i) => doc.font("Helvetica-Bold").fontSize(7).fillColor("#ffffff").text(c.k.toUpperCase(), xs[i]! + 4, y + 6, { width: c.w - 6, align: c.right ? "right" : "left", characterSpacing: 0.2, lineBreak: false }));
+      y += 18;
+    };
+    head();
+    v.sorted.forEach((s, n) => {
+      const cells = [clean(s.supplier), clean(s.date), clean(s.number), clean(s.account), clean(s.vat), clean(s.costCentre), `${s.currency} ${s.total}`];
+      const hRow = Math.max(...cells.map((c, i) => doc.font(i === 0 || i === 6 ? "Helvetica-Bold" : "Helvetica").fontSize(8).heightOfString(c, { width: cols[i]!.w - 8 }))) + 8;
+      const reason = `${shortReason(s.reason)}${clean(s.reason).length > 140 ? ` (A${n + 1})` : ""}`;
+      doc.font("Helvetica-Oblique").fontSize(7.5);
+      const hReason = doc.heightOfString(reason, { width: W - 12 }) + 6;
+      if (y + hRow + hReason > 770) { doc.addPage(); y = 50; head(); }
+      if (n % 2 === 1) doc.rect(L, y, W, hRow + hReason).fill("#f7f8fa");
+      cells.forEach((c, i) => doc.font(i === 0 || i === 6 ? "Helvetica-Bold" : "Helvetica").fontSize(8).fillColor(INK).text(c, xs[i]! + 4, y + 5, { width: cols[i]!.w - 8, align: cols[i]!.right ? "right" : "left" }));
+      y += hRow;
+      doc.font("Helvetica-Oblique").fontSize(7.5).fillColor(MUTED).text(reason, L + 6, y, { width: W - 12 });
+      y += hReason;
       doc.moveTo(L, y).lineTo(R, y).strokeColor(LINE).lineWidth(0.5).stroke();
-      y += 6;
-      doc.font("Helvetica-Bold").fontSize(10).fillColor(INK).text(s.supplier, L, y, { width: 300, lineBreak: false });
-      doc.text(`${s.currency} ${s.total}`, R - 130, y, { width: 130, align: "right", lineBreak: false });
+    });
+    // Appendix: Claude's whole reason for each invoice whose line above was cut.
+    const long = v.sorted.map((s, n) => ({ s, n })).filter(({ s }) => clean(s.reason).length > 140);
+    if (long.length) {
       y += 14;
-      doc.font("Helvetica").fontSize(9).fillColor(MUTED).text(`${s.date}  ·  ${s.number}`, L, y, { lineBreak: false });
-      y += 13;
-      doc.font("Helvetica-Bold").fontSize(9).fillColor(ACCENT).text("Sorted by Claude", L, y, { continued: true }).font("Helvetica").fillColor(INK).text(`   ${s.booking}`);
-      y = doc.y + 3;
-      doc.font("Helvetica-Oblique").fontSize(8.5).fillColor(MUTED).text(s.reason, L, y, { width: W });
-      y = doc.y + 8;
+      if (y > 700) { doc.addPage(); y = 50; }
+      heading("Appendix: Claude's reasons in full");
+      for (const { s, n } of long) {
+        const txt = clean(s.reason);
+        doc.font("Helvetica").fontSize(8.5);
+        const h = doc.heightOfString(txt, { width: W - 30 }) + 18;
+        if (y + h > 770) { doc.addPage(); y = 50; }
+        doc.font("Helvetica-Bold").fontSize(8.5).fillColor(ACCENT).text(`A${n + 1}`, L, y, { width: 26, lineBreak: false });
+        doc.font("Helvetica-Bold").fillColor(INK).text(`${clean(s.supplier)}, ${clean(s.number)}`, L + 30, y, { width: W - 30 });
+        doc.font("Helvetica").fillColor(MUTED).text(txt, L + 30, doc.y + 1, { width: W - 30 });
+        y = doc.y + 8;
+      }
     }
   }
   if (y > 740) { doc.addPage(); y = 50; }
   doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text("Made by Purser from the ledger of a test company; every figure is read from its run record. Fictional company and suppliers, test money.", L, y + 14, { width: W });
+  // Page x of y on every page, in the bottom margin.
+  const pages = doc.bufferedPageRange();
+  for (let i = 0; i < pages.count; i++) {
+    doc.switchToPage(pages.start + i);
+    const bottom = doc.page.margins.bottom;
+    doc.page.margins.bottom = 0;
+    doc.font("Helvetica").fontSize(7.5).fillColor(MUTED).text(`Page ${i + 1} of ${pages.count}`, L, doc.page.height - 32, { width: W, align: "right", lineBreak: false });
+    doc.text(clean(v.company), L, doc.page.height - 32, { width: W / 2, lineBreak: false });
+    doc.page.margins.bottom = bottom;
+  }
   doc.end();
   return done;
 }

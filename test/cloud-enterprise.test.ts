@@ -5,6 +5,7 @@
 // console's nav has the new tabs, the old Invoices route lands on Books, and the page says what Purser Cloud is.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { consolePage } from "../cloud/src/console.js";
+import { feedLine } from "../cloud/src/dashboard.js";
 import { MESSAGES } from "../src/ui/i18n.js";
 import { ORIGIN, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import TOKENIZE from "../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
@@ -141,7 +142,8 @@ describe("the console", () => {
     expect(html).toContain("t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback})");
     // 14 Nov: it is the Decisions timeline's subtitle now; each row has an icon for who acted (the rail is Airwallex).
     const feed = (await get("/v1/dashboard")).json.feed as J[];
-    expect(feed.find((f) => /^Airwallex declined/.test(f.text))?.by).toBe("rail");
+    expect(feed.find((f) => f.who === "Purser (Airwallex)")?.by).toBe("rail");
+    expect(feedLine({ seq: 1, ts: "2026-10-15T10:00:00Z", actor: "sourcing", event: "card.charge_declined", subject: "tx_9", payload_json: JSON.stringify({ amount: "45.00", currency: "EUR", merchant: "Packwise", reason: "LIMIT_EXCEEDED" }) })?.by).toBe("rail");
     expect(feed.find((f) => f.who === "The CFO")?.by).toBe("cfo");
   });
 });

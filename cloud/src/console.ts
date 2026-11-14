@@ -1112,10 +1112,11 @@ const vatWord=(code)=>tk('cs.vat.'+code,t('cs.vat_code',{code}));
 function whatCloud(){return el('div','what-cloud',[el('p','',t('cs.what_cloud'))])}
 // A ledger entry's lines as a table (date, entry, account, debit, credit), oldest first.
 function journalTable(items,empty,newest){
+  const jl=(td,l)=>{td.dataset.l=l;return td};
   const tbl=el('table','table jt',[el('thead','',[el('tr','',[el('th','',t('date')),el('th','',t('cs.entry')),el('th','r',t('cs.debit')),el('th','r',t('cs.credit'))])])]);const tb=el('tbody','');
   const es=items.slice().sort((a,b)=>String(a.posting_date).localeCompare(String(b.posting_date))||a.entry_id-b.entry_id);if(newest)es.reverse();
   for(const e of es){tb.append(el('tr','en',[el('td','',day(e.posting_date)),el('td','',[el('b','','#'+e.entry_id+' '),data('journal',e.description||'')]),el('td',''),el('td','')]));
-    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):'')]))}
+    for(const l of e.lines||[])tb.append(el('tr','ln',[el('td',''),el('td','',l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')),jl(el('td','r',l.debit_cents?cur(l.currency)+' '+cents(l.debit_cents):''),t('cs.debit')),jl(el('td','r',l.credit_cents?cur(l.currency)+' '+cents(l.credit_cents):''),t('cs.credit'))]))}
   if(!es.length)tb.append(el('tr','',[el('td','',empty),el('td',''),el('td',''),el('td','')]));
   tbl.append(tb);return el('div','scroll',tbl)}
 // The accounting exports (GET /v1/export/csv/{format}/{kind}): files, labelled format exports.

@@ -75,7 +75,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
       return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq, outcome: outcomeOf(r) };
     });
     // Spent on its own card in the month the company's records stand at (its newest movement), against the monthly limit.
-    const spentMonth = moved.filter((t) => t.moved && t.at.slice(0, 7) === asOfMonth).reduce((n, t) => n + Math.round(Number(t.amount) * 100), 0);
+    const spentMonth = moved.filter((t) => t.moved && t.at.slice(0, 7) === asOfMonth && t.currency === String(ip.currency ?? "EUR")).reduce((n, t) => n + Math.round(Number(t.amount) * 100), 0);
     const runs = mine.filter((r) => r.event === "agent.run").map(payload);
     const fallbackRuns = runs.filter((p) => Array.isArray(p.claude_calls) && (p.claude_calls as unknown[]).length === 0).length;
     return {

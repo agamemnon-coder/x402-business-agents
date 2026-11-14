@@ -20,8 +20,8 @@ function timeline(D,shown){
   const rows=D.feed.map((f)=>{const li=el('li','tl-'+f.tone+' by-'+(f.by||'code'),[el('span','tlic',ic(WHO_IC[f.by]||'shield-check')),el('div','tlb',[el('span','tlw',f.who),el('p','',f.text)]),el('time','num',dday(f.at))]);li.querySelector('time').dateTime=String(f.at||'');return li});
   const ol=el('ol','tline',rows);if(rows.length<=shown)return ol;
   rows.forEach((r,k)=>{if(k>=shown)r.hidden=true});
-  const more=btn(t('cs.ov.show_all',{n:rows.length}),'linkbtn','chevron-down');more.setAttribute('aria-expanded','false');
-  more.onclick=()=>{const open=more.getAttribute('aria-expanded')!=='true';rows.forEach((r,k)=>{if(k>=shown)r.hidden=!open});more.setAttribute('aria-expanded',String(open));more.replaceChildren(ic('chevron-down'),open?t('cs.ov.show_less'):t('cs.ov.show_all',{n:rows.length}))};
+  const more=btn(t('cs.ov.show_newest',{n:rows.length}),'linkbtn','chevron-down');more.setAttribute('aria-expanded','false');
+  more.onclick=()=>{const open=more.getAttribute('aria-expanded')!=='true';rows.forEach((r,k)=>{if(k>=shown)r.hidden=!open});more.setAttribute('aria-expanded',String(open));more.replaceChildren(ic('chevron-down'),open?t('cs.ov.show_less'):t('cs.ov.show_newest',{n:rows.length}))};
   return el('div','',[ol,more])}
 async function overviewView(){
   title(t('cs.nav.overview'));
@@ -34,7 +34,7 @@ async function overviewView(){
   const first=wait[0];
   nx.append(el('span','nic',ic(faceid?'scan-face':todo?'triangle-alert':'circle-check')),el('div','nb',[el('span','nl',t('cs.next.label')),el('b','',faceid?t(faceid===1?'cs.next.faceid_1':'cs.next.faceid_n',{n:faceid}):todo?t(todo===1?'cs.next.todo_1':'cs.next.todo_n',{n:todo}):t('cs.next.done')),
     el('span','ns',faceid?t('cs.next.faceid_go'):todo?t('cs.next.todo_go'):t('cs.next.done_sub'))]),
-    first?el('div','nw',[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null);
+    first?el('div','nw',faceid>1?[el('span','nv',t('cs.ov.n_suppliers',{n:new Set(wait.map((i)=>i.vendor)).size})),el('b','num',byCur(waitAmt).map(([c,v])=>cur(c)+' '+cents(v)).join(' · '))]:[el('span','nv',first.vendor||''),el('b','num',ma(first.currency,first.total))]):null,faceid||todo?el('span','ngo',[faceid?t('cs.ov.review'):t('cs.ov.go_open'),ic('chevron-right')]):null);
   // Four figures: cash, what is open to pay, what waits for the CFO's Face ID, what is blocked.
   const open=byCur(x.open_net_cents),over=byCur(x.overdue_cents),waitAmt={};for(const i of wait)waitAmt[i.currency]=(waitAmt[i.currency]||0)+toCents(i.total);
   const fig=(label,icon,value,sub,tone)=>{const v=el('b','num');if(value instanceof Node)v.append(value);else v.textContent=value;return el('div','card kpi rise'+(tone?' '+tone:''),[el('span','kl',[ic(icon),label]),v,sub?el('span','ks',sub):null])};
@@ -71,10 +71,10 @@ async function overviewView(){
 const OUTCOME={paid:['circle-check','ok'],declined:['ban','bad'],asked:['scan-face','wait'],note:['circle-dot','info']};
 // The agent's Airwallex card, drawn as a card: its last four, its brand where the record has one, active or frozen.
 function bankCard(a,demo){
-  const c=a.card;const frozen=a.status!=='active';
-  return el('div','bcard'+(frozen?' frozen':''),[el('div','bct',[el('span','bcb','Airwallex'),el('span','bcs',[ic(frozen?'snowflake':'circle-check'),tk('cs.agents.card_status.'+(frozen?'frozen':'active'),frozen?'Frozen':'Active')])]),
+  const c=a.card;const frozen=a.status!=='active',closed=a.status==='revoked';
+  return el('div','bcard'+(frozen?' frozen':''),[el('div','bct',[el('span','bcb','Airwallex'),frozen?el('span','bcs',[ic(closed?'ban':'snowflake'),t(closed?'cs.agents.card_status.closed':'cs.agents.card_status.frozen')]):null]),
     el('span','bcchip'),el('div','bcn num',[el('span','bcd','•••• •••• •••• '),c.last4]),
-    el('div','bcf',[el('span','',a.name),el('span','bcbr',c.brand||t('cs.agents.virtual'))])])}
+    el('div','bcf',[el('span','',a.name),c.brand?el('span','bcbr',c.brand):null])])}
 function limitRow(icon,label,value,extra){return el('div','lim',[el('span','limic',ic(icon)),el('div','limb',[el('span','liml',label),extra||null]),el('b','limv num',value)])}
 function agentCard(a,demo){
   const st=el('span','ast '+String(a.status).replace(/[^a-z]/g,''),[ic(a.status==='active'?'circle-check':a.status==='paused'?'snowflake':'ban'),' '+tk('cs.agents.status.'+a.status,a.status)]);
@@ -94,7 +94,7 @@ function agentCard(a,demo){
   const rules=el('div','rules',[el('div','',[el('h3','',t('cs.agents.may')),el('ul','can',a.may.map((x)=>el('li','',[ic('circle-check'),el('span','',x)])))]),
     el('div','',[el('h3','',t('cs.agents.may_not')),el('ul','cannot',a.may_not.map((x)=>el('li','',[ic('ban'),el('span','',x)])))])]);
   const dec=el('div','adec',[el('h3','',t('cs.agents.decisions')),a.decisions.length?el('ul','outs',a.decisions.map((d)=>{const o=OUTCOME[d.outcome]||OUTCOME.note;
-    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',d.text.replace(/\s*\(code's fallback, no model\)$/,'')),el('time','num',day(d.at))])})):el('p','sub',t('cs.agents.no_decisions'))]);
+    return el('li','',[el('span','obadge '+o[1],[ic(o[0]),t('cs.agents.out.'+(OUTCOME[d.outcome]?d.outcome:'note'))]),el('span','otext',[d.text.replace(/\s*\(code's fallback, no model\)$/,''),/fallback/.test(d.text)||/^Purser's code/.test(d.decided_by||'')?el('small','sub',' · '+t('cs.agents.by_code')):null]),el('time','num',day(d.at))])})):el('p','sub',t('cs.agents.no_decisions'))]);
   // The technical record, one click away: the Claude model, its runs, the rails, who decided each of the newest decisions.
   const det=el('details','adet',[el('summary','',t('cs.agents.details')),el('div','agrid',[
     el('div','',[el('h3','',t('cs.agents.model')),a.models.length?el('p','mono',a.models.join(', ')):el('p','sub',t('cs.agents.no_model')),a.runs&&a.runs.total?el('p','sub',t('cs.agents.runs',{n:a.runs.total,k:a.runs.without_model})):null]),
@@ -152,17 +152,21 @@ async function booksView(){
 // --- An invoice, as a document ------------------------------------------------------------------------------------
 // The trail from read to booked: done, now, still to come, or stopped (blocked or rejected), from the read model and
 // the ledger entries that book it (n, once they are read; null while they load).
-function trailOf(i,n){
-  const s=i.status,stop=s==='blocked'||s==='rejected',fs=i.findings||[];
+function trailOf(i,entries){
+  const s=i.status,fs=i.findings||[];
+  // A rejection after the checks passed (it had a payment for the CFO) is the CFO's; otherwise the checks stopped it.
+  const byCfo=s==='rejected'&&!!i.proposal_id,stop=s==='blocked'||(s==='rejected'&&!byCfo);
+  // Booked: the payment's own entry, once paid; the payable booked on receipt is said, not ticked.
+  const n=entries===null?null:entries.length,accrued=!!(entries||[]).find((e)=>/^ap-accrual\|/.test(e.source_key||'')),settled=!!(entries||[]).find((e)=>!/^ap-accrual\|/.test(e.source_key||''));
   const st=(done,now)=>done?'done':now?'now':'todo';
   return [
     ['file-text',t('cs.inv.step.read'),'done',i.read_by==='claude'?t('cs.inv.by_claude'):t('cs.inv.by_code')],
     ['shield-check',t('cs.inv.step.checked'),stop?'stop':s==='needs_review'||s==='needs_vendor'?'now':'done',stop?statusWords(s,i.status_words):fs.length?t('cs.inv.findings',{n:fs.length}):t('cs.all_passed')],
-    ['scan-face',t('cs.inv.step.faceid'),stop?'todo':st(s==='paid',s==='waiting_cfo'),s==='waiting_cfo'?t('cs.inv.waits_since',{day:day(i.updated_at)}):s==='paid'?(i.proposal_id||t('cs.inv.signed')):''],
-    ['wallet',t('cs.inv.step.paid'),st(!!i.paid_at,s==='ready'),i.paid_at?day(i.paid_at):''],
-    ['receipt',t('cs.inv.step.booked'),n===null?'todo':st(n>0,false),n?t('cs.inv.entries',{n}):'']]}
-function trailBar(i,n){
-  const ol=el('ol','trail',trailOf(i,n).map(([icon,label,state,sub])=>{const li=el('li',state,[el('span','tdot',ic(state==='done'?'check':state==='stop'?'octagon-x':icon)),el('b','',label),sub?el('span','sub',sub):null]);if(state==='now')li.setAttribute('aria-current','step');return li}));
+    ['scan-face',t('cs.inv.step.faceid'),byCfo?'stop':stop?'todo':st(s==='paid',s==='waiting_cfo'||s==='ready'),byCfo?t('cs.inv.rejected_cfo'):s==='waiting_cfo'?t('cs.inv.waits_since',{day:day(i.updated_at)}):s==='ready'?t('cs.inv.to_file'):s==='paid'?(i.proposal_id||t('cs.inv.signed')):''],
+    ['wallet',t('cs.inv.step.paid'),st(!!i.paid_at,false),i.paid_at?day(i.paid_at):''],
+    ['receipt',t('cs.inv.step.booked'),st(!!i.paid_at&&settled,false),settled&&i.paid_at?t('cs.inv.entries',{n}):accrued?t('cs.inv.accrued'):'']]}
+function trailBar(i,entries){
+  const ol=el('ol','trail',trailOf(i,entries).map(([icon,label,state,sub])=>{const li=el('li',state,[el('span','tdot',ic(state==='done'?'check':state==='stop'?'octagon-x':icon)),el('b','',label),sub?el('span','sub',sub):null]);if(state==='now')li.setAttribute('aria-current','step');return li}));
   ol.setAttribute('aria-label',t('cs.inv.trail'));return el('section','card trailc',[ol])}
 // The invoice as a document: the supplier, its numbers and dates, the lines as the ledger booked them (net, VAT code,
 // VAT), and the totals as read. Without a booking yet, one line: the invoice's own subtotal and VAT.
@@ -170,17 +174,18 @@ function invoiceDoc(i,entries){
   const r=i.reading||{};const c=r.currency||i.currency||'';
   const acct=r.iban?'IBAN '+String(r.iban):r.account_number?t('dt.account')+' …'+String(r.account_number).slice(-4):(i.iban_last4?'…'+i.iban_last4:'');
   const accrual=(entries||[]).find((e)=>/^ap-accrual\|/.test(e.source_key||''));
-  const lines=accrual?accrual.lines.filter((l)=>l.debit_cents&&l.vat_code!==null&&l.vat_code!==undefined||l.debit_cents&&/^[4-9]/.test(l.account)&&!/^(1|2)/.test(l.account)):[];
+  // The cost lines (accounts 4 to 9) on either side: a credit note books them as credits, shown as a minus.
+  const lines=accrual?accrual.lines.filter((l)=>/^[4-9]/.test(l.account)):[];
   const tb=el('tbody','');const lab=(td,l)=>{td.dataset.l=l;return td};
-  if(lines.length)for(const l of lines)tb.append(el('tr','',[el('td','',[el('span','',l.memo||l.account),el('span','sub',t('cs.inv.account',{a:l.account}))]),el('td','',l.vat_code?vatWord(l.vat_code):'–'),lab(el('td','r num',cur(l.currency)+' '+cents(l.debit_cents)),t('cs.inv.net')),lab(el('td','r num',l.vat_cents?cur(l.currency)+' '+cents(l.vat_cents):'–'),t('cs.inv.vat_amt'))]));
-  else tb.append(el('tr','',[el('td','',[el('span','',t('cs.inv.whole')),el('span','sub',entries===null?t('loading'):t('cs.inv.not_booked'))]),el('td','','–'),lab(el('td','r num',r.subtotal?ma(c,r.subtotal):'–'),t('cs.inv.net')),lab(el('td','r num',r.tax?ma(c,r.tax):'–'),t('cs.inv.vat_amt'))]));
+  if(lines.length)for(const l of lines){const sg=l.debit_cents?1:-1;tb.append(el('tr','',[el('td','',[el('span','',l.memo||l.account),el('span','sub',t('cs.inv.account',{a:l.account})+(l.vat_code?' · '+vatWord(l.vat_code):''))]),lab(el('td','r num',cur(l.currency)+' '+cents(sg*(l.debit_cents||l.credit_cents))),t('cs.inv.net')),lab(el('td','r num',l.vat_cents?cur(l.currency)+' '+cents(sg*l.vat_cents):'–'),t('cs.inv.vat_amt'))]))}
+  else tb.append(el('tr','',[el('td','',[el('span','',t('cs.inv.whole')),el('span','sub',entries===null?t('loading'):entries.length?t('cs.inv.as_read'):t('cs.inv.not_booked'))]),lab(el('td','r num',r.subtotal?ma(c,r.subtotal):'–'),t('cs.inv.net')),lab(el('td','r num',r.tax?ma(c,r.tax):'–'),t('cs.inv.vat_amt'))]));
   const tot=el('dl','totals',[el('dt','',t('dt.subtotal')),el('dd','num',r.subtotal?ma(c,r.subtotal):'–'),el('dt','',t('dt.vat')),el('dd','num',r.tax?ma(c,r.tax):'–'),el('dt','grand',t('dt.total')),el('dd','grand num',ma(c,r.total||i.total))]);
   const meta=(k,v)=>v?el('div','',[el('span','',k),el('b','',v)]):null;
   return el('section','card paper',[
     el('div','pp-top',[el('div','pp-from',[av(r.vendor||i.vendor),el('div','',[el('b','',r.vendor||i.vendor||t('unknown_supplier')),r.vat_id?el('span','sub',t('cs.vat_number')+' '+r.vat_id):null,acct?el('span','sub mono',[acct,r.bic?' · BIC '+r.bic:'',r.bank_country?' · '+r.bank_country:'']):null])]),
       el('div','pp-title',[el('span','',t('cs.invoice')),el('b','num',r.invoice_no||i.invoice_no||t('no_number'))])]),
     el('div','pp-meta',[meta(t('dt.invoice_date'),day(r.issue_date||i.issue_date)),meta(t('dt.due_date'),day(r.due_date||i.due_date)),meta(t('dt.reference'),r.reference),meta(t('dt.booked_to'),i.gl_account?(i.gl_account+(i.cost_centre?' · '+i.cost_centre:'')):''),meta(t('cs.inv.our_ref'),i.id)]),
-    el('div','scroll',el('table','table lines',[el('thead','',el('tr','',[el('th','',t('cs.inv.line')),el('th','',t('dt.vat')),el('th','r',t('cs.inv.net')),el('th','r',t('cs.inv.vat_amt'))])),tb])),tot])}
+    el('div','scroll',el('table','table lines',[el('thead','',el('tr','',[el('th','',t('cs.inv.line')),el('th','r',t('cs.inv.net')),el('th','r',t('cs.inv.vat_amt'))])),tb])),tot])}
 async function invoiceView(id){
   title(t('cs.invoice'));
   // With an engine, its own view of this invoice too: what it can do with it is the engine's to say, not the read model's.
@@ -192,7 +197,7 @@ async function invoiceView(id){
   let top=detailTop(i),trail=trailBar(i,null),paper=invoiceDoc(i,null);
   // With an engine, a paid invoice shows its proof (paid, booked, archived) where the payment card was: first.
   let proof=eng&&i.status==='paid'?proofCard(i):null;let stack=null;
-  const redraw=()=>{const nt=detailTop(cur0),nr=trailBar(cur0,entries===null?null:entries.length),np=invoiceDoc(cur0,entries);top.replaceWith(nt);trail.replaceWith(nr);paper.replaceWith(np);top=nt;trail=nr;paper=np};
+  const redraw=()=>{const nt=detailTop(cur0),nr=trailBar(cur0,entries),np=invoiceDoc(cur0,entries);top.replaceWith(nt);trail.replaceWith(nr);paper.replaceWith(np);top=nt;trail=nr;paper=np};
   const jr=el('div','card panel journal-for',[el('h2','',t('cs.books.journal_for')),el('p','sub',t('loading'))]);
   const readJournal=()=>api('/v1/books/invoices/'+encodeURIComponent(id)+'/journal').then((j)=>{entries=j.items||[];jr.replaceChildren(el('h2','',t('cs.books.journal_for')),journalTable(entries,t('cs.books.no_journal')));if(top.isConnected)redraw()},(e)=>{if(!(e instanceof Expired))jr.replaceChildren(el('h2','',t('cs.books.journal_for')),note(e.message,'bad'))});
   // The read model again, once the engine filed or paid it: the head (its status chip), the trail and the proof follow.
@@ -298,6 +303,8 @@ ul.outs time { color: var(--faint); font-size: 12.5px; white-space: nowrap; }
 .obadge svg { width: 13px; height: 13px; }
 .obadge.ok { background: var(--ok-soft); color: var(--ok); } .obadge.bad { background: var(--bad-soft); color: var(--bad); } .obadge.wait { background: var(--warn-soft); color: var(--warn); } .obadge.info { background: var(--sunken); color: var(--muted); }
 details.adet { border-top: 1px solid var(--border); padding-top: 12px; }
+details.adet summary::before, details.tokdet summary::before { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); margin-right: 10px; transition: transform .15s; }
+details[open].adet summary::before, details[open].tokdet summary::before { transform: rotate(45deg); }
 details.adet summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; min-height: 32px; display: flex; align-items: center; }
 details.adet .agrid { margin-top: 10px; }
 @media (max-width: 860px) { .agent .atop { grid-template-columns: minmax(0, 1fr); } .bcard { max-width: 340px; } }
@@ -347,17 +354,18 @@ ol.trail .sub { font-size: 12.5px; }
 .rules li svg { width: 16px; height: 16px; }
 ol.trail li::before { background: var(--border) !important; }
 ol.trail li.done + li.done::before, ol.trail li.done + li.now::before, ol.trail li.done + li.stop::before { background: var(--ok) !important; }
-.paper table.lines th:first-child { width: 44%; }
-.split2 .table td:first-child { white-space: nowrap; }
+.paper table.lines th:first-child { width: 60%; }
+.split2 table.jt td:first-child { white-space: nowrap; }
 /* A phone: the invoice's lines and a journal stack, so no column is squeezed to a letter per line. */
 @media (max-width: 640px) {
   .paper table.lines thead { display: none; } .paper table.lines, .paper table.lines tbody { display: block; }
   .paper table.lines tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .paper table.lines td { display: block; padding: 0; border: 0; } .paper table.lines td:nth-child(-n+2) { grid-column: 1 / -1; } .paper table.lines td:nth-child(2) { color: var(--muted); font-size: 13px; }
+  .paper table.lines td { display: block; padding: 0; border: 0; } .paper table.lines td:first-child { grid-column: 1 / -1; }
   .paper table.lines td.r { text-align: left; } .paper table.lines td[data-l]::before { content: attr(data-l); display: block; font-size: 12px; color: var(--faint); font-weight: 600; }
   table.jt thead { display: none; } table.jt, table.jt tbody { display: block; }
   table.jt tr.en { display: grid; grid-template-columns: minmax(0, 1fr); padding-top: 10px; } table.jt tr.en td { padding: 0; border: 0; } table.jt tr.en td:first-child { font-size: 12.5px; color: var(--faint); } table.jt tr.en td:nth-child(n+3) { display: none; }
   table.jt tr.ln { display: grid; grid-template-columns: minmax(0, 1fr) 96px 96px; gap: 8px; } table.jt tr.ln td { padding: 2px 0; border: 0; } table.jt tr.ln td:first-child { display: none; }
+  table.jt tr.ln td[data-l]:not(:empty)::before { content: attr(data-l) ' '; color: var(--faint); font-size: 11.5px; font-weight: 600; }
 }
 /* An invoice: the document and its PDF on the left; on a phone the column where the CFO acts comes first, else the document. */
 .split.inv > .docs { display: grid; gap: 16px; min-width: 0; }

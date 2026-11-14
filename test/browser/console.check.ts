@@ -206,7 +206,7 @@ ok((await page.$$("img")).length === 0 && (await text()).includes('<img src=x on
 ok(!(await page.title()).includes("pwned"), "no script from a supplier's text ran");
 
 await page.goto(`${ORIGIN}/#/invoices/${encodeURIComponent(paidId)}`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
 await settle();
 await shot("07-factuur-detail");
 const detail = await text();
@@ -229,7 +229,7 @@ ok(reach.length === 0, `the PDF frame reaches neither the console's session nor 
 ok(await page.evaluate(() => { try { return (document.querySelector("iframe.pdfframe") as HTMLIFrameElement).contentDocument === null; } catch { return true; } }), "the console cannot reach into the PDF frame either (an opaque origin)");
 await shot("16-factuur-met-pdf");
 await page.goto(`${ORIGIN}/#/invoices/AP-9001`);
-await page.waitForSelector("text=What Purser read");
+await page.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
 ok((await page.$$("script")).length === 1 && (await text()).includes("<script>alert(1)</script> looks like"), "a finding's text with a script tag shows as text");
 
 await page.goto(`${ORIGIN}/#/transactions`);
@@ -598,7 +598,7 @@ async function engineUpload(E: EnginePass) {
 
   // The invoice's own page opens, with the document drawn.
   await p.click(`a.row[href="#/invoices/${id}"]`);
-  await p.waitForSelector("text=What Purser read");
+  await p.waitForSelector(".card.paper") /* 14 Nov: the invoice reads as a document; was "What Purser read" */;
   await p.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 20_000 });
   ok((await p.textContent("main"))!.includes("Bergtex Textil GmbH"), "engine pass: the uploaded invoice's page opens, its PDF drawn");
   await E.settle();
