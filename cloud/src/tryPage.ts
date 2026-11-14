@@ -908,6 +908,8 @@ async function withTimeout(fn){
 }
 const method=()=>methodOf(C.method,navigator.userAgent||'');
 const cap1=(s)=>s?s[0].toUpperCase()+s.slice(1):s;
+// An answer drawn below the fold is scrolled into view (the sticky nav kept clear by scroll-padding-top), gently unless reduced.
+const inView=(n)=>{const r=n.getBoundingClientRect();if(r.top>=0&&r.top<innerHeight*0.6)return;let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}n.scrollIntoView({block:'start',behavior:calm?'auto':'smooth'})};
 // The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
 async function signTerms(challenge,credentialId,signal){
   const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:30000}});
@@ -1151,7 +1153,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const j=r.json,o=r.status===200?j.outcome:null;
     if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
-    if(o==='refused'){intro.hidden=true;S.passed=runKit.mark(S.passed,'refuse');save();out.replaceChildren(refused(r,ms,sent));return}
+    // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
+    if(o==='refused'){intro.hidden=true;S.passed=runKit.mark(S.passed,'refuse');save();const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
     if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
