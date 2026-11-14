@@ -1751,7 +1751,7 @@ export const consoleCsp = (n: string) =>
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
@@ -1773,7 +1773,7 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   // The console's pages are routes after "#" (#/sign-in, #/start); a typed or bookmarked path (/sign-in, /login,
   // /console) went to a plain 404 (13 Nov). It goes to the console's own route instead.
   const route = CONSOLE_PATHS[url.pathname.replace(/\/+$/, "") || "/"];
-  if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
   if (url.pathname === "/pdfview") {
     const n = nonce();
     return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "x-frame-options": "SAMEORIGIN", "content-security-policy": pdfViewCsp(n, env.origin) } });
@@ -1790,5 +1790,5 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
       // Loaded by the sandboxed PDF frame (an opaque origin) and its worker, so it is a CORS fetch: the library is public.
       "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" } });
   }
-  return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
+  return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
 }

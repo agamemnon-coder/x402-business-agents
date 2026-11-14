@@ -1600,7 +1600,7 @@ ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 

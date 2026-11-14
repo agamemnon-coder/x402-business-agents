@@ -121,7 +121,12 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 /** Every error has one shape: a sentence for a person and a stable code for a program. */
 const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
-export const err = (status: number, error: string) => json(status, { error, code: CODES[status] ?? "error" });
+// A 429 says when to come back (security scan, 14 Nov).
+export const err = (status: number, error: string) => {
+  const r = json(status, { error, code: CODES[status] ?? "error" });
+  if (status === 429) r.headers.set("retry-after", "60");
+  return r;
+};
 const notFound = (what: string) => err(404, `no ${what}`);
 
 /**
