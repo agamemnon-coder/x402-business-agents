@@ -10,6 +10,7 @@ import type { Sql } from "../store.js";
 import { adminOp, AdminOp } from "./admin.js";
 import { challengeAnswer, gateStart } from "./botCheck.js";
 import { tryExtraRoutes } from "./extraRoutes.js";
+import { tryStageRoutes } from "./stageRoutes.js";
 import { on, readSwitches } from "./switches.js";
 import { renewSession, startCompany, TryRefused, type TryConfig } from "./start.js";
 
@@ -58,6 +59,7 @@ export function tryRoutes<C extends TryCtx>(kit: TryKit<C>): TryRoute<C>[] {
       return json(200, await adminOp(c.env.sql, op, c.now));
     }) },
     ...tryExtraRoutes(kit, live),
+    ...tryStageRoutes(kit, live),
   ];
 }
 

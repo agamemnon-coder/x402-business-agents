@@ -15,6 +15,7 @@ import { decisionOf } from "../../../src/try/endCard.js";
 import { parseSeed, pick } from "../../../src/try/scenarios/seed.js";
 import { tallyFiled } from "./counter.js";
 import { noteReader } from "./metrics.js";
+import { stageFiled } from "./stage.js";
 import { SCENARIOS } from "./scenarios.gen.js";
 import { isTryTenant } from "./start.js";
 import { on, readSwitches, type Switches } from "./switches.js";
@@ -66,6 +67,7 @@ export function tryExtraEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>):
       }
       await tallyFiled(c.env.sql, last, c.now);
       await noteReader(c.env.sql, last?.invoice?.read_by, c.now);
+      await stageFiled(c.env.sql, c.caller!.tenantId, last?.invoice?.read_by, c.now);
       return json(200, { seed, id: scenario.id, title: scenario.title, company, setup: scenario.files.length - 1, answer: last, decided: last ? decisionOf(last) : null, expect: scenario.expect });
     } },
   ];
