@@ -97,6 +97,8 @@ jobs:
         run: npx tsx test/browser/approve-design.check.ts test-results/approve-design
       - name: Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px)
         run: npx tsx test/browser/console.check.ts test-results/console
+      - name: Live with Airwallex in Chromium (/proof's badge and events, Home's badge, the Cloud tab's events card; 1440 and 390 px)
+        run: npx tsx test/browser/awx-proof.check.ts test-results/awx-proof && npx tsx test/browser/awx-live.check.ts test-results/awx-live
       - name: /try when the passkey fails (no WebAuthn, refused, cancelled, a silent prompt) in Chromium at phone size
         run: npx tsx test/browser/try-passkey.check.ts test-results/try-passkey
       - name: Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client)

@@ -17,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
 import { METAL_INSPECTOR_PATH } from "../../worker/src/metalInspector.js";
+import { offlineAwxLive } from "../relay/awxLiveOffline.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -60,6 +61,10 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/alta", page(METAL_CSP, () => METAL_PAGE)); // /metal: 301 to /alta (MOVED, above)
   // /metal's read-only inspector, as a local copy answers it: the record's read of 12 November, no chain call, no secret.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
+  // Live with Airwallex (/proof's block, Home's badge): this copy holds no Airwallex key and receives no webhook, so the
+  // badge says "Airwallex unavailable" and the feed holds no event (src/relay/awxLiveOffline.ts). Nothing is made up.
+  const awxLive = offlineAwxLive();
+  app.get(awxLive.paths, (req, res) => { void awxLive.fetch(new Request(`http://judge.local${req.path}`)).then(async (r) => { res.status(r.status); r.headers.forEach((v, k) => res.setHeader(k, v)); res.send(Buffer.from(await r.arrayBuffer())); }); });
   app.get("/visa", page(VISA_CSP, () => VISA_PAGE));
   app.get("/airwallex", page(AIRWALLEX_CSP, () => AIRWALLEX_PAGE));
   app.get("/claude", page(CLAUDE_CSP, () => CLAUDE_PAGE));

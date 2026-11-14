@@ -7,6 +7,8 @@
 // implementation for this ledger, for the Checker agent's tools and for a Worker. Every database lookup is here: this
 // module builds the case from the ledger (invoiceCase) and hands it over.
 
+import type { Precedent } from "../learning/precedent.js";
+import { invoicePrecedents } from "../learning/records.js";
 import { ibanSha } from "../agents/invoice.js";
 import { COMPANY } from "../config/brand.js";
 import { CONTRACTED_EUR_CENTS } from "../config/policy.js";
@@ -104,6 +106,8 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
     clearedTwins: ctx.selfId ? (db.prepare("SELECT twin_id FROM ap_duplicate_clearances WHERE invoice_id = ?").all(ctx.selfId) as { twin_id: string }[]).map((x) => x.twin_id) : [],
     expected: expectedFor(r.vendor),
     today: ctx.now.toISOString().slice(0, 10),
+    // The CFO's past decisions on this supplier and amount band, for the Checker agent (code's checks never read them).
+    ...((): { precedents?: Precedent[] } => { const p = invoicePrecedents(db, ctx.selfId ?? null, r, ctx.now.toISOString()); return p.length ? { precedents: p } : {}; })(),
   };
 }
 

@@ -10,10 +10,12 @@
 
 import { agentName, AGENT_DISPLAY, AP_AGENT_DISPLAY } from "../../src/config/brand.js";
 import { agentOf, feedLine } from "./dashboard.js";
+import { casesFromAudit, factsFrom, learningOf, precedentOf } from "./learning.js";
 import type { TenantDb } from "./tenant.js";
 import TOKENIZE from "../../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
 import CARDS from "../../docs/runs/airwallex-cards-2026-11-06.json" with { type: "json" };
-import VIC from "../../docs/runs/2026-11-13-vic-4.json" with { type: "json" };
+// The latest Visa credential run via Airi (vic-5, 14 Nov; vic-4 of 13 Nov before it): the panel shows the latest.
+import VIC from "../../docs/runs/2026-11-14-vic-5.json" with { type: "json" };
 
 type Json = Record<string, unknown>;
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string }
@@ -50,6 +52,12 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
   const txs = (await db.select<{ body_json: string }>("transactions", {}, { order: ["sort_key"] })).map((r) => JSON.parse(r.body_json) as Tx);
   // The month the records stand at: the newest movement's (the demo company's simulated month ends in November).
   const asOfMonth = txs.reduce((m, t) => (t.at > m ? t.at : m), "").slice(0, 7);
+  // What the agents learn from: every proposal and what the CFO did with it, every lock's refusal, every override.
+  const invoices = (await db.select<{ id: string; vendor: string; total: string; currency: string; body_json: string }>("invoices", {}, { order: ["received_at"] }))
+    .map((i) => ({ id: i.id, vendor: i.vendor, total: i.total, currency: i.currency, proposal_id: (() => { try { const v = (JSON.parse(i.body_json) as { proposal_id?: unknown }).proposal_id; return typeof v === "string" ? v : null; } catch { return null; } })() }));
+  const cases = casesFromAudit(audit, factsFrom(txs as never, invoices));
+  const newestAudit = audit.reduce((m, r) => (r.ts > m ? r.ts : m), "").slice(0, 7);
+  const learnMonth = asOfMonth || newestAudit;
   const ids = new Set<string>();
   for (const r of audit) {
     if (KNOWN.has(r.actor)) ids.add(r.actor);
@@ -72,7 +80,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
     const decisions = mine.map((r) => ({ r, f: feedLine(r) })).filter((x) => x.f !== null).reverse().slice(0, 5).map(({ r, f }) => {
       const p = payload(r);
       const by = p.source === "fallback" ? "Purser's code (fallback: no model answered)" : p.source === "claude" ? `Claude${typeof p.model === "string" ? ` (${p.model})` : ""}` : null;
-      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq, outcome: outcomeOf(r) };
+      return { at: r.ts, text: f!.text, decided_by: by, seq: r.seq, outcome: outcomeOf(r), precedent: precedentOf(cases, r, p) };
     });
     // Spent on its own card in the month the company's records stand at (its newest movement), against the monthly limit.
     const spentMonth = moved.filter((t) => t.moved && t.at.slice(0, 7) === asOfMonth && t.currency === String(ip.currency ?? "EUR")).reduce((n, t) => n + Math.round(Number(t.amount) * 100), 0);
@@ -88,6 +96,7 @@ export async function agentsOf(db: TenantDb): Promise<Json> {
       status, status_since: statusRow?.ts ?? issued?.ts ?? null,
       runs: { total: runs.length, without_model: fallbackRuns },
       decisions,
+      learning: learnMonth ? learningOf(cases, id, learnMonth, issued && perPurchase ? [{ key: `card.${id}.per_tx`, label: `${agentName(id)}'s card: most per purchase`, value: (raised && typeof payload(raised).per_purchase === "string" ? String(payload(raised).per_purchase) : perPurchase) }] : [], agentName) : null,
     };
   });
   return { agents, controls: "Pausing or revoking an agent is the CFO's decision, signed with Face ID on the company's runner; this view shows the state its records report." };
@@ -132,7 +141,7 @@ export function tokenisation(): Json {
     visa_credential: {
       label: v.label, run: v.run, mode: v.mode, at: v.started_at, credential_deleted: v.credential_deleted,
       purchases: v.purchases.map((p) => ({ step: p.step, what: p.what, amount: `${p.request.currency} ${p.request.amount}`, outcome: p.outcome?.status ?? null, reason: p.outcome?.reason ?? p.outcome?.refusal ?? null, mandate: p.mandate_id, payment_intent: p.payment_intent_id })),
-      record: `${REPO}docs/runs/2026-11-13-vic-4.json`, story: `${REPO}docs/runs/2026-11-13-vic-4.md`,
+      record: `${REPO}docs/runs/2026-11-14-vic-5.json`, story: `${REPO}docs/runs/2026-11-14-vic-5.md`,
     },
   };
 }

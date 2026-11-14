@@ -94,8 +94,11 @@ describe("GET /v1/tokenisation", () => {
     expect(r.agent_cards.cards.map((x: J) => x.last4)).toEqual(["1423", "6203", "6279"]);
     expect(r.visa_credential.label).toMatch(/^live: airi-cli and the Airwallex sandbox \(test money/);
     const p = Object.fromEntries((r.visa_credential.purchases as J[]).map((x) => [x.step, x]));
-    expect(p.A.outcome).toBe("succeeded");
-    expect(p.G).toMatchObject({ outcome: "refused", reason: expect.stringMatching(/no tap in Airi/) });
+    // 14 Nov: the latest run, vic-5 (its record's own steps and outcomes).
+    expect(r.visa_credential.run).toBe("vic-5");
+    expect(r.visa_credential.record).toMatch(/docs\/runs\/2026-11-14-vic-5\.json$/);
+    expect(p.B.outcome).toBe("succeeded");
+    expect(p.C).toMatchObject({ outcome: "refused", reason: expect.stringMatching(/above the hard cap/) });
     expect(r.visa_credential.credential_deleted).toBe(true);
     // No card number beyond its last four digits leaves the record.
     expect(JSON.stringify(r)).not.toMatch(/\b\d{12,19}\b/);
