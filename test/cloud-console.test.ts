@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { Script } from "node:vm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { consoleCsp, consolePage } from "../cloud/src/console.js";
+import { t0CloseLine } from "../cloud/src/t0Close.js";
 import { INTER_WOFF2_B64 } from "../cloud/src/font.gen.js";
 import { EVENT_LINE_JS } from "../src/ui/engineEvents.js";
 import { MESSAGES } from "../src/ui/i18n.js";
@@ -103,11 +104,11 @@ describe("the console of a cloud with an engine", () => {
   it("is told so by the page's config, and a cloud with no engine is told it has none", async () => {
     // The script asks /v1/engine only when its config says engine true (test/browser/console.check.ts holds that no
     // such request leaves a page whose config says false).
-    expect(config(await (await c.fetch(`${ORIGIN}/`)).text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: false });
+    expect(config(await (await c.fetch(`${ORIGIN}/`)).text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: false, t0Close: t0CloseLine() });
     const withEngine = testCloud({ engine: true });
     try {
       const page = await withEngine.fetch(`${ORIGIN}/`);
-      expect(config(await page.text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: true });
+      expect(config(await page.text())).toEqual({ origin: ORIGIN, rpId: RP, mailDomain: "", engine: true, t0Close: t0CloseLine() });
       const csp = page.headers.get("content-security-policy")!;
       expect(csp).toBe(consoleCsp(/'nonce-([^']+)'/.exec(csp)![1]!));
     } finally { withEngine.close(); }
