@@ -475,7 +475,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const hb = await page.locator("h1").first().boundingBox();
       if (!hb || hb.x < 15) fail(`/trace ${tag}: the heading sits outside the page's gutter (x = ${hb?.x})`);
       const t = await page.evaluate(() => document.body.innerText);
-      if (!/Pick any of the 88 payments \(86 on Alta \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
+      // 14 Nov: Alta's first mention on the page reads "Alta (formerly Metal)" (src/ui/formerly.ts).
+      if (!/Pick any of the 88 payments \(86 on Alta \(formerly Metal\) \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
       if (!/Derived from the main run's ledger \(3 Nov\), sanitized, generated \d{4}-\d\d-\d\d\. The main run's record is unchanged\./.test(t)) fail(`/trace ${tag}: no label`);
       const shown = async () => page.evaluate(() => Array.from(document.querySelectorAll(".pay")).filter((s) => (s as HTMLElement).offsetParent).map((s) => ({ id: s.id, steps: s.querySelectorAll("ol.steps > li").length })));
       const first = await shown();
@@ -577,16 +578,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // By keyboard: Tab reaches a filter, Enter applies it.
         await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
         let tabs = 0;
-        while (tabs++ < 60 && !(await page.evaluate(`!!document.activeElement && document.activeElement.matches('nav.flt a[href="#metal"]')`))) await page.keyboard.press("Tab");
+        while (tabs++ < 60 && !(await page.evaluate(`!!document.activeElement && document.activeElement.matches('nav.flt a[href="#alta"]')`))) await page.keyboard.press("Tab");
         if (tabs > 60) fail(`/runs ${tag}: the Alta filter is not reached by Tab`);
         else {
           await page.keyboard.press("Enter");
           await page.waitForTimeout(100);
           const seen = await rowsNow();
-          if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== r.cls.includes("f-metal"))) fail(`/runs ${tag}: Enter on the Alta filter does not filter`);
+          if (await page.evaluate(() => location.hash) !== "#alta" || seen.some((r) => r.shown !== r.cls.includes("f-alta"))) fail(`/runs ${tag}: Enter on the Alta filter does not filter`);
           // The next Tab goes on after the activated filter, not back to "All" (review 12 Nov, DC-6).
           await page.keyboard.press("Tab");
-          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#metal"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
+          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#alta"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
           if (!next.after) fail(`/runs ${tag}: after Enter on the Alta filter, Tab goes to "${next.what}", not on after it`);
         }
         // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
@@ -616,7 +617,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           await p2.goto(`${base}/runs`, { waitUntil: "load" });
           await p2.click("#runs-all > summary");
           await p2.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
-          await p2.click('nav.flt a[href="#metal"]');
+          await p2.click('nav.flt a[href="#alta"]');
           await p2.waitForTimeout(150);
           const at2 = await p2.evaluate(`[document.querySelector("nav.flt").getBoundingClientRect().top, document.querySelector("header.top") ? document.querySelector("header.top").getBoundingClientRect().bottom : 0, innerHeight]`) as number[];
           if (at2[0]! < at2[1]! || at2[0]! > at2[2]! / 3) fail(`/runs ${tag}, JavaScript off: a filter tap puts the filter row at ${Math.round(at2[0]!)} px (the header ends at ${Math.round(at2[1]!)} px), not in view near where it was`);

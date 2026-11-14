@@ -49,10 +49,10 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
    is its own slate variant for light grounds (docs/assets/logos/SOURCES.md). */
 .trust .tile { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px; }
 .trust .tile img { display: block; height: 18px; width: auto; }
-.trust .tile.tname { font: 700 15px/1 var(--font, inherit); color: #111827; letter-spacing: -.01em; }
+.trust .tile.tname { font-size: 16px; font-weight: 750; line-height: 1; color: #111827; letter-spacing: -.01em; text-transform: none; }
 .trust .tile img.visa { height: 14px; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 12px; } .trust .tile img.visa { height: 11px; } }
+@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile img.visa { height: 11px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
