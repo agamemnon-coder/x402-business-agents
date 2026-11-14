@@ -6,12 +6,14 @@
 //   paid stamp), the next one glows, and a refusal (the checks holding the invoice, a changed term refused at the
 //   signature) turns the line red at that stage. Nothing is assumed.
 // - Three charts on the company screen (the finish), inline SVG, no library, each from this test company's own records:
-//   the stand-in bank's money from the start to now (GET /v1/engine for now, the ledger's bank lines for what moved),
+//   the test bank's money from the start to now (GET /v1/engine for now, the ledger's bank lines for what moved),
 //   spend by expense account (the ledger's debits on expense accounts), and the invoices' checks (GET
 //   /v1/engine/invoices: passed or held). A chart whose reads fail or are empty is not drawn; nothing is made up.
-// - Micro-animations: the charts' totals count up, a check mark draws on each passed stage, cards fade in. The pay
-//   screen's refusal already shakes (tryPage). All of it off under prefers-reduced-motion.
-// Its own module script under the page's nonce; it reads the session from the page's own state in sessionStorage
+// - Micro-animations, CSS only (the page's script runs no animation timer: test/try-page.test.ts): bars grow, a check
+//   mark draws on each passed stage, cards fade in. The pay screen's refusal already shakes (tryPage). All of it off
+//   under prefers-reduced-motion.
+// It runs at the end of the page's one script (test/try-page.test.ts: one page, one script), in a block of its own
+// so none of its names meet the page's; it reads the session from the page's own state in sessionStorage
 // ("purser.try") and only ever makes GET requests. Every value from the API goes on the page as text (textContent or
 // an SVG text node), never as HTML. The words are here, outside /try's word budget (they are figures and labels).
 import { LEDGER_ACCOUNTS, accountType } from "../../../src/ledger/accounts.js";
@@ -20,7 +22,7 @@ export const VIS = {
   flow: { invoice: "Invoice", readClaude: "Claude reads", readCode: "Code reads", checks: "Purser checks", passkey: "Your passkey", bankAwx: "Airwallex (sandbox)", bankTest: "Test bank", booked: "Booked", label: "Where the money is" },
   charts: "Your test company in numbers",
   source: "From this test company's own records. Test money.",
-  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "In", now: "Now", note: "Now is the stand-in bank's balance; each step is the ledger's bank lines." },
+  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "In", now: "Now", note: "Now is the test bank's balance; each step is the ledger's bank lines." },
   spend: { head: "Spend by account", note: "Debits on expense accounts in the ledger." },
   checks: { head: "Invoices checked", passed: "Passed", held: "Held", of: "invoices" },
 } as const;
@@ -81,7 +83,6 @@ export const VIS_CSS = `
 const SCRIPT = String.raw`
 const V=__VIS__,EXP=__EXP__;
 const NS='http://www.w3.org/2000/svg';
-const calm=matchMedia('(prefers-reduced-motion: reduce)');
 const st=()=>{try{return JSON.parse(sessionStorage.getItem('purser.try')||'null')||{}}catch(e){return {}}};
 const h=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[]))if(k!=null)e.append(k);return e};
 const s=(tag,at,kids)=>{const e=document.createElementNS(NS,tag);for(const k in at)e.setAttribute(k,String(at[k]));for(const k of [].concat(kids??[]))if(k!=null)e.append(k);return e};
@@ -91,9 +92,8 @@ async function get(path){const t=st().session;if(!t)return null;try{const r=awai
 async function all(path){let out=[],c=null;for(let n=0;n<20;n++){const j=await get(path+'?limit=200'+(c?'&cursor='+encodeURIComponent(c):''));if(!j||!Array.isArray(j.items))return null;out=out.concat(j.items);c=typeof j.next_cursor==='string'&&j.next_cursor?j.next_cursor:null;if(!c)break}return out}
 const cents=(x)=>Math.round(Number(x)*100);
 const num=(c)=>(c/100).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2}),fmt=(cur,c)=>cur+' '+num(c);
-// A total that counts up to its value (the exact value at the end; at once under reduced motion).
-function countUp(node,c,pre){pre=pre||'';if(calm.matches||!c){node.textContent=pre+num(c);return}const t0=performance.now(),d=700;
-  const f=(t)=>{const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);node.textContent=pre+num(Math.round(c*e));if(k<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+// A total, exact, as text (it fades in with its bar).
+const put=(node,c,pre)=>{node.textContent=(pre||'')+num(c)};
 
 // The money-flow strip: the screen's own state, read from what it shows.
 const CHECK='M5 12.5 10 17 19 7';
@@ -126,7 +126,7 @@ function cashChart(cur,steps){
   steps.forEach((x,i)=>{const a=x.from==null?0:x.from,b=x.lvl,y0=y(Math.max(a,b)),y1=y(Math.min(a,b)),X=i*bw+bw*.18,w=bw*.64;
     const val=s('text',{x:X+w/2,y:y0-6,'text-anchor':'middle',class:'v'});
     const bar=s('g',{class:'bar'},[tip(x.label+': '+(x.sign||'')+fmt(cur,x.amt)),s('rect',{x:X,y:y0,width:w,height:Math.max(2,y1-y0),rx:3,class:'b '+x.cls}),val,s('text',{x:X+w/2,y:H-8,'text-anchor':'middle'},x.label)]);
-    g.append(bar);countUp(val,x.amt,x.sign);
+    g.append(bar);put(val,x.amt,x.sign);
     if(i<steps.length-1)g.append(s('line',{x1:X+w,x2:X+bw,y1:y(b),y2:y(b),class:'k'}))});
   return g;
 }
@@ -134,7 +134,7 @@ function spendChart(cur,rows){
   const W=300,rh=30,H=rows.length*rh,max=Math.max(...rows.map((r)=>r.c),1);
   const g=s('svg',{viewBox:'0 0 '+W+' '+H,role:'img','aria-label':V.spend.head});
   rows.forEach((r,i)=>{const w=Math.max(3,(W-110)*r.c/max),val=s('text',{x:w+6,y:i*rh+27,class:'v'});
-    g.append(s('g',{class:'bar hb'},[tip(r.a+' '+r.n+': '+fmt(cur,r.c)),s('text',{x:0,y:i*rh+11},r.a+' '+r.n),s('rect',{x:0,y:i*rh+16,width:w,height:12,rx:3,class:'b'}),val]));countUp(val,r.c)});
+    g.append(s('g',{class:'bar hb'},[tip(r.a+' '+r.n+': '+fmt(cur,r.c)),s('text',{x:0,y:i*rh+11},r.a+' '+r.n),s('rect',{x:0,y:i*rh+16,width:w,height:12,rx:3,class:'b'}),val]));put(val,r.c)});
   return g;
 }
 function checksChart(ok,held){
@@ -151,7 +151,7 @@ async function charts(box){
   const [eng,es,inv]=await Promise.all([get('/v1/engine'),all('/v1/ledger/entries'),get('/v1/engine/invoices')]);
   if(!sec.isConnected)return;
   const lines=(es||[]).flatMap((e)=>Array.isArray(e.lines)?e.lines.map((l)=>Object.assign({e},l)):[]);
-  // Bank: the currency the payments went out in; now from the stand-in bank, what moved from the ledger's bank lines.
+  // Bank: the currency the payments went out in; now from the test bank, what moved from the ledger's bank lines.
   const bank=lines.filter((l)=>String(l.account||'').startsWith('12'));
   // The supplier payments' currency: a bank credit in an entry that debits payables (2100); else the first bank credit.
   const cur=(bank.find((l)=>l.credit_cents&&(l.e.lines||[]).some((x)=>String(x.account)==='2100'&&x.debit_cents))||bank.find((l)=>l.credit_cents)||{}).currency;
@@ -181,13 +181,13 @@ async function charts(box){
 }
 
 // Watch the page: each new screen, and what a screen adds (the checks' answer, the paid stamp, a refusal).
-const main=document.getElementById('main');let q=false;
-function look(){q=false;const box=main&&main.querySelector(':scope > .screen');if(!box)return;const name=[...box.classList].find((c)=>c!=='screen');
+const root=document.getElementById('main');let q=false;
+function look(){q=false;const box=root&&root.querySelector(':scope > .screen');if(!box)return;const name=[...box.classList].find((c)=>c!=='screen');
   flow(name,box);if(name==='company')charts(box)}
-if(main)new MutationObserver(()=>{if(!q){q=true;requestAnimationFrame(look)}}).observe(main,{childList:true,subtree:true});
+if(root)new MutationObserver(()=>{if(!q){q=true;queueMicrotask(look)}}).observe(root,{childList:true,subtree:true});
 `;
 
-/** The visual layer's module script, its words and the expense accounts' names put in as JSON. */
+/** The visual layer's code, a block for the end of the page's script; its words and the expense accounts' names as JSON. */
 export function visScript(json: (v: unknown) => string): string {
-  return SCRIPT.replace("__VIS__", () => json(VIS)).replace("__EXP__", () => json(EXPENSE_NAMES));
+  return "{\n" + SCRIPT.replace("__VIS__", () => json(VIS)).replace("__EXP__", () => json(EXPENSE_NAMES)) + "}\n";
 }

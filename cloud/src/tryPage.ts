@@ -1725,8 +1725,8 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
 ${siteHeader("try")}
 <main id="main"></main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
-${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}</script>
-<script type="module" nonce="${n}">${visScript(json)}</script>
+${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}
+${visScript(json)}</script>
 </body></html>`;
 }
 

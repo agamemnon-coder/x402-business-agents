@@ -8,16 +8,17 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 const js = visScript(json);
 
 describe("the /try visual layer", () => {
-  it("is on the page: its style in the page's one style tag, its script as one more module under the same nonce", () => {
+  it("is on the page: its style in the page's one style tag, its code a block at the end of the page's one script", () => {
     const html = tryPage("N0NCE", { origin: "https://x.test", rpId: "x.test" });
     expect(html).toContain(VIS_CSS);
-    expect(html).toContain(`<script type="module" nonce="N0NCE">${js}</script>`);
-    for (const tag of html.match(/<script\b[^>]*>/g) ?? []) expect(tag).toContain('nonce="N0NCE"');
+    expect(html.match(/<script\b[^>]*>/g)).toEqual(['<script type="module" nonce="N0NCE">']);
+    expect(html).toContain(`\n${js}</script>`);
+    expect(js.startsWith("{\n") && js.endsWith("}\n")).toBe(true);
   });
 
   it("adds under 15 KB, parses, and draws text only (no innerHTML, no inline handlers)", () => {
     expect(VIS_CSS.length + js.length).toBeLessThan(15 * 1024);
-    expect(() => new Function(js.replace(/\bconst V=/, "var V="))).not.toThrow();
+    expect(() => new Function(js)).not.toThrow();
     expect(js).not.toMatch(/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\bon[a-z]+=|setAttribute\('style'|eval\(/);
   });
 
@@ -33,9 +34,9 @@ describe("the /try visual layer", () => {
     expect(js).toContain("m.claude==='live'?V.flow.readClaude:V.flow.readCode");
   });
 
-  it("turns every animation off under prefers-reduced-motion, and the totals land at once", () => {
+  it("animates with CSS only, all of it off under prefers-reduced-motion; no timer in the page's script", () => {
     expect(VIS_CSS).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^}]*animation: none !important/);
-    expect(js).toContain("matchMedia('(prefers-reduced-motion: reduce)')");
-    expect(js).toContain("if(calm.matches||!c){node.textContent=pre+num(c);return}");
+    expect(js).not.toMatch(/setTimeout|setInterval|requestAnimationFrame/);
+    expect(js).not.toMatch(/stand-in/i);
   });
 });
