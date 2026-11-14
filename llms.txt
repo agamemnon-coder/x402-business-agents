@@ -1,6 +1,6 @@
 # Purser
 
-> AI agents spend. You sign off. For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, the CFO signs the exact terms with Face ID. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award.
+> AI agents spend. You sign off. For CFOs whose AI agents pay suppliers: when an agent wants to pay an invoice over its limit, the CFO signs the exact terms with Face ID. Built for the Airwallex Agentic Banking Hackathon: Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award, and for the Founder's Choice Award and the Judges' Choice Award.
 
 Summary: within limits the CFO sets, the agents pay through Airwallex and Alta (formerly Metal); above them nothing runs until the CFO's passkey signs a SHA-256 of the exact terms, so changing one cent voids it. Live sandbox and testnet runs show it end to end: 24 Claude decisions, a SWIFT payout carrying the signed hash in Airwallex's own record, Airwallex's card controls and Alta refusing over-limit purchases, a scripted Visa Intelligent Commerce (VIC) purchase via Airwallex's Airi, a connected-account payout with Purser's fee, and the books posted to T:0. Test money only; customers, suppliers and settlement are simulated, and the business model is not yet validated.
 

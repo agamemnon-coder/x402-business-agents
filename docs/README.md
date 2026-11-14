@@ -8,7 +8,13 @@ Read these five first, in this order:
 4. [controls-matrix.md](controls-matrix.md): each risk, its control, its test and its evidence.
 5. [business/README.md](business/README.md): the business case, a hypothesis: not validated with customers yet.
 
-Back to the [README](../README.md). Test money only throughout: the Airwallex sandbox and Metal testnet.
+Back to the [README](../README.md). Test money only throughout: the Airwallex sandbox and Alta (formerly Metal) testnet;
+the chain partner renamed itself on 14 November, and records and file names from before keep "Metal".
+
+Moved out of the README on 14 November (the README upgrade): the run-by-run table of what is live and what is
+simulated ([in-depth.md](in-depth.md#whats-live-whats-simulated-run-by-run)) and the diagram of where it runs
+([architecture.md](architecture.md#where-it-runs)). The release notes: [releases/v1.1-submission.md](releases/v1.1-submission.md);
+every pull request: [CHANGELOG.md](../CHANGELOG.md).
 
 ## Juror
 
@@ -20,13 +26,13 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [idea-vs-build.md](idea-vs-build.md): the idea as submitted on 24 October, promise by promise, against what is built.
 - [airwallex.md](airwallex.md): Airwallex in Purser: the APIs it calls, and why.
 - [airwallex-approvals.md](airwallex-approvals.md): Airwallex's own approval workflow as a second lock, and money in by card.
-- [metal-award.md](metal-award.md): what Purser uses from Metal, and the proof on Metal testnet.
+- [metal-award.md](metal-award.md): what Purser uses from Alta, and the proof on Alta testnet (for the Metal Award).
 - [/claude](https://kit11.max-31b.workers.dev/claude), measured, not asserted: the 40 simulated worlds ([night batch](runs/2026-11-02-night-batch.md)), the [blind holdouts](runs/holdouts/2026-11-03-blind/results.md), each model on each agent ([evals/agents.json](evals/agents.json)) and the agent interface over MCP ([one session](runs/2026-11-12-mcp-transcript.json)).
 - [t0.md](t0.md) and [/t0](https://kit11.max-31b.workers.dev/t0): Purser's books in T:0's ledger; the posting of 10 November is [runs/2026-11-10-t0-journal-sandbox.md](runs/2026-11-10-t0-journal-sandbox.md).
-- [metal-review.md](metal-review.md): a review: does Purser use metal-agent and metal-pay the way Metal intends?
-- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the latest Airi run (Visa Intelligent Commerce, 13 November) is [runs/2026-11-13-vic-4.md](runs/2026-11-13-vic-4.md), the first [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
+- [metal-review.md](metal-review.md): a review: does Purser use metal-agent and metal-pay the way Alta intends?
+- [submission/long-description.md#visa](submission/long-description.md#visa): the Visa TAP note; the latest Airi run (Visa Intelligent Commerce, 14 November) is [runs/2026-11-14-vic-5.md](runs/2026-11-14-vic-5.md), the first [runs/2026-11-07-vic-1.md](runs/2026-11-07-vic-1.md).
 - [claude.md](claude.md): how Purser uses Claude.
-- [feedback-for-metal-and-airwallex.md](feedback-for-metal-and-airwallex.md): feedback for Metal and Airwallex.
+- [feedback-for-metal-and-airwallex.md](feedback-for-metal-and-airwallex.md): feedback for Alta and Airwallex.
 - [agents.md](agents.md): the Kit 11 agents: Claude decides inside the mandate, the rails enforce it.
 - [agent-evals.md](agent-evals.md) and [model-benchmark.md](model-benchmark.md): the three agents with real models, and which Claude model for which job.
 - [agents-autonomy.md](agents-autonomy.md), [agents-autonomy-redteam.md](agents-autonomy-redteam.md) and [variation.md](variation.md): the autonomous agents: variation and safety, the red team, the holdouts.
@@ -41,8 +47,8 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 ## Builder
 
 - [architecture.md](architecture.md): architecture, tooling and credits.
-- [diagrams.md](diagrams.md): Purser in five diagrams (in one line, who holds which limit, one payment end to end, the mandate on Metal, where it runs), drawn by GitHub from Mermaid.
-- [run-it.md](run-it.md): running it live, with sandbox keys and a Metal RPC.
+- [diagrams.md](diagrams.md): Purser in five diagrams (in one line, who holds which limit, one payment end to end, the mandate on Alta, where it runs), drawn by GitHub from Mermaid.
+- [run-it.md](run-it.md): running it live, with sandbox keys and an Alta RPC.
 - [security.md](security.md): the threat model, the attacks and what stops each one.
 - [controls.md](controls.md): every control, how it works, and its evidence.
 - [runbook.md](runbook.md): incidents, the emergency stop, key rotation, recovery.
@@ -58,7 +64,7 @@ Back to the [README](../README.md). Test money only throughout: the Airwallex sa
 - [security/README.md](security/README.md): the security artefacts (the software bill of materials).
 - [repo-settings.md](repo-settings.md): the repository's settings on GitHub (About, social preview, releases, branch protection on main), for the owner to set by hand.
 - Built after the kit (test environment, not live): [payables.md](payables.md) (the invoice inbox), [ledger.md](ledger.md) (Purser's own books), [vault.md](vault.md), [erp.md](erp.md) and [moneybird.md](moneybird.md) (ERP connectors), [airwallex-platform.md](airwallex-platform.md) (connected accounts), [cloud.md](cloud.md), [go-live.md](go-live.md) (what is open before real money) and [e2e-live.md](e2e-live.md) (three test companies, invoice to T:0).
-- More built after the kit, each saying its own status: [tokenize.md](tokenize.md) (invoice tokens on Metal, a
+- More built after the kit, each saying its own status: [tokenize.md](tokenize.md) (invoice tokens on Alta, a
   prototype; its run of 12 November is [runs/2026-11-12-tokenize.md](runs/2026-11-12-tokenize.md), its record template
   [tokenize-run-template.md](tokenize-run-template.md)), [real-customers.md](real-customers.md) (each company's own
   money account and books; behind flags that are off by default), [autopilot.md](autopilot.md) (pending invoices one

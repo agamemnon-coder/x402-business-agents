@@ -62,6 +62,8 @@ and the reused credential Purser refused (vic-5) that the sandbox had accepted (
 alone ([visa-1114.md](../plans/visa-1114.md)).
 Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Slack): the text says Alta, with
 "Alta (formerly Metal)" at the first mention; the award keeps the hackathon's name, the Metal Award.
+Entered for (Max's decision, 14 November): the Founder's Choice Award, the Judges' Choice Award, the Metal Award and
+the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 characters).
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.

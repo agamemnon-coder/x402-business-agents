@@ -1,6 +1,6 @@
 # Security
 
-This is a hackathon project that only uses test money (Metal testnet, the Airwallex sandbox). Please do not test
+This is a hackathon project that only uses test money (Alta (formerly Metal) testnet, the Airwallex sandbox). Please do not test
 against the hosted relay with real credentials.
 
 To report a vulnerability, open a private GitHub security advisory on this repository (Security → Advisories → Report a
@@ -18,10 +18,10 @@ In scope:
   log with its on-chain anchor (`src/audit`, `src/anchor`);
 - the TAP merchant layer (`src/visa`).
 
-Out of scope: the partners' own systems (the Airwallex sandbox, Metal testnet, Airi, T:0, Moneybird): report those to
+Out of scope: the partners' own systems (the Airwallex sandbox, Alta testnet, Airi, T:0, Moneybird): report those to
 them. Denial of service against the hosted test preview, and anything that needs a real person's device or account.
 
-Supported: `main`. There are no other release branches; the tags (`v1.0-submission`) are kept as they were submitted.
+Supported: `main`. There are no other release branches; the tags (`v1.0-submission`, and `v1.1-submission` once the owner creates it) are kept as they were submitted.
 
 The threat model is [docs/security.md](docs/security.md); the controls are [docs/controls.md](docs/controls.md).
 
