@@ -90,7 +90,11 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
     if(l.key==='alta')logos.append(el('li','tile tname',T.visa));
   }
   const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
-  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners);
+  // What in this demo is real (14 Nov, owner): four chips, the test count from the suite's own last full run.
+  const glyphs2=['landmark','sparkles','key-round','shield-check'];
+  const real=el('section','real',[el('p','rh',T.realHead),el('ul','rl',T.real.map((r,i)=>el('li','',[icon(glyphs2[i],15),el('span','',r.replace('{n}',TESTS_PASSING))])))]);
+  real.setAttribute('aria-label',T.realHead);
+  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,real);
   b.addEventListener('click',async()=>{
     b.disabled=true;label(T.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -231,7 +235,7 @@ body:has(.screen.start)::before { content: ""; position: fixed; inset: 0; z-inde
   background: radial-gradient(circle, color-mix(in srgb, var(--text) 9%, transparent) 1px, transparent 1.4px) 0 0 / 24px 24px;
   -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
 body:has(.screen.start) main { max-width: 600px; padding-top: 22px; padding-bottom: 28px; display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: "eyebrow" "h1" "lede" "flow" "cta" "fine" "partners"; }
+  grid-template-areas: "eyebrow" "h1" "lede" "flow" "cta" "fine" "partners" "real"; }
 .screen.start { display: contents; animation: none; }
 body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-size: 33px; line-height: 1.08; letter-spacing: -.03em; font-weight: 780; text-wrap: balance; animation: rise .5s cubic-bezier(.2,.7,.2,1) .05s both; }
 .start .eyebrow { grid-area: eyebrow; justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 5px 12px 5px 10px; border-radius: 999px;
@@ -273,9 +277,9 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .start .logos .was { color: #586174; font-size: 11.5px; font-weight: 600; }
 .start .partners .pn { margin: 10px 0 0; color: var(--faint); font-size: 11.5px; }
 @media (min-width: 1024px) {
-  body:has(.screen.start) main { max-width: 1180px; padding: 72px 48px 40px; align-content: start;
+  body:has(.screen.start) main { max-width: 1180px; padding: 36px 48px 32px; min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); align-content: center;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); column-gap: 72px;
-    grid-template-areas: "eyebrow flow" "h1 flow" "lede flow" "cta flow" "fine flow" "partners partners"; }
+    grid-template-areas: "eyebrow flow" "h1 flow" "lede flow" "cta flow" "fine flow" "partners partners" "real real"; }
   body:has(.screen.start) main > h1 { font-size: 54px; margin: 20px 0 16px; }
   .start .lede { font-size: 19px; max-width: 34em; margin-bottom: 28px; }
   .start .flow { align-self: center; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 22px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 70%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow); position: relative; }
@@ -293,6 +297,21 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 }
 @media (max-width: 420px) { .score .tile { padding: 9px 10px; } .score .tile .v { font-size: 21px; } }
 @media (min-width: 1024px) and (max-height: 820px) { body:has(.screen.start) main > h1 { font-size: 46px; } .start .partners { margin-top: 26px; } }
+
+/* What's real here (14 Nov, owner): a slim strip of four proof chips under the partners. */
+.start .real { grid-area: real; margin: 18px 0 0; animation: rise .6s cubic-bezier(.2,.7,.2,1) .4s both; }
+.start .real .rh { margin: 0 0 8px; color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+.start .real .rl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.start .real li { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+.start .real li .i { flex: none; color: var(--accent); }
+@media (min-width: 1024px) { .start .real { margin-top: 22px; } .start .real .rl { grid-template-columns: repeat(4, minmax(0, 1fr)); } .start .real li { font-size: 13px; padding: 11px 14px; } }
+/* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
+.start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }
+.start .fs2 .fi { animation-delay: 1.2s; } .start .fs3 .fi { animation-delay: 2.4s; } .start .fs.fend .fi { animation: none; }
+@keyframes fifill { 0%, 2% { background: var(--accent-soft); color: var(--accent); } 5%, 15% { background: var(--accent); color: #fff; } 19%, 100% { background: var(--accent-soft); color: var(--accent); } }
+/* The button breathes a little light. */
+.start .cta .btn.big { animation: ctaglow 2.8s ease-in-out infinite alternate; }
+@keyframes ctaglow { from { box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } to { box-shadow: 0 12px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent); } }
 /* The band's clock and "Same step, live" (screens after the start). */
 .band .clock { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .band .bx { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }

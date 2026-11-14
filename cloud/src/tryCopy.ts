@@ -52,6 +52,19 @@ export const START = {
   formerly: "(formerly Metal)",
   visa: "Visa via Airwallex Airi",
   runs_note: "Sandbox and testnet runs. No endorsement implied.",
+  /**
+   * 14 Nov (owner: "fill and lift it"): what in this demo is real, in four chips. Each is true of this page as built:
+   * the live Airwallex sandbox quote in the signed terms (#333), Claude reading within a daily cap (the band says when
+   * Purser's code reads instead), the passkey signing the terms' SHA-256, and the suite's count from
+   * docs/assets/test-summary.json ({n}, never typed by hand).
+   */
+  realHead: "What's real here",
+  real: [
+    "Airwallex sandbox: a live FX quote in the terms you sign",
+    "Claude reads the invoice live, within a daily cap",
+    "Your passkey signs a SHA-256 of the exact terms",
+    "{n} automated tests, all passing",
+  ],
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
@@ -582,10 +595,10 @@ export const ENDED = {
  */
 export const VISIBLE = {
   start: [
-    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
-    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
-    [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
-    [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -742,8 +755,9 @@ export const VISIBLE = {
 // 14 Nov (judges, round 2): the samples each say in one muted line what they show, the first marked "Start here"
 // ("invoice 6", 60).
 // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs ("work 2"; "work 12" read by Claude).
-// The integration of 14 Nov (try-integ-1114) re-pinned every state at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 63, "approve 4": 63, "approve 9": 59, "approve 10": 56, "approve 11": 62, "approve 12": 61, "approve 13": 56, "approve 14": 55, "approve 15": 65, "approve 5": 53, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 51, "approve 7": 49, "approve 8": 50, "approve 16": 51, "company 4": 79 };
+// The integration of 14 Nov (try-integ-1114) re-pinned every state at its count. The start adds "What's real here"
+// (owner: "fill and lift it"), four proof chips: "start 0" to "start 3", +37 each.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 63, "approve 4": 63, "approve 9": 59, "approve 10": 56, "approve 11": 62, "approve 12": 61, "approve 13": 56, "approve 14": 55, "approve 15": 65, "approve 5": 53, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 51, "approve 7": 49, "approve 8": 50, "approve 16": 51, "company 4": 79 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

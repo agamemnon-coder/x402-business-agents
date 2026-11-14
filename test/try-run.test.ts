@@ -141,3 +141,18 @@ describe("the start's partners", () => {
     expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta", "Claude"]);
   });
 });
+
+describe("what's real here (the start's proof strip)", () => {
+  it("has four chips, says the suite's count from its last full run, and invents no number", async () => {
+    const { testsPassing } = await import("../cloud/src/tryPage.js");
+    const suite = JSON.parse(readFileSync("docs/assets/test-summary.json", "utf8")) as { passed: number; failed: number };
+    expect(START.real).toHaveLength(4);
+    expect(testsPassing()).toBe(suite.passed.toLocaleString("en-US"));
+    // "all passing" holds only while the last full run failed nothing.
+    expect(suite.failed).toBe(0);
+    const html = tryPage("n", { origin: ORIGIN, rpId: RP });
+    expect(html).toContain(`const TESTS_PASSING=${JSON.stringify(testsPassing())};`);
+    for (const r of START.real) expect(r.replace("{n}", "1")).not.toMatch(/\d+\s*\/\s*\d+/);
+    expect(START.real.filter((r) => /\d/.test(r.replace("{n}", "")) && !/SHA-256/.test(r))).toEqual([]);
+  });
+});

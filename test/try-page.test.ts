@@ -231,7 +231,7 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
