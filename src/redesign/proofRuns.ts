@@ -9,7 +9,7 @@
 
 import { readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
-import { isLive, liveRuns, type RunId, type RunRow } from "./runs.js";
+import { isLive, liveRuns, partnerNamesOf, type RunId, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
 import { VISA_TAP_ID } from "./visaOverview.js";
 
@@ -98,6 +98,42 @@ export function proofRuns(rows: RunRow[] = liveRuns()): { group: ProofGroup; run
   return PROOF_GROUPS.map((group) => ({ group, runs: live.filter((r) => groupOf(r) === group).sort((a, b) => b.iso.localeCompare(a.iso)) })).filter((g) => g.runs.length);
 }
 
+// ── 2a. The strip: one tile per partner (Max, 14 Nov: "more visuals and polish") ───────────────────────────────────
+export interface PartnerTile { name: string; runs: number; latest: RunRow; badge: string; href: string }
+/** The partners the strip shows, each with the runs it took part in: the run's own partner chips (src/redesign/runs.ts),
+ *  Moneybird by its name in the run's words (it has no chip). Visa is Visa via Airwallex's Airi on this page. */
+// The review of 14 Nov: the badge is the partner's own rail (a sandbox, or Alta's testnet), never the run's mix; each tile
+// opens its partner's own group of the timeline.
+const STRIP: readonly { name: string; label?: string; rail: "sandbox" | "testnet"; group: ProofGroup; has: (r: RunRow) => boolean }[] = [
+  { name: "Airwallex", rail: "sandbox", group: "Airwallex", has: (r) => partnerNamesOf(r).includes("Airwallex") },
+  { name: "Visa", label: "Visa via Airi", rail: "sandbox", group: "Visa via Airwallex's Airi", has: (r) => partnerNamesOf(r).includes("Visa") },
+  { name: "Alta", rail: "testnet", group: "Alta", has: (r) => partnerNamesOf(r).includes("Alta") },
+  { name: "T:0", rail: "sandbox", group: "The books", has: (r) => partnerNamesOf(r).includes("T:0") },
+  { name: "Moneybird", rail: "sandbox", group: "The books", has: (r) => /Moneybird/.test(`${r.name ?? ""} ${r.title} ${r.rails}`) },
+];
+/** A group's anchor in the timeline. */
+export const groupId = (g: ProofGroup) => `pg-${g.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+/** Per partner: how many of /proof's live runs it took part in (a run with two partners counts for each), the latest
+ *  one, and what kind of live it was. A partner with no live run gets no tile. */
+export function partnerTiles(groups = proofRuns()): PartnerTile[] {
+  const rows = groups.flatMap((g) => g.runs);
+  return STRIP.map((p) => {
+    const mine = rows.filter(p.has).sort((a, b) => b.iso.localeCompare(a.iso));
+    return mine.length ? { name: p.label ?? p.name, runs: mine.length, latest: mine[0]!, badge: `Live · ${p.rail}`, href: `#${groupId(p.group)}` } : null;
+  }).filter((t): t is PartnerTile => !!t);
+}
+/** The strip, with one line saying how it counts: `runs`, the site's one live-run count (src/redesign/runs.ts). */
+export function partnerStripHtml(tiles = partnerTiles(), runs?: number): string {
+  if (!tiles.length) return "";
+  return `${runs === undefined ? "" : `<p class="ptnote">${esc(`${runs} live runs. A run with several partners counts under each.`)}</p>`}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
+}
+
+/** A long id, short in sight: its start and end; the whole id on hover and in the copy button. */
+export const shortId = (v: string) => (v.length > 18 ? `${v.slice(0, 8)}…${v.slice(-6)}` : v);
+const copyBtn = (v: string, label: string) => `<button type="button" class="cp" data-copy="${esc(v)}" aria-label="${esc(`Copy ${label} ${shortId(v)}`)}" hidden>${icon("copy", 14)}</button>`;
+/** The first rows of a group in sight; the rest behind "Show all" (Max, 14 Nov). */
+export const PROOF_RUNS_SHOWN = 3;
+
 const ext = (href: string) => /^https?:/.test(href);
 const a = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? ' target="_blank" rel="noopener"' : ""}>${esc(label)}${ext(href) ? " ↗" : ""}</a>`;
 
@@ -108,12 +144,12 @@ export function proofRunsHtml(groups = proofRuns()): string {
     const rec = r.files.map((f) => siteHref(f.href).replace(REPO_BLOB, "")).join(" ");
     return `<li id="run-${esc(r.key)}" data-rec="${esc(rec)}"><span class="pr-d">${esc(dayOf(r.iso))}</span><span class="pr-n">${esc(r.name ?? r.title)}</span>`
       + `<span class="pr-c"><span class="chip live">${esc(chip.live)}</span>${chip.simulated ? `<span class="chip sim">${esc(chip.simulated)}</span>` : ""}</span>`
-      + `<span class="pr-id">${id ? `<span class="k">${esc(id.label.replace(/ · 0x[0-9a-fA-F]+…[0-9a-fA-F]+$/, "").replace(/ \([A-Z_]+\)$/, ""))}</span> ${id.href ? `<a class="mono" href="${esc(id.href)}" target="_blank" rel="noopener">${esc(id.value)}&nbsp;↗</a>` : `<code>${esc(id.value)}</code>`}` : ""}</span>`
+      + `<span class="pr-id">${id ? `<span class="k">${esc(id.label.replace(/ · 0x[0-9a-fA-F]+…[0-9a-fA-F]+$/, "").replace(/ \([A-Z_]+\)$/, ""))}</span> ${id.href ? `<a class="mono" href="${esc(id.href)}" title="${esc(id.value)}" target="_blank" rel="noopener">${esc(shortId(id.value))}&nbsp;↗</a>` : `<code title="${esc(id.value)}">${esc(shortId(id.value))}</code>`}${copyBtn(id.value, id.label.replace(/ · 0x[0-9a-fA-F]+…[0-9a-fA-F]+$/, "").replace(/ \([A-Z_]+\)$/, "").toLowerCase())}` : ""}</span>`
       + `<span class="pr-v">${v ? a(v.href, v.label) : ""}${v && recLink && recLink.href !== v.href ? ` ${a(recLink.href, "Record")}` : ""}${cmd ? ` <code class="cmd">${esc(cmd)}</code>` : ""}</span></li>`;
   };
   return `<section class="pruns" id="${PROOF_RUNS_ID}" data-rec="docs/runs" aria-labelledby="h-pruns"><h2 id="h-pruns">${icon("calendar-range", 19)} ${esc("What ran live, by partner")}</h2>
 <p class="pr-note">${esc("Test money throughout. Each run: the id to look up, how to check it. Rehearsals, control tests and partial runs: /runs.")}</p>
-${groups.map((g) => `<h3>${esc(g.group)}</h3><ul class="prl">${g.runs.map(row).join("")}</ul>`).join("\n")}${elsewhereRuns().length ? `\n<p class="pr-more"><a href="visa#${VISA_TAP_ID}">${esc(TAP_LINK)}</a></p>` : ""}</section>`;
+${groups.map((g) => `<h3 id="${groupId(g.group)}">${esc(g.group)}</h3><ul class="prl">${g.runs.slice(0, PROOF_RUNS_SHOWN).map(row).join("")}</ul>${g.runs.length > PROOF_RUNS_SHOWN ? `<details class="prall"><summary>${esc(`Show all ${g.runs.length}`)}</summary><ul class="prl">${g.runs.slice(PROOF_RUNS_SHOWN).map(row).join("")}</ul></details>` : ""}`).join("\n")}${elsewhereRuns().length ? `\n<p class="pr-more"><a href="visa#${VISA_TAP_ID}">${esc(TAP_LINK)}</a></p>` : ""}</section>`;
 }
 
 // ── 3. The receipt you check offline ───────────────────────────────────────────────────────────────────────────────
@@ -127,7 +163,8 @@ export function verifyCalloutHtml(): string {
 <p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p></div></aside>`;
 }
 
-export const PROOF_RUNS_CSS = `
+/** The chain's own rules, shared with /docs' diagram (14 Nov). */
+export const PROOF_CHAIN_CSS = `
 /* The proof chain (the owner, 13 Nov). */
 ol.pchain { list-style: none; margin: 4px 0 24px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 ol.pchain li { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 16px 16px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
@@ -136,6 +173,30 @@ ol.pchain b { font-size: 15.5px; font-weight: 680; }
 ol.pchain small { font-size: 13.5px; line-height: 1.45; color: var(--muted); }
 ol.pchain .pc-arr { position: absolute; right: -16px; top: 24px; z-index: 1; color: var(--faint); background: var(--bg); border-radius: 50%; }
 @media (max-width: 760px) { ol.pchain { grid-template-columns: 1fr; gap: 16px; } ol.pchain li { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 2px; align-items: center; padding: 12px 14px; } ol.pchain .pc-ic { grid-row: 1 / span 2; width: 32px; height: 32px; } ol.pchain small { grid-column: 2; } ol.pchain .pc-arr { right: auto; left: 24px; top: auto; bottom: -19px; transform: rotate(90deg); } }
+`;
+
+export const PROOF_RUNS_CSS = `${PROOF_CHAIN_CSS}
+/* The strip: one tile per partner (14 Nov). */
+ul.ptiles { list-style: none; margin: 0 0 24px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { ul.ptiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } ul.ptiles li:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+ul.ptiles a { display: grid; gap: 2px; align-content: start; height: 100%; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); text-decoration: none; }
+ul.ptiles a:hover { border-color: var(--accent); }
+ul.ptiles .pt-n { font-size: 14px; font-weight: 700; color: var(--muted); }
+ul.ptiles .pt-c { font-size: 30px; font-weight: 760; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+ul.ptiles small { font-size: 13px; color: var(--muted); }
+.ptnote { margin: 0 0 8px; font-size: 13.5px; color: var(--muted); }
+ul.ptiles .chip { justify-self: start; width: fit-content; max-width: 100%; margin-top: 6px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; line-height: 1.6; background: var(--ok-soft); color: var(--ok); }
+/* The timeline: a rail with a dot per run; ids short with a copy button; the rest of a group behind "Show all". */
+ul.prl li { position: relative; }
+ul.prl li::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+ul.prl li::after { content: ""; position: absolute; left: 3px; top: 18px; width: 10px; height: 10px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--surface); }
+ul.prl li:first-child::before { top: 18px; } ul.prl li:last-child::before { bottom: auto; height: 18px; }
+section.pruns .cp { flex: none; width: 32px; height: 32px; margin: -6px 0; vertical-align: middle; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 8px; display: inline-grid; place-items: center; }
+section.pruns .cp:hover { color: var(--text); } section.pruns .cp.ok { color: var(--ok); } section.pruns .cp[hidden] { display: none; }
+@media (max-width: 520px) { section.pruns .cp { width: 44px; height: 44px; margin: 0 -6px; } }
+details.prall { margin: 6px 0 0; } details.prall > summary { cursor: pointer; list-style: none; display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 650; color: var(--accent); }
+details.prall > summary::-webkit-details-marker { display: none; } details.prall > summary::after { content: "▾"; margin-left: 6px; } details.prall[open] > summary::after { content: "▴"; }
+details.prall > ul.prl { margin-top: 4px; }
 /* The receipt anyone can check offline. */
 aside.pverify { display: flex; gap: 14px; align-items: flex-start; margin: 0 0 28px; padding: 16px 18px; border: 1px solid var(--accent); border-radius: 14px; background: var(--accent-soft); }
 aside.pverify > svg { flex: none; color: var(--accent); margin-top: 2px; }
@@ -172,4 +233,5 @@ ul.prl li:first-child { border-top: 0; }
   .pr-d, .pr-n, .pr-c, .pr-id, .pr-v { grid-column: 1; }
   .pr-id a.mono, .pr-v a { display: inline-flex; align-items: center; min-height: 44px; }
 }
+ul.prl li { padding-left: 32px; }
 `;

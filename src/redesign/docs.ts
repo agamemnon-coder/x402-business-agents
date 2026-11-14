@@ -8,6 +8,8 @@ import type { ClaudeReader } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { agentApiServer } from "../platform/mcpServer.js";
 import { foldHtml, outLink, productPage, repoHref, repoText } from "./productPage.js";
+import { PROOF_CHAIN_CSS, proofChainHtml, type ChainStep } from "./proofRuns.js";
+import { COPY_JS } from "./runs.js";
 import { TRY_URL, esc, icon } from "./ui.js";
 import { DEMO_CONNECTOR_TOKEN, PURSER_CLOUD_MCP, PURSER_CLOUD_URL } from "../ui/more.js";
 
@@ -100,7 +102,50 @@ export function readToolCount(): number {
 }
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
-const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 19)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
+const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 22)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
+/** A value to paste, with a copy button (Max, 14 Nov: "less text, more clear and concrete"). The button is rendered
+ *  hidden; the script shows it where there is a clipboard, so without script the value simply stays selectable. */
+const chip = (label: string, value: string) => `<span class="cchip"><span class="k">${esc(label)}</span>${code(value)}<button type="button" class="cp" data-copy="${esc(value)}" aria-label="${esc(`Copy ${label.toLowerCase()}: ${value}`)}" hidden>${icon("copy", 15)}</button></span>`;
+/** The AI clients the connector's guide names (docs/connect-claude.md), as small chips. */
+export const WORKS_WITH = ["Claude", "Cursor", "VS Code", "Gemini CLI"] as const;
+/**
+ * Each tool's purpose in a few words, for the grid (Max, 14 Nov). Keyed by the server's own names: a tool the code adds
+ * without one here is an error where the page is built, so the grid never drops or invents a tool. The title and the
+ * description, the code's own words, are in the fold.
+ */
+export const TOOL_PURPOSE: Readonly<Record<string, string>> = {
+  request_company_card: "Ask for a card",
+  company_card: "Show my card",
+  pay_with_card: "Pay a merchant",
+  request_limit_raise: "Ask for a higher limit",
+  ask_for_task_card: "A card per task",
+};
+/** The path of a request, from your AI to the rails: what /docs draws above the cards. */
+export const DOCS_FLOW: readonly ChainStep[] = [
+  { icon: "bot", title: "Your AI", text: "Asks" },
+  { icon: "link-2", title: "MCP", text: "Reads, proposes" },
+  { icon: "database", title: "Purser", text: "Checks" },
+  { icon: "scan-face", title: "CFO's Face ID", text: "Approves above the limit" },
+  { icon: "landmark", title: "The rails", text: "Pay" },
+];
+
+export const DOCS_CSS = `${PROOF_CHAIN_CSS}
+@media (min-width: 761px) { ol.pchain.n5 { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+ol.pchain.n5 { margin: 0; }
+.pc .promise { font-size: 17px; font-weight: 600; line-height: 1.45; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.cchip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 0 0 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--sunken); }
+.cchip .k { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+.cchip code { min-width: 0; overflow-wrap: anywhere; }
+.cchip .cp { flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
+.cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); } .cchip .cp[hidden] { display: none; }
+.ww { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
+.ww li { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; }
+.ww li.l { padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
+ul.tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 600px) { ul.tools { grid-template-columns: minmax(0, 1fr); } }
+ul.tools li { display: grid; gap: 1px; font-size: 14.5px; line-height: 1.35; color: var(--muted); padding: 8px 10px; border-radius: 10px; background: var(--sunken); min-width: 0; }
+ul.tools li code { color: var(--text); font-size: 13.5px; }`;
 
 export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   const tools = agentTools(), env = envNames();
@@ -111,43 +156,52 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   if (!repoText("cloud/src/claude/routes.ts").includes('path: "/connect-ai"')) throw new Error("the cloud no longer serves /connect-ai");
   if (!repoText("cloud/src/connections.ts").includes("export function connectionsCatalogue")) throw new Error("cloud/src/connections.ts no longer lists the connections");
   if (!repoText(CLOUD_DOC).replace(/\*\*/g, "").replace(/\s+/g, " ").includes(CLOUD_PREVIEW_LINE)) throw new Error(`${CLOUD_DOC} no longer says what the preview is`);
-  const body = `<div class="cols c2">
+  for (const t of tools) if (!TOOL_PURPOSE[t.name]) throw new Error(`docs.ts: the tool ${t.name} has no purpose for the grid`);
+  for (const c of WORKS_WITH) if (!repoText(CONNECT_DOC).includes(c)) throw new Error(`${CONNECT_DOC} no longer names ${c}`);
+  // Max, 14 Nov: "less text, more clear and concrete". One promise per card, the values to paste as chips with a copy
+  // button, the clients as chips, the tools as a grid; the steps, the variables and each tool's words stay folded.
+  const body = `${proofChainHtml(DOCS_FLOW).replace('<ol class="pchain"', '<ol class="pchain n5"').replace('aria-label="The proof chain"', 'aria-label="From your AI to the rails"')}
+<div class="cols c2">
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
-    <p><b>Connect your AI:</b> ${code(PURSER_CLOUD_MCP)}, ${readToolCount()} read tools, demo token ${code(DEMO_TOKEN)}. Claude, Cursor, VS Code or Gemini CLI reads your books over MCP and can propose a payment; only the CFO's Face ID approves one. <b>Try as guest</b> in Purser Cloud opens the same read-only demo company.</p>
-    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Open Purser Cloud (test money)")}${outLink(repoHref(CONNECT_DOC), "The connector's guide")}</div>
-    ${foldHtml("Open Purser Cloud as guest, connect Claude", [
+    <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
+    <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip("Demo token", DEMO_TOKEN)}</div>
+    <ul class="ww"><li class="l">${readToolCount()} read tools · works with</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
+    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Purser Cloud (test money)")}</div>
+    ${foldHtml("Connect Claude, step by step", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
       `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
+      outLink(repoHref(CONNECT_DOC), "The connector's guide"),
     ])}
-    ${foldHtml("Connections: read or export only", [
+    ${foldHtml("Other connections", [
       `Live: the MCP server, the read API and its OpenAPI (${code("/v1/openapi.read.json")}), signed webhooks for ${code("payment.paid")}, ${code("approval.needed")} and ${code("books.closed")}.`,
       "Format exports, not live integrations: Xero, QuickBooks Online and Exact Online CSV, Slack and Teams messages, an ISO payment message.",
       `From the runner: Moneybird's API (run once in a sandbox) and Exact Online's API (built, not tested live). ${outLink(repoHref(CONNECTIONS_DOC), "Every connection, labelled")}`,
     ])}</article>
   <article class="pc card fd wide" id="agent-api">${head("bot", "Outside-agent card API (local)")}
-    <p>An outside agent works under the CFO's policy through these tools. ${esc(NO_TOOL.replace(/^n/, "N"))}.</p>
-    <ul class="pl">${tools.map((t) => `<li data-tool="${esc(t.name)}">${code(t.name)} ${esc(t.title)}</li>`).join("")}</ul>
-    <p>Run it: ${code(MCP_COMMAND)}</p>
-    <p class="sub">It reads ${env.map((e) => code(e.name)).join(", ")}.</p>
-    <div class="links">${outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")}</div>
-    ${foldHtml("What each tool does", tools.map((t) => `${code(t.name)}: ${esc(t.description)}`))}
-    ${foldHtml("What each variable is", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
+    <p class="promise">Outside agents work under the CFO's policy.</p>
+    <ul class="tools">${tools.map((t) => `<li data-tool="${esc(t.name)}"><code>${esc(t.name)}</code> ${esc(TOOL_PURPOSE[t.name]!)}</li>`).join("")}</ul>
+    <div class="chips">${chip("Run", MCP_COMMAND)}</div>
+    ${foldHtml("What each tool does", [esc(`${NO_TOOL.replace(/^n/, "N")}.`), ...tools.map((t) => `${code(t.name)}, ${esc(t.title)}: ${esc(t.description)}`), outLink(repoHref(AGENT_API_DOC, "#outside-agents-the-agent-api-mcp"), "The agent API guide")])}
+    ${foldHtml("Variables it reads", env.map((e) => `${code(e.name)}: ${esc(e.what)}`))}</article>
   <article class="pc card" id="cloud-api">${head("database", "Purser Cloud REST API", demo ? "" : "Test preview")}
-    <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
-    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
+    <p class="promise">One JSON API for invoices, suppliers, payments and the ledger.</p>
+    <div class="chips">${chip("OpenAPI", CLOUD_OPENAPI_PATH)}</div>
+    <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : ""}</div>
+    ${foldHtml("Where it runs", [`${demo ? "" : "It runs publicly as a test preview: test companies, test money on a simulated bank. "}The OpenAPI document is built from ${outLink(repoHref(CLOUD_ROUTES), "the route table")}.`, ...(demo ? [] : [outLink(TRY_URL, "The test preview")])])}</article>
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
-    <ul class="pl"><li>Agents pay each other per request over x402, on Alta's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Alta")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
+    <ul class="pl"><li>x402 payments between agents, on Alta's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Alta")}</li><li>Airwallex's sandbox webhooks, each signature checked. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
-    <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
+    <p class="promise">The whole site offline, no keys.</p>
+    <div class="chips">${chip("Run", JUDGE_COMMAND)}</div>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>
 </div>`;
   return productPage({
     key: "docs", title: "Docs and API", h1: "Docs and API", label: "Sandbox and testnet only",
     lead: "For developers and integrators.",
     description: "Purser for developers: the agent API's tools (an MCP server), the Purser Cloud REST API and its OpenAPI document, x402 payments between agents, Airwallex webhooks, and how to run it offline. Sandbox and testnet only.",
-    body,
+    body, css: DOCS_CSS, js: COPY_JS,
     source: `Source: src/platform/mcpServer.ts (the tools), package.json (the commands), ${CLOUD_ROUTES} and the docs each link names.`,
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",

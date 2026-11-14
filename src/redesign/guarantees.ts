@@ -70,40 +70,32 @@ export const GUARANTEES: readonly Guarantee[] = [
 export const GUARANTEES_ID = "guarantees";
 export const GUARANTEES_HEADING = "What Purser guarantees";
 
-export const GUARANTEES_CSS = `/* What Purser guarantees, as a light list (the owner, 13 Nov: /proof "enterprise level", no dark slab): one row per
- * promise, numbered; who enforces it in a small neutral pill; the evidence as the row's one link; how, the file and the
- * test folded under the row. Wide: promise | enforced by | evidence. Narrow: the three stacked. */
+export const GUARANTEES_CSS = `/* What Purser guarantees, as cards (Max, 14 Nov: "more visuals and polish"): one card per promise, numbered, with an
+ * icon for who enforces it, the promise, who enforces it as a chip, the evidence as the card's one link; how, the file
+ * and the test folded. Three across on a wide screen, two on a tablet, one on a phone. */
 .gtee { margin: 0 0 28px; counter-reset: g; }
 .gtee h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 20px; font-weight: 720; letter-spacing: -.01em; color: var(--text); }
 .gtee h2 .i { color: var(--muted); }
-.gtee ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); overflow: hidden; }
-.gtee .gh { display: grid; grid-template-columns: 28px minmax(0, 1fr) 190px minmax(0, 260px); column-gap: 16px; padding: 0 19px 8px; font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); }
-.gtee .gh span:first-child { grid-column: 2; }
-.gtee li { counter-increment: g; display: grid; grid-template-columns: 28px minmax(0, 1fr) 190px minmax(0, 260px); column-gap: 16px; row-gap: 2px; align-items: baseline; padding: 14px 18px; border-top: 1px solid var(--border); min-width: 0; }
-.gtee li:first-child { border-top: 0; }
-.gtee li::before { content: counter(g); grid-column: 1; grid-row: 1; font: 650 13px/1.5 Inter, system-ui, sans-serif; color: var(--faint); font-variant-numeric: tabular-nums; }
-.gtee li b { grid-column: 2; grid-row: 1; font-size: 15px; line-height: 1.45; font-weight: 600; color: var(--text); }
-.gtee .by { grid-column: 3; grid-row: 1; justify-self: start; display: inline-block; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--sunken); font: 600 12.5px/1.5 Inter, system-ui, sans-serif; color: var(--muted); white-space: normal; }
-.gtee .ev { grid-column: 4; grid-row: 1; font-size: 14px; line-height: 1.45; }
+.gtee ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .gtee ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .gtee ul { grid-template-columns: minmax(0, 1fr); } }
+.gtee li { counter-increment: g; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 16px 16px 8px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); min-width: 0; }
+.gtee li::before { content: counter(g); position: absolute; right: 14px; top: 12px; font: 650 13px/1.5 Inter, system-ui, sans-serif; color: var(--faint); font-variant-numeric: tabular-nums; }
+.gtee .gi { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.gtee li[data-by="airwallex"] .gi { color: var(--awx); } .gtee li[data-by="metal"] .gi { color: var(--metal); }
+.gtee li b { font-size: 15px; line-height: 1.45; font-weight: 600; color: var(--text); }
+.gtee .by { display: inline-block; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--sunken); font: 600 12.5px/1.5 Inter, system-ui, sans-serif; color: var(--muted); }
+.gtee .by::before { content: "Enforced by "; font-weight: 500; }
+.gtee .ev { font-size: 14px; line-height: 1.45; margin-top: auto; }
 .gtee a { color: var(--accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
 .gtee a:hover { text-decoration: underline; }
-.gtee details { grid-column: 2 / -1; grid-row: 2; font-size: 14px; color: var(--muted); }
-.gtee summary { cursor: pointer; width: fit-content; color: var(--muted); font-weight: 600; font-size: 13px; }
-.gtee details p { margin: 6px 0 0; line-height: 1.5; max-width: 62em; }
+.gtee .ev a, .gtee summary { display: inline-flex; align-items: center; min-height: 44px; }
+.gtee details { width: 100%; border-top: 1px solid var(--border); font-size: 14px; color: var(--muted); }
+.gtee summary { cursor: pointer; width: fit-content; color: var(--muted); font-weight: 600; font-size: 13px; list-style: none; }
+.gtee summary::-webkit-details-marker { display: none; } .gtee summary::before { content: "▸"; margin-right: 6px; } .gtee details[open] summary::before { content: "▾"; }
+.gtee details p { margin: 6px 0 8px; line-height: 1.5; }
 .gtee .src { display: flex; flex-wrap: wrap; gap: 6px; }
-.gtee .src a { display: inline-block; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--sunken); color: var(--text); font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-@media (max-width: 899px) {
-  .gtee .gh { display: none; }
-  .gtee li { grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; padding: 12px 14px; }
-  .gtee .by { grid-column: 2; grid-row: 2; margin-top: 6px; }
-  .gtee .by::before { content: "Enforced by "; font-weight: 500; }
-  .gtee .ev { grid-column: 2; grid-row: 3; }
-  .gtee details { grid-column: 2; grid-row: 4; }
-  .gtee .ev a, .gtee summary { display: inline-flex; align-items: center; min-height: 44px; }
-  .gtee summary::before { content: "▸"; margin-right: 6px; }
-  .gtee details[open] summary::before { content: "▾"; }
-  .gtee .src a { padding-block: 3px; border-width: 10px 0; border-color: transparent; background-clip: padding-box; box-shadow: inset 0 0 0 1px var(--border); }
-}`;
+.gtee .src a { display: inline-block; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--sunken); color: var(--text); font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }`;
 
 const ext = (href: string) => /^https:\/\//.test(href);
 const link = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? ' target="_blank" rel="noopener"' : ""}>${esc(label)}${ext(href) ? " ↗" : ""}</a>`;
@@ -111,10 +103,12 @@ const link = (href: string, label: string) => `<a href="${esc(href)}"${ext(href)
 /** Who enforces it, as the pill's colour: Airwallex, the chain, or Purser (its code, the CFO). */
 const byKind = (by: string) => (/^Airwallex/.test(by) ? "airwallex" : /^Alta/.test(by) ? "metal" : "purser");
 
-/** The block: each promise in sight with who enforces it and its evidence; how, the file and the test folded. */
+/** The icon for who enforces it: Airwallex's card, the chain, the CFO's Face ID, or Purser's code. */
+const byIcon = (g: Guarantee) => (byKind(g.by) === "airwallex" ? "credit-card" : byKind(g.by) === "metal" ? "database" : /CFO/.test(g.by) ? "scan-face" : "shield-check");
+
+/** The block: a card per promise, with who enforces it and its evidence; how, the file and the test folded. */
 export function guaranteesHtml(rows: readonly Guarantee[] = GUARANTEES): string {
   return `<section class="gtee" id="${GUARANTEES_ID}" aria-labelledby="h-gtee"><h2 id="h-gtee">${icon("shield-check", 20)} ${esc(GUARANTEES_HEADING)}</h2>
-<div class="gh" aria-hidden="true"><span>${esc("Guarantee")}</span><span>${esc("Enforced by")}</span><span>${esc("Evidence")}</span></div>
-<ul>${rows.map((g) => `<li id="${g.id}" data-by="${byKind(g.by)}"><b>${esc(g.promise)}</b><span class="by">${esc(g.by)}</span><span class="ev">${link(g.evidence.href, g.evidence.label)}</span>
+<ul>${rows.map((g) => `<li id="${g.id}" data-by="${byKind(g.by)}"><span class="gi" aria-hidden="true">${icon(byIcon(g), 20)}</span><b>${esc(g.promise)}</b><span class="by">${esc(g.by)}</span><span class="ev">${link(g.evidence.href, g.evidence.label)}</span>
 <details><summary>${esc("How")}</summary><p>${esc(g.how)}</p>${g.more ? `<p>${link(g.more.href, g.more.label)}</p>` : ""}<p class="src">${link(`${REPO_BLOB}${g.source}`, g.source)} ${link(`${REPO_BLOB}${g.test}`, g.test)}</p></details></li>`).join("")}</ul></section>`;
 }
