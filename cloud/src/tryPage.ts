@@ -439,8 +439,8 @@ const booksKit=(()=>{
   const entriesOf=(i,p,txs,es)=>{
     const tx=txOf(p,txs);const ids=new Set(tx&&tx.booking&&Array.isArray(tx.booking.entry_ids)?tx.booking.entry_ids:[]);
     // The conversion that funded it (judge scan, 14 Nov): the FX legs the register books under the same signed terms.
-    const sha=tx&&tx.approval&&tx.approval.sha;
-    if(sha)for(const y of txs||[])if(y&&y.rail==='airwallex_fx'&&y.approval&&y.approval.sha===sha&&y.booking&&Array.isArray(y.booking.entry_ids))for(const n of y.booking.entry_ids)ids.add(n);
+    const sha=tx&&tx.approval&&tx.approval.terms_sha256;
+    if(sha)for(const y of txs||[])if(y&&y.rail==='airwallex_fx'&&y.approval&&y.approval.terms_sha256===sha&&y.booking&&Array.isArray(y.booking.entry_ids))for(const n of y.booking.entry_ids)ids.add(n);
     const all=(es||[]).filter(Boolean);
     const mine=all.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
     const have=new Set(mine.map((e)=>e.entry_id));
