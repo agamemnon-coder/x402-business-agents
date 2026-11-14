@@ -175,6 +175,8 @@ const EVENTS: Record<string, Pick> = {
   "airwallex.quote": copy("quote_id", "client_rate", "valid_to"),
   // /try's sandbox payout (cloud/src/engine/livePayout.ts): the Airwallex sandbox transfer of a signed payment, or why not.
   "airwallex.transfer": (p) => ({ transfer_id: p.transfer_id, status: p.status, ...money(p.amount) }),
+  // The visitor's "Sandbox: move to PAID": the sandbox's own simulation of that transfer, not a payment.
+  "airwallex.simulated": copy("transfer_id", "status"),
   "airwallex.payout_skipped": (p) => ({ reason: typeof p.reason === "string" && /^[a-z_]{1,20}$/.test(p.reason) ? p.reason : undefined }),
   "airwallex.unavailable": (p) => ({ reason: typeof p.reason === "string" && /^[a-z_]{1,20}$/.test(p.reason) ? p.reason : undefined, client_rate: p.client_rate }),
   "fx.converted": conversion,

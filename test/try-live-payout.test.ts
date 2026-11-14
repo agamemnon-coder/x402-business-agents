@@ -8,7 +8,7 @@ import { openDb } from "../src/db/open.js";
 import { publicEvent, type EventRow } from "../src/engine/events.js";
 import { EngineHost, parserOnly } from "../src/engine/host.js";
 import { standInBank } from "../src/engine/standInBank.js";
-import { sandboxPayout, type PayoutAnswerIn, type PayoutSource } from "../cloud/src/engine/livePayout.js";
+import { sandboxPayout, simulatePayout, type PayoutAnswerIn, type PayoutSource, type SimulateIn } from "../cloud/src/engine/livePayout.js";
 import { eventLine } from "../cloud/src/tryEvents.js";
 
 const SHA = "e".repeat(64);
@@ -27,7 +27,7 @@ async function world() {
 }
 function source(answer: (a: Parameters<PayoutSource["payout"]>[0]) => PayoutAnswerIn | Promise<PayoutAnswerIn>) {
   const asked: Parameters<PayoutSource["payout"]>[0][] = [];
-  return { asked, src: { payout: async (a) => { asked.push(a); return answer(a); } } as PayoutSource };
+  return { asked, src: { payout: async (a) => { asked.push(a); return answer(a); }, payoutSimulate: async () => ({ ok: false, reason: "no_transfer" }) } as PayoutSource };
 }
 
 describe("/try's sandbox payout after a verified signature", () => {
@@ -67,11 +67,32 @@ describe("/try's sandbox payout after a verified signature", () => {
       expect(note).toEqual({ source: "simulated", reason, terms_sha256: SHA });
     }
     const w = await world();
-    const slow = { payout: () => new Promise<PayoutAnswerIn>(() => {}) };
+    const slow = { payout: () => new Promise<PayoutAnswerIn>(() => {}), payoutSimulate: () => new Promise<SimulateIn>(() => {}) };
     const note = await sandboxPayout({ company: "t_try_a", proposalId: "P-0002", termsSha256: SHA, terms: TERMS, source: slow, allowed: async () => true, db: w.db, keep: w.keep, waitMs: 100 });
     expect(note).toMatchObject({ source: "simulated", reason: "timeout" });
     // Not kept: asked again later, with the same signed hash (kit11's request_id), it can still be made, once.
     expect(w.notes.size).toBe(0);
     expect(await sandboxPayout({ company: "t_try_a", proposalId: "P-0002", termsSha256: SHA, terms: { ...TERMS, amount: undefined }, source: slow, allowed: async () => true, db: w.db, keep: w.keep })).toMatchObject({ reason: "bad_request" });
+  });
+
+  it("Sandbox: move to PAID updates the note with the sandbox's status and logs the simulation; IN_APPROVAL stays, said so", async () => {
+    const w = await world();
+    const live = { payout: async (a: { amount: string; currency: string }) => ({ ok: true as const, transfer_id: "4074d684-4704-406c-a527-2832753baf4f", status: "IN_APPROVAL", amount: a.amount, currency: a.currency, request_id: "r" }) };
+    const asked: unknown[] = [];
+    const src: PayoutSource = { ...live, payoutSimulate: async (a) => { asked.push(a); return { ok: true, transfer_id: "4074d684-4704-406c-a527-2832753baf4f", status: "PAID" }; } };
+    const kit = { company: "t_try_a", proposalId: "P-0002", source: src, allowed: async () => true, db: w.db, keep: w.keep };
+    expect(await simulatePayout(kit)).toMatchObject({ ok: false, reason: "no_transfer" });
+    await sandboxPayout({ ...kit, termsSha256: SHA, terms: TERMS });
+    const out = await simulatePayout(kit);
+    expect(asked).toEqual([{ company: "t_try_a", terms_sha256: SHA }]);
+    expect(out).toMatchObject({ ok: true, note: { status: "PAID", transfer_id: "4074d684-4704-406c-a527-2832753baf4f" } });
+    expect(JSON.parse(w.notes.get("P-0002")!).status).toBe("PAID");
+    const ev = w.events().find((e) => e.event === "airwallex.simulated")!;
+    expect(eventLine(ev).text).toBe("Airwallex sandbox simulation: transfer 4074d684-4704-406c-a527-2832753baf4f is now paid.");
+    const held = await world();
+    const waiting: PayoutSource = { ...live, payoutSimulate: async () => ({ ok: false, reason: "in_approval", status: "IN_APPROVAL" }) };
+    await sandboxPayout({ ...kit, db: held.db, keep: held.keep, source: waiting, termsSha256: SHA, terms: TERMS });
+    expect(await simulatePayout({ ...kit, db: held.db, keep: held.keep, source: waiting })).toMatchObject({ ok: false, reason: "in_approval", note: { status: "IN_APPROVAL" } });
+    expect(await simulatePayout({ ...kit, db: held.db, keep: held.keep, source: waiting, allowed: async () => false })).toMatchObject({ ok: false, reason: "switched_off" });
   });
 });

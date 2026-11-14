@@ -18,7 +18,7 @@ import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
 import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
-import { sandboxPayout, type PayoutSource } from "./livePayout.js";
+import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -130,6 +130,12 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
           keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } },
         });
         return { ...out, airwallex_payout: note };
+      },
+      payoutSimulate: async (proposalId) => {
+        await host();
+        const { db, payoutNotes } = await engines.get(tenantId)!;
+        if (!env.livePayout) return { ok: false as const, reason: "no_binding" as const, note: null };
+        return simulatePayout({ company: tenantId, proposalId, source: env.livePayout.source, allowed: env.livePayout.allowed, db, keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } } });
       },
       exportBatch: async () => (await host()).exportBatch(),
       exportPdf: async () => (await host()).exportPdf(),

@@ -37,7 +37,7 @@ import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
-import { sandboxPayout, type PayoutSource } from "./livePayout.js";
+import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
 
 /** What the host needs of the object: its storage. */
@@ -109,15 +109,17 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     : null;
   const rail = fx ? fx.rail : bank;
   storage.sql.exec(PAYOUT_NOTES);
-  const payoutFor = env.AWX_FX && tenantId.startsWith("t_try_")
-    ? (proposalId: string, termsSha256: string, terms: Record<string, unknown>) => sandboxPayout({
-      company: tenantId, proposalId, termsSha256, terms, source: env.AWX_FX!, db,
-      allowed: async () => on(await readSwitches(sql), "awx_payout"),
-      keep: {
-        get: (pid) => (storage.sql.exec("SELECT note FROM awx_payout_notes WHERE proposal_id = ?", pid).toArray()[0]?.note as string | undefined) ?? null,
-        set: (pid, note) => { storage.sql.exec("INSERT INTO awx_payout_notes (proposal_id, note) VALUES (?, ?) ON CONFLICT(proposal_id) DO UPDATE SET note = excluded.note", pid, note); },
-      },
-    })
+  const payoutOn = !!env.AWX_FX && tenantId.startsWith("t_try_");
+  const payoutKit = {
+    company: tenantId, source: env.AWX_FX ?? null, db,
+    allowed: async () => on(await readSwitches(sql), "awx_payout"),
+    keep: {
+      get: (pid: string) => (storage.sql.exec("SELECT note FROM awx_payout_notes WHERE proposal_id = ?", pid).toArray()[0]?.note as string | undefined) ?? null,
+      set: (pid: string, note: string) => { storage.sql.exec("INSERT INTO awx_payout_notes (proposal_id, note) VALUES (?, ?) ON CONFLICT(proposal_id) DO UPDATE SET note = excluded.note", pid, note); },
+    },
+  };
+  const payoutFor = payoutOn
+    ? (proposalId: string, termsSha256: string, terms: Record<string, unknown>) => sandboxPayout({ ...payoutKit, proposalId, termsSha256, terms })
     : null;
   const host = new EngineHost({
     db, reader: parserOnly, rails: { rail, sim: bank }, afterMoney: keepBank,
@@ -179,6 +181,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
       const note = await payoutFor(id, t.terms_sha256, t.terms as unknown as Record<string, unknown>);
       return { ...out, airwallex_payout: note };
     },
+    payoutSimulate: async (proposalId) => payoutOn ? simulatePayout({ ...payoutKit, proposalId }) : { ok: false as const, reason: "no_binding" as const, note: null },
     exportBatch: async () => host.exportBatch(),
     exportPdf: async () => host.exportPdf(),
     // The object does this itself (it must also forget this host); here for the interface's sake.

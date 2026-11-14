@@ -9,6 +9,7 @@
 //   GET  /api/v1/balances/current          (is there enough before a transfer is asked for)
 //   POST /api/v1/transfers/create          (the one transfer, request_id derived from the signed terms' hash)
 //   GET  /api/v1/transfers/{id}            (its status, read back)
+//   POST /api/v1/simulation/transfers/{id}/transition   (the sandbox's own simulation, on the visitor's tap: SENT, then PAID)
 // Any other method, path or host throws before fetch is reached. The payout key is its own (AIRWALLEX_PAYOUT_CLIENT_ID,
 // AIRWALLEX_PAYOUT_API_KEY): the quote key (fxQuote.ts) stays as it is. The key and the token never leave this module.
 //
@@ -24,6 +25,7 @@ export const AWX_PAYOUT_ALLOWED: readonly { method: "GET" | "POST"; path: RegExp
   { method: "GET", path: /^\/api\/v1\/balances\/current$/ },
   { method: "POST", path: /^\/api\/v1\/transfers\/create$/ },
   { method: "GET", path: /^\/api\/v1\/transfers\/[A-Za-z0-9-]{8,64}$/ },
+  { method: "POST", path: /^\/api\/v1\/simulation\/transfers\/[A-Za-z0-9-]{8,64}\/transition$/ },
 ];
 /** The sandbox beneficiary of the main runs (docs/runs/2026-11-10-airwallex-two-locks.md): the only payee. */
 export const AWX_PAYOUT_BENEFICIARY = "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb";
@@ -60,6 +62,8 @@ export interface PayoutRail {
   availableCents(currency: string): Promise<number>;
   createTransfer(t: { requestId: string; amount: string; currency: string; reference: string; approvalSha256: string }): Promise<SandboxTransfer>;
   transfer(id: string): Promise<SandboxTransfer>;
+  /** The sandbox's simulation: the transfer moved to the next status (sandbox only; no money anywhere). */
+  simulate(id: string, to: "SENT" | "PAID"): Promise<SandboxTransfer>;
 }
 
 const STATUS = /^[A-Z_]{2,40}$/;
@@ -127,6 +131,13 @@ export class SandboxPayouts implements PayoutRail {
     throw new PayoutFailed(r.status >= 500 ? "ambiguous" : "refused", `the Airwallex sandbox did not take the transfer (HTTP ${r.status})`);
   }
 
+  async simulate(id: string, to: "SENT" | "PAID"): Promise<SandboxTransfer> {
+    const r = await this.authed("POST", `/api/v1/simulation/transfers/${encodeURIComponent(id)}/transition`, { next_status: to });
+    const tr = toTransfer(r.json && !Array.isArray(r.json) ? r.json : null);
+    if (r.status < 200 || r.status >= 300 || !tr) throw new PayoutFailed("refused", `the Airwallex sandbox did not move the transfer (HTTP ${r.status})`);
+    return tr;
+  }
+
   async transfer(id: string): Promise<SandboxTransfer> {
     const r = await this.authed("GET", `/api/v1/transfers/${encodeURIComponent(id)}`);
     const tr = toTransfer(r.json && !Array.isArray(r.json) ? r.json : null);
@@ -140,6 +151,8 @@ export type PayoutReason = "bad_request" | "switched_off" | "no_key" | "day_cap"
 export type PayoutAnswer =
   | { ok: true; transfer_id: string; status: string; amount: string; currency: string; request_id: string; again: boolean }
   | { ok: false; reason: PayoutReason };
+
+export type SimulateAnswer = { ok: true; transfer_id: string; status: string } | { ok: false; reason: "bad_request" | "switched_off" | "no_key" | "no_transfer" | "in_approval" | "refused" | "unavailable"; status?: string };
 
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const centsOf = (s: string): number | null => (/^\d{1,9}\.\d{2}$/.test(s) ? Number(s.replace(".", "")) : null);
@@ -196,6 +209,32 @@ export class AwxPayoutDesk {
     }
     this.sql.exec("UPDATE awx_payouts SET transfer_id = ?, status = ? WHERE company = ?", t.id, t.status, a.company);
     return { ok: true, transfer_id: t.id, status: t.status, amount: a.amount, currency: a.currency, request_id: requestId, again: false };
+  }
+
+  /**
+   * The visitor's "Sandbox: move to PAID": the company's own transfer, for the same signed terms, moved by the sandbox's
+   * simulation to SENT and then PAID. A transfer still IN_APPROVAL waits for a person in Airwallex and is not moved.
+   */
+  async simulatePaid(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
+    if (!a || typeof a.company !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(a.company) || typeof a.terms_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(a.terms_sha256)) return { ok: false, reason: "bad_request" };
+    if (this.opts.off) return { ok: false, reason: "switched_off" };
+    if (!this.opts.rail) return { ok: false, reason: "no_key" };
+    const kept = this.sql.exec("SELECT terms_sha256, transfer_id FROM awx_payouts WHERE company = ?", a.company).toArray()[0] as { terms_sha256: string; transfer_id: string | null } | undefined;
+    if (!kept?.transfer_id || kept.terms_sha256 !== a.terms_sha256) return { ok: false, reason: "no_transfer" };
+    const rail = this.opts.rail, id = kept.transfer_id;
+    try {
+      let t = await rail.transfer(id);
+      if (t.status === "IN_APPROVAL") { this.sql.exec("UPDATE awx_payouts SET status = ? WHERE company = ?", t.status, a.company); return { ok: false, reason: "in_approval", status: t.status }; }
+      for (const to of ["SENT", "PAID"] as const) {
+        if (t.status === "PAID") break;
+        if (to === "SENT" && t.status === "SENT") continue;
+        t = await rail.simulate(id, to);
+      }
+      this.sql.exec("UPDATE awx_payouts SET status = ? WHERE company = ?", t.status, a.company);
+      return { ok: true, transfer_id: id, status: t.status };
+    } catch (e) {
+      return { ok: false, reason: e instanceof PayoutFailed && e.code === "refused" ? "refused" : "unavailable" };
+    }
   }
 
   /** Today's payouts in all, for a check. */

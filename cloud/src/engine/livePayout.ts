@@ -15,7 +15,12 @@ export interface PayoutAskOut { company: string; terms_sha256: string; amount: s
 export type PayoutAnswerIn =
   | { ok: true; transfer_id: string; status: string; amount: string; currency: string; request_id: string; again?: boolean }
   | { ok: false; reason: string };
-export interface PayoutSource { payout(a: PayoutAskOut): Promise<PayoutAnswerIn> }
+export type SimulateIn = { ok: true; transfer_id: string; status: string } | { ok: false; reason: string; status?: string };
+export interface PayoutSource {
+  payout(a: PayoutAskOut): Promise<PayoutAnswerIn>;
+  /** The sandbox's simulation of the company's own transfer, to PAID (kit11's AwxFx.payoutSimulate). */
+  payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateIn>;
+}
 
 export const SIMULATED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "over_max", "not_eur", "balance_low", "unavailable", "refused", "ambiguous", "timeout", "bad_answer", "bad_request"] as const;
 export type SimulatedReason = (typeof SIMULATED_REASONS)[number];
@@ -79,4 +84,43 @@ export async function sandboxPayout(o: {
     audit(o.db, "awx-executor", "airwallex.payout_skipped", o.proposalId, { reason: note.reason });
   }
   return note;
+}
+
+/** Why "Sandbox: move to PAID" did not move it, as a fixed code. */
+export const SIMULATE_REASONS = ["switched_off", "no_binding", "no_key", "no_transfer", "in_approval", "refused", "unavailable", "timeout", "bad_answer", "bad_request"] as const;
+export type SimulateReason = (typeof SIMULATE_REASONS)[number];
+
+/**
+ * The visitor's "Sandbox: move to PAID" on the Paid step: the sandbox's own simulation (no money anywhere) moves the
+ * proposal's Airwallex sandbox transfer to PAID. Only a proposal whose kept note is a live transfer; the note is
+ * updated with the status Airwallex answers, and the step is logged (airwallex.simulated).
+ */
+export async function simulatePayout(o: {
+  company: string; proposalId: string; source: PayoutSource | null; allowed: () => Promise<boolean>; db: DB;
+  keep: { get(proposalId: string): string | null; set(proposalId: string, note: string): void };
+  waitMs?: number;
+}): Promise<{ ok: true; note: PayoutNote } | { ok: false; reason: SimulateReason; note: PayoutNote | null }> {
+  const kept = o.keep.get(o.proposalId);
+  const note = kept ? (JSON.parse(kept) as PayoutNote) : null;
+  if (!note || note.source !== "airwallex-sandbox") return { ok: false, reason: "no_transfer", note };
+  if (!o.source) return { ok: false, reason: "no_binding", note };
+  if (!(await o.allowed().catch(() => false))) return { ok: false, reason: "switched_off", note };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<"timeout">((r) => { timer = setTimeout(() => r("timeout"), o.waitMs ?? PAYOUT_WAIT_MS); });
+  let ans: SimulateIn | "timeout";
+  try { ans = await Promise.race([o.source.payoutSimulate({ company: o.company, terms_sha256: note.terms_sha256 }), late]); } catch { ans = { ok: false, reason: "unavailable" }; } finally { clearTimeout(timer); }
+  if (ans === "timeout") return { ok: false, reason: "timeout", note };
+  const status = (s: unknown) => (typeof s === "string" && /^[A-Z_]{2,40}$/.test(s) ? s : null);
+  if (!ans.ok) {
+    const reason = (SIMULATE_REASONS as readonly string[]).includes(ans.reason) ? ans.reason as SimulateReason : "unavailable";
+    const now = status(ans.status);
+    const next = now ? { ...note, status: now } : note;
+    if (now) o.keep.set(o.proposalId, JSON.stringify(next));
+    return { ok: false, reason, note: next };
+  }
+  if (ans.transfer_id !== note.transfer_id || !status(ans.status)) return { ok: false, reason: "bad_answer", note };
+  const next: PayoutNote = { ...note, status: ans.status };
+  o.keep.set(o.proposalId, JSON.stringify(next));
+  audit(o.db, "awx-executor", "airwallex.simulated", o.proposalId, { transfer_id: next.transfer_id, status: next.status });
+  return { ok: true, note: next };
 }

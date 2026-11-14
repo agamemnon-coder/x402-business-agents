@@ -16,12 +16,13 @@ const SHA = "a".repeat(8) + "0123456789abcdef".repeat(3) + "b".repeat(8);
 const SHA2 = "c".repeat(64);
 const ask = (o: Partial<{ company: string; terms_sha256: string; amount: string; currency: string; reference: string }> = {}) => ({ company: "t_try_a", terms_sha256: SHA, amount: "1850.00", currency: "EUR", reference: "BTX-2026-21", ...o });
 
-function fakeRail(o: { balance?: number; create?: () => SandboxTransfer; balanceThrows?: boolean } = {}) {
+function fakeRail(o: { balance?: number; create?: () => SandboxTransfer; balanceThrows?: boolean; status?: string } = {}) {
   const calls: { what: string; arg?: unknown }[] = [];
   const rail: PayoutRail = {
     availableCents: async (c) => { calls.push({ what: "balance", arg: c }); if (o.balanceThrows) throw new PayoutFailed("unavailable", "x"); return o.balance ?? 1_000_000; },
     createTransfer: async (t) => { calls.push({ what: "create", arg: t }); return o.create ? o.create() : { id: "4074d684-4704-406c-a527-2832753baf4f", status: "IN_APPROVAL" }; },
-    transfer: async (id) => { calls.push({ what: "read", arg: id }); return { id, status: "SCHEDULED" }; },
+    transfer: async (id) => { calls.push({ what: "read", arg: id }); return { id, status: o.status ?? "SCHEDULED" }; },
+    simulate: async (id, to) => { calls.push({ what: `simulate ${to}`, arg: id }); return { id, status: to }; },
   };
   return { rail, calls };
 }
@@ -32,7 +33,11 @@ describe("the payout client: four calls, one host, nothing else", () => {
     expect(AWX_PAYOUT_HOST).toBe("api.sandbox.airwallex.com");
     expect(AWX_PAYOUT_ALLOWED.map((a) => `${a.method} ${a.path.source}`)).toEqual([
       "POST ^\\/api\\/v1\\/authentication\\/login$", "GET ^\\/api\\/v1\\/balances\\/current$", "POST ^\\/api\\/v1\\/transfers\\/create$", "GET ^\\/api\\/v1\\/transfers\\/[A-Za-z0-9-]{8,64}$",
+      "POST ^\\/api\\/v1\\/simulation\\/transfers\\/[A-Za-z0-9-]{8,64}\\/transition$",
     ]);
+    expect(payoutUrl("POST", "https://api.sandbox.airwallex.com/api/v1/simulation/transfers/4074d684-4704-406c-a527-2832753baf4f/transition").pathname).toMatch(/transition$/);
+    expect(() => payoutUrl("POST", "https://api.airwallex.com/api/v1/simulation/transfers/4074d684-4704-406c-a527-2832753baf4f/transition")).toThrow(PayoutCallNotAllowed);
+    expect(() => payoutUrl("POST", "https://api.sandbox.airwallex.com/api/v1/simulation/deposits/create")).toThrow(PayoutCallNotAllowed);
     expect(payoutUrl("POST", "https://api.sandbox.airwallex.com/api/v1/transfers/create").pathname).toBe("/api/v1/transfers/create");
     expect(payoutUrl("GET", "https://api.sandbox.airwallex.com/api/v1/transfers/4074d684-4704-406c-a527-2832753baf4f").pathname).toMatch(/^\/api\/v1\/transfers\//);
     for (const [m, u] of [
@@ -131,6 +136,28 @@ describe("the payout desk: one per company, never twice, capped", () => {
     const creates = flaky.calls.filter((c) => c.what === "create").map((c) => (c.arg as { requestId: string }).requestId);
     expect(creates).toEqual([requestIdOf(SHA), requestIdOf(SHA)]);
     expect(flaky.calls.filter((c) => c.what === "balance")).toHaveLength(1);
+  });
+});
+
+describe("Sandbox: move to PAID (the sandbox's own simulation)", () => {
+  it("moves only the company's own transfer, for the same signed terms, to SENT then PAID", async () => {
+    const { rail, calls } = fakeRail();
+    const d = desk(rail);
+    expect(await d.simulatePaid({ company: "t_try_a", terms_sha256: SHA })).toEqual({ ok: false, reason: "no_transfer" });
+    await d.payout(ask());
+    expect(await d.simulatePaid({ company: "t_try_a", terms_sha256: SHA2 })).toEqual({ ok: false, reason: "no_transfer" });
+    expect(await d.simulatePaid({ company: "t_try_b", terms_sha256: SHA })).toEqual({ ok: false, reason: "no_transfer" });
+    expect(await d.simulatePaid({ company: "t_try_a", terms_sha256: SHA })).toEqual({ ok: true, transfer_id: "4074d684-4704-406c-a527-2832753baf4f", status: "PAID" });
+    expect(calls.filter((c) => c.what.startsWith("simulate")).map((c) => c.what)).toEqual(["simulate SENT", "simulate PAID"]);
+  });
+  it("a transfer still IN_APPROVAL is not moved: it waits for a person in Airwallex; switched off or without the key, nothing is called", async () => {
+    const { rail, calls } = fakeRail({ status: "IN_APPROVAL" });
+    const d = desk(rail);
+    await d.payout(ask());
+    expect(await d.simulatePaid({ company: "t_try_a", terms_sha256: SHA })).toEqual({ ok: false, reason: "in_approval", status: "IN_APPROVAL" });
+    expect(calls.some((c) => c.what.startsWith("simulate"))).toBe(false);
+    expect(await desk(rail, { off: true }).simulatePaid({ company: "t_try_a", terms_sha256: SHA })).toEqual({ ok: false, reason: "switched_off" });
+    expect(await desk(null).simulatePaid({ company: "t_try_a", terms_sha256: SHA })).toEqual({ ok: false, reason: "no_key" });
   });
 });
 

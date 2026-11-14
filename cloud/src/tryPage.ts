@@ -1100,6 +1100,19 @@ function payoutCard(n,sha){
   const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.simulated),...(live?[d]:[]),
     el('p','',live?X.liveNote:fill(X.simulatedNote,{why:(typeof n.reason==='string'&&X.why[n.reason])||X.why.unavailable}))]);
   box.setAttribute('data-awx-payout',live?'live':'simulated');
+  if(live&&n.status!=='PAID'){
+    const said=el('p','hint',X.simulateNote);const b=btn(X.simulate);
+    b.addEventListener('click',async()=>{
+      b.disabled=true;b.textContent=X.simulating;
+      const r=await api('POST','/v1/engine/proposals/'+encodeURIComponent(S.proposal&&S.proposal.id||'')+'/payout/simulate');
+      const j=r.status===200?r.json:{};
+      if(j.note&&typeof j.note==='object'&&j.note.terms_sha256===sha){S.awx=j.note;save()}
+      if(j.ok){const again=payoutCard(S.awx,sha);if(again)box.replaceWith(again);return}
+      b.disabled=false;b.textContent=X.simulate;
+      said.textContent=((typeof j.reason==='string'&&X.simWhy[j.reason])||X.simWhy.unavailable)+'. '+X.simulateNote;
+    });
+    box.append(el('p','',b),said);
+  }
   return box;
 }
 // The full terms, pretty-printed (the passkey signs the SHA-256 of their canonical JSON, the same fields).

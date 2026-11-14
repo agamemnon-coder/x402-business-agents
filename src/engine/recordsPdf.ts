@@ -64,6 +64,7 @@ const EVENT_WORDS: Record<string, string> = {
   "airwallex.unavailable": "No live Airwallex quote; the recorded rate was used",
   "airwallex.transfer": "An Airwallex sandbox transfer was made (test money)",
   "airwallex.payout_skipped": "No Airwallex sandbox transfer; the simulated bank alone paid",
+  "airwallex.simulated": "The Airwallex sandbox simulation moved the transfer on (no money)",
   "policy.version": "The CFO's policy was recorded",
   "proposal.created": "A payment was filed for approval",
   "proposal.approved": "The CFO signed the exact terms with the passkey",

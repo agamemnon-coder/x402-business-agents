@@ -8,7 +8,7 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
-import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk } from "./awxPayout.js";
+import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk, type SimulateAnswer } from "./awxPayout.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
@@ -99,18 +99,25 @@ export class RelayObject extends DurableObject<Env> {
   private awxPayout?: AwxPayoutDesk;
 
   /** /try's sandbox payout, by RPC from the AwxFx entrypoint only: the "awx-payout" instance's desk, with the payout key inside its client. */
-  async awxPayoutCreate(a: PayoutAsk): Promise<PayoutAnswer> {
+  private payoutDesk(): AwxPayoutDesk {
     // Its own payout key when both are set; else the Worker's existing sandbox key (widened by Max). Either way the
     // client's own allow-list (four sandbox calls) is the guard, not the key's scopes.
     const own = this.env.AIRWALLEX_PAYOUT_CLIENT_ID && this.env.AIRWALLEX_PAYOUT_API_KEY;
     const { id, key } = own
       ? { id: this.env.AIRWALLEX_PAYOUT_CLIENT_ID, key: this.env.AIRWALLEX_PAYOUT_API_KEY }
       : { id: this.env.AIRWALLEX_CLIENT_ID, key: this.env.AIRWALLEX_API_KEY };
-    this.awxPayout ??= new AwxPayoutDesk(this.ctx.storage.sql, {
+    return (this.awxPayout ??= new AwxPayoutDesk(this.ctx.storage.sql, {
       rail: id && key ? new SandboxPayouts({ clientId: id, apiKey: key }) : null,
       off: (this.env.AWX_PAYOUT ?? "").trim().toLowerCase() === "off",
-    });
-    return this.awxPayout.payout(a);
+    }));
+  }
+
+  async awxPayoutCreate(a: PayoutAsk): Promise<PayoutAnswer> {
+    return this.payoutDesk().payout(a);
+  }
+  /** The visitor's "Sandbox: move to PAID" for its company's own transfer (the sandbox's simulation). */
+  async awxPayoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
+    return this.payoutDesk().simulatePaid(a);
   }
 
   /**
@@ -170,12 +177,19 @@ export class RelayObject extends DurableObject<Env> {
  * quote for a test company, or a fixed reason. A named entrypoint has no public URL: only a Worker bound to it calls it.
  */
 export class AwxFx extends WorkerEntrypoint<Env> {
+  private payoutStub() {
+    return this.env.RELAY.get(this.env.RELAY.idFromName("awx-payout"));
+  }
   async quote(a: AwxFxAsk): Promise<AwxFxAnswer> {
     return this.env.RELAY.get(this.env.RELAY.idFromName("awx-fx")).awxFxQuote(a);
   }
   /** Step 2: one sandbox transfer for a test company's signed payment (worker/src/awxPayout.ts), or a fixed reason. */
   async payout(a: PayoutAsk): Promise<PayoutAnswer> {
-    return this.env.RELAY.get(this.env.RELAY.idFromName("awx-payout")).awxPayoutCreate(a);
+    return this.payoutStub().awxPayoutCreate(a);
+  }
+  /** Step 2's labelled "Sandbox: move to PAID": the sandbox's own simulation of the company's transfer. */
+  async payoutSimulate(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
+    return this.payoutStub().awxPayoutSimulate(a);
   }
 }
 
