@@ -121,3 +121,11 @@ Code: `cloud/src/try/stage.ts` (the rows and the counts), `cloud/src/try/stageRo
 The hooks: the sample, compose and scenario routes note a reading by Claude, the approve route notes an accepted
 passkey signature (through the engine block's `approved` hook, `cloud/src/app.ts`), the pay route notes a payment or
 a refused change; each only for a company in the event pool, and none can fail a visitor's request.
+
+## Screens
+
+From a local run (`npx tsx test/browser/stage.check.ts <dir>`): real counts of nine test companies played through
+the engine on this machine with a software passkey; Claude does not run there, so "invoices read by Claude" is 0.
+
+- [The projector, 1920×1080](stage-1920.png)
+- [A phone, 390 px](stage-390.png)
