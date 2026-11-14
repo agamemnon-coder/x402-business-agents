@@ -62,7 +62,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README).toContain("*The walkthrough · AI voice and music: ElevenLabs*"); // no duration in the words since 14 Nov (owner)
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
-    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied');
+    // 14 Nov: Metal is now Alta; no Alta logo without its written consent, so it is named in text beside the row.
+    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile; and Alta (formerly Metal), named in text: its logo needs Alta\'s written consent. No endorsement implied');
     expect(README).toContain("\n\nNo endorsement implied.\n\n"); // under the partners table; "Text names only" gone since the logos came back (14 Nov)
     expect(README).not.toContain("Text names only");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
