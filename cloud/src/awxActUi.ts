@@ -55,11 +55,13 @@ const AWX_W={
 // every payment: the footer, the chip and the "At work" lines say "the bank", and the Airwallex card says which one.
 var AWX_ON=false;
 function awxLine(x){if(!AWX_ON||!x||typeof x.text!=='string')return x;return {...x,text:x.text.replace(/\bthe stand-in bank\b/g,'the bank').replace(/\bThe stand-in bank\b/g,'The bank').replace(/\bde nagebootste bank\b/g,'de bank').replace(/\bDe nagebootste bank\b/g,'De bank')}}
+// The footer and the chip's title, in Airwallex's words while this company's Airwallex actions are on.
+function awxWords(){if(!AWX_ON)return;try{const f=$('#foot');if(f&&ENG_ON)f.textContent=aw('foot');const c=$('.appbar .test');if(c&&ENG_ON)c.title=aw('chip_title')}catch(x){}}
 const aw=(k)=>((AWX_W[L.lang]||AWX_W.en)[k]??AWX_W.en[k]??k);
 const AWX={p:null,token:null};
 function awxView(fresh){if(AWX.token!==S.token){AWX.token=S.token;AWX.p=null}
   if(fresh||!AWX.p){AWX.p=api('/v1/engine/airwallex').catch((e)=>{if(e instanceof Expired)throw e;return null});
-    AWX.p.then((v)=>{const on=!!(v&&v.airwallex&&v.airwallex.on);if(on!==AWX_ON){AWX_ON=on;try{engineChip(ENG_ON)}catch(x){}}},()=>undefined)}
+    AWX.p.then((v)=>{AWX_ON=!!(v&&v.airwallex&&v.airwallex.on);awxWords()},()=>undefined)}
   return AWX.p}
 const awxBadge=(bank)=>el('span',bank==='airwallex'?'badge-awx':'badge-sim',[ic(bank==='airwallex'?'landmark':'flask'),aw(bank==='airwallex'?'awx':'sim')]);
 const awxCopy=(text)=>{const b=btn(aw('copy'),'mini','copy');b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),aw('copied'))}catch(x){}};return b};
@@ -95,7 +97,7 @@ function awxCard(id){
   return box}
 // Which bank this payment runs at, in the payment card (the fixed stand-in line until the record says otherwise).
 function awxBankNote(id){
-  const n=note(aw('stand_sim'));
+  const n=note(t('cs.eng.stand_in'));
   awxView(true).then((v)=>{const r=v&&(v.invoices||[]).find((x)=>x.invoice_id===id);if(r&&r.bank==='airwallex')n.textContent=aw('stand_awx')},()=>undefined);
   return n}
 // A new supplier from an invoice waiting for one: the owner's own check, then the payee's bank, then the CFO's passkey.

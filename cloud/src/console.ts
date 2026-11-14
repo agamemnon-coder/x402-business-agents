@@ -706,8 +706,8 @@ const engineStale=()=>{ENG.p=null};
 // The footer's one line: the engine's own when it runs (it pays, on a stand-in bank), else the demo company's (jury review,
 // 13 Nov), else the console's.
 var ENG_ON=false;
-function footLine(){$('#foot').textContent=ENG_ON?(AWX_ON?aw('foot'):t('cs.eng.foot')):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}
-function engineChip(on){ENG_ON=!!on;const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?(AWX_ON?aw('chip_title'):t('cs.eng.chip_title')):t('test.title');footLine()}
+function footLine(){$('#foot').textContent=ENG_ON?t('cs.eng.foot'):document.body.classList.contains('demo')?t('cs.demo.line'):t('cs.foot')}
+function engineChip(on){ENG_ON=!!on;const c=$('.appbar .test');c.querySelector('.tl').textContent=' '+(on?t('cs.eng.chip'):t('test.label'));c.title=on?t('cs.eng.chip_title'):t('test.title');footLine()}
 
 // The panel "At work": the engine's events as lines (src/ui/engineEvents.ts), newest first, six in view and the rest
 // folded. Its state belongs to the page, not to a view, so any view can mount it (workPanel()): the seq read up to, the
