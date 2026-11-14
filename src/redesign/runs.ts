@@ -24,7 +24,7 @@ import { VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList, type Signed } fro
 import { AGENT_RUN_1_FILE, AGENT_RUN_FILE, payments, tapRun, type RunRecord } from "./run.js";
 import { countOf, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
-import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
+import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, VIC4_FILE, VIC4_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
@@ -201,10 +201,12 @@ export function liveRuns(): RunRow[] {
   // 12 Nov: vic-3, the Sourcing agent (Claude Haiku) chooses the Airi rail; the signed hash read back twice; F1/F2 the
   // negative test (docs/runs/2026-11-12-vic-3.json). 13 Nov: vic-4, the same run with the owner tapping in Airi himself,
   // a third purchase, and F1/F2 refused by Purser's credential check (docs/runs/2026-11-13-vic-4.json). Every figure
-  // from its record.
+  // from its record. 14 Nov: vic-5, B alone end to end and F1/F2 on B's own credential.
   for (const [key, file, log, title, name] of [
     ["vic-3", VIC3_PREV_FILE, VIC3_PREV_LOG, "Airi, third run: the agent chooses the rail; the signed hash read back twice", "Claude chooses the Airi rail; the CFO's signed hash read back from Airi and Airwallex"],
-    ["vic-4", VIC3_RUN_FILE, VIC3_RUN_LOG, "Airi, fourth run: two paid; a reused credential refused by Purser's own check", "Two paid, one after Face ID; Purser refuses a reused credential before any call"],
+    ["vic-4", VIC4_FILE, VIC4_LOG, "Airi, fourth run: two paid; a reused credential refused by Purser's own check", "Two paid, one after Face ID; Purser refuses a reused credential before any call"],
+    // 14 Nov: vic-5, the whole VIC story in one record (docs/runs/2026-11-14-vic-5.json).
+    ["vic-5", VIC3_RUN_FILE, VIC3_RUN_LOG, "Airi, fifth run: one purchase end to end; its own credential refused for another amount and a second use", "Face ID, Airi's tap, paid; Purser refuses the same credential reused, before any call"],
   ] as const) {
     const v = vic3Run(file);
     if (!v) continue;

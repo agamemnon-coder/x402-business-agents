@@ -147,8 +147,9 @@ describe("the submission pack (Q6, Q7)", () => {
 
   it("the claims' section on the tabs is the main run's, checked on 7 November (and on 6 November before); its heading names the menu as it is since 12 November", () => {
     const claims = read("docs/claims.md");
-    // The opening (the main run and the site as they stand) was checked on 13 November (with the scale band); the sections below it on 7 November.
-    expect(claims).toContain("Last checked on 13 November 2026");
+    // The opening (the main run and the site as they stand) was checked on 14 November (with /visa as one story and
+    // vic-5); the sections below it on 7 November.
+    expect(claims).toContain("Last checked on 14 November 2026");
     expect(claims).toContain("The sections below were checked on 7 November 2026");
     // The menu is Home, Try, Proof since Watch left it (12 Nov): the section's heading says so, and no "four tabs" heading is left.
     const from = claims.indexOf("## The tabs (Home, Try, Proof;");

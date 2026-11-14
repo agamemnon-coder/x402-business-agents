@@ -10,12 +10,20 @@ import { REPO_BLOB } from "./metalStory.js";
 import { statsHtml, type Stat } from "./stats.js";
 import { esc } from "./ui.js";
 
-/** The latest live Visa run (vic-4, 13 Nov): what /visa, /proof and Home show. vic-3 (12 Nov) stays on /runs. */
-export const VIC3_RUN_FILE = "docs/runs/2026-11-13-vic-4.json";
-export const VIC3_RUN_LOG = "docs/runs/2026-11-13-vic-4.md";
-/** The run before it (vic-3, 12 Nov). */
+/**
+ * The latest live Visa run (vic-5, 14 Nov: the whole VIC story in one record, B end to end and F1/F2 on B's own
+ * credential): what /visa, /proof and Home show. vic-4 (13 Nov) and vic-3 (12 Nov) stay on /runs.
+ */
+export const VIC3_RUN_FILE = "docs/runs/2026-11-14-vic-5.json";
+export const VIC3_RUN_LOG = "docs/runs/2026-11-14-vic-5.md";
+/** vic-4 (13 Nov): the run where Purser's credential check first refused F1/F2. */
+export const VIC4_FILE = "docs/runs/2026-11-13-vic-4.json";
+export const VIC4_LOG = "docs/runs/2026-11-13-vic-4.md";
+/** vic-3 (12 Nov): the run where the Airi/Airwallex sandbox accepted a credential on another amount and a second time. */
 export const VIC3_PREV_FILE = "docs/runs/2026-11-12-vic-3.json";
 export const VIC3_PREV_LOG = "docs/runs/2026-11-12-vic-3.md";
+/** Every live Visa run after the first (7 Nov), in order: each counted from its own record. */
+export const VIC_LATER_FILES = [VIC3_PREV_FILE, VIC4_FILE, VIC3_RUN_FILE] as const;
 export const VIC3_RUN_ID = "vic3-run";
 export const VIC3_PURCHASES_ID = "vic3-purchases";
 

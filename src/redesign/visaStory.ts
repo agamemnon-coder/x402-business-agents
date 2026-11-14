@@ -14,7 +14,7 @@ import { airiRun, AIRI_RUN_FILE } from "./airiRun.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { tapRun } from "./run.js";
 import { esc } from "./ui.js";
-import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
+import { VIC3_PREV_FILE, VIC3_RUN_FILE, VIC_LATER_FILES, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 
 export const VISA_ASKS_ID = "visa-asks";
 export const VISA_MEETS_ID = "visa-meets";
@@ -105,7 +105,9 @@ export function visaMeetsHtml(): string {
     },
   ];
   const area = (k: string) => VISA_ASKS.find((a) => a.key === k)!.area;
-  return `<section class="card vs" id="${VISA_MEETS_ID}"><h2>${esc("How Purser meets each one, in our runs")}</h2>
+  // vic-5 (14 Nov) is the proof for the rows: the whole story in one live record, linked in the heading.
+  return `<section class="card vs" id="${VISA_MEETS_ID}"><h2>${esc(`How Purser meets each one: the live run of ${day(f.v4.started_at)}`)}</h2>
+<p class="vh-src">${esc(`${f.v4.run}: Airwallex sandbox, Airi's test card, test money.`)} ${recLink(md(VIC3_RUN_FILE))}</p>
 <ul class="vs-rows">${rows.map((r) => `<li class="vs-row ${r.ok ? "vs-ok" : "vs-no"}"><span class="vs-k">${esc(area(r.key))}</span><span class="vs-t">${esc(r.text)}</span><span class="vs-r">${r.recs}</span></li>`).join("")}</ul></section>`;
 }
 
@@ -124,11 +126,11 @@ export function visaReuseHtml(): string {
 
 /** 3. The three Visa runs, each counted from its own record. */
 export function visaThreeRunsHtml(): string {
-  const airi = airiRun(), runs = [vic3Run(VIC3_PREV_FILE), vic3Run()].filter((r): r is Vic3Record => !!r);
+  const airi = airiRun(), runs = VIC_LATER_FILES.map((f) => [f, vic3Run(f)] as const).filter((x): x is readonly [typeof x[0], Vic3Record] => !!x[1]);
   if (!airi) return "";
   const rows: { day: string; paid: number; notConfirmed: number; refused: number; file: string }[] = [
     { day: day(airi.started_at), paid: airi.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length, notConfirmed: 0, refused: airi.purchases.filter((p) => (p as { by?: string }).by === "purser").length, file: AIRI_RUN_FILE },
-    ...runs.map((r) => { const s = vic3Summary(r); return { day: day(r.started_at), paid: s.paid, notConfirmed: s.other.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, refused: s.byPurser.length, file: r === runs[runs.length - 1] ? VIC3_RUN_FILE : VIC3_PREV_FILE }; }),
+    ...runs.map(([file, r]) => { const s = vic3Summary(r); return { day: day(r.started_at), paid: s.paid, notConfirmed: s.other.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, refused: s.byPurser.length, file }; }),
   ];
   const sum = (k: "paid" | "notConfirmed" | "refused") => rows.reduce((n, r) => n + r[k], 0);
   return `<section class="card vs" id="${VISA_RUNS3_ID}"><h2>${esc(`The ${rows.length} Visa runs: ${sum("paid")} paid, ${sum("notConfirmed")} not confirmed in Airi`)}</h2>
@@ -173,6 +175,9 @@ export const VISA_STORY_CSS = `
 .vs-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: 4px 14px; align-items: baseline; padding: 10px 0 10px 12px; border-left: 3px solid var(--border); }
 .vs-ok { border-left-color: var(--ok); } .vs-no { border-left-color: var(--vwarn); }
 .vs-k { font-weight: 700; } .vs-r { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+/* Long codes (PURSER_CREDENTIAL_AMOUNT_MISMATCH) and record names break inside the screen (360 px, 14 Nov). */
+.vs-row, .vs-two > div, .vs { min-width: 0; } .vs-t, .vs-two p, .vs-r a, .vs-list li, .vs-asks li, .vs .vh-src { overflow-wrap: anywhere; }
+.vs-runs { table-layout: fixed; } .vs-runs td:last-child a { overflow-wrap: anywhere; }
 .vs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .vs-two > div { padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--sunken); }
 .vs-two > div:first-child { border-color: var(--bad); } .vs-two > div:last-child { border-color: var(--ok); }

@@ -14,7 +14,7 @@ const main = /<main[\s\S]*<\/main>/.exec(html)![0];
 const text = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 const section = (id: string) => new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`).exec(main)?.[0] ?? "";
 const rec = (f: string) => JSON.parse(readFileSync(new URL(`../${f}`, import.meta.url), "utf8")) as R;
-const v4 = rec("docs/runs/2026-11-13-vic-4.json"), v3 = rec("docs/runs/2026-11-12-vic-3.json"), airi = rec("docs/demo/airi-run.json");
+const v4 = rec("docs/runs/2026-11-14-vic-5.json"), v3 = rec("docs/runs/2026-11-12-vic-3.json"), airi = rec("docs/demo/airi-run.json"), mid = rec("docs/runs/2026-11-13-vic-4.json");
 interface P {
   step: string; status?: string; terms_sha256: string; request: { amount: string; currency: string };
   outcome?: { status?: string; code?: string }; calls: { airwallex: number };
@@ -68,7 +68,7 @@ describe("/visa, how Purser meets each one", () => {
   });
 });
 
-describe("/visa, the reuse finding and the three runs", () => {
+describe("/visa, the reuse finding and the four runs", () => {
   it("sets the sandbox's answer (vic-3) beside Purser's refusal (vic-4)", () => {
     for (const f of ["F1", "F2"]) expect(step(v3, f).negative_test.airwallex.outcome).toBe("SUCCEEDED");
     const s = text(section(VISA_REUSE_ID));
@@ -77,15 +77,16 @@ describe("/visa, the reuse finding and the three runs", () => {
     expect(s).toContain("PURSER_CREDENTIAL_AMOUNT_MISMATCH, PURSER_CREDENTIAL_ALREADY_USED");
   });
 
-  it("counts each run from its record: 5 paid, 2 not confirmed in Airi", () => {
+  // 14 Nov: four runs since vic-5 (the latest, its proof for the rows above); vic-4 counted as the run before it.
+  it("counts each run from its record: 6 paid, 2 not confirmed in Airi", () => {
     const paid = airi.purchases.filter((p) => p.status === "SETTLED").length
-      + [v3, v4].reduce((n, r) => n + r.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length, 0);
-    const notConfirmed = [v3, v4].reduce((n, r) => n + r.purchases.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, 0);
-    expect([paid, notConfirmed]).toEqual([5, 2]);
+      + [v3, mid, v4].reduce((n, r) => n + r.purchases.filter((p) => !/^F/.test(p.step) && p.outcome?.status === "succeeded").length, 0);
+    const notConfirmed = [v3, mid, v4].reduce((n, r) => n + r.purchases.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, 0);
+    expect([paid, notConfirmed]).toEqual([6, 2]);
     const s = text(section(VISA_RUNS3_ID));
-    expect(s).toContain(`The 3 Visa runs: ${paid} paid, ${notConfirmed} not confirmed in Airi`);
-    expect(s).toMatch(/7 Nov 2 0 1 airi-run\.json ↗ 12 Nov 1 1 3 2026-11-12-vic-3\.json ↗ 13 Nov 2 1 5 2026-11-13-vic-4\.json ↗/);
-    expect(visaStoryFacts()!.v4.run).toBe("vic-4");
+    expect(s).toContain(`The 4 Visa runs: ${paid} paid, ${notConfirmed} not confirmed in Airi`);
+    expect(s).toMatch(/7 Nov 2 0 1 airi-run\.json ↗ 12 Nov 1 1 3 2026-11-12-vic-3\.json ↗ 13 Nov 2 1 5 2026-11-13-vic-4\.json ↗ 14 Nov 1 0 4 2026-11-14-vic-5\.json ↗/);
+    expect(visaStoryFacts()!.v4.run).toBe("vic-5");
   });
 });
 

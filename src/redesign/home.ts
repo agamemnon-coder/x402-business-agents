@@ -82,6 +82,7 @@ main.ent ul.stats { margin-top: 48px; grid-template-columns: repeat(auto-fit, mi
 main.ent ul.stats li { padding: 20px; border-radius: 16px; }
 main.ent ul.stats b { font-size: 32px; }
 .statnote { margin: 16px 0 0; font-size: 14px; color: var(--faint); }
+.statnote.visal a { display: inline-flex; align-items: center; min-height: 44px; } /* a tap target of 44 px (Visa line, 14 Nov) */
 .kit11 { margin: 20px 0 0; max-width: 46em; font-size: 15.5px; line-height: 1.5; color: var(--muted); }
 .kit11 b { color: var(--text); font-weight: 650; }
 .kit11 a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: flex; width: fit-content; align-items: center; min-height: 44px; white-space: nowrap; }

@@ -24,7 +24,7 @@ import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, h
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
-import { VIC3_PREV_FILE, VIC3_RUN_FILE, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
+import { VIC3_RUN_FILE, VIC_LATER_FILES, vic3Lead, vic3Run, vic3RunHtml, vic3Summary } from "./vic3Run.js";
 import { COUNT_JS, STATS_CSS } from "./stats.js";
 import { PLATFORM_RUN_FILE, PRODUCTS_CSS, airwallexBody, airwallexDescription, productTiles, tilesCountWords } from "./airwallexProducts.js";
 import { CARD_DATA_CSS, cardDataHtml } from "./cardData.js";
@@ -419,12 +419,12 @@ export function claudePage(run: AgentRun = agentRun()): string {
 const dayShortOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
 /**
  * The Visa runs in one phrase, the same in the footer, on /visa and in the README (the owner, 13 Nov: it read two ways).
- * The live Visa runs are those that paid with an Airi credential: 7 Nov (docs/demo/airi-run.json), vic-3 and vic-4; the
+ * The live Visa runs are those that paid with an Airi credential: 7 Nov (docs/demo/airi-run.json), vic-3, vic-4 and vic-5; the
  * 7 Nov control test (vic-2) made no Airi or Airwallex call and is not counted. Every number from those records.
  */
 export function visaRunsLine(): string | null {
   const airi = airiRun(), v3 = vic3Run();
-  const later = [vic3Run(VIC3_PREV_FILE), v3].filter((x): x is NonNullable<typeof x> => !!x);
+  const later = VIC_LATER_FILES.map((f) => vic3Run(f)).filter((x): x is NonNullable<typeof x> => !!x);
   const settled = (airi?.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length ?? 0) + later.reduce((n, r) => n + vic3Summary(r).paid, 0);
   const runsN = (airi ? 1 : 0) + later.length;
   if (!settled) return null;
