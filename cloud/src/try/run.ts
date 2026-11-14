@@ -50,7 +50,10 @@ const runKit=(()=>{
   const stamp=(t)=>typeof t==='number'&&isFinite(t)&&t>0;
   const elapsed=(t0,t1,now)=>stamp(t0)?Math.max(0,(stamp(t1)?t1:now)-t0):null;
   // The steps the visit passed (read, checked, signed, paid); the one-cent refusal is its own line, never counted twice.
-  const score=(passed,t0,t1,now)=>{const p=mark(passed,'');return {steps:p.filter((x)=>x!=='refuse').length,refused:p.indexOf('refuse')>=0,ms:elapsed(t0,t1,now)}};
+  // A visit left open for hours is not a run time: up to two hours only, everywhere (the clock, the score, the share text).
+  const CAP=7200000;
+  const runTime=(t0,t1,now)=>{const ms=elapsed(t0,t1,now);return ms!==null&&ms<CAP?ms:null};
+  const score=(passed,t0,t1,now)=>{const p=mark(passed,'');return {steps:p.filter((x)=>x!=='refuse').length,refused:p.indexOf('refuse')>=0,ms:runTime(t0,t1,now)}};
   // Whether a refused payment differed from the signed terms only by one cent of the amount.
   const cents=(v)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(v));return m?Number(m[1])*100+Number(m[2]):null};
   const oneCent=(signed,sent)=>{if(!signed||!sent)return false;const a=cents(signed.amount),b=cents(sent.amount);
@@ -59,7 +62,7 @@ const runKit=(()=>{
   const proofHref=(base,map,screen)=>Object.prototype.hasOwnProperty.call(map,screen)?base+'#'+map[screen]:null;
   const tipOf=(G,screen,refused)=>screen==='pay'&&refused?G.tips.refused:Object.prototype.hasOwnProperty.call(G.tips,screen)?G.tips[screen]:null;
   const oneCentLess=(amount)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(amount));if(!m)return null;const c=Number(m[1])*100+Number(m[2])-1;return c<0?null:Math.floor(c/100)+'.'+String(c%100).padStart(2,'0')};
-  return {ORDER,clock,mark,elapsed,score,oneCent,shareText,proofHref,tipOf,oneCentLess};
+  return {ORDER,clock,mark,elapsed,runTime,score,oneCent,shareText,proofHref,tipOf,oneCentLess};
 })();
 `;
 
@@ -67,7 +70,7 @@ const runKit=(()=>{
 export const START_JS = String.raw`
 // 0 Start (14 Nov, owner): eyebrow, headline, the line under it, the three steps and the one-cent refusal as a picture,
 // the button with the trailer beside it, the small print, then the partners. The layout is CSS (START_CSS).
-screen('start',{heading:()=>/iPhone|iPad|iPod/.test(navigator.userAgent||'')?C.start.headingFace:C.start.heading,band:false,draw(box){
+screen('start',{heading:C.start.heading,band:false,draw(box){
   const T=C.start;box.classList.add('start');
   const eyebrow=el('p','eyebrow',[el('span','dot'),T.eyebrow]);
   const text=el('p','lede',T.text);
@@ -114,7 +117,7 @@ screen('start',{heading:()=>/iPhone|iPad|iPod/.test(navigator.userAgent||'')?C.s
 export const RUN_UI_JS = String.raw`
 // The clock: figures only, ticking once a second while the run is on (started, not finished).
 let runTimer=null;
-const runMs=()=>runKit.elapsed(S.t0,S.t1,Date.now());
+const runMs=()=>runKit.runTime(S.t0,S.t1,Date.now());
 function runTick(){const ms=runMs();for(const t of document.querySelectorAll('#main .clock .t'))t.textContent=ms===null?'':runKit.clock(ms);if(ms===null||S.t1){clearInterval(runTimer);runTimer=null}}
 function runClock(){
   const ms=runMs();if(ms===null)return null;
@@ -139,8 +142,7 @@ function runScore(){
   if(!sc.steps&&sc.ms===null)return null;
   const tile=(v,l,cls)=>el('li','tile'+(cls?' '+cls:''),[el('span','v',v),el('span','l',l)]);
   const tiles=el('ul','tiles');
-  // A visit left open for hours is not a run time: shown up to two hours only.
-  if(sc.ms!==null&&sc.ms<7200000)tiles.append(tile(runKit.clock(sc.ms),R.time));
+  if(sc.ms!==null)tiles.append(tile(runKit.clock(sc.ms),R.time));
   tiles.append(tile(String(sc.steps),R.steps));
   if(sc.refused)tiles.append(tile(icon('circle-check',24),R.refused,'ok'));
   else if(S.proposal&&S.proposal.id){const t=el('button','link cent',R.tryCent);t.type='button';t.addEventListener('click',()=>show('pay'));tiles.append(el('li','tile go',t))}
@@ -152,7 +154,7 @@ function runScore(){
       try{await navigator.share({title:R.shareTitle,text,url});return}catch(e){if(e&&e.name==='AbortError')return}
     }
     let ok=false;try{await navigator.clipboard.writeText(text+' '+url);ok=true}catch(e){}
-    said.hidden=false;said.textContent=ok?R.copied:url;
+    said.hidden=false;said.textContent=ok?R.copied:R.copyThis+' '+url;
   });
   return el('section','score',[el('div','sh',[el('p','st',R.head),share]),tiles,said]);
 }
@@ -177,9 +179,12 @@ const tour=(()=>{
     const s=S.screen;
     // The control must be on screen (the try-to-cheat link waits in a hidden tail until Paid's blocks are drawn).
     const shown=(n)=>n&&n.offsetParent!==null?n:null;
-    if(s==='books')return shown($('#main .link.cheat'))||shown($('#main .btn.primary:not([disabled])'));
+    // On Paid the tip means the try-to-cheat link: Next waits for it; only without it (a failed payment) the main button.
+    if(s==='books'){const ch=$('#main .link.cheat');return ch?shown(ch):shown($('#main .btn.primary:not([disabled])'))}
     if(s==='pay'&&refusedNow())return null;
     if(s==='company')return $('#main .score');
+    // On screen 2, only Pay or Try another invoice: the tour never presses a sandbox override for the visitor.
+    if(s==='work'){const b=[...document.querySelectorAll('#main .btn.primary:not([disabled])')].find((x)=>x.textContent===C.work.pay||x.textContent===C.work.another);return shown(b||null)}
     return shown($('#main .btn.primary:not([disabled])'));
   };
   const light=(t)=>{if(lit===t)return;if(lit)lit.classList.remove('tour-hl');lit=t;if(t)t.classList.add('tour-hl')};
@@ -190,7 +195,6 @@ const tour=(()=>{
     const s=S.screen,words=runKit.tipOf(G,s,refusedNow());
     card.hidden=!words;if(!words){light(null);return}
     if(tip.textContent!==words)tip.textContent=words;
-    const at=C.steps.order.indexOf(s);n.textContent=at>=0?' · '+(at+1):'';
     const t=target();light(t);
     const last=s==='company';next.hidden=last;
     next.disabled=!(t||(s==='pay'&&refusedNow()));
@@ -261,7 +265,7 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .start .logos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 /* The official files on white tiles in both themes (their marks are dark; docs/assets/logos/SOURCES.md). */
 .start .logos .tile { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid #e3e6ec; color: #0b1220; font-size: 12.5px; font-weight: 650; }
-.start .logos .tile.tname { background: #fff; border-color: #e3e6ec; color: #0b1220; }
+.start .logos .tile.tname { background: none; border-color: transparent; color: var(--text); padding: 0 6px; }
 .start .logos .lg { display: block; width: auto; height: 16px; }
 .start .logos .lg-alta { height: 20px; }
 .start .logos .was { color: #586174; font-size: 11.5px; font-weight: 600; }

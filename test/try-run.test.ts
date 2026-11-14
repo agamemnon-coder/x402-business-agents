@@ -34,6 +34,10 @@ describe("the run's clock", () => {
     expect(kit.clock(-5)).toBe("0:00");
     expect(kit.clock(Number.NaN)).toBe("0:00");
   });
+  it("is a run time only up to two hours: a visit left open is no run time, in the score and the share text alike", () => {
+    expect(kit.score(["read"], 1000, 1000 + 7_200_000, 0).ms).toBeNull();
+    expect(kit.score(["read"], 1000, 1000 + 7_199_000, 0).ms).toBe(7_199_000);
+  });
   it("runs from the start to the finish, or to now; none before a start", () => {
     expect(kit.elapsed(1000, null, 5000)).toBe(4000);
     expect(kit.elapsed(1000, 3000, 9000)).toBe(2000);

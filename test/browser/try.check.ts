@@ -292,15 +292,6 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   ok(still, "reduced motion: the start does not move, and shows the refusal");
   await ctx.close();
 }
-{
-  // The headline says "your passkey", true on every device; on an iPhone it says Face ID (review, 14 Nov).
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1" });
-  const page = await ctx.newPage();
-  await page.goto(`${ORIGIN}/try`);
-  await page.waitForSelector(`h1:text-is("${START.headingFace}")`);
-  ok(true, "an iPhone: the headline says Face ID");
-  await ctx.close();
-}
 
 // Part 0b (H3, 12 Nov): the samples are slow (held 800 ms). Screen 1 is drawn at once; the button is off and the cards a
 // skeleton while they are held; a tap meanwhile is kept and files the first sample once they arrive. Then a failed read:

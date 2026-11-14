@@ -1060,11 +1060,12 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
       // Held: the approval is stored and nothing is paid (drawn from its answer); the signature is kept for screen 4,
       // and the pay call starts at once, in the same tap.
-      S.cred=signed;save();
+      // The signature is a step passed on its own, whatever the payment then does (review, 14 Nov).
+      S.cred=signed;S.passed=runKit.mark(S.passed,'sign');save();
       said.replaceChildren(el('p','big ok tick',[icon('circle-check',24),el('span','',A.approved)]));
       return pay(signed);
     }
-    if(r.status===200&&r.json.status==='approved'){S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
+    if(r.status===200&&r.json.status==='approved'){S.passed=runKit.mark(S.passed,'sign');S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
     said.replaceChildren(note(words(r.json,A.failed)));
     if(r.json.status==='expired')main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});else stage();
   }
