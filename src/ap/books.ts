@@ -50,10 +50,16 @@ export interface BookkeepingSink {
 
 const MONEY = /^\d+\.\d{2}$/;
 
-/** Whether an invoice belongs in the books: checked clean (ready, waiting or paid), or clean but for a currency paid by hand. */
+/**
+ * Whether an invoice belongs in the books: checked clean (ready, waiting or paid), clean but for a currency paid by
+ * hand, or clean but waiting for its new supplier to be verified (needs_vendor: the invoice is owed from the day it came
+ * in, so it is accrued; paying it still waits for the supplier check and the CFO. The CFO review, 14 Nov: ZV-4471 was
+ * open on the payables list but not on the balance sheet).
+ */
 export function bookable(inv: Pick<ApInvoiceRow, "status" | "findings" | "total">): boolean {
   if (!MONEY.test(inv.total)) return false;
   if (inv.status === "ready" || inv.status === "waiting_cfo" || inv.status === "paid") return true;
+  if (inv.status === "needs_vendor") return inv.findings.every((f) => f.level === "warn" || f.level === "wait");
   return inv.status === "needs_review" && inv.findings.every((f) => f.level === "warn" || f.code === "currency_not_paid" || f.code === "country_not_paid");
 }
 

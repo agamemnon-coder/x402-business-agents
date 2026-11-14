@@ -110,3 +110,14 @@ describe("another currency in the company's statement", () => {
     expect(inBaseCurrency(two)).toEqual({ file: two, note: null });
   });
 });
+
+describe("an invoice waiting for its new supplier to be verified", () => {
+  it("is accrued (owed from the day it came in); one with a finding to review or a block is not", async () => {
+    const { bookable } = await import("../src/ap/books.js");
+    const wait = { level: "wait", code: "new_supplier", detail: "" } as const;
+    expect(bookable({ status: "needs_vendor", findings: [wait], total: "484.00" } as never)).toBe(true);
+    expect(bookable({ status: "needs_vendor", findings: [wait, { level: "warn", code: "overdue", detail: "" }], total: "484.00" } as never)).toBe(true);
+    expect(bookable({ status: "needs_vendor", findings: [wait, { level: "review", code: "unusual_amount", detail: "" }], total: "484.00" } as never)).toBe(false);
+    expect(bookable({ status: "blocked", findings: [{ level: "block", code: "duplicate", detail: "" }], total: "484.00" } as never)).toBe(false);
+  });
+});
