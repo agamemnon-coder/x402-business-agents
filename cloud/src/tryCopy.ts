@@ -5,6 +5,7 @@
 
 import { TRAILER_LINK } from "../../src/config/brand.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
+import { FX_QUOTE_MAX_MARKUP_BPS } from "../../src/config/policy.js";
 
 /**
  * The page's frame: the brand mark.
@@ -19,35 +20,106 @@ export const CHROME = { brand: "Purser" };
 /** The band on every screen after the start; the second part follows the start answer's mode.claude. */
 export const BAND = {
   line: "Your test company · test money · simulated bank",
-  claudeLive: "Claude reads live",
+  claudeLive: "Claude, live",
   claudeCode: "Purser's code reads today",
 };
 
 /**
- * Screen 0. The text describes the product, never this visit: what this visit runs on is in the band, from the answer.
- * Beside it the illustration (cloud/src/scene.ts: its words are aria-hidden, the image has one name; not counted here);
- * under the card the trust line: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
+ * Screen 0 (14 Nov, owner: "the crown jewel for partners; the start screen must look enterprise-grade"): one headline that
+ * says what the visit does in two minutes, the three steps as a picture (Read, Check, You sign) and what happens when one
+ * cent is changed, one button, a quiet trailer link, and the partners as their official logos (Visa as text) with "No
+ * endorsement implied". "Face ID" in the headline is the device's word on an iPhone; the steps say any passkey works.
  */
 export const START = {
-  heading: "Run a company's payables with Purser.",
-  text: "AI agents check each invoice on Purser's real engine. You sign the exact terms.",
+  eyebrow: "Hands-on · about 2 minutes",
+  /** "Your passkey": true on every device (Face ID, Touch ID, a fingerprint or Windows Hello is the device's own word). */
+  heading: "Sign an invoice with your passkey. Then change one cent.",
+  text: "Purser refuses it: your signature covers the exact terms.",
+  /** The three steps as a picture, each a word and one short line; then what a one-cent change gets. */
+  flow: [
+    { name: "Read", line: "AI agents read it." },
+    { name: "Check", line: "Purser's code checks it." },
+    { name: "You sign", line: "Face ID or any passkey." },
+  ],
+  flowEnd: "One cent changed: refused",
   button: "Start with a test company",
+  /** Under the button, small. */
+  fine: "Purser's real engine · test money · deleted after 24 h",
+  /** Beside the button, quiet: the trailer on YouTube (TRAILER_URL, src/config/brand.ts). */
+  trailer: "Watch the 90 s trailer",
+  /** The partners' row: their official logos (Visa named in text), then the note. */
+  worksWith: "Works with",
+  formerly: "(formerly Metal)",
+  visa: "Visa via Airwallex Airi",
+  runs_note: "Sandbox and testnet runs. No endorsement implied.",
   /**
-   * Under the button, first (jury review, 13 Nov): what the visit is and how long. "Your passkey", not "Face ID": the flow
-   * signs with the device's own passkey (Face ID, Touch ID or Windows Hello, by device), so Face ID alone is not true.
+   * 14 Nov (owner: "fill and lift it"): what in this demo is real, in four chips. Each is true of this page as built:
+   * the live Airwallex sandbox quote in the signed terms (#333), Claude reading within a daily cap (the band says when
+   * Purser's code reads instead), the passkey signing the terms' SHA-256, and the suite's count from
+   * docs/assets/test-summary.json ({n}, never typed by hand).
    */
-  what: "About 2 minutes: read an invoice, sign it with your passkey, see it booked.",
-  /** Under the button. */
-  fine: "Test money · deleted after 24 h",
-  /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
-  walk: "Or watch the walkthrough",
-  /** Under the card, small and grey. */
-  trust: "Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.",
+  realHead: "What's real here",
+  real: [
+    "Airwallex sandbox: a live FX quote in the terms you sign",
+    "Claude reads the invoice live, within a daily cap",
+    "Your passkey signs a SHA-256 of the exact terms",
+    "{n} automated tests, all passing",
+  ],
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
   /** Under the server's sentence (in the text's place) when it is busy, at its limit or paused (429, 503). */
   runs: "Watch the recorded runs",
+};
+
+/**
+ * On every screen after the start, beside the band (14 Nov, owner): a link to the same step in a live run on /proof
+ * (STEP_PROOF, cloud/src/try/run.ts). A fixed legend, like the step names: outside each screen's count.
+ */
+export const SAME_STEP = { label: "Same step, live" };
+
+/**
+ * The run's clock and score (14 Nov, owner: "a run timer and a small end score; a Share button"). The clock is figures
+ * only, in the band (outside the count). The score is on the finish screen, counted there. Never a fraction.
+ */
+export const RUN = {
+  clock: "Your run time",
+  head: "Your run",
+  time: "start to finish",
+  steps: "steps passed",
+  refused: "one-cent change refused",
+  tryCent: "Try the one-cent change",
+  share: "Share",
+  copied: "Link copied",
+  /** Where the clipboard is not allowed: the link itself, to copy by hand. */
+  copyThis: "Copy this link:",
+  /** The text shared with the link (not on the page): the time line with the run's time, the cent line only when it was refused. */
+  shareText: "I signed an invoice with my passkey on Purser, on test money.",
+  shareTime: "My run: {time}.",
+  shareTitle: "Purser",
+  shareCent: "Then I changed one cent: refused.",
+};
+
+/**
+ * ?tour=1 (14 Nov, owner: "an auto-guided tour mode for judges"): one tip per screen in a small card, the control it
+ * means lit, and Next, which presses that control. Shown only with ?tour=1; outside the word budget (an overlay a judge
+ * asks for), each tip at most 14 words (test/try-run.test.ts).
+ */
+export const GUIDE = {
+  label: "Guided tour",
+  next: "Next",
+  end: "End tour",
+  tips: {
+    start: "Start a test company of your own. Nothing real moves.",
+    invoice: "Pick a sample invoice and file it.",
+    work: "Agents read it, Purser's code checks it. Next takes the step it offers.",
+    approve: "Sign the exact terms with Face ID or your passkey.",
+    books: "Paid with test money. Now try to cheat: change what you signed.",
+    pay: "Next changes the amount by one cent and asks to pay.",
+    refused: "Refused: your signature covers only the exact terms. See your score.",
+    did: "What Purser did for you, step by step.",
+    company: "Your score. Share it, or see the same steps in a live run.",
+  } as Record<string, string>,
 };
 
 /** Screen 1. One main button under both tabs files the sample picked or the invoice written. Sample titles, suppliers
@@ -56,7 +128,19 @@ export const INVOICE = {
   heading: "An invoice comes in.",
   tabSample: "Pick a sample",
   tabWrite: "Write your own",
-  loading: "Loading…",
+  /** While the start's company is made and its samples load (judges, 14 Nov: up to 7 s on a phone, with no words). */
+  loading: "Setting up your test company…",
+  /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
+  hints: {
+    clean: "Ready to pay once you sign",
+    again: "The same file again: Purser holds it",
+    renumbered: "A paid invoice, new number: held",
+    bank: "New bank details: held for your check",
+    unknown: "A new supplier: held until checked",
+  } as Record<string, string>,
+  startHere: "Start here",
+  /** The skip link, first in the tab order (judges, 14 Nov). */
+  skip: "Skip to the demo",
   failed: "Purser could not load this. Try again.",
   supplier: "Supplier",
   invoiceNo: "Invoice number",
@@ -105,6 +189,28 @@ export const WORK = {
   overrideNote: "Sandbox only: in production a second person reviews it. Nothing is paid until you sign.",
   reject: "Reject",
   rejected: "Rejected. Nothing is paid.",
+  /**
+   * 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed, never a fixed
+   * list), then why the CFO signs ({money}: the invoice's total; the agents pay no supplier invoice alone here).
+   */
+  signNeeded: "{money} is paid only with your signature: the agents pay no supplier invoice alone.",
+  /** The time line with the model that read it ({model}: "Claude Haiku 4.5"), when Claude did. */
+  tookBy: "{model} read it; answered in {s} s, measured in your browser.",
+};
+
+/** 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed), by code. */
+export const WORK_CHECKS: Record<string, string> = { not_paid_before: "Not paid before (same supplier and number)", bank_on_file: "Bank details match the ones on file", known_supplier: "Known supplier" };
+
+/**
+ * 14 Nov (jury): an FX quote dearer than the limit over the market rate, filed for approval and held: the reason first,
+ * the quote beside the market, the rule with the limit ({limit}: a percent), and a new quote. {pct}: how far over.
+ */
+export const FX_HOLD = {
+  head: "Held: this FX quote costs more than your limit over the market rate",
+  quote: "The quote", market: "The market rate now", over: "{pct}% over",
+  rule: `A quote may cost at most {limit}% more than the market's current rate; a dearer one waits for a person.`,
+  limitPct: (FX_QUOTE_MAX_MARKUP_BPS / 100).toFixed(2),
+  button: "Get a new quote",
 };
 
 /**
@@ -248,7 +354,13 @@ export const APPROVE = {
    * Tester, 14 Nov: "is the limit per transaction or a total?" Here, every supplier invoice waits for the CFO: the
    * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
    */
-  limit: "Every invoice waits for your signature here, whatever its amount.",
+  /**
+   * 14 Nov (judges: this read as if agents never pay alone, against the headline): in this demo the limit is zero, so
+   * every invoice waits; with a CFO's limit set, an agent pays alone below it (the main run on /proof, run live).
+   */
+  limit: "Demo limit: zero, so every invoice waits for you. Below a CFO's limit, agents pay alone.",
+  /** Once the receipt is in: the start of the exact terms' SHA-256 ({sha}: its first 8 hex characters). */
+  signsSha: "(SHA-256 {sha}…)",
   fileAgain: "File it again",
   failed: "Purser could not file this payment.",
 };
@@ -259,12 +371,14 @@ export const APPROVE = {
  */
 export const PROPOSAL_FIELDS = {
   account: "Account ending", due: "Due", amount: "Amount", payee: "Payee",
+  /** A CFO's eye (14 Nov): the payee's whole IBAN, its BIC and the invoice number on the terms. */
+  iban: "IBAN", bic: "BIC", invoiceNo: "Invoice number",
   /**
    * try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap.
    * final-polish, 13 Nov: the engine converts only the EUR shortfall (needed minus free EUR, src/policy/treasury.ts), so the
    * row says how much of the payment that part is and what it costs in USD.
    */
-  fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell} at {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
+  fx: "Conversion", fxLine: "{buy} of it funded from the USD balance ({sell}; {rate})", feeCap: "Bank fee", feeLine: "at most {money}", expires: "Sign before",
 };
 
 /**
@@ -276,12 +390,15 @@ export const FX_CARD = {
   live: "Airwallex · live sandbox quote",
   recorded: "Airwallex unavailable, recorded rate used",
   quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
+  /** The quote's valid-to, as a date and time. */
+  validTo: "Valid to",
   liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
   recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
   why: {
     switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
     day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
     timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
+    over_limit: "Airwallex's sandbox quote was over Purser's 0.50% FX limit",
   } as Record<string, string>,
 };
 
@@ -324,7 +441,6 @@ export const PAY = {
   /** final-polish, 13 Nov: the screen leads with what to do; it is shown above the fields. */
   line: "These are the terms you signed. Change one and press Pay.",
   /** Screen 4 comes after paid: a quiet line under the fields, not an error (final-polish, 13 Nov). */
-  already: "This invoice is already paid.",
   /** Screen 4's quiet link back to screen 5. */
   back: "Back",
   button: "Pay with my signature",
@@ -409,7 +525,7 @@ export const BOOKS = {
   /** Under it: this visit's own record, screen 5b ("What Purser did with it"). */
   what: "What Purser did",
   /** A quiet link under the main button, to screen 4's fields. */
-  cheat: "Try changing what you signed",
+  cheat: "Now change one cent",
 };
 
 /**
@@ -479,10 +595,10 @@ export const ENDED = {
  */
 export const VISIBLE = {
   start: [
-    [START.heading, START.text, START.button, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.text, START.starting, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.failed, START.button, START.what, START.fine, START.walk, START.trust],
-    [START.heading, START.runs, START.button, START.what, START.fine, START.walk, START.trust],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
+    [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note, START.realHead, ...START.real.map((r) => r.replace("{n}", "6,711"))],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -495,11 +611,14 @@ export const VISIBLE = {
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
     // An amount past the demo's cap: the same hint in the cap's words (the lead's, 7), over budget at its own count.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountCap, INVOICE.send],
+    // Judges, 14 Nov: the samples in, each with its muted line, the first marked (titles are the engine's data).
+    // The skip link is off screen until it has focus, so it is not counted.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.startHere, ...Object.values(INVOICE.hints), INVOICE.send],
   ],
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],
     [WORK.heading, WORK.readingCode, WORK.invoiceFold],
-    [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
     // 14 Nov (owner): held or refused, the reason first. The values beside the labels are data (the invoice, the earlier
     // one, what is on file), and so is the engine's own sentence; the fold (WHY.more) is closed. The five samples' answers:
     // the same file again; the paid invoice under a new number; new bank details; a new supplier; and a check with no
@@ -515,39 +634,41 @@ export const VISIBLE = {
     // signed as always; or rejected. Then the rejected answer.
     [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.override, WORK.reject, WORK.another, WORK.overrideNote],
     [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.rejected, WORK.another],
+    // Read by Claude (round 2, 14 Nov): the time line names the model ({model}).
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.tookBy, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
   ],
   approve: [
     [APPROVE.heading, APPROVE.filing],
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.create],
     // The fold open: what the passkey signs, above the terms (the terms themselves are data).
-    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.create],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.signsSha, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.waiting],
     // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.noPasskey, APPROVE.again, OPEN.copy, OPEN.copied],
     // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.failed, APPROVE.fileAgain],
     // 14 Nov: a passkey that failed, was cancelled or gave no answer: a plain line and Try again; refused at once (no
     // prompt was shown): "open this page in Safari or Chrome" and its address to copy.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.cancelled, APPROVE.again],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.timeout, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.cancelled, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.timeout, APPROVE.again],
   ],
   pay: [
     [PAY.heading, PAY.loading],
-    [PAY.heading, PAY.line, PAY.already, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.amountBad, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.paying, APPROVE.slow, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.paidOnce, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.fileAgain, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.failed, PAY.retry, PAY.back],
+    [PAY.heading, PAY.line, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.amountBad, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.paying, APPROVE.slow, PAY.back],
+    [PAY.heading, PAY.line, PAY.paidOnce, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.fileAgain, PAY.back],
+    [PAY.heading, PAY.line, PAY.failed, PAY.retry, PAY.back],
     // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
     // 14 Nov (owner): the reason first, signed beside asked, one plain line, the transfers; the stamp, the layers, the
     // fingerprints, the verdict, the round trip and the raw answer are in the closed fold (TAMPER.proof).
@@ -576,11 +697,13 @@ export const VISIBLE = {
   company: [
     // 14 Nov (owner): the finish. The result (its figures are data), the three steps, the way on and its quiet links,
     // the records (the PDF, the JSON link), Start again, the recorded runs' fold.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
     // Start again asks first: the question and its two answers in place of the link.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
+    // 14 Nov (owner): the score without the one-cent change: its link in the refusal's place.
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.tryCent, RUN.share, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -621,7 +744,20 @@ export const VISIBLE = {
 // Partner scan, 14 Nov: the start screens +3 for "No endorsement implied."; Airwallex left the "Works with" line (it is the platform, "Built on Airwallex").
 // 14 Nov (owner: "always be able to override and try it again"): every hold can be rejected (+1, "work 4" to "work 6");
 // a possible duplicate by the same total can be cleared in the sandbox ("work 10") or rejected ("work 11").
-export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 63, "start 2": 63, "start 3": 57, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "work 10": 91, "work 11": 73, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov (owner: "the start screen must look enterprise-grade; do more"): the start is a headline, the three steps as a
+// picture with a word each, the one-cent refusal, the trailer link and the partners' logos with "No endorsement implied"
+// ("start 0" to "start 3", +15 to +20). The finish adds the run's score and Share ("company 0" to "company 3", +13 each);
+// "company 4" is the score before the one-cent change, its link in the refusal's place. Each pinned at its count.
+// 14 Nov (judges): screen 4 has no "already paid" line during the one-cent test ("pay 4" and "pay 6" are back under 45);
+// screen 5's test is its main button, "Now change one cent" ("books 0" to "books 5", one word fewer).
+// 14 Nov (judges: "every invoice waits" read against the headline): the approval says the demo's limit is zero and
+// that agents pay alone below a CFO's limit (+6 on each state with it, "approve 2" to "approve 16").
+// 14 Nov (judges, round 2): the samples each say in one muted line what they show, the first marked "Start here"
+// ("invoice 6", 60).
+// Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs ("work 2"; "work 12" read by Claude).
+// The integration of 14 Nov (try-integ-1114) re-pinned every state at its count. The start adds "What's real here"
+// (owner: "fill and lift it"), four proof chips: "start 0" to "start 3", +37 each.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 63, "approve 4": 63, "approve 9": 59, "approve 10": 56, "approve 11": 62, "approve 12": 61, "approve 13": 56, "approve 14": 55, "approve 15": 65, "approve 5": 53, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 51, "approve 7": 49, "approve 8": 50, "approve 16": 51, "company 4": 79 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -630,6 +766,8 @@ export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 6
  */
 export const LIVE = {
   allSteps: "All steps",
+  /** The reader's Claude calls in one row: "Reader · Claude Haiku 4.5 · 2 calls" ({n}: 2 or more). */
+  calls: "{n} calls",
   /** The panel's title: what Purser's code, the agents and Claude did, newest last, each with its time. */
   title: "Activity",
   /**
@@ -660,6 +798,10 @@ export const LIVE = {
    */
   booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
   /** The same without a VAT id on the invoice: the rate only, and that a person codes it ({pct}: a whole percent). */
+  /**
+   * 14 Nov (judges: the step said "booked without a VAT code" while the ledger showed a VAT line): the VAT itself is
+   * booked, only without a code (src/ap/books.ts codedEntries decides its account); the line says so, naming no account.
+   */
   uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; booked without a VAT code for the accountant to check",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
@@ -715,7 +857,7 @@ export const LIVE = {
     "payee.add_closed": "The request to add a supplier account was closed without approval.",
     "payee.adopted": "The supplier's account was already at the simulated bank. None was added.",
     "payee.added": "The supplier's account was added at the simulated bank.",
-    "claude.read": "answered live. Its answer was used.",
+    "claude.read": "Answered live. Its answer was used.",
     "claude.fallback": "Read by Purser's code. No model answer was used.",
     "claude.rejected": "Its answer did not pass Purser's check and was not used.",
     "claude.asking": "asking…",
