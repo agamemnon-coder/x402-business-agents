@@ -89,7 +89,7 @@ export const BOOKS_CSS = `.bkp .wrap { gap: 16px; }
 table.bk-st { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; }
 table.bk-st td { padding: 6px 0; border-top: 1px solid var(--border); }
 table.bk-st td.r { text-align: right; white-space: nowrap; padding-left: 12px; }
-table.bk-st tr.grp td { border-top: 0; padding: 12px 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+table.bk-st tr.grp td { border-top: 0; padding: 12px 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 table.bk-st tr.ln td:first-child { padding-left: 12px; }
 table.bk-st tr.sub td { font-weight: 650; border-top: 1px solid var(--text); }
 table.bk-st tr.tot td { font-weight: 800; border-top: 3px double var(--text); }

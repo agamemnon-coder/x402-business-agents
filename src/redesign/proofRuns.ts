@@ -229,7 +229,7 @@ ul.prl li:first-child { border-top: 0; }
 .pr-id .k { display: block; }
 .pr-id code, .pr-id .mono { font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
 .pr-id a.mono { color: var(--accent); text-decoration: none; }
-.pr-v a { color: var(--accent); font-weight: 650; text-decoration: none; white-space: nowrap; }
+.pr-v a { color: var(--accent); font-weight: 650; text-decoration: none; white-space: nowrap; display: inline-block; padding: 4px 0; }
 .pr-v code.cmd { display: inline-block; margin-top: 4px; white-space: nowrap; font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 1px 6px; border-radius: 6px; background: var(--sunken); border: 1px solid var(--border); }
 @media (max-width: 1000px) { ul.prl li { grid-template-columns: 64px minmax(0, 1fr); row-gap: 4px; } .pr-c, .pr-id, .pr-v { grid-column: 2; } }
 @media (max-width: 520px) {
