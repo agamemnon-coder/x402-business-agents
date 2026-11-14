@@ -2,6 +2,33 @@
 
 Moved from the project README. Back to the [README](../README.md).
 
+## Where it runs
+
+Two Cloudflare Workers, their Durable Objects, D1, the MCP server and the relay (moved here from the README, 14 Nov).
+
+```mermaid
+flowchart LR
+  U["Browser or phone"] --> K
+  F["CFO's phone<br/>passkey"] <--> RO
+  subgraph K["Worker kit11 · worker/"]
+    S["Site: Home, Try, Proof, /security<br/>the hands-on demo"]
+    RO["Durable Object RelayObject<br/>the relay: proposals, approvals"]
+  end
+  RN["Runner · Node, src/cli<br/>the live runs"] <--> RO
+  K -- "service binding TRY_ENGINE" --> API
+  subgraph C["Worker purser-try · cloud/"]
+    API["Console and API"]
+    MCP["/mcp · MCP server<br/>read, propose only"]
+    E["Durable Object CompanyEngine<br/>one per company"]
+    D[("D1 database")]
+  end
+  AI["Your AI · any MCP client"] --> MCP
+  API & MCP --> E --> D
+  RN --> AW["Airwallex sandbox"] & M["Alta testnet"] & V["Airi · Visa Intelligent Commerce"]
+  S -- "FX quote, read-only" --> AW
+  S & E --> CL["Claude · Anthropic API"]
+```
+
 ## Security
 
 The threat model, the attacks and what stops each one, the limits on every external call, the least-privilege

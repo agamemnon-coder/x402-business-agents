@@ -84,10 +84,13 @@ describe("the README's diagrams and media", () => {
 
   // Since 13 Nov (the README upgrade): five diagrams in docs/diagrams.md; the README inlines four of them, word for word
   // and in the same order, and links the fifth (who holds which limit), which its one-line diagram now sums up.
-  it("inlines three of docs/diagrams.md's five diagrams exactly, in order, and links the other two", () => {
+  it("inlines two of docs/diagrams.md's five diagrams exactly, in order, and links the others (the architecture in docs/architecture.md)", () => {
     const docs = blocks(readFileSync(join(ROOT, "docs/diagrams.md"), "utf8"));
     expect(docs).toHaveLength(5);
-    expect(blocks(readme)).toEqual([docs[0], docs[2], docs[4]]);
+    // 14 Nov (the README upgrade): the architecture diagram moved to docs/architecture.md, word for word, linked from the README.
+    expect(blocks(readme)).toEqual([docs[0], docs[2]]);
+    expect(blocks(readFileSync(join(ROOT, "docs/architecture.md"), "utf8"))).toContain(docs[4]);
+    expect(readme).toContain("(docs/architecture.md#where-it-runs)");
     expect(readme).toContain("(docs/diagrams.md)"); // who holds which limit: in docs/diagrams.md, linked from Links (13 Nov)
     // The mandate on Alta is linked from the Metal Award section since the award sections came in (13 Nov).
     expect(readme).toContain("(docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)");
