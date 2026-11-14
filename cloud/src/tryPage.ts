@@ -1121,7 +1121,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
     if(S.screen!=='approve')return;
-    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){top.replaceChildren();said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
