@@ -107,24 +107,24 @@ Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Sla
      Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
      credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
-     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>, or the trailer (1:30):
+     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The 90-second trailer:
      <https://youtu.be/n3HLVGROJc4>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
-     data, test money) with its Agents and Tokenisation tabs, and Invoices & books in one tab. Approval alerts by
+     data, test money) with its Agents, Invoices and Tokenisation tabs. Approval alerts by
      e-mail, Slack and Teams are built and tested with stand-ins, not sent live yet.
    - /security: <https://kit11.max-31b.workers.dev/security> draws the layers a payment must pass.
 2. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
    exits; `npm run judge` serves them and opens the browser). Running it live (sandbox keys, an Alta RPC):
-   [docs/run-it.md](../run-it.md).
+   <https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/run-it.md>.
 <!-- /instructions -->
 
 ## Links
 
+- Trailer (90 s): <https://youtu.be/n3HLVGROJc4>
 - Video, the walkthrough (an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
-- Trailer (1:30; AI voice and music: ElevenLabs): <https://youtu.be/n3HLVGROJc4>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.

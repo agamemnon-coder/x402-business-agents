@@ -86,7 +86,7 @@ export function tokenisation(): Json {
   const v = VIC as unknown as { run: string; mode: string; label: string; started_at: string; credential_deleted: boolean; purchases: { step: string; what: string; request: { amount: string; currency: string }; outcome?: { status?: string; reason?: string; refusal?: string } | null; mandate_id: string | null; payment_intent_id: string | null }[] };
   return {
     invoice_token: {
-      label: [t.labels.prototype ? "prototype" : null, String(t.labels.network ?? ""), t.labels.test_money ? "test money" : null, t.labels.financier === "simulated" ? "financier simulated" : null].filter(Boolean).join(" · "),
+      label: [t.labels.prototype ? "prototype" : null, String(t.labels.network ?? "").replace(/^Metal\b/, "Alta") /* the record's own words; Alta since 14 Nov */, t.labels.test_money ? "test money" : null, t.labels.financier === "simulated" ? "financier simulated" : null].filter(Boolean).join(" · "),
       recorded_at: t.recorded_at, invoice: { invoice_no: t.invoice.invoice_no, amount: t.invoice.amount, currency: t.invoice.currency, proposal_id: t.invoice.proposal_id, terms_sha256: t.invoice.terms_sha256, approved_at: t.invoice.approval.approved_at },
       face_value: `${t.face_value.amount} ${t.face_value.unit} (the invoice's amount scaled down by ${String(t.labels.face_value_scaled_by ?? "")})`, discount: `${t.discount.bps / 100}% (price ${t.discount.price})`,
       contract: t.contract, token_id: t.token_id,
