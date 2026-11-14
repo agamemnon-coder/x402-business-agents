@@ -15,6 +15,7 @@ import { tryPageResponse } from "./tryPage.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
+import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
@@ -1681,6 +1682,9 @@ const nonce = () => {
   return btoa(s);
 };
 
+/** The independent ledger check the Books screen shows (cloud/src/t0Close.ts), computed once. */
+const T0_CLOSE = t0CloseLine();
+
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
 const USED = keysUsedIn(SCRIPT + UI_JS + AWX_UI_JS + BODY);
 
@@ -1694,7 +1698,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   return `<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
-<meta name="purser-cloud" content="${escAttr(JSON.stringify(cfg))}">
+<meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title>
 <style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}</style></head><body class="signed-out">
 ${BODY}
