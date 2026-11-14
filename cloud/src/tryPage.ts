@@ -281,6 +281,7 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
 .jsonl { margin: 10px 0 0; font-size: 14px; }
 /* 14 Nov (owner): screen 6 as a finish: the result, the three steps ticking in, the way on, then the records. */
 .done { margin: 0 0 16px; font-size: 19px; line-height: 1.4; font-weight: 650; }
+.done .sk-line { display: block; height: 1.4em; width: 85%; border-radius: 8px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 ul.did .dic svg { animation: pop .5s ease-out both; animation-delay: .25s; }
 ul.did li:nth-child(2) .dic svg { animation-delay: .37s; } ul.did li:nth-child(3) .dic svg { animation-delay: .49s; }
 .acts.next { margin-top: 18px; }
@@ -652,6 +653,8 @@ function screen(name,def){SCREENS[name]=def}
 function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode),el('span','bx',[runClock(),sameStep(S.screen)])])}
 // Where the visit stands: one segment per step, and the current step's name.
 function steps(name){
+  // Screen 4 after paid (the one-cent test) stays on Paid's dot: the rail never steps back (judges, 14 Nov).
+  if(name==='pay'&&S.settled)name='books';
   const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
   const ol=el('ol','prog');ol.setAttribute('aria-label',fill(C.steps.where,{n:at+1,of:order.length}));
   // Each dot with its word, small; the current one marked (14 Nov, a tester: "what are the other dots?").
@@ -1198,7 +1201,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
 screen('pay',{heading:C.pay.heading,draw(box){
   const Y=C.pay;const pid=S.proposal&&S.proposal.id;
   const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
-  const main=mainButton();main.off(Y.button);
+  const main=mainButton();main.off(Y.button);main.node.classList.add('asking');
   const live=livePanel();
   // Back to screen 5, a quiet link (the payment is already made).
   const back=el('button','link',Y.back);back.type='button';back.addEventListener('click',()=>show('books',{settled:S.settled}));
@@ -1221,8 +1224,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
     // What to do first, then the fields, then the paid state as a quiet line (final-polish, 13 Nov).
     const intro=el('div','',[el('p','',Y.line)]);
-    top.replaceChildren(intro,form,el('p','hint',Y.already));reset();
-    main.set(Y.button,()=>send(intro));
+    // 14 Nov (judges): no "already paid" note here, which read like a duplicate check; the test is the signature's.
+    top.replaceChildren(intro,form);reset();
+    main.node.classList.remove('asking');main.set(Y.button,()=>send(intro));
   });
   async function send(intro){
     const v=values();
@@ -1346,7 +1350,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // Purser Cloud's guest dashboard, which is a sample company and not this one, said so under the link (try-fixes,
   // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
-  const another=btn(B.another,true);another.addEventListener('click',()=>show('invoice'));
+  // 14 Nov (owner's judges): the one-cent test is the main step on, a primary button; another invoice beside it.
+  const another=btn(B.another,!pid);another.addEventListener('click',()=>show('invoice'));
   const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
@@ -1356,10 +1361,12 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
-  const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
+  const cheat=pid?btn(B.cheat,true):null;if(cheat){cheat.classList.add('cheat');cheat.addEventListener('click',()=>{
+    // At once, the ring and its words while the signed terms load (live QA: about 3 s with nothing to show).
+    cheat.disabled=true;cheat.classList.add('asking');cheat.textContent=C.pay.loading;show('pay')})}
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
-  const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
   box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,booked,filed,tail);
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
@@ -1438,14 +1445,18 @@ screen('company',{heading:C.company.heading,draw(box){
   const Y=C.company;
   // 14 Nov (owner: "add a CTA, now it just ends"): a real finish. What the run did, from its own record; the three
   // steps; one primary way on (the real runs) and three quiet links; then the records; then Start again. No form.
-  const done=el('p','done',Y.donePlain);
+  // The line once its figures are in (live QA, 14 Nov: the plain line, then the figures 1.5 to 6 s later): a shimmering
+  // placeholder until then; the plain line only when the figures cannot be read.
+  const done=el('p','done',el('span','sk-line'));done.setAttribute('aria-busy','true');
+  const plain=()=>{if(done.getAttribute('aria-busy')){done.removeAttribute('aria-busy');done.textContent=Y.donePlain}};
   api('GET','/v1/engine/invoices').then((r)=>{
-    if(S.screen!=='company'||r.status!==200||!Array.isArray(r.json.items))return;
+    if(S.screen!=='company')return;
+    if(r.status!==200||!Array.isArray(r.json.items)){plain();return}
     const paid=r.json.items.filter((i)=>i&&i.status==='paid'&&i.proposal);
     const want=S.proposal&&S.proposal.invoice;
     const inv=paid.find((i)=>i.id===want)||paid[paid.length-1];
     const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
-    if(inv&&isFinite(ms)&&ms>=0)done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)});
+    if(inv&&isFinite(ms)&&ms>=0){done.removeAttribute('aria-busy');done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)})}else plain();
   });
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};

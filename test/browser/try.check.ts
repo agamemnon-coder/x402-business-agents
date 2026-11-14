@@ -641,8 +641,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
 
   // Screen 4, after paid (12 Nov, one tap): screen 5's quiet link opens the signed terms in three fields; one cent more is
   // refused with both layers, nothing drawn before the answer, and no transfer.
-  ok(await page.locator(`button.link.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: the quiet link "${BOOKS.cheat}", not a main button`);
-  await page.click(`button.link:has-text("${BOOKS.cheat}")`);
+  // 14 Nov (judges): the one-cent test is screen 5's main button; pressed, it shows its busy ring at once.
+  ok(await page.locator(`button.btn.primary.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: "${BOOKS.cheat}" is the main button`);
+  await page.click(`button.cheat:has-text("${BOOKS.cheat}")`);
   await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
   await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
   await screenChecks(page, `${tag} screen 4`, width);
