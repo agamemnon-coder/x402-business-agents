@@ -86,7 +86,8 @@ const AWL_RENDER={
       c.map((x)=>el('tr','',[awlTd(x.agent||x.nickname),awlTd(el('span','',[awlId(x.id),x.last4?el('span','sub',' •••• '+x.last4):null])),awlTd(x.status),awlTd(lim(x)),awlTd((x.merchant_categories||[]).join(', '))]))):el('p','sub',t('cs.awl.empty'));
     const auths=tx.length?awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.card')],[t('cs.awl.col.type')],[t('cs.awl.col.status')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.merchant')]],
       tx.map((x)=>el('tr','',[awlTd(awlId(x.id)),awlTd(awlId(x.card_id)),awlTd(x.type),awlTd(x.status),awlTd(awlAmt(x.currency,x.amount),'num r'),awlTd([x.merchant,x.mcc?'MCC '+x.mcc:''].filter(Boolean).join(' · '))]))):el('p','sub',t('cs.awl.no_auths'));
-    return el('div','',[cards,el('h3','tsec',t('cs.awl.auths')),auths])},
+    const cut=(on,n)=>on?el('p','sub',t('cs.awl.iss_cut',{n})):null;
+    return el('div','',[cut(d.cards_cut,d.cards_read),cards,el('h3','tsec',t('cs.awl.auths')),cut(d.transactions_cut,d.transactions_read),auths])},
   calls(d){const e=d.endpoints||[];
     return el('div','',[el('p','awcalls',[el('b','num',String(d.total)),' '+t('cs.awl.calls_today',{day:d.day})]),e.length?awlTable([[t('cs.awl.col.endpoint')],[t('cs.awl.col.calls'),'r'],[t('cs.awl.col.ok'),'r']],e.map((x)=>el('tr','',[awlTd(el('code','',x.endpoint)),awlTd(String(x.calls),'num r'),awlTd(String(x.ok),'num r')]))):el('p','sub',t('cs.awl.empty')),
       el('p','fine',[ic('lock'),t('cs.awl.calls_rules',{s:d.cache_seconds,max:d.ceiling,min:d.per_minute})])])},
