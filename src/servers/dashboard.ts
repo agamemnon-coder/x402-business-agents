@@ -3,6 +3,7 @@
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
 import { withMeta } from "../ui/meta.js";
+import { T0_READBACK_FILE, T0_READBACK_PATH } from "../accounting/t0Readback.js";
 import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
@@ -301,7 +302,10 @@ export const STATUS_PAGE_OFFLINE = statusPage("offline");
 export const STATUS_OFFLINE_CSP = styleOnlyCsp(STATUS_PAGE_OFFLINE);
 /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the T:0 run records; no script, so a style-only policy. */
 export const T0_PAGE = t0Page();
-export const T0_CSP = styleOnlyCsp(T0_PAGE);
+/** The read-back /t0 offers and its close check fetches, byte for byte (the Worker serves the same file). */
+export const T0_READBACK_TEXT = readFileSync(new URL(`../../${T0_READBACK_FILE}`, import.meta.url), "utf8");
+/** /t0 runs the close check in the browser on /t0-readback.json (same origin): its script, its style, and connect-src 'self'. */
+export const T0_CSP = cspFor(T0_PAGE);
 /** /books (owner, 12 Nov): the bookkeeping with AI agents, from the run records; no script, so a style-only policy. */
 export const BOOKS_PAGE = booksPage();
 export const BOOKS_CSP = BOOKS_PAGE.includes("<script>") ? styleAndScriptCsp(BOOKS_PAGE) : styleOnlyCsp(BOOKS_PAGE);
@@ -490,6 +494,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.setHeader("Content-Security-Policy", T0_CSP);
     res.type("html").send(T0_PAGE);
   });
+  app.get(T0_READBACK_PATH, (_req, res) => { res.type("json").setHeader("Content-Disposition", 'attachment; filename="t0-readback.json"'); res.send(T0_READBACK_TEXT); });
   app.get("/metal/report", (_req, res, next) => {
     if (!METAL_REPORT) return next();
     res.setHeader("Content-Security-Policy", METAL_REPORT_CSP);

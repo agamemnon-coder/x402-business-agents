@@ -157,7 +157,9 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     // and ICC lines; then the fold, which opens with the story (the four cards went: the hero says what they said).
     // Visa judge, 14 Nov: the story a to e: what Visa asks, how Purser meets it, the reuse finding, the flow, the three
     // runs, the entry and ICC lines; the fold (now opening with the outcome strip and the hash); TAP openly; not proven yet.
-    const order = ["</h1>", 'class="vlead"', 'id="visa-asks"', 'id="visa-meets"', 'id="visa-reuse"', 'id="visa-flow"', 'id="visa-three-runs"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-details"', esc(VISA_LEAD), 'id="visa-outcomes"', 'id="visa-hash"', 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`, 'id="visa-not-yet"'].map((x) => ({ x, at: main.indexOf(x) }));
+    // Partner scan, 14 Nov: the first screen is the VIC story in four steps with its three refusals and the live check
+    // (#visa-card-scene), then the entry and ICC lines; what Visa asks and how Purser meets it are folded under them.
+    const order = ["</h1>", 'class="vlead"', 'id="visa-card-scene"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-asks-fold"', 'id="visa-asks"', 'id="visa-meets"', 'id="visa-reuse"', 'id="visa-flow"', 'id="visa-three-runs"', 'id="visa-details"', esc(VISA_LEAD), 'id="visa-outcomes"', 'id="visa-hash"', 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`, 'id="visa-not-yet"'].map((x) => ({ x, at: main.indexOf(x) }));
     for (const o of order) expect({ x: o.x, found: o.at >= 0 }).toEqual({ x: o.x, found: true });
     expect(order.map((o) => o.at)).toEqual([...order.map((o) => o.at)].sort((a, b) => a - b));
     // The drawing's five beats, in order, each with the record's own value: the CFO's limit, the Airi mandate, the
@@ -264,7 +266,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     // The TAP section moved to the top, above what Visa asks for.
     const moved = html.replace(section, "").replace('<section class="card vs" id="visa-asks">', `${section}<section class="card vs" id="visa-asks">`);
     expect(moved).not.toBe(html);
-    expect(() => assertVicFirst(moved)).toThrow(/asks for is not above/);
+    expect(() => assertVicFirst(moved)).toThrow(/asks for is not above|inside a fold/);
     // The section folded away again.
     expect(() => assertVicFirst(html.replace(open, `<details class="fold"><summary>TAP</summary>${open}`).replace('<section class="card vs" id="visa-not-yet">', '</details><section class="card vs" id="visa-not-yet">'))).toThrow(/inside a fold|TAP/);
     // A TAP word in the top, or in the footer.

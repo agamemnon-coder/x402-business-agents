@@ -55,11 +55,12 @@ describe("/t0 reads every figure from the T:0 run records", () => {
 describe("/t0", () => {
   // Owner, 14 Nov ("also upgrade the T:0 page"): one story, result first. Three figures from the record, a calm flow,
   // the accounts ours against T:0's, the balance sheet card; the refusals and the platform run folded as history.
-  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 170 words", () => {
+  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 190 words", () => {
     expect(T0_PAGE).toContain(`<span class="pill run">${T0_LABEL}</span>`);
     expect(T0_LABEL).toBe("T:0 sandbox, test data");
-    // 170 since the partner review (14 Nov): the "Independent ledger check" tile, books close only when T:0 agrees (165 as built).
-    expect(inSight(main).length).toBeLessThanOrEqual(170);
+    // 170 since the partner review (14 Nov): the "Independent ledger check" tile, books close only when T:0 agrees (165 as
+    // built); 190 since the partner scan the same evening: its "Run the close check" button, toggle and note (186 as built).
+    expect(inSight(main).length).toBeLessThanOrEqual(190);
     const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
     const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
     const j = t0Journal(journalMd)!;
@@ -135,9 +136,9 @@ describe("/t0", () => {
     for (const n of shown) expect(records, `${n} is in no T:0 record`).toContain(n);
   });
 
-  it("has no script, a style-only policy, and is served by the bundle, the Worker and the judge", () => {
-    expect(T0_PAGE).not.toMatch(/<script/);
-    expect(T0_CSP).toMatch(/^default-src 'none'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
+  it("has one script (the close check), its hash in the policy with connect-src 'self', and is served by the bundle, the Worker and the judge", () => {
+    expect(T0_PAGE.match(/<script>/g)).toHaveLength(1);
+    expect(T0_CSP).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
     const pages = buildPages() as unknown as Pages;
     expect(pages.t0).toBe(T0_PAGE);
     expect(pages.csp.t0).toBe(T0_CSP);
