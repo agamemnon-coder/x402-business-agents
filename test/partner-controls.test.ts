@@ -99,8 +99,9 @@ describe("/visa: the card rail with Purser's three checks, a recorded replay", (
     const words = text(visaCardSceneHtml());
     expect(words).toContain("Agent pays with an Airi credential (test card, sandbox; recorded run of 7–14 Nov)");
     expect(words).toContain("Recorded, not live");
-    for (const h of ["Bound to one purchase", "Amount and merchant must match the signed terms", "Reuse refused"]) expect(words).toContain(h);
-    expect(words).toContain("Another merchant: refused too, in code and tests since 14 Nov, not in the recorded run.");
+    for (const h of ["1. Signed terms", "2. Face ID", "3. Airi tap", "4. Paid"].map((x) => x.replace(/^\d\. /, ""))) expect(words).toContain(h);
+    expect(words).toContain("Then the same credential, misused: Purser refuses it before any Airwallex call.");
+    expect(words).toContain("Another merchant: PURSER_CREDENTIAL_MERCHANT_MISMATCH in code and tests since 14 Nov, not in the recorded run.");
     expect(words).not.toMatch(/\blive run\b/i);
   });
 
