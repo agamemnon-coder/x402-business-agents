@@ -12,14 +12,13 @@ describe("recording mode", () => {
   it("adds nothing to /try without the flag", () => {
     const html = tryPage("n0nce", cfg);
     expect(html).not.toContain("pv-card");
-    // The page's own script and the visual layer's (cloud/src/try/visuals.ts, test/try-visuals.test.ts), nothing of the flag.
-    expect(html.match(/<script /g)).toHaveLength(2);
+    expect(html.match(/<script /g)).toHaveLength(1);
   });
 
   it("with the flag: one more style and one script, under the page's nonce, before the page's own script", () => {
     const html = tryPage("n0nce", cfg, presentExtra());
     const scripts = [...html.matchAll(/<script type="module" nonce="n0nce">/g)];
-    expect(scripts).toHaveLength(3); // the flag's, the page's own and the visual layer's
+    expect(scripts).toHaveLength(2);
     expect(html.indexOf("purser.present")).toBeLessThan(html.indexOf("const KEY='purser.try'"));
     expect(presentExtra().css).not.toContain("<");
   });

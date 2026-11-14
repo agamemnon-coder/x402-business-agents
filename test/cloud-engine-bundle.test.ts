@@ -93,6 +93,8 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // gzipped 2,428,999. The compressed limit is unchanged.
   // Then /try's sandbox payout (cloud/src/engine/livePayout.ts, step 2) on main at 4ae6d29: 11,577,033 bytes, gzipped
   // 2,441,268; inside the same budget.
+  // Then the agents learning from the CFO's past decisions (src/learning, cloud/src/learning.ts, the Agents tab's block in
+  // two languages), with main at ba9cf4d merged: 11,678,343 bytes, gzipped 2,493,591; inside the same budget.
   it("stays under 11.5 MB, and under 3 MB gzipped", () => {
     expect(bytes).toBeGreaterThan(1_000_000);
     expect(bytes).toBeLessThan(11.5 * 1024 * 1024);
