@@ -13,6 +13,7 @@ import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
+import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
@@ -1789,6 +1790,10 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     font ??= fromB64(INTER_WOFF2_B64);
     return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   }
+  // The partners' official logos for /try's start screen (cloud/src/try/logos.gen.ts, the files unaltered): the paths and
+  // bytes the site serves, so the page shows them on kit11 (the site's own /assets) and on purser-try alike.
+  const logo = LOGO_FILES[url.pathname];
+  if (logo) return new Response(fromB64(logo.b64), { status: 200, headers: { "content-type": logo.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   // pdf.js, to draw a supplier's PDF on a canvas in the invoice's page (eval off; the PDF is data, never a page). Only this
   // one path is asked of the assets, whatever the bundle holds.
   if (url.pathname === "/assets/pdfjs.mjs" && env.asset) {

@@ -36,7 +36,8 @@ describe("the Coder's step on a 19% invoice with no VAT id (the /try sample)", (
   it("says the rate plainly, names no country, and that the accountant checks it", () => {
     const l = coded({ ...base, books_vat_code: null, uncoded_vat_pct: 19 });
     expect(l.lead).toContain(LIVE.noVat);
-    expect(l.enforced).toBe("Purser's code enforced: VAT at 19%: no Dutch purchase code applies; booked without a VAT code for the accountant to check");
+    // The VAT is booked (the ledger shows its line); the step names no account, which the books decide (src/ap/books.ts).
+    expect(l.enforced).toBe("Purser's code enforced: VAT at 19%: no Dutch purchase code applies; the VAT is booked without a code, for the accountant to check");
   });
 
   it("a rate a Dutch code has, or none, adds no line", () => {

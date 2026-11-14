@@ -28,12 +28,13 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
-import { SCENE_CSS, sceneSvg } from "./scene.js";
+import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
+import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -56,34 +57,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 
 main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
 /* 12 Nov: the page's own brand line gave way to the site's header (cloud/src/siteHeader.ts, its style after this one). */
 main { padding-bottom: 56px; overflow-x: clip; }
-/* Screen 0 in two zones (the console's sign-in has the same): the illustration (cloud/src/scene.ts) in a band on the
-   brand's tokens, the card with the words and the button, the trust line under it. A phone: the site's header, the band,
-   the card below. A wide screen: the header across, the band left, the card right, centred. Other screens: neither. */
-.hero, .trust { display: none; }
-body:has(.screen.start) .hero { display: grid; }
-body:has(.screen.start) .trust { display: block; margin: 0 auto; padding: 14px var(--gut) 18px; max-width: 560px; width: 100%; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
-body:has(.screen.start) main { width: calc(100% - 2 * var(--gut)); max-width: 560px; margin: -28px auto 0; position: relative; z-index: 1; padding: 22px 22px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
-body:has(.screen.start) h1 { margin-top: 0; }
-body:has(.screen.start) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
-body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 16px 12px 40px; }
-body:has(.screen.start) .trust { margin-top: auto; }
-/* "Built on Airwallex" on a phone (src/ui/builtOn.ts): on the start, over the band's empty top, out of the flow, so the
-   card and the trust line keep the first screen; on the other screens its own line under the header. */
-@media (max-width: 759px) { body:has(.screen.start) .awx-row { position: absolute; top: 65px; left: 0; right: 0; z-index: 2; } }
-.start .lede { margin: 0 0 18px; font-size: 16.5px; }
-.start .btn.big { margin-top: 0; width: 100%; }
-.start .btn .i { vertical-align: 0; }
-.start .fine { margin: 12px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
-.start .walkl { margin: 2px 0 0; font-size: 13px; text-align: center; }
-.start .walkl a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
-@media (min-width: 1024px) {
-  body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
-  body:has(.screen.start) header.top { grid-column: 1 / -1; grid-row: 1; }
-  body:has(.screen.start) .hero { grid-column: 1; grid-row: 2 / -1; height: calc(100vh - 65px); position: sticky; top: 65px; padding: 40px 48px 48px; }
-  body:has(.screen.start) main { grid-column: 2; grid-row: 3; width: calc(100% - 96px); max-width: 500px; margin: 0 auto; padding: 36px 36px 32px; }
-  body:has(.screen.start) .trust { grid-column: 2; grid-row: 4; max-width: 500px; padding: 18px 0 0; margin: 0 auto; }
-  body:has(.screen.start) h1 { font-size: 32px; }
-}
+/* Screen 0: cloud/src/try/run.ts START_CSS (14 Nov). */
 h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; margin: 20px 0 12px; }
 h1:focus { outline: none; }
 p { margin: 0 0 12px; }
@@ -91,7 +65,8 @@ p { margin: 0 0 12px; }
 .muted { color: var(--muted); }
 .band { display: flex; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 13px; }
 .band .mode { color: var(--text); font-weight: 600; }
-.band .mode.live { color: var(--claude); }
+.band .mode.live { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 600; } /* 14 Nov, jury: a neutral pill with an accent dot; the warm colour under "test money" read as an error */
+.band .mode.live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 650 15px/1.2 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn.big { min-height: 52px; padding: 0 24px; font-size: 16px; margin-top: 8px; }
@@ -105,6 +80,17 @@ main .tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; 
 main .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .samples { display: grid; gap: 8px; }
 .samples .btn { justify-content: flex-start; text-align: left; border-radius: 14px; padding: 12px 16px; font-weight: 600; }
+.samples .btn { display: grid; gap: 2px; justify-items: start; }
+.samples .btn .st { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.samples .btn .here { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.samples .btn .sh { color: var(--muted); font-size: 13px; font-weight: 500; }
+.payrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 14px; }
+.payrow .paynote { margin: 0; flex: 1 1 200px; color: var(--muted); font-size: 14px; }
+.payrow .btn.big { margin-left: auto; }
+.payrow .btn.big { margin-top: 0; }
+@media (max-width: 520px) { .payrow { flex-direction: column; align-items: stretch; } }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; text-decoration: none; }
+.skip:focus { top: 12px; }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
@@ -308,6 +294,7 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
 .jsonl { margin: 10px 0 0; font-size: 14px; }
 /* 14 Nov (owner): screen 6 as a finish: the result, the three steps ticking in, the way on, then the records. */
 .done { margin: 0 0 16px; font-size: 19px; line-height: 1.4; font-weight: 650; }
+.done .sk-line { display: block; height: 1.4em; width: 85%; border-radius: 8px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 ul.did .dic svg { animation: pop .5s ease-out both; animation-delay: .25s; }
 ul.did li:nth-child(2) .dic svg { animation-delay: .37s; } ul.did li:nth-child(3) .dic svg { animation-delay: .49s; }
 .acts.next { margin-top: 18px; }
@@ -368,7 +355,7 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 /* The band under the rail: one quiet line, not a box. */
 .band { margin: 0 0 4px; padding: 0; border: 0; border-radius: 0; background: none; font-size: 12.5px; color: var(--faint); }
 .band .mode { color: var(--muted); }
-@media (min-width: 521px) { .band .mode::before { content: "· "; color: var(--faint); } }
+@media (min-width: 521px) { .band .mode:not(.live)::before { content: "· "; color: var(--faint); } }
 /* The rail: done steps ticked, the current one ringed and named in the text colour, the rest quiet; never backward. */
 .progw { margin: 8px 0 28px; }
 .prog li { height: 18px; }
@@ -403,6 +390,34 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 .receipt.skel .skr .sk { width: 30%; } .receipt.skel .skr .sk + .sk { width: 40%; }
 .receipt .hashpill { margin-top: 12px; }
 .screen.approve .limit { margin-top: 16px; }
+/* try-steps 2 (live run on three devices, 14 Nov): every control at least 44 px tall on a phone or a touch screen, the folds too; the receipt's
+   skeleton as tall as the receipt and the lines under it. */
+@media (max-width: 1023px), (pointer: coarse) {
+  main .tabs button { min-height: 44px; }
+  .screen:not(.start) .link, .more a, a.proofl:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; }
+  .hint .link, p .link { vertical-align: middle; }
+  .screen:not(.start) details > summary { min-height: 44px; padding: 12px 0; box-sizing: border-box; }
+  .more { line-height: 1.4; }
+}
+.screen:not(.start) details > summary:focus-visible { outline-offset: 0; border-radius: 6px; }
+.receipt.skel .sk.pill { width: 112px; height: 22px; border-radius: 999px; margin-top: 4px; }
+.skl { display: grid; gap: 10px; margin: 16px 0 0; }
+.skl .sk { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.skl .sk:nth-child(1) { width: 85%; } .skl .sk:nth-child(2) { width: 40%; height: 20px; } .skl .sk:nth-child(3) { width: 70%; }
+/* Round 2 (14 Nov, jury): the labels of the invoice and the receipt at 4.5:1 or more on their panel (they were 3.5:1); the
+   invoice's rows fade in by opacity only, quickly (the highlight dipped the contrast in dark mode mid-animation); the
+   checks that passed, in a quiet list; the hash's start in mono. */
+.inv .rows dt, .receipt dl.read dt { color: color-mix(in srgb, var(--muted) 60%, var(--text)); }
+.inv .rows > div { animation: fadein .28s ease-out both; }
+.inv .rows > div:nth-child(2) { animation-delay: .06s; } .inv .rows > div:nth-child(3) { animation-delay: .12s; } .inv .rows > div:nth-child(4) { animation-delay: .18s; } .inv .rows > div:nth-child(5) { animation-delay: .24s; }
+@keyframes fadein { from { opacity: 0; } }
+ul.checks { list-style: none; margin: 4px 0 16px; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+ul.checks li { display: flex; align-items: flex-start; gap: 8px; }
+ul.checks li .i { margin-top: 2px; }
+ul.checks li.ok .i { color: var(--ok); }
+ul.checks li.next { color: var(--muted); }
+ul.checks li.next .i { color: var(--accent); }
+.sha { font-size: 12.5px; color: var(--muted); }
 /* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
 .slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
 @media (max-width: 520px) {
@@ -461,7 +476,16 @@ const signKit=(()=>{
     return out.join(' ')+' '+W.vCover;
   };
   const methodOf=(M,ua)=>/iPhone|iPad|iPod/.test(ua)?M.ios:/Android/.test(ua)?M.android:/Macintosh|Mac OS X/.test(ua)?M.mac:/Windows/.test(ua)?M.windows:M.other;
-  return {b64u,fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,changedFields,verdict,methodOf};
+  // A conversion's rate with its units (14 Nov, jury: "at 1.1173" had none). Airwallex states a rate in its currency
+  // pair's convention (EURUSD: USD per EUR); the pair is read from the amounts: the side whose ratio the rate matches
+  // is the quote currency. "1 EUR = 1.1173 USD"; '' when there is no rate.
+  const rateLine=(cv)=>{
+    if(!cv||typeof cv!=='object')return '';const r=Number(cv.client_rate),b=Number(cv.buy_amount),s=Number(cv.sell_amount);
+    if(!(r>0))return '';const rate=String(cv.client_rate);
+    const buyBase=!(b>0&&s>0)||Math.abs(s/b-r)<=Math.abs(b/s-r);
+    return buyBase?'1 '+cv.buy_currency+' = '+rate+' '+cv.sell_currency:'1 '+cv.sell_currency+' = '+rate+' '+cv.buy_currency;
+  };
+  return {b64u,fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,changedFields,verdict,methodOf,rateLine};
 })();
 `;
 
@@ -548,12 +572,13 @@ const W=C.live;
 __EVENT_LINE__
 __SIGN__
 __BOOKS__
-const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf}=signKit;
+const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf,rateLine}=signKit;
 const IC=__ICONS__;
 const lineOf=eventLineOf(W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
 const RUNS=__RUNS__;
 const PROOF=__PROOF__;
+__RUN__
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),label);b.type='button';return b};
@@ -570,7 +595,8 @@ const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return 
 const cash=(cur,amt)=>booksKit.money(cur,amt);
 const say=(text)=>{$('#say').textContent=text};
 const note=(text)=>el('p','note',text);
-const words=(j,fallback)=>typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;
+// The server's sentence, its first letter capitalised (14 Nov, jury: "the locked quote costs…" began lowercase), or the fallback.
+const words=(j,fallback)=>{const s=typeof j.message==='string'&&j.message?j.message:typeof j.error==='string'&&j.error?j.error:fallback;return s?s[0].toUpperCase()+s.slice(1):s};
 // An icon: an SVG element made here from shape data, one element at a time.
 function icon(name,size){
   const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -587,8 +613,8 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','awx'];
-const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null};
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx'];
+const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
 const forget=()=>{for(const k of KEEP)S[k]=k==='after'?0:null;try{sessionStorage.removeItem(KEY)}catch(e){}};
@@ -677,9 +703,11 @@ function askCloseAll(){for(const k of [...OPEN.keys()])askClose(k)}
 // The screens: a registry, one shown at a time.
 const SCREENS={};
 function screen(name,def){SCREENS[name]=def}
-function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode)])}
+function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode),el('span','bx',[runClock(),sameStep(S.screen)])])}
 // Where the visit stands: one segment per step, and the current step's name.
 function steps(name){
+  // Screen 4 after paid (the one-cent test) stays on Paid's dot: the rail never steps back (judges, 14 Nov).
+  if(name==='pay'&&S.settled)name='books';
   const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
   const ol=el('ol','prog');ol.setAttribute('aria-label',fill(C.steps.where,{n:at+1,of:order.length}));
   // Each dot with its word, small; the current one marked (14 Nov, a tester: "what are the other dots?").
@@ -708,7 +736,7 @@ window.addEventListener('popstate',(ev)=>{
 function show(name,arg,how){
   const d=SCREENS[name];if(!d)return false;
   pollStop();askCloseAll();revokeAll();
-  S.screen=name;save();remember(name,arg,how);
+  S.screen=name;runMark(name,arg);save();remember(name,arg,how);
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
   const box=el('div','screen '+name);
   const top=d.band===false||!S.session?[]:[steps(name),band()].filter(Boolean);
@@ -718,32 +746,7 @@ function show(name,arg,how){
   return true;
 }
 
-// 0 Start.
-// In two zones with the illustration (static in the page, cloud/src/scene.ts) and the trust line under the card (CSS).
-screen('start',{heading:C.start.heading,band:false,draw(box){
-  box.classList.add('start');
-  const text=el('p','lede',C.start.text);const b=btn(C.start.button,true);
-  const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
-  const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
-  // The walkthrough link right under the button (jury round 2, 13 Nov), then what the visit is.
-  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));
-  b.addEventListener('click',async()=>{
-    b.disabled=true;label(C.start.starting,false);
-    const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
-    if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
-      for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
-      // Warm the company's engine while screen 1 is read: its status (which loads the engine object) and the samples, in
-      // parallel and not awaited, so the engine is warm when the visitor files an invoice. Only here, after the click:
-      // never on load or on hover, which would start a company for every crawler and spend the start limits.
-      S.after=0;save();armRenewal();WARM.engine=api('GET','/v1/engine');WARM.samples=api('GET','/v1/engine/samples');show('invoice');return;
-    }
-    b.disabled=false;label(C.start.button,true);
-    const said=typeof r.json.message==='string'&&r.json.message?r.json.message:C.start.failed;
-    const why=el('div','',[el('p','note',said)]);
-    if(r.status===429||r.status===503){const a=el('a','',C.start.runs);a.href=RUNS;a.rel='noopener';why.append(el('p','',a))}
-    text.replaceWith(why);
-  });
-}});
+__START__
 
 // The warm-up's answers, taken once by the screen that needs them (screen 1 takes the samples).
 const WARM={engine:null,samples:null};
@@ -781,8 +784,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   const loadSamples=(r0)=>{
     samplesIn=false;gate();
     const sk=el('div','samples');sk.setAttribute('aria-hidden','true');
-    for(let i=0;i<3;i++)sk.append(el('span','btn skel'));
-    pick.replaceChildren(el('p','muted',C.invoice.loading),sk);
+    // As many bars as the demo has samples (five), the loading word for screen readers only: no jump when they come.
+    for(let i=0;i<5;i++)sk.append(el('span','btn skel'));
+    pick.replaceChildren(el('p','sr',C.invoice.loading),sk);
     (r0||api('GET','/v1/engine/samples')).then((r)=>{
       if(S.screen!=='invoice')return;
       const items=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
@@ -794,7 +798,12 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         pick.replaceChildren(el('p','hint calm',[C.invoice.failed,' ',again]));return}
       const list=el('div','samples');list.setAttribute('role','group');
       for(const s of items){
-        const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
+        // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
+        const hint=C.invoice.hints[s.key];const first=!list.children.length;
+        const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
+        const b=btn([el('span','st',[title,first?el('span','here',C.invoice.startHere):null]),sh]);b.setAttribute('aria-pressed','false');
+        // The title is the button's name; its line is its description.
+        b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
         list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
       pick.replaceChildren(list);samplesIn=true;gate();
@@ -876,11 +885,8 @@ function livePanel(){
   // Round 4 (14 Nov): every Claude call's row is its own (two calls of one reader no longer share a timer); a row's
   // call is answered by the next row of the same reader or agent ("Answered."); once the answer is in, a call with no answer
   // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
-  const rows=[];const shown=new Set();const asks=[];let done=null,n=0;
-  // 14 Nov (live QA: "Reader · Claude … · 0.0 s · asked."): an answered call says how long it took by the engine's own
-  // timestamps, and its row keeps its time of day ("+n s"), never a running count stopped at 0.0 s.
-  function answer(k,e){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.t.textContent=a.at;
-    const end=e&&typeof e.ts==='string'?Date.parse(e.ts):NaN,d=end-a.ts;a.what.textContent=isFinite(d)&&d>=50?fill(W.answeredIn,{s:secs(d)}):W.asked}
+  const rows=[];const shown=new Set();const asks=[];let done=null,n=0;const READ={row:null};
+  function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);if(!(a.row&&a.row.read))a.what.textContent=W.asked}
   function order(){
     const lis=[...list.children];let carry=-Infinity;
     const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.ts!==null)carry=r.ts;return {li,ts:carry,i}});
@@ -888,7 +894,7 @@ function livePanel(){
     if(keyed.some((x,i)=>x.li!==lis[i]))for(const x of keyed)list.append(x.li);
   }
   function settle(ms){done=ms;
-    for(const a of asks)if(!a.answered){askClose(a.id);a.t.textContent=a.at;a.what.textContent=W.noAnswer}
+    for(const a of asks)if(!a.answered){askClose(a.id);if(!(a.row&&a.row.read))a.what.textContent=W.noAnswer}
     order();
     const ts=rows.map((r)=>r.ts).filter((x)=>x!==null);if(ts.length){const last=Math.max(...ts);
       for(const r of rows)if(r.ts!==null)r.t.textContent=atOf(ms-(last-r.ts))}
@@ -907,12 +913,22 @@ function livePanel(){
       // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
       if(!l.lead&&l.text===W.step)continue;
       const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
+      // 14 Nov (jury): the reader's Claude calls are one row ("Reader · Claude Haiku 4.5 · 2 calls"): a later call or answer
+      // of the reader updates that row instead of adding one.
+      const rd=keyOf(e)==='reader'&&!l.fold&&(l.asking||e.event==='claude.read')?READ.row:null;
+      if(rd){
+        if(l.asking){rd.calls++;rd.who.textContent=rd.base+' · '+fill(C.live.calls,{n:rd.calls});const id='live#'+(++n);asks.push({id,k:keyOf(e),what:rd.what,answered:false,row:rd});askOpen(id,rd.t);if(!rd.read)rd.what.textContent=l.text}
+        else{rd.read=true;rd.what.textContent=l.text}
+        continue;
+      }
       const t=el('span','t',t0===undefined?'':atOf(performance.now()-t0));
       const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
-      const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]);
+      const whoEl=el('span','who',l.who);
+      const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[whoEl,what,l.enforced?el('span','enf',l.enforced):null,t]);
       list.append(li);
+      if(keyOf(e)==='reader'&&!l.fold&&(l.asking||e.event==='claude.read')){const base=l.asking?l.who:C.live.reader+' · '+l.who;whoEl.textContent=base;READ.row={who:whoEl,what,t,base,calls:1,read:e.event==='claude.read'}}
       if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
-      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,t,at:t.textContent,ts:typeof e.ts==='string'?Date.parse(e.ts):NaN,answered:false});askOpen(id,t)}
+      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false,row:READ.row&&READ.row.what===what?READ.row:null});askOpen(id,t)}
       if(!l.fold)say(l.who+' · '+l.text);
     }
     if(done!==null)settle(done);else past();
@@ -941,8 +957,8 @@ function skeleton(){
   return {node:el('div','',[line,card]),see};
 }
 // Whether this request's events say Claude read the invoice, and that call's request id.
-const CLAUDE={on:false,req:null,slot:null};
-function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
+const CLAUDE={on:false,req:null,slot:null,model:''};
+function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;const mm=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(typeof f.model==='string'?f.model:'');if(mm)CLAUDE.model='Claude '+mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2]+(mm[3]?'.'+mm[3]:'');CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
 function chipFill(){if(!CLAUDE.on||!CLAUDE.slot||!CLAUDE.slot.isConnected||CLAUDE.slot.children.length)return;
   CLAUDE.slot.append(el('span','chip',[icon('sparkles',13),el('span','',C.work.claudeChip),CLAUDE.req?el('span','mono',CLAUDE.req):null]))}
 // The reason, big and first; the evidence side by side (a changed value marked); what the engine said when there is no
@@ -959,7 +975,7 @@ function whyNode(w,folded){
   return n;
 }
 function drawResult(box,r,ms){
-  const took=ms===null?null:el('p','meta',fill(C.work.took,{s:ms<50?'<0.1':secs(ms)}));
+  const took=ms===null?null:el('p','meta',fill(CLAUDE.model?C.work.tookBy:C.work.took,{s:ms<50?'<0.1':secs(ms),model:CLAUDE.model||''}));
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
@@ -1002,17 +1018,23 @@ function drawResult(box,r,ms){
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    box.append(el('p','big ok',C.work.ready),el('p','sub',C.work.readySub));
+    box.append(el('p','big ok',C.work.ready));
+    // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
+    const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
+    const ul=el('ul','checks',ran.map((k)=>el('li','ok',[icon('check',15),el('span','',C.workChecks[k])])));
+    if(inv.total)ul.append(el('li','next',[icon('arrow-right',15),el('span','',fill(C.work.signNeeded,{money:cash(inv.currency,inv.total)}))]));
+    if(ul.children.length)box.append(ul);
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
     main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
-    box.append(...(took?[took]:[]),card.node,main);chipFill();
+    // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
+    box.append(...(took?[took]:[]),card.node,el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
-  else box.append(el('p','note',typeof r.json.message==='string'&&r.json.message?r.json.message:C.work.failed));
+  else box.append(el('p','note',words(r.json,C.work.failed)));
   main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
   box.append(main);
 }
@@ -1038,7 +1060,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     pollDone();askClose('skeleton');live.settle(ms);
     if(S.screen!=='work')return;
     // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
-    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
+    if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
     result.replaceChildren();drawResult(result,r,ms);
     // Back from the next step returns to this answer, never files the invoice again.
     const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
@@ -1086,6 +1108,9 @@ function mainButton(){
   return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false;b.disabled=false},off(label){b.textContent=label;act=null;b.disabled=true}};
 }
 
+// The suppliers on file, read once (the approval's IBAN row).
+let SUPP=null;
+const suppliersOnFile=()=>(SUPP||(SUPP=api('GET','/v1/engine/suppliers').then((r)=>r.status===200&&Array.isArray(r.json.items)?r.json.items:[]).catch(()=>[]))).then((x)=>{if(!x.length)SUPP=null;return x});
 // The terms being prepared for an invoice (started from screen 2's answer), taken once by screen 3.
 const PREP=new Map();
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
@@ -1096,14 +1121,24 @@ function factRows(p,inv,terms){
   const m=payee?/^(.*), IBAN \S*?(\w{2,8})$/.exec(String(payee[1])):null;
   const pairs=[];
   if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
-  if(m)pairs.push([C.proposal.account,'…'+m[2]]);
+  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
+  // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four, its BIC and the invoice number. The terms sign the
+  // payee on file (beneficiary_id), its IBAN's last four and its BIC; the whole IBAN is that payee's, from the suppliers
+  // on file, shown once it matches by name and last four (until then, its last four).
+  const last4=T&&typeof T.iban_last4==='string'?T.iban_last4:m?m[2]:'';
+  let ibanDd=null;
+  if(last4){ibanDd=el('dd','mono','…'+last4);pairs.push([C.proposal.iban,ibanDd]);
+    const name=T&&T.beneficiary_name?String(T.beneficiary_name):m?m[1]:'';
+    suppliersOnFile().then((list)=>{const sup=list.find((x)=>x&&typeof x.iban==='string'&&x.name===name&&x.iban.replace(/\s/g,'').slice(-4)===last4);if(sup&&ibanDd)ibanDd.textContent=sup.iban.replace(/\s/g,'').replace(/(.{4})/g,'$1 ').trim()})}
+  if(T&&typeof T.bic==='string'&&T.bic)pairs.push([C.proposal.bic,T.bic]);
+  // The terms' invoice_no is the ledger's key, '<number> · <supplier>': the number alone here (the payee is its own row).
+  if(T&&typeof T.invoice_no==='string'&&T.invoice_no)pairs.push([C.proposal.invoiceNo,T.invoice_no.split(' · ')[0]]);
   if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
   // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
-  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
-  if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:String(cv.client_rate||'')})]);
+  if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:rateLine(cv)})]);
   if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
   if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
-  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
+  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),typeof v==='string'?el('dd','',v):v);
   return {amount,list:d};
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
@@ -1114,7 +1149,7 @@ function fxCard(note,terms){
   const live=note.source==='airwallex-sandbox';const d=el('dl','');
   const row=(k,v,cls)=>d.append(el('dt','',k),el('dd',cls||'',v));
   if(live)row(X.quote,String(cv.quote_id),'mono');
-  row(X.rate,String(cv.client_rate||''));
+  row(X.rate,rateLine(cv));
   row(X.amounts,fill(X.amountsLine,{buy:cash(cv.buy_currency,cv.buy_amount),sell:cash(cv.sell_currency,cv.sell_amount)}));
   const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.recorded),d]);
   if(live){
@@ -1122,6 +1157,7 @@ function fxCard(note,terms){
     const end=Date.parse(String(cv.valid_to||''));
     const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
     if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
+    if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
   }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
   box.setAttribute('data-awx',live?'live':'recorded');
@@ -1162,8 +1198,17 @@ function termsFold(p,terms){
       if(r.status===200&&r.json.terms&&typeof r.json.terms==='object')pre.textContent=JSON.stringify(r.json.terms,null,2);else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
   return f;
 }
+// 14 Nov (jury): an FX quote held for costing more than the limit over the market rate, from the engine's reason: the
+// hold first, the quote beside the market (the quote marked), the rule with the limit; null for any other reason.
+function fxHoldOf(why){
+  const m=/^The locked quote costs ([A-Z]{3}) ([\d,]+\.\d{2}), ([\d.]+)% above the market's current rate \(([A-Z]{3}) ([\d,]+\.\d{2})\)/.exec(String(why||''));
+  if(!m)return null;const F=C.fxHold;const q=m[1]+' '+m[2];
+  return {tone:'hold',code:'fx_markup',head:F.head,rows:[[F.quote,q+' · '+fill(F.over,{pct:m[3]}),q],[F.market,m[4]+' '+m[5],'']],said:'',rule:fill(F.rule,{limit:F.limitPct}),words:[why]};
+}
 // The receipt's skeleton while the terms are filed: the amount's and three rows' shapes, no value (nothing before its answer).
-function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<3;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));return d}
+// Six rows and the hash's pill, as the receipt has them, and the two lines and the fold under it: no jump when they come.
+function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<6;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));d.append(el('span','sk pill'));
+  return el('div','',[d,el('div','skl',[el('span','sk'),el('span','sk'),el('span','sk')])])}
 screen('approve',{heading:C.approve.heading,draw(box,arg){
   const A=C.approve;const inv=arg&&arg.invoice||null;
   const top=el('div','');const said=el('div','');said.setAttribute('role','status');
@@ -1196,7 +1241,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
     if(S.screen!=='approve')return;
-    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren();const why=words(r.json,A.failed),fxw=fxHoldOf(why);
+      if(fxw){top.replaceChildren(whyNode(fxw,[el('p','',why)]));main.set(C.fxHold.button,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+      top.replaceChildren(note(why));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
@@ -1205,7 +1252,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
     const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
+      el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,' ',el('span','mono sha',fill(A.signsSha,{sha:String(p.terms_sha256||'').slice(0,8)})),saves]));
     stage();
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
@@ -1263,11 +1310,12 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(r.status===200&&r.json.status==='approved'&&r.json.held===true){
       // Held: the approval is stored and nothing is paid (drawn from its answer); the signature is kept for screen 4,
       // and the pay call starts at once, in the same tap.
-      S.cred=signed;save();
+      // The signature is a step passed on its own, whatever the payment then does (review, 14 Nov).
+      S.cred=signed;S.passed=runKit.mark(S.passed,'sign');save();
       said.replaceChildren(el('p','big ok tick',[icon('circle-check',24),el('span','',A.approved)]));
       return pay(signed);
     }
-    if(r.status===200&&r.json.status==='approved'){S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
+    if(r.status===200&&r.json.status==='approved'){S.passed=runKit.mark(S.passed,'sign');S.settled=r.json.settled||null;save();show('books',{settled:S.settled});return}
     said.replaceChildren(note(words(r.json,A.failed)));
     if(r.json.status==='expired')main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});else stage();
   }
@@ -1307,7 +1355,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
 screen('pay',{heading:C.pay.heading,draw(box){
   const Y=C.pay;const pid=S.proposal&&S.proposal.id;
   const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
-  const main=mainButton();main.off(Y.button);
+  const main=mainButton();main.off(Y.button);main.node.classList.add('asking');
   const live=livePanel();
   // Back to screen 5, a quiet link (the payment is already made).
   const back=el('button','link',Y.back);back.type='button';back.addEventListener('click',()=>show('books',{settled:S.settled}));
@@ -1330,8 +1378,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
     // What to do first, then the fields, then the paid state as a quiet line (final-polish, 13 Nov).
     const intro=el('div','',[el('p','',Y.line)]);
-    top.replaceChildren(intro,form,el('p','hint',Y.already));reset();
-    main.set(Y.button,()=>send(intro));
+    // 14 Nov (judges): no "already paid" note here, which read like a duplicate check; the test is the signature's.
+    top.replaceChildren(intro,form);reset();
+    main.node.classList.remove('asking');main.set(Y.button,()=>send(intro));
   });
   async function send(intro){
     const v=values();
@@ -1362,7 +1411,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
-    if(o==='refused'){intro.hidden=true;const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
+    // The score's "one-cent change refused" only when the amount alone moved by one cent (review, 14 Nov).
+    if(o==='refused'){intro.hidden=true;if(runKit.oneCent(T.terms,sent)){S.passed=runKit.mark(S.passed,'refuse');save()}const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
     if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
@@ -1434,6 +1484,7 @@ const settledErr=(arg)=>{const s=arg&&arg.settled;return s&&typeof s.error==='st
 screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.heading,draw(box,arg){
   const B=C.books;const s=arg&&arg.settled&&typeof arg.settled==='object'?arg.settled:{};
   const pid=S.proposal&&S.proposal.id,invId=S.proposal&&S.proposal.invoice;
+  if(!settledErr(arg))FIN.p=api('GET','/v1/engine/invoices');
   const main=mainButton();
   const err=settledErr(arg);
   if(err){
@@ -1454,7 +1505,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // Purser Cloud's guest dashboard, which is a sample company and not this one, said so under the link (try-fixes,
   // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
-  const another=btn(B.another,true);another.addEventListener('click',()=>show('invoice'));
+  // 14 Nov (owner's judges): the one-cent test is the main step on, a primary button; another invoice beside it.
+  const another=btn(B.another,!pid);another.addEventListener('click',()=>show('invoice'));
   const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
@@ -1464,10 +1516,12 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
-  const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
+  const cheat=pid?btn(B.cheat,true):null;if(cheat){cheat.classList.add('cheat');cheat.addEventListener('click',()=>{
+    // At once, the ring and its words while the signed terms load (live QA: about 3 s with nothing to show).
+    cheat.disabled=true;cheat.classList.add('asking');cheat.textContent=C.pay.loading;show('pay')})}
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
-  const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
   const awxPaid=payoutCard(S.awx,sha);
   box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
   const drawn=[];
@@ -1542,19 +1596,26 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   Promise.allSettled(drawn).then(reveal);
 }});
 
+// The invoices as read with the paid screen, for the finish's figures (its paid time and amount), so they never arrive late.
+const FIN={p:null};
 // 6 Your company: the export as a file, start again, and the recorded real runs (links to the site's /runs, dated).
 screen('company',{heading:C.company.heading,draw(box){
   const Y=C.company;
   // 14 Nov (owner: "add a CTA, now it just ends"): a real finish. What the run did, from its own record; the three
   // steps; one primary way on (the real runs) and three quiet links; then the records; then Start again. No form.
-  const done=el('p','done',Y.donePlain);
-  api('GET','/v1/engine/invoices').then((r)=>{
-    if(S.screen!=='company'||r.status!==200||!Array.isArray(r.json.items))return;
+  // The line once its figures are in (live QA, 14 Nov): a shimmering placeholder until then; the plain line only when
+  // the figures cannot be read. The invoices were read when the paid screen was drawn (FIN), so it is usually at once.
+  const done=el('p','done',el('span','sk-line'));done.setAttribute('aria-busy','true');
+  const plain=()=>{if(done.getAttribute('aria-busy')){done.removeAttribute('aria-busy');done.textContent=Y.donePlain}};
+  const fin=FIN.p||api('GET','/v1/engine/invoices');FIN.p=null;
+  fin.then((r)=>{
+    if(S.screen!=='company')return;
+    if(r.status!==200||!Array.isArray(r.json.items)){plain();return}
     const paid=r.json.items.filter((i)=>i&&i.status==='paid'&&i.proposal);
     const want=S.proposal&&S.proposal.invoice;
     const inv=paid.find((i)=>i.id===want)||paid[paid.length-1];
     const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
-    if(inv&&isFinite(ms)&&ms>=0)done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)});
+    if(inv&&isFinite(ms)&&ms>=0){done.removeAttribute('aria-busy');done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)})}else plain();
   });
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
@@ -1574,7 +1635,7 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  box.append(done,did,el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
+  box.append(done,did,runScore(),el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
   // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
   // "more", never a form, and nothing collected on this page.
   async function download(asJson){
@@ -1601,6 +1662,8 @@ for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{headi
 
 // A reload returns to the screen the server's state calls for.
 async function boot(){
+  // Judges, 14 Nov: a skip link first in the tab order, to the screen's heading.
+  const skip=el('a','skip',C.invoice.skip);skip.href='#main';skip.addEventListener('click',(e)=>{e.preventDefault();const h=$('#main h1');if(h)h.focus()});document.body.prepend(skip);
   restore();
   if(!S.session){show('start');return}
   if(due()&&!(await renew()))return;
@@ -1618,6 +1681,7 @@ async function boot(){
   if(S.screen==='invoice'||S.screen==='start'){show('invoice');return}
   if(last)show('work',{kind:'reload',invoice:last});else show('invoice');
 }
+__TOUR__
 boot();
 `;
 
@@ -1634,28 +1698,30 @@ const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 /** What /try is, for a search engine or a link preview (final jury, 13 Nov: the page had no meta description). */
 export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read and check each invoice, and you approve what is above their limit with your passkey. Test money on a simulated bank, deleted after 24 hours.";
 
+/** The suite's count from its last full run (docs/assets/test-summary.json, written by npm run test-count), as words. */
+export const testsPassing = (): string => (SUITE as { passed: number }).passed.toLocaleString("en-US");
+
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, payoutCard: PAYOUT_CARD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
-    "external-link": ICONS["external-link"] };
+    "external-link": ICONS["external-link"], "shield-check": ICONS["shield-check"], ban: ICONS.ban, play: ICONS.play, "arrow-up-right": MORE["arrow-up-right"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
-    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
+    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}${extra ? extra.css : ""}</style></head><body>
+<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${extra ? extra.css : ""}</style></head><body>
 ${siteHeader("try")}
-<div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
-<p class="trust">${escAttr(START.trust)}</p>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}</script>
 </body></html>`;

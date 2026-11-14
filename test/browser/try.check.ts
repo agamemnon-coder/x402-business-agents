@@ -24,7 +24,7 @@ import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, PAYOUT_CARD, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -268,9 +268,11 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
   return ctx;
 }
 
-// Part 0: the start screen in its two zones (the illustration, the card, the trust line) at a phone and a laptop, light
-// and dark: both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP
-// error. Screenshots (the viewport) when a directory is given: try-start-<width>-<scheme>.png.
+// Part 0: the start screen (14 Nov, owner: enterprise-grade) at a phone and a laptop, light and dark: the eyebrow, the
+// headline, the three steps and the one-cent refusal, the button and the trailer link in view without scrolling, the
+// partners' logos loaded (the official files) with "No endorsement implied"; one column on a phone, the steps beside the
+// words on a laptop; nothing wider than the screen, the feather mark, no console or CSP error. Screenshots (the viewport)
+// when a directory is given: try-start-<width>-<scheme>.png.
 for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
   const page = await ctx.newPage();
@@ -280,39 +282,36 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   const tag = `start ${width}x${height} ${scheme}`;
   await page.goto(`${ORIGIN}/try`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(900);
   const box = (sel: string) => page.locator(sel).first().boundingBox();
-  const [hero, card, trust, main] = [await box(".hero"), await box("#main"), await box(".trust"), await box("#main .btn.primary")];
-  ok(!!hero && !!card && !!trust && !!main, `${tag}: the illustration, the card, its button and the trust line are shown`);
-  if (hero && card && trust && main) {
-    ok(main.y + main.height <= height && card.y >= 0 && card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card, its button and the trust line are in view without scrolling`);
-    if (width === 390) {
-      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
-      ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
-    } else {
-      // 12 Nov: the site's header (cloud/src/siteHeader.ts, 64 px and its border) runs across the top; the illustration
-      // takes the full height under it.
-      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y <= 66 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height under the site's header), the card right`);
-      const above = card.y, below = height - (trust.y + trust.height);
-      ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
-    }
+  const [h1, flow, main, trailer, partners] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners")];
+  ok(!!h1 && !!flow && !!main && !!trailer && !!partners, `${tag}: the headline, the steps, the button, the trailer link and the partners are shown`);
+  ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: three steps and the one-cent refusal`);
+  if (h1 && flow && main && trailer) {
+    ok(main.y + main.height <= height && trailer.y + trailer.height <= height, `${tag}: the button and the trailer link are in view without scrolling`);
+    if (width === 390) ok(flow.y > h1.y + h1.height - 1 && main.y > flow.y + flow.height - 1, `${tag}: a phone: one column, the headline, the steps, then the button`);
+    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
   }
+  const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
+  ok(JSON.stringify(logos) === JSON.stringify([["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
+  const ptext = (await page.textContent(".start .partners"))!;
+  ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
+  ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
-  ok(await page.getAttribute(".hero svg.scene", "aria-label") === "How Purser pays an invoice: an illustration", `${tag}: the illustration is named as one`);
-  if (shots) { await page.waitForTimeout(5800); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
+  if (shots) { await page.waitForTimeout(2600); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 }
 {
-  // With reduced motion the illustration stands still on its paid frame.
+  // With reduced motion the start stands still, the refusal in sight.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const page = await ctx.newPage();
   await page.goto(`${ORIGIN}/try`);
-  await page.waitForSelector(".scene");
-  const still = await page.evaluate(() => [...document.querySelectorAll(".scene *")].every((e) => getComputedStyle(e).animationName === "none")
-    && getComputedStyle(document.querySelector(".sc-paid")!).opacity === "1" && getComputedStyle(document.querySelector(".sc-refused")!).opacity === "0");
-  ok(still, "reduced motion: the illustration does not move, and shows its paid frame");
+  await page.waitForSelector(".start .flow");
+  const still = await page.evaluate(() => [...document.querySelectorAll(".start *")].every((e) => getComputedStyle(e).animationName === "none")
+    && getComputedStyle(document.querySelector(".start .fend")!).opacity === "1");
+  ok(still, "reduced motion: the start does not move, and shows the refusal");
   await ctx.close();
 }
 
@@ -336,7 +335,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   await page.click(`text=${START.button}`);
   await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
   const send = page.locator(`.btn.primary:has-text("${INVOICE.send}")`);
-  const off = await send.getAttribute("aria-disabled") === "true" && await page.locator(".samples .btn.skel").count() === 3 && await page.locator(".samples .btn:not(.skel)").count() === 0;
+  const off = await send.getAttribute("aria-disabled") === "true" && await page.locator(".samples .btn.skel").count() === 5 && await page.locator(".samples .btn:not(.skel)").count() === 0;
   ok(off, `H3: while the samples are held: screen 1 is drawn, the button is off and the cards a skeleton (${Date.now() - t0} ms after the click)`);
   order.push("tap");
   await send.click();
@@ -425,7 +424,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".band"))!.includes(BAND.line) && (await page.textContent(".band"))!.includes(BAND.claudeCode), `${tag}: the band says test company, test money, simulated bank, and Purser's code reads today`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag}: focus moved to the new heading`);
   await screenChecks(page, `${tag} screen 1 (samples)`, width);
-  ok(!(await page.isVisible(".hero")) && !(await page.isVisible(".trust")) && await page.locator(".prog li.on").count() === 1, `${tag}: after the start: no illustration, no trust line; the rail lights the current step`);
+  ok(!(await page.isVisible(".start .partners")) && await page.locator(".prog li.on").count() === 1 && /^\d+:\d\d$/.test((await page.textContent(".band .clock"))!.trim()), `${tag}: after the start: no partners row; the rail lights the current step, the run's clock in the band`);
+  ok(await page.getAttribute(".band a.same", "href") === `${PROOF_URL}#run-main-1`, `${tag}: "Same step, live" goes to the same step in a live run on /proof`);
   await shot("1-invoice");
   await design("1-invoice");
 
@@ -479,7 +479,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     // Chromium logs the refused request itself as a console error: that one, made here on purpose, is not the page's.
     const own = errors.findIndex((x) => /status of 400/.test(x));
     if (own >= 0) errors.splice(own, 1);
-    ok((await page.textContent(".hint.calm[role=status]"))!.includes("amount is in euros") && await page.locator(".note").count() === 0 && await page.inputValue("#f-amt") === "1000.00", `${tag}: a refused compose: its words calmly under the form, no red box, the form kept`);
+    ok(/amount is in euros/i.test((await page.textContent(".hint.calm[role=status]"))!) && await page.locator(".note").count() === 0 && await page.inputValue("#f-amt") === "1000.00", `${tag}: a refused compose: its words calmly under the form, no red box, the form kept`);
     // Filed as 1.850,00 (the engine's own limit is 5000.00, so 10k is read but not paid; the walk pays 1850.00).
     await page.fill("#f-amt", "1.850,00");
     await screenChecks(page, `${tag} screen 1 (write your own)`, width, 1, false);
@@ -493,6 +493,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });
   const result = (await page.textContent(".result")) ?? "";
   ok(result.includes(WORK.ready), `${tag}: the engine's answer says ready to pay`);
+  const checks = await page.locator(".result ul.checks li").allInnerTexts();
+  ok(checks.length === 4 && checks.slice(0, 3).join("|") === Object.values(WORK_CHECKS).join("|") && checks[3] === WORK.signNeeded.replace("{money}", "EUR 1,850.00"), `${tag}: under "Ready to pay", the checks that passed and who signs (${checks.join(" | ")})`);
   ok(/Answered in (<0\.1|\d+\.\d) s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
   await page.waitForTimeout(1500);
   ok(await page.locator(".live li").count() > 0, `${tag}: the engine's steps are in the live panel`);
@@ -513,6 +515,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.approve, `${tag}: the steps say Approve`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag} screen 3: focus on the heading`);
   ok((await page.textContent(".amount")) === "EUR 1,850.00", `${tag}: the amount, large, once (${await page.textContent(".amount")})`);
+  // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four (the payee on file the terms sign), its BIC and the
+  // invoice number, among the signed terms.
+  await page.waitForFunction(() => [...document.querySelectorAll(".receipt dl.read dd")].some((d) => /^DE89 3704 0044 0532 0130 00$/.test(d.textContent ?? "")), null, { timeout: 15_000 });
+  const rows = Object.fromEntries(await page.locator(".receipt dl.read dt").evaluateAll((dts) => dts.map((dt) => [dt.textContent, dt.nextElementSibling?.textContent])));
+  ok(rows.IBAN === "DE89 3704 0044 0532 0130 00" && rows.BIC === SUPPLIER.bic && /^[A-Z]+-[\d-]+$/.test(rows["Invoice number"] ?? ""), `${tag}: the terms show the payee's IBAN, BIC and invoice number (${JSON.stringify(rows)})`);
   const st = await keptState(page);
   const pid = (st.proposal as { id: string }).id;
   const L0 = (await ledgerOf(visitor.session, pid))!;
@@ -555,8 +562,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov: the Airwallex card: the quote the terms carry, its id and rate, and a countdown to its valid-to.
   const cv = (L0.terms as unknown as { conversion: { quote_id: string; client_rate: string } | null }).conversion;
   const awx = (await page.locator("section.awx").count()) ? await page.innerText("section.awx") : "";
-  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(cv.client_rate) && /\b1[45]:\d\d\b/.test(awx),
-    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate and the time left (${awx.replace(/\s+/g, " ").slice(0, 160)})`);
+  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(`1 EUR = ${cv.client_rate} USD`) && /\b1[45]:\d\d\b/.test(awx) && awx.includes(FX_CARD.validTo),
+    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate with its units, the time left and its valid-to (${awx.replace(/\s+/g, " ").slice(0, 160)})`);
   await shot2("3-approve");
   // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
   // 12 Nov (one tap): the held approval's answer is drawn, and the pay call starts by itself with the terms as signed and
@@ -648,8 +655,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
 
   // Screen 4, after paid (12 Nov, one tap): screen 5's quiet link opens the signed terms in three fields; one cent more is
   // refused with both layers, nothing drawn before the answer, and no transfer.
-  ok(await page.locator(`button.link.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: the quiet link "${BOOKS.cheat}", not a main button`);
-  await page.click(`button.link:has-text("${BOOKS.cheat}")`);
+  // 14 Nov (judges): the one-cent test is screen 5's main button; pressed, it shows its busy ring at once.
+  ok(await page.locator(`button.btn.primary.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: "${BOOKS.cheat}" is the main button`);
+  await page.click(`button.cheat:has-text("${BOOKS.cheat}")`);
   await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
   await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
   await screenChecks(page, `${tag} screen 4`, width);
@@ -813,6 +821,18 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await screenChecks(page, `${tag} screen 6 (after the download)`, width, 1, false);
   if (shots) await page.screenshot({ path: join(shots, `b3-6-company-${width}-${scheme}.png`), fullPage: true });
   ok(await page.locator("ul.did li").count() === 3 && await page.getAttribute("a.proofl", "href") === PROOF_URL, `${tag}: screen 6: what you just did in three icons, and the site's proof page`);
+  // 14 Nov (owner): the run's score on the finish: the time (the clock stopped), the steps passed (never a fraction), the
+  // one-cent change refused, and Share (copies the link here: no Web Share on a desktop pointer).
+  const tiles = await page.locator(".score .tile").allTextContents();
+  ok(tiles.length === 3 && /^\d+:\d\d/.test(tiles[0]!) && tiles[0]!.includes(RUN.time) && tiles[1] === `4${RUN.steps}` && tiles[2]!.includes(RUN.refused) && !tiles.join(" ").includes("/"), `${tag}: the score: time, steps passed, the one-cent change refused (${tiles.join(" | ")})`);
+  const t1 = (await page.textContent(".score .tile .v"))!;
+  await page.waitForTimeout(1200);
+  ok((await page.textContent(".score .tile .v")) === t1, `${tag}: the clock stopped at the finish (${t1})`);
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.click(".score .btn.share");
+  await page.waitForSelector(`.score .shared:text-is("${RUN.copied}")`);
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  ok(clip.endsWith(`${ORIGIN}/try`) && clip.includes(RUN.shareCent), `${tag}: Share copies the text and the link (${clip})`);
   await design("6-company", { full: true });
   // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
   const done6 = (await page.locator("p.done").textContent()) ?? "";
@@ -827,9 +847,51 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await ctx.close();
 }
 
+// Part 1b (14 Nov, owner): ?tour=1, a judge's guided visit. Only Next is pressed: each screen's tip names its control,
+// the control is lit, and Next presses it; on screen 4 Next changes the amount by one cent and the payment is refused;
+// then the finish with the score. A real engine and a virtual passkey, as in part 1.
+{
+  const ctx = await passkeyContext(390, "light");
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto(`${ORIGIN}/try?tour=1`);
+  await page.waitForSelector(".guide .gt");
+  ok((await page.textContent(".guide .gt")) === GUIDE.tips.start && await page.locator("#main .btn.primary.tour-hl").count() === 1, "tour: the start's tip, its button lit");
+  const seen: string[] = [];
+  for (let i = 0; i < 20; i++) {
+    // Each step as a judge takes it: wait for Next, read the tip, press Next, wait for the page to answer.
+    await page.waitForFunction(() => { const b = document.querySelector(".guide .gnext") as HTMLButtonElement | null; return !!b && ((!b.disabled && !b.hidden) || document.querySelector(".guide .gt")?.textContent !== "" && b.hidden); }, null, { timeout: 30_000 });
+    await page.waitForTimeout(400);
+    const tip = (await page.textContent(".guide .gt")) ?? "";
+    if (tip === GUIDE.tips.company) break;
+    if (!(await page.isEnabled(".guide .gnext"))) continue;
+    const key = Object.entries(GUIDE.tips).find(([, v]) => v === tip)?.[0] ?? tip;
+    if (seen[seen.length - 1] !== key) seen.push(key);
+    const before = await page.evaluate(() => `${document.querySelector(".guide .gt")?.textContent ?? ""}|${document.querySelector("#main .btn.primary")?.textContent ?? ""}`);
+    await page.click(".guide .gnext");
+    if (seen.length === 1) {
+      await page.waitForFunction(() => document.activeElement?.classList.contains("gnext"), null, { timeout: 30_000 });
+      ok(true, "tour: after Next, keyboard focus comes back to Next");
+    }
+    await page.waitForFunction((t) => `${document.querySelector(".guide .gt")?.textContent ?? ""}|${document.querySelector("#main .btn.primary")?.textContent ?? ""}` !== t, before, { timeout: 30_000 });
+  }
+  ok(seen.join(" ") === "start invoice work approve books pay refused", `tour: Next alone walks every step, the one-cent refusal included (${seen.join(", ")})`);
+  await page.waitForSelector(`h1:text-is("${COMPANY.heading}")`);
+  ok(await page.locator(".score.tour-hl").count() === 1 && (await page.locator(".score .tile").allTextContents()).some((t) => t.includes(RUN.refused)), "tour: the finish's score is lit, the one-cent change refused");
+  await page.click(".guide .gend");
+  ok(await page.locator(".guide").count() === 0 && await page.locator(".tour-hl").count() === 0, "tour: End tour removes the card and the light");
+  ok(errors.length === 0, `tour: no page error${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  if (shots) await page.screenshot({ path: join(shots, "try-tour-company-390.png") });
+  await ctx.close();
+}
+
 // Part 2: the poller, on Chromium's stand-in clock, with every /v1 answer stubbed in the page.
 const T0 = new Date("2026-11-12T12:00:00Z").getTime();
-interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number }
+interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null }
 async function poller(stubs: Stubs) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
@@ -857,6 +919,8 @@ Object.defineProperty(Document.prototype,'visibilityState',{configurable:true,ge
       await new Promise<void>((r) => { gate.release = r; });
       return fulfil(route, 200, { kind: "invoice", sha256: "0".repeat(64), invoice: { id: "AP-0001", status: "ready", status_words: "Ready to pay", payable: true, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", currency: "EUR", total: "1850.00", due_date: "2026-11-26", read_by: "parser", findings: [], doc_sha256: "0".repeat(64), proposal: null } });
     }
+    const o = stubs.other?.(what);
+    if (o) return fulfil(route, o.status, o.body);
     return fulfil(route, 404, { error: "no such stub" });
   });
   await page.goto(`${ORIGIN}/try`);
@@ -992,6 +1056,35 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await p.page.click(`button:has-text("${LIVE.allSteps}")`);
   ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
+  await p.ctx.close();
+}
+{
+  // Live, 14 Nov: a filing Purser refuses on Approve (409, a quote above the FX limit) says why in the receipt's place,
+  // its first letter capitalised, offers to file it again, and leaves no receipt skeleton shimmering.
+  const why = "the locked quote costs USD 413.38, 1.00% above the market's current rate (USD 409.30); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception";
+  const p = await poller({ events: () => ({ status: 200, body: { items: [], next: 0 } }), session: () => ({ status: 200, body: {} }),
+    other: (what) => what === "POST /v1/engine/invoices/AP-0001/pay" ? { status: 409, body: { error: why, code: "conflict" } } : what === "GET /v1/engine" ? { status: 200, body: { passkey: null } } : null });
+  p.release();
+  await settle(p.page);
+  await p.page.click(`text=${WORK.pay}`);
+  await p.page.waitForSelector(`button:has-text("${FX_HOLD.button}")`, { timeout: 10_000 });
+  const held = (await p.page.textContent(".screen.approve .why")) ?? "";
+  ok(await p.page.locator(".receipt.skel, .skl").count() === 0 && held.includes(FX_HOLD.head) && held.includes("USD 413.38 · 1.00% over") && held.includes("USD 409.30") && held.includes(FX_HOLD.rule.replace("{limit}", FX_HOLD.limitPct))
+    && (await p.page.locator(".screen.approve .why mark").textContent()) === "USD 413.38",
+    `Approve held for the FX quote (409): the hold first, the quote (marked) beside the market rate, the rule with the limit, Get a new quote, no skeleton (${held.slice(0, 60)})`);
+  // Any other refusal: the engine's sentence, capitalised, in the receipt's place, and File it again.
+  await p.ctx.close();
+}
+{
+  const why = "the invoice is held; a person looks at it first";
+  const p = await poller({ events: () => ({ status: 200, body: { items: [], next: 0 } }), session: () => ({ status: 200, body: {} }),
+    other: (what) => what === "POST /v1/engine/invoices/AP-0001/pay" ? { status: 409, body: { error: why, code: "conflict" } } : what === "GET /v1/engine" ? { status: 200, body: { passkey: null } } : null });
+  p.release();
+  await settle(p.page);
+  await p.page.click(`text=${WORK.pay}`);
+  await p.page.waitForSelector(`button:has-text("${APPROVE.fileAgain}")`, { timeout: 10_000 });
+  const shown = (await p.page.textContent(".screen.approve .note")) ?? "";
+  ok(await p.page.locator(".receipt.skel, .skl").count() === 0 && shown === why[0]!.toUpperCase() + why.slice(1), `Approve refused (409): the reason, capitalised, in the receipt's place, File it again, and no skeleton left (${shown.slice(0, 40)})`);
   await p.ctx.close();
 }
 
