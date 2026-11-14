@@ -234,6 +234,8 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
  */
 export const FACEID_SEPARATE_RUN = "In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).";
 export const METAL_CSS = `${MT_CSS}\n${VIZ_CSS}`;
+/** Under /alta's heading (partner scan, 14 Nov): what this page is for the jury. The award keeps the hackathon's name. */
+export const METAL_AWARD_LINE = "Purser's entry for the Metal Award.";
 
 /**
  * The page's one script: the live read replaces the recorded spend only when the chain answered, and only then shows
@@ -355,7 +357,7 @@ ${x?.revoked ? `<div class="one"><span class="big">${esc(`#${x.revoked.seq}`)}</
   }).join("")}</ul>
 <p class="mnote">${esc("*USDZ, test money.")}</p>
 <p class="mnote" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><b id="mlive">${esc(live ? `Spent: a recorded snapshot from ${day(live.recorded_on)} (block ${live.block}), not a live read.` : "Spent: as the main run recorded it.")}</b> <span id="mlive-why"></span></p>
-${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote"><span id="mlive-rec">${esc(`It answers with the recorded snapshot from ${day(live.recorded_on)} (block ${live.block}) until a live Alta testnet read is set up, and says so.`)}</span><span id="mlive-how" hidden>${esc(`Read live: one read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only.`)}</span> ${esc(`With your own Alta testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
+${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote"><span id="mlive-rec">${esc(`It reads Alta testnet live when the chain answers: one cached read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only. When the chain does not answer, it returns the recorded snapshot from ${day(live.recorded_on)} (block ${live.block}), and its source field says which.`)}</span><span id="mlive-how" hidden>${esc(`Read live: one read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only.`)}</span> ${esc(`With your own Alta testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
 <details class="fold" id="mandates"><summary>${esc("Details: every mandate")}</summary><section class="mt" aria-labelledby="mt-h"><h2 id="mt-h">${esc("Each mandate, its cap and its spend")}</h2>
 <table class="mtab"><thead><tr><th scope="col">Agent</th><th scope="col">Cap a payment</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Payee</th><th scope="col">Expires</th><th scope="col">Revoked</th></tr></thead><tbody>
 ${rows.map((m) => {
@@ -389,6 +391,7 @@ ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.bloc
 
   return `<main class="pp mtp"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label)}</span><h1>${esc("A limit the agent cannot talk past")}</h1></div>
+  <p class="mnote">${esc(METAL_AWARD_LINE)}</p>
   ${hero}
   <div class="mcharts">${budgetChart}${payChart}${moment}</div>
   ${cards}

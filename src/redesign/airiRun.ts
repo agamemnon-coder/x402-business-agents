@@ -46,7 +46,7 @@ export const AIRI_NO_CLAUDE = AIRI_SCRIPTED.replace(/^scripted, /, "");
  * What was paid and how, after who asked (airiSummaryLine). Within the limit "with no Purser approval" (12 Nov; it read
  * "without the CFO", but the person who was the CFO still confirmed it in Airi, as the cardholder).
  */
-export const AIRI_SUMMARY = "paid with a Visa (VIC) credential from Airi that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+export const AIRI_SUMMARY = "paid with an Airi credential (test card) that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 /** The Claude request ids of the rail choices in a record: one per purchase asked for inside an agent's Claude call that returned an id. */
 export const airiClaudeChoices = (rec: AiriRunRecord): string[] => rec.purchases.flatMap((p) => (p.rail_choice?.by === "claude" && p.rail_choice.request_id ? [p.rail_choice.request_id] : []));
 

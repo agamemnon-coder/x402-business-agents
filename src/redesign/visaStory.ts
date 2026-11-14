@@ -1,6 +1,6 @@
 // /visa as one story, top to bottom (Visa judge, 14 Nov: "the VIC claim feels weak; TAP is hidden; 'Purser refused
 // reuse, Airi didn't' is buried"). Five sections under the heading, each claim beside its record:
-//   1. what Visa Intelligent Commerce asks for, in Visa's own words (developer.visa.com, read 14 Nov 2026;
+//   1. what Visa Intelligent Commerce asks for, paraphrased with a link to each Visa page (read 14 Nov 2026;
 //      docs/plans/visa-1114.md);
 //   2. how Purser meets each one in our runs, or "not done yet", with the record;
 //   3. the three Visa runs, counted from their records;
@@ -9,7 +9,7 @@
 // Every count, code, amount and id is read from the records; Visa's terms are used only where a record matches them.
 
 import { existsSync, readFileSync } from "node:fs";
-import { VISA_TAP_STATUS } from "../config/brand.js";
+import { AIRI_CREDENTIAL, VISA_TAP_STATUS } from "../config/brand.js";
 import { airiRun, AIRI_RUN_FILE } from "./airiRun.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { tapRun } from "./run.js";
@@ -31,14 +31,14 @@ const VIC_START = "https://developer.visa.com/capabilities/visa-intelligent-comm
 const VIC_FLOWS = "https://developer.visa.com/docs/visa-intelligent-commerce/workflows";
 
 /**
- * What Visa Intelligent Commerce asks for, four areas in Visa's own terms, each with the page it is read from. The
- * words in quotes are Visa's (docs/plans/visa-1114.md keeps the source table).
+ * What Visa Intelligent Commerce asks for, four areas in our own words, each linked to the Visa page it paraphrases
+ * (partner scan, 14 Nov: a paraphrase with the link, no verbatim quotes; docs/plans/visa-1114.md keeps the source table).
  */
 export const VISA_ASKS: readonly { key: string; area: string; terms: string; href: string }[] = [
-  { key: "identity", area: "Agent identity", terms: "a registered agent whose \"agent signatures\" Visa validates", href: VIC_START },
-  { key: "credential", area: "Payment credential", terms: "an \"agentic token\" in place of the card number, its cryptogram \"one-time use\"", href: VIC_CONCEPTS },
-  { key: "auth", area: "Consumer authentication", terms: "\"Visa Payment Passkeys\" bound to the consumer's device", href: VIC_START },
-  { key: "intent", area: "Intent, consent and limits", terms: "the consumer's \"instruction\" and its mandates: the agent buys only \"within the set instruction parameters\"", href: VIC_FLOWS },
+  { key: "identity", area: "Agent identity", terms: "the agent is registered with Visa, and Visa checks its signatures", href: VIC_START },
+  { key: "credential", area: "Payment credential", terms: "a Visa token stands in for the card number, with a cryptogram that is used once", href: VIC_CONCEPTS },
+  { key: "auth", area: "Consumer authentication", terms: "a Visa passkey on the consumer's own device", href: VIC_START },
+  { key: "intent", area: "Intent, consent and limits", terms: "the consumer's instruction sets the limits, and the agent buys only within them", href: VIC_FLOWS },
 ];
 
 type Rec = Vic3Record & { audit?: { seq: number; event: string; payload?: { values?: Record<string, string> } }[] };
@@ -69,7 +69,7 @@ export function visaStoryFacts() {
 
 /** 1. What Visa Intelligent Commerce asks for. */
 export function visaAsksHtml(): string {
-  const items = VISA_ASKS.map((a) => `<li><b>${esc(a.area)}:</b> ${esc(a.terms)}. <a class="pf" href="${esc(a.href)}" target="_blank" rel="noopener">${esc("Visa")} ↗</a></li>`).join("");
+  const items = VISA_ASKS.map((a) => `<li><b>${esc(a.area)}:</b> ${esc(a.terms)}. <a class="pf" href="${esc(a.href)}" target="_blank" rel="noopener">${esc("Visa's page")} ↗</a></li>`).join("");
   return `<section class="card vs" id="${VISA_ASKS_ID}"><h2>${esc("What Visa Intelligent Commerce asks for")}</h2>
 <ol class="vs-asks">${items}</ol>
 <p class="vh-src">${esc("Visa's developer pages, read 14 Nov 2026:")} ${recLink(VISA_PLAN_FILE, "the source table")}</p></section>`;
@@ -90,7 +90,7 @@ export function visaMeetsHtml(): string {
     },
     {
       key: "credential", ok: reuseNow.length === 2,
-      text: `Bound to one purchase by Purser: another amount, ${reuseNow.find((x) => x.step === "F1")?.now?.outcome?.code ?? "not refused"}; a second use, ${reuseNow.find((x) => x.step === "F2")?.now?.outcome?.code ?? "not refused"}; before any Airwallex call. Airi's credential, not a Visa agentic token.`,
+      text: `Bound to one purchase by Purser: another amount, ${reuseNow.find((x) => x.step === "F1")?.now?.outcome?.code ?? "not refused"}; a second use, ${reuseNow.find((x) => x.step === "F2")?.now?.outcome?.code ?? "not refused"}; before any Airwallex call. The ${AIRI_CREDENTIAL}, not a Visa agentic token.`,
       recs: `${recLink(v4)}${reuseThen.length ? ` ${recLink(md(v3))}` : ""}`,
     },
     {
@@ -157,7 +157,7 @@ export function visaTapSectionHtml(id: string, more = ""): string {
 
 /** 5. What is not proven yet: short, honest. */
 export const VISA_NOT_YET: readonly string[] = [
-  "A Visa-provisioned agentic token or cryptogram: the runs use Airi's credential in the Airwallex sandbox.",
+  `A Visa-provisioned agentic token or cryptogram: the runs use the ${AIRI_CREDENTIAL} in the Airwallex sandbox.`,
   "A real card or real money: Airi's test card, test money only.",
   "Registration with Visa as an agent, or a Visa Payment Passkey: the passkey is the CFO's, in Purser.",
   "Signals to Visa: outcomes go to Airi and to our records.",

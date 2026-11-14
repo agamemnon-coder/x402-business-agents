@@ -13,9 +13,10 @@
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
 // for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
+import { quotedNote } from "../ui/formerly.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
-import { SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
+import { AIRI_CREDENTIAL, SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
@@ -196,13 +197,14 @@ export function visaLabels(run: AgentRun, tap: NonNullable<ReturnType<typeof tap
 }
 
 /** /visa's title and its large heading (jury panel, 12 Nov): the Airi run by its name. */
-export const VISA_TITLE = "Visa Intelligent Commerce via Airi";
+/** Partner scan, 14 Nov: the full name of what Purser used, and that it is the sandbox. */
+export const VISA_TITLE = "Visa Intelligent Commerce via Airwallex Airi (sandbox)";
 export const VISA_H1 = VISA_TITLE;
 /**
  * The story in one line, right under the heading, true of the run's three purchases: Purser's policy came before any
  * request to Airi (within the limit it passed; above it the CFO signed first; the disallowed merchant got no credential).
  */
-export const VISA_LEAD = "First the CFO's limit, then a Visa credential Purser binds to one purchase.";
+export const VISA_LEAD = `First the CFO's limit, then an ${AIRI_CREDENTIAL} Purser binds to one purchase.`;
 /**
  * Which runs are the entry, and for which award. No dated quote from Visa is on record (docs/evidence/README.md,
  * 7 November: "as reported by the owner"), and the poster's role is not on record either, so since the jury check of
@@ -243,7 +245,7 @@ const TAP_WORDS = /\bTAP\b|Trusted Agent Protocol/;
  */
 export function assertVicFirst(html: string): void {
   const fail = (why: string): never => { throw new Error(`/visa must be one Visa Intelligent Commerce story, with TAP openly outside the entry: ${why}`); };
-  if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(pageTitle(VISA_TITLE))) fail("the title does not name Visa Intelligent Commerce via Airi");
+  if (/<title>([^<]*)<\/title>/.exec(html)?.[1] !== esc(pageTitle(VISA_TITLE))) fail("the title does not name Visa Intelligent Commerce via Airwallex Airi");
   const main = /<main[\s\S]*<\/main>/.exec(html)?.[0] ?? fail("no <main>");
   if (/<h[1-6]\b[^>]*>[\s\S]*?<\/h[1-6]>/.exec(main)?.[0] !== `<h1>${esc(VISA_H1)}</h1>`) fail("the page's first heading is not the VIC heading");
   const tapOpen = `<section class="card vs vs-tap" id="${VISA_TAP_ID}">`;
@@ -357,7 +359,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     builtOn: builtOnHtml(run, false),
     title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
-    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, a Visa credential for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
+    description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
     real: [`Visa Intelligent Commerce via Airwallex's Airi (${dayShort(rec.started_at)}), ${asker.short}: ${rec.label}. The merchant is our own Airwallex sandbox account, ${rec.checkout.merchant}.`],
     source: `Source: ${AIRI_RUN_FILE} (the Airi run), ${vic3 ? `${VIC3_RUN_FILE} (the latest live run), ` : ""}and ${VIC2_RUN_FILE} (the control test).`,
@@ -411,7 +413,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     folds: sweepFold(ev, used) + failureFold(ev)
       // All the decisions the headline counts (final review, 4 Nov: the chat's 21 of 24), cut at a word, never inside a number.
-      + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))
+      + fold("Every decision, with its Claude call", decisionsOf(run.record).map((d) => `<li class="ok">${esc(`${d.agent[0]!.toUpperCase()}${d.agent.slice(1)}, ${d.at.slice(11, 16)} UTC: ${d.text.length > 140 ? `${d.text.slice(0, 140).replace(/\s+\S*$/, "")}…` : d.text}${quotedNote(d.text, d.at)}`)}${d.call ? `<br><span class="call" title="${esc(d.call.requestIds.join(", "))}">${esc(callBadge(d.call))}</span>` : ""}</li>`))
       + fold("Payments decided by Claude, with their request ids", requests.map((f) => `<li>${esc(`${f.what}: ${f.amount} ${f.unit === "EUR" ? "EUR" : "test USD"} · ${f.decided} · ${f.request}`)}</li>`))
       + mcpFold(ev),
   });

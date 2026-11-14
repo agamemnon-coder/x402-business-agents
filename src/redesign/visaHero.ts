@@ -4,6 +4,7 @@
 // (docs/runs/2026-11-13-vic-4.json via vic3Run); the words for a code are labels, not figures. No check count anywhere.
 // Inline SVG and HTML only, no script: the page's CSP hashes stay as they are. Its CSS is this page's own (VISA_HERO_CSS).
 
+import { AIRI_CREDENTIAL } from "../config/brand.js";
 import { HEADLESS_LINE } from "./vicFacts.js";
 import type { Vic3Purchase, Vic3Record } from "./vic3Run.js";
 import { countOf, esc } from "./ui.js";
@@ -80,7 +81,7 @@ export function visaFlowHtml(r: Vic3Record): string {
   const refused = by((p) => outcomeOf(p) === "refused");
   const tail = (paid: Vic3Purchase[], tapStop: Vic3Purchase[]) => [
     { name: "Confirmed in Airi", at: tapStop },
-    { name: "Visa credential", at: [] },
+    { name: AIRI_CREDENTIAL, at: [] },
     { name: "Airwallex PaymentIntent", at: [] },
     { name: "Paid", at: paid },
   ];

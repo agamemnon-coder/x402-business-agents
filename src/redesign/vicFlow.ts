@@ -11,6 +11,7 @@
 // when the record is a live run's but a fact a step needs is missing, vicFlow throws, so the page build fails instead
 // of drawing a step without its value. Without a live record there is nothing to draw (as the block).
 
+import { AIRI_CREDENTIAL } from "../config/brand.js";
 import { AIRI_NO_CLAUDE, AIRI_RUN_FILE, VIC_FLOW_ANCHOR, airiRun, type AiriPurchase, type AiriRunRecord } from "./airiRun.js";
 import { esc } from "./ui.js";
 
@@ -78,7 +79,7 @@ export function vicFlow(rec: AiriRunRecord): VicFlow {
       { owner: "purser", title: "Purser's policy", what: `Limit ${b.currency} ${limit}, allowed merchants; above it, the CFO's Face ID on the exact terms`, value: `${need(b, "proposal_id")} · terms ${short(need(b, "terms_sha256"))}` },
       { owner: "airi", title: "Airi mandate", what: "Amount, merchant and items, for this one purchase", value: need(b, "mandate_id") },
       { owner: "airi", title: "Cardholder confirms", what: "Passkey in Airi", value: "Once" },
-      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: "Visa credential (VIC)", what: "From Airwallex's Airi wallet; Purser binds it to this purchase", value: `Airi's receipt: ${need(b, "credential_type")} · test card` },
+      { owner: "airi", who: VIC_CREDENTIAL_WHO, title: AIRI_CREDENTIAL, what: "From Airwallex's Airi wallet; Purser binds it to this purchase", value: `Airi's receipt: ${need(b, "credential_type")} · test card` },
       { owner: "airwallex", title: "Airwallex hosted checkout", what: "Our own sandbox merchant", value: need(b, "payment_intent_id") },
       { owner: "purser", title: "Result read back", what: "Reported to Airi", value: outcome, ...(outcome === "SUCCEEDED" ? { tone: "ok" as const } : {}) },
     ],

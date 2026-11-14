@@ -105,7 +105,7 @@ describe("/visa: one summary of the paid run", () => {
     const html = visaPage(), paid = airiCard(airiRun()!)!;
     const overview = /<section class="card vo"[\s\S]*?<\/section>/.exec(html)![0];
     expect(visaOverviewHeading([paid])).toBe(VISA_SUMMARY_HEADING);
-    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Visa credential for one purchase EUR 45\.00 paid after the CFO's Face ID/);
+    expect(text(overview)).toMatch(/^The paid run VIC via Airi · 7 Nov · scripted, no Claude call Airi credential \(test card\), for one purchase EUR 45\.00 paid after the CFO's Face ID/);
     expect([...overview.matchAll(/<a class="vo-run" href="#([^"]+)"/g)].map((m) => m[1]!)).toEqual(["airi-run"]);
     expect(html.indexOf(`id="${VISA_OVERVIEW_ID}"`)).toBeLessThan(html.indexOf('id="airi-run"'));
     expect(overview).not.toMatch(TAP);
@@ -135,11 +135,12 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
   it("names Visa Intelligent Commerce via Airi in its title and first heading, then the story in one line and the drawing from the record", () => {
     // #216 (12 Nov): every <title> reads "Purser · <Page>".
     expect(/<title>([^<]*)<\/title>/.exec(html)![1]).toBe(`Purser · ${VISA_TITLE}`);
-    expect(VISA_TITLE).toBe("Visa Intelligent Commerce via Airi");
+    // Partner scan, 14 Nov: the full name, and that it is the sandbox.
+    expect(VISA_TITLE).toBe("Visa Intelligent Commerce via Airwallex Airi (sandbox)");
     // One h1, the first heading of the page.
     expect(html.match(/<h1\b/g)).toHaveLength(1);
     expect(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/.exec(main)![0]).toBe(`<h1>${esc(VISA_H1)}</h1>`);
-    expect(VISA_H1).toMatch(/Visa Intelligent Commerce via Airi/);
+    expect(VISA_H1).toMatch(/Visa Intelligent Commerce via Airwallex Airi \(sandbox\)/);
     expect(`${VISA_H1} ${VISA_LEAD}`).not.toMatch(/TAP|sign/i);
     // The label beside it is the Airi run's, from its record: its date and "Airwallex sandbox · test card · test money".
     expect(visaRunLabel(airiRun()!)).toBe(`7 Nov · ${String(rec.label).split(", ").join(" · ")}`);
@@ -228,7 +229,9 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     expect(VISA_TAP_HEADING).toBe("Outside the entry: Visa TAP");
     expect(/<h2>([^<]*)<\/h2>/.exec(section)![1]).toBe(VISA_TAP_HEADING);
     expect(text(section).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)).toBe(true);
-    expect(VISA_TAP_STATUS).toContain("not eligible Visa tooling for this hackathon (Visa, 5 Nov)");
+    // Partner scan, 14 Nov: plainly outside the entry, no "(Visa, 5 Nov)".
+    expect(VISA_TAP_STATUS).toContain("not part of this entry");
+    expect(VISA_TAP_STATUS).not.toMatch(/not eligible|Visa, 5 Nov/);
     expect(text(section)).toMatch(/commit 16d59bd/);
     // What it does not prove, said in the section itself.
     expect(text(section)).toMatch(/self-hosted, with a test key; not Visa's directory/);

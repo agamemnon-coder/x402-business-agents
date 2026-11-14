@@ -41,7 +41,7 @@ export interface InspectorAnswer {
    */
   says: string;
   reason: string | null;
-  network: "Metal testnet";
+  network: "Alta testnet";
   account: string;
   block: number;
   read_at: string;
@@ -205,7 +205,7 @@ export class MetalInspector {
   private recordedAnswer(reason: string, now: Date): InspectorAnswer {
     const rec = this.opts.recorded!;
     return {
-      source: "recorded", says: recordedSays(rec.recorded_on, rec.block, reason), reason, network: "Metal testnet", account: rec.account, block: rec.block, read_at: rec.read_at, recorded_on: rec.recorded_on,
+      source: "recorded", says: recordedSays(rec.recorded_on, rec.block, reason), reason, network: "Alta testnet", account: rec.account, block: rec.block, read_at: rec.read_at, recorded_on: rec.recorded_on,
       mandates: rec.mandates, cache_seconds: this.ttl, calls_today: this.callsToday(now), ceiling: this.ceiling, check: this.check(rec, `0x${rec.block.toString(16)}`),
     };
   }
@@ -222,7 +222,7 @@ export class MetalInspector {
         mandates.push({ agent: m.agent, ref: m.ref, bound: d.principal.toLowerCase() === rec.account.toLowerCase(), revoked: d.revoked, spent: amountOf(d.spent), payments: Number(d.occurrences), bound_block: Number(d.boundBlock) });
       }
       answer = {
-        source: "chain", says: liveSays(started.toISOString(), Number(BigInt(blockHex))), reason: null, network: "Metal testnet", account: rec.account, block: Number(BigInt(blockHex)), read_at: started.toISOString(),
+        source: "chain", says: liveSays(started.toISOString(), Number(BigInt(blockHex))), reason: null, network: "Alta testnet", account: rec.account, block: Number(BigInt(blockHex)), read_at: started.toISOString(),
         mandates, cache_seconds: this.ttl, calls_today: 0, ceiling: this.ceiling, check: this.check(rec, blockHex.toLowerCase()),
       };
     } catch (e) {

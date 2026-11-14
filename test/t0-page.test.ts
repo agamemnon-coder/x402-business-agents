@@ -100,24 +100,27 @@ describe("/t0", () => {
     expect(text(main)).toContain("Net debit per account; credits show as minus. Sandbox test money.");
   });
 
-  it("shows T:0's balance sheet, its sum checked by code, and the owner funding explained when it matches", () => {
+  it("checks T:0's balance sheet in code and keeps the shared entity's totals off the page", () => {
     const j = t0Journal(journalMd)!;
     expect(balances(j.statements!)).toBe(true);
     expect(balances({ ...j.statements!, equity: "1.00" })).toBe(false);
     expect(ownerFunding(j)).toBe(true);
-    const t = text(/<details class="fold t0bs">[\s\S]*?<\/details>/.exec(main)![0]);
-    expect(t).toContain("Assets 26,447,805.98 = liabilities 3,807,739.87 + equity 22,640,066.11 USD");
-    expect(t).toContain("Shared entity: these totals include other teams.");
-    expect(t).toContain("Financing, 21,140,636.23 USD, is only our owner funding.");
+    // Partner scan, 14 Nov: the shared entity's totals (other teams' entries included) are not on the page; the code
+    // still checks them against the record, and the page shows only Purser's own lines.
+    expect(main).not.toContain('class="fold t0bs"');
+    expect(text(main)).not.toMatch(/26,447,805\.98|Shared entity|other teams/);
   });
 
   it("keeps the history and what is not done folded, and says what T:0 is", () => {
     const t = text(main);
-    for (const line of ["10 Nov: the platform run booked 2 entries.", "3 Nov: refused, 403: the shared key could read, not post.", "5 Nov: refused, 401: the new key was not accepted.",
+    // Partner scan, 14 Nov: the 403/401 history stays in the run records, not on the page; "Not done" reads "Next steps".
+    expect(t).not.toMatch(/refused, 40[13]/);
+    expect(main).toContain("<summary>Next steps</summary>");
+    for (const line of ["10 Nov: the platform run booked 2 entries.",
       "Accounts are made in T:0's app; its API cannot create them.", "One rate per currency, given by us; no daily rate source yet.", "A supplier bill on T:0's payables account needs a T:0 vendor (refused, 400).",
       "A second push posted 0 and skipped 95: re-running is safe."]) expect(t).toContain(line);
     const history = /<details class="fold"><summary>How it got there<\/summary>[\s\S]*?<\/details>/.exec(main)![0];
-    expect(text(history)).toContain("3 Nov: refused, 403");
+    expect(text(history)).toContain("10 Nov: all 95 entries posted");
     expect(t).toContain("T:0 is an outside ledger.");
     // Every record it links is in the repository.
     for (const href of [...main.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => h.startsWith(REPO_BLOB))) {

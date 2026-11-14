@@ -311,7 +311,8 @@ describe("the redesigned public pages", () => {
 
   it("TAP's status is Max's wording (5 Nov), said once, on /visa; Home says nothing about Visa (12 Nov); the Visa Award only in the Kit line and /visa's entry line, never on TAP", () => {
     const pages = buildPages() as unknown as Record<string, unknown>;
-    expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).");
+    // Partner scan, 14 Nov: plainly outside the entry, without "(Visa, 5 Nov)" or "not eligible Visa tooling".
+    expect(VISA_TAP_STATUS).toBe("Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.");
     // Said once: on /visa, inside its closed TAP fold; Home and Proof say nothing of it (their footer link went on 12 Nov).
     for (const name of ["home", "proof", "visa"]) {
       const html = name === "home" ? homePage() : name === "proof" ? proofPage() : String(pages.visa);
