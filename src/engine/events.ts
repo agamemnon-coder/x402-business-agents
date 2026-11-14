@@ -59,10 +59,11 @@ export function masked(v: unknown, max: number): string | undefined {
   const space = cut.search(/\s\S*$/);
   return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s.,;:]+$/, "")}…`;
 }
-/** The first sentence of a text, masked, at most `max` characters. */
+/** The first sentence of a text, masked, at most `max` characters. A dot after a capital ("B.V. is", "GmbH. ") never ends it
+ * (round 4, 14 Nov: a reason was cut at "B.V."); a sentence that runs on is cut at a word, with "…". */
 const firstSentence = (v: unknown, max: number): string | undefined => {
   const m = masked(v, 10_000);
-  return m === undefined ? undefined : masked(m.split(/(?<=[.!?])\s/)[0], max);
+  return m === undefined ? undefined : masked(m.split(/(?<=[a-z0-9%)"'”][.!?])\s+(?=[A-Z0-9"“(])/)[0], max);
 };
 /** The last of a run's request ids (the call that gave the answer): an Anthropic request id, nothing else. */
 const lastRequest = (v: unknown): string | undefined => {

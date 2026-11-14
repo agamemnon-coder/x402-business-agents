@@ -555,6 +555,12 @@ export const OVER_BUDGET: Record<string, number> = { "start 0": 65, "start 1": 6
  */
 export const LIVE = {
   allSteps: "All steps",
+  /**
+   * Round 4 (14 Nov): a Claude call's row once its answer is in (the next row says what came of it), and, when Purser
+   * had answered before any answer to that call came back, that fact in place of "asking…" (nothing keeps counting).
+   */
+  asked: "asked.",
+  noAnswer: "asked; no answer had come back when Purser answered.",
   /** A row's time: seconds since the request started, as the browser measured it when the row arrived. */
   at: "+{s} s",
   reader: "Reader",
@@ -590,6 +596,18 @@ export const LIVE = {
   } as Record<string, string>,
   ownWords: "its own words",
   enforced: "Purser's code enforced: {enforced}",
+  /** Round 4 (14 Nov): code's outcome differs from what the agent decided. */
+  overrode: "Purser's code overrode it: {enforced}",
+  /**
+   * Why Claude was not asked for a step (claude.capped's reason, src/engine/budget.ts CappedReason), in words: the
+   * fallback says plainly that Purser's code decided, and why (round 4: "because today's live budget is used").
+   */
+  caps: {
+    pool_day_cap: "today's live budget for Claude is used", company_cap: "this test company's live budget for Claude is used",
+    address_cap: "today's live budget for Claude from this address is used", all_time_cap: "the live budget for Claude is used",
+    action_budget: "this step's live budget for Claude is used", switch_off: "live Claude is switched off", no_key: "live Claude is not set up",
+    busy: "Claude is busy",
+  } as Record<string, string>,
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
     blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
@@ -622,6 +640,7 @@ export const LIVE = {
     "claude.fallback": "Read by Purser's code. No model answer was used.",
     "claude.rejected": "Its answer did not pass Purser's check and was not used.",
     "claude.asking": "asking…",
+    "claude.capped_why": "Claude was not asked: {cap}. Purser's code read and decided.",
     "claude.capped": "Claude was not asked for this step. Purser's code read and decided.",
     "agent.tool": "Asked Purser's code a question and got its answer.",
     "agent.said": "Its own words, not checked yet.",

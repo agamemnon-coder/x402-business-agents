@@ -128,7 +128,7 @@ describe("the payables agents in the cloud engine (task A6)", () => {
     // The /try "At work" panel: the agent's own step, its reason, then what Purser's code enforced.
     const line = eventLine(check!);
     expect(line.who).toBe("Checker agent · Claude Haiku 5.5");
-    expect(line.text).toMatch(/^Decided: pay, because Bergtex is on file.*Purser's code enforced: ask the CFO; the agent may pay no invoice alone/);
+    expect(line.text).toMatch(/^Decided: pay, because Bergtex is on file.*Purser's code overrode it: ask the CFO; in this company, agents pay no invoice alone: the CFO decides every one/);
     const [coded] = decided(db, "ap.coded");
     expect(eventLine(coded!).who).toBe("Coder agent · Claude Haiku 5.5");
     expect(coded!.fields).toMatchObject({ source: "claude", model: "claude-haiku-5-5", account: "6200" });

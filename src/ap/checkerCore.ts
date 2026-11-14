@@ -393,7 +393,7 @@ export const money = (currency: string, amount: string) => (amount ? (currency ?
  */
 export function limitRule(limit: { currency: string; amount: string } | null, currency: string, amount: string): { rule: LimitRule | null; why: string } {
   const most = limit ? cents(limit.amount) : null;
-  if (!limit || most === null) return { rule: "no_alone_limit", why: "the agent may pay no invoice alone, so the CFO decides" };
+  if (!limit || most === null) return { rule: "no_alone_limit", why: "in this company, agents pay no invoice alone: the CFO decides every one" };
   const total = cents(amount);
   if (total === null) return { rule: "amount_unreadable", why: "the invoice's total is not a plain amount, so the CFO decides" };
   if (!currency || currency !== limit.currency) {

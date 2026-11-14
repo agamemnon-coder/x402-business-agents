@@ -77,10 +77,12 @@ const eventLineOf=(W)=>{
     const abroad=!code(f.vat_code)&&code(f.books_vat_code)==='PF_DE19';
     // Otherwise VAT left without a code at a rate no Dutch code has: its rate, said plainly (code names no country).
     const pct=!code(f.vat_code)&&!abroad?num(f.uncoded_vat_pct):'';const open=pct&&pct!=='21'&&pct!=='9'?pct:'';
-    const said=(v)=>typeof v==='string'&&v.length<=200?v.replace(/[.\s]+$/,''):'';
+    // Its last full stop goes (the line adds its own), unless it ends an abbreviation such as "B.V." (round 4, 14 Nov).
+    const said=(v)=>typeof v==='string'&&v.length<=200?(/(?:\b[A-Z]\.){2,}\s*$/.test(v)?v.replace(/\s+$/,''):v.replace(/[.\s]+$/,'')):'';
+    const one=(s)=>s.replace(/((?:\b[A-Z]\.){2,})\./g,'$1');
     const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
       action:said2(W.actions,f.action),outcome:said2(W.actions,f.outcome),reason:said(f.reason),enforced:said(f.enforced)||said(f.refused)||(abroad?W.booksVat:open?fill(W.uncodedVat,{pct:open}):''),
-      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:''};
+      account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:'',cap:code(f.reason)&&own(W.caps,f.reason)?W.caps[f.reason]:''};
     let text=null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;
@@ -91,9 +93,12 @@ const eventLineOf=(W)=>{
       lead=(v.reason&&fill(W.lead[name],v))||'';
       if(lead&&tag==='claude')mine=v.reason;else if(lead)lead=lead+' '+(/^[A-Z][a-z]/.test(v.reason)?v.reason.charAt(0).toLowerCase()+v.reason.slice(1):v.reason)+'.';else lead=fill(W.lead[name+'_plain'],v)||'';
       const e=v.outcome&&v.enforced?v.outcome+'; '+v.enforced:v.enforced||v.outcome;
-      if(e)enforced=fill(W.enforced,{enforced:e})||'';
+      // Round 4 (14 Nov): where code's outcome is not what the agent decided, code overrode it, and the line says so.
+      const over=f.overridden===true||(name==='ap.checker_decided'&&!!code(f.action)&&!!code(f.outcome)&&f.action!==f.outcome);
+      if(e)enforced=fill(over?W.overrode:W.enforced,{enforced:e})||'';
+      if(over)text=text.split(W.enforced.replace('{enforced}','')).join(W.overrode.replace('{enforced}',''));
     }
-    return {who:who,text:text,tag:tag,asking:asking,fold:fold,lead:lead,own:mine,enforced:enforced};
+    return {who:who,text:one(text),tag:tag,asking:asking,fold:fold,lead:one(lead),own:mine,enforced:enforced};
   };
 };
 `;
