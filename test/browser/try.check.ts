@@ -647,6 +647,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
   // 14 Nov (owner): the reason first, signed beside asked with the changed value marked, one plain line; the rest in the fold.
   ok((await page.locator(".why .head").textContent()) === TAMPER.head && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
+  // 14 Nov (live QA): on a phone the refusal is brought into view, not left under the fold.
+  await page.waitForTimeout(900);
+  const headBox = await page.locator(".why .head").boundingBox();
+  ok(!!headBox && headBox.y >= 0 && headBox.y + headBox.height <= (page.viewportSize()?.height ?? 0), `${tag}: refused: the reason is in view (top ${Math.round(headBox?.y ?? -1)} px)`);
   const cmp = await page.locator(".why .cmp div").allTextContents();
   ok(cmp.length === 2 && cmp[0] === `${TAMPER.signed} · AmountEUR 1,850.00` && cmp[1] === `${TAMPER.asked} · AmountEUR 1,850.01`
     && await page.locator(".why .cmp mark").count() === 1 && (await page.locator(".why .cmp mark").textContent()) === "EUR 1,850.01", `${tag}: refused: signed beside asked, the asked amount marked (${cmp.join(" | ")})`);
