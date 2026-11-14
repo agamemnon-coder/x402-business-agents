@@ -164,6 +164,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     forgetPasskey: async (person) => host.forgetPasskey(person),
     samples: async () => host.samples(),
     uploadSample: async (key) => host.uploadSample(key),
+    clearHold: async (id) => host.clearHold(id),
+    rejectHold: async (id) => host.rejectHold(id),
     suppliers: async () => host.suppliers(),
     compose: async (input) => host.compose(input),
     // The terms, and beside them the note on the quote they carry (live from the Airwallex sandbox, or the recorded rate).

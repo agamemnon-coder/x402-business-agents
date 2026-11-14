@@ -77,7 +77,8 @@ const Compose = z.object({ supplier_key: field(40), invoice_no: field(64), amoun
 
 /** This block's routes, by method and path (the engine's own block is cloud/src/engine/routes.ts). */
 export const TRY_ENGINE_ROUTES = ["GET /v1/engine/samples", "POST /v1/engine/samples/{key}", "GET /v1/engine/suppliers", "POST /v1/engine/compose",
-  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "POST /v1/engine/proposals/{id}/payout/simulate", "GET /v1/engine/export", "GET /v1/engine/export.pdf"] as const;
+  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "POST /v1/engine/proposals/{id}/payout/simulate", "GET /v1/engine/export", "GET /v1/engine/export.pdf",
+  "POST /v1/engine/invoices/{id}/clear", "POST /v1/engine/invoices/{id}/reject"] as const;
 
 const Pay = z.object({ terms: z.record(z.string(), z.unknown()), credential: z.record(z.string(), z.unknown()) }).strict();
 
@@ -93,6 +94,18 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       const out = await filed(() => e.uploadSample(c.params[0]!));
       await counted(c, out);
       return out ? json(200, out) : err(404, "no such sample");
+    }) },
+    { method: "POST", path: "/v1/engine/invoices/{id}/clear", summary: "Sandbox override of a hold (a test company of the hands-on demo only): a possible duplicate by the same total is cleared with the inbox's own person's path (kept per pair and in the audit log), then checked again; nothing is paid before the passkey signs the exact terms. In production a second person would review it. Answers { invoice }; 409 with the engine's reason for any other hold (a number match, an exact duplicate, new bank details, a new supplier: those can only be rejected).", need: "admin", run: on(async (c, e) => {
+      if (!c.caller!.tenantId.startsWith("t_try_")) return err(404, "only a test company of the hands-on demo");
+      if (!(await e.invoice(c.params[0]!))) return err(404, "no invoice");
+      const out = await e.clearHold(c.params[0]!);
+      return out.ok ? json(200, { invoice: out.invoice }) : err(409, out.reason);
+    }) },
+    { method: "POST", path: "/v1/engine/invoices/{id}/reject", summary: "Reject a held invoice (a test company of the hands-on demo only): the inbox's own rejection, its reason kept; nothing is paid. Answers { invoice }; 409 with the engine's reason when it cannot be rejected (paid, or waiting for the passkey).", need: "admin", run: on(async (c, e) => {
+      if (!c.caller!.tenantId.startsWith("t_try_")) return err(404, "only a test company of the hands-on demo");
+      if (!(await e.invoice(c.params[0]!))) return err(404, "no invoice");
+      const out = await e.rejectHold(c.params[0]!);
+      return out.ok ? json(200, { invoice: out.invoice }) : err(409, out.reason);
     }) },
     { method: "GET", path: "/v1/engine/suppliers", summary: "The suppliers the company has on file, as the engine's seed recorded them: { items: [{ key, name, iban, bic }] }. Their IBANs are published test IBANs, not anyone's account.", need: "read", run: on(async (_c, e) => json(200, { items: await e.suppliers() })) },
     { method: "POST", path: "/v1/engine/compose", summary: "Write your own invoice (a test company of the hands-on demo only): { supplier_key, invoice_no, amount (100.00 to 5000.00; written as people write it, such as 1850.00, 1.850,00 or 1k, read as two decimals), issue_date, due_date (YYYY-MM-DD, within 60 days of today), iban (mod 97) }. It is written in the sample's layout (an enterprise invoice, src/engine/invoicePdf.ts), rendered to a PDF inside the engine and filed through its inbox: answers as POST /v1/engine/documents; a refused field is 400 { code, message, field }.", need: "admin", run: on(async (c, e) => {
