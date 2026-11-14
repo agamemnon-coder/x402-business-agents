@@ -147,9 +147,9 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
     await page.getByRole("button", { name: LIVE.allSteps }).click();
     const rows = await page.locator("ol.live li").evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
     ok(rows.length === 4 && !rows.some((r) => r.includes(LIVE.ev["claude.asking"]!)), `${tag}: held: no row stays on "asking…" (${rows.join(" | ")})`);
-    // 14 Nov (live QA): an answered call says how long it took by the engine's own clock ("answered in 1.2 s."), or "asked."
+    // 14 Nov (live QA): an answered call says how long it took by the engine's own clock ("Answered in 1.2 s."), or "Answered."
     // when the engine wrote both rows in the same instant; never a running count stopped at 0.0 s.
-    const isAnswered = (r: string) => (r.includes(LIVE.asked) || /answered in \d+\.\d s\./.test(r)) && !r.includes(LIVE.noAnswer);
+    const isAnswered = (r: string) => (r.includes(LIVE.asked) || /Answered in \d+\.\d s\./.test(r)) && !r.includes(LIVE.noAnswer);
     ok(rows.filter(isAnswered).length === 1 && rows.filter((r) => r.includes(LIVE.noAnswer)).length === 1 && !rows.some((r) => / 0\.0 s/.test(r)), `${tag}: held: the answered call says how long it took, the other "${LIVE.noAnswer}" (${rows.join(" | ")})`);
     ok(rows[2]!.includes("answered live") && rows[3]!.includes("came in and was checked"), `${tag}: held: the rows in the engine's time order`);
     const secs = (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1]));
