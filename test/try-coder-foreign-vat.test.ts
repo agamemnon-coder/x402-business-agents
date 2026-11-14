@@ -1,6 +1,7 @@
 // The /try step line when the Coder leaves a German supplier's 19% without a VAT code (final-polish, 13 Nov): its codes
 // are the Dutch return's, so it sets none; the books code the line from the supplier's German VAT id (PF_DE19, 1515).
 // The step says so plainly, under the agent's own words, and never shows that VAT as uncoded.
+import { AP_ACCOUNTS } from "../src/ap/books.js";
 import { describe, expect, it } from "vitest";
 import { eventLine } from "../cloud/src/tryEvents.js";
 import { LIVE } from "../cloud/src/tryCopy.js";
@@ -36,7 +37,9 @@ describe("the Coder's step on a 19% invoice with no VAT id (the /try sample)", (
   it("says the rate plainly, names no country, and that the accountant checks it", () => {
     const l = coded({ ...base, books_vat_code: null, uncoded_vat_pct: 19 });
     expect(l.lead).toContain(LIVE.noVat);
-    expect(l.enforced).toBe("Purser's code enforced: VAT at 19%: no Dutch purchase code applies; booked without a VAT code for the accountant to check");
+    expect(l.enforced).toBe("Purser's code enforced: VAT at 19%: no Dutch purchase code applies; the VAT is booked to input VAT (1510) without a code, for the accountant to check");
+    // The ledger agrees: with no German VAT id, the books put this VAT on input VAT, 1510 (src/ap/books.ts).
+    expect(AP_ACCOUNTS.inputVat).toBe("1510");
   });
 
   it("a rate a Dutch code has, or none, adds no line", () => {

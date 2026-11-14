@@ -684,7 +684,11 @@ export const LIVE = {
    */
   booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
   /** The same without a VAT id on the invoice: the rate only, and that a person codes it ({pct}: a whole percent). */
-  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; booked without a VAT code for the accountant to check",
+  /**
+   * 14 Nov (judges: the step said "without a VAT code" while the ledger showed VAT on 1510): the books put this VAT on
+   * input VAT (1510) all the same (src/ap/books.ts codedEntries); the line says so, so the log and the ledger agree.
+   */
+  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; the VAT is booked to input VAT (1510) without a code, for the accountant to check",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
   /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */
