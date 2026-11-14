@@ -77,7 +77,8 @@ describe("the final review (13 Nov)", () => {
     expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set([...shots, ...handMade])].sort());
     // T:0: the run record's own figures.
     expect(read("docs/runs/2026-11-10-t0-journal-sandbox.md")).toContain("95 journal entries posted to T:0's shared sandbox entity");
-    expect(readme).toContain("95 journal entries, debits equal to credits, matched line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md))");
+    // 14 Nov (jury scan): the check as it is shown now, from the 14 Nov read-back.
+    expect(readme).toContain("95 journal entries, debits equal to credits ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)); read back on 14 Nov, T:0 agrees: every account to the cent, plus the entry count.");
     // The anchor run: its record and the package script it names.
     expect(read("docs/runs/2026-11-13-anchor.md")).toContain("npm run verify-anchor");
     expect(readme).toContain("[record](docs/runs/2026-11-13-anchor.md)");

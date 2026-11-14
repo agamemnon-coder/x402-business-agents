@@ -85,7 +85,9 @@ describe("code's checks over a case", () => {
   });
 
   it("country_not_paid and currency_not_paid: a person pays where Purser has no route", () => {
-    expect(finding(caseOf(EN.replace("DE89 3704 0044 0532 0130 00", "FR14 2004 1010 0505 0001 3M02 606")), "country_not_paid")).toMatchObject({ level: "review" });
+    // A country outside SEPA with no payout guide yet (Brazil, the IBAN registry's example IBAN); every SEPA country is paid.
+    expect(finding(caseOf(EN.replace("DE89 3704 0044 0532 0130 00", "BR18 0036 0305 0000 1000 9795 493C 1")), "country_not_paid")).toMatchObject({ level: "review" });
+    expect(finding(caseOf(EN.replace("DE89 3704 0044 0532 0130 00", "FR14 2004 1010 0505 0001 3M02 606")), "country_not_paid")).toBeUndefined();
     const jpy = caseOf(DE.replace(/EUR/g, "JPY"), { suppliers: [] });
     expect(codes(jpy).filter((c) => c === "currency_not_paid")).toHaveLength(1);
     expect(statusOf(codeFindings(jpy))).toBe("needs_review");

@@ -36,7 +36,7 @@ import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
 import { VIC_NETWORK_CSS, vicNetworkBlock, vicNetworkRecord } from "./vicNetwork.js";
 import { VIC_RULES_CSS, vicRulesBlock } from "./vicRules.js";
 import { VISA_ASKS_ID, VISA_MEETS_ID, VISA_RUNS3_ID, VISA_STORY_CSS, VISA_TAP_SECTION_HEADING, visaAsksHtml, visaMeetsHtml, visaNotYetHtml, visaReuseHtml, visaTapSectionHtml, visaThreeRunsHtml } from "./visaStory.js";
-import { VISA_CARD_SCENE_CSS, visaCardSceneHtml } from "./visaCardScene.js";
+import { VISA_CARD_SCENE_CSS, VISA_CARD_SCENE_JS, cardSceneData, visaCardSceneHtml } from "./visaCardScene.js";
 import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
@@ -44,6 +44,7 @@ import { HOLD_NOT_FINISHED, METAL_CSS, METAL_HOLD_RECORD, METAL_INSPECT_JS, hold
 import { EVIDENCE_CSS, claudeEvidence, failureFold, mcpFold, sweepFold } from "./claudeEvidence.js";
 import { CLAUDE_CSS, claudeMain } from "./claudePage.js";
 import { BOOKS_CSS, BOOKS_JS, MONEYBIRD_RECORD, RUN_FILE, booksBody, booksData } from "./booksPage.js";
+import { T0_CLOSE_JS, t0RunData } from "./t0CloseTile.js";
 import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Body, t0Data } from "./t0Page.js";
 import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from "./ui.js";
 
@@ -331,13 +332,15 @@ export function visaPage(run: AgentRun = agentRun()): string {
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
   ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  ${visaCardSceneHtml()}
+  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
+  <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
   ${visaAsksHtml()}
   ${visaMeetsHtml()}
   ${visaReuseHtml()}
-  ${visaCardSceneHtml()}
   ${vic3 ? visaFlowHtml(vic3) : ""}
   ${visaThreeRunsHtml()}
-  <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
+  </details>
   <details class="sumd" id="visa-details"><summary>${esc("All the details: the runs, the flow, every id")}</summary>
   ${vic3 ? `<p class="vintro">${esc(VISA_LEAD)}</p>
   ${visaOutcomesHtml(vic3, visaRunsLine())}
@@ -357,10 +360,13 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${visaTapSectionHtml(VISA_TAP_ID, `<div class="folds card">${visaTapFold(run)}</div>`)}
   ${visaNotYetHtml()}
 </div></main>`;
+  // The card scene's buttons run Purser's credential check in the browser on the recorded purchase (its data block).
+  const sceneData = cardSceneData();
   const html = page({
+    ...(sceneData ? { data: sceneData } : {}),
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -486,7 +492,9 @@ export const T0_REAL = [
 export function t0Page(run: AgentRun = agentRun()): string {
   const body = t0Body(t0Data(), { logo: T0_LOGO, pill: T0_LABEL });
   return page({ title: "T:0", description: "How Purser uses T:0: its double-entry books posted to T:0's general ledger as journal entries, then read back line by line.", tab: "proof", css: `${CSS}\n${STATS_CSS}\n${T0_CSS}`, body,
-    source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run) });
+    source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run),
+    // The close check's button (src/redesign/t0CloseTile.ts): Purser's books as recorded, and the script that fetches the read-back.
+    data: t0RunData(), js: T0_CLOSE_JS, stage: false });
 }
 
 /** /books (owner, 12 Nov): Purser's bookkeeping with AI agents, from the run records and evals alone (src/redesign/booksPage.ts). */

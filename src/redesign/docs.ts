@@ -89,6 +89,9 @@ const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 /** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
 const CONNECT_DOC = "docs/connect-claude.md", DEMO_TOKEN = DEMO_CONNECTOR_TOKEN;
+/** Said beside the token wherever it is shown bare (jury scan, 14 Nov). */
+export const DEMO_TOKEN_NOTE = "public, read-only demo token (demo company only)";
+const DEMO_TOKEN_LABEL = `${DEMO_TOKEN_NOTE[0]!.toUpperCase()}${DEMO_TOKEN_NOTE.slice(1)}`;
 /** The cloud's per-client setup page (cloud/src/claude/connectPage.ts) and the connections guide (13 Nov). */
 const CONNECT_PAGE = `${PURSER_CLOUD_URL}connect-ai`, CONNECTIONS_DOC = "docs/connections.md";
 
@@ -139,6 +142,8 @@ ol.pchain.n5 { margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
 .cchip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 0 0 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--sunken); }
 .cchip .k { font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+/* Jury scan, 14 Nov: the demo token's longer label wraps on a phone instead of widening the page. */
+@media (max-width: 640px) { .cchip { flex-wrap: wrap; padding-top: 6px; } .cchip .k { white-space: normal; flex-basis: 100%; } }
 .cchip code { min-width: 0; overflow-wrap: anywhere; }
 .cchip .cp { flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
 .cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); } .cchip .cp[hidden] { display: none; }
@@ -167,13 +172,13 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
 <div class="cols c2">
   <article class="pc card wide" id="connect-ai">${head("link-2", "Connect your AI")}
     <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
-    <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip("Demo token", DEMO_TOKEN)}</div>
+    <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip(DEMO_TOKEN_LABEL, DEMO_TOKEN)}</div>
     <ul class="ww"><li class="l">${readToolCount()} read tools · works with any MCP client:</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
     <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Try as guest (test money)")}</div>
     ${foldHtml("Connect Claude, step by step", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,
-      `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)}`,
+      `Claude Code: ${code(`claude mcp add --transport http purser ${PURSER_CLOUD_MCP} --header "Authorization: Bearer ${DEMO_TOKEN}"`)} (${esc(DEMO_TOKEN_NOTE)})`,
       `Then ask "what's waiting for the CFO?". The demo token reads and proposes nothing.`,
       outLink(repoHref(CONNECT_DOC), "The connector's guide"),
     ])}

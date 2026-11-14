@@ -159,7 +159,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(190); // 14 Nov: the demo's OpenAPI link is in sight then (188 as built)
+    expect(visibleWords(set)).toBeLessThanOrEqual(195); // 14 Nov: the demo's OpenAPI link is in sight then (188 as built); +5, jury scan 14 Nov: the demo token labelled "Public, read-only demo token (demo company only)" (194 as built)
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -212,8 +212,9 @@ describe("/docs: docs and API", () => {
     expect([.../<ul class="ww">([\s\S]*?)<\/ul>/.exec(card(html, "connect-ai"))![1]!.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1])).toEqual([...WORKS_WITH]);
   });
 
-  it("stays within 185 words in sight, the folds closed", () => {
-    expect(visibleWords(html)).toBeLessThanOrEqual(185);
+  // +5, jury scan 14 Nov: the demo token labelled where it is shown, "Public, read-only demo token (demo company only)" (190 as built).
+  it("stays within 190 words in sight, the folds closed", () => {
+    expect(visibleWords(html)).toBeLessThanOrEqual(190);
     expect((html.match(/<details class="fold"/g) ?? []).length).toBeGreaterThan(0);
     expect(html).not.toMatch(/<details class="fold" open/);
   });

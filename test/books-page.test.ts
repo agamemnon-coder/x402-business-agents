@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cashChart, money, otherCurrencies, RUN_FILE, spendChart, type RunRecord } from "../src/redesign/booksPage.js";
-import { centsOf, statementView } from "../src/vault/statementPdf.js";
+import { centsOf, inBaseCurrency, statementView } from "../src/vault/statementPdf.js";
 import { BOOKS_CSP, BOOKS_PAGE, LOGOS } from "../src/servers/dashboard.js";
 
 type Inv = RunRecord["invoices"][number] & { read_by: string; coding: { source: string } | null; expected: { total: string; currency: string } };
@@ -30,8 +30,10 @@ describe("/books, from the month's run record", () => {
   it("ties: assets = liabilities + equity, the result is the P&L's; a statement that does not tie is refused", () => {
     const v = statementView(file)!;
     expect(v.balances).toBe(true);
-    expect(v.totalAssets).toBe(centsOf(file.balance[0]!.assets));
-    expect(v.revenue - v.totalExpenses).toBe(centsOf(file.balance[0]!.result));
+    // The GBP lines are translated into EUR at the conversion's own rate (inBaseCurrency): the statement ties on that file.
+    const eur = inBaseCurrency(file).file;
+    expect(v.totalAssets).toBe(centsOf(eur.balance[0]!.assets));
+    expect(v.revenue - v.totalExpenses).toBe(centsOf(eur.balance[0]!.result));
     const bad = structuredClone(file);
     bad.balance[0]!.accounts[0]!.amount = "1.00";
     expect(statementView(bad)?.balances ?? false).toBe(false);
@@ -46,12 +48,14 @@ describe("/books, from the month's run record", () => {
       ...v.sorted.map((s) => s.total),
       ...file.balance.slice(1).flatMap((b) => [...b.accounts.map((a) => money(centsOf(a.amount) ?? 0)), money(centsOf(file.pnl.find((p) => p.currency === b.currency)?.expense ?? "0.00") ?? 0)]),
       (run.claude.spent_micros / 1e6).toFixed(2),
+      // The translation note: money in transit on each side, from the record, and the rate between them.
+      ...[...(v.translated ?? "").matchAll(/\d[\d,]*\.\d{2,4}/g)].map((m) => m[0]),
     ]);
     const main = /<main[\s\S]*<\/main>/.exec(BOOKS_PAGE)![0].replace(/<details[\s\S]*?<\/details>/g, "").replace(/<p class="why">[\s\S]*?<\/p>/g, "");
     const shown = [...main.replace(/<[^>]+>/g, " ").matchAll(/−?\d[\d,]*\.\d{2}\b/g)].map((m) => m[0]);
     expect(shown.length).toBeGreaterThan(10);
     for (const n of shown) expect({ n, ok: allowed.has(n) || allowed.has(n.replace(/^-/, "−")) }).toEqual({ n, ok: true });
-    expect(BOOKS_PAGE).toContain(otherCurrencies(file));
+    expect(BOOKS_PAGE).toContain(otherCurrencies(inBaseCurrency(file).file));
   });
 
   it("tags every sorted invoice 'Sorted by Claude' with Claude's own reason and what happened to it", () => {

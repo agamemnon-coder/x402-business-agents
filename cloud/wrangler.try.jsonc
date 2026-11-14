@@ -46,9 +46,12 @@
   // The live Airwallex tab (cloud/src/awxLive.ts): the site Worker's read-only gateway to the Airwallex sandbox, a named
   // entrypoint (worker/src/index.ts, AwxRead) that no HTTP request can reach; it answers views without a key. Without it
   // each view says the sandbox is unavailable.
+  // The agents' live sandbox cards (cloud/src/agentCards.ts): kit11's named entrypoint AwxCards, which holds the key and
+  // the card allow-list (worker/src/awxCards.ts). No key here. Deploy kit11 with AwxCards first.
   "services": [
     { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
-    { "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" }
+    { "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" },
+    { "binding": "AWX_CARDS", "service": "kit11", "entrypoint": "AwxCards" }
   ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.

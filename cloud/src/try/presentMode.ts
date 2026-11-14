@@ -48,11 +48,17 @@ body.present { font-size: 18px; }
   /* Paid, booked, filed: two columns, so the step fits 1080p without a scroll. */
   body.present:has(.screen.books) main { max-width: 1160px; }
   body.present .screen.books { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; align-items: start; }
-  body.present .screen.books > :nth-child(1) { grid-column: 1 / -1; }
-  body.present .screen.books > :nth-child(2) { grid-column: 1; grid-row: 2; }
-  body.present .screen.books > :nth-child(3) { grid-column: 2; grid-row: 2 / 5; }
-  body.present .screen.books > :nth-child(4) { grid-column: 1; grid-row: 3; }
-  body.present .screen.books > :nth-child(5) { grid-column: 1; grid-row: 4; }
+  /* The stamp, then the slot of the Airwallex sandbox transfer (empty unless awx_payout made one), then paid, booked,
+     filed and the way on: placed by what they are, so the slot never moves the others (14 Nov). */
+  body.present .screen.books > .paidstamp { grid-column: 1 / -1; grid-row: 1; }
+  body.present .screen.books > :nth-child(3) { grid-column: 1; grid-row: 2; }
+  body.present .screen.books > :nth-child(4) { grid-column: 2; grid-row: 2 / 6; }
+  body.present .screen.books > :nth-child(5) { grid-column: 1; grid-row: 3; }
+  body.present .screen.books > .slot.payout { grid-column: 1; grid-row: 4; }
+  body.present .screen.books > :nth-child(6) { grid-column: 1; grid-row: 5; }
+  /* The transfer card, compact for 1080p: its heading, the transfer id and the status; the rest stays in normal mode. */
+  body.present .slot.payout .awx { padding: 10px 14px; margin: 0; }
+  body.present .slot.payout .awx dl > :nth-child(n+5), body.present .slot.payout .awx > p { display: none; }
 }
 /* A card over the page: the page behind it does not scroll. */
 html:has(.pv-card.on) { overflow: hidden; }

@@ -11,7 +11,7 @@
 // same key with a version suffix. The ledger never loses or doubles a movement, and never changes a posted entry.
 
 import { journal } from "../accounting/gl.js";
-import { accrualEntries, accrualVatCode, AP_ACCOUNTS, bookable, codedAccrual } from "../ap/books.js";
+import { accrualEntries, accrualVatCode, AP_ACCOUNTS, bookable, codedAccrual, seededSettlementEntries } from "../ap/books.js";
 import { ledgerInvoiceNo } from "../ap/ledgerKey.js";
 import { apInvoices } from "../ap/store.js";
 import { openingLines } from "../accounting/books.js";
@@ -133,6 +133,12 @@ export function syncLedger(db: DB, now = new Date()): LedgerSync {
       return base;
     });
     want.set(`ap-accrual|${inv.id}`, { date: net.date, description: `${inv.vendor} invoice ${inv.invoice_no} (received)`, doc_ref: key, pair, ...(coded ? { coded } : {}) });
+    // Seeded as paid with no payout (a test company's history, simulated): settled against equity, so 2100 does not stay open.
+    const settled = seededSettlementEntries(db, inv);
+    if (settled.length) {
+      want.set(`ap-seeded-paid|${inv.id}`, { date: settled[0]!.date, description: `${inv.vendor} invoice ${inv.invoice_no} (paid before the company started, simulated)`, doc_ref: key,
+        pair: settled.map((e) => ({ account: e.account, currency: e.currency, ...(e.debit ? { debit: toCents(e.debit) } : { credit: toCents(e.credit) }), party: inv.vendor, memo: e.memo, ...(e.account === AP_ACCOUNTS.payable ? { doc_ref: key } : {}) })) });
+    }
   }
 
   const standing = new Map<string, Active>();

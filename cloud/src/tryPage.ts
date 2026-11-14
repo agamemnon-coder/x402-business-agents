@@ -590,7 +590,9 @@ const atOf=(ms)=>ms<50?'':fill(C.live.at,{s:secs(ms)});
 // Dates and amounts as the whole page writes them (try-fixes, 13 Nov): 30 Nov 2026, EUR 1,850.00.
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const dateOf=(v)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m&&+m[2]>=1&&+m[2]<=12?Number(m[3])+' '+MON[+m[2]-1]+' '+m[1]:String(v||'')};
-const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return String(v||'');const l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return dateOf(l)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return String(v||'');const l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');// CFO review, 14 Nov: a time says its zone (the viewer's own, by its short name: "CET", "GMT+1").
+  let tz='';try{tz=(new Intl.DateTimeFormat('en-GB',{timeZoneName:'short'}).formatToParts(d).find((p)=>p.type==='timeZoneName')||{}).value||''}catch(e){}
+  return dateOf(l)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+(tz?' '+tz:'')};
 const cash=(cur,amt)=>booksKit.money(cur,amt);
 const say=(text)=>{$('#say').textContent=text};
 const note=(text)=>el('p','note',text);
@@ -1142,7 +1144,7 @@ function factRows(p,inv,terms){
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
 // or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
-function fxCard(note,terms){
+function fxCard(note,terms,limitBps){
   const X=C.fxCard;const cv=terms&&terms.conversion&&typeof terms.conversion==='object'?terms.conversion:null;
   if(!cv||!note||typeof note!=='object'||note.quote_id!==cv.quote_id)return null;
   const live=note.source==='airwallex-sandbox';const d=el('dl','');
@@ -1159,6 +1161,7 @@ function fxCard(note,terms){
     if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
   }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
+  if(typeof limitBps==='number'&&limitBps>0)row(X.limit,fill(X.limitLine,{pct:(limitBps/100).toFixed(2)}));
   box.setAttribute('data-awx',live?'live':'recorded');
   return box;
 }
@@ -1249,7 +1252,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
-    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
+    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms,tr.status===200?tr.json.fx_limit_bps:null);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
       el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,' ',el('span','mono sha',fill(A.signsSha,{sha:String(p.terms_sha256||'').slice(0,8)})),saves]));
     stage();
@@ -1729,7 +1732,7 @@ ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 

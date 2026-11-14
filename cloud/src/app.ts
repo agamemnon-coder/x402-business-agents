@@ -41,6 +41,7 @@ import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.j
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
+import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
@@ -90,6 +91,11 @@ export interface CloudEnv {
    */
   awxPlatform?: AwxPlatformEnv;
   /**
+   * The agents' live Airwallex sandbox cards (cloud/src/agentCards.ts): the kit11 Worker's AwxCards entrypoint, a service
+   * binding that holds the key. Absent: GET /v1/cards shows no live card and every card action is refused.
+   */
+  awxCards?: CardsPort;
+  /**
    * A company's engine (cloud/src/engine/api.ts): in the Worker a stub of the company's Durable Object, in tests and
    * local runs an engine in this process. Test money only. Absent (the default): the /v1/engine routes answer 404.
    */
@@ -121,7 +127,12 @@ const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
 /** Every error has one shape: a sentence for a person and a stable code for a program. */
 const CODES: Record<number, string> = { 400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 405: "method_not_allowed", 409: "conflict", 413: "too_large", 422: "unprocessable", 429: "rate_limited", 500: "internal", 502: "upstream" };
-export const err = (status: number, error: string) => json(status, { error, code: CODES[status] ?? "error" });
+// A 429 says when to come back (security scan, 14 Nov).
+export const err = (status: number, error: string) => {
+  const r = json(status, { error, code: CODES[status] ?? "error" });
+  if (status === 429) r.headers.set("retry-after", "60");
+  return r;
+};
 const notFound = (what: string) => err(404, `no ${what}`);
 
 /**
@@ -467,6 +478,20 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/ledger/entries", summary: "Ledger entries with their lines; filter by from, to; paginated.", need: "read", run: async (c) => json(200, await ledgerEntries(db(c), c.url.searchParams)) },
   { method: "GET", path: "/v1/reports/{name}", summary: "trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger.", need: "read", run: async (c) => json(200, await report(db(c), c.params[0]!, c.url.searchParams, c.now)) },
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
+  { method: "GET", path: "/v1/cards", summary: "The agents' live Airwallex sandbox cards (test money): for each agent its card's last four digits (never the full number or the CVV), live status, limits against the CFO policy, and its newest authorizations with their ids; whether card actions are on (admin switch awx_cards) and today's caps.", need: "read", run: async (c) => json(200, await cardsView({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), now: c.now })) },
+  { method: "GET", path: "/v1/cards/scope", summary: "Whether the Airwallex sandbox key may use Issuing: { issuing: ok | forbidden | no_key | no_gateway | unavailable }. One read of Airwallex a minute at most, for everyone; no card data.", need: "public", run: async (c) => json(200, await cardsScope(c.env.sql, c.env.awxCards, c.now)) },
+  { method: "POST", path: "/v1/cards/actions", summary: "Ask for a card action (a signed-in owner): { kind: issue | freeze | unfreeze | limits | test, agent }. Answers the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing reaches Airwallex before POST /v1/cards/actions/{id}/sign.", need: "admin", run: async (c) => {
+    const b = await body(c, z.object({ kind: z.enum(CARD_ACTION_KINDS as [string, ...string[]]), agent: z.string().min(1).max(40) }).strict(), 2_000);
+    try { return json(201, await startCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), kind: b.kind as never, agent: b.agent, now: c.now })); }
+    catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
+  } },
+  { method: "POST", path: "/v1/cards/actions/{id}/sign", summary: "Sign a card action with your own passkey (a signed-in owner): { credential_id, assertion } over the action's challenge. The action then runs once at the Airwallex sandbox (test money); the same signed action again answers what it did. Answers { status: done | failed, card or tx, reason }.", need: "admin", run: async (c) => {
+    if (!(await cardActionExists(c.env.sql, c.caller!.tenantId, c.params[0]!))) return err(404, "no such card action");
+    const b = await body(c, z.object({ credential_id: z.string().max(400),
+      assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
+    try { return json(200, await signCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), id: c.params[0]!, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now })); }
+    catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
+  } },
   { method: "GET", path: "/v1/tokenisation", summary: "Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it.", need: "read", run: async () => json(200, tokenisation()) },
   { method: "GET", path: "/v1/airwallex-live/{view}", summary: "The live Airwallex tab, read-only, from the Airwallex sandbox (test money) through the site Worker's gateway: balances, accounts, financial, rates, transfers, beneficiaries, issuing, calls, or reconcile (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions). Each answer says when it was read, or why the sandbox is unavailable.", need: "read", run: async (c) => {
     const view = c.params[0]!;
