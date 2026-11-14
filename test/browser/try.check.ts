@@ -289,7 +289,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
   }
   const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
-  ok(JSON.stringify(logos) === JSON.stringify([["Airwallex", true], ["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
+  ok(JSON.stringify(logos) === JSON.stringify([["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
   const ptext = (await page.textContent(".start .partners"))!;
   ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
   ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);

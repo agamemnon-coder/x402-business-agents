@@ -4,7 +4,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 
 const FILES: [path: string, type: string, source: string][] = [
-  ["/assets/logo-airwallex.png", "image/png", "src/ui/logos/airwallex.png"],
   ["/assets/logo-alta.svg", "image/svg+xml", "src/ui/logos/alta.svg"],
   ["/assets/logo-claude-slate.svg", "image/svg+xml", "docs/assets/logos/claude-logo-slate.svg"],
 ];

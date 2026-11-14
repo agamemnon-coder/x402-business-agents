@@ -137,6 +137,7 @@ describe("the start's partners", () => {
     expect(START.runs_note).toMatch(/No endorsement implied/);
     const html = tryPage("n", { origin: ORIGIN, rpId: RP });
     expect(html).toContain(JSON.stringify(START_LOGOS));
-    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Airwallex", "Alta", "Claude"]);
+    // Airwallex is the header's "Built on Airwallex" badge, not a logo in this row (14 Nov, owner).
+    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta", "Claude"]);
   });
 });

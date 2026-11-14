@@ -29,9 +29,11 @@ export const STEP_PROOF: Record<string, string> = {
   did: "pg-the-books",
 };
 
-/** The partners' logos on the start screen: path, alt, intrinsic width and height (the files' own). */
+/**
+ * The partners' logos on the start screen: path, alt, intrinsic width and height (the files' own). 14 Nov (owner): no
+ * Airwallex logo here; Airwallex is the platform, shown as the site header's "Built on Airwallex" badge.
+ */
 export const START_LOGOS: { src: string; alt: string; w: number; h: number; key: string }[] = [
-  { src: "/assets/logo-airwallex.png", alt: "Airwallex", w: 2435, h: 334, key: "airwallex" },
   { src: "/assets/logo-alta.svg", alt: "Alta", w: 475, h: 250, key: "alta" },
   { src: "/assets/logo-claude-slate.svg", alt: "Claude", w: 9156, h: 2000, key: "claude" },
 ];
