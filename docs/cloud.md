@@ -613,3 +613,29 @@ hands-on lane's.
   Cloudflare's current D1 Time Travel page for the retention window on the plan used, and rehearse one restore of a
   copy with `wrangler d1 time-travel` into a scratch database. R2 has no point-in-time restore of its own here: the
   documents are written once under their hash and never changed, and the export lists them.
+
+## Airwallex actions in Purser Cloud (14 Nov, off by default)
+
+A signed-in company's payables can run at the Airwallex sandbox (test money), every step behind the CFO's passkey over
+the exact terms. Built on Airwallex. Off until switched on; anything Airwallex cannot do runs on the simulated bank, and
+the invoice says so.
+
+- **New supplier:** the owner records how the account was confirmed; the payee's bank is asked through Airwallex
+  (`/beneficiaries/verify_account`); the CFO signs the new supplier; then Airwallex's schema, validation and create run
+  (`/beneficiaries/schema`, `/validate`, `/create`). The beneficiary id is on the invoice.
+- **Pay:** planned on Airwallex's balances; a live quote (`/fx/quotes/create`) only for the shortfall, in the signed
+  terms. After the signature: the conversion and the transfer, each with its request_id from the signed terms and
+  `metadata.approval_sha256`; the sandbox simulation moves the transfer to PAID. The transfer id is on the invoice in full.
+- **Pay all ready:** one batch proposal, one signature over its totals and lines; at Airwallex one batch transfer.
+- **Money in:** a deposit simulation into the USD global account, booked (held in suspense until named).
+- **Not built:** agent cards from Cloud (Issuing). The key's Issuing scope was not checked from here.
+
+Locks, all off by default: the admin switches `awx_act` (and `awx_act_try` for /try companies), the daily caps
+`awx_act_company_cents_day` (at most 1,000.00) and `awx_act_global_cents_day` (at most 5,000.00), and on the kit11
+Worker `AWX_GATEWAY_WRITE=on`. Only kit11 holds the sandbox key (`AWX_ACT_CLIENT_ID`/`AWX_ACT_API_KEY`, else the
+existing pair); Purser Cloud reaches it through the named entrypoint `AwxGateway`, which no HTTP request can reach. The
+allow-list is `src/airwallex/gatewayRules.ts`. After a signature nothing falls back to another bank: the signed terms
+name that bank's ids, so a failed payment stays failed with its reason and Pay plans it again.
+
+The screenshots `docs/assets/cloud/console-airwallex-*.png` are from a local run with an in-memory stand-in in
+Airwallex's place (ids start `local-standin-`), not from the sandbox.
