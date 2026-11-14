@@ -154,7 +154,7 @@ function liveCardPanel(x,CV){
     kids.push(el('p','sub',t('cs.cards.none',{per:eurc(P.per_tx_cents),month:eurc(P.monthly_cents)})));
     if(CV.can_act)kids.push(el('div','cbar',[act('issue',t('cs.cards.issue'),'credit-card','primary')]));
   }
-  if(!CV.on)kids.push(el('p','fine',[ic('lock'),t('cs.cards.off',{why:CV.why||''})]));
+  if(!CV.on)kids.push(el('p','fine',[ic('lock'),t('cs.cards.off',{why:(CV.why||'').replace(/\s*\([a-z_]+\)$/,'')})]));
   else if(!CV.can_act)kids.push(el('p','fine',[ic('lock'),t('cs.cards.owner_only')]));
   kids.push(el('p','fine',[ic('lock'),t('cs.cards.never')]),out);
   const box=el('div','lcard',kids);return box}

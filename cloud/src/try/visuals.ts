@@ -51,15 +51,14 @@ export const VIS_CSS = `
 .vis-charts h2 { margin: 0 0 2px; font-size: 17px; }
 .vis-charts > p { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
 .vis-grid { display: grid; gap: 14px; }
-/* Two charts side by side where /try's column allows (it is about 660 px wide on a laptop); the donut on its own row. */
-@media (min-width: 700px) { .vis-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .vis-c:has(svg.dn) { grid-column: 1 / -1; } }
+/* One chart per row (14 Nov, live QA: side by side, their labels shrank to about 7 px at 1440); each chart at most 440 px wide. */
 .vis-c { margin: 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); animation: vfade .4s ease-out both; }
 .vis-c:nth-child(2) { animation-delay: .1s; } .vis-c:nth-child(3) { animation-delay: .2s; }
 .vis-c h3 { margin: 0 0 6px; font-size: 14px; }
 .vis-c figcaption { margin-top: 6px; font-size: 12px; color: var(--faint); }
-.vis-c svg { display: block; width: 100%; height: auto; overflow: visible; font-variant-numeric: tabular-nums; }
-.vis-c text { fill: var(--muted); font-size: 11px; font-family: inherit; }
-.vis-c text.v { fill: var(--text); font-weight: 650; font-size: 10.5px; }
+.vis-c svg { display: block; width: 100%; max-width: 440px; margin: 0 auto; height: auto; overflow: visible; font-variant-numeric: tabular-nums; }
+.vis-c text { fill: var(--muted); font-size: 12px; font-family: inherit; }
+.vis-c text.v { fill: var(--text); font-weight: 650; font-size: 12px; }
 .vis-c svg.dn { max-width: 150px; margin: 0 auto; }
 .vis-c .b { fill: var(--accent); } .vis-c .b.neg { fill: var(--bad); } .vis-c .b.pos { fill: var(--ok); } .vis-c .b.base { fill: var(--muted); }
 .vis-c .k { stroke: var(--border); stroke-dasharray: 3 3; }
