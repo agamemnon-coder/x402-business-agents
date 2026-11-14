@@ -213,7 +213,7 @@ export function filmPage(story: Story = JSON.parse(readFileSync(STORY_FILE, "utf
   const redteam = JSON.parse(readFileSync(REDTEAM_FILE, "utf8")) as { attempts: number; blocked: number };
   const lab = JSON.parse(readFileSync(LAB_FILE, "utf8")) as { results: { passed: boolean }[] };
   const data = buildFilm(story, recorded, { redteam, lab: { total: lab.results.length, passed: lab.results.filter((r) => r.passed).length } });
-  return withMeta(FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c")), { description: "The earlier animation of 30 October. The walkthrough (4:58) is on YouTube: https://youtu.be/mp9fmOYfBWc" });
+  return withMeta(FILM_TEMPLATE.replace("__FILM_JSON__", () => JSON.stringify({ data, scenes: filmTimeline() }).replace(/</g, "\\u003c")), { description: "The earlier animation of 30 October. The walkthrough is on YouTube: https://youtu.be/mp9fmOYfBWc" });
 }
 
 /**

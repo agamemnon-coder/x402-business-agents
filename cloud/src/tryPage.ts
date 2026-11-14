@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INAPP, INVOICE, INVOICE_FIELDS, LIVE, METHOD, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
@@ -151,12 +151,9 @@ dl.read dd { margin: 0; overflow-wrap: anywhere; }
 .prog li { position: relative; }
 .prog li .lbl { position: absolute; top: 19px; left: 50%; transform: translateX(-50%); font-size: 10.5px; line-height: 1; color: var(--muted); white-space: nowrap; }
 .prog li.on .lbl { color: var(--accent); font-weight: 700; }
-.inapp { margin: 16px 0 0; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--accent) 8%, transparent); text-align: left; }
-.inapp .big { margin: 0 0 4px; font-weight: 700; }
-.inapp p { margin: 4px 0; }
-.inapp .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.inapp .row .btn { min-height: 44px; }
-.inapp a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
+.openl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; }
+.openl .btn { min-height: 44px; }
+.openl[hidden] { display: none; }
 /* Screens 1 to 6 in the start's look: the brand's band behind the top of the page, each screen in a soft card that
    slides in; a card inside it is a quiet panel. */
 body:not(:has(.screen.start)) { background: radial-gradient(70% 300px at 8% 0, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) no-repeat, linear-gradient(180deg, var(--accent-soft), var(--bg) 360px) no-repeat, var(--bg); }
@@ -620,7 +617,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
   const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
   // The walkthrough link right under the button (jury round 2, 13 Nov), then what the visit is.
-  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));if(inApp())box.append(inappCard(false));
+  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));
   b.addEventListener('click',async()=>{
     b.disabled=true;label(C.start.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -880,23 +877,17 @@ screen('work',{heading:C.work.heading,draw(box,arg){
 
 // The passkey: whether this device can make one, and its word for it (a guess from the platform, never proven).
 const hasPasskeys=()=>!!(window.PublicKeyCredential&&navigator.credentials);
-// In-app browsers (WhatsApp, Instagram, Facebook, LinkedIn, Line, WeChat, Snapchat, TikTok, the Google app, Android web
-// views): their own web view, where a passkey cannot be made or used. Read from the user agent's own tokens.
-const INAPP_UA=/\b(FBAN|FBAV|FB_IAB|FBIOS|Instagram|WhatsApp|LinkedInApp|MicroMessenger|Snapchat|Twitter|TikTok|BytedanceWebview|musical_ly|Pinterest|GSA)\b|\bLine\/|;\s?wv\)/;
-const inApp=()=>INAPP_UA.test(navigator.userAgent||'');
-const onIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent||'');
-// The card: open this page in Safari or Chrome; Copy link (the address, as it is); on an iPhone, how; the walkthrough.
-function inappCard(withFilm=true){
-  const I=C.inapp;const said=el('span','hint','');
-  const b=el('button','btn',I.copy);b.type='button';
+// This page's address to copy, for a browser that cannot sign here (opened again in Safari or Chrome).
+function openCard(){
+  const O=C.open;const said=el('span','hint','');
+  const b=el('button','btn',O.copy);b.type='button';
   b.addEventListener('click',async()=>{
-    // The clipboard may refuse or never answer in an in-app browser: 1.5 s, then the fallback, then the address itself.
+    // The clipboard may refuse or never answer: 1.5 s, then the fallback, then the address itself, to copy by hand.
     let done=false;try{await Promise.race([navigator.clipboard.writeText(location.href),new Promise((_,no)=>{const copyTimer=setTimeout(()=>no(new Error('slow')),1500);return copyTimer})]);done=true}catch(e){}
     if(!done){const t=document.createElement('textarea');t.value=location.href;t.setAttribute('readonly','');document.body.append(t);t.select();try{done=document.execCommand('copy')}catch(e){}t.remove()}
-    said.textContent=done?I.copied:location.href;
+    said.textContent=done?O.copied:location.href;
   });
-  const film=el('a','',I.film);film.href=C.film;film.target='_blank';film.rel='noopener';
-  return el('div','inapp',[el('p','big',I.title),el('p','muted',I.why),onIOS()?el('p','hint',I.ios):null,el('div','row',[b,said]),withFilm?el('p','',film):null]);
+  return el('div','openl',[b,said]);
 }
 // A passkey prompt given up after 30 s: some in-app web views leave it open without ever showing it.
 async function withTimeout(fn){
@@ -957,9 +948,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   const filing=fill(A.filing,{method:method()});
   const main=mainButton();main.off(filing);
   const live=livePanel();
-  // The way out of a browser that cannot sign: shown in an in-app browser, without passkeys, or after a refusal that
-  // came at once (no prompt was shown).
-  const card=inappCard();card.hidden=true;let stuck=false;
+  // The way out of a browser that cannot sign: shown without passkeys, or after a refusal that came at once (no prompt
+  // was shown): open this page in Safari or Chrome, its address to copy.
+  const card=openCard();card.hidden=true;let stuck=false;
   box.append(top,said,main.node,card,live.node);
   let p=null,eng=null;
   const saves=el('span','',' '+fill(A.saves,{host:CFG.rpId}));
@@ -996,16 +987,17 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
   function stage(again){
-    card.hidden=!(inApp()||stuck||!hasPasskeys());
+    card.hidden=!(stuck||!hasPasskeys());
     if(!hasPasskeys()){said.replaceChildren(note(A.noPasskey));main.set(A.again,()=>stage(true));return}
     saves.hidden=!!(eng&&eng.passkey);
     if(!eng||!eng.passkey){main.set(again?A.again:A.create,createPasskey);return}
     main.set(again?A.again:fill(A.approve,{amount:factRows(p,inv).amount,method:method()}),approve);
   }
-  // A failed prompt: a plain line (timed out, cancelled or failed), the card when it came at once, and Try again.
+  // A failed prompt: a plain line (timed out, cancelled or failed) and Try again; refused at once, before a prompt could
+  // show: this browser cannot sign here, so open the page in Safari or Chrome (and its address to copy).
   function failedPasskey(e,t0){
-    idle();if(performance.now()-t0<1500)stuck=true;
-    said.replaceChildren(note(e&&e.name==='PasskeyTimeout'?A.timeout:cancelled(e)?A.cancelled:A.failed));stage(true);
+    idle();const fast=e&&e.name!=='PasskeyTimeout'&&performance.now()-t0<1500;if(fast)stuck=true;
+    said.replaceChildren(note(e&&e.name==='PasskeyTimeout'?A.timeout:fast?A.noPasskey:cancelled(e)?A.cancelled:A.failed));stage(true);
   }
   // Two taps, each opening its own prompt: create (it uses up the tap's user activation, so Safari would refuse a
   // second prompt in the same tap), then approve. Labels say what runs: the start request keeps the button's own label
@@ -1390,7 +1382,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, inapp: INAPP, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],

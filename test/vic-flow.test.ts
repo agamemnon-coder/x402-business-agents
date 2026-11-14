@@ -39,7 +39,8 @@ describe("the VIC flow on /visa", () => {
     // Since the redesign (13 Nov) the latest run's flow, outcomes and hash lead; its cards open the fold, before the drawing.
     expect(visa.indexOf(fold)).toBeGreaterThan(visa.indexOf('id="visa-flow"'));
     const before = visa.slice(visa.indexOf(fold) + fold.length, visa.indexOf('<section class="card vicflow"')).replace(/<summary>[^<]*<\/summary>/, "").replace(/<ul class="sumc"[\s\S]*?<\/ul>/, "").replace(/<div class="awrb"><div class="card airi" id="vic3-run">[\s\S]*?<\/details>[\s\S]*?<\/div><\/div>/, "");
-    expect(before).not.toMatch(/<section|class="card|<details/);
+    // Visa judge, 14 Nov: the fold opens with the latest run's outcome strip and hash (moved from the top), then the drawing.
+    expect(before.replace(/<section class="vh-out card"[\s\S]*?<\/section>/, "").replace(/<section class="vh-hash card"[\s\S]*?<\/section>/, "")).not.toMatch(/<section|class="card|<details/);
     // Not on the other pages: /proof links to it.
     for (const name of ["airwallex", "proof", "home"]) expect({ name, flow: pages[name]!.includes('id="vic-flow"') }).toEqual({ name, flow: false });
   });

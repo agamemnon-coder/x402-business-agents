@@ -21,7 +21,10 @@ const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1
 const repo = resolve(import.meta.dirname, "../..");
 /** npm run airi:vic-4 passes --vic-4: a third paid purchase (G), a ready check before each tap, F1/F2 to Purser's
  *  credential check. Its own go (VIC4_GO=yes), ledger (data/vic-4*.sqlite) and keys folder (…/vic-4*). */
-const variant = args.includes("--vic-4") ? "vic-4" as const : "vic-3" as const;
+/** npm run airi:vic-5 passes --vic-5 (14 Nov): B alone end to end, C and D, F1/F2 on B's credential; vic-4's waits and
+ *  checks, its own go (VIC5_GO=yes), ledger (data/vic-5*.sqlite) and keys folder (…/vic-5*). */
+const variant = args.includes("--vic-5") ? "vic-5" as const : args.includes("--vic-4") ? "vic-4" as const : "vic-3" as const;
+const waits = variant !== "vic-3";
 
 if (cmd === "help") {
   console.log(`npm run airi:${variant} -- --dry | preflight | live | recover  [--record f.json] [--md f.md]   (docs/runs/${variant}-plan.md)`);
@@ -141,7 +144,7 @@ if (cmd === "dry") {
         const rec = await runVic3({
           variant,
           // The 5-minute tap window starts only once Max says his phone is ready (vic-3's A ran out waiting).
-          ready: variant === "vic-4" ? async (step, what) => {
+          ready: waits ? async (step, what) => {
             current = step;
             log(`READY ${step}    waiting for Max: ${what}`);
             const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -151,9 +154,9 @@ if (cmd === "dry") {
           } : undefined,
           db, mode: "live", airi: new AiriCliClient(), checkout: live.checkout, claude: claudeClient(), log, tmpRoot: root,
           showPasskeyUrl: (url, i) => {
-            tap(tapLine(variant === "vic-4" ? current : i.actionId === "vic3-F1" ? "F1" : i.actionId.startsWith("P-") ? "B" : "A", i.actionId, i, url));
+            tap(tapLine(waits ? current : i.actionId === "vic3-F1" ? "F1" : i.actionId.startsWith("P-") ? "B" : "A", i.actionId, i, url));
             // The QR code: the console only, like the link (Max scans it with his phone).
-            if (variant === "vic-4") void QR.toString(url, { type: "terminal", small: true }).then((q) => tap(q), () => {});
+            if (waits) void QR.toString(url, { type: "terminal", small: true }).then((q) => tap(q), () => {});
           },
           awaitCfo: async (id) => {
             log(`FACE ID    ${approvalHint(db, id)}`);

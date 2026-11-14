@@ -247,16 +247,20 @@ describe("5. PAID in the sandbox, where the settlement is simulated", () => {
 });
 
 describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, on /visa", () => {
-  it("is on /visa only, inside its one closed fold; Home and Proof no longer link to it as an extra (12 Nov), and Home says nothing about Visa (home-story, 12 Nov); the Visa Award only in the Kit line and /visa's entry line (on the VIC run), never on TAP", () => {
+  it("is on /visa only, in its own open section headed as outside the entry; Home and Proof no longer link to it as an extra (12 Nov), and Home says nothing about Visa (home-story, 12 Nov); the Visa Award only in the Kit line and /visa's entry line (on the VIC run), never on TAP", () => {
     const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
     expect(String(pages.visa)).toContain(VISA_TAP_STATUS);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string" && name !== "visa") expect({ name, has: body.includes(VISA_TAP_STATUS) }).toEqual({ name, has: false });
     for (const [name, html] of Object.entries({ home: homePage(), proof: proofPage() })) expect({ name, link: /Extra, not an award entry/.test(html) }).toEqual({ name, link: false });
     // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b|\bawards?\b/);
-    const fold = /<details class="fold" id="visa-tap">[\s\S]*?<\/details>/.exec(String(pages.visa))![0];
-    expect(fold).toContain(VISA_TAP_STATUS);
-    expect(String(pages.visa).replace(fold, "")).not.toMatch(/\bTAP\b/);
+    // Visa judge, 14 Nov: TAP is shown openly on /visa, in its own section headed as outside the entry (no longer a
+    // closed fold); outside that section TAP is named only in the agent identity row that points to it.
+    const v = String(pages.visa), at = v.indexOf('<section class="card vs vs-tap" id="visa-tap">'), end = v.indexOf('id="visa-not-yet"');
+    expect(at).toBeGreaterThan(0);
+    const section = v.slice(at, end);
+    expect(section).toContain(VISA_TAP_STATUS);
+    expect(v.slice(0, at).replace(/<li class="vs-row [^"]*"><span class="vs-k">Agent identity<\/span>[\s\S]*?<\/li>/, "") + v.slice(end)).not.toMatch(/\bTAP\b/);
     for (const [name, body] of Object.entries(pages)) if (typeof body === "string") expect({ name, entered: /\+ Visa Award|TAP counts as Visa tooling/i.test(body) || /Visa Award/i.test(body.split("entered for the Metal Award and the Visa Award").join(" ").split("The Airi runs are Purser's entry for the Visa Award.").join(" ")) }).toEqual({ name, entered: false });
   });
 });

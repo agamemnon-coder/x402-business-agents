@@ -278,15 +278,16 @@ ok((await page.$$("#passkeys li")).length === 1, "Settings lists the owner's one
 await page.click("#passkeys >> text=Remove");
 await page.waitForSelector("text=last owner passkey");
 ok(true, "the company's last owner passkey cannot be removed");
-// Alerts (Settings, Alerts): a WhatsApp number added is shown masked, never whole. Then, with "Ask again" switched on
+// Alerts (Settings, Alerts): an e-mail address added is shown masked, never whole (WhatsApp is not offered, 14 Nov). Then, with "Ask again" switched on
 // and six minutes on by the cloud's clock, the sign-in no longer counts as a fresh passkey check: adding an address asks the passkey again (the virtual
 // authenticator answers), and the console sends the request once more with the step-up token.
 await page.waitForSelector("#alerts");
-await page.selectOption("#alert-channel", "whatsapp");
-await page.fill("#alert-target", "+31612345678");
+ok(!(await page.locator("#alert-channel option").allTextContents()).some((o) => /whatsapp/i.test(o)), "Settings, Alerts offers e-mail, Slack and Teams, not WhatsApp");
+await page.selectOption("#alert-channel", "email");
+await page.fill("#alert-target", "alerts@example.com");
 await page.click("#alert-add");
-await page.waitForSelector("#alerts >> text=+31*******78");
-ok(!((await page.textContent("#alerts")) ?? "").includes("+31612345678"), "Settings, Alerts shows a WhatsApp number masked, never whole");
+await page.waitForSelector("#alerts >> text=a***@example.com");
+ok(!((await page.textContent("#alerts")) ?? "").includes("alerts@example.com"), "Settings, Alerts shows an e-mail address masked, never whole");
 // "Ask again before sensitive changes" is off by default; the owner switches it on (the fresh sign-in is the check).
 ok(!(await page.isChecked("#step-up")), "Settings, Security: \"Ask again before sensitive changes\" is off by default");
 await page.check("#step-up");

@@ -53,7 +53,8 @@ describe("/visa's lead: the latest live run", () => {
 
   it("lists the refusals by Purser only when the record shows 0 calls, and names who chose the rail with the request id", () => {
     const zero = raw.purchases.filter((p) => !p.negative_test && p.outcome?.status === "refused" && p.calls.airi + p.calls.airwallex + p.calls.anthropic === 0).map((p) => p.step);
-    expect(zero.slice(0, 3)).toEqual(["C", "D", "E"]);
+    // vic-5 (14 Nov, the latest) runs no E: its refusals with 0 calls are C, D and the credential misuse F1, F2.
+    expect(zero).toEqual(["C", "D", "F1", "F2"]);
     expect(text(block)).toContain(`${zero.join(", ")} refused by Purser with 0 calls`);
     const first = raw.purchases.find((p) => p.rail_choice?.request_id)!.rail_choice!;
     expect(text(block)).toContain(`Rail chosen by ${first.model} from ${first.menu.length}`);
@@ -79,9 +80,10 @@ describe("/visa's lead: the latest live run", () => {
   });
 });
 
-describe("/runs lists the vic-3 and vic-4 runs", () => {
+describe("/runs lists the vic-3, vic-4 and vic-5 runs", () => {
   it("each as its own row, from its record", () => {
-    for (const [key, rec, file] of [["vic-3", prev, "2026-11-12-vic-3.json"], ["vic-4", raw, "2026-11-13-vic-4.json"]] as const) {
+    const v4 = vic3Run("docs/runs/2026-11-13-vic-4.json")!;
+    for (const [key, rec, file] of [["vic-3", prev, "2026-11-12-vic-3.json"], ["vic-4", v4, "2026-11-13-vic-4.json"], ["vic-5", raw, "2026-11-14-vic-5.json"]] as const) {
       const row = liveRuns().find((r) => r.key === key)!;
       expect(row).toBeTruthy();
       expect(row.iso).toBe(rec.started_at);

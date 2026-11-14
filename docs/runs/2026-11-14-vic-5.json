@@ -1,0 +1,869 @@
+{
+  "run": "vic-5",
+  "mode": "live",
+  "label": "live: airi-cli and the Airwallex sandbox (test money, Airi's test card); checkout: Airwallex sandbox Hosted Payment Page, filled by the agent like a shopper (our own test shop; test money)",
+  "started_at": "2026-11-14T05:41:14.110Z",
+  "ended_at": "2026-11-14T05:45:00.863Z",
+  "budgets": {
+    "anthropic": {
+      "max": 6,
+      "used": 1
+    },
+    "airwallex": {
+      "max": 20,
+      "used": 3
+    },
+    "airi": {
+      "max": 24,
+      "used": 8
+    }
+  },
+  "stopped": null,
+  "preflight": {
+    "cli": "0.1.0-beta.4",
+    "session_expires": "2026-11-14T06:30:52Z",
+    "card": "visa \u2022\u2022\u2022\u2022 1111"
+  },
+  "purchases": [
+    {
+      "step": "B",
+      "what": "above the CFO's limit: Face ID, then the terms hash in Airi's mandate and in Airwallex's PaymentIntent record, both read back",
+      "request": {
+        "amount": "45.00",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+      },
+      "rail_choice": {
+        "by": "claude",
+        "model": "claude-haiku-5-5",
+        "request_id": "req_011Ch2HVkPuB9GdeMH24quSP",
+        "menu": [
+          {
+            "rail": "metal_x402",
+            "words": "x402 on Metal"
+          },
+          {
+            "rail": "airwallex_card",
+            "words": "a card (Airwallex)"
+          },
+          {
+            "rail": "airi_vic",
+            "words": "a single-use Visa credential from Airwallex's Airi (VIC)"
+          }
+        ],
+        "offer": {
+          "offered": true,
+          "merchant": "northwind-sandbox",
+          "why": "Northwind Outdoor test shop (Airwallex sandbox) is on the CFO's Airi allowlist; 45.00 EUR is above the 20.00 the agent may spend alone, so it waits for the CFO's Face ID"
+        },
+        "chosen": "airi_vic",
+        "reason": "Merchant's hosted checkout accepts only airi_vic, and it is on the CFO's Airi allowlist; Purser will route the 45.00 EUR amount for CFO Face ID approval.",
+        "refused": [],
+        "cost_usd_micros": 185
+      },
+      "proposal_id": "P-0002",
+      "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+      "payment_intent_id": "int_sgpvspvj9ho57xv5asj",
+      "terms_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+      "read_back": {
+        "mandate": {
+          "terms_sha256_in_mandate": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+          "equal": true,
+          "before_credential": true
+        },
+        "payment_intent": {
+          "payment_intent_id": "int_sgpvspvj9ho57xv5asj",
+          "key": "purser_terms_sha256",
+          "expected": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+          "read_back": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+          "proposal_expected": "P-0002",
+          "proposal_read_back": "P-0002",
+          "equal": true
+        }
+      },
+      "outcome": {
+        "status": "succeeded",
+        "actionId": "P-0002",
+        "orderSha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+        "mandateId": "mdt_nlpdlr7dgho57xw5fpd",
+        "reference": "int_sgpvspvj9ho57xv5asj",
+        "code": "SUCCEEDED",
+        "label": "airi-cli 0.1.0-beta.4 (Airwallex's Airi wallet)",
+        "proposalId": "P-0002"
+      },
+      "calls": {
+        "anthropic": 1,
+        "airwallex": 3,
+        "airi": 4
+      },
+      "failed_attempts": []
+    },
+    {
+      "step": "C",
+      "what": "over the hard cap: refused by Purser",
+      "request": {
+        "amount": "250.00",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+      },
+      "rail_choice": null,
+      "proposal_id": null,
+      "mandate_id": null,
+      "payment_intent_id": null,
+      "terms_sha256": null,
+      "read_back": {
+        "mandate": null,
+        "payment_intent": null
+      },
+      "outcome": {
+        "status": "refused",
+        "by": "purser",
+        "code": "PURSER_ABOVE_HARD_CAP",
+        "reason": "250.00 EUR is above the hard cap of 200.00; not even Face ID can approve it"
+      },
+      "calls": {
+        "anthropic": 0,
+        "airwallex": 0,
+        "airi": 0
+      },
+      "failed_attempts": []
+    },
+    {
+      "step": "D",
+      "what": "a merchant not on the CFO's allowlist: refused by Purser",
+      "request": {
+        "amount": "5.00",
+        "currency": "EUR",
+        "merchant": "Example shop (not allowed)"
+      },
+      "rail_choice": null,
+      "proposal_id": null,
+      "mandate_id": null,
+      "payment_intent_id": null,
+      "terms_sha256": null,
+      "read_back": {
+        "mandate": null,
+        "payment_intent": null
+      },
+      "outcome": {
+        "status": "refused",
+        "by": "purser",
+        "code": "PURSER_MERCHANT_NOT_ALLOWED",
+        "reason": "https://shop.example is not a merchant the CFO allows on this rail"
+      },
+      "calls": {
+        "anthropic": 0,
+        "airwallex": 0,
+        "airi": 0
+      },
+      "failed_attempts": []
+    },
+    {
+      "step": "F1",
+      "what": "B's credential presented for another amount (40.00 EUR): refused by Purser's credential check",
+      "request": {
+        "amount": "40.00",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+      },
+      "rail_choice": null,
+      "proposal_id": null,
+      "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+      "payment_intent_id": null,
+      "terms_sha256": null,
+      "read_back": {
+        "mandate": null,
+        "payment_intent": null
+      },
+      "outcome": {
+        "status": "refused",
+        "by": "purser (credential check, before any Airwallex call)",
+        "code": "PURSER_CREDENTIAL_AMOUNT_MISMATCH",
+        "reason": "mandate mdt_nlpdlr7dgho57xw5fpd is for 45.00 EUR, not 40.00 EUR"
+      },
+      "calls": {
+        "anthropic": 0,
+        "airwallex": 0,
+        "airi": 0
+      },
+      "failed_attempts": []
+    },
+    {
+      "step": "F2",
+      "what": "B's credential presented a second time: refused by Purser's credential check",
+      "request": {
+        "amount": "45.00",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)"
+      },
+      "rail_choice": null,
+      "proposal_id": null,
+      "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+      "payment_intent_id": null,
+      "terms_sha256": null,
+      "read_back": {
+        "mandate": null,
+        "payment_intent": null
+      },
+      "outcome": {
+        "status": "refused",
+        "by": "purser (credential check, before any Airwallex call)",
+        "code": "PURSER_CREDENTIAL_ALREADY_USED",
+        "reason": "mandate mdt_nlpdlr7dgho57xw5fpd's credential was already used for P-0002 (settled)"
+      },
+      "calls": {
+        "anthropic": 0,
+        "airwallex": 0,
+        "airi": 0
+      },
+      "failed_attempts": []
+    }
+  ],
+  "checks": {
+    "b_rail_chosen_by_the_agent": {
+      "ok": true,
+      "detail": "B: rail airi_vic chosen by claude"
+    },
+    "b_mandate_read_back_equal_before_credential": {
+      "ok": true,
+      "detail": "B: equal, before the credential"
+    },
+    "b_payment_intent_read_back_equal": {
+      "ok": true,
+      "detail": "B: equal"
+    },
+    "b_paid": {
+      "ok": true,
+      "detail": "B: succeeded"
+    },
+    "c_refused_by_purser_0_calls": {
+      "ok": true,
+      "detail": "C: refused PURSER_ABOVE_HARD_CAP; calls {\"anthropic\":0,\"airwallex\":0,\"airi\":0}"
+    },
+    "d_refused_by_purser_0_calls": {
+      "ok": true,
+      "detail": "D: refused PURSER_MERCHANT_NOT_ALLOWED; calls {\"anthropic\":0,\"airwallex\":0,\"airi\":0}"
+    },
+    "f1_refused_by_credential_check_0_calls": {
+      "ok": true,
+      "detail": "F1: refused PURSER_CREDENTIAL_AMOUNT_MISMATCH; calls {\"anthropic\":0,\"airwallex\":0,\"airi\":0}"
+    },
+    "f2_refused_by_credential_check_0_calls": {
+      "ok": true,
+      "detail": "F2: refused PURSER_CREDENTIAL_ALREADY_USED; calls {\"anthropic\":0,\"airwallex\":0,\"airi\":0}"
+    },
+    "credential_deleted": {
+      "ok": true,
+      "detail": "B's kept credential and its directory are deleted"
+    },
+    "within_budgets": {
+      "ok": true,
+      "detail": "Anthropic 1/6, Airwallex 3/20, airi-cli 8/24"
+    }
+  },
+  "credential_deleted": true,
+  "audit": [
+    {
+      "seq": 5,
+      "ts": "2026-11-14T05:31:26.892Z",
+      "actor": "system",
+      "event": "airi.policy_initial",
+      "subject": "vic-5",
+      "payload": {
+        "run": "vic-5",
+        "values": {
+          "airi.merchant.northwind-sandbox": "allowed",
+          "approval.airi_alone": "20.00",
+          "approval.airi_alone_per_day": "3"
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "ts": "2026-11-14T05:31:29.481Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "45.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "rail_choice": {
+          "agent": "sourcing",
+          "by": "claude",
+          "model": "claude-haiku-5-5",
+          "rail": "airi_vic",
+          "request_id": "req_011Ch2GkTSyy64XSUTkZvAHN"
+        },
+        "route": "cfo"
+      }
+    },
+    {
+      "seq": 9,
+      "ts": "2026-11-14T05:31:29.481Z",
+      "actor": "sourcing",
+      "event": "airi.rail_choice",
+      "subject": "P-0001",
+      "payload": {
+        "agent": "sourcing",
+        "by": "claude",
+        "model": "claude-haiku-5-5",
+        "rail": "airi_vic",
+        "request_id": "req_011Ch2GkTSyy64XSUTkZvAHN"
+      }
+    },
+    {
+      "seq": 14,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.checkout_prepared",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "checkout": "airwallex-sandbox-hosted",
+        "order_sha256": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+        "reference": "int_sgpv8fbwkho57p2n2e5"
+      }
+    },
+    {
+      "seq": 15,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.mandate_created",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "amount": "45.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "order_sha256": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83"
+      }
+    },
+    {
+      "seq": 16,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.mandate_read_back",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "match": true,
+        "order_sha256": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+        "status": "CREATED",
+        "terms_sha256_in_mandate": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83"
+      }
+    },
+    {
+      "seq": 17,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.waiting_for_tap",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "order_sha256": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83"
+      }
+    },
+    {
+      "seq": 18,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.mandate_cancelled",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "why": "no tap in time"
+      }
+    },
+    {
+      "seq": 19,
+      "ts": "2026-11-14T05:34:34.458Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "P-0001",
+      "payload": {
+        "action_id": "P-0001",
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_NO_TAP",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "reason": "no tap in Airi within 300 s; Purser stopped and cancelled the mandate"
+      }
+    },
+    {
+      "seq": 21,
+      "ts": "2026-11-14T05:39:38.412Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "250.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "rail_choice": {
+          "by": "code",
+          "rail": "airi_vic"
+        },
+        "route": "refused"
+      }
+    },
+    {
+      "seq": 22,
+      "ts": "2026-11-14T05:39:38.412Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_ABOVE_HARD_CAP",
+        "reason": "250.00 EUR is above the hard cap of 200.00; not even Face ID can approve it"
+      }
+    },
+    {
+      "seq": 23,
+      "ts": "2026-11-14T05:39:38.414Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://shop.example",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "5.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Example shop (not allowed)",
+        "rail_choice": {
+          "by": "code",
+          "rail": "airi_vic"
+        },
+        "route": "refused"
+      }
+    },
+    {
+      "seq": 24,
+      "ts": "2026-11-14T05:39:38.414Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "https://shop.example",
+      "payload": {
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_MERCHANT_NOT_ALLOWED",
+        "reason": "[link] is not a merchant the CFO allows on this rail"
+      }
+    },
+    {
+      "seq": 25,
+      "ts": "2026-11-14T05:39:38.416Z",
+      "actor": "system",
+      "event": "vic3.credential_check",
+      "subject": "F1",
+      "payload": {
+        "amount": "40.00",
+        "label": "vic-5: B's credential (a 45.00 EUR mandate) presented for a 40.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "refused": "PURSER_CREDENTIAL_AMOUNT_MISMATCH",
+        "run": "vic-5"
+      }
+    },
+    {
+      "seq": 26,
+      "ts": "2026-11-14T05:39:38.417Z",
+      "actor": "system",
+      "event": "vic3.credential_check",
+      "subject": "F2",
+      "payload": {
+        "amount": "45.00",
+        "label": "vic-5: B's credential, already used once, presented again for a new 45.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call",
+        "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+        "refused": "PURSER_CREDENTIAL_ALREADY_USED",
+        "run": "vic-5"
+      }
+    },
+    {
+      "seq": 27,
+      "ts": "2026-11-14T05:41:16.680Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "45.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "rail_choice": {
+          "agent": "sourcing",
+          "by": "claude",
+          "model": "claude-haiku-5-5",
+          "rail": "airi_vic",
+          "request_id": "req_011Ch2HVkPuB9GdeMH24quSP"
+        },
+        "route": "cfo"
+      }
+    },
+    {
+      "seq": 28,
+      "ts": "2026-11-14T05:41:16.680Z",
+      "actor": "sourcing",
+      "event": "proposal.created",
+      "subject": "P-0002",
+      "payload": {
+        "kind": "airi_purchase",
+        "origin": {
+          "actor": "agent",
+          "agent": "sourcing",
+          "model": "claude-haiku-5-5",
+          "request_id": "req_011Ch2HVkPuB9GdeMH24quSP",
+          "run_id": "run-sourcing-26-1ac8a9"
+        },
+        "policy_version": 1,
+        "terms_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 29,
+      "ts": "2026-11-14T05:41:16.680Z",
+      "actor": "sourcing",
+      "event": "airi.rail_choice",
+      "subject": "P-0002",
+      "payload": {
+        "agent": "sourcing",
+        "by": "claude",
+        "model": "claude-haiku-5-5",
+        "rail": "airi_vic",
+        "request_id": "req_011Ch2HVkPuB9GdeMH24quSP"
+      }
+    },
+    {
+      "seq": 32,
+      "ts": "2026-11-14T05:43:23.976Z",
+      "actor": "human",
+      "event": "proposal.approved",
+      "subject": "P-0002",
+      "payload": {
+        "approver": "max (passkey RJRKlgHA)",
+        "method": "passkey",
+        "note": null,
+        "passkey": {
+          "assertion_sha256": "c3d3492be844e9eb6722307c9ce6b2308b5c66d80270c28223b79256f165a66b",
+          "credential_id": "RJRKlgHAMCktf7rwndPKJEKXlqA"
+        },
+        "policy_version": 1,
+        "terms_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 33,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "proposal.executing",
+      "subject": "P-0002",
+      "payload": {
+        "terms_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 34,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.checkout_prepared",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "checkout": "airwallex-sandbox-hosted",
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+        "reference": "int_sgpvspvj9ho57xv5asj"
+      }
+    },
+    {
+      "seq": 35,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.mandate_created",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "amount": "45.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 36,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.mandate_read_back",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "match": true,
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+        "status": "CREATED",
+        "terms_sha256_in_mandate": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 37,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.waiting_for_tap",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5"
+      }
+    },
+    {
+      "seq": 38,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.credential_received",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+        "status": "saved",
+        "token_expiration": "2030-12-31T23:59:59Z",
+        "token_type": "DPAN"
+      }
+    },
+    {
+      "seq": 39,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.checkout_result",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "amount": "45.00",
+        "checkout": "airwallex-sandbox-hosted",
+        "code": "SUCCEEDED",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "order_sha256": "42dfaf8a15f67620a9acfe4106d4ef21fb71e28200dfa6a2dd617fa1442c6ea5",
+        "origin": {
+          "actor": "cfo",
+          "approval_id": "2",
+          "approver": "max (passkey RJRKlgHA)",
+          "method": "passkey",
+          "proposal_id": "P-0002"
+        },
+        "outcome": "SUCCEEDED",
+        "reference": "int_sgpvspvj9ho57xv5asj"
+      }
+    },
+    {
+      "seq": 40,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "airi.result_reported",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "result": "SUCCEEDED"
+      }
+    },
+    {
+      "seq": 41,
+      "ts": "2026-11-14T05:43:26.280Z",
+      "actor": "system",
+      "event": "proposal.executed",
+      "subject": "P-0002",
+      "payload": {
+        "action_id": "P-0002",
+        "code": "SUCCEEDED",
+        "outcome": "SUCCEEDED"
+      }
+    },
+    {
+      "seq": 42,
+      "ts": "2026-11-14T05:45:00.852Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "250.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Northwind Outdoor test shop (Airwallex sandbox)",
+        "rail_choice": {
+          "by": "code",
+          "rail": "airi_vic"
+        },
+        "route": "refused"
+      }
+    },
+    {
+      "seq": 43,
+      "ts": "2026-11-14T05:45:00.852Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "https://kit11.max-31b.workers.dev",
+      "payload": {
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_ABOVE_HARD_CAP",
+        "reason": "250.00 EUR is above the hard cap of 200.00; not even Face ID can approve it"
+      }
+    },
+    {
+      "seq": 44,
+      "ts": "2026-11-14T05:45:00.857Z",
+      "actor": "sourcing",
+      "event": "airi.purchase_requested",
+      "subject": "https://shop.example",
+      "payload": {
+        "agent": "sourcing",
+        "amount": "5.00",
+        "client": "airi-cli",
+        "currency": "EUR",
+        "merchant": "Example shop (not allowed)",
+        "rail_choice": {
+          "by": "code",
+          "rail": "airi_vic"
+        },
+        "route": "refused"
+      }
+    },
+    {
+      "seq": 45,
+      "ts": "2026-11-14T05:45:00.857Z",
+      "actor": "system",
+      "event": "airi.purchase_refused",
+      "subject": "https://shop.example",
+      "payload": {
+        "agent": "sourcing",
+        "by": "purser",
+        "code": "PURSER_MERCHANT_NOT_ALLOWED",
+        "reason": "[link] is not a merchant the CFO allows on this rail"
+      }
+    },
+    {
+      "seq": 46,
+      "ts": "2026-11-14T05:45:00.860Z",
+      "actor": "system",
+      "event": "vic3.credential_check",
+      "subject": "F1",
+      "payload": {
+        "amount": "40.00",
+        "label": "vic-5: B's credential (a 45.00 EUR mandate) presented for a 40.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "refused": "PURSER_CREDENTIAL_AMOUNT_MISMATCH",
+        "run": "vic-5"
+      }
+    },
+    {
+      "seq": 47,
+      "ts": "2026-11-14T05:45:00.861Z",
+      "actor": "system",
+      "event": "vic3.credential_check",
+      "subject": "F2",
+      "payload": {
+        "amount": "45.00",
+        "label": "vic-5: B's credential, already used once, presented again for a new 45.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call",
+        "mandate_id": "mdt_nlpdlr7dgho57xw5fpd",
+        "refused": "PURSER_CREDENTIAL_ALREADY_USED",
+        "run": "vic-5"
+      }
+    }
+  ],
+  "earlier_attempt": {
+    "started_at": "2026-11-14T05:31:26.892Z",
+    "ended_at": "2026-11-14T05:39:38.418Z",
+    "proposal_id": "P-0001",
+    "mandate_id": "mdt_nlpdpfz2lho57p3duds",
+    "payment_intent_id": "int_sgpv8fbwkho57p2n2e5",
+    "terms_sha256": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+    "rail_choice": {
+      "by": "claude",
+      "model": "claude-haiku-5-5",
+      "request_id": "req_011Ch2GkTSyy64XSUTkZvAHN",
+      "menu": [
+        {
+          "rail": "metal_x402",
+          "words": "x402 on Metal"
+        },
+        {
+          "rail": "airwallex_card",
+          "words": "a card (Airwallex)"
+        },
+        {
+          "rail": "airi_vic",
+          "words": "a single-use Visa credential from Airwallex's Airi (VIC)"
+        }
+      ],
+      "offer": {
+        "offered": true,
+        "merchant": "northwind-sandbox",
+        "why": "Northwind Outdoor test shop (Airwallex sandbox) is on the CFO's Airi allowlist; 45.00 EUR is above the 20.00 the agent may spend alone, so it waits for the CFO's Face ID"
+      },
+      "chosen": "airi_vic",
+      "reason": "Merchant's hosted checkout accepts only airi_vic, and the merchant is on the CFO's Airi allowlist; Purser will route the 45.00 EUR amount to CFO Face ID.",
+      "refused": [],
+      "cost_usd_micros": 186
+    },
+    "read_back": {
+      "mandate": {
+        "terms_sha256_in_mandate": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+        "equal": true,
+        "before_credential": true
+      },
+      "payment_intent": {
+        "payment_intent_id": "int_sgpv8fbwkho57p2n2e5",
+        "key": "purser_terms_sha256",
+        "expected": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+        "read_back": "78592302972c784f8356a34792551e0b636beaa8fc5ed39125da5e08941c0b83",
+        "proposal_expected": "P-0001",
+        "proposal_read_back": "P-0001",
+        "equal": true
+      }
+    },
+    "outcome": {
+      "status": "refused",
+      "by": "purser",
+      "code": "PURSER_NO_TAP",
+      "reason": "no tap in Airi within 300 s; Purser stopped and cancelled the mandate",
+      "actionId": "P-0001",
+      "proposalId": "P-0001",
+      "mandateId": "mdt_nlpdpfz2lho57p3duds"
+    },
+    "calls": {
+      "anthropic": 1,
+      "airwallex": 2,
+      "airi": 4
+    },
+    "airi_mandate_status_read_after": "DENIED, no credential issued (airi-cli mandate list, read 05:40 UTC)",
+    "note": "The tap page in Airi kept loading on the owner's phone; no tap within 300 s, so Purser stopped and cancelled the mandate. Nothing charged. C, D and F1 of this attempt were refused as in the run below; its F2 is not counted, as no credential was ever issued.",
+    "budgets": {
+      "anthropic": {
+        "max": 6,
+        "used": 1
+      },
+      "airwallex": {
+        "max": 20,
+        "used": 2
+      },
+      "airi": {
+        "max": 24,
+        "used": 8
+      }
+    }
+  }
+}

@@ -436,14 +436,15 @@ describe("/proof's words in sight", () => {
     // stands (IN_APPROVAL): 342 as built.
     // The owner, 13 Nov ("the proof is what we need"): every live run in sight, by partner, each with its day, its chip,
     // its id and how to verify it; the proof chain and the offline check above them; the four cards gone: 810 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1200); // 720 until the live runs came into sight (1,186 as built)
+    // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(840);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1220); // 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(820); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built)
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(840); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
   });
 });

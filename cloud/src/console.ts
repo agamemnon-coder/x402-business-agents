@@ -1333,8 +1333,8 @@ async function claudeCard(m,owner){
   return card;
 }
 
-// Approval alerts (cloud/src/alerts.ts): who hears that a payment waits for the CFO's Face ID. Owners add WhatsApp
-// numbers, e-mail addresses, Slack and Teams webhooks (after a fresh passkey check); every target is shown masked. An
+// Approval alerts (cloud/src/alerts.ts): who hears that a payment waits for the CFO's Face ID. Owners add e-mail
+// addresses, Slack and Teams webhooks (after a fresh passkey check); every target is shown masked. An
 // alert only tells: it carries the amount, the payee, why, and a link here; it never approves.
 async function alertsCard(){
   const card=el('div','card panel alerts');card.id='alerts';
@@ -1350,9 +1350,9 @@ async function alertsCard(){
     const d=r.deliveries||[];
     log.replaceChildren(...(d.length?[el('h2','sub-h',t('cs.alerts.latest')),el('ul','plain',d.slice(0,8).map(x=>el('li','',[el('span','pill'+(x.status==='sent'?' ok':' warn'),tk('cs.alerts.st.'+x.status,x.status)),' ',tk('cs.alerts.ch.'+x.channel,x.channel),' · ',el('span','mono',x.target_mask),' · '+x.invoice_id+' · '+stamp(x.updated_at)])))]:[]));
   }
-  const ch=el('select','field');ch.id='alert-channel';for(const c of ['whatsapp','email','slack','teams']){const o=el('option','',t('cs.alerts.ch.'+c));o.value=c;ch.append(o)}
+  const ch=el('select','field');ch.id='alert-channel';for(const c of ['email','slack','teams']){const o=el('option','',t('cs.alerts.ch.'+c));o.value=c;ch.append(o)}
   const val=el('input','field');val.id='alert-target';val.maxLength=500;val.autocomplete='off';
-  const hint=()=>{val.placeholder=t('cs.alerts.ph.'+ch.value);val.type=ch.value==='email'?'email':ch.value==='whatsapp'?'tel':'url'};hint();ch.onchange=hint;
+  const hint=()=>{val.placeholder=t('cs.alerts.ph.'+ch.value);val.type=ch.value==='email'?'email':'url'};hint();ch.onchange=hint;
   const addB=btn(t('cs.alerts.add'),'primary','scan-face');addB.id='alert-add';
   addB.onclick=async()=>{if(!val.value.trim())return;addB.disabled=true;
     try{await api('/v1/alerts/targets',{method:'POST',body:{channel:ch.value,target:val.value.trim()}});val.value='';out.replaceChildren(note(t('cs.alerts.added'),'ok'));await draw()}
