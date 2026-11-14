@@ -145,7 +145,7 @@ ol.pchain.n5 { margin: 0; }
 ul.tools { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (max-width: 600px) { ul.tools { grid-template-columns: minmax(0, 1fr); } }
 ul.tools li { display: grid; gap: 1px; font-size: 14.5px; line-height: 1.35; color: var(--muted); padding: 8px 10px; border-radius: 10px; background: var(--sunken); min-width: 0; }
-ul.tools li code { color: var(--text); font-size: 13.5px; }`;
+ul.tools li code { color: var(--text); font-size: 14px; }`;
 
 export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   const tools = agentTools(), env = envNames();
