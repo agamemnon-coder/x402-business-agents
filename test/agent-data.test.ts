@@ -67,7 +67,7 @@ describe("/proof.json", () => {
     }
   });
 
-  it("links only to the site, the repository or the Metal explorer, over https, with no relative path left", () => {
+  it("links only to the site, the repository or the Alta explorer, over https, with no relative path left", () => {
     expect(doc.site).toBe(SITE_URL);
     expect(doc.repository).toBe(REPOSITORY_URL);
     expect(REPO_BLOB.startsWith(`${REPOSITORY_URL}/`)).toBe(true);
@@ -92,7 +92,7 @@ describe("/proof.json", () => {
     const noLinks = text.replace(/https:\/\/[^"\s]+/g, "").replace(/\bdocs\/[\w./-]+\.json\b/g, "");
     // 12 November: runs may show a public hash as an id (the signed terms' SHA-256, also on /runs); those are known.
     const runHashes = liveRuns().flatMap((r) => r.ids).filter((x) => /SHA-256|hash/i.test(x.label) && /^[0-9a-f]{64}$/i.test(x.value)).map((x) => x.value.toLowerCase());
-    // 12 Nov (jury check): a run may show its on-chain account (the passkey account on Metal testnet), a public address.
+    // 12 Nov (jury check): a run may show its on-chain account (the passkey account on Alta testnet), a public address.
     const runAccounts = liveRuns().flatMap((r) => r.ids).filter((x) => /account/i.test(x.label) && /^0x[0-9a-f]{40}$/i.test(x.value)).map((x) => x.value.toLowerCase().replace(/^0x/, ""));
     expect(privateFindings(noLinks, { known64: new Set(runHashes), known40: new Set([...runAccounts, ...runAccounts.map((x) => `0x${x}`)]) })).toEqual([]);
   });

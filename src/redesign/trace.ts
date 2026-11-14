@@ -37,7 +37,7 @@ export const STEP_TITLES: Record<StepKey, string> = {
 export interface Step { key: StepKey; status: "shown" | "none"; text: string; ids: { label: string; value: string; href?: string }[] }
 export interface Chain { payment: TracePayment; title: string; short: string; steps: Step[] }
 
-/** The count, said one way (Max, 6 Nov): 88 = 86 on Metal + 1 card charge + 1 SWIFT transfer. */
+/** The count, said one way (Max, 6 Nov): 88 = 86 on Alta + 1 card charge + 1 SWIFT transfer. */
 export interface Count { n: number; metal: number; cards: number; transfers: number; sales: number; purchases: number; refunds: number; sweeps: number; line: string; metalParts: string }
 const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
 export function countOf(t: RunTrace): Count {
@@ -46,11 +46,11 @@ export function countOf(t: RunTrace): Count {
   const metal = sales + purchases + refunds + sweeps;
   return {
     n: t.payments.length, metal, cards, transfers, sales, purchases, refunds, sweeps,
-    line: `${t.payments.length} = ${metal} on Metal + ${pl(cards, "card charge")} + ${pl(transfers, "SWIFT transfer")}`,
+    line: `${t.payments.length} = ${metal} on Alta + ${pl(cards, "card charge")} + ${pl(transfers, "SWIFT transfer")}`,
     metalParts: `${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")}`,
   };
 }
-export const headerLine = (c: Count) => `Pick any of the ${c.n} payments (${c.metal} on Metal + ${pl(c.cards, "card charge")} + ${pl(c.transfers, "SWIFT transfer")}).`;
+export const headerLine = (c: Count) => `Pick any of the ${c.n} payments (${c.metal} on Alta + ${pl(c.cards, "card charge")} + ${pl(c.transfers, "SWIFT transfer")}).`;
 export const HEADER_SECOND = "Every step is shown; the audit rows themselves are summarised, not published.";
 
 /** What the published hashes prove, and what they do not (Max, 6 Nov). */
@@ -103,7 +103,7 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
     } else if (m) {
       const whose = m.agent === "customer" ? "The simulated customer's" : `The ${agentName(m.agent)}'s`;
       const extra = p.kind === "refund" ? ` The CFO's refund policy: up to ${settings.get("approval.refund_each")} test USD each and ${settings.get("approval.refund_per_dispute")} per dispute without a signature.` : "";
-      add("policy", "shown", `${whose} mandate on Metal: up to ${m.cap} test USD a payment, ${m.budget} in total, ${m.event === "mandate.replaced" ? `replaced at ${hms(m.ts)} UTC by ${m.proposal_id}` : `bound at ${hms(m.ts)} UTC`}.${extra}`, [tx(m.tx), ...(m.mandate_hash ? [{ label: "mandate hash", value: m.mandate_hash }] : [])]);
+      add("policy", "shown", `${whose} mandate on Alta: up to ${m.cap} test USD a payment, ${m.budget} in total, ${m.event === "mandate.replaced" ? `replaced at ${hms(m.ts)} UTC by ${m.proposal_id}` : `bound at ${hms(m.ts)} UTC`}.${extra}`, [tx(m.tx), ...(m.mandate_hash ? [{ label: "mandate hash", value: m.mandate_hash }] : [])]);
     } else {
       add("policy", "none", "The record names no mandate for this payment.");
     }
@@ -135,7 +135,7 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
       const perTx = String(synced?.payload.to ?? "").split(" / ")[0] ?? "";
       add("limit", "shown", `Inside the limit: EUR ${p.amount} against EUR ${perTx} a purchase. Held by Airwallex's card controls.`, [{ label: "lock", value: "Airwallex's card controls" }]);
     } else if (m) {
-      add("limit", "shown", `Inside the limit: ${p.amount} against ${m.cap} test USD a payment. Held by ${m.agent === "customer" ? "the customer's own mandate on Metal (its lock, not ours)" : "Metal's mandate on chain; Purser's code checks the same limit before signing"}.`, [{ label: "lock", value: m.agent === "customer" ? "the customer's mandate on Metal" : "Metal's mandate on chain" }]);
+      add("limit", "shown", `Inside the limit: ${p.amount} against ${m.cap} test USD a payment. Held by ${m.agent === "customer" ? "the customer's own mandate on Alta (its lock, not ours)" : "Alta's mandate on chain; Purser's code checks the same limit before signing"}.`, [{ label: "lock", value: m.agent === "customer" ? "the customer's mandate on Alta" : "Alta's mandate on chain" }]);
     } else {
       add("limit", "none", "The record names no limit for this payment.");
     }
@@ -168,7 +168,7 @@ export function chains(r: RunRecord, t: RunTrace): Chain[] {
     }
 
     // 6. The rail.
-    if (p.rail === "metal") add("rail", "shown", "Paid on Metal testnet; the transaction is public.", [tx(p.rail_id)]);
+    if (p.rail === "metal") add("rail", "shown", "Paid on Alta testnet; the transaction is public.", [tx(p.rail_id)]);
     else if (p.rail === "airwallex_card") add("rail", "shown", "Approved by Airwallex on the agent's card (sandbox). No approval hash: nothing was signed for it.", [{ label: "Airwallex id", value: p.rail_id }]);
     else add("rail", "shown", `Sent by SWIFT through Airwallex, the approval hash in the transfer's metadata; PAID ${SANDBOX_SETTLED}.`, [{ label: "Airwallex id", value: p.rail_id }, { label: "approval_sha256", value: p.approval_sha256 ?? "" }]);
 
@@ -232,7 +232,7 @@ ${x.steps.map((s) => `<li class="${s.status}"><b>${esc(STEP_TITLES[s.key])}${s.s
   const body = `<main class="wrap tracep">
 <h1>Trace any payment</h1>
 <p class="lead2">${esc(headerLine(c))} ${esc(HEADER_SECOND)}</p>
-<p class="sub">From the main run of 3 November, test money. On Metal: ${esc(c.metalParts)}.</p>
+<p class="sub">From the main run of 3 November, test money. On Alta: ${esc(c.metalParts)}.</p>
 <p class="label">${esc(t.label)} ${esc(RECORD_UNCHANGED)}</p>
 <nav class="picker" aria-label="Pick a payment">
 ${picker}

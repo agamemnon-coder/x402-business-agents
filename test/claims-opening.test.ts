@@ -109,7 +109,7 @@ describe("the opening table's numbers are the records' and the code's", () => {
   it("payments, stops and Face ID", () => {
     const card = main.snapshot.tower.money_out.filter((f) => f.label === "Card spend").reduce((n, f) => n + f.count, 0);
     expect(main.snapshot.counts.alone).toBe(main.proof.alone);
-    expect(row("Payments within the limits, no approval at the time").value).toBe(`${main.proof.alone}: ${main.proof.alone - card} Metal payments + ${card} card charge`);
+    expect(row("Payments within the limits, no approval at the time").value).toBe(`${main.proof.alone}: ${main.proof.alone - card} Alta payments + ${card} card charge`);
     const record = loadRecord().record;
     expect(row("Stops").value).toBe(stopsLine(stopStory(record)));
     expect(stopStory(record).total).toBe(main.snapshot.counts.blocked);
@@ -127,8 +127,8 @@ describe("the opening table's numbers are the records' and the code's", () => {
     expect(read("docs/in-depth.md")).toContain(out.proof.ref);
   });
 
-  it("Metal's refusal on chain, as Home and the README's table of one id per rail (docs/in-depth.md) give it", () => {
-    const tx = /tx `(0x[0-9a-f]{64})`/.exec(row("Metal refused on chain").value)![1]!;
+  it("Alta's refusal on chain, as Home and the README's table of one id per rail (docs/in-depth.md) give it", () => {
+    const tx = /tx `(0x[0-9a-f]{64})`/.exec(row("Alta refused on chain").value)![1]!;
     expect(read("docs/in-depth.md")).toContain(tx);
     expect(JSON.stringify(main)).toContain(tx);
     expect(main.proof.chain_refusals).toBeGreaterThanOrEqual(1);

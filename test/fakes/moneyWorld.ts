@@ -1,5 +1,5 @@
 // A small world with one movement (and one failed attempt) on every rail Purser records: transfers with a fee and
-// without approval, an FX conversion, a card charge and a decline, Metal sales, purchases, a refund, a sweep and its
+// without approval, an FX conversion, a card charge and a decline, Alta sales, purchases, a refund, a sweep and its
 // credit, a clearing withdrawal, an Airi purchase and a payment into a Global Account. Test data only.
 import type { DB } from "../../src/db/open.js";
 import { termsHash, TERMS_SCHEMA, type Terms } from "../../src/lib/terms.js";
@@ -31,7 +31,7 @@ export function moneyWorld(d: DB): void {
   run("INSERT INTO cards (agent, cardholder_id, card_id, last4, nickname, currency, per_tx_cents, monthly_cents, status, synced_at, created_at) VALUES ('support', 'ch_1', 'card_1', '4242', 'support', 'EUR', 10000, 50000, 'ACTIVE', '2026-11-01', '2026-11-01')");
   run("INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, source, occurred_at, recorded_at) VALUES ('ctx_1', 'card_1', 'support', 'Helpdesk SaaS', '5734', 4900, 'EUR', 'APPROVED', 1, 'simulation', '2026-11-06T10:00:00Z', '2026-11-06T10:00:01Z')");
   run("INSERT INTO card_transactions (transaction_id, card_id, agent, merchant, mcc, amount_cents, currency, status, approved, failure_reason, source, occurred_at, recorded_at) VALUES ('ctx_2', 'card_1', 'support', 'Casino', '7995', 9900, 'EUR', 'DECLINED', 0, 'merchant category not allowed', 'simulation', '2026-11-06T11:00:00Z', '2026-11-06T11:00:01Z')");
-  // Metal: a sale, a paid and a refused purchase, a refund, a sweep and its credit.
+  // Alta: a sale, a paid and a refused purchase, a refund, a sweep and its credit.
   run("INSERT INTO upstream_purchases (id, price_cents, tx_hash, outcome, created_at) VALUES (1, 3, '0xup1', 'PAID', '2026-11-07T09:00:00Z')");
   run("INSERT INTO upstream_purchases (id, price_cents, outcome, refusal_reason, created_at) VALUES (2, 3, 'REFUSED', 'mandate_cap_exceeded', '2026-11-07T09:01:00Z')");
   run("INSERT INTO sales (sale_id, route, price_cents, payer, tx_hash, request_url, request_params_json, status, created_at, upstream_purchase_id) VALUES (1, '/stock', 5, '0xretailer000000000000', '0xsale1', 'http://x', '{}', 'DELIVERED', '2026-11-07T09:00:01Z', 1)");
@@ -39,7 +39,7 @@ export function moneyWorld(d: DB): void {
   run("INSERT INTO refunds (refund_id, sale_id, payment_id, amount_cents, to_address, outcome, tx_hash) VALUES (1, 1, 'pay-r1', 5, '0xretailer000000000000', 'PAID', '0xref1')");
   run("INSERT INTO chain_credits (event_key, tx_hash, from_address, to_address, amount_base_units, block, finalized_block, awx_deposit_id, awx_reference, created_at) VALUES ('ev1', '0xsw1', '0xa', '0xb', '20000000000000000', 10, 12, 'dep_1', 'ref', '2026-11-08T10:05:00Z')");
   run("INSERT INTO sweeps (payment_id, amount_cents, tx_hash, outcome, event_key, created_at) VALUES ('sw-1', 2, '0xsw1', 'PAID', 'ev1', '2026-11-08T10:00:00Z')");
-  // Metal clearing: earnings withdrawn into the wallet. Airi: a single-use card purchase.
+  // Alta clearing: earnings withdrawn into the wallet. Airi: a single-use card purchase.
   run("INSERT INTO clearing_ops (id, party, kind, units, tx, created_at) VALUES (1, 'seller', 'withdraw', '30000000000000000', '0xclr1', '2026-11-08T11:00:00Z')");
   run("INSERT INTO airi_purchases (action_id, agent, route, order_sha256, terms_json, cents, day, status, mandate_id, checkout_ref, created_at, updated_at) VALUES ('act-1', 'support', 'alone', ?, ?, 1200, '2026-11-08', 'SETTLED', 'm-1', 'chk-1', '2026-11-08T13:00:00Z', '2026-11-08T13:00:05Z')",
     "f".repeat(64), JSON.stringify({ currency: "EUR", amount: "12.00", merchant: { name: "Office Store" } }));

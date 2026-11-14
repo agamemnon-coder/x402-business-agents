@@ -1,4 +1,4 @@
-// /metal links every Metal transaction of the main run, one by one (review 9 Nov), in a list made from the trace the
+// /metal links every Alta transaction of the main run, one by one (review 9 Nov), in a list made from the trace the
 // tests hold to the record, and says on the replace card who signs on chain and who the second approver was.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -9,7 +9,7 @@ import { agentRun, payments } from "../src/redesign/run.js";
 describe("/metal, one by one", () => {
   const run = agentRun();
   const page = metalPage(run);
-  it("lists as many distinct transactions as the page's headline counts, each a link to Metal's explorer, in the committed list", () => {
+  it("lists as many distinct transactions as the page's headline counts, each a link to Alta's explorer, in the committed list", () => {
     const txs = metalTxs();
     expect(txs.length).toBe(metalStory(run.record).payments.total);
     expect(txs.length).toBe(payments(run.record).onChain);

@@ -185,8 +185,8 @@ for (const [width, scheme] of [[360, "light"], [360, "dark"], [390, "light"], [3
   await page.waitForFunction(() => /^Stricter/.test(document.getElementById("p-status")?.textContent ?? ""));
   const awxAfter = (await page.locator("#pl-awx").textContent()) ?? "";
   check(/"amount": 50,/.test(awxBefore) && /"amount": 40,/.test(awxAfter) && (await page.locator('#pl-metal dd[data-value="40.00"]').count()) === 1 && ((await page.locator("#pl-purser").textContent()) ?? "").includes('"card.treasury.monthly": "40.00"')
-    && (await page.locator("#p-locks").getAttribute("data-state")) === "in-force", `${tag}: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Metal budget follow it`);
-  check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: the Airwallex and Metal panels say they are not sent`);
+    && (await page.locator("#p-locks").getAttribute("data-state")) === "in-force", `${tag}: a stricter month (50.00 → 40.00) holds at once; Purser's rule, the Airwallex body and the Alta budget follow it`);
+  check(JSON.stringify(await page.locator("#p-locks .ns").allInnerTexts()) === JSON.stringify(["Rules in code, checked before anything is signed", TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: the Airwallex and Alta panels say they are not sent`);
   await shot(page, errors, join(shots, `${tag}-stricter.png`));
   const purserBefore = (await page.locator("#pl-purser").textContent()) ?? "";
   await page.click(`input[name="pf-mccs"][value="7372"]`);

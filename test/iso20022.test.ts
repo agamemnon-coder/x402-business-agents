@@ -1,5 +1,5 @@
 // The ISO 20022 export (enterprise item 4): a paid invoice as pacs.008.001.08, valid against the official schema
-// (test/fixtures/iso20022/, checked with xmllint), linking the Airwallex SWIFT transfer and the Metal transaction booked
+// (test/fixtures/iso20022/, checked with xmllint), linking the Airwallex SWIFT transfer and the Alta transaction booked
 // before it. The ledger here holds the recorded run's own ids (docs/iso20022/pacs008-BTX-2026-11.xml is that run's export).
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -48,7 +48,7 @@ describe("the pacs.008 export of a paid invoice", () => {
     expect(p.xml).toContain("<Nb>BTX-2026-11</Nb>");
   });
 
-  it("carries the Metal leg in test currency XTS, and links both legs under one Purser reference", () => {
+  it("carries the Alta leg in test currency XTS, and links both legs under one Purser reference", () => {
     expect(p.xml).toContain('<IntrBkSttlmAmt Ccy="XTS">1.35</IntrBkSttlmAmt>');
     expect(p.reference).toBe("PURSER-P-0004-BTX-2026-11");
     expect(p.xml.match(/<prs:Reference>PURSER-P-0004-BTX-2026-11<\/prs:Reference>/g)).toHaveLength(2);

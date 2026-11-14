@@ -127,10 +127,10 @@ describe("the month-end pack: its labels", () => {
     expect(() => t0Line("T:0 posted everything.")).toThrow();
   });
 
-  it("gives the count with its breakdown: 88 = 86 on Metal + 1 card charge + 1 SWIFT transfer", () => {
+  it("gives the count with its breakdown: 88 = 86 on Alta + 1 card charge + 1 SWIFT transfer", () => {
     const c = countOf(trace);
-    expect(files["README.md"]).toContain(`- Payments: ${c.line}. On Metal: ${c.metalParts}.`);
-    expect(c.line).toBe("88 = 86 on Metal + 1 card charge + 1 SWIFT transfer");
+    expect(files["README.md"]).toContain(`- Payments: ${c.line}. On Alta: ${c.metalParts}.`);
+    expect(c.line).toBe("88 = 86 on Alta + 1 card charge + 1 SWIFT transfer");
   });
 });
 

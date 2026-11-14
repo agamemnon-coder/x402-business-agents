@@ -118,12 +118,12 @@ describe("captions, badges and wording", () => {
     expect(Object.values(BADGES)).toContain("Test world · no money moves");
   });
 
-  it("PAID comes with simulated settlement; Metal's refusal with \"on purpose\"; no gendered pronoun, no partner claim", () => {
+  it("PAID comes with simulated settlement; Alta's refusal with \"on purpose\"; no gendered pronoun, no partner claim", () => {
     for (const cut of [SUBMISSION, WALKTHROUGH]) for (const p of resolveCut(cut, { holds: ALL })) {
       const r = p.row, all = `${r.words} ${JSON.stringify(r.segs)}`;
       // A stand-in world (C21) settles nothing; everywhere else PAID is said with its simulated settlement.
       if (/\bPAID\b|\bpaid\b/.test(all) && r.kind === "vo") expect({ row: r.id, simulated: /simulat/i.test(all) || r.claims.includes("C10") || r.claims.includes("C21") }).toEqual({ row: r.id, simulated: true });
-      if (/Metal refused/.test(r.words)) expect(r.words).toContain("on purpose");
+      if (/Alta refused/.test(r.words)) expect(r.words).toContain("on purpose");
       expect(r.words).not.toMatch(/\b(he|she|his|her|him)\b/i);
       expect(r.words).not.toMatch(/certified|endorsed|partnered|revolutionary|seamless|guaranteed/i);
     }

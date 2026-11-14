@@ -3,7 +3,7 @@
 // PROOF_SENTENCES (src/config/brand.ts) says; test/proof-first.test.ts checks both against the records.
 // - Airwallex: the hash the CFO signed in Airwallex's own record of the SWIFT payment (hashTravel), and the cards that
 //   carry the CFO's policy (cardControlRows), each linked to its anchor on /airwallex.
-// - Metal: #24 refused on chain and the payments, each its own tx (metalStory), linked to Metal's testnet explorer.
+// - Alta: #24 refused on chain and the payments, each its own tx (metalStory), linked to Alta's testnet explorer.
 // - Claude: the main run's decisions and fallbacks (split, from agent_stats), and the reliability run's hand-off fault
 //   with its fix: the eval rebuilt from rel-1's moment, before (docs/runs/reliability-2026-11.md) and after
 //   (docs/evals/agents.json) the fix, and the next run (docs/demo/reliability.json).

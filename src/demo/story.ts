@@ -14,7 +14,7 @@ export const EXPLORER = "https://testnet.metalntwx.com/tx/";
 export interface StoryFact {
   label: string;
   value: string;
-  /** A public link (the Metal explorer) or null. */
+  /** A public link (the Alta explorer) or null. */
   href: string | null;
 }
 
@@ -29,7 +29,7 @@ export interface StoryStep {
   tab?: string;
   tone: "ok" | "refusal" | "approval" | "info";
   /** Where the money or the decision lives. */
-  rail: "Metal" | "Airwallex" | "CFO" | "Audit";
+  rail: "Alta" | "Airwallex" | "CFO" | "Audit";
   facts: StoryFact[];
   /** A person's decision in this step, if any. */
   approval: { who: string; proposal: string; what: string } | null;
@@ -86,10 +86,10 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     const sales = all("sale.delivered").length;
     const m = p(first("mandate.bound", (r) => r.subject === "sourcing"));
     steps.push({
-      id: "buy", rail: "Metal", tone: "ok", at: bought.ts, approval: null,
+      id: "buy", rail: "Alta", tone: "ok", at: bought.ts, approval: null,
       title: "Agents also pay per request, each inside its own limits",
       text: "A simulated retailer's agent (we run it) pays us per request for a live stock check, and our agent buys the stock data from the warehouse API. Each payment is a few cents in test dollars, and each agent can only pay within limits that its account enforces itself.",
-      details: "Payments run on Metal testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
+      details: "Payments run on Alta testnet in *USDZ (test dollars) over x402: Summit Outfitters' agent buys a stock check and signs the order. Our sourcing agent buys the stock check from Stockline under an on-chain mandate: a cap per payment, a total budget, one allowed payee and an expiry.",
       facts: facts(
         fact("Sales in this run", salesLine(db, sales)),
         txFact("Summit's first payment to us", p(sold).tx),
@@ -108,11 +108,11 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     const plan = p(first("price_rise.plan"));
     const agents = str(met.source) === "claude" && str(plan.source) === "claude";
     steps.push({
-      id: "refused", rail: "Metal", tone: "refusal", at: refused.ts, approval: null,
+      id: "refused", rail: "Alta", tone: "refusal", at: refused.ts, approval: null,
       title: "The supplier raises its price, and the payment is refused",
       text: agents
-        ? "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. The Sourcing agent tells the Treasury agent, which designs the answer inside the same 20.00; code checks the plan before it reaches the CFO."
-        : "The supplier asks more than our agent may pay, so Metal refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
+        ? "The supplier asks more than our agent may pay, so Alta refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. The Sourcing agent tells the Treasury agent, which designs the answer inside the same 20.00; code checks the plan before it reaches the CFO."
+        : "The supplier asks more than our agent may pay, so Alta refuses it against the on-chain mandate and nothing moves. Our customer is not charged either. Another agent works out the options and puts them to the CFO.",
       details: "Stockline now asks 0.04 for a stock check. The mandate's cap is 0.03, so the payment is refused on chain (mandate_cap_exceeded). Our seller answers 503, so Summit is not charged. The treasury agent prices the options with their margins.",
       facts: facts(
         fact("Refusal", "over the mandate's cap: refused on chain, nothing moved"),
@@ -202,7 +202,7 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       approval: approvals.has(invoiceApproval) ? { who: approvals.get(invoiceApproval)!, proposal: invoiceApproval, what: `pay ${str(p(transfer).amount)} by SWIFT` } : null,
       title: "A euro bill paid through Airwallex, exactly as approved",
       text: "Earnings are booked at Airwallex as a simulated sandbox deposit (no test USD moves). A supplier's euro invoice is paid by bank transfer: only the euros missing are bought, at a locked rate, and one Face ID covers the rate, the payee and the most the fee may be.",
-      details: "The earnings are swept on Metal and wait until the chain is final, then booked in Airwallex as a simulated sandbox deposit that names the testnet transaction (the sandbox cannot receive stablecoins). Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
+      details: "The earnings are swept on Alta and wait until the chain is final, then booked in Airwallex as a simulated sandbox deposit that names the testnet transaction (the sandbox cannot receive stablecoins). Only the EUR shortfall is converted, on a locked quote above the USD floor. One approval covers the quote, the rate, both request ids, the payee, the fee ceiling and the floors. The SWIFT transfer carries the approval hash in its metadata.",
       facts: facts(
         sweep ? txFact(`Sweep of ${str(p(sweep).amount)} *USDZ`, p(sweep).tx) : null,
         fx ? fact("Conversion", `${str(p(fx).sell)} → ${str(p(fx).buy)} on a locked quote`) : null,
@@ -235,19 +235,19 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
     });
   }
 
-  // Metal clearing (new on testnet): sales paid from a prepaid deposit, a receipt each, no transaction per query.
+  // Alta clearing (new on testnet): sales paid from a prepaid deposit, a receipt each, no transaction per query.
   const clearingSales = rows.filter((r) => r.event === "sale.delivered" && str(p(r).scheme) === "bajillion");
   const deposit = first("clearing.deposited");
   if (clearingSales.length && deposit) {
     steps.push({
-      id: "clearing", rail: "Metal", tone: "ok", at: clearingSales[0]!.ts, approval: null,
+      id: "clearing", rail: "Alta", tone: "ok", at: clearingSales[0]!.ts, approval: null,
       title: "Prepaid: one deposit, then a receipt per request",
       text: "A customer can also prepay once and then pay each request with a signed receipt instead of a payment each time. We only offer this when we are sure we can deliver; otherwise the normal route is used.",
-      details: "Metal's pay-per-call clearing (scheme bajillion, new on testnet in October 2026): Summit deposits *USDZ once and pays each 0.07 query with a receipt; there is no transaction per query. A clearing payment counts before the seller can refuse, so our seller offers it only after a free check; the mandate route is the fallback. Each receipt is checked again with Metal's clearing service.",
+      details: "Alta's pay-per-call clearing (scheme bajillion, new on testnet in October 2026): Summit deposits *USDZ once and pays each 0.07 query with a receipt; there is no transaction per query. A clearing payment counts before the seller can refuse, so our seller offers it only after a free check; the mandate route is the fallback. Each receipt is checked again with Alta's clearing service.",
       facts: facts(
         txFact(`Summit's deposit (${str(p(deposit).amount)} *USDZ)`, p(deposit).tx),
         fact("Stock checks sold by clearing", `${clearingSales.length}, a receipt each, no transaction per query`),
-        fact("Note", "Metal's pay-per-call clearing is new on testnet (October 2026)"),
+        fact("Note", "Alta's pay-per-call clearing is new on testnet (October 2026)"),
       ),
     });
   }
@@ -309,12 +309,12 @@ export function buildStory(db: DB, run: string, now = new Date()): Story {
       facts: facts(
         fact("Audit rows", `${rows.length}, chain ${verifyAuditChain(db).ok ? "intact" : "BROKEN"}, head ${head.row_hash.slice(0, 12)}…`),
         fact("Approvals with Face ID", String(passkeyApprovals)),
-        fact("Models", "Haiku classifies, Sonnet reads, Opus advises; Metal and Airwallex enforce the limits, a person approves"),
+        fact("Models", "Haiku classifies, Sonnet reads, Opus advises; Alta and Airwallex enforce the limits, a person approves"),
       ),
     });
   }
 
-  // The story opens with the company card (the product), then the per-request payments on Metal.
+  // The story opens with the company card (the product), then the per-request payments on Alta.
   const ORDER = ["card", "buy", "refused", "faceid", "policy", "swift", "stopped", "stop", "clearing", "outside", "audit"];
   steps.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
   const TABS: Record<string, string> = { card: "Company card", buy: "Pay per request", refused: "Refused", faceid: "Face ID", policy: "CFO policy", swift: "Euro bill", stopped: "Blocked", stop: "Emergency stop", clearing: "Prepaid", outside: "Outside agent", audit: "Audit" };

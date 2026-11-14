@@ -33,11 +33,11 @@ const data = JSON.parse(block(page, '<script type="application/json" id="run-dat
 describe("the three locks: each with its real example, from its record", () => {
   const [purser, airwallex, metal] = tryLocks();
 
-  it("Metal's mandate: the main run's on-chain refusal, with its full transaction hash and the explorer's address", () => {
+  it("Alta's mandate: the main run's on-chain refusal, with its full transaction hash and the explorer's address", () => {
     const onChain = run.ledger.events.find((e) => e.event === "upstream.refused_on_chain" && e.payload.let_through === true)!;
     const tx = String(onChain.payload.tx);
     expect(tx).toMatch(/^0x2e92f9cb[0-9a-f]{52}1871$/);
-    expect(metal).toMatchObject({ id: "metal", name: "Metal's mandate", run: "Main run, 3 Nov", href: `https://testnet.metalntwx.com/tx/${tx}` });
+    expect(metal).toMatchObject({ id: "metal", name: "Alta's mandate", run: "Main run, 3 Nov", href: `https://testnet.metalntwx.com/tx/${tx}` });
     expect(metal!.example).toContain(`tx ${tx.slice(0, 10)}…${tx.slice(-4)}`);
     expect(metal!.example).toContain(`${onChain.payload.amount} test USD over the mandate's`);
   });
@@ -175,7 +175,7 @@ describe("the page's frame: an opening, six steps, a closing card, one line of d
     expect(page).toContain(TRY_SIGN_LABEL);
     const wr = block(page, '<details class="wr">', "details").whole;
     for (const l of [...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources]) expect(wr).toContain(l);
-    for (const w of ["test world", "No payment or conversion at Airwallex, no Metal call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
+    for (const w of ["test world", "No payment or conversion at Airwallex, no Alta call, and no money moves", "fixed text", "stand-in", "passkey signature", "server's check", "docs/demo/main-run.json"]) expect(wr).toContain(w);
     // One "What's real?" on the page: the footer's copy is gone.
     expect(page.split("What's real?</summary>").length - 1).toBe(1);
     expect(page).not.toContain('<details class="real"');

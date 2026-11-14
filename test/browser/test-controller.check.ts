@@ -1,7 +1,7 @@
 // Browser check of the virtual second approver (not part of npm test; needs Playwright with Chromium):
 //   npx tsx test/browser/test-controller.check.ts [screenshot dir]
 // Drives docs/runs/driver/test-controller.ts end to end against a LOCAL relay: a throwaway ledger and keys folder, the
-// relay served on localhost, the runner in this process with a fake executor (nothing reaches Metal or any other
+// relay served on localhost, the runner in this process with a fake executor (nothing reaches Alta or any other
 // network). The driver's real Chromium phone enrols, keeps its credential in a file, and in a later browser loads it
 // again and approves. What plays the owner here is a second Chromium virtual authenticator, a stand-in for the
 // owner's phone in this check only: no real phone takes part.

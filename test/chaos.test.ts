@@ -1,4 +1,4 @@
-// Chaos per outside service (hardening item 4): when Anthropic, the relay, Metal's RPC or Airwallex fails, nothing
+// Chaos per outside service (hardening item 4): when Anthropic, the relay, Alta's RPC or Airwallex fails, nothing
 // moves by accident, nothing is recorded twice, and the work goes on once the service is back.
 import type Anthropic from "@anthropic-ai/sdk";
 import Database from "better-sqlite3";
@@ -50,7 +50,7 @@ describe("the relay is unreachable", () => {
   });
 });
 
-describe("Metal's RPC fails during the quarantine poll", () => {
+describe("Alta's RPC fails during the quarantine poll", () => {
   it("records nothing and keeps its place, so the held payment is found once the RPC is back", async () => {
     const db = openDb(":memory:");
     db.prepare("INSERT INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000000b1', 'business'), ('0x00000000000000000000000000000000000000e1', 'sweep')").run();

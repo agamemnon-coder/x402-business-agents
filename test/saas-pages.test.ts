@@ -84,18 +84,18 @@ describe("/security: security and trust", () => {
   // 12 Nov (review): "no customer money", not "no funds of its own": in the linked sandbox run Purser's own platform
   // account funded the test company and took the test fee (docs/airwallex-platform.md: "the only place a Purser fee can go").
   it("money and data: only wording the docs support (the company's own Airwallex account; no personal data on chain), test money only, with the claims register's note", () => {
-    expect(inSight("s-data")).toBe("Money and data Test money only Each company's money stays in its own Airwallex account, and on chain there is no personal data. The sandbox run ↗ See it on Metal's testnet How");
+    expect(inSight("s-data")).toBe("Money and data Test money only Each company's money stays in its own Airwallex account, and on chain there is no personal data. The sandbox run ↗ See it on Alta's testnet How");
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
     expect(flat("docs/compliance.md")).toContain("Purser is software the business runs. It holds no customer money");
     expect(flat("docs/airwallex-platform.md")).toContain("Purser's own platform account (awxPlatform.feeAccount), the only place a Purser fee can go");
     expect(text).not.toMatch(/no funds of its own|no funds held/i);
-    expect(flat("docs/compliance.md")).toContain("The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it");
+    expect(flat("docs/compliance.md")).toContain("The money sits in the business's own Airwallex account and Alta account. Purser asks those rails to move it");
     expect(flat("docs/airwallex-platform.md")).toContain("The money stays in the company's own Airwallex wallet");
     expect(flat("README.md")).toContain("the control layer between a company's AI agents and its money");
     // The softened wording of the claims register, and the note it asks for with it.
     expect(flat("docs/claims.md")).toContain("\"Purser holds no money\" → \"holds no funds of its own\", noting that the runner keeps the testnet owner key.");
     expect(text).not.toMatch(/holds no money/i);
-    expect(folded("s-data")).toContain("“The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it”");
+    expect(folded("s-data")).toContain("“The money sits in the business's own Airwallex account and Alta account. Purser asks those rails to move it”");
     expect(folded("s-data")).toContain("In this build the runner keeps the testnet owner key.");
     expect(folded("s-data")).toContain("on behalf of a test company's own connected account, with test money");
   });
@@ -130,13 +130,13 @@ describe("/security: security and trust", () => {
     expect(text).not.toMatch(/Durable Object per company/i);
   });
 
-  it("limits: outside the prompt, per agent, at Airwallex (card controls) and on Metal (a mandate on chain)", () => {
-    expect(inSight("s-limits")).toBe("Limits outside the prompt Card controls per agent at Airwallex, and a mandate per agent on Metal's chain. Card controls, read back A refusal on chain How");
-    expect(card(html, "s-limits")).toContain('<a class="pf" href="airwallex#controls">Card controls, read back</a><a class="pf" href="metal">A refusal on chain</a>');
+  it("limits: outside the prompt, per agent, at Airwallex (card controls) and on Alta (a mandate on chain)", () => {
+    expect(inSight("s-limits")).toBe("Limits outside the prompt Card controls per agent at Airwallex, and a mandate per agent on Alta's chain. Card controls, read back A refusal on chain How");
+    expect(card(html, "s-limits")).toContain('<a class="pf" href="airwallex#controls">Card controls, read back</a><a class="pf" href="alta">A refusal on chain</a>');
     // The anchor exists on /airwallex.
     expect(buildPages().airwallex).toMatch(/id="controls"/);
     expect(folded("s-limits")).toMatch(/Airwallex: The CFO policy's limits[^.]*are written to each agent's card as Airwallex's own controls and read back\./);
-    expect(folded("s-limits")).toMatch(/Metal: A mandate per agent: a cap per payment, a total budget, one payee and an end date/);
+    expect(folded("s-limits")).toMatch(/Alta: A mandate per agent: a cap per payment, a total budget, one payee and an end date/);
   });
 
   it("audit trail: hash-chained, anyone can re-check it, and the command is named; the published log's rows are counted from the file", () => {
@@ -158,7 +158,7 @@ describe("/security: security and trust", () => {
 
   it("on chain: each agent's mandate and its payments, of an approval only a hash, no personal data, as the docs say", () => {
     expect(folded("s-data")).toContain("Every card is an Airwallex sandbox test card and every amount is test money.");
-    expect(folded("s-data")).toContain("Metal's testnet is public: each agent's mandate and every payment can be seen on its explorer.");
+    expect(folded("s-data")).toContain("Alta's testnet is public: each agent's mandate and every payment can be seen on its explorer.");
     expect(folded("s-data")).toContain("“Mandate changes anchor the approval on chain (the new credential's hash is bound)”");
     expect(folded("s-data")).toContain("“the customer is simulated and Purser holds no personal data on chain”");
     expect(read(OVERVIEW_DOC).replace(/\s+/g, " ")).toContain("Mandate changes anchor the approval on chain (the new credential's hash is bound)");
@@ -209,7 +209,7 @@ describe("/security: security and trust", () => {
     expect(NOT_YET_SOURCES.map((s) => s.doc)).toEqual(["docs/security.md", "docs/controls.md", "docs/cloud.md"]);
     const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
     expect(flat("docs/security.md")).toContain("No third-party penetration test has been run");
-    expect(flat("docs/controls.md")).toContain("This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only.");
+    expect(flat("docs/controls.md")).toContain("This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Alta testnet only.");
     expect(flat("docs/cloud.md")).toContain("What the code does not do yet, and must be in place before a company's real data goes in: 1.");
     expect(flat("docs/cloud.md")).toContain("5. An independent security review of this code after these fixes, and a red-team run against a deployed staging copy.");
     for (const s of NOT_YET_SOURCES) {
@@ -261,7 +261,8 @@ describe("/security: security and trust", () => {
       expect(html.indexOf('id="hostile"')).toBeGreaterThan(html.indexOf('id="layers"'));
       expect(html.indexOf('id="where"')).toBeGreaterThan(html.indexOf('id="hostile"'));
       expect(html.indexOf('<div class="cols c3">')).toBeGreaterThan(html.indexOf('id="where"'));
-      expect(securityPage()).toContain(securityViz());
+      // 14 Nov: the page names Alta first as "Alta (formerly Metal)" (src/ui/formerly.ts); the drawing alone says Alta.
+      expect(securityPage().replace("Alta (formerly Metal)", "Alta")).toContain(securityViz());
     });
 
     it("the layers: the report's six in its order, each with the attacks stopped there, counted from its attacks", () => {
@@ -277,11 +278,12 @@ describe("/security: security and trust", () => {
       expect(z.depth.minimum.optional_off.depth).toBe(2);
       // Simulated rails, said where the figures are, and in the fold in the report's own sense.
       expect(hero).toContain('<span class="pill">Test harness, simulated rails</span>');
-      expect(HARNESS_LINE).toBe(z.reading.harness.replace(". Purser's", ": Purser's").replace("are stand-ins", "are simulated"));
+      // 14 Nov: the report keeps the name it was written with (Metal); the page says Alta.
+      expect(HARNESS_LINE).toBe(z.reading.harness.replace(". Purser's", ": Purser's").replace("are stand-ins", "are simulated").replace("Airwallex, Metal,", "Airwallex, Alta,"));
       // The rails' own limits, the passkey above the limits and the anchor run, linked to its transaction.
-      expect(inSightOf(hero)).toMatch(/Above the limits, the CFO signs the terms' hash\. .*Metal's mandate on chain; Airwallex card and transfer limits\. .*Hash-linked, anchored on Metal testnet\./);
+      expect(inSightOf(hero)).toMatch(/Above the limits, the CFO signs the terms' hash\. .*Alta(?: \(formerly Metal\))?'s mandate on chain; Airwallex card and transfer limits\. .*Hash-linked, anchored on Alta testnet\./);
       expect(read("docs/security.md")).toContain("nothing above the limits is paid");
-      expect(anchorRun()).toEqual({ day: "13 November", network: "Metal testnet", explorer: json<{ explorer: string }>(ANCHOR_RUN).explorer, check: "npm run verify-anchor" });
+      expect(anchorRun()).toEqual({ day: "13 November", network: "Metal testnet", /* the record's own words (14 Nov: Metal is now Alta) */ explorer: json<{ explorer: string }>(ANCHOR_RUN).explorer, check: "npm run verify-anchor" });
       expect(hero).toContain(`href="${anchorRun().explorer}"`);
       expect(hero).toContain(`href="${repoHref("docs/zero-trust/report.json")}"`);
     });
@@ -340,7 +342,7 @@ describe("/security: security and trust", () => {
 
   it("says what is real in its own words: sandbox and testnet only", () => {
     const real = decode((/<details class="real"[\s\S]*?<\/details>/.exec(html)?.[0] ?? "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ");
-    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");
+    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.");
     expect(real).toContain("The red team ran in a throwaway test world on simulated rails, not live.");
     expect(real).toContain(NOT_YET_LINE);
     expect(real).not.toMatch(/Northwind|Real Claude decisions/);
@@ -404,7 +406,7 @@ describe("the page on the site, and the one that went", () => {
       return { more: /<summary class="on">More<\/summary>/.test(nav), tabs: [...nav.matchAll(/<a href="(\w+)" class="on" aria-current="page">/g)].map((m) => m[1]) };
     };
     for (const [key, html] of [["airwallex", AIRWALLEX_PAGE], ["metal", METAL_PAGE], ["visa", VISA_PAGE], ["claude", CLAUDE_PAGE]] as const) {
-      expect({ key, ...state(html), here: html.includes(`<a href="${key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
+      expect({ key, ...state(html), here: html.includes(`<a href="${key === "metal" ? "alta" : key}" aria-current="page">`) }).toEqual({ key, more: true, tabs: [], here: true });
     }
     expect(state(RUNS_PAGE)).toEqual({ more: false, tabs: [] });
     expect(state(PROOF_PAGE)).toEqual({ more: false, tabs: ["proof"] });

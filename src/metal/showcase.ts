@@ -1,5 +1,5 @@
-// "How Purser uses Metal" (awards item 2): each Metal feature Purser uses, in plain words, with the proof from a live
-// run and the Metal docs page. The mandates and the Dispute desk case come from the recorded run's ledger, as the
+// "How Purser uses Alta" (awards item 2): each Alta feature Purser uses, in plain words, with the proof from a live
+// run and the Alta docs page. The mandates and the Dispute desk case come from the recorded run's ledger, as the
 // chain enforced them. Some features did not run in that run (clearing, the receive policy, four eyes on chain, the
 // compliance send policy, finality certificates); their proofs are the
 // transactions of the separate live testnet runs that docs/metal-award.md records, and the page says so.
@@ -84,7 +84,7 @@ export const METAL_DOCS = {
  */
 export const OTHER_RUNS = {
   clearing: {
-    source: "A separate live run on Metal testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt. A load test on 30 October (the clearing load run log) paid 2,000 of 2,000 at 4.24 a second",
+    source: "A separate live run on Alta testnet, 29 October (the clearing run log): a buyer deposits once and pays each query by signed receipt. A load test on 30 October (the clearing load run log) paid 2,000 of 2,000 at 4.24 a second",
     proofs: [
       { what: "deposit of 5.00", tx: "0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766" },
       { what: "withdrawal queued", tx: "0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4" },
@@ -92,15 +92,15 @@ export const OTHER_RUNS = {
     ],
   },
   receive: {
-    source: "A separate live run of Purser's own code on Metal testnet, 30 October (b1 world): the CFO approved the return with Face ID at 08:45 UTC",
+    source: "A separate live run of Purser's own code on Alta testnet, 30 October (b1 world): the CFO approved the return with Face ID at 08:45 UTC",
     proofs: [
       { what: "allowlist-only policy set on the sweep wallet", tx: "0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37" },
-      { what: "a stranger's 0.02, held by Metal", tx: "0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3" },
+      { what: "a stranger's 0.02, held by Alta", tx: "0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3" },
       { what: "returned after the CFO's Face ID", tx: "0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c" },
     ],
   },
   fourEyes: {
-    source: "A separate live run on Metal testnet, 30 October (the four-eyes run log): a test account with two owners, the CFO and the controller, threshold 2",
+    source: "A separate live run on Alta testnet, 30 October (the four-eyes run log): a test account with two owners, the CFO and the controller, threshold 2",
     proofs: [
       { what: "CFO alone: reverted", tx: "0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3" },
       { what: "CFO and a stranger: reverted", tx: "0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b" },
@@ -109,7 +109,7 @@ export const OTHER_RUNS = {
     ],
   },
   compliance: {
-    source: "A separate live run on Metal testnet, 30 October (the compliance run log): our send-policy contract, with test lists and a stand-in sanctioned address",
+    source: "A separate live run on Alta testnet, 30 October (the compliance run log): our send-policy contract, with test lists and a stand-in sanctioned address",
     proofs: [
       { what: "screened payment: paid", tx: "0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237" },
       { what: "replayed decision: reverted", tx: "0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737" },
@@ -166,7 +166,7 @@ export function mandateViews(db: DB): MandateView[] {
     const reps = replaced.filter((e) => e.subject === role);
     const last = reps.at(-1) ?? b;
     const paid = paidUnder(db, role);
-    // Replacing carries the spend so far into the new budget (Metal docs, "Binding, replacing and revoking").
+    // Replacing carries the spend so far into the new budget (Alta docs, "Binding, replacing and revoking").
     // What was used and what is left come from the one source the dashboard and the check against the chain read.
     const av = mandateAvailability(db, role);
     const usedCents = av.paidCents;
@@ -197,13 +197,13 @@ export function mandateViews(db: DB): MandateView[] {
 /** The feature cards, each with its proof. Features without proof in this ledger or the other runs are left out. */
 export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeCase | null): MetalFeature[] {
   const f: MetalFeature[] = [];
-  const recorded = "The recorded Northwind run on Metal testnet, 29 and 30 October";
+  const recorded = "The recorded Northwind run on Alta testnet, 29 and 30 October";
   const afterwards = "The recorded Northwind run's payments, checked afterwards on a copy of its ledger";
   const ours = mandates.filter((m) => m.role !== "customer");
   if (ours.length) {
     f.push({
       id: "mandates", title: "A mandate per agent",
-      plain: "Each agent pays from the company's Metal account under its own mandate: a cap per payment, a total budget, one payee and an expiry, bound on chain by the account's owner.",
+      plain: "Each agent pays from the company's Alta account under its own mandate: a cap per payment, a total budget, one payee and an expiry, bound on chain by the account's owner.",
       why: "The limit lives on the chain, not in the agent's prompt. A confused or tricked agent cannot pay more, or pay someone else: the payment simply does not settle.",
       figure: plural(ours.length, "mandate"), proofs: ours.map((m) => m.history[0]!.tx && { ...m.history[0]!.tx!, label: `${m.agent} · ${m.history[0]!.tx!.label}` }).filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "Mandates", href: METAL_DOCS.mandates }],
@@ -230,16 +230,16 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
       why: "Agents buy in cents, many times a day. Each payment is tied to the order the agent signed, so the seller can prove later what was bought, at what price, by whom.",
       figure: `${sales + buys} payments`,
       proofs: [tx(firstSale?.tx_hash, "first sale"), tx(firstBuy?.tx_hash, "first purchase")].filter((p): p is Proof => !!p),
-      source: recorded, docs: [{ label: "x402 on Metal", href: METAL_DOCS.x402 }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
+      source: recorded, docs: [{ label: "x402 on Alta", href: METAL_DOCS.x402 }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],
     });
   }
   const refused = mandates.find((m) => m.refusal)?.refusal;
   const settlement = has(db, "sales") ? one(db, "SELECT settlement_id FROM sales WHERE status = 'DELIVERED' AND settlement_id IS NOT NULL ORDER BY sale_id LIMIT 1") : undefined;
   if (refused || settlement) {
     f.push({
-      id: "facilitator", title: "Settled by Metal's facilitator, or refused",
-      plain: "Metal's hosted facilitator settles each x402 payment and gives it a settlement id; a payment outside the mandate is refused with a reason, and nothing moves.",
-      why: "The refusal is the safety: when the supplier doubled its price, Metal checked the on-chain mandate and said no before a cent left, and the agent had to ask the CFO.",
+      id: "facilitator", title: "Settled by Alta's facilitator, or refused",
+      plain: "Alta's hosted facilitator settles each x402 payment and gives it a settlement id; a payment outside the mandate is refused with a reason, and nothing moves.",
+      why: "The refusal is the safety: when the supplier doubled its price, Alta checked the on-chain mandate and said no before a cent left, and the agent had to ask the CFO.",
       figure: refused ? "1 refusal, 0 moved" : null,
       proofs: ([settlement?.settlement_id ? { label: `settlement id ${short(String(settlement.settlement_id).split(":").at(-1) ?? "")}`, href: null } : null, refused ? { label: `refused: ${refused.reason}`, href: null } : null] as (Proof | null)[]).filter((p): p is Proof => !!p),
       source: recorded, docs: [{ label: "Facilitator", href: METAL_DOCS.facilitator }, { label: "Refusal reasons", href: `${METAL_DOCS.facilitator}#refusal-reasons` }],
@@ -278,21 +278,21 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   }
   f.push({
     id: "clearing", title: "Pay-per-call clearing",
-    plain: "A buyer deposits once into Metal's clearing contract and pays each call with a signed receipt: no transaction per call. The seller withdraws its earnings once an epoch is final.",
+    plain: "A buyer deposits once into Alta's clearing contract and pays each call with a signed receipt: no transaction per call. The seller withdraws its earnings once an epoch is final.",
     why: "Cent-sized calls at machine speed without a transaction each. Purser offers clearing only when it can deliver, because a clearing payment counts before the seller can refuse.",
     figure: "0 tx per call", proofs: OTHER_RUNS.clearing.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.clearing.source, docs: [{ label: "Clearing", href: METAL_DOCS.clearing }],
   });
   f.push({
     id: "receive", title: "Receive policy: money from strangers held",
-    plain: "Purser can set the sweep wallet to accept money only from the business's own account. Anything else is held by Metal in quarantine; the CFO returns or accepts it with Face ID.",
+    plain: "Purser can set the sweep wallet to accept money only from the business's own account. Anything else is held by Alta in quarantine; the CFO returns or accepts it with Face ID.",
     why: "Unknown money is a compliance problem, not a windfall. It never reaches the books or the bank until a person decides.",
     figure: "held, then returned", proofs: OTHER_RUNS.receive.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.receive.source, docs: [{ label: "Receive policy", href: METAL_DOCS.receive }],
   });
   f.push({
     id: "four-eyes", title: "Four eyes on chain",
-    plain: "A Metal account with two owners, the CFO and the controller, and a threshold of two (a test account; Northwind's own account has one owner). Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
+    plain: "A Alta account with two owners, the CFO and the controller, and a threshold of two (a test account; Northwind's own account has one owner). Binding or revoking a mandate, or paying from the account itself, needs both signatures; one is refused by the chain.",
     why: "No single person, and no single stolen owner key, can change an agent's limits or move the account's money beyond what the agents' mandates allow. Agents still pay alone inside their mandates.",
     figure: "1 signature: reverted", proofs: OTHER_RUNS.fourEyes.proofs.map((p) => tx(p.tx, p.what)!),
     source: OTHER_RUNS.fourEyes.source, docs: [{ label: "Smart account", href: METAL_DOCS.account }],
@@ -306,7 +306,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   });
   f.push({
     id: "certificates", title: "Finality certificates as evidence",
-    plain: "For each payment the runner sees within about 2 hours, Purser stores the finality certificate Metal's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
+    plain: "For each payment the runner sees within about 2 hours, Purser stores the finality certificate Alta's RPC reports for its block: the header, and which validators signed. It checks the header and the quorum, and keeps it in the dispute pack, the audit report and verify.",
     why: "Proof of finality kept with the payment, not looked up later. Honest limit: the validators' signature is not verified (their keys are not published for testnet), and nodes keep certificates about 2 hours.",
     figure: "3 of 4 validators", proofs: OTHER_RUNS.fourEyes.proofs.slice(2, 3).map((p) => tx(p.tx, "a certified payment")!),
     source: "The same live runs: all 26 of their transactions have a reported certificate", docs: [{ label: "Finality certificates", href: METAL_DOCS.certificates }],
@@ -314,7 +314,7 @@ export function metalFeatures(db: DB, mandates: MandateView[], dispute: DisputeC
   if (dispute) {
     f.push({
       id: "dispute", title: "The Dispute desk",
-      plain: "Northwind, as the seller, decides a customer's claim from what Metal lets it prove: the signed order, the chain check, the settlement and the hash of the data delivered.",
+      plain: "Northwind, as the seller, decides a customer's claim from what Alta lets it prove: the signed order, the chain check, the settlement and the hash of the data delivered.",
       why: "Agent commerce needs a fair way to settle \"we never ordered this\". Code checks each order against the evidence, Opus explains it, and a refund above the CFO's limits waits for Face ID.",
       figure: `${dispute.packs.length} orders checked`, proofs: [{ label: `case ${dispute.case_id}`, href: "#dispute" }],
       source: afterwards, docs: [{ label: "Verifying", href: `${METAL_DOCS.mandates}#verifying` }, { label: "Signed orders", href: `${METAL_DOCS.mandates}#signed-orders` }],

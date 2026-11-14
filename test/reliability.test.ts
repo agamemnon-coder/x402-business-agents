@@ -24,7 +24,7 @@ describe("reliability worlds", () => {
 });
 
 describe("measureRun", () => {
-  it("counts sales, refusals per layer, Metal transactions, Airwallex ids, signatures and the audit chain", () => {
+  it("counts sales, refusals per layer, Alta transactions, Airwallex ids, signatures and the audit chain", () => {
     const db = openDb(":memory:");
     audit(db, "owner-signer", "business.funded", "B", { amount: "20.00", tx: tx("a") });
     audit(db, "owner-signer", "mandate.bound", "sourcing", { tx: tx("b") });

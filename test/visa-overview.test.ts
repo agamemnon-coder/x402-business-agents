@@ -148,8 +148,8 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     // Since the review at 390 px (12 Nov) the latest live run leads, so the label beside the heading is its date, marked latest.
     expect(text(head)).toContain(visaLatestLabel(airiRun()!, vic3Run()!.started_at));
     expect(visaLatestLabel(airiRun()!, vic3Run()!.started_at)).toBe(`14 Nov (latest) · ${String(rec.label).split(", ").join(" · ")}`);
-    // 12 Nov (wire-in): the mark is Visa's official file (docs/evidence/logo-permissions.md), its name in alt.
-    expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
+    // 14 Nov (owner's decision): Visa's name as text, no logo image (docs/evidence/logo-permissions.md).
+    expect(head).toContain('<span class="logo tname">Visa</span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
     // the control test, the folded rows, and last the TAP fold.
     // Redesign, 13 Nov: the latest run's line, its flow, every purchase's outcome and the signed hash read back; the entry
@@ -191,7 +191,7 @@ describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the e
     expect(row).toMatch(/the hackathon Slack \(Visa\), as reported by the owner/);
     expect(row).toMatch(/the VIC run counts for the Visa Award/);
     // Judge panel, 13 Nov: the 5 November row said Purser "is entered for the Metal Award only", against the README's
-    // Metal and Visa. The list keeps its history, in the past tense, and says what holds since 7 November.
+    // Alta and Visa. The list keeps its history, in the past tense, and says what holds since 7 November.
     const evidence = readFileSync(new URL("../docs/evidence/README.md", import.meta.url), "utf8");
     expect(evidence).not.toMatch(/is entered for the Metal Award only/);
     expect(evidence.split("\n").find((l) => l.startsWith("| 5 November 2026"))).toMatch(/until 7 November/);

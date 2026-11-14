@@ -40,12 +40,12 @@ const replay = block<Replay>(PAGE, "autonomy-data");
 describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and Proof do", () => {
   const st = stops(record);
 
-  it("takes its stop figures from run.ts (Max, 5 Nov): the 16 stops in one sentence; #24 counted once, #37 counted as Metal's", () => {
+  it("takes its stop figures from run.ts (Max, 5 Nov): the 16 stops in one sentence; #24 counted once, #37 counted as Alta's", () => {
     const story = stopStory(record), line = stopsLine(story);
     expect(story.total).toBe(16);
     const f = replay.figures;
     expect(f.stopped).toBe(story.total);
-    // "Enforced by": Metal's refusals as the sentence counts them (#24 once, though it has two rows; and #37), the last
+    // "Enforced by": Alta's refusals as the sentence counts them (#24 once, though it has two rows; and #37), the last
     // shown the one at the cap, with the refusal's tx; not 3.
     const metal = replay.snapshot.tower.enforced.find((e) => e.who === "metal")!;
     expect(metal.count).toBe(story.metal);
@@ -54,8 +54,8 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect(metal.last).toMatchObject({ reason: "mandate_cap_exceeded", proof: { kind: "tx", ref: letThroughOf(record)!.tx } });
     expect(metal.last!.words).toMatch(/let through on purpose/);
     expect(replay.snapshot.tower.enforced.find((e) => e.who === "airwallex")!.count).toBe(st.airwallex);
-    const detail = " Metal's 2: 1 over the mandate's cap, 1 on a mandate that had just been replaced.";
-    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    const detail = " Alta's 2: 1 over the mandate's cap, 1 on a mandate that had just been replaced.";
+    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     expect(f.keptOut).toBe(`${line}${detail} The amount is what stayed out for good.`);
     expect(f.refusedPill).toBe("16 stops");
     expect(f.refusedNote).toBe(`As on Home and Proof: ${line}${detail}`);
@@ -79,7 +79,7 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     expect(words(proofPage())).toContain(`${agentCalls} calls to Claude, each logged`);
   });
 
-  it("words a refused purchase by who refused it (refused_by), never 'refused before signing' for Metal's refusal", () => {
+  it("words a refused purchase by who refused it (refused_by), never 'refused before signing' for Alta's refusal", () => {
     const db = openDb(":memory:");
     const at = (s: number) => new Date(Date.UTC(2026, 10, 3, 11, 23, s));
     publish(db, "upstream.refused", { seq: 24, supplier: "stockline", reason: "mandate_cap_exceeded", refused_by: "metal" }, "sourcing", "system", at(1));
@@ -87,17 +87,17 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
     publish(db, "upstream.refused", { seq: 41, supplier: "stockline", reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", refused_by: "purser" }, "sourcing", "system", at(3));
     publish(db, "upstream.refused", { seq: 42, supplier: "ridgeline", reason: "supplier_unavailable: 503", refused_by: "supplier" }, "sourcing", "system", at(4));
     expect(agentChat(db).map((c) => c.text)).toEqual([
-      "A purchase from stockline was refused by Metal: mandate_cap_exceeded",
+      "A purchase from stockline was refused by Alta: mandate_cap_exceeded",
       "The Sourcing agent's own buy policy refused a purchase before signing: buy_policy: the Sourcing agent chose not to buy",
       "A purchase from stockline was refused by Purser before signing: mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment",
       "ridgeline made no offer, so nothing was signed: supplier_unavailable: 503",
     ]);
   });
 
-  it("in the replay, words the record's refusal lines from its ledger: #24 let through on purpose and refused by Metal", () => {
+  it("in the replay, words the record's refusal lines from its ledger: #24 let through on purpose and refused by Alta", () => {
     const lines = replay.snapshot.agent_chat.filter((c) => c.kind === "world").map((c) => c.text);
     expect(lines.filter((x) => /refused before signing: mandate_cap_exceeded/.test(x))).toEqual([]);
-    expect(lines).toContain("A purchase from stockline, let through on purpose, was refused by Metal: mandate_cap_exceeded");
+    expect(lines).toContain("A purchase from stockline, let through on purpose, was refused by Alta: mandate_cap_exceeded");
     expect(lines.filter((x) => /^A purchase from none\b/.test(x))).toEqual([]);
     expect(lines.filter((x) => x.startsWith("The Sourcing agent's own buy policy refused a purchase before signing: buy_policy:"))).toHaveLength(3);
     // Watch tells these by their own rows (a money movement, a refusal), as before.
@@ -107,15 +107,15 @@ describe("1. the main run's CFO dashboard (/?autonomy) counts as Home, Watch and
 
 describe("2. What's real?, on each page its own", () => {
   const real = (html: string) => words(/<details class="real"[^>]*>[\s\S]*?<\/details>/.exec(html)?.[0] ?? "");
-  const MAIN = "Real Claude decisions, real Metal testnet and Airwallex sandbox calls";
+  const MAIN = "Real Claude decisions, real Alta testnet and Airwallex sandbox calls";
 
-  it("/try/sign says what it is: a test world, no Airwallex payment or Metal call, no money, the live agents (Sonnet reads, Opus advises) labelled; none of the main run's lines", () => {
+  it("/try/sign says what it is: a test world, no Airwallex payment or Alta call, no money, the live agents (Sonnet reads, Opus advises) labelled; none of the main run's lines", () => {
     // Its one "What's real?" is the expander under the disclaimer (6 Nov: the footer's copy is gone), found by position.
     const html = trySignPage(), a = html.indexOf('<details class="wr">');
     const r = words(html.slice(a, html.indexOf("</details>", a)));
     expect(a).toBeGreaterThan(0);
     expect(html).not.toContain('<details class="real"');
-    expect(r).toContain("No payment or conversion at Airwallex, no Metal call, and no money moves");
+    expect(r).toContain("No payment or conversion at Airwallex, no Alta call, and no money moves");
     expect(r).toContain("read-only, nothing is converted, no money moves");
     expect(r).toContain("Only the invoice and the test world's facts go in, never anything you type");
     expect(r).toContain("No model sets an amount, a payee, the conversion or the plan");
@@ -142,7 +142,7 @@ describe("2. What's real?, on each page its own", () => {
     expect(realbox(TRY_PAGE_OFFLINE)).toContain("In this offline copy no model is asked");
     expect(main(TRY_PAGE_OFFLINE)).not.toMatch(/Claude reads your task|Claude Haiku sorts it and Claude Sonnet reads it|decides with Claude Haiku/);
     for (const h of [TRY_PAGE, TRY_PAGE_OFFLINE]) {
-      expect(realbox(h)).toContain("nothing on this page calls Airwallex or Metal");
+      expect(realbox(h)).toContain("nothing on this page calls Airwallex or Alta");
       expect(realbox(h)).toContain("the run recorded on 30 October");
       for (const x of [MAIN, WORLD_SETUP, SECOND_APPROVER]) expect({ x, has: realbox(h).includes(x) }).toEqual({ x, has: false });
     }
@@ -266,14 +266,14 @@ describe("6. TAP's status (Visa, 5 Nov: not eligible Visa tooling), said once, o
 });
 
 describe("7. copy slips", () => {
-  it("Home's first scene says the purchase Metal refused was a test of the chain: our own check switched off once (jury review, 6 Nov, #8)", () => {
-    expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain → Treasury replans → two signatures → the mandate is replaced.");
+  it("Home's first scene says the purchase Alta refused was a test of the chain: our own check switched off once (jury review, 6 Nov, #8)", () => {
+    expect(agentRun().scenes[0]!.sentence).toBe("Stockline raises its price to 0.04 → we switched off our own check once to prove the chain holds the line: Alta refused the purchase on chain → Treasury replans → two signatures → the mandate is replaced.");
     // Home shows no scene cards since Max's round of 7 Nov; where the refusal is replayed (/replay, /watch before the film), its step says why,
     // as the chain test (jury review, 7 Nov, #13: not the Defense-in-depth label beside it).
     expect(homePage()).not.toContain('class="scene card"');
     expect(buildPages().replay!).toContain(CHAIN_TEST);
     expect(buildPages().replay!).not.toContain("To prove the rail itself enforces the limit");
-    // Both layers where the refusal is told in full: Purser refuses first; with that check off once, Metal refused anyway.
+    // Both layers where the refusal is told in full: Purser refuses first; with that check off once, Alta refused anyway.
     for (const html of [proofPage(), buildPages().metal]) expect(words(html)).toContain(CHAIN_TEST);
   });
 
@@ -289,7 +289,7 @@ describe("7. copy slips", () => {
     // x402's default flow verifies, runs the resource, then settles; the specification leaves client-side budgets out of scope.
     // The x402 row is in docs/in-depth.md's table of one id per rail since the final review (13 Nov); the README links it.
     const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8") + readFileSync(new URL("../docs/in-depth.md", import.meta.url), "utf8");
-    expect(readme).not.toContain("paid on Metal before it is answered");
+    expect(readme).not.toContain("paid on Alta before it is answered");
     expect(readme).toContain("leaves the payer's budget to the payer");
   });
 
@@ -297,7 +297,7 @@ describe("7. copy slips", () => {
     const pay = payments(record);
     const t = words(proofPage());
     expect(t).not.toMatch(/purchases of:/);
-    expect(t).toContain(`${pay.metalParts} on Metal, all inside the limits.`);
+    expect(t).toContain(`${pay.metalParts} on Alta, all inside the limits.`);
   });
 
   it("leaves the separate TAP run of 2 November out of Home, Proof and the deck: it is on /visa (Max, 5 Nov; Proof since his last round, item 2; Home since 7 Nov)", () => {

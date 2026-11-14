@@ -36,7 +36,7 @@ function expected(): Record<string, string | string[]> {
   const faceIds = new Set(ev.filter((e) => /^proposal\.(approved|rejected)$/.test(e.event) && /\bmax\b/i.test(String(e.payload.approver ?? ""))).map((e) => e.subject)).size;
   const signatures = ev.filter((e) => /^proposal\.(approved|rejected|cosigned)$/.test(e.event)).length;
   // At the cap; a refusal because the mandate had just been replaced is shown apart, not as a limit.
-  // The main run's purchase let through to Metal has two rows (the facilitator's 402, then its record on chain): one attempt.
+  // The main run's purchase let through to Alta has two rows (the facilitator's 402, then its record on chain): one attempt.
   const atCap = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason));
   const metalRefusals = atCap.filter((f) => !(!f.proof.href && atCap.some((g) => g !== f && g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000))).length;
   const fx = ev.find((e) => e.event === "fx.converted");
@@ -63,15 +63,15 @@ function expected(): Record<string, string | string[]> {
     // Proof's tile says which cost it is (jury review, 7 Nov, #20): the agents' calls, as summed here.
     "Claude cost per decision (agent calls)": `$${(sum((a) => a.cost_usd_micros) / decisions / 1e6).toFixed(4)}`,
     "payments on chain": String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
-    "refused by Metal at the cap": String(metalRefusals),
+    "refused by Alta at the cap": String(metalRefusals),
     // Proof's cards in plain words (Max, 7 Nov): the same counts.
-    "refused by Metal at the limit": String(metalRefusals),
+    "refused by Alta at the limit": String(metalRefusals),
     "limits replaced on chain": String(ev.filter((e) => e.event === "mandate.replaced").length),
     "calls to Claude, each logged": String(sum((a) => a.claude_calls)),
     "cards carry the CFO's limits": (() => { const rows = cardControlRows(loadRecord().record); return countOf(rows.filter((r) => r.match).length, rows.length); })(),
     // Proof's Airwallex tile (12 Nov): the same count, from the same card read-back.
     "cards carry the CFO's policy as Airwallex's own controls": (() => { const rows = cardControlRows(loadRecord().record); return countOf(rows.filter((r) => r.match).length, rows.length); })(),
-    "refused by Metal: mandate just replaced": String(revoked),
+    "refused by Alta: mandate just replaced": String(revoked),
     "mandates replaced": String(ev.filter((e) => e.event === "mandate.replaced").length),
     // The FX conversion (fx.converted in the ledger) is a movement at Airwallex too.
     "movements at Airwallex": String(s.flows.filter((f) => f.rail.startsWith("airwallex") && !f.refused).length + (fx ? 1 : 0)),
@@ -97,8 +97,8 @@ function expected(): Record<string, string | string[]> {
     // Home's tiles (the Home before the v4 animation).
     "decisions made by Claude": `${byClaude}/${decisions}`,
     "payments inside the limits": String((R.snapshot as unknown as { counts: { alone: number } }).counts.alone),
-    // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge"; "5 decisions signed with Face ID (+1 co-signature)".
-    [`Metal payments + ${s.flows.filter((f) => f.rail === "airwallex_card" && !f.refused).length} card charge`]: String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
+    // One canonical set (jury review, 6 Nov, #5): "86 Alta payments + 1 card charge"; "5 decisions signed with Face ID (+1 co-signature)".
+    [`Alta payments + ${s.flows.filter((f) => f.rail === "airwallex_card" && !f.refused).length} card charge`]: String(s.flows.filter((f) => (f.rail === "metal" || f.rail === "purser") && !f.refused).reduce((k, f) => k + n(f), 0)),
     [`decisions signed with Face ID (+${signatures - faceIds} co-signature)`]: String(faceIds),
     "signatures": String(signatures),
     "decisions +": String(faceIds),

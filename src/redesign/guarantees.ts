@@ -42,10 +42,10 @@ export const GUARANTEES: readonly Guarantee[] = [
     evidence: { label: "The Airi run (Airwallex sandbox, test card): paid after Face ID", href: "visa" },
   },
   {
-    id: "g-chain", promise: "An agent cannot pay past its on-chain budget.", by: "Metal (on chain)",
-    how: "A mandate per agent: a cap per payment, a total budget, one payee and an end date; Metal's facilitator refuses anything outside it.",
+    id: "g-chain", promise: "An agent cannot pay past its on-chain budget.", by: "Alta (on chain)",
+    how: "A mandate per agent: a cap per payment, a total budget, one payee and an end date; Alta's facilitator refuses anything outside it.",
     source: "src/policy/mandates.ts", test: "test/executors-mandate.test.ts",
-    evidence: { label: "Main run: a purchase refused on chain (our own check switched off once to test it)", href: "metal" },
+    evidence: { label: "Main run: a purchase refused on chain (our own check switched off once to test it)", href: "alta" },
   },
   {
     id: "g-once", promise: "An invoice is paid once.", by: "Purser's code",
@@ -101,7 +101,7 @@ const ext = (href: string) => /^https:\/\//.test(href);
 const link = (href: string, label: string) => `<a href="${esc(href)}"${ext(href) ? ' target="_blank" rel="noopener"' : ""}>${esc(label)}${ext(href) ? " ↗" : ""}</a>`;
 
 /** Who enforces it, as the pill's colour: Airwallex, the chain, or Purser (its code, the CFO). */
-const byKind = (by: string) => (/^Airwallex/.test(by) ? "airwallex" : /^Metal/.test(by) ? "metal" : "purser");
+const byKind = (by: string) => (/^Airwallex/.test(by) ? "airwallex" : /^Alta/.test(by) ? "metal" : "purser");
 
 /** The icon for who enforces it: Airwallex's card, the chain, the CFO's Face ID, or Purser's code. */
 const byIcon = (g: Guarantee) => (byKind(g.by) === "airwallex" ? "credit-card" : byKind(g.by) === "metal" ? "database" : /CFO/.test(g.by) ? "scan-face" : "shield-check");

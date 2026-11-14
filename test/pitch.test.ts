@@ -72,7 +72,7 @@ describe("the pitch's sentences", () => {
 
   it("use only numbers the record holds (or counts), the dates and the URL aside", () => {
     const allowed = new Set([...(RAW.match(/\d+(?:\.\d+)?/g) ?? []), ...Object.values({ a: sp.decisions, b: st.total, b1: st.claude, b2: st.metal, b3: st.cfo, b4: st.planted, c: t.faceToPaid, d: t.toOptions, e: faceIdDecisions(record), f: pay.onChain, g: packFacts().main.claude_usd }).map(String),
-      // 2025: the year of the agent-payment protocols (docs/claims.md); 6: also the mandate transactions (README, Metal).
+      // 2025: the year of the agent-payment protocols (docs/claims.md); 6: also the mandate transactions (README, Alta).
       "2025"]);
     const unknown = rows.flatMap((x) => (x.sentence.replace(/\S*workers\.dev\S*/g, " ").replace(/\/try\/sign|\/watch|\/proof/g, " ").match(/\d+(?:\.\d+)?/g) ?? []).filter((n) => !allowed.has(n)));
     expect(unknown).toEqual([]);
@@ -137,21 +137,21 @@ describe("the core line", () => {
 describe("one set of figures, the main run's record (3 November)", () => {
   const all = (re: RegExp, name: string) => [...TEXT[name]!.matchAll(re)];
 
-  it("the record still holds what the pitch is built on: 16 stops (Claude 12, Metal 2, CFO 1, 1 planted), 24/24 by Claude, 6 s, 5 Face ID, 40 s", () => {
+  it("the record still holds what the pitch is built on: 16 stops (Claude 12, Alta 2, CFO 1, 1 planted), 24/24 by Claude, 6 s, 5 Face ID, 40 s", () => {
     expect([st.total, st.claude, st.metal, st.cfo, st.planted, st.overLimitEur, sp.byClaude, sp.decisions, t.faceToPaid, faceIdDecisions(record), t.toOptions]).toEqual([16, 12, 2, 1, 1, "0.00", 24, 24, 6, 5, 40]);
   });
 
   it("says the stops in one sentence, with the record's counts, and never the old \"1 + 1\" (Max, 5 Nov)", () => {
     const line = stopsLine(st);
-    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
+    expect(line).toBe("16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.");
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
-      for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
+      for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Alta refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
       if (["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
 
-  it("says Metal's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
+  it("says Alta's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
     for (const name of ["form", "form (long)", "in-depth"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
     for (const name of ["deck", "spiekkaart", "form (long)"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
@@ -159,13 +159,13 @@ describe("one set of figures, the main run's record (3 November)", () => {
     expect(TEXT["in-depth"]).toContain("Max's passkey (Face ID on a phone)");
     // The form's short Description since the jury review of 7 Nov (#17): no name twice, no "his".
     expect(TEXT.form).toContain("Max plays the CFO and signs with a personal passkey (Face ID on a phone).");
-    // The form's short Description (Max, 5 Nov): Metal's tx "on chain, checkable", Airwallex's ids "published".
+    // The form's short Description (Max, 5 Nov): Alta's tx "on chain, checkable", Airwallex's ids "published".
     // Since section D (6 Nov) the form says where each partner's proof is in one sentence each (PROOF_SENTENCES,
     // test/proof-sentences.test.ts).
     const formRaw = readFileSync(new URL("../docs/submission/README.md", import.meta.url), "utf8");
     for (const p of PROOF_SENTENCES) expect(formRaw).toContain(p.text);
     for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
-    // "published" for the ids (Airwallex's cannot be looked up by a juror); Metal's are on chain, checkable.
+    // "published" for the ids (Airwallex's cannot be looked up by a juror); Alta's are on chain, checkable.
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });
     expect(TEXT.deck).toContain("Every id is published");
     expect(TEXT.deck).toContain("On chain, checkable:");
@@ -207,7 +207,7 @@ describe("one set of figures, the main run's record (3 November)", () => {
   });
 });
 
-describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
+describe("T:0 in one sentence, Alta counted (Max, 5 Nov)", () => {
   const flat = (p: string) => words(read(p)).replace(/, \[record\]\([^)]*\)/g, "");
 
   it("says the T:0 sentence word for word in the form, the claims, docs/t0.md, the run logs and the Q&A", () => {
@@ -249,12 +249,12 @@ describe("T:0 in one sentence, Metal counted (Max, 5 Nov)", () => {
     expect(paid).toMatch(/`PAID`, simulated settlement/);
   });
 
-  it("every marked Metal block counts the run's own payments on chain: 86 (41 + 41 + 3 + 1), no clearing", () => {
+  it("every marked Alta block counts the run's own payments on chain: 86 (41 + 41 + 3 + 1), no clearing", () => {
     expect([pay.onChain, pay.sales, pay.purchases, pay.refunds, pay.sweeps]).toEqual([86, 41, 41, 3, 1]);
     expect((record.ledger?.events ?? []).filter((e) => e.event === "mandate.replaced")).toHaveLength(2);
     // The README's line (docs/in-depth.md since 12 Nov), checked against the chain on 5 November, says the same.
     expect(words(read("docs/in-depth.md"))).toContain("86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep)");
-    expect(METAL_LINE).toBe(`Metal testnet: ${pay.onChain} payments and 6 mandate transactions, on chain, checkable; no clearing in this run.`);
+    expect(METAL_LINE).toBe(`Alta testnet: ${pay.onChain} payments and 6 mandate transactions, on chain, checkable; no clearing in this run.`);
     for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- METAL-ONCHAIN -->([\s\S]*?)<!-- \/METAL-ONCHAIN -->/g)].map((b) => words(b[1]!));
       expect({ name, blocks: blocks.length > 0 }).toEqual({ name, blocks: true });
@@ -290,7 +290,7 @@ describe("the Q&A, in Max's words (5 Nov)", () => {
     const qa = TEXT.qa!.replace(/\s+/g, " ");
     // The form's sentence, word for word, then its parts, each from the policy code.
     expect(qa).toContain(`### 12. Worst-case loss per day inside the limits, and how fast does the CFO know? ${worstCaseLine()} The parts:`);
-    expect(qa).toContain(`at most ${usd(TOTAL_BUDGET_CENTS)} test USD on Metal (the three mandates' budgets, ${budgets.map(usd).join(" + ")}`);
+    expect(qa).toContain(`at most ${usd(TOTAL_BUDGET_CENTS)} test USD on Alta (the three mandates' budgets, ${budgets.map(usd).join(" + ")}`);
     expect(qa).toContain(`EUR ${usd(monthly.reduce((a, b) => a + b, 0))} on the cards (monthly limits ${monthly.map(usd).join(" + ")})`);
     expect(qa).toContain(`task cards without Face ID, up to EUR ${eur(taskEach)} each and ${TASK_WITHIN_PER_DAY} in 24 hours, so EUR ${eur(taskDay)} a day and EUR ${eur(taskDay * MONTH_DAYS)} over ${MONTH_DAYS} days`);
     const day = exposureOf(startPolicy()).total.day;
@@ -313,7 +313,7 @@ describe("the deck", () => {
   it("follows Max's review (5 Nov) and section D's order (6 Nov): no logos, not opening with the awards, the rule on slide 2, the QR again on the last slide, no TAP run", () => {
     const slides = DECK.split("<section").slice(1);
     expect(DECK).not.toMatch(/<img[^>]*logos|data:image\/svg\+xml/);
-    expect(TEXT.deck).toContain("Built on Airwallex and Metal, with Claude.");
+    expect(TEXT.deck).toContain("Built on Airwallex and Alta, with Claude.");
     expect(slides[0]).not.toMatch(/Metal Award|Visa Award/);
     expect(words(slides[1]!)).toContain(RULE_LINE);
     expect(slides[4]).toContain("Only the 3 bad ones refunded");
@@ -323,12 +323,12 @@ describe("the deck", () => {
     // never the entry's basis, and the old "+ Visa Award" and "still being confirmed" forms stay gone.
     expect(DECK).not.toMatch(/\+ Visa Award|still being confirmed with Visa|TAP counts as Visa tooling|Visa Award[^.<]{0,40}\bTAP\b/i);
     expect(DECK).not.toMatch(/TAP run|LIMIT_EXCEEDED/);
-    // Section D's order: problem, the three sentences, the demo, the run, Airwallex, Metal, the agents, security and
+    // Section D's order: problem, the three sentences, the demo, the run, Airwallex, Alta, the agents, security and
     // tests, what is real, the business, the roadmap.
     const kickers = slides.map((x) => /<p class="kicker">([^<]*)<\/p>/.exec(x)?.[1] ?? "");
     expect(kickers.slice(1)).toEqual(["The problem", "What only Purser has", "The demo · try it yourself", "The main run, 3 November 2026 · replay on /watch", "Airwallex proof · sandbox, read back with GET only",
-      "Metal proof · testnet", "The agents · Claude, measured", "Security and tests", "Said plainly", "The business · a hypothesis", "Roadmap · a plan, not a promise"]);
-    expect(slides[7]).toMatch(/86 Metal payments \+ 1 card charge; \$0\.0132 = Claude's cost per decision/);
+      "Alta proof · testnet", "The agents · Claude, measured", "Security and tests", "Said plainly", "The business · a hypothesis", "Roadmap · a plan, not a promise"]);
+    expect(slides[7]).toMatch(/86 Alta payments \+ 1 card charge; \$0\.0132 = Claude's cost per decision/);
   });
 
   it("names the second approver and the sandbox's SWIFT steps as they were", () => {

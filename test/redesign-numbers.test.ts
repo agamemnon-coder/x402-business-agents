@@ -75,7 +75,7 @@ const visibleText = (html: string) => html
   .replace(/\(commit [0-9a-f]{7,40}\)/g, " ")
   // /metal's separate runs, each dated with its own run record; their figures are checked against those records in
   // test/metal-story.test.ts.
-  .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Metal features we use)/, " ")
+  .replace(/Beyond the kit: separate runs, each dated \(not the main run\)[\s\S]*?(?=The Alta features we use)/, " ")
   // The invoice token (prototype) on /metal, shown only when its run record exists (docs/runs/<date>-tokenize.json): a
   // separate run, dated with its own record; its figures are checked against that record in test/tokenize-record.test.ts.
   .replace(/Invoice token \(prototype\)[\s\S]*?run record/, " ")
@@ -138,7 +138,7 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
   const run = agentRun();
   const money = run.events.filter((e): e is Extract<typeof e, { k: "money" }> => e.k === "money");
 
-  it("one attempt, one step: the purchase let through to Metal, refused by Metal itself, framed as the test it was", () => {
+  it("one attempt, one step: the purchase let through to Alta, refused by Alta itself, framed as the test it was", () => {
     const lt = money.filter((e) => e.letThrough);
     expect(lt).toHaveLength(1);
     // Jury review, 7 Nov (#13): CHAIN_TEST says it; the run's own label stays in its ledger row, not beside it.
@@ -149,9 +149,9 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(money.filter((e) => e.refused && e.refused.code === "mandate_cap_exceeded")).toHaveLength(1);
     expect(stops(record).metal).toBe(1);
     expect(money.filter((e) => e.refused?.by === "recorded")).toHaveLength(0);
-    expect(run.scenes[0]!.steps.map((s) => s.text)).toContain("Metal refused it · on chain");
+    expect(run.scenes[0]!.steps.map((s) => s.text)).toContain("Alta refused it · on chain");
     // The run's own ledger row carries Max's label word for word.
-    expect(record.ledger!.events.find((e) => e.event === "upstream.let_through_refused")!.payload.label).toBe(DEFENSE_IN_DEPTH);
+    expect(record.ledger!.events.find((e) => e.event === "upstream.let_through_refused")!.payload.label).toBe(DEFENSE_IN_DEPTH.replace(/\bAlta\b/g, "Metal")); // the record keeps the name Metal had (14 Nov: now Alta)
     const pages = buildPages() as unknown as Record<string, string>;
     for (const [name, html] of [["watch", watchPage()], ["proof", proofPage()], ["metal", pages.metal!]] as const) {
       const t = html.replace(/&#39;/g, "'");
@@ -182,7 +182,7 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
 
   it("counts all of the main run's stops, by who stopped them; the TAP run's decline on its own labelled line (Max, 5 Nov)", () => {
     const t = run.tiles.find((x) => x.href === "proof#stops")!;
-    // The rails' own counts (the partner pages): Metal at the cap, and the purchase refused because its mandate had
+    // The rails' own counts (the partner pages): Alta at the cap, and the purchase refused because its mandate had
     // just been replaced, each one attempt once.
     const st = stops(record);
     expect(st.revoked).toBe(record.snapshot.flows.filter((f) => f.refused?.by === "metal" && /mandate_revoked/.test(f.refused.reason)).length);
@@ -208,8 +208,8 @@ describe("honest wording on the four tabs (review, 2 Nov)", () => {
     expect(proofPage()).not.toContain(TAP_LINE);
     // Home shows no figures since Max's round of 7 Nov: no TAP line there either; it is on /visa.
     expect(homePage()).not.toContain(TAP_LINE);
-    // Metal's two in detail, in the tooltip.
-    expect(t.tip).toContain(`Metal's 2: ${metalDetail(story)}.`);
+    // Alta's two in detail, in the tooltip.
+    expect(t.tip).toContain(`Alta's 2: ${metalDetail(story)}.`);
     expect(metalDetail(story)).toBe("1 over the mandate's cap, 1 on a mandate that had just been replaced");
     expect(t.tip).not.toMatch(/fee_unknown|TAP/);
   });
@@ -262,7 +262,7 @@ describe("the redesigned public pages", () => {
     expect(run.label).toContain(`${ts[0]!.slice(11, 16)}–`);
     expect(run.label).toContain(`–${ts[ts.length - 1]!.slice(11, 16)} UTC`);
     // Home no longer replays the main run (home-story, 12 Nov): Proof carries its label, Home only names the run
-    // behind its Metal row, in its "What's real?" fold. The replay at /watch says the label in two parts: its heading
+    // behind its Alta row, in its "What's real?" fold. The replay at /watch says the label in two parts: its heading
     // is the label's start with the day in full, the pill beside it the rest (the hours, test money, who decided).
     expect(proofPage()).toContain(run.label);
     const [start, rest] = [run.label.slice(0, run.label.indexOf(",")), run.label.replace(/^[^,]+, \d+ \S+ /, "")];
@@ -271,7 +271,7 @@ describe("the redesigned public pages", () => {
     expect(watchPage()).toContain(`<h1>${start}, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(ts[0]!))}</h1><span class="pill run">`);
     expect(watchPage()).toMatch(new RegExp(`<span class="pill run"><svg[^>]*>.*?</svg>${rest.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}</span>`));
     expect(homePage()).not.toContain(run.label);
-    expect(homePage()).toMatch(/The Metal figure: the main run of 3 November\./);
+    expect(homePage()).toMatch(/The Alta figure: the main run of 3 November\./);
     for (const html of [homePage(), watchPage(), proofPage()]) expect(html).not.toMatch(/Stand-in|standing in|Replay of Autonomous dry run/);
   });
 
@@ -280,7 +280,7 @@ describe("the redesigned public pages", () => {
     // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
     expect(VISA_VIC_BUILT_ON).toBe(true);
     expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
-    expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude");
+    expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude");
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.
@@ -302,8 +302,8 @@ describe("the redesigned public pages", () => {
     const run = agentRun();
     // No refusal on chain is claimed unless the record has one with its tx.
     const chain = record.snapshot.flows.some((f) => f.refused?.by === "metal" && f.proof.href);
-    expect(JSON.stringify(run.scenes).includes("Metal refused it · on chain")).toBe(chain);
-    expect(homePage().includes("Metal refused the purchase on chain")).toBe(false);
+    expect(JSON.stringify(run.scenes).includes("Alta refused it · on chain")).toBe(chain);
+    expect(homePage().includes("Alta refused the purchase on chain")).toBe(false);
     expect(run.scenes.map((s) => s.n)).toEqual([1, 2, 3]);
     expect(run.scenes[2]!.steps.map((s) => s.text)).toContain("€240 licence by SWIFT, accepted by Airwallex with the signed hash · in the sandbox, where the settlement is simulated");
     expect(run.scenes[0]!.steps.map((s) => s.text)).toEqual(expect.arrayContaining(["2 of 2 signatures"]));
@@ -363,9 +363,10 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     expect(packFacts().main.stop_line).toBe(stopsLine(stopStory(record)));
   });
 
-  const LINE = "16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
-  /** Every "N stops, …: Claude skipped A …, Metal refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
-  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Metal refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
+  const LINE = "16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.";
+  // 14 Nov: Metal is now Alta; the walkthrough's script (docs/video-script.md, recorded) keeps "Metal".
+  /** Every "N stops, …: Claude skipped A …, Alta refused B …, the CFO rejected C …, and D planted …" in a text, as [N, A, B, C, D]. */
+  const said = (t: string) => [...t.matchAll(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, (?:Alta|Metal) refused (\d+) purchases?, the CFO rejected (\d+) proposals?, and (\d+) planted instructions? changed nothing/g)].map((m) => m.slice(1).map(Number));
 
   it("is one sentence on the site, the claims, the forms, the deck and the video script, with the record's counts (5 Nov)", () => {
     const st = stopStory(record);
@@ -377,7 +378,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
       const counts = said(t);
       expect({ name, said: counts.length > 0, wrong: counts.filter((c) => c.join() !== want.join()) }).toEqual({ name, said: true, wrong: [] });
       // The old sentence is gone (the claims keep it once, as what the row "was").
-      expect({ name, old: t.replace(/\b[Ww]as:? "Metal refused 1 purchase over its cap; the CFO rejected 1 proposal\."|"1 \+ 1" told too little/g, "").match(/over its cap; the CFO rejected|\b1 \+ 1\b/g)?.length ?? 0 }).toEqual({ name, old: 0 });
+      expect({ name, old: t.replace(/\b[Ww]as:? "Alta refused 1 purchase over its cap; the CFO rejected 1 proposal\."|"1 \+ 1" told too little/g, "").match(/over its cap; the CFO rejected|\b1 \+ 1\b/g)?.length ?? 0 }).toEqual({ name, old: 0 });
       // The TAP run's decline is there, on its own labelled line, after the sentence (the deck leaves that other run
       // out: it overrides the 4 Nov rule for the deck).
       // The form's Description leaves it out too since 6 Nov (jury review, #7: no TAP there; the long text keeps it).
@@ -397,10 +398,10 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
     for (const [name, body] of Object.entries(buildPages() as unknown as Record<string, unknown>)) if (typeof body === "string") expect({ name, old: /stopped at a limit/i.test(text(body)) }).toEqual({ name, old: false });
   });
 
-  it("says Metal's two in detail where they are told: the main run's section (docs/in-depth.md), the claims, the Proof page", () => {
+  it("says Alta's two in detail where they are told: the main run's section (docs/in-depth.md), the claims, the Proof page", () => {
     const d = metalDetail(stopStory(record));
     for (const [name, raw] of SOURCES.filter(([n]) => ["proof", "docs/claims.md"].includes(n))) expect({ name, detail: text(raw).includes(d) }).toEqual({ name, detail: true });
-    expect(text(doc("docs/in-depth.md"))).toMatch(/Metal's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
+    expect(text(doc("docs/in-depth.md"))).toMatch(/Alta's 2: 1 over the mandate's cap \(#24[^)]*\), 1 on a mandate that had just been replaced \(#37/);
   });
 
   it("tells the main run's card story in its section (docs/in-depth.md), the long form text and the deck; the decline only as the TAP run's line", () => {
@@ -439,7 +440,7 @@ describe("one sentence for the stops everywhere, from the main run (Max, 4 and 5
   });
 
   it("would catch a stray 3 or 4", () => {
-    expect(said(text(doc("docs/claims.md").replace("Metal refused 2 purchases", "Metal refused 3 purchases")))).toContainEqual([16, 12, 3, 1, 1]);
+    expect(said(text(doc("docs/claims.md").replace("Alta refused 2 purchases", "Alta refused 3 purchases")))).toContainEqual([16, 12, 3, 1, 1]);
   });
 });
 
@@ -448,14 +449,14 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
   const PAGES = buildPages() as unknown as Record<string, string>;
   const words = (html: string) => html.replace(/<\/?code>/g, "").replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 
-  it("adds up: 86 Metal payments + 1 card charge, all inside the limits (one canonical set, jury review, 6 Nov)", () => {
+  it("adds up: 86 Alta payments + 1 card charge, all inside the limits (one canonical set, jury review, 6 Nov)", () => {
     expect(pay.sums).toBe(true);
     expect(pay.sales + pay.purchases + pay.refunds + pay.sweeps + pay.cards).toBe(record.snapshot.counts.alone);
-    expect(pay.canonical).toBe("86 Metal payments + 1 card charge");
+    expect(pay.canonical).toBe("86 Alta payments + 1 card charge");
     expect(pay.metalParts).toBe("41 sales + 41 supplier purchases + 3 refunds + 1 sweep");
-    expect(pay.line).toBe("86 Metal payments + 1 card charge, all inside the limits: 41 sales + 41 supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex");
-    expect(pay.onChainLine).toBe("86 on Metal = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep");
-    // On Metal: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Metal + SWIFT + card.
+    expect(pay.line).toBe("86 Alta payments + 1 card charge, all inside the limits: 41 sales + 41 supplier purchases + 3 refunds + 1 sweep on Alta, and 1 card charge at Airwallex");
+    expect(pay.onChainLine).toBe("86 on Alta = 41 sales + 41 supplier purchases + 3 refunds + 1 sweep");
+    // On Alta: all but the card buy; routine by code: the sales and the supplier purchases; reconcile: Alta + SWIFT + card.
     expect([pay.onChain, pay.routine, pay.transfers, pay.reconciled]).toEqual([86, 82, 1, 88]);
     expect(pay.routine).toBe(pay.sales + pay.purchases);
     expect(pay.reconciled).toBe((record.snapshot as unknown as { reconciliation: { checked: number } }).reconciliation.checked);
@@ -465,8 +466,8 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
 
   it("shows that one set on Home, Proof and /metal, and no 87 or 82 beside it (jury review, 6 Nov, #5)", () => {
     // Home shows no figures since Max's round of 7 Nov (the way through: watch, try, proof).
-    expect(words(homePage())).not.toMatch(/Metal payments \+ 1 card charge/);
-    expect(words(proofPage())).toContain(`${pay.onChain} Metal payments + 1 card charge`);
+    expect(words(homePage())).not.toMatch(/Alta payments \+ 1 card charge/);
+    expect(words(proofPage())).toContain(`${pay.onChain} Alta payments + 1 card charge`);
     expect(words(proofPage())).toContain(pay.onChainLine);
     expect(words(PAGES.metal!)).toContain(pay.line);
     for (const [name, html] of [["home", homePage()], ["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
@@ -479,7 +480,7 @@ describe("one payment breakdown everywhere, and a clean refusal line (jury revie
   it("says the let-through refusal in one clean line, the chain test on its own line and no Defense-in-depth label beside it", () => {
     for (const [name, html] of [["proof", proofPage()], ["metal", PAGES.metal!]] as const) {
       const t = words(html);
-      expect({ name, line: t.includes("Refused by Metal: Stockline at 0.04, over the cap at the time, 0.03 (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
+      expect({ name, line: t.includes("Refused by Alta: Stockline at 0.04, over the cap at the time, 0.03 (mandate_cap_exceeded); nothing moved.") }).toEqual({ name, line: true });
       expect({ name, garbled: /Stockline, Defense in depth|nothing moved\.; nothing moved/.test(t) }).toEqual({ name, garbled: false });
       expect({ name, own: html.replace(/&#39;/g, "'").includes(`<small>${CHAIN_TEST}</small>`), label: html.replace(/&#39;/g, "'").includes(DEFENSE_IN_DEPTH) }).toEqual({ name, own: true, label: false });
     }

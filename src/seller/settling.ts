@@ -1,9 +1,9 @@
-// A customer's mandate payment between Metal's block and the sale's row (night batch, 2 November 2026).
+// A customer's mandate payment between Alta's block and the sale's row (night batch, 2 November 2026).
 //
 // The seller records a sale after the facilitator's settle answer, and the facilitator answers after the payment's
 // block. In that second the chain already counts the payment under the customer's mandate and the ledger does not: in
 // 2 of 10 live worlds the dashboard read the ledger just before the row, the chain just after, and showed 0.05–0.06 less
-// spent than Metal with no reason given. So the payment is written down before the settle (SETTLING), closed right
+// spent than Alta with no reason given. So the payment is written down before the settle (SETTLING), closed right
 // after the sale's row is committed (DONE; never in its transaction, so it cannot undo a sale), or when the facilitator
 // says nothing moved (FAILED). One left SETTLING is resolved by src/finance/settlements.ts. A SETTLING row is
 // shown as pending; one that stays SETTLING (a lost answer, a row that could not be written) is named by the chain

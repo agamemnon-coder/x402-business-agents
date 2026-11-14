@@ -7,7 +7,7 @@ no stretching), on a white ground in both themes, and never in a way that sugges
 | File | What |
 |---|---|
 | airwallex.png | Airwallex wordmark |
-| metal.svg | Metal wordmark |
+| metal.svg | Metal wordmark (Metal is now Alta: no longer shown, see below) |
 | claude.png | Claude (Anthropic) logo, scaled to 72 px high, colours unchanged; white letters, so it sits on a dark ground |
 | visa.png | Visa brandmark, blue, unmodified |
 | cloudflare.png | Cloudflare logo, unmodified |
@@ -24,3 +24,15 @@ is kept byte for byte as downloaded. Neither is "certified", "endorsed", "approv
 | cloudflare.png | Cloudflare press kit, https://www.cloudflare.com/press-kit/, "Logos.zip", file "CF-Logo 1.png" | 2026-11-12 | `400b70b8bb7db80da137ef8e8fcb835a692410a3083598964da08ed1756df145` | Trademark guidelines (https://www.cloudflare.com/trademark/): use of the logos other than web badges "requires our written permission"; no implied affiliation, endorsement or sponsorship. Use rests on the owner's stated permission. |
 
 Both are dark marks on a transparent ground (no light version in either kit), so they need a light tile in dark mode.
+
+## Alta (formerly Metal), 14 November 2026
+
+Metal renamed itself Alta (its team, in the hackathon's Slack, 14 Nov). `metal.svg` is kept byte for byte but no longer
+shown.
+
+| File | Source | Fetched | SHA-256 | Use |
+|---|---|---|---|---|
+| alta.svg | The header wordmark on https://alta.finance/ (the first inline `<svg viewBox="0 0 475 250">`), byte for byte as served, with an XML header line | 2026-11-14 | `d42b4102ccf305dd72483d5f2ca8bf5e7e64a21540dc23e72488e8e5420acf9e` | Shown with the Alta team's OK in the Airwallex hackathon Slack, 14 Nov 2026 (confirmed by the project owner; screenshot kept by the owner). For the hackathon. No endorsement implied. |
+
+No fill in the file (the site colours it with CSS): it draws black, on the neutral light tile. Details:
+docs/evidence/logo-permissions.md.

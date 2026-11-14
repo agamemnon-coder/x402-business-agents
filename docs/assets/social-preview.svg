@@ -74,7 +74,7 @@
 <text class="s-line" x="72" y="268"><tspan x="72" dy="0">AI agents spend.</tspan></text>
 <text class="s-line s-line2" x="72" y="358"><tspan x="72" dy="0">You sign off.</tspan></text>
 <text class="s-sub" x="72" y="428"><tspan x="72" dy="0">Every payment above its limit</tspan><tspan x="72" dy="40">waits for your Face ID or a passkey.</tspan></text>
-<text class="s-bw" x="72" y="540">Built with <tspan class="s-bwn">Airwallex · Metal · Visa Intelligent Commerce · Claude</tspan></text>
+<text class="s-bw" x="72" y="540">Built with <tspan class="s-bwn">Airwallex · Alta · Visa Intelligent Commerce · Claude</tspan></text>
 <rect class="s-card" x="756" y="64" width="372" height="502" rx="28"/>
 <path class="s-link" d="M821 172 L821 198"/>
 <path class="s-link" d="M821 280 L821 306"/>

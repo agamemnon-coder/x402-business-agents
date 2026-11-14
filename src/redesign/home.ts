@@ -8,7 +8,7 @@
 // receipt (the published receipt of the approval of 7 November, src/redesign/heroReceipt.ts).
 
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { FILM_LINK, FILM_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { FILM_LINK, FILM_URL, TRAILER_LINK, TRAILER_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -42,17 +42,19 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
 .walk { margin: 4px 0 0; font-size: 15px; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
+.walk a.film + a.film { margin-left: 14px; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 /* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;
-   no filter, no recolour, no crop). The Airwallex, Metal and Visa files are dark marks with no light version; Claude's
+   no filter, no recolour, no crop). The Airwallex, Alta and Visa files are dark marks with no light version; Claude's
    is its own slate variant for light grounds (docs/assets/logos/SOURCES.md). */
 .trust .tile { width: auto; display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 12px; background: #ffffff; border: 1px solid #e4e7ec; border-radius: 10px; }
 .trust .tile img { display: block; height: 18px; width: auto; }
-.trust .tile img.metal { height: 16px; }
+.trust .tile.tname { font-size: 16px; font-weight: 750; line-height: 1; color: #111827; letter-spacing: -.01em; text-transform: none; }
+.trust .tile img.alta { height: 22px; }
 .trust .tile img.visa { height: 14px; }
 .trust small { width: 100%; margin-top: -8px; font-size: 12.5px; color: var(--faint); }
-@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile img.metal { height: 12px; } .trust .tile img.visa { height: 11px; } }
+@media (max-width: 640px) { .trust { gap: 8px; } .trust .tile { height: 32px; padding: 0 7px; border-radius: 8px; } .trust .tile img { height: 13px; } .trust .tile.tname { font-size: 13px; } .trust .tile img.alta { height: 16px; } .trust .tile img.visa { height: 11px; } }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
@@ -184,7 +186,7 @@ export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
 export const FEATURES = [
   { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs amount, payee and account. Change one cent and it fails." },
   { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds the limits." },
-  { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Metal and Visa via Airi apply their own controls." },
+  { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
@@ -195,7 +197,7 @@ export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud a
 
 /**
  * The Kit 11 core run in one line (review, 13 Nov: Home told only the payables story): the main run of 3 Nov, its
- * company, its Metal payments, Claude's decisions and the purchase Metal refused on chain, each from the main run's
+ * company, its Alta payments, Claude's decisions and the purchase Alta refused on chain, each from the main run's
  * record; then the walkthrough (FILM_URL, FILM_LINK; no duration in the words since 14 Nov, owner).
  */
 /** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
@@ -205,7 +207,7 @@ export function kit11Html(run: AgentRun = agentRun()): string {
   const company = (run.record as { company?: unknown }).company;
   if (!st.payments.total || !sp.decisions) return "";
   const who = `${run.record.run}${typeof company === "string" ? `, ${company}` : ""}`;
-  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Metal testnet payments, ${countOf(sp.byClaude, sp.decisions, true)} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
+  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Alta testnet payments, ${countOf(sp.byClaude, sp.decisions, true)} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
 }
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
@@ -240,13 +242,13 @@ function aboutHtml(): string {
 `;
 }
 
-export interface ProofRow { partner: "Airwallex" | "Metal" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
+export interface ProofRow { partner: "Airwallex" | "Alta" | "Visa"; title: string; text: string; icon: string; id: string; full: string; href: string; external: boolean }
 
 /**
  * The three proof rows, every value from a run record; a row whose record lacks a piece drops out.
  * 1. Airwallex declined an agent's card over its limit (the Airwallex-only run: the declined charge and the card's
  *    limit as Airwallex returned it), to the site's section with Airwallex's record of it.
- * 2. Metal refused a purchase on chain (the main run), to the transaction on Metal's testnet explorer.
+ * 2. Alta refused a purchase on chain (the main run), to the transaction on Alta's testnet explorer.
  * 3. Visa Intelligent Commerce: a reused credential refused by Purser, which the sandbox had accepted (vic-4, vic-3), to /visa.
  * The CFO's own row (the signed hash in Airwallex's record) left Home on 12 Nov to keep it under 180 words: the hero
  * shows that same approval and its hash, and step 3 says the hash is in Airwallex's record.
@@ -260,7 +262,7 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
   if (decline) rows.push({ partner: "Airwallex", title: "Airwallex declined the card", text: `${decline.currency} ${decline.amount} over a ${limitOf(decline.agent)} limit.`, icon: "ban", id: `${decline.id.slice(0, 8)}…`, full: decline.id, href: steps, external: false });
   const refusal = metalStory(run.record).refusal;
   const tx = /\/tx\/(0x[0-9a-f]{64})$/.exec(refusal?.proof.href ?? "")?.[1];
-  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Metal", title: "Metal refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
+  if (refusal && tx && refusal.code === "mandate_cap_exceeded") rows.push({ partner: "Alta", title: "Alta refused it on chain", text: "Over its cap.", icon: "link-2", id: refusal.proof.label, full: tx, href: refusal.proof.href!, external: true });
   // Visa Intelligent Commerce (Visa judge, 14 Nov: the outcome was buried): a reused credential, refused by Purser's
   // credential check before any Airwallex call (vic-4 F2, docs/runs/2026-11-13-vic-4.json), where the Airi/Airwallex
   // sandbox had accepted it (vic-3); to /visa's section that sets the two side by side.
@@ -270,7 +272,7 @@ export function proofRows(run: AgentRun = agentRun(), awx: Awx1Record | null = a
 }
 
 /**
- * First on record (jury pass, 13 Nov): Face ID verified on chain. The passkey account on Metal testnet
+ * First on record (jury pass, 13 Nov): Face ID verified on chain. The passkey account on Alta testnet
  * (docs/runs/<date>-faceid-onchain.json): every limit change ran only after all its owners' passkeys signed, checked by
  * the account itself; a payment over the cap was refused on chain, and paid after both signed the raise. The second
  * signer is a virtual test passkey, and the tile says so. No record, or no refusal followed by a raise: no tile.
@@ -290,12 +292,12 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
   const changes = steps.filter((s) => s.key === "bind" || s.key === "replace" || s.key === "revoke").length;
   // Plain words for a CFO (jury review, 13 Nov): how many passkeys signed each change, and which one is a test key.
   const words = ["no", "one", "two", "three", "four", "five"], w = (n: number) => words[n] ?? String(n);
-  return [{ n: changes, label: `limit changes, each signed by ${w(owners.rec.threshold)} passkeys on chain (Metal testnet, ${dayShort(owners.rec.ran_at)}${virtual ? `; ${w(virtual)} a test key` : ""})`, icon: "scan-face", tone: "ok" }];
+  return [{ n: changes, label: `limit changes, each signed by ${w(owners.rec.threshold)} passkeys on chain (Alta testnet, ${dayShort(owners.rec.ran_at)}${virtual ? `; ${w(virtual)} a test key` : ""})`, icon: "scan-face", tone: "ok" }];
 }
 
 /**
  * The stat row (the owner, 12 Nov: one strong stat row), every figure from a run record: Claude's decisions in the main
- * run (its agent_stats), Metal payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
+ * run (its agent_stats), Alta payments in the main run, the card Airwallex declined over its limit (the Airwallex-only
  * run) and the Visa read-backs (vic-3). A figure whose record lacks it drops out.
  */
 /**
@@ -309,7 +311,7 @@ export function visaLineHtml(rows: ProofRow[]): string {
 
 export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: OwnersRun | null = ownersRun()): Stat[] {
   // The owner, 13 Nov ("feels small"): the scale band under it (src/redesign/scale.ts) carries the figures of every run,
-  // so the row keeps the one lock that leads: Face ID verified on chain. The main run's 24 decisions, its Metal
+  // so the row keeps the one lock that leads: Face ID verified on chain. The main run's 24 decisions, its Alta
   // payments, Airwallex's decline and the Visa read-backs are on /proof, each from its record.
   return faceIdTile(owners);
 }
@@ -336,7 +338,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const rows = proofRows(run, awx);
   // The partners' official files (14 Nov, owner), served unaltered from src/ui/logos/ and docs/assets/logos/ as
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
-  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["logo-visa.png", "Visa", 1920, 622, "visa"], ["logo-metal.svg", "Metal", 114, 36, "metal"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["", "Visa", 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">
   <div class="copy">
@@ -344,8 +347,8 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     <p class="what">${esc(HOME_SUB)}</p>
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a></p>
-    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
+    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
+    <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
     <p class="hf-note">${esc(FLOW_NOTE)} <a href="#real" data-real>${esc(WHATS_REAL)}</a></p></div>
@@ -372,13 +375,13 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
 </div></section>
 </main>`;
   // The full list behind the one provenance line: the main run's lines, the run the hero replays (its own note), what
-  // step 4's receipt is (the file's own note), and the test behind the Metal row.
+  // step 4's receipt is (the file's own note), and the test behind the Alta row.
   const refusedAt = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at ?? "";
-  // What Home shows first (the hero and its two Airwallex rows), then the Metal row and the main run it comes from.
+  // What Home shows first (the hero and its two Airwallex rows), then the Alta row and the main run it comes from.
   const real = [
     "The hero's values (supplier, amount, due date, account, the signed hash and the three booking lines): one /try run of its sample invoice on the live demo, 13 November, with Claude on: Claude Haiku 5.5 read that invoice, and the Checker, Coder and Payer agents ran on it, each request id in the record (docs/runs/2026-11-13-try-sample.json). Test money, a simulated bank, a test passkey.",
     ...(awx && facts ? [`The Airwallex figure: the Airwallex-only run (${awx.run}) of ${facts.date}. ${CAVEAT_LINE} ${awx.note}`] : []),
-    `The Metal figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
+    `The Alta figure: the main run${refusedAt ? ` of ${dayMonth(refusedAt)}` : ""}. ${CHAIN_TEST}`,
     ...MAIN_RUN_REAL,
   ];
   return page({

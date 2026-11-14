@@ -47,7 +47,8 @@ describe("GET /v1/tokenisation", () => {
   it("shows the invoice token's mint, finance and settle steps from the run record, with its label and explorer links", async () => {
     const r = (await get("/v1/tokenisation")).json;
     const tok = r.invoice_token;
-    expect(tok.label).toBe("prototype · Metal testnet · test money · financier simulated");
+    // 14 Nov: the record says "Metal testnet"; the console names the network Alta (Metal renamed itself).
+    expect(tok.label).toBe("prototype · Alta testnet · test money · financier simulated");
     expect(tok.steps.map((s: J) => s.step)).toEqual(["mint", "finance", "settle"]);
     const recorded = new Set((TOKENIZE as unknown as { transactions: { hash: string }[] }).transactions.map((x) => x.hash));
     for (const s of tok.steps as J[]) for (const x of s.txs as J[]) {

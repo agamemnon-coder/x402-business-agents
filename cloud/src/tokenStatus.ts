@@ -3,8 +3,8 @@
 // is inferred: a step is done only when the record holds its transaction with a receipt that succeeded, and a hash is
 // shown only when the record holds it. An invoice without a record gets no token row at all (null).
 //
-// Where the record came from is said right next to the steps: Metal testnet (test money, financier simulated), a
-// stand-in run, or a local test chain. A link to the explorer is given only for a Metal testnet transaction whose
+// Where the record came from is said right next to the steps: Alta testnet (test money, financier simulated), a
+// stand-in run, or a local test chain. A link to the explorer is given only for an Alta testnet transaction whose
 // record carries the explorer's own URL for it.
 
 import { CHAIN_ID, EXPLORER_TX } from "../../src/metal/network.js";
@@ -52,12 +52,12 @@ const STEP_TX: Record<Exclude<StepName, "signed">, string> = { tokenized: "mint"
 const HEX_TX = /^0x[0-9a-fA-F]{64}$/;
 
 export const ORIGIN_LABEL: Record<TokenOrigin, string> = {
-  "metal-testnet": "Metal testnet, test money; the financier is simulated",
+  "metal-testnet": "Alta testnet, test money; the financier is simulated",
   "stand-in": "Stand-in: in-memory chain, stand-in token; the financier is simulated",
   "local-test-chain": "Local test chain: nothing on a public network; the financier is simulated",
 };
 
-/** Where the record says it ran: Metal testnet only when it says so itself; otherwise what the caller knows it is. */
+/** Where the record says it ran: Alta testnet only when it says so itself; otherwise what the caller knows it is. */
 export function originOf(rec: TokenRecordView, otherwise: Exclude<TokenOrigin, "metal-testnet"> = "local-test-chain"): TokenOrigin {
   return rec.labels?.network === "Metal testnet" && rec.labels.chain_id === CHAIN_ID ? "metal-testnet" : otherwise;
 }

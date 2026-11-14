@@ -29,7 +29,7 @@ export const TAGLINE = "Give every AI agent its own company card, with limits th
 /**
  * "Visa (VIC via Airi)" (text, never a logo) in Home's "Built on", since 12 Nov (jury panel): the Visa entry is the
  * Airi run, Visa Intelligent Commerce via Airwallex's Airi (docs/runs/2026-11-07-vic-1.md), so it stands beside
- * Airwallex, Metal and Claude. History: Visa (hackathon Slack, 5 Nov) said TAP is not available as Visa tooling for
+ * Airwallex, Alta and Claude. History: Visa (hackathon Slack, 5 Nov) said TAP is not available as Visa tooling for
  * this hackathon, only Visa Intelligent Commerce (VIC) or Intelligent Commerce Connect are; Visa (hackathon Slack,
  * 7 Nov, as reported by the builder) said the VIC run counts, so since 7 Nov Purser is entered for the Metal Award and
  * the Visa Award, on the Airi run, never on TAP (docs/decisions.md D28, docs/evidence/README.md). This switch was
@@ -62,7 +62,7 @@ export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's publ
  */
 export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
 /** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
-export const HOME_BADGE = "Kit 11 · Metal Award and Visa Award · built on Airwallex, Metal, Claude";
+export const HOME_BADGE = "Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude";
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
 /**
@@ -74,14 +74,14 @@ export const HERO = "AI agents spend. You sign off.";
  * The core sentence (jury review, 4 Nov), word for word, wherever the story is told in one line: who holds which
  * limit. Never "enforce every limit": the refund, FX and other thresholds are held by Purser's own code.
  */
-export const CORE_SENTENCE = "Metal holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything beyond them.";
+export const CORE_SENTENCE = "Alta holds each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything beyond them.";
 /** Who the second approver is, said wherever four eyes appears (Max, 2 Nov: he does everything alone). */
 export const SECOND_APPROVER = "Second approver: a labelled test passkey in this demo. In production this is a second person.";
 /**
- * The main run (3 Nov): one purchase over the cap let through to Metal on Max's flag, word for word wherever that
+ * The main run (3 Nov): one purchase over the cap let through to Alta on Max's flag, word for word wherever that
  * refusal is shown. The run's own ledger row carries the same text (upstream.let_through_refused).
  */
-export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved.";
+export const DEFENSE_IN_DEPTH = "Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Alta — Alta refused it; nothing moved.";
 /**
  * A sandbox transfer's PAID, said wherever a page shows it (final review, 4 Nov): Purser itself moves the transfer to
  * SENT, then PAID, through Airwallex's simulation API (src/executors/invoicePayment.ts settleInSandbox), so the
@@ -99,7 +99,7 @@ export const FOUR_EYES_NOTE = "the second signature from a test passkey, not a s
 /** The short form, with its note: how a sentence about what ran says "four eyes". */
 export const FOUR_EYES = `four eyes (${FOUR_EYES_NOTE})`;
 /**
- * The same honesty for the separate on-chain run of 30 October (a 2-of-2 Metal account, docs/runs/2026-10-30-four-eyes.md):
+ * The same honesty for the separate on-chain run of 30 October (a 2-of-2 Alta account, docs/runs/2026-10-30-four-eyes.md):
  * there both owners' keys were test keys on one machine, so "a test passkey" would not be true of it.
  */
 export const FOUR_EYES_ON_CHAIN_NOTE = "two test keys on one machine, not two people";
@@ -116,7 +116,7 @@ export const FOUR_EYES_LINE = `Four eyes on chain: two signatures required (${FO
  */
 export const DIFFERENTIATORS = [
   "An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.",
-  "One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.",
+  "One CFO policy, a lock per rail: Airwallex card controls, Alta's mandate, the CFO's signature on invoices. A prompt is not a control.",
   "Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.",
 ] as const;
 /** The one line after the three sentences, linked to /try/sign wherever a surface can link (section D, 6 Nov). */
@@ -169,7 +169,7 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
   { label: "Who buys", text: "the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides.", page: "model.md#who-buys-and-who-uses-it-hypothesis" },
   { label: PRICING_LABEL, text: `${PRICE_LINE} A hypothesis.`, page: "model.md#pilot-pricing-hypothesis" },
   { label: "Why now", text: "Airwallex wrote on 5 October 2026 that agents moving money need limits enforced \"through underlying infrastructure rather than prompts\" (\"Agentic banking starts with governance\", source S1).", page: "problem.md#why-now-sourced" },
-  { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
+  { label: "Why Purser", text: "it builds on Airwallex's own card controls and Alta's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];
 /**
  * The walkthrough (film v10, YouTube, 13 Nov; AI voice and music: ElevenLabs), linked from Home and Proof and in
@@ -177,6 +177,9 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
  */
 export const FILM_URL = "https://youtu.be/mp9fmOYfBWc";
 export const FILM_LINK = "Watch the walkthrough";
+/** The trailer (14 Nov, Max: 1:30, 4K; AI voice and music: ElevenLabs): a second, shorter option beside the walkthrough. */
+export const TRAILER_URL = "https://youtu.be/n3HLVGROJc4";
+export const TRAILER_LINK = "Watch the trailer (1:30)";
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**
@@ -186,11 +189,11 @@ export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 export const CAVEAT_LINE = "Test money. Simulated: customer, supplier, settlement, second approver.";
 export const CAVEAT_LINK = "Details →";
 /**
- * The purchase let through to Metal, framed as what it was (jury review, 6 Nov, #8): a test of the layer under Purser.
- * Both layers, in order: Purser refuses first; with that check off once, Metal refused anyway. Said wherever that
+ * The purchase let through to Alta, framed as what it was (jury review, 6 Nov, #8): a test of the layer under Purser.
+ * Both layers, in order: Purser refuses first; with that check off once, Alta refused anyway. Said wherever that
  * refusal is told; the run's own ledger label (DEFENSE_IN_DEPTH) stays word for word beside it.
  */
-export const CHAIN_TEST = "We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway.";
+export const CHAIN_TEST = "We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Alta refused it anyway.";
 
 /** The example company that runs Purser in the demo. */
 export const COMPANY = "Northwind Outdoor";
@@ -234,13 +237,13 @@ export function agentName(id: string): string {
  * - Airwallex: the GET-only read-backs docs/runs/airwallex-transfer-approval-2026-11-06.json (the terms hash the CFO
  *   signed for P-0005, in the SWIFT transfer's metadata) and docs/runs/airwallex-cards-2026-11-06.json (3 of 3 cards
  *   matching the CFO policy), computed in src/redesign/airwallexProof.ts;
- * - Metal: the main run's record (docs/demo/main-run.json), through src/redesign/metalStory.ts;
+ * - Alta: the main run's record (docs/demo/main-run.json), through src/redesign/metalStory.ts;
  * - Claude: the main run's agent_stats (24 of 24, 0 fallbacks) and the reliability run rel-1 (docs/demo/reliability.json,
  *   docs/runs/reliability-2026-11.md: the treasury-card-raise eval 6/10 before the fix, 10/10 after, docs/evals/agents.json).
  */
-export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Metal" | "Claude"; anchor: string; text: string }[] = [
+export const PROOF_SENTENCES: readonly { partner: "Airwallex" | "Alta" | "Claude"; anchor: string; text: string }[] = [
   { partner: "Airwallex", anchor: "airwallex", text: "Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex." },
-  { partner: "Metal", anchor: "metal", text: "Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)." },
+  { partner: "Alta", anchor: "metal", text: "Alta (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)." },
   { partner: "Claude", anchor: "claude", text: "Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step." },
 ];
 /**

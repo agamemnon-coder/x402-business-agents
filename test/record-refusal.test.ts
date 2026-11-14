@@ -1,5 +1,5 @@
-// The pull that records Metal's refusal on chain (src/metal/recordRefusal.ts) is itself an over-cap payment sent to
-// Metal. Any error once metal-agent was started is "pull sent: …" (the caller treats it as an incident and stops the
+// The pull that records Alta's refusal on chain (src/metal/recordRefusal.ts) is itself an over-cap payment sent to
+// Alta. Any error once metal-agent was started is "pull sent: …" (the caller treats it as an incident and stops the
 // Sourcing agent); errors before it (not over the cap, mandate not bound) are not. Fakes only: no CLI, no chain.
 import { describe, expect, it, vi } from "vitest";
 
@@ -18,14 +18,14 @@ const m = { agent: "sourcing", reference: `0x${"12".repeat(32)}`, credentialPath
 const TO = "0x0000000000000000000000000000000000000001" as const;
 
 describe("recordCapRefusalOnChain", () => {
-  it("returns Metal's refusal and its transaction", async () => {
+  it("returns Alta's refusal and its transaction", async () => {
     await expect(recordCapRefusalOnChain(m, TO, 4, "p1", "gas")).resolves.toEqual({ tx: "0xabc", reason: "mandate_cap_exceeded" });
   });
   it("an error once metal-agent ran is 'pull sent: …' (an incident for the caller)", async () => {
     cli.run = () => { throw new Error("metal-agent exited 2"); };
     await expect(recordCapRefusalOnChain(m, TO, 4, "p2", "gas")).rejects.toThrow(/^pull sent: metal-agent exited 2/);
   });
-  it("a pull Metal did not report refusing is an error the caller treats as an incident", async () => {
+  it("a pull Alta did not report refusing is an error the caller treats as an incident", async () => {
     cli.run = () => ({ code: 0, fields: new Map([["transaction", ["0xdef"]]]) });
     await expect(recordCapRefusalOnChain(m, TO, 4, "p3", "gas")).rejects.toThrow(/did not report a refusal/);
   });

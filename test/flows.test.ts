@@ -1,4 +1,4 @@
-// D23 + D24: the money flow, from the ledger only. Each movement is a recorded event with its own proof (a Metal tx or
+// D23 + D24: the money flow, from the ledger only. Each movement is a recorded event with its own proof (a Alta tx or
 // an Airwallex id), its amount and rail; a refusal hits its rail with the reason. Who decided it is read from the
 // origin recorded with the movement when it started (D24), and from nothing else: never from timing, never from a
 // decision written nearby. A ledger recorded before origins existed shows only what an explicit record says, marked
@@ -43,7 +43,7 @@ function world(): DB {
   sale(db, 7, 0);
   log(db, SONNET, "support", "refund.paid", "7", { amount: "0.05", payment_id: "refund-7", to: "0xA5A1", tx: TX(12) }, 8);
   log(db, OPUS, "treasury", "sweep.paid", "sweep-1", { amount: "0.09", to: "0xb4b0", tx: TX(13) }, 10);
-  log(db, { actor: "code", rule: "book the sweep at Airwallex after Metal's finality", agent: "treasury", set_by: OPUS }, "awx-executor", "credit.deposited", "63825:x:1", { amount: "0.09", currency: "USD", deposit_id: "05090865-c8c8-47aa-9097-599cce294d6f" }, 11);
+  log(db, { actor: "code", rule: "book the sweep at Airwallex after Alta's finality", agent: "treasury", set_by: OPUS }, "awx-executor", "credit.deposited", "63825:x:1", { amount: "0.09", currency: "USD", deposit_id: "05090865-c8c8-47aa-9097-599cce294d6f" }, 11);
   log(db, CFO, "awx-executor", "transfer.created", "6b7ebec3-e3c7-4281-aa5b-cde80916c91e", { amount: "EUR 240.00", approval_sha256: "b".repeat(64), status: "SCHEDULED" }, 12);
   audit(db, "awx-executor", "transfer.status", "6b7ebec3-e3c7-4281-aa5b-cde80916c91e", { status: "PAID" }, T(13));
   log(db, null, "sourcing", "card.charge_declined", "awx-tx-9", { agent: "sourcing", amount: "45.00", currency: "EUR", last4: "6423", merchant: "Packwise", reason: "LIMIT_EXCEEDED", source: "poll", origin: { actor: "external", party: "merchant", name: "Packwise" } }, 14);
@@ -52,7 +52,7 @@ function world(): DB {
 }
 
 describe("the money flow, from the ledger", () => {
-  it("folds a run of sales into one movement, customer agents to Northwind, in *USDZ on Metal, with the latest tx", () => {
+  it("folds a run of sales into one movement, customer agents to Northwind, in *USDZ on Alta, with the latest tx", () => {
     const f = flowEvents(world());
     expect(f[0]).toMatchObject({ kind: "sale", from: "customer", to: "northwind", amount: "0.15", unit: "*USDZ", rail: "metal", count: 3, proof: { label: expect.stringMatching(/^tx 0xaaaa/), href: `https://testnet.metalntwx.com/tx/${TX(3)}` } });
   });
@@ -73,7 +73,7 @@ describe("the money flow, from the ledger", () => {
     ]);
   });
 
-  it("a refusal hits its rail with the reason: Purser before signing, Metal on chain (its tx), Airwallex at the card (its id)", () => {
+  it("a refusal hits its rail with the reason: Purser before signing, Alta on chain (its tx), Airwallex at the card (its id)", () => {
     const r = flowEvents(world()).filter((e) => e.refused);
     expect(r.map((e) => [e.refused!.by, e.proof.label.split(" ")[0]])).toEqual([["purser", "Purser"], ["metal", "tx"], ["airwallex", "Airwallex"]]);
     expect(r[1]!.refused!.reason).toMatch(/^mandate_cap_exceeded/);
@@ -98,7 +98,7 @@ describe("who decided: the origin recorded with the movement (D24)", () => {
     const f = flowEvents(world());
     expect(f[1]).toMatchObject({ model: null, decided: "code: the Sourcing agent's buy policy, as the Sourcing agent (Claude Haiku) set it" });
     expect(f[0]).toMatchObject({ model: null, decided: "Summit's agent paid (the simulated customer)" });
-    expect(f.find((e) => e.kind === "booked")).toMatchObject({ model: null, decided: "code: book the sweep at Airwallex after Metal's finality, as the Treasury agent (Claude Opus) set it" });
+    expect(f.find((e) => e.kind === "booked")).toMatchObject({ model: null, decided: "code: book the sweep at Airwallex after Alta's finality, as the Treasury agent (Claude Opus) set it" });
     expect(f.find((e) => e.kind === "card" && e.refused)).toMatchObject({ model: null, decided: "Packwise charged the card" });
     expect(f.find((e) => e.kind === "licence")).toMatchObject({ model: null, decided: "the CFO approved it with Face ID", proof: { full: "6b7ebec3-e3c7-4281-aa5b-cde80916c91e" } });
   });
@@ -185,10 +185,10 @@ describe("a ledger recorded before origins existed (the 30 October run, dry-105)
     expect(flowEvents(db)[0]).toMatchObject({ decided: "code swept the net earnings", derived: true });
   });
 
-  it("an older refusal row with a bare code was Metal's facilitator (no tx); its amount, not recorded, is not made up", () => {
+  it("an older refusal row with a bare code was Alta's facilitator (no tx); its amount, not recorded, is not made up", () => {
     const db = fresh();
     legacyRow(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 }, 1);
-    expect(flowEvents(db)).toEqual([expect.objectContaining({ rail: "metal", amount: "", refused: { by: "metal", reason: "mandate_cap_exceeded" }, proof: expect.objectContaining({ href: null, label: expect.stringMatching(/^Metal's facilitator refused it/) }) })]);
+    expect(flowEvents(db)).toEqual([expect.objectContaining({ rail: "metal", amount: "", refused: { by: "metal", reason: "mandate_cap_exceeded" }, proof: expect.objectContaining({ href: null, label: expect.stringMatching(/^Alta's facilitator refused it/) }) })]);
   });
 });
 
@@ -203,11 +203,11 @@ describe("movements shown for what they are", () => {
     ]);
   });
 
-  it("a sale settled through clearing is told apart from a per-request Metal payment, without a tx it does not have", () => {
+  it("a sale settled through clearing is told apart from a per-request Alta payment, without a tx it does not have", () => {
     const db = fresh();
     sale(db, 1, 0);
     log(db, null, "system", "sale.delivered", "1", { settlement_id: "s-1", scheme: "bajillion", body_sha256: "x", origin: CUSTOMER }, 0);
-    expect(flowEvents(db)[0]).toMatchObject({ kind: "sale", what: "stock checks sold, settled later by clearing", proof: { label: "settled later in a clearing batch on Metal", href: null } });
+    expect(flowEvents(db)[0]).toMatchObject({ kind: "sale", what: "stock checks sold, settled later by clearing", proof: { label: "settled later in a clearing batch on Alta", href: null } });
   });
 
   it("a row without its amount or currency is left out, not shown as 0.00 or as euros", () => {

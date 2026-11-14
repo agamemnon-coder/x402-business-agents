@@ -8,7 +8,7 @@ const page = trySignPage();
 const css = trySignCss();
 
 describe("/try/sign after Max's review", () => {
-  it("each lock shows its channel: Purser the invoices and proposals, the Airwallex card the card spend, Metal on chain", () => {
+  it("each lock shows its channel: Purser the invoices and proposals, the Airwallex card the card spend, Alta on chain", () => {
     expect(LOCK_CHANNELS).toEqual({
       purser: { short: "Invoices", long: "Invoices and proposals" },
       airwallex: { short: "Card spend", long: "Card spend" },

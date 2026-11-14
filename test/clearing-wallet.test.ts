@@ -1,4 +1,4 @@
-// Metal clearing, the money side (src/metal/clearing.ts): which deployment is used, deposits and withdrawals go to the
+// Alta clearing, the money side (src/metal/clearing.ts): which deployment is used, deposits and withdrawals go to the
 // right accounts with the right amounts, nothing moves when the facilitator offers no deployment (or one holding
 // another asset), and the clearing wallet is always closed again. metal-pay's custody calls and the wallet are fakes;
 // the facilitator's /supported list is a stubbed fetch. No network.

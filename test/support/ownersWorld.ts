@@ -51,7 +51,7 @@ export interface TestWorld {
   said: string[];
   /** Every run of the stand-in for the CLI's network commands, as its argument list. */
   cliRuns: string[][];
-  /** What the stand-in CLI answers a pull that asks for the refusal to be recorded: refused on chain, or (were Metal not to refuse) paid. */
+  /** What the stand-in CLI answers a pull that asks for the refusal to be recorded: refused on chain, or (were Alta not to refuse) paid. */
   pulls: { refuseOverCap: boolean };
   /** The world's clock: every command, signature and relay happens at `clock.now`. A test moves it. */
   clock: { now: Date };
@@ -121,7 +121,7 @@ export async function ownersWorld(o: { budget?: number; pollsMs?: number[]; dono
           ? result(1, [`transaction ${tx}`, "outcome refused", "reason mandate_cap_exceeded (the amount is above the mandate's per-payment cap)", `amount ${arg("--amount")}`])
           : result(0, [`transaction ${tx}`, "outcome paid", `amount ${arg("--amount")}`]);
       }
-      // As Metal checks a pull: against the mandate the credential describes, as the chain has it bound.
+      // As Alta checks a pull: against the mandate the credential describes, as the chain has it bound.
       const m = loadCredentialFile("sourcing", arg("--credential"));
       const ref = m.reference.toLowerCase();
       const key = `${ref}:${id}`;

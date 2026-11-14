@@ -1,4 +1,4 @@
-// Security review M1: the Metal RPC URL is a credential. viem puts it in its error messages; none of it may reach the
+// Security review M1: the Alta RPC URL is a credential. viem puts it in its error messages; none of it may reach the
 // audit log (and so the dashboard and the relay), the runner's verdicts to the phone, or its log lines.
 import { relayToken, viewKey } from "../src/relay/config.js";
 import { afterEach, describe, expect, it } from "vitest";

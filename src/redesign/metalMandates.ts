@@ -1,11 +1,11 @@
 // /metal as one honest story, with pictures first (owner, 13 Nov: "people need to know where to look"; jury panel, 12 Nov:
 // every on-chain sentence matches the transaction beside it). On top, one picture: the Sourcing agent, its mandate on
-// chain, Metal's check, then two paths, each a real payment of the main run: #23 paid within the cap and #24 refused on
+// chain, Alta's check, then two paths, each a real payment of the main run: #23 paid within the cap and #24 refused on
 // chain over it. Then the charts: budget and spend per mandate on one scale, the 86 payments by kind in one stacked bar,
 // and the refusals as a moment. Then the four mandates as cards (cap, budget spent, expiry), the spend read live from
-// Metal testnet by the read-only inspector (worker/src/metalInspector.ts) or labelled as the check of 12 November, with
+// Alta testnet by the read-only inspector (worker/src/metalInspector.ts) or labelled as the check of 12 November, with
 // the full table behind "Details: every mandate". Then the replace after Face ID in three steps (who signed on chain:
-// one owner key held by the runner, the chain did not check Face ID), and the folds: what else ran on Metal, each dated,
+// one owner key held by the runner, the chain did not check Face ID), and the folds: what else ran on Alta, each dated,
 // both refusals decoded, the main run's proof. Every figure, hash and address is read here from the records (the main
 // run's record and trace, the check of 12 November, the separate runs' records), never typed in.
 
@@ -86,7 +86,7 @@ export const inspectorRecord = (): InspectorRecord & { recorded: MetalRecorded |
 
 export interface CoverageRow { feature: string; when: string; link: { label: string; href: string } | null; status: "done" | "not finished"; note: string }
 /**
- * What else ran on Metal, beyond the main run, each a separate run with its date and its record (src/redesign/metalStory.ts
+ * What else ran on Alta, beyond the main run, each a separate run with its date and its record (src/redesign/metalStory.ts
  * SEPARATE_RUNS), and the hold, which is not finished (its record says the live run stopped at its budget).
  */
 export function coverageRows(): CoverageRow[] {
@@ -99,9 +99,9 @@ export function coverageRows(): CoverageRow[] {
   return [
     ...row("four-eyes", "Two owners, both must sign", "paid with both signatures; one alone reverted"),
     ...row("passkey-owners", "Passkeys as the owners", "software passkeys, not a phone"),
-    ...row("receive", "Money from strangers held", "held by Metal, then returned"),
+    ...row("receive", "Money from strangers held", "held by Alta, then returned"),
     ...row("clearing", "Clearing", "one deposit, then each query paid by a signed receipt"),
-    ...row("compliance", "Send policy", "Purser's own contract, not Metal's"),
+    ...row("compliance", "Send policy", "Purser's own contract, not Alta's"),
     ...(hold?.finished ? [{ feature: "Hold for an approved amount", when: "10 Nov", link: { label: "tx", href: tx(hold.capture) }, status: "done" as const, note: `held, then captured to the supplier on ${hold.day}` }]
       : hold ? [{ feature: "Hold for an approved amount", when: "10 Nov", link: { label: "record", href: `${REPO_BLOB}${METAL_HOLD_RECORD}` }, status: "not finished" as const, note: "hold placed on testnet; its capture not sent" }] : []),
   ];
@@ -167,7 +167,7 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
 .mtp .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
 .mtp h2.mh { font-size: 19px; line-height: 1.25; letter-spacing: -.01em; margin: 0; }
 .mtp .msub { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.45; }
-/* The hero: the story in one picture. An agent, its mandate on chain, Metal's check, then two paths: paid, and refused. */
+/* The hero: the story in one picture. An agent, its mandate on chain, Alta's check, then two paths: paid, and refused. */
 .mhero { padding: 18px; display: grid; gap: 14px; }
 .mflow { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
 .mflow > li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 12px 14px; border-radius: 16px; background: var(--sunken); }
@@ -257,7 +257,7 @@ export const METAL_INSPECT_JS = `(function () {
           if (spent >= 0 && max > 0 && w > 0) r.setAttribute("width", String(Math.min(1, spent / max) * w));
         });
       });
-      label.textContent = "Spent: read live from Metal testnet at " + a.read_at.slice(11, 16) + " UTC, block " + a.block + ".";
+      label.textContent = "Spent: read live from Alta testnet at " + a.read_at.slice(11, 16) + " UTC, block " + a.block + ".";
       if (why) why.textContent = "";
       // The live wording only once a live read succeeded (the final review, 13 Nov).
       var how = document.getElementById("mlive-how"), rec = document.getElementById("mlive-rec");
@@ -269,7 +269,7 @@ export const METAL_INSPECT_JS = `(function () {
 
 export interface MetalBody { logo: string; label: string; folds: string; proofHash: string; /** Blocks of other runs shown under the folds (the invoice-token run, when its record exists). */ after?: string }
 
-/** A paid Metal payment from the main run's trace: the kind, its number, its amount and its transaction. */
+/** A paid Alta payment from the main run's trace: the kind, its number, its amount and its transaction. */
 interface TracePayment { kind: string; ref: string; amount: string; rail: string; rail_id: string | null; origin?: { agent?: string } }
 
 /**
@@ -299,14 +299,14 @@ export function metalBody(record: RunRecord, o: MetalBody): string {
   const spentOf = (r: MandateRow) => liveOf(r.agent)?.spent ?? r.spent;
   const r = st.refusal, sourcing = rows.find((x) => x.agent === "sourcing"), green = r ? paidBefore(traceAll, r.seq) : null;
 
-  // 1. The hero: agent → its mandate on chain → Metal checks → paid (green) or refused (red), both under the mandate
+  // 1. The hero: agent → its mandate on chain → Alta checks → paid (green) or refused (red), both under the mandate
   // in force at #24: the Sourcing agent's first bind (the replace after Face ID came later, step 4).
   const atTheTime = sourcing?.first ?? (sourcing ? { cap: sourcing.cap, budget: sourcing.budget, tx: sourcing.tx } : null);
   const hero = r && sourcing && atTheTime ? `<section class="mhero card" id="mstory" aria-labelledby="mh-h"><h2 class="mh" id="mh-h">${esc("Each payment, checked on chain")}</h2>
 <ol class="mflow" aria-label="${esc("From the agent to the chain, step by step")}">
 <li><span class="ic">${icon("bot", 20)}</span><b>${esc("Sourcing agent")}</b><small>${esc(`pays ${sourcing.payee} per stock check, over x402`)}</small></li>
 <li><span class="ic">${icon("link-2", 20)}</span><b>${esc("Its mandate, on chain")}</b><small>${esc(`cap ${atTheTime.cap} a payment · budget ${atTheTime.budget} · payee ${sourcing.payee} `)}${a(tx(atTheTime.tx), "bind")}</small></li>
-<li><span class="ic">${icon("shield-check", 20)}</span><b>${esc("Metal checks each payment")}</b><small>${esc("against cap, budget, payee and expiry")}</small></li>
+<li><span class="ic">${icon("shield-check", 20)}</span><b>${esc("Alta checks each payment")}</b><small>${esc("against cap, budget, payee and expiry")}</small></li>
 </ol>
 <div class="mpaths">
 ${green ? `<div class="mpath ok"><span class="tag">${icon("circle-check", 18)}${esc("Within the cap: paid")}</span><span class="big">${esc(`#${green.ref} · ${green.amount} *USDZ`)}</span><p>${esc(`Under the ${atTheTime.cap} cap.`)} ${a(tx(green.tx), `tx ${short(green.tx)}`)}</p></div>` : ""}
@@ -334,15 +334,15 @@ ${green ? `<div class="mpath ok"><span class="tag">${icon("circle-check", 18)}${
     x0 += w + GAP;
     return s;
   }).join("");
-  const payChart = `<section class="mchart card" aria-labelledby="mp-h"><h2 class="mh" id="mp-h">${esc(`${p.total} Metal payments, each its own transaction`)}</h2>
+  const payChart = `<section class="mchart card" aria-labelledby="mp-h"><h2 class="mh" id="mp-h">${esc(`${p.total} Alta payments, each its own transaction`)}</h2>
 <svg class="stack" viewBox="0 0 ${W} 30" preserveAspectRatio="none" role="img" aria-label="${esc(`${p.sales} sales, ${p.purchases} supplier purchases, ${p.refunds} refunds and ${p.sweeps} sweep`)}">${segs}</svg>
 <ul class="mlegend">${kinds.map((k) => `<li><span class="dot d-${k.cls}"></span><b>${k.n}</b><span>${esc(k.label)}</span></li>`).join("")}</ul>
 <p class="tx2">${a(p.account.href!, p.account.label)} ${a(`${REPO_BLOB}${MAIN_RUN_CHECK}`, "checked one by one")}</p></section>`;
 
   const x = st.replace, signer = replaceSigner(record);
   const moment = r ? `<section class="mmoment card" id="refused" aria-labelledby="mm-h"><span class="hd">${icon("ban", 20)}<span id="mm-h">${esc("Refused, nothing moved")}</span></span>
-<div class="mm"><div class="one"><span class="big">${esc(`#${r.seq}: ${r.amount}`)} <s>${esc(`> cap ${r.cap}`)}</s></span><p>${esc("Our own check was off for this test. Metal refused it on chain; nothing moved.")}</p><p class="tx2">${a(r.proof.href!, `tx ${short(r.proof.href!.split("/").pop()!)}`)} <a class="pf" href="#refusals">${esc("decoded")} ↓</a></p></div>
-${x?.revoked ? `<div class="one"><span class="big">${esc(`#${x.revoked.seq}`)}</span><p>${esc(`Old mandate, after the replace: refused by Metal's facilitator, no transaction.`)}</p></div>` : ""}</div></section>` : "";
+<div class="mm"><div class="one"><span class="big">${esc(`#${r.seq}: ${r.amount}`)} <s>${esc(`> cap ${r.cap}`)}</s></span><p>${esc("Our own check was off for this test. Alta refused it on chain; nothing moved.")}</p><p class="tx2">${a(r.proof.href!, `tx ${short(r.proof.href!.split("/").pop()!)}`)} <a class="pf" href="#refusals">${esc("decoded")} ↓</a></p></div>
+${x?.revoked ? `<div class="one"><span class="big">${esc(`#${x.revoked.seq}`)}</span><p>${esc(`Old mandate, after the replace: refused by Alta's facilitator, no transaction.`)}</p></div>` : ""}</div></section>` : "";
 
   // 3. The mandate cards (the table behind "Details: every mandate"), with the spend's source and the read to repeat.
   const cards = `<section class="mmand card" id="mandates-cards" aria-labelledby="mc-h"><h2 class="mh" id="mc-h">${esc(`The ${rows.length} mandates on chain, one per agent`)}</h2>
@@ -355,7 +355,7 @@ ${x?.revoked ? `<div class="one"><span class="big">${esc(`#${x.revoked.seq}`)}</
   }).join("")}</ul>
 <p class="mnote">${esc("*USDZ, test money.")}</p>
 <p class="mnote" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><b id="mlive">${esc(live ? `Spent: a recorded snapshot from ${day(live.recorded_on)} (block ${live.block}), not a live read.` : "Spent: as the main run recorded it.")}</b> <span id="mlive-why"></span></p>
-${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote"><span id="mlive-rec">${esc(`It answers with the recorded snapshot from ${day(live.recorded_on)} (block ${live.block}) until a live Metal testnet read is set up, and says so.`)}</span><span id="mlive-how" hidden>${esc(`Read live: one read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only.`)}</span> ${esc(`With your own Metal testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
+${live ? `<details class="fold" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Check it yourself")}</summary><pre class="mcmd">curl -s ${esc(INSPECTOR_URL)}</pre><p class="mnote"><span id="mlive-rec">${esc(`It answers with the recorded snapshot from ${day(live.recorded_on)} (block ${live.block}) until a live Alta testnet read is set up, and says so.`)}</span><span id="mlive-how" hidden>${esc(`Read live: one read for everyone every ${INSPECTOR_TTL_SECONDS / 60} minutes, at most ${INSPECTOR_DAILY_CEILING} calls a day, read-only.`)}</span> ${esc(`With your own Alta testnet RPC: eth_call to ${live.account} with mandates(ref), selector ${insp.abi.mandates_selector}, at the block shown. In a clone: npm run metal-inspect.`)} ${a(`${REPO_BLOB}${METAL_INSPECTOR_LOG}`, "the check of 12 Nov")}</p></details>` : ""}
 <details class="fold" id="mandates"><summary>${esc("Details: every mandate")}</summary><section class="mt" aria-labelledby="mt-h"><h2 id="mt-h">${esc("Each mandate, its cap and its spend")}</h2>
 <table class="mtab"><thead><tr><th scope="col">Agent</th><th scope="col">Cap a payment</th><th scope="col">Budget</th><th scope="col">Spent</th><th scope="col">Payee</th><th scope="col">Expires</th><th scope="col">Revoked</th></tr></thead><tbody>
 ${rows.map((m) => {
@@ -371,19 +371,19 @@ ${rows.map((m) => {
 <ol class="msteps">
 <li><span class="st">${icon("scan-face", 18)}${esc("Face ID")}</span><p>${esc(`${x.proposal}: the CFO's Face ID and a test passkey approved it in Purser.`)}</p></li>
 <li><span class="st">${icon("link-2", 18)}${esc("New mandates on chain")}</span><p class="tx2">${x.steps.map((s) => a(tx(s.proof.href!.split("/").pop()!), `${AGENT(s.agent)} ${s.cap}`)).join("")}</p><p>${esc(signer?.actor === "owner-signer" ? "One owner key, held by Purser's runner, signed on chain. The chain did not check Face ID." : "")}${signer?.actor === "owner-signer" && ownersRun() ? ` <a class="pf" href="#faceid-onchain">${esc(FACEID_SEPARATE_RUN)} ↓</a>` : ""}</p></li>
-${x.revoked ? `<li class="no"><span class="st">${icon("ban", 18)}${esc("Old mandate refused")}</span><p>${esc(`#${x.revoked.seq} on the old mandate: refused by Metal's facilitator (${x.revoked.code}), no transaction.`)}</p></li>` : ""}
+${x.revoked ? `<li class="no"><span class="st">${icon("ban", 18)}${esc("Old mandate refused")}</span><p>${esc(`#${x.revoked.seq} on the old mandate: refused by Alta's facilitator (${x.revoked.code}), no transaction.`)}</p></li>` : ""}
 </ol></section>` : "";
 
   const cov = coverageRows();
   const done = cov.filter((c) => c.status === "done").length, open = cov.length - done;
-  const coverage = cov.length ? `<details class="fold" id="also"><summary>${esc(`Also on Metal: ${done} separate runs${open ? `, and a hold, not finished` : ""}`)}</summary><table class="mcov"><thead><tr><th scope="col">What</th><th scope="col">When</th><th scope="col">Proof</th></tr></thead><tbody>${cov.map((c) => `<tr><th scope="row">${esc(c.feature)}</th><td>${esc(c.when)}${c.status === "not finished" ? ` <span class="nf">${esc("not finished")}</span>` : ""}</td><td>${c.link ? a(c.link.href, c.link.label) : ""}</td><td class="n mnote">${esc(c.note)}</td></tr>`).join("")}</tbody></table></details>` : "";
+  const coverage = cov.length ? `<details class="fold" id="also"><summary>${esc(`Also on Alta: ${done} separate runs${open ? `, and a hold, not finished` : ""}`)}</summary><table class="mcov"><thead><tr><th scope="col">What</th><th scope="col">When</th><th scope="col">Proof</th></tr></thead><tbody>${cov.map((c) => `<tr><th scope="row">${esc(c.feature)}</th><td>${esc(c.when)}${c.status === "not finished" ? ` <span class="nf">${esc("not finished")}</span>` : ""}</td><td>${c.link ? a(c.link.href, c.link.label) : ""}</td><td class="n mnote">${esc(c.note)}</td></tr>`).join("")}</tbody></table></details>` : "";
 
   const decoded = insp.refusals.find((d) => r && d.tx === (r.proof.href ?? "").split("/").pop()), revoked = insp.refusals.find((d) => d !== decoded);
   const ev = (d: DecodedRefusal) => `<dl class="mev">${d.event.arg_names.map((n, i) => `<dt>${esc(n)}</dt><dd>${esc(n === "reason" ? `${d.event.reason} (${d.event.reason_name})` : n === "amount" ? `${d.event.amount} *USDZ` : String(d.event.arg_values[i]))}</dd>`).join("")}</dl>`;
   const raw = (d: DecodedRefusal) => `<pre class="mcmd">${esc(`address ${d.raw_log.address}\n${d.raw_log.topics.map((t, i) => `topic ${i} ${t}`).join("\n")}\ndata ${d.raw_log.data}`)}</pre>`;
   const decodedFold = decoded ? `<details class="fold" id="refusals" data-rec="${esc(METAL_INSPECTOR_RECORD)}"><summary>${esc("Both refusals, decoded")}</summary>
 <p class="mnote">${esc(`${insp.abi.MandateRefused} (topic 0 ${insp.abi.topic0.MandateRefused}).`)}</p>
-<p class="mnote"><b>${esc(`#${decoded.purchase}, ${day(decoded.block_time)}, block ${decoded.block}`)}</b> ${a(tx(decoded.tx), "tx")}</p>${r ? `<p class="mnote">${esc(`Our own check was off for this one test. Metal's facilitator answered 402; a second call had Metal record the refusal on chain: ${r.amount} *USDZ over the cap at the time, ${r.cap}. Nothing moved.`)}</p>` : ""}${r && refusalNote(r) ? `<p class="mnote">${esc(refusalNote(r)!)}</p>` : ""}${ev(decoded)}${raw(decoded)}
+<p class="mnote"><b>${esc(`#${decoded.purchase}, ${day(decoded.block_time)}, block ${decoded.block}`)}</b> ${a(tx(decoded.tx), "tx")}</p>${r ? `<p class="mnote">${esc(`Our own check was off for this one test. Alta's facilitator answered 402; a second call had Alta record the refusal on chain: ${r.amount} *USDZ over the cap at the time, ${r.cap}. Nothing moved.`)}</p>` : ""}${r && refusalNote(r) ? `<p class="mnote">${esc(refusalNote(r)!)}</p>` : ""}${ev(decoded)}${raw(decoded)}
 ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.block_time)}, a separate run, block ${revoked.block}`)}</b> ${a(tx(revoked.tx), "tx")}</p>${ev(revoked)}${raw(revoked)}` : ""}
 <pre class="mcmd">${esc(`npm run metal-inspect -- refusal ${decoded.tx}`)}</pre></details>` : "";
 

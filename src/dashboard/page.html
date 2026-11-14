@@ -609,8 +609,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   </div>
 </header>
 <div class="dtabs" id="dtabs" role="navigation" aria-label="Dashboard sections" hidden></div>
-<details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Metal testnet · details</summary>
-  <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Metal mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Metal testnet, amounts are in USDZ, Metal's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Metal's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
+<details class="note" id="note"><summary><span data-icon="info"></span>Test money, real systems: Airwallex sandbox and Alta testnet · details</summary>
+  <p>One CFO policy for both rails: Airwallex cards and bank transfers, and Alta mandates for paying per request. In the Airwallex sandbox the merchant's charge on a card is simulated; the approve or decline is Airwallex's own. On Alta testnet, amounts are in USDZ, Alta's test dollars, shown here as "test USD". The step from test USD to Airwallex is a simulated sandbox deposit that names the real testnet transaction. Alta's pay-per-call clearing is new on testnet (October 2026); when it cannot take a payment, the sale falls back to the mandate.</p></details>
 <div class="frozen" id="frozen" hidden></div>
 <div class="frozen" id="stopped" hidden></div>
 <div class="frozen offline" id="offline" role="status" hidden><span data-icon="info"></span><span>The runner is offline, so this page is not live. Nothing can be paid or approved until it is back.</span><a href="?recorded">See the recorded dashboard →</a></div>
@@ -669,14 +669,14 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   <section class="kpis" id="kpis" aria-label="What the agents did, in money"></section>
   <div class="sect"><h2>Company cards <span class="rail">Airwallex</span></h2><span class="hint">Virtual Visa per agent · limits set by your policy</span></div>
   <section class="grid4 swipe" id="cards" aria-label="Company cards"></section>
-  <div class="sect"><h2>On-chain budgets <span class="rail">Metal</span></h2><span class="hint">A mandate per agent for paying per request · in test USD</span><a class="more" id="policy-link" href="policy" hidden>Edit CFO policy →</a></div>
+  <div class="sect"><h2>On-chain budgets <span class="rail">Alta</span></h2><span class="hint">A mandate per agent for paying per request · in test USD</span><a class="more" id="policy-link" href="policy" hidden>Edit CFO policy →</a></div>
   <section class="grid4 swipe" id="budgets" aria-label="On-chain budgets"></section>
   <div class="sect"><h2>Per agent</h2><span class="hint">What each agent may spend, and has spent, on both rails</span></div>
   <div class="tablewrap"><table class="agents" id="agents-table" aria-label="Per agent"></table></div>
-  <div id="dash-rails" hidden><div class="sect"><h2>On each rail</h2><span class="hint">What Airwallex and Metal did, each with its proof</span></div>
+  <div id="dash-rails" hidden><div class="sect"><h2>On each rail</h2><span class="hint">What Airwallex and Alta did, each with its proof</span></div>
   <div class="rails-grid dash">
     <article class="rail awx"><header><span class="logo">Airwallex</span><span class="what">Cards, FX and payouts</span></header><ul id="drail-awx"></ul></article>
-    <article class="rail mtl"><header><span class="logo">Metal</span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
+    <article class="rail mtl"><header><span class="logo">Alta</span><span class="what">Mandates, per-request payments, disputes</span></header><ul id="drail-mtl"></ul></article>
   </div></div>
   <section class="panel" id="awx-hooks" aria-labelledby="h-hooks" hidden><div class="sect flush"><h2 id="h-hooks">Webhooks from Airwallex</h2><span class="hint">each one signed by Airwallex, checked at the relay and again here, then compared with the ledger</span></div><div id="awx-hooks-body"></div></section>
   <div class="cols">
@@ -758,7 +758,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function set(id, nodes) { var n = typeof id === "string" ? document.getElementById(id) : id; n.replaceChildren.apply(n, nodes.filter(function (x) { return x != null; })); }
 
   // Money arrives as decimal strings; group without going through floats. Euros and dollars at Airwallex carry their
-  // sign; Metal's USDZ are test dollars and say so, never "$" beside "€".
+  // sign; Alta's USDZ are test dollars and say so, never "$" beside "€".
   function group(s) {
     s = String(s); var neg = s.charAt(0) === "-"; if (neg) s = s.slice(1);
     var p = s.split("."), i = p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -807,7 +807,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // Outside agents are named on their card; the executors and the system are not agents.
   var AGENT_NAMES = {};
   try { AGENT_NAMES = JSON.parse(document.getElementById("agent-names").textContent); } catch (e) {}
-  var NAMES = {}, SERVICES = { "awx-executor": "Airwallex executor", "metal-executor": "Metal executor", system: "System" };
+  var NAMES = {}, SERVICES = { "awx-executor": "Airwallex executor", "metal-executor": "Alta executor", system: "System" };
   function agentName(a) {
     a = String(a);
     if (a === "human") return "You";
@@ -858,7 +858,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       var cap = a.policy_cap ? a.policy_cap : a.cap;
       return el("div", "", [
         el("div", "mt", [
-          el("div", "row1", [el("span", "", [icon("file-lock-2"), "Mandate"]), txt("span", "", "On Metal")]),
+          el("div", "row1", [el("span", "", [icon("file-lock-2"), "Mandate"]), txt("span", "", "On Alta")]),
           txt("div", "who", agentName(a.agent)),
           txt("div", "cap", "At most " + tusd(cap) + " a payment" + (a.policy_cap && cents(a.policy_cap) < cents(a.cap) ? " (your policy; the mandate allows " + group(a.cap) + ")" : "")),
           el("div", "row2", [txt("span", "", "Pays only " + a.payee), a.expires_on ? txt("span", "", "until " + day(a.expires_on)) : null]),
@@ -872,7 +872,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (cl) {
       nodes.push(el("div", "", [
         el("div", "mt", [
-          el("div", "row1", [el("span", "", [icon("receipt"), "Prepaid clearing"]), txt("span", "", "On Metal")]),
+          el("div", "row1", [el("span", "", [icon("receipt"), "Prepaid clearing"]), txt("span", "", "On Alta")]),
           txt("div", "who", cl.customer + " (customer)"),
           txt("div", "cap", cl.customer_spendable !== null ? tusd(cl.customer_spendable) + " left of " + group(cl.deposited) + " deposited" : "Deposited " + tusd(cl.deposited)),
           el("div", "row2", [txt("span", "", "A signed receipt per request, no transaction each time")]),
@@ -928,8 +928,8 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     if (/^credit\.|^deposit\./.test(e)) return { icon: "wallet", label: "Airwallex deposit", cls: "bank" };
     if (/^card\.charge_declined/.test(e)) return { icon: "credit-card", label: "Card · declined", cls: "bad" };
     if (/^card\./.test(e)) return { icon: "credit-card", label: "Card", cls: f.tone === "ok" ? "ok" : "" };
-    if (/^clearing\./.test(e) || /bajillion|clearing/.test(f.text)) return { icon: "receipt", label: "Metal clearing", cls: f.tone === "refusal" ? "bad" : "" };
-    if (/^(sale|upstream|refund|sweep|mandate|pull)\./.test(e)) return { icon: "link-2", label: "On Metal", cls: f.tone === "refusal" ? "bad" : f.tone === "ok" ? "ok" : "" };
+    if (/^clearing\./.test(e) || /bajillion|clearing/.test(f.text)) return { icon: "receipt", label: "Alta clearing", cls: f.tone === "refusal" ? "bad" : "" };
+    if (/^(sale|upstream|refund|sweep|mandate|pull)\./.test(e)) return { icon: "link-2", label: "On Alta", cls: f.tone === "refusal" ? "bad" : f.tone === "ok" ? "ok" : "" };
     if (/^proposal\.(approved|cosigned)/.test(e)) return { icon: "scan-face", label: "Face ID", cls: "ok" };
     if (/^proposal\.(executed|executing)/.test(e)) return { icon: "circle-check", label: "Done", cls: "ok" };
     if (/^proposal\.(rejected|failed)/.test(e)) return { icon: "ban", label: e === "proposal.rejected" ? "Rejected" : "Failed", cls: "bad" };
@@ -949,7 +949,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function isSystem(f) { return SYSTEM_EVENTS[f.event] === 1 || (f.event === "transfer.status" && !/PAID/.test(f.text)); }
   function feedRow(f, first) {
     var k = kindOf(f), refs = [];
-    if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Metal tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
+    if (f.tx && TX.test(f.tx)) { var a = txt("a", "mono", "Alta tx " + f.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + f.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; refs.push(a); }
     if (f.awx_id) refs.push(txt("span", "mono", "Airwallex id " + String(f.awx_id).slice(0, 8) + "…"));
     if (f.trace !== null && f.trace !== undefined && traceIndex[f.trace]) {
       var tb = txt("button", "trace-btn", "Trace"); tb.type = "button"; tb.dataset.trace = String(f.trace);
@@ -1005,15 +1005,15 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       ])]));
     } else nodes.push(el("div", "empty", [icon("wallet"), "No Airwallex balance read yet."]));
     var m = t.metal;
-    nodes.push(el("div", "sub2", [icon("link-2"), "Earnings from data sales on Metal"]));
+    nodes.push(el("div", "sub2", [icon("link-2"), "Earnings from data sales on Alta"]));
     nodes.push(el("div", "rows num", [
       el("div", "", ["Sales, less supplier and refunds", txt("b", "", tusd(m.net))]),
       el("div", "", ["Swept once final on chain; booked at Airwallex as a simulated sandbox deposit", txt("b", "", tusd(m.swept))]),
     ]));
-    // B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy until the CFO decides.
+    // B1: payments to the sweep wallet from unknown senders, held by Alta's receive policy until the CFO decides.
     var held = (m.quarantine || []).filter(function (q) { return q.status === "OPEN"; });
     if ((m.quarantine || []).length) {
-      nodes.push(el("div", "sub2", [icon("shield-alert"), held.length ? "Held by Metal: from senders the sweep wallet does not accept" : "Payments Metal held from unknown senders"]));
+      nodes.push(el("div", "sub2", [icon("shield-alert"), held.length ? "Held by Alta: from senders the sweep wallet does not accept" : "Payments Alta held from unknown senders"]));
       nodes.push(el("div", "rows num", (m.quarantine || []).slice(0, 4).map(function (q) {
         var state = q.status === "OPEN" ? "waits for you" : q.status === "RETURNED" ? "returned" : "accepted";
         var from = q.from.slice(0, 6) + "…" + q.from.slice(-4) + " · " + state, l = null;
@@ -1191,7 +1191,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var NEVER = "Never: hold an owner key, see a card number, add a payee or bank account, raise its own limit, or approve.";
     // How the work is split across Claude's models, with what each cost in this run (list prices).
     var split = d.claude && d.claude.models && d.claude.models.length ? el("section", "panel split", [
-      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdOfMicros(d.claude.cost_usd_micros) + " in all at Anthropic's list prices; Metal and Airwallex enforce the limits")]),
+      el("div", "sect flush", [txt("h2", "", "How the work is split across Claude's models"), txt("span", "hint", d.claude.calls + " calls in this run, " + usdOfMicros(d.claude.cost_usd_micros) + " in all at Anthropic's list prices; Alta and Airwallex enforce the limits")]),
       el("div", "splitgrid", d.claude.models.map(function (m) {
         return el("div", "m", [txt("div", "k", m.model), txt("div", "v", m.role.charAt(0).toUpperCase() + m.role.slice(1)), txt("div", "sub", m.calls + " calls · " + usdOfMicros(m.cost_usd_micros))]);
       }).concat([el("div", "m code", [txt("div", "k", "Code"), txt("div", "v", "Checks every answer and every agent's call"), txt("div", "sub", "limits, prices, budgets, the FX check")])])),
@@ -1208,7 +1208,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       var fact = function (k, v) { return el("div", "m", [txt("div", "k", k), el("div", "v", v)]); };
       var facts = el("div", "facts", [
         fact("Company card (Airwallex)", [eur(a.card.per_tx) + " a purchase · " + eur(a.card.monthly) + " a month", txt("div", "sub", "Only " + a.card.merchants.join(", ") + ", EUR")]),
-        fact("On chain (Metal mandate)", a.mandate ? [tusd(a.mandate.policy_cap || a.mandate.cap) + " a payment", txt("div", "sub", "budget " + group(a.mandate.budget) + " test USD" + (a.mandate.policy_cap ? "; mandate cap " + a.mandate.cap : ""))] : ["No mandate"]),
+        fact("On chain (Alta mandate)", a.mandate ? [tusd(a.mandate.policy_cap || a.mandate.cap) + " a payment", txt("div", "sub", "budget " + group(a.mandate.budget) + " test USD" + (a.mandate.policy_cap ? "; mandate cap " + a.mandate.cap : ""))] : ["No mandate"]),
         fact("Speed limit", [a.velocity.per_minute + " payments a minute", txt("div", "sub", (cents(a.velocity.usdz_per_hour) ? group(a.velocity.usdz_per_hour) + " test USD and " : "") + eur(a.velocity.eur_per_hour) + " an hour; over it, code stops the agent")]),
         fact("Claude", a.models.map(function (m) { return el("div", "", [txt("b", "", m.model.replace("Claude ", "")), " " + m.job]); })),
       ].concat((d.claude && d.claude.agents || []).filter(function (x) { return x.agent === a.id; }).map(function (x) {
@@ -1226,7 +1226,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       if (editable) {
         var edit = txt("a", "btn", "Change on your phone"); edit.href = "policy?agent=" + encodeURIComponent(a.id); acts.push(edit);
         if (a.status === "working") { var stop = el("a", "btn danger", [icon("octagon-x"), "Stop this agent"]); stop.href = "policy?agent=" + encodeURIComponent(a.id) + "&stop=on"; acts.push(stop); }
-        // 4.2 With the agents on: pause one agent with Face ID. Its Metal mandate is revoked and its card frozen.
+        // 4.2 With the agents on: pause one agent with Face ID. Its Alta mandate is revoked and its card frozen.
         if (a.status === "working" && a.settings.some(function (e) { return e.key === "pause." + a.id; })) {
           var pause = el("a", "btn danger", [icon("octagon-x"), "Pause this agent"]); pause.href = "policy?agent=" + encodeURIComponent(a.id) + "&pause=on"; acts.push(pause);
         }
@@ -1258,7 +1258,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var panel = function (title, hint, node) { return el("section", "panel bk", [el("div", "sect flush", [txt("h2", "", title), hint ? txt("span", "hint", hint) : null]), node]); };
     set("books", [
       el("p", "books-ok", [txt("span", "pill " + (b.balanced ? "ok" : "bad"), b.balanced ? "Balanced" : "Not balanced"),
-        txt("span", "hint", b.balanced ? "Debits equal credits in every currency. FX conversions and the Metal-to-Airwallex bridge sit in 1590, money in transit, between currencies." : "Debits and credits differ: check the journal.")]),
+        txt("span", "hint", b.balanced ? "Debits equal credits in every currency. FX conversions and the Alta-to-Airwallex bridge sit in 1590, money in transit, between currencies." : "Debits and credits differ: check the journal.")]),
       // By default only what the run moved; the sandbox's opening balances (millions of test money) fold away.
       panel("Result of the run", "income and costs the agents booked, per currency", table("wide", [["Account", 0], ["Currency", 0], ["Debit", 1], ["Credit", 1]],
         b.trial.filter(function (t) { return /^[4-9]/.test(t.account); }).map(function (t) { var dr = t.balance_debit != null ? t.balance_debit : (t.balance.charAt(0) === "-" ? "" : t.balance), cr = t.balance_credit != null ? t.balance_credit : (t.balance.charAt(0) === "-" ? t.balance.slice(1) : ""); return [t.account + " " + words(t.name), cur(t.currency), amt(dr === "0.00" ? "" : dr, t.currency), amt(cr === "0.00" ? "" : cr, t.currency)]; }))),
@@ -1271,7 +1271,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
         txt("h3", "", "Bank accounts, opening to closing"), table("wide", [["Account", 0], ["Currency", 0], ["Opening", 1], ["In", 1], ["Out", 1], ["Now", 1]],
         b.cash.map(function (c) { return [c.account + " " + words(c.name), cur(c.currency), c.opening != null ? amt(c.opening, c.currency) : "", c.in != null ? amt(c.in, c.currency) : "", c.out != null ? amt(c.out, c.currency) : amt(c.moved, c.currency), c.closing != null ? amt(c.closing, c.currency) : ""]; })),
       ]),
-      panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Metal", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
+      panel("Spend per cost centre", "per currency: euros on the cards and Airwallex, test USD on Alta", table("wide", [["Cost centre", 0], ["Currency", 0], ["Spent", 1]],
         b.spend.map(function (x) { return [x.cost_centre + " " + x.name, cur(x.currency), amt(x.amount, x.currency)]; }))),
       (d.card_spend && d.card_spend.rows.length ? panel("Card spend by merchant", "each agent's Airwallex card: what it paid where, declines apart" + (d.card_spend.suggestions.length ? "" : " · no subscriptions seen yet (the same amount again a month later)"),
         el("div", "", [table("wide", [["Card", 0], ["Merchant", 0], ["Category", 0], ["Paid", 1], ["Charges", 1], ["Declined", 1]], d.card_spend.rows.map(function (r) {
@@ -1286,7 +1286,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     ]);
   }
   // The Dispute desk: each case with its claim, outcome, the evidence per payment and the explanation.
-  // A Metal transaction as a short link to the testnet explorer.
+  // An Alta transaction as a short link to the testnet explorer.
   function txLink(tx, label) {
     if (!tx || !/^0x[0-9a-fA-F]{64}$/.test(tx)) return null;
     var a = el("a", "txl", [(label ? label + " " : "") + tx.slice(0, 8) + "…" + tx.slice(-4) + " ↗"]); a.href = "https://testnet.metalntwx.com/tx/" + tx; a.target = "_blank"; a.rel = "noopener";
@@ -1345,7 +1345,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       var before = c.sales.filter(function (x) { return x.refunded_before; });
       return [head,
         txt("p", "dtally", tallyLine(c)),
-        txt("p", "sub", agent ? "The Support agent decided with Claude; code checked every order against Metal." : "Code checks the proof; Claude explains."),
+        txt("p", "sub", agent ? "The Support agent decided with Claude; code checked every order against Alta." : "Code checks the proof; Claude explains."),
         c.text ? el("p", "sub", ["The customer wrote: “" + c.text + "”"]) : null,
         // Agent to agent: the customer's own agent's message, as a chat bubble.
         them && them.text ? el("div", "dbubble", [txt("div", "from", them.name || ((name ? name + "'s" : "The customer's") + " agent")), shortHex(them.text)]) : null,
@@ -1408,7 +1408,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   function proofA(p, word) {
     if (!p) return null;
     var a;
-    if (p.kind === "tx" && TX.test(p.ref)) { a = txt("a", "", (word || "Metal tx") + " " + p.ref.slice(0, 8) + "…" + p.ref.slice(-4) + " ↗"); a.href = EXPLORER + p.ref; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; }
+    if (p.kind === "tx" && TX.test(p.ref)) { a = txt("a", "", (word || "Alta tx") + " " + p.ref.slice(0, 8) + "…" + p.ref.slice(-4) + " ↗"); a.href = EXPLORER + p.ref; a.target = "_blank"; a.rel = "noopener noreferrer"; return a; }
     if (p.kind === "awx") return txt("span", "mono", "Airwallex id " + String(p.ref).slice(0, 8) + "…");
     return null;
   }
@@ -1422,16 +1422,16 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
   // D23: the money flow, moving. Each movement is a recorded event (never generated) with its proof; a refusal hits
   // the rail that refused it, named. Without motion (prefers-reduced-motion) it lights the nodes, marks the refusing
   // rail and shows the same caption.
-  var MF_NODES = [["customer", "Customer agents", "Summit's agent pays per query (x402)", ""], ["northwind", "Northwind", "Metal business account · *USDZ stablecoin on chain", "metal"],
+  var MF_NODES = [["customer", "Customer agents", "Summit's agent pays per query (x402)", ""], ["northwind", "Northwind", "Alta business account · *USDZ stablecoin on chain", "metal"],
     ["sourcing", "Sourcing agent", "", ""], ["support", "Support agent", "", ""], ["treasury", "Treasury agent", "", ""],
-    ["suppliers", "Suppliers", "Stockline, Ridgeline Data · x402 on Metal", "metal"], ["airwallex", "Airwallex", "USD and EUR accounts, company cards, SWIFT", "awx"],
+    ["suppliers", "Suppliers", "Stockline, Ridgeline Data · x402 on Alta", "metal"], ["airwallex", "Airwallex", "USD and EUR accounts, company cards, SWIFT", "awx"],
     ["merchant", "Card merchants", "software, single-use purchases", ""], ["payee", "EUR payee", "the licence invoice, by SWIFT", ""],
     ["retailer", "Retailers", "pay their invoices by bank, in EUR", ""]];
   var MF_WORDS = { customer: "Summit's agent", retailer: "a retailer", northwind: "Northwind", sourcing: "the Sourcing agent", support: "the Support agent", treasury: "the Treasury agent", suppliers: "the supplier", airwallex: "Airwallex", merchant: "the merchant", payee: "the EUR payee" };
-  var MF_RAIL = { metal: ["metal", "x402 on Metal · *USDZ stablecoin on chain"], purser: ["", "stopped by Purser before signing"], airwallex_card: ["awx", "Airwallex company card"], airwallex_swift: ["awx", "Airwallex · SWIFT transfer"], airwallex_deposit: ["awx", "Airwallex account"] };
-  var MF_REFUSER = { metal: ["northwind", "Metal ✕", "Metal, against the on-chain mandate"], airwallex: ["airwallex", "Airwallex ✕", "Airwallex, at the card"], purser: ["sourcing", "Purser ✕", "Purser, before signing"] };
+  var MF_RAIL = { metal: ["metal", "x402 on Alta · *USDZ stablecoin on chain"], purser: ["", "stopped by Purser before signing"], airwallex_card: ["awx", "Airwallex company card"], airwallex_swift: ["awx", "Airwallex · SWIFT transfer"], airwallex_deposit: ["awx", "Airwallex account"] };
+  var MF_REFUSER = { metal: ["northwind", "Alta ✕", "Alta, against the on-chain mandate"], airwallex: ["airwallex", "Airwallex ✕", "Airwallex, at the card"], purser: ["sourcing", "Purser ✕", "Purser, before signing"] };
   function mfModel(m) { return m.indexOf("haiku") >= 0 ? "Claude Haiku" : m.indexOf("sonnet") >= 0 ? "Claude Sonnet" : m.indexOf("opus") >= 0 ? "Claude Opus" : m; }
-  // An amount in its own unit: *USDZ on Metal, euros with their sign, any other currency with its code.
+  // An amount in its own unit: *USDZ on Alta, euros with their sign, any other currency with its code.
   function mfAmt(e) {
     if (!e.amount) return "over the cap";
     if (e.unit === "*USDZ") return e.amount + " *USDZ";
@@ -1530,7 +1530,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       path.forEach(function (n) { nodes[n].classList.add("lit"); });
       caption(e);
       var ref = e.refused ? MF_REFUSER[e.refused.by] : null;
-      // The refusing rail is marked by name: Metal (the business account's on-chain mandate), Airwallex, or Purser.
+      // The refusing rail is marked by name: Alta (the business account's on-chain mandate), Airwallex, or Purser.
       // Purser stops the agent's own payment, so it marks that agent's box.
       var refNode = ref ? (e.refused.by === "purser" && e.agent && nodes[e.agent] ? e.agent : ref[0]) : null;
       var markRefuser = function () { if (refNode && nodes[refNode]) { nodes[refNode].classList.add("hit"); nodes[refNode].setAttribute("data-x", ref[1]); } };
@@ -1584,7 +1584,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     buildDots(); agentLines();
     go(0); st.timer = setTimeout(tick, 3400);
   }
-  // Amounts as a CFO reads them: euros with the sign and thousands, Metal's test dollars with "test USD".
+  // Amounts as a CFO reads them: euros with the sign and thousands, Alta's test dollars with "test USD".
   var eurFmt = new Intl.NumberFormat("en-IE", { style: "currency", currency: "EUR" });
   var usdFmt = new Intl.NumberFormat("en-IE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   function money(amount, unit) { var n = Number(amount); return isNaN(n) ? String(amount) : unit === "EUR" ? eurFmt.format(n) : usdFmt.format(n) + " test USD"; }
@@ -1593,7 +1593,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     sec.hidden = !t; enf.hidden = !t;
     if (!t) return;
     var flows = function (fs) { return fs.map(function (f) {
-      return el("div", "tflow", [el("div", "k", [txt("span", "", f.label), txt("span", "", f.rail === "metal" ? "Metal" : "Airwallex")]),
+      return el("div", "tflow", [el("div", "k", [txt("span", "", f.label), txt("span", "", f.rail === "metal" ? "Alta" : "Airwallex")]),
         el("div", "v num", [money(f.amount, f.unit)]), txt("div", "n", f.count + " · " + f.note), proofA(f.proof, "Newest")]);
     }); };
     set(px + "t-in", flows(t.money_in)); set(px + "t-out", flows(t.money_out));
@@ -1602,21 +1602,21 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     };
     set(px + "t-agents", t.agents.map(function (a) {
       var kids = [el("div", "nm", [capFirst(a.agent), txt("span", "st " + a.status, a.status === "active" ? "Active" : a.status === "paused" ? "Paused" : "Stopped")])];
-      if (a.mandate) kids.push(meter("Metal mandate", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
+      if (a.mandate) kids.push(meter("Alta mandate", a.mandate.spent, a.mandate.budget, a.mandate.used_pct, " · cap " + a.mandate.cap));
       if (a.card) kids.push(meter("Card this month", "€" + a.card.spent_month, "€" + a.card.monthly, a.card.used_pct, a.card.frozen ? " · frozen" : ""));
       if (a.last) { var lastEl = el("div", "last", [txt("b", "", a.last.by === "claude" ? "Decided by Claude" : a.last.by === "idle" ? "Stopped" : "Fallback (code)"), " · " + hm(a.last.at) + " · " + a.last.text]); lastEl.title = a.last.text; kids.push(lastEl); if (!px) { var more = txt("a", "", "Read all in the agents' chat →"); more.href = "#claude-panel"; kids.push(more); } }
       return el("div", "tagent", kids);
     }));
     set(px + "t-pnl", [
-      el("div", "pl num", [txt("span", "", "On Metal (test USD)"), txt("span", "", "sales " + usdFmt.format(+t.pnl.usdz.sales)), txt("span", "", "− data " + usdFmt.format(+t.pnl.usdz.upstream)), txt("span", "", "− refunds " + usdFmt.format(+t.pnl.usdz.refunds)), txt("b", "", "= " + usdFmt.format(+t.pnl.usdz.net) + " net")]),
+      el("div", "pl num", [txt("span", "", "On Alta (test USD)"), txt("span", "", "sales " + usdFmt.format(+t.pnl.usdz.sales)), txt("span", "", "− data " + usdFmt.format(+t.pnl.usdz.upstream)), txt("span", "", "− refunds " + usdFmt.format(+t.pnl.usdz.refunds)), txt("b", "", "= " + usdFmt.format(+t.pnl.usdz.net) + " net")]),
       el("div", "pl num", [txt("span", "", "On Airwallex"), txt("span", "", "cards " + eurFmt.format(+t.pnl.eur.card_spend)), txt("span", "", "+ payouts " + eurFmt.format(+t.pnl.eur.payouts)), txt("span", "", "+ fees " + eurFmt.format(+t.pnl.eur.fees)), txt("b", "", "= " + eurFmt.format(+t.pnl.eur.out) + " out")]),
     ]);
-    // Metal: "on chain" only where a refusal transaction backs it (Metal QA, 1 Nov); else Metal's facilitator refused it.
-    var names = { purser: "Purser, before signing", metal: "Metal's mandate check", airwallex: "Airwallex, at the card" };
+    // Alta: "on chain" only where a refusal transaction backs it (Alta QA, 1 Nov); else Alta's facilitator refused it.
+    var names = { purser: "Purser, before signing", metal: "Alta's mandate check", airwallex: "Airwallex, at the card" };
     set(px + "enforced-body", t.enforced.map(function (e) {
       return el("div", "tenf", [el("div", "who", [names[e.who], txt("span", "num", String(e.count))]),
         e.last ? txt("div", "when", hm(e.last.at)) : txt("div", "when", "nothing refused yet"),
-        e.last ? txt("div", "reason", (e.last.words || e.last.reason) + (e.who === "metal" ? (e.last.proof ? " · recorded on chain" : " · refused by Metal's facilitator, no transaction") : "")) : null,
+        e.last ? txt("div", "reason", (e.last.words || e.last.reason) + (e.who === "metal" ? (e.last.proof ? " · recorded on chain" : " · refused by Alta's facilitator, no transaction") : "")) : null,
         e.last ? txt("div", "code", e.last.reason) : null, e.last ? proofA(e.last.proof, "Refusal tx") : null]);
     }));
   }
@@ -1641,7 +1641,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
       txt("small", "", stops.map(function (x) { return plain(x.reason) + (x.since ? " at " + hm(x.since) : ""); }).join("; ") + ". Every payment it tries is refused and its card is frozen; lifting it needs a proposal and Face ID."));
     if (!d.recorded) document.getElementById("stop").hidden = !d.relay || !!d.frozen;
     document.getElementById("auditline").textContent = "Audit log: " + d.audit.rows + " rows, chain " + (d.audit.intact ? "intact" : "BROKEN")
-      + (d.reconciliation ? " · Reconciled with Airwallex and Metal at " + hm(d.reconciliation.at) + ": " + d.reconciliation.checked + " flows, " + (d.reconciliation.differences ? d.reconciliation.differences + " difference(s)" : "no differences") : "");
+      + (d.reconciliation ? " · Reconciled with Airwallex and Alta at " + hm(d.reconciliation.at) + ": " + d.reconciliation.checked + " flows, " + (d.reconciliation.differences ? d.reconciliation.differences + " difference(s)" : "no differences") : "");
     document.getElementById("passkey").textContent = d.passkey.label
       ? "Approvals need " + d.passkey.label.charAt(0).toUpperCase() + d.passkey.label.slice(1) + "'s passkey (Face ID)"
       : "No passkey enrolled yet: approvals are signed on this computer";
@@ -1758,7 +1758,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     var asnap = AUTONOMY.snapshot; asnap.recorded = true; asnap.relay = null; asnap.figures = AUTONOMY.figures || null;
     document.getElementById("recbanner").hidden = false;
     document.getElementById("rec-text").textContent = AUTONOMY.label || ("Autonomous dry run · " + dayFmt.format(new Date(AUTONOMY.recorded_at)) + " · test passkeys and test money · not a live run");
-    var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world; each agent decided with real Claude calls, inside its limits on Metal and Airwallex. " + (AUTONOMY.about || ""))]);
+    var aMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", AUTONOMY.run + ". We changed the world; each agent decided with real Claude calls, inside its limits on Alta and Airwallex. " + (AUTONOMY.about || ""))]);
     var arb = document.getElementById("recbanner"); if (!arb.querySelector("details")) arb.appendChild(aMore);
     live("rec", "Recorded run");
     var ast = document.getElementById("stop"); ast.hidden = false; ast.disabled = true; ast.lastChild.textContent = "Emergency stop · live only";
@@ -1774,7 +1774,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     document.getElementById("recbanner").hidden = false;
     // One line, the rest folded (design review): what this is, when, test money.
     document.getElementById("rec-text").textContent = RECORDED.label || ("Recorded run · " + dayFmt.format(new Date(RECORDED.recorded_at)) + " · test money · nothing here is live");
-    var recMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", "The CFO dashboard of " + recCompany() + " as it stood: real data from the Airwallex sandbox and Metal testnet." + (RECORDED.names_note ? " " + RECORDED.names_note : ""))]);
+    var recMore = el("details", "", [txt("summary", "", "Details"), txt("p", "", "The CFO dashboard of " + recCompany() + " as it stood: real data from the Airwallex sandbox and Alta testnet." + (RECORDED.names_note ? " " + RECORDED.names_note : ""))]);
     var rb = document.getElementById("recbanner"); if (!rb.querySelector("details")) rb.appendChild(recMore);
     live("rec", "Recorded");
     // The emergency stop is the CFO's, live only; in a recording it shows where it is, but does nothing.
@@ -1823,7 +1823,7 @@ h2.big, h1.big { font-size: 40px; line-height: 1.1; letter-spacing: -.03em; marg
     set("trace-steps", t.steps.map(function (s) {
       var meta = [txt("span", "mono", "audit #" + s.seq + " · hash " + String(s.hash).slice(0, 12) + "…")];
       if (s.ms !== null && s.ms !== undefined) meta.push(txt("span", "", (s.ms / 1000).toFixed(2) + " s"));
-      if (s.tx && TX.test(s.tx)) { var a = txt("a", "mono", "Metal tx " + s.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + s.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; meta.push(a); }
+      if (s.tx && TX.test(s.tx)) { var a = txt("a", "mono", "Alta tx " + s.tx.slice(0, 10) + "… ↗"); a.href = EXPLORER + s.tx; a.target = "_blank"; a.rel = "noopener noreferrer"; meta.push(a); }
       if (s.awx_id) meta.push(txt("span", "mono", "Airwallex id " + String(s.awx_id).slice(0, 8) + "…"));
       return el("li", (s.blocked ? "bad " : "") + s.kind, [
         txt("div", "k", STEP_KIND[s.kind] || s.kind),

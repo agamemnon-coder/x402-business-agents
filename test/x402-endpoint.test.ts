@@ -28,10 +28,10 @@ describe("the x402 endpoint a juror can call", () => {
     expect(pr.resource.url).toBe(URL0);
     expect(pr.accepts).toEqual([requirements]);
     const body = await r.json() as Record<string, unknown>;
-    expect(body.money).toMatch(/test money, Metal testnet/);
+    expect(body.money).toMatch(/test money, Alta testnet/);
     expect(body.settlement).toMatch(/^off/);
     expect(r.headers.get("access-control-expose-headers")).toContain("PAYMENT-REQUIRED");
-    // The token's domain is Metal's own (the scheme signs against it).
+    // The token's domain is Alta's own (the scheme signs against it).
     expect(USDZ_EXTRA).toMatchObject({ name: METAL_USDZ.name, version: METAL_USDZ.version });
     expect(USDZ.toLowerCase()).toBe(METAL_USDZ.address.toLowerCase());
   });
@@ -86,7 +86,7 @@ describe("the x402 endpoint a juror can call", () => {
     const d = desk({ settle: "on", facilitator: async () => f, now: () => clock });
     const ok = await get(d, signed());
     expect(ok.status).toBe(200);
-    expect(await ok.json()).toMatchObject({ paid_with: "Metal testnet, settled by Metal's facilitator", transaction: `0x${"ab".repeat(32)}` });
+    expect(await ok.json()).toMatchObject({ paid_with: "Alta testnet, settled by Alta's facilitator", transaction: `0x${"ab".repeat(32)}` });
     expect(seen).toEqual([`verify ${PRICE_BASE_UNITS}`, "settle"]);
     // Over the cap per request: refused before any call.
     expect((await get(d, signed(nonce(), "20000000000000000"))).status).toBe(402);

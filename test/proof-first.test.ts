@@ -9,7 +9,7 @@ import { countOf } from "../src/redesign/ui.js";
 import { readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PACK_LINK, PACK_NAME } from "../src/accounting/monthPack.js";
-import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE } from "../src/config/brand.js";
+import { CFO_VIEW_LINK, CFO_VIEW_URL, FILM_LINK, FILM_URL, PROOF_SENTENCES, SPLIT_LINE, TRAILER_URL } from "../src/config/brand.js";
 import { AWX_CONTROLS_ID, AWX_HASH_ID, awxCardId, cardControlRows, cardsReadback, hashTravel, transferReadback } from "../src/redesign/airwallexProof.js";
 import { GUARANTEES_ID, guaranteesHtml } from "../src/redesign/guarantees.js";
 import { metalStory } from "../src/redesign/metalStory.js";
@@ -93,8 +93,8 @@ describe("/proof's Airwallex card opens with the hash and the cards, each linked
   });
 });
 
-describe("/proof's Metal card opens with #24 refused on chain and the 86 payments", () => {
-  it("reads both from the main run's record, each linked to Metal's testnet explorer", () => {
+describe("/proof's Alta card opens with #24 refused on chain and the 86 payments", () => {
+  it("reads both from the main run's record, each linked to Alta's testnet explorer", () => {
     const m = metalStory(record);
     expect(leads.metal.map((l) => l.text)).toEqual([`#${m.refusal!.seq} refused on chain`, `${m.payments.total} payments, each its own tx`]);
     expect(leads.metal.map((l) => l.text)).toEqual(["#24 refused on chain", "86 payments, each its own tx"]);
@@ -139,7 +139,7 @@ describe("/proof's Claude card: all decisions by Claude, and the reliability fix
 
 describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () => {
   it("each short claim is the matching sentence's fact, in fewer words", () => {
-    const awx = sentence("Airwallex"), metal = sentence("Metal"), claude = sentence("Claude");
+    const awx = sentence("Airwallex"), metal = sentence("Alta"), claude = sentence("Claude");
     expect(awx).toContain("the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment");
     // The page says "All 3" (no N/N fraction, 13 Nov); so does the sentence for the submission, as "all 3".
     const head = leads.airwallex[1]!.text.split(" cards")[0]!;
@@ -157,13 +157,15 @@ describe("the claims say what PROOF_SENTENCES says (src/config/brand.ts)", () =>
 });
 
 describe("/proof as served: each card shows its strongest claim as its one link in sight, the rest in its fold (jury, 12 Nov)", () => {
-  for (const [id, name] of [["airwallex", "Airwallex"], ["metal", "Metal"], ["claude", "Claude"]] as const) {
+  for (const [id, name] of [["airwallex", "Airwallex"], ["metal", "Alta"], ["claude", "Claude"]] as const) {
     it(`${id}: the name, then the partner's first lead (text and href); the 2–3 facts, the other claims in order, the sentence and the list in the fold`, () => {
       const card = cardOf(html, id), first = afterHeader(card), lead0 = leads[id][0]!, out = lead0.href.startsWith("https://");
       // The name as text, never a logo; then the first lead of proofLeads(record) as the card's main link, and nothing
       // else in sight: no other link above the fold.
       // 12 Nov (owner): each card's partner mark beside its name (alt empty: the name is the heading).
-      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${id}\\.(png|svg)" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
+      // 14 Nov (owner): Alta's wordmark (logo-alta.svg) and Claude's press-kit SVG (logo-claude-slate.svg).
+      const file = { airwallex: "airwallex\\.png", metal: "alta\\.svg", claude: "claude-slate\\.svg" }[id];
+      expect(card).toMatch(new RegExp(`^<article class="pcard card" id="${id}"><div class="ph">(<span class="logo( dark)?"><img src="assets/logo-${file}" alt="" width="\\d+" height="15"></span>)?<h3>${name}</h3></div>`));
       const sight = first.slice(0, first.indexOf('<details class="fold">'));
       expect(decode(sight)).toBe(`<ul class="lead"><li><a class="c" href="${lead0.href}"${out ? ' target="_blank" rel="noopener"' : ""}>${lead0.text}${out ? " ↗" : ""}</a></li></ul>`);
       expect(card.replace(/<span class="logo( dark)?"><img [^>]*><\/span>/, "")).not.toMatch(/<img /);
@@ -183,12 +185,12 @@ describe("/proof as served: each card shows its strongest claim as its one link 
       expect(fold.indexOf('<p class="what">')).toBeGreaterThan(at);
       // The partner's page, last in the fold.
       expect(fold.endsWith("</a></details></article>")).toBe(true);
-      expect(fold.slice(fold.lastIndexOf("<a "))).toContain(`<a class="open" href="${id}">More<span class="vh"> about ${name}</span>`);
+      expect(fold.slice(fold.lastIndexOf("<a "))).toContain(`<a class="open" href="${id === "metal" ? "alta" : id}">More<span class="vh"> about ${name}</span>`);
     });
   }
 
   it("gives the three main claims one visible link affordance: the accent colour and an accent underline (review 12 Nov, DC-7)", () => {
-    // Two of the three read as bold headings (body text colour, an underline in the border colour); the Metal claim alone
+    // Two of the three read as bold headings (body text colour, an underline in the border colour); the Alta claim alone
     // had an arrow. One rule, for the main claim of every card (the claims in the folds keep theirs), existing tokens only.
     const css = /<style>([\s\S]*?)<\/style>/.exec(html)![1]!;
     const rule = /\.pcard > ul\.lead a\.c \{([^}]*)\}/.exec(css)?.[1] ?? "";
@@ -209,7 +211,7 @@ describe("/proof as served: each card shows its strongest claim as its one link 
     const cards = partnerCards(agentRun(), { airwallex: [], metal: leads.metal, claude: [] });
     for (const id of ["airwallex", "claude"]) expect(afterHeader(cardOf(cards, id)).startsWith('<details class="fold"><summary>Show the live proof</summary>')).toBe(true);
     expect(afterHeader(cardOf(cards, "metal")).startsWith('<ul class="lead"><li><a class="c" href="')).toBe(true);
-    // 12 Nov (wire-in, owner): five cards, Airwallex, Visa, Metal, T:0, Claude; Visa and T:0 from their own records.
+    // 12 Nov (wire-in, owner): five cards, Airwallex, Visa, Alta, T:0, Claude; Visa and T:0 from their own records.
     expect((cards.match(/<article class="pcard card"/g) ?? []).length).toBe(5);
   });
 
@@ -301,7 +303,7 @@ describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with 
     return { cls: m[1]!, href: m[2]!, inner: decode(m[3]!.replace(countUp, "$2")) };
   });
 
-  it("shows exactly four: Claude's decisions, Airwallex's figure, the Metal payments and the card charge, the stops", () => {
+  it("shows exactly four: Claude's decisions, Airwallex's figure, the Alta payments and the card charge, the stops", () => {
     // In this order: on a phone the two short tiles share a row and the two with lines under them share the next.
     expect(tiles.map((t) => [t.cls, t.href])).toEqual([["claude", "#claude"], ["awx", `airwallex#${AWX_CONTROLS_ID}`], ["code", "#metal"], ["stop", "#stops"]]);
     // The Face ID decisions and the cost per decision left the row; the Face ID figure stays under #faceid, one N.
@@ -328,14 +330,14 @@ describe("/proof's numbers: four tiles, one of them Airwallex's, the stops with 
     // The record's own count, its refusal rows, the headline and the parts in sight: one number.
     expect([Number(headline[2]), sum, parts.reduce((k, x) => k + x.value, 0), record.snapshot.refusals.length]).toEqual([blocked, blocked, blocked, blocked]);
     expect(shown).toEqual(parts.map((x) => [x.value, x.label]));
-    expect(shown).toEqual([[story.claude, "by a buy rule Claude set"], [story.metal, "by Metal"], [story.cfo, "by the CFO"], [story.planted, "planted instruction flagged"]]);
+    expect(shown).toEqual([[story.claude, "by a buy rule Claude set"], [story.metal, "by Alta"], [story.cfo, "by the CFO"], [story.planted, "planted instruction flagged"]]);
     expect(shown.map((x) => x[0])).toEqual([12, 2, 1, 1]);
   });
 
   it("leaves out a cause that stopped nothing, and names what no cause explains as \"other\", so the parts always sum", () => {
     const story = stopStory(record);
     const odd = { ...story, total: story.total - story.cfo + 1 + 3, cfo: 0, planted: story.planted + 1, other: 3 };
-    expect(stopBreakdown(odd)).toEqual([{ value: story.claude, label: "by a buy rule Claude set" }, { value: story.metal, label: "by Metal" }, { value: 2, label: "planted instructions flagged" }, { value: 3, label: "other" }]);
+    expect(stopBreakdown(odd)).toEqual([{ value: story.claude, label: "by a buy rule Claude set" }, { value: story.metal, label: "by Alta" }, { value: 2, label: "planted instructions flagged" }, { value: 3, label: "other" }]);
     expect(stopBreakdown(odd).reduce((k, x) => k + x.value, 0)).toBe(odd.total);
   });
 });
@@ -368,9 +370,10 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
 
 describe("/proof's utility links: one quiet row at the end", () => {
   // Max, 14 Nov: the walkthrough is at the top, under the lead; the quiet row at the end keeps the other three.
-  it("links the walkthrough at the top; the CFO's view, the trace and the month-end pack at the end, in that order, and nowhere above", () => {
+  it("links the walkthrough and the trailer at the top; the CFO's view, the trace and the month-end pack at the end, in that order, and nowhere above", () => {
     expect(main).toContain(`<p class="pwatch"><a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
     expect(words(main.slice(main.indexOf('<p class="pwatch">')))).toContain(FILM_LINK);
+    expect(main).toContain(`<a class="film" href="${TRAILER_URL}" target="_blank" rel="noopener">`);
     expect(main.indexOf('<p class="pwatch">')).toBeLessThan(main.indexOf('<ul class="ptiles"'));
     const at = main.indexOf('<nav class="util"'), util = main.slice(at);
     expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);
@@ -441,14 +444,16 @@ describe("/proof's words in sight", () => {
     // The owner, 13 Nov ("the proof is what we need"): every live run in sight, by partner, each with its day, its chip,
     // its id and how to verify it; the proof chain and the offline check above them; the four cards gone: 810 as built.
     // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(840);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1220); // 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(845);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1230); // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
     // Outside every fold (a fold inside a closed line counted as closed too): 315 as built on 12 Nov, plus a margin of 8.
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(840); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
+    // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(845); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
   });
 });

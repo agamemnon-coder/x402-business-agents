@@ -63,7 +63,7 @@ const TOOL_CHECK: Record<string, string> = {
   check_offer: "read only",
   verify_order: "read only: the signed order and its payment, from the chain",
   check_data: "read only: code's own check of the delivered data",
-  try_purchase: "the Metal mandate on chain (cap per payment, budget)",
+  try_purchase: "the Alta mandate on chain (cap per payment, budget)",
   send_message: "a message to another agent; it moves no money (at most two per wake)",
   finish: "ends the wake with the agent's own summary",
   read_position: "read only: live balances, floors and obligations",
@@ -74,10 +74,10 @@ const TOOL_CHECK: Record<string, string> = {
   propose_raise: "code's bounds (covers the purchase, at most 1.25× it, a limit decline only), then the CFO's Face ID",
   no_raise: "proposes nothing; moves no money",
   supplier_terms: "read only: the supplier's checkout, from code's registry",
-  pay: "code's check that the supplier accepts the rail, then the rail's own limits (Metal mandate or Airwallex card)",
-  notify_treasury: "a message to the Treasury agent, only after Metal answered; it moves no money",
+  pay: "code's check that the supplier accepts the rail, then the rail's own limits (Alta mandate or Airwallex card)",
+  notify_treasury: "a message to the Treasury agent, only after Alta answered; it moves no money",
   submit_plan: "code's plan checks (the 20.00 total, caps, budgets, margin)",
-  refund: "code's evidence gate and the automatic refund limits, then the Metal mandate",
+  refund: "code's evidence gate and the automatic refund limits, then the Alta mandate",
   escalate_to_cfo: "goes to the CFO, who decides with Face ID",
   // The Checker agent (src/ap/checkerCore.ts): six lookups answered from the invoice's case, then its decision.
   supplier_on_file: "read only: Purser's record of the supplier and its account on file",
@@ -107,7 +107,7 @@ function decisionCheck(r: Row, p: P): string {
   if (r.event === "agent.decision") return str(p.source) === "claude" ? "decided by Claude; every call it made went through code's checks and the rails" : `fallback (code): ${str(p.note) || "the agent did not decide"}`;
   if (r.event === "licence.timing_advised") return "advisory beside the proposal; the quote's validity and the CFO's Face ID decide";
   if (r.event === "card.decline_met") return str(p.proposal_id) ? `a raise within code's bounds went to the CFO (${str(p.proposal_id)}), who decides with Face ID; Airwallex enforces the limit` : "no raise proposed: the limit did not cause it";
-  if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Metal and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
+  if (r.event === "purchase.rails_chosen") return str(p.source) === "claude" ? "every supplier paid on a rail it accepts (code's check); Alta and Airwallex enforced the limits" : "code paid on the registry's rails (the agent did not finish)";
   if (r.event === "dispute.settled_by_agent") return "complete: every wrong order refunded, the rest sent to the CFO, who decides with Face ID";
   if (r.event === "ap.checker_decided") {
     if (str(p.source) !== "claude") return `fallback (code): ${str(p.note) || "the agent did not decide"}; code's own checks decided`;
@@ -120,7 +120,7 @@ function decisionCheck(r: Row, p: P): string {
     if (str(p.next) === "pay_later") return `${who}within the due date, so code allows the day; nothing is filed for the CFO until then`;
     return `${who}the rail is the supplier's and every balance stays above its floor; the CFO signs the exact terms with Face ID`;
   }
-  if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Metal decided on chain; the agent's message goes to the Treasury agent" : "applied by code (the agent did not try)";
+  if (r.event === "price_rise.met") return str(p.source) === "claude" ? "Alta decided on chain; the agent's message goes to the Treasury agent" : "applied by code (the agent did not try)";
   return "";
 }
 

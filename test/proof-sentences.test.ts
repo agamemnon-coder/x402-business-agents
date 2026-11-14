@@ -18,10 +18,10 @@ const text = (partner: string) => PROOF_SENTENCES.find((p) => p.partner === part
 const decode = (s: string) => s.split("&#39;").join("'").split("&quot;").join('"').split("&amp;").join("&");
 
 describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
-  it("has one sentence each for Airwallex, Metal and Claude, each labelled with what is not production", () => {
-    expect(PROOF_SENTENCES.map((p) => p.partner)).toEqual(["Airwallex", "Metal", "Claude"]);
+  it("has one sentence each for Airwallex, Alta and Claude, each labelled with what is not production", () => {
+    expect(PROOF_SENTENCES.map((p) => p.partner)).toEqual(["Airwallex", "Alta", "Claude"]);
     expect(text("Airwallex").startsWith("Airwallex (sandbox): ")).toBe(true);
-    expect(text("Metal").startsWith("Metal (testnet): ")).toBe(true);
+    expect(text("Alta").startsWith("Alta (testnet): ")).toBe(true);
     // One sentence each: one full stop, at the end.
     for (const p of PROOF_SENTENCES) expect({ p: p.partner, stops: p.text.split(". ").length }).toEqual({ p: p.partner, stops: 1 });
   });
@@ -39,20 +39,20 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(text("Airwallex")).toContain(`all ${rows.length} agent cards carry the CFO's policy as Airwallex's own controls`);
   });
 
-  it("Metal: a mandate per agent, 86 payments each its own transaction, #24 refused on chain, the mandates replaced after Face ID", () => {
+  it("Alta: a mandate per agent, 86 payments each its own transaction, #24 refused on chain, the mandates replaced after Face ID", () => {
     const m = metalStory(record);
     expect(m.mandates.map((x) => x.agent)).toEqual(["sourcing", "support", "treasury"]);
     for (const x of m.mandates) expect(x.proof.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);
-    expect(text("Metal")).toContain(`${m.payments.total} payments, each its own transaction`);
+    expect(text("Alta")).toContain(`${m.payments.total} payments, each its own transaction`);
     expect(m.payments.total).toBe(86);
     expect(m.refusal).toMatchObject({ seq: "24", code: "mandate_cap_exceeded" });
-    expect(text("Metal")).toContain(`purchase #${m.refusal!.seq} refused on chain (${m.refusal!.code})`);
+    expect(text("Alta")).toContain(`purchase #${m.refusal!.seq} refused on chain (${m.refusal!.code})`);
     // Replaced after the CFO's Face ID: P-0002, signed by Max first (four eyes: the second signature is the labelled test passkey).
     expect(m.replace!.proposal).toBe("P-0002");
     expect(m.replace!.signers[0]).toBe("max");
     expect(m.replace!.steps.map((x) => x.agent).sort()).toEqual(["sourcing", "treasury"]);
     expect(m.replace!.signers[1]).toBe("test-controller");
-    expect(text("Metal")).toContain("the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)");
+    expect(text("Alta")).toContain("the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey)");
   });
 
   it("Claude: 24 of 24, 0 fallbacks; the reliability run's fault and its fix, 6/10 before and 10/10 after", () => {
@@ -79,10 +79,10 @@ describe("the proof, one sentence per partner (section D, 6 Nov)", () => {
     expect(log).toContain("**Every step, every check and every acceptance row passed.**");
   });
 
-  it("is word for word in the deck: Airwallex and Metal on their own slides, Claude on the agents' slide", () => {
+  it("is word for word in the deck: Airwallex and Alta on their own slides, Claude on the agents' slide", () => {
     const slides = deckHtml(packFacts(), new Proxy({}, { get: () => "" }) as DeckShots, "").split("<section").slice(1).map(decode);
     expect(slides[5]).toContain(text("Airwallex"));
-    expect(slides[6]).toContain(text("Metal"));
+    expect(slides[6]).toContain(text("Alta"));
     expect(slides[7]).toContain(text("Claude"));
   });
 

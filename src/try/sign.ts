@@ -12,7 +12,7 @@
 //   3. "Try to cheat." Change one cent, the IBAN or the currency and send it with the same signature: the server refuses.
 //   4. "Change the rule." How much the Treasury agent may pay alone: a looser rule needs the visitor's signature, a
 //      stricter one applies at once. The worst case and the three locks, one line each; every field and what Purser
-//      would send to Airwallex and Metal behind "Show all fields and what Purser sends".
+//      would send to Airwallex and Alta behind "Show all fields and what Purser sends".
 //   5. "The agent pays it alone." The agent's next invoice (EUR 1,240.00, with its own live quote) runs without a
 //      signature under the new rule, or still waits for one. Then three ways on.
 // The test world opens when the page is shown (Max, 7 Nov) and the agents start at once, so their steps are mostly done
@@ -165,18 +165,18 @@ export const TRY_POLICY = {
   worstCaseChain: STEP0_CHAIN === "purser" ? "Here: the card limits you set; on chain, Purser's own mandates, which this page does not change." : "Here: the card limits you set; on chain, your test world's mandate as panel 3 shows it.",
   ifSigned: "If you sign it:",
   lead: "One policy → three locks. Change one value and apply it: a stricter policy holds at once, a looser one only with your signature.",
-  panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Metal mandate" },
+  panels: { purser: "Purser's rule", airwallex: "Airwallex card controls", metal: "Alta mandate" },
   notSent: { airwallex: "What Purser would send; not sent", metal: "Not sent" },
   state: { inForce: "In force", proposed: "Proposed: not in force until you sign" },
   refused: "Refused: a looser policy needs your signature",
   sign: "Sign the looser policy with Face ID",
-  source: "Computed on the server by Purser's own code (src/try/policy.ts): the card body as IssuingRest sends it (src/airwallex/cardBody.ts), the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts). Nothing is sent to Airwallex or Metal.",
+  source: "Computed on the server by Purser's own code (src/try/policy.ts): the card body as IssuingRest sends it (src/airwallex/cardBody.ts), the mandate's terms as the owner signer passes them to metal-agent (src/metal/credentialArgs.ts). Nothing is sent to Airwallex or Alta.",
   metalUnit: "Amounts in *USDZ (test USD): the policy's numbers as they are, not converted from euros.",
   metalNote: "Cap = the limit per purchase, budget = the limit per month, expiry = the end date.",
 } as const;
 
 /** What each lock holds (Max's review, 7 Nov): Purser's rule the invoices and proposals, the Airwallex card the card spend,
- * the Metal mandate the payments on chain. Short, as screen 5's lines say it; long, as the diagram and the locks do. */
+ * the Alta mandate the payments on chain. Short, as screen 5's lines say it; long, as the diagram and the locks do. */
 export const LOCK_CHANNELS = {
   purser: { short: "Invoices", long: "Invoices and proposals" },
   airwallex: { short: "Card spend", long: "Card spend" },
@@ -203,9 +203,9 @@ export const OTHER_IBAN = "DE00000000000000000666";
 export const WHATS_REAL = {
   simulated: [
     "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor. Its balance, its payees and their IBANs are test data (the IBANs' check digits are 00, which no real account has).",
-    "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor is a stand-in that only records in your test world.",
+    "No payment or conversion at Airwallex, no Alta call, and no money moves: the executor is a stand-in that only records in your test world.",
     "The blocked payment and the lock that stops it are a simulation in your test world. The three examples it links to are real, each from the run it names.",
-    "The rule and the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Metal mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Metal. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once.",
+    "The rule and the policy: your test world's CFO policy and the three locks made of it (Purser's rule, the Airwallex card controls, the Alta mandate's terms), computed by Purser's own code and sent nowhere: nothing reaches Airwallex or Alta. As in Purser, a looser policy needs your passkey's signature and a stricter one applies at once.",
     "Your test world holds EUR 26,000.00 (floor EUR 25,000.00) and USD 8,000.00 (floor USD 3,000.00). The stand-in converts at the quote and charges no SWIFT fee; the EUR 20.00 fee ceiling code reserves stays in the balance.",
     "Once you have signed, the Treasury agent's next invoice arrives in your test world: fixed text, EUR 1,240.00, with a live quote of its own for the EUR it is short and no model call. If you raise what the agent may pay alone to that amount or more and sign it, the invoice runs without your signature, by the same stand-in, labelled “" + PAID_ALONE + "”.",
   ],
@@ -1272,7 +1272,7 @@ const JS = `
   }
 
   // The three locks in one line each, for the Treasury agent: Purser's limit to pay alone (the chosen one, when one is
-  // chosen), the Airwallex card's limits, the Metal mandate's cap; from the policy in force, as Purser's code made them.
+  // chosen), the Airwallex card's limits, the Alta mandate's cap; from the policy in force, as Purser's code made them.
   function ruleLines(alone) {
     if (!S.policy) return;
     var a = S.policy.agents.treasury, m = S.locks.treasury.metal.params;
@@ -1280,7 +1280,7 @@ const JS = `
     $("rl-purser").lastChild.textContent = "Purser: up to " + euro(v) + " alone, ${ALONE_PER_DAY} a day";
     $("rl-purser").classList.toggle("chg", v !== now);
     $("rl-awx").lastChild.textContent = "Airwallex card: " + euro(a.per_tx) + " each, " + euro(a.monthly) + " a month";
-    $("rl-metal").lastChild.textContent = "Metal mandate: " + String(Number(m.cap)) + " test USD each";
+    $("rl-metal").lastChild.textContent = "Alta mandate: " + String(Number(m.cap)) + " test USD each";
     // The diagram says the same, beside the story.
     $("dg-purser").textContent = euro(v) + " alone, ${ALONE_PER_DAY} a day"; $("dg-awx").textContent = euro(a.per_tx) + " each, " + euro(a.monthly) + " a month"; $("dg-metal").textContent = String(Number(m.cap)) + " test USD each";
     document.querySelectorAll("#rule-chips .chip").forEach(function (b) {
@@ -1467,7 +1467,7 @@ const JS = `
   // The payment on its way: Purser's rule, then the card and mandate limits, then paid (green); or held at Purser's rule.
   function flowOf(state) {
     var stop = function (name, words) { var li = el("li", "fs f-" + name, [el("span", "fd", [ic(name === "paid" ? "check" : "lock")]), words]); li.dataset.stop = name; return li; };
-    var f = el("ol", "flow", [stop("purser", "Purser"), stop("rail", "Airwallex · Metal"), stop("paid", "Paid")]);
+    var f = el("ol", "flow", [stop("purser", "Purser"), stop("rail", "Airwallex · Alta"), stop("paid", "Paid")]);
     f.dataset.state = state;
     f.setAttribute("aria-label", state === "alone" || state === "signed" ? "Through Purser's rule, the card and mandate limits, then paid" : state === "blocked" ? "Stopped at Purser's rule" : "Held at Purser's rule: it waits for your signature");
     return f;
@@ -1752,7 +1752,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
   <ol class="dlocks">
     <li class="dn d-purser">${icon("lock", 18)}<span><b>Purser</b><small class="ch">${esc(LOCK_CHANNELS.purser.long)}</small><small id="dg-purser">${esc(euro(TEST_WORLD.alone_limit))} alone, ${ALONE_PER_DAY} a day</small><small class="dstop">${esc(W.ask.other)} · <a id="dg-real" href="${esc(locks.find((l) => l.id === "purser")?.href ?? "/proof")}">${esc(W.ask.real)}</a></small></span></li>
     <li class="dn d-airwallex">${icon("lock", 18)}<span><b>Airwallex card</b><small class="ch">${esc(LOCK_CHANNELS.airwallex.long)}</small><small id="dg-awx">€25 each, €50 a month</small></span></li>
-    <li class="dn d-metal">${icon("lock", 18)}<span><b>Metal mandate</b><small class="ch">${esc(LOCK_CHANNELS.metal.long)}</small><small id="dg-metal">25 test USD each</small></span></li>
+    <li class="dn d-metal">${icon("lock", 18)}<span><b>Alta mandate</b><small class="ch">${esc(LOCK_CHANNELS.metal.long)}</small><small id="dg-metal">25 test USD each</small></span></li>
   </ol>
   <div class="dn d-sign">${icon("scan-face", 20)}<span><b>Above the limit: your signature</b><small>Face ID over the exact terms; change one cent and it is worthless.</small></span></div>
   <div class="dn d-alone">${icon("circle-check", 20)}<span><b>Within the limit: paid alone</b><small>No signature needed, and nothing above it.</small></span></div>
@@ -1769,7 +1769,7 @@ ${scr(7, `  <h2 tabindex="-1" id="d-head">${esc(W.done.head)}</h2>
     source: "Source: a test world made for you (worker/src/trySign.ts); nothing in it is recorded anywhere else. The lock examples: docs/demo/main-run.json and docs/runs/visa-tap-live-2026-11-02.json.",
     real: [
       "A test world made for you, deleted after one hour: a test copy of Northwind Outdoor; its balance, payees, IBANs and the agent's proposals are test data.",
-      "No payment or conversion at Airwallex, no Metal call, and no money moves: the executor only records, in your test world. Claude Sonnet reads the invoice and Claude Opus advises, given the invoice and the test world's facts only; the amounts and the checks are Purser's code.",
+      "No payment or conversion at Airwallex, no Alta call, and no money moves: the executor only records, in your test world. Claude Sonnet reads the invoice and Claude Opus advises, given the invoice and the test world's facts only; the amounts and the checks are Purser's code.",
       "Real: your device's passkey signature over the hash of the exact terms, and the server's check of it against the public key your device registered.",
     ],
   }).replace("<body>\n", () => `<body>\n<div class="testband" role="note"><div class="row"><span class="tl">${icon("lock", 16)}${esc(TRY_SIGN_LABEL)}</span><details class="wr"><summary>What's real?</summary><div class="card wr-body">
@@ -1841,7 +1841,7 @@ ul.locks1 li { border-radius: 8px; margin: 0 -6px; padding: 2px 6px; }
 ul.locks1.lit li { animation: lockon .26s ease-out both; }
 ul.locks1.lit li:nth-child(2) { animation-delay: .1s; } ul.locks1.lit li:nth-child(3) { animation-delay: .2s; }
 @keyframes lockon { from { background: var(--accent-soft); transform: translateX(-3px); } to { background: transparent; transform: none; } }
-/* Pays alone: the payment moves through the locks (Purser, then Airwallex and Metal, then paid) and ends green. */
+/* Pays alone: the payment moves through the locks (Purser, then Airwallex and Alta, then paid) and ends green. */
 ol.flow { list-style: none; margin: 4px 0 2px; padding: 0; position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 ol.flow::before, ol.flow::after { content: ""; position: absolute; top: 13px; left: 16.6%; right: 16.6%; height: 3px; border-radius: 3px; background: var(--border); }
 ol.flow::after { background: var(--ok); transform-origin: left; transform: scaleX(0); }

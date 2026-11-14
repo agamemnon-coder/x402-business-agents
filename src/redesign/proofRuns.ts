@@ -2,7 +2,7 @@
 // Three blocks, every value read from the run list /runs keeps (src/redesign/runs.ts liveRuns, isLive):
 //   1. The proof chain, drawn in inline SVG: signed terms → Face ID or passkey → the rail → the books.
 //   2. One row per live run, grouped by partner: its day, a chip that says live (and what was simulated in it), its key
-//      id or transaction, and how to verify it: the explorer for a Metal transaction, the run's own record otherwise,
+//      id or transaction, and how to verify it: the explorer for an Alta transaction, the run's own record otherwise,
 //      and the offline command where one exists.
 //   3. The receipt anyone can check offline: `npm run verify-approval` (package.json), the owner's real passkey approval.
 // No figure is typed here; no "n of n" fraction is shown.
@@ -25,7 +25,7 @@ export interface ChainStep { icon: string; title: string; text: string }
 export const PROOF_CHAIN: readonly ChainStep[] = [
   { icon: "file-check", title: "Signed terms", text: "Amount, payee and account, hashed with SHA-256." },
   { icon: "scan-face", title: "Face ID or passkey", text: "Above a limit the CFO signs that hash; one changed cent fails." },
-  { icon: "landmark", title: "The rail", text: "Airwallex, Metal and Visa via Airi apply their own controls." },
+  { icon: "landmark", title: "The rail", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
   { icon: "database", title: "The books", text: "Booked to the ledger; every step in a hash-chained log." },
 ];
 
@@ -36,8 +36,8 @@ export function proofChainHtml(steps: readonly ChainStep[] = PROOF_CHAIN): strin
 }
 
 // ── 2. The live runs, by partner ────────────────────────────────────────────────────────────────────────────────────
-export type ProofGroup = "The main run" | "Airwallex" | "Visa via Airwallex's Airi" | "Metal" | "The books";
-export const PROOF_GROUPS: readonly ProofGroup[] = ["The main run", "Airwallex", "Visa via Airwallex's Airi", "Metal", "The books"];
+export type ProofGroup = "The main run" | "Airwallex" | "Visa via Airwallex's Airi" | "Alta" | "The books";
+export const PROOF_GROUPS: readonly ProofGroup[] = ["The main run", "Airwallex", "Visa via Airwallex's Airi", "Alta", "The books"];
 
 /** Which group a run belongs to: one group each, by what it shows first. */
 export function groupOf(r: RunRow): ProofGroup {
@@ -45,7 +45,7 @@ export function groupOf(r: RunRow): ProofGroup {
   if (r.kind === "both") return "The main run";
   if (r.partners?.includes("Visa") || /\bAiri\b|Visa/.test(words)) return "Visa via Airwallex's Airi";
   if (/Moneybird|T:0/.test(words)) return "The books";
-  if (r.kind === "testnet" || (r.partners?.length === 1 && r.partners[0] === "Metal")) return "Metal";
+  if (r.kind === "testnet" || (r.partners?.length === 1 && r.partners[0] === "Alta")) return "Alta";
   return "Airwallex";
 }
 
@@ -105,7 +105,7 @@ export interface PartnerTile { name: string; runs: number; latest: RunRow; badge
 const STRIP: readonly { name: string; label?: string; has: (r: RunRow) => boolean }[] = [
   { name: "Airwallex", has: (r) => partnerNamesOf(r).includes("Airwallex") },
   { name: "Visa", label: "Visa via Airi", has: (r) => partnerNamesOf(r).includes("Visa") },
-  { name: "Metal", has: (r) => partnerNamesOf(r).includes("Metal") },
+  { name: "Alta", has: (r) => partnerNamesOf(r).includes("Alta") },
   { name: "T:0", has: (r) => partnerNamesOf(r).includes("T:0") },
   { name: "Moneybird", has: (r) => /Moneybird/.test(`${r.name ?? ""} ${r.title} ${r.rails}`) },
 ];

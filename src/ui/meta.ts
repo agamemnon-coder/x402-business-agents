@@ -4,6 +4,7 @@
 // from the same constants); every other page gets them here, put into its <head> when the bundle is built
 // (src/relay/assets.ts). Tags only, no script or style, so no page's CSP hash changes.
 
+import { formerlyMetal } from "./formerly.js";
 import { CORE_SENTENCE, HERO } from "../config/brand.js";
 import { ICON_VERSION } from "./brand/mark.js";
 
@@ -62,13 +63,13 @@ export function previewTags(o: { url?: string } = {}): string[] {
  */
 export function withMeta(html: string, o: { description?: string; icon?: boolean } = {}): string {
   const head = /<head>[\s\S]*?<\/head>/i.exec(html)?.[0];
-  if (!head) return html;
+  if (!head) return formerlyMetal(html);
   const description = o.description ?? SITE_DESCRIPTION;
   const tags = [
     /<meta name="description"/.test(head) ? "" : `<meta name="description" content="${esc(description)}">`,
     ...(/property="og:|name="twitter:/.test(head) ? [] : previewTags()),
     o.icon === false || /rel="icon"/.test(head) ? "" : `<link rel="icon" href="/assets/favicon.svg?v=${ICON_VERSION}" type="image/svg+xml">\n<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=${ICON_VERSION}">`,
   ].filter(Boolean);
-  if (!tags.length) return html;
-  return html.replace(/<\/title>/, () => `</title>\n${tags.join("\n")}`);
+  if (!tags.length) return formerlyMetal(html);
+  return formerlyMetal(html.replace(/<\/title>/, () => `</title>\n${tags.join("\n")}`));
 }

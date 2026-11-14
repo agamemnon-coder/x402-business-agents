@@ -1,4 +1,4 @@
-// A clearing payment whose answer was lost holds the wallet until the same request is sent again (Metal's documented
+// A clearing payment whose answer was lost holds the wallet until the same request is sent again (Alta's documented
 // behaviour; the load test hit it once in 2,000). Summit sends the same request again, a few times, and only then
 // reports the payment in doubt. It never pays the same stock check a second way.
 import { beforeEach, describe, expect, it, vi } from "vitest";

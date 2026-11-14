@@ -84,7 +84,7 @@ export function publishedAudit(): { rows: number; day: string; command: string }
 // What the docs say, word for word.
 
 /** Who holds the money, as docs/compliance.md says it. */
-export const FUNDS_LINE: DocLine = { doc: "docs/compliance.md", anchor: "#1-roles-and-money", quote: "The money sits in the business's own Airwallex account and Metal account. Purser asks those rails to move it" };
+export const FUNDS_LINE: DocLine = { doc: "docs/compliance.md", anchor: "#1-roles-and-money", quote: "The money sits in the business's own Airwallex account and Alta account. Purser asks those rails to move it" };
 /** The note the claims register asks for whenever "no funds of its own" is said (docs/claims.md): the runner keeps the testnet owner key. */
 export const OWNER_KEY_NOTE: DocLine = { doc: "docs/claims.md", anchor: "", quote: "\"holds no funds of its own\", noting that the runner keeps the testnet owner key" };
 /** docs/overview.md, or docs/archive/overview.md once another branch has moved it there (12 Nov). */
@@ -98,7 +98,7 @@ export const CHAIN_LINES: readonly DocLine[] = [
 export const NOT_YET_LINE = "No SOC 2 report, no ISO 27001 audit and no third-party penetration test yet; sandbox and testnet only; Purser's independent security review is pending.";
 export const NOT_YET_SOURCES: readonly DocLine[] = [
   { doc: "docs/security.md", anchor: "#checks", quote: "No third-party penetration test has been run" },
-  { doc: "docs/controls.md", anchor: "", quote: "This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Metal testnet only." },
+  { doc: "docs/controls.md", anchor: "", quote: "This is not a SOC 2 report: no auditor has tested these controls, and the build runs on the Airwallex sandbox and Alta testnet only." },
   { doc: "docs/cloud.md", anchor: "#before-real-customer-data", about: "The SME product, still to do before real customer data:", quote: "An independent security review of this code after these fixes, and a red-team run against a deployed staging copy." },
 ];
 export const NOT_IN_PLACE = { doc: "docs/controls.md", anchor: "#not-in-place-summary" };
@@ -162,8 +162,8 @@ export const CONTROLS_MATRIX = "docs/controls-matrix.md";
  * Where the zero-trust attacks ran, in our words (the report says it with a word the site does not use): the report's
  * reading.harness says the same, and the test holds the two together.
  */
-export const HARNESS_LINE = "Every attack ran in this repository's test harness: Purser's own code is the real code; Airwallex, Metal, the model and the phones are simulated. Nothing here attacked a live rail.";
-/** The Metal testnet transaction that anchors the audit chain and the books (13 Nov). */
+export const HARNESS_LINE = "Every attack ran in this repository's test harness: Purser's own code is the real code; Airwallex, Alta, the model and the phones are simulated. Nothing here attacked a live rail.";
+/** The Alta testnet transaction that anchors the audit chain and the books (13 Nov). */
 export const ANCHOR_RUN = "docs/runs/2026-11-13-anchor.json";
 export const ANCHOR_RECORD = "docs/runs/2026-11-13-anchor.md";
 
@@ -183,8 +183,8 @@ export const ZT_NAMES: Record<string, { name: string; short: string; sub: string
   L2: { name: "Policy and limits in code", short: "Code", sub: "Tools, invoice and fraud checks, the CFO's policy.", icon: "sliders-horizontal" },
   L3: { name: "Face ID or a passkey", short: "CFO", sub: "Above the limits, the CFO signs the terms' hash.", icon: "scan-face" },
   L4: { name: "Four eyes", short: "Second signer", sub: "Above a set threshold, a second person signs.", icon: "users" },
-  L5: { name: "The rail's own limit", short: "Rail", sub: "Metal's mandate on chain; Airwallex card and transfer limits.", icon: "landmark" },
-  L6: { name: "Books and audit chain", short: "Record", sub: "Hash-linked, anchored on Metal testnet.", icon: "file-lock-2" },
+  L5: { name: "The rail's own limit", short: "Rail", sub: "Alta's mandate on chain; Airwallex card and transfer limits.", icon: "landmark" },
+  L6: { name: "Books and audit chain", short: "Record", sub: "Hash-linked, anchored on Alta testnet.", icon: "file-lock-2" },
 };
 
 export interface ZeroTrust {
@@ -222,7 +222,7 @@ export function hostileEval(text: string = repoText(HOSTILE_RECORD_FILE)): Hosti
 /** The anchor run: its day, network and explorer link, as its record says. */
 export function anchorRun(text: string = repoText(ANCHOR_RUN)): { day: string; network: string; explorer: string; check: string } {
   const a = JSON.parse(text) as { anchored_at: string; network: string; explorer: string; check: string; tx: string };
-  if (!a.explorer.startsWith("https://testnet.metalntwx.com/tx/") || !a.explorer.endsWith(a.tx)) throw new Error(`${ANCHOR_RUN}: the explorer link is not its transaction on Metal testnet`);
+  if (!a.explorer.startsWith("https://testnet.metalntwx.com/tx/") || !a.explorer.endsWith(a.tx)) throw new Error(`${ANCHOR_RUN}: the explorer link is not its transaction on Alta testnet`);
   return { day: day(a.anchored_at), network: a.network, explorer: a.explorer, check: a.check };
 }
 
@@ -336,7 +336,7 @@ export function securityViz(zt: ZeroTrust = zeroTrust(), he: HostileEval = hosti
     <ol class="zlayers">${zt.layers.map(node).join("")}</ol></div>
     <ul class="zkey"><li><i class="ok"></i>Paid as signed, then recorded</li><li><i class="no"></i>Refused at its layer</li></ul>
     <div class="links">${outLink(repoHref(ZERO_TRUST_REPORT), "Zero-trust report")}${outLink(anchor.explorer, `Audit chain anchored, ${anchor.day}`)}</div>
-    ${foldHtml("How this was tested", [...zt.principle.map(esc), esc(HARNESS_LINE), `The audit chain and the books were anchored on ${esc(anchor.network)} on ${esc(anchor.day)}; check it with <code>${esc(anchor.check)}</code>. ${outLink(repoHref(ANCHOR_RECORD), ANCHOR_RECORD)}`])}
+    ${foldHtml("How this was tested", [...zt.principle.map(esc), esc(HARNESS_LINE), `The audit chain and the books were anchored on ${esc(anchor.network.replace(/^Metal\b/, "Alta"))} on ${esc(anchor.day)}; check it with <code>${esc(anchor.check)}</code>. ${outLink(repoHref(ANCHOR_RECORD), ANCHOR_RECORD)}`])}
   </section>`;
 
   // The one wording of the split (hostileWords, src/redesign/partners.ts; the final review, 13 Nov).
@@ -387,10 +387,10 @@ export function securityCards(): SecurityCard[] {
     {
       id: "s-sign", icon: "scan-face", title: "Signed terms",
       line: esc("The CFO signs the exact terms with a passkey (Face ID); one changed cent is refused."),
-      // 12 Nov: the Face ID on chain run (a passkey account on Metal testnet; the second owner a labelled virtual test
+      // 12 Nov: the Face ID on chain run (a passkey account on Alta testnet; the second owner a labelled virtual test
       // passkey), the answer to "the chain did not check Face ID".
-      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("metal#faceid-onchain", "Passkeys sign on chain (P-256)")] : [])],
-      fold: { summary: "How", lines: [esc(terms.how), code(terms), ...(ownersRun() ? [esc("On Metal testnet, 12 Nov: a passkey account changed an agent's mandate only with both owners' passkeys, and checked them on chain; the second owner was a labelled virtual test passkey.")] : [])] },
+      links: [siteLink(TRY_URL, "Try it yourself", true), ...(ownersRun() ? [siteLink("alta#faceid-onchain", "Passkeys sign on chain (P-256)")] : [])],
+      fold: { summary: "How", lines: [esc(terms.how), code(terms), ...(ownersRun() ? [esc("On Alta testnet, 12 Nov: a passkey account changed an agent's mandate only with both owners' passkeys, and checked them on chain; the second owner was a labelled virtual test passkey.")] : [])] },
       // The doc's own lines, each checked against the doc as every quoted line on this page is, then the doc itself.
       more: {
         id: UNAVAILABLE.id, summary: UNAVAILABLE.heading,
@@ -411,9 +411,9 @@ export function securityCards(): SecurityCard[] {
     },
     {
       id: "s-limits", icon: "sliders-horizontal", title: "Limits outside the prompt",
-      line: esc("Card controls per agent at Airwallex, and a mandate per agent on Metal's chain."),
-      links: [siteLink("airwallex#controls", "Card controls, read back"), siteLink("metal", "A refusal on chain")],
-      fold: { summary: "How", lines: [`Airwallex: ${esc(cards.how)} ${code(cards)}`, `Metal: ${esc(chain.how)} ${code(chain)}`] },
+      line: esc("Card controls per agent at Airwallex, and a mandate per agent on Alta's chain."),
+      links: [siteLink("airwallex#controls", "Card controls, read back"), siteLink("alta", "A refusal on chain")],
+      fold: { summary: "How", lines: [`Airwallex: ${esc(cards.how)} ${code(cards)}`, `Alta: ${esc(chain.how)} ${code(chain)}`] },
     },
     {
       id: "s-code", icon: "bot", title: "Agents propose, code enforces",
@@ -460,13 +460,13 @@ export function securityCards(): SecurityCard[] {
       // "No customer money" (docs/compliance.md), not "no funds of its own": in the sandbox run Purser's own platform
       // account funded the test company and took the test fee (docs/airwallex-platform.md). Review, 12 Nov.
       line: esc("Each company's money stays in its own Airwallex account, and on chain there is no personal data."),
-      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run"), siteLink("metal", "See it on Metal's testnet")],
+      links: [outLink(repoHref(SANDBOX_RUN), "The sandbox run"), siteLink("alta", "See it on Alta's testnet")],
       fold: { summary: "How", lines: [
         quoted(FUNDS_LINE),
         esc("In the sandbox run a payout was made on behalf of a test company's own connected account, with test money."),
         `${esc("In this build the runner keeps the testnet owner key.")} ${outLink(repoHref(docLine(OWNER_KEY_NOTE).doc), OWNER_KEY_NOTE.doc)}`,
         esc("Every card is an Airwallex sandbox test card and every amount is test money."),
-        esc("Metal's testnet is public: each agent's mandate and every payment can be seen on its explorer."),
+        esc("Alta's testnet is public: each agent's mandate and every payment can be seen on its explorer."),
         ...CHAIN_LINES.map(quoted),
       ] },
     },
@@ -501,7 +501,7 @@ export function securityPage(): string {
     body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
     source: `Source: ${ZERO_TRUST_REPORT}, ${HOSTILE_RECORD_FILE}, ${ANCHOR_RUN}, ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
     real: [
-      "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
+      "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
       "The red team ran in a throwaway test world on simulated rails, not live.",
       HARNESS_LINE,
       NOT_YET_LINE,

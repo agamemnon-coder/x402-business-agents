@@ -79,9 +79,9 @@ describe("every page's head (Q5)", () => {
     expect(og.length).toBeLessThan(300 * 1024);
     // What the card says, in the site's words: the one line large, the small line, the payment's path and the row.
     const svg = readFileSync(new URL("../docs/assets/social-preview.svg", import.meta.url), "utf8");
-    for (const words of ["AI agents spend.", "You sign off.", "Every payment above its limit", "waits for your Face ID or a passkey.", "Face ID or a passkey", "Never paid", "Airwallex · Metal · Visa Intelligent Commerce · Claude"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
+    for (const words of ["AI agents spend.", "You sign off.", "Every payment above its limit", "waits for your Face ID or a passkey.", "Face ID or a passkey", "Never paid", "Airwallex · Alta · Visa Intelligent Commerce · Claude"]) expect({ words, in: svg.includes(`>${words}<`) }).toEqual({ words, in: true });
     // The final partner review (13 Nov): the partners in words, no marks on the card, no "(Airi)" beside Visa.
-    expect(SOCIAL_BUILT_WITH.names).toEqual(["Airwallex", "Metal", "Visa Intelligent Commerce", "Claude"]);
+    expect(SOCIAL_BUILT_WITH.names).toEqual(["Airwallex", "Alta", "Visa Intelligent Commerce", "Claude"]);
     expect(svg).not.toMatch(/<image\b|data:image|\(Airi\)/);
     // docs/security.md is what the small line says: nothing above the limits is paid until it is signed.
     expect(readFileSync(new URL("../docs/security.md", import.meta.url), "utf8")).toContain("nothing above the limits is paid");

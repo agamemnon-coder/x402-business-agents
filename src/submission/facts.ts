@@ -46,7 +46,7 @@ export interface MainRunFacts {
   alone: number; sales: number; face_id: number; audit_rows: number;
   /** The run's stops in all (`snapshot.counts.blocked`), by who stopped them (stopStory): the separate TAP run's decline is its own line (tap_limit_line). */
   stopped: number; stops: StopStory; tap_limit_line: string;
-  /** The stops said as the pages say them: "16 stops", "nothing paid over a limit", the sentence, and Metal's in detail. */
+  /** The stops said as the pages say them: "16 stops", "nothing paid over a limit", the sentence, and Alta's in detail. */
   stop_figure: string; stop_sub: string; stop_line: string; metal_detail: string;
   /** The main run's card story: the agent asked for the raise first (proposal, per-purchase limit from → to), the CFO approved it with Face ID, then Airwallex approved the charge (authorization). */
   card_raise: { proposal: string; from: string; to: string; auth: string; amount: string };

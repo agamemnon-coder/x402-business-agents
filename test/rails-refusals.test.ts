@@ -25,13 +25,13 @@ describe("the dashboard's refusal line (agent run 1)", () => {
     expect(rec.ledger.events.filter((r) => r.event === "upstream.refused_on_chain")).toHaveLength(1);
   });
 
-  it("counts only the refusals over the cap: 1 refused by Purser before signing, 1 recorded by Metal on chain", () => {
+  it("counts only the refusals over the cap: 1 refused by Purser before signing, 1 recorded by Alta on chain", () => {
     const m = railsView(replay(["upstream.refused", "upstream.refused_on_chain"])).metal;
     const cap = m.find((x) => /over the mandate's cap/i.test(x.what))!;
-    expect(cap.detail).toMatch(/^1 refused by Purser before signing, 1 recorded by Metal on chain/);
+    expect(cap.detail).toMatch(/^1 refused by Purser before signing, 1 recorded by Alta on chain/);
     expect(cap.proof?.href).toMatch(/0x3ad8de2f1a4896567f089786438418f0bf3be0d2c61807a9f157b89ed7d9a84d$/);
     expect(m.map((x) => x.detail).join(" ")).not.toMatch(/\b7 payments\b/);
-    // Metal's own refusal of a payment under the revoked mandate is its own line, not a cap refusal.
+    // Alta's own refusal of a payment under the revoked mandate is its own line, not a cap refusal.
     expect(m.find((x) => /revoked/i.test(x.what))?.detail).toMatch(/^1 payment/);
   });
 

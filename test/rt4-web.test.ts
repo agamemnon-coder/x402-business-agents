@@ -41,7 +41,7 @@ describe("red team 4, web", () => {
       const t = await c.tenant("acme");
       const sk = (await c.req("POST", "/v1/keys", { key: t.key, body: { name: "runner", scopes: ["sync"] } })).json.api_key as string;
       const good = {
-        id: "tx1", at: "2026-11-02T10:00:00Z", direction: "out", flow: "out", rail: "metal", rail_label: "Metal", description: "x", counterparty: "y", counterparty_account: null,
+        id: "tx1", at: "2026-11-02T10:00:00Z", direction: "out", flow: "out", rail: "metal", rail_label: "Alta", description: "x", counterparty: "y", counterparty_account: null,
         amount: "10.00", currency: "EUR", eur_equivalent: "10.00", fee: null, moved: true, status: "paid", status_words: "paid", invoice: null,
         approval: { required: false, authority: "a", proposal_id: null, decision: null, method: null, approved_at: null, terms_sha256: null },
         booking: { entry_ids: [], accounts: [], booked: null }, proof: "0xabc", reconciliation: "matched", reconciliation_words: "Booked and matched", flags: [],

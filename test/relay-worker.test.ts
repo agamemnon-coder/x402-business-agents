@@ -388,7 +388,7 @@ describe("pages", () => {
     expect(page("/film")!.headers.get("content-security-policy")).toBe(pages.csp.film);
     expect(page("/try")!.headers.get("content-security-policy")).toBe(pages.csp.try);
     expect(page("/lab")!.headers.get("content-security-policy")).toBe(pages.csp.lab);
-    expect(page("/metal")!.headers.get("content-security-policy")).toBe(pages.csp.metal);
+    expect(page("/alta")!.headers.get("content-security-policy")).toBe(pages.csp.metal);
     expect(await page("/metal/report")!.text()).toBe(pages.metalReport);
     expect(page("/metal/report")!.headers.get("content-security-policy")).toBe(pages.csp.metalReport);
     // The partner pages: served when the bundle has them, absent from an older bundle.
