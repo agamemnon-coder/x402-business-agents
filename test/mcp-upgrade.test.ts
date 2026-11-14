@@ -162,11 +162,11 @@ describe("the new read tools, on the demo company", () => {
   it("cash_position: net cash from what moved, and a projection from due days that says what it is", async () => {
     const r = await tool("cash_position");
     const s = r.structuredContent;
-    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", net_cash: "9227.32" });
+    expect(s).toMatchObject({ currency: "EUR", as_of: "2026-11-12", net_cash: "9226.92" });
     expect(s.projection).toHaveLength(4);
     // The open payable (Bergtex, due 23 Nov) leaves in the second week.
-    expect(s.projection[1]).toMatchObject({ due_out: s.open.payables, projected_net_cash: (9227.32 - Number(s.open.payables)).toFixed(2) });
-    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): net cash EUR 9,227\.32 as of 12 Nov 2026/);
+    expect(s.projection[1]).toMatchObject({ due_out: s.open.payables, projected_net_cash: (9226.92 - Number(s.open.payables)).toFixed(2) });
+    expect(text(r)).toMatch(/^Northwind Outdoor \(demo company\): net cash EUR 9,226\.92 as of 12 Nov 2026/);
     expect(text(r)).toMatch(/not a bank balance/);
     expect((await tool("cash_position", { weeks: 13 })).structuredContent.projection).toHaveLength(13);
   });

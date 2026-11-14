@@ -4,7 +4,7 @@
 // labelled virtual test passkey, supplier invoices read by code's own parser and paid on the Airwallex stand-in, the
 // ledger booked by the ledger feed. Then the same batches the runner would push to a cloud (src/cloudsync/client.ts
 // batchesFor). The Worker reads no files, so they are written as a module. Demo data: no real money, no real company.
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ingestDocument, type InboxDeps } from "../../src/ap/inbox.js";
@@ -44,6 +44,12 @@ const at = (daysBeforeEnd: number, hour = 10) => { t = Math.max(t, end - daysBef
 const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "demo company: code's own parser" }) } as Asker;
 const db = openDb(":memory:");
 const w = await standInDeps(db, { client: null, now });
+// The demo company replays awx-1: its SWIFT fee is the one the live sandbox charged that run (docs/demo/airwallex-run.json,
+// EUR 13.50 on each transfer), so Books, Transactions and the Airwallex reconciliation name the same fee (CFO review, 14 Nov).
+const AWX1_FEE = (JSON.parse(readFileSync(new URL("../../docs/demo/airwallex-run.json", import.meta.url), "utf8")) as { invoices: { fee: string }[] }).invoices.map((i) => /^EUR (\d+)\.(\d{2})$/.exec(i.fee));
+if (!AWX1_FEE.length || AWX1_FEE.some((m) => !m || m[0] !== AWX1_FEE[0]![0])) throw new Error("awx-1's recorded fees are not one EUR amount");
+w.awx.swiftEurFeeCents = Number(AWX1_FEE[0]![1]) * 100 + Number(AWX1_FEE[0]![2]);
+w.awx.payoutFeeCents["SWIFT:EUR"] = w.awx.swiftEurFeeCents;
 let counter = 0;
 const approve = async (proposalId: string) => { await approveWithVirtualPasskey(db, w.auth, proposalId, now(), ++counter); };
 // The scenario's own steps approve through the same counter (a passkey's counter only rises).
