@@ -122,6 +122,7 @@ try {
     ok(!(await page.content()).includes("stand-in-token"), `${name}: no token on the page`);
     ok(errors.length === 0, `${name}: no console or CSP errors${errors.length ? ": " + errors.join(" | ") : ""}`);
     if (shots) await page.screenshot({ path: join(shots, `console-airwallex-standin-${name}.png`), fullPage: true });
+    if (shots) await page.locator(".aw-events").evaluate((e) => e.scrollIntoView({ block: "center" })); // clear of the sticky header
     if (shots) await page.locator(".aw-events").screenshot({ path: join(shots, `console-awx-events-recorded-${name}.png`) });
     // The Overview's live card, apart from the demo month.
     await page.click("#tabs a[data-tab='overview']");
