@@ -72,7 +72,9 @@ export interface Reconciliation {
 
 const abs = Math.abs;
 const sum = (rows: FinancialTx[], f: (r: FinancialTx) => number) => rows.reduce((s, r) => s + f(r), 0);
-const money = (cur: string, c: number) => `${cur} ${c < 0 ? "-" : ""}${fromCents(abs(c))}`;
+// CFO review, 14 Nov: amounts with thousands separators ("EUR 1,850.00"), as everywhere else on the site.
+const grouped = (s: string) => { const [i, d] = s.split("."); return `${i!.replace(/\B(?=(\d{3})+$)/g, ",")}${d === undefined ? "" : `.${d}`}`; };
+const money = (cur: string, c: number) => `${cur} ${c < 0 ? "-" : ""}${grouped(fromCents(abs(c)))}`;
 /** Source types a payout or conversion of Purser's books: one Airwallex holds that the ledger lacks is reported. */
 const TRACKED = new Set(["PAYOUT", "FEE", "CONVERSION"]);
 

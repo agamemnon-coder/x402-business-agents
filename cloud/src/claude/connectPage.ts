@@ -6,7 +6,7 @@
 // pages). The demo token reads the made-up demo company; a company's own connector token is made in Purser Cloud.
 
 import { DEMO_CONNECTOR_TOKEN } from "../auth.js";
-import { ICON_LINKS } from "../brand.js";
+import { ICON_LINKS, PREVIEW_TAGS } from "../brand.js";
 import { randomToken } from "../crypto.js";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]!);
@@ -68,7 +68,7 @@ ${t.snippets.map((s) => `<p class="label">${esc(s.label)}</p><pre tabindex="0"><
 ${t.note ? `<p class="note">${esc(t.note)}</p>` : ""}</section>`).join("");
   const show = tabs.map((t) => `#t-${t.id}:checked~.tabs label[for=t-${t.id}]{background:var(--ink);color:#fff;border-color:var(--ink)}#t-${t.id}:checked~.panels #p-${t.id}{display:block}`).join("");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Read only: no AI approves or pays.">${ICON_LINKS}
+<title>Connect your AI to Purser</title><meta name="description" content="Connect Claude, ChatGPT, Cursor, VS Code, Gemini CLI or Windsurf to Purser over MCP. Read only: no AI approves or pays.">${ICON_LINKS}${PREVIEW_TAGS}
 <style nonce="${nonce}">
 :root{color-scheme:light;--ink:#0b1220;--muted:#586174;--line:#e3e6ec;--bg:#f7f8fa;--accent:#4f46e5}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}

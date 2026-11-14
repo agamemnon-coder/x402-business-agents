@@ -45,7 +45,8 @@ describe("foreign VAT", () => {
       // Code review 13 Nov: German VAT sits on 1515 (to reclaim through the EU refund); 1510 holds only what 5b reclaims.
       expect(v.foreign_vat.vat_cents).toBe(bal.by_currency.EUR.accounts.find((a) => a.account === "1515")!.cents);
       expect(bal.by_currency.EUR.accounts.find((a) => a.account === "1510")?.cents ?? 0).toBe(v.input_5b_cents);
-      expect(v.input_5b_cents).toBe(0);
+      // The one Dutch supplier's VAT: ZV-4471's 21% (EUR 84.00), accrued while its new supplier waits (the CFO review, 14 Nov).
+      expect(v.input_5b_cents).toBe(8400);
       const m = await c.req("POST", "/mcp", { key: "purser-demo-read-only", body: { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "books_report", arguments: { report: "vat", quarter: "2026Q4" } } }, headers: { origin: "null-omit" } });
       expect((m.json.result as { content: { text: string }[] }).content[0]!.text).toMatch(/Foreign VAT, outside the Dutch return: EUR 952\.84 on EUR 5,014\.96 \(5 lines/);
     } finally {

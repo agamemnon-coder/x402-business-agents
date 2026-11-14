@@ -61,8 +61,18 @@ export const SWIFT_CURRENCIES = ["AUD", "CAD", "CHF", "CNY", "CZK", "DKK", "EUR"
 /** Decimal places, from the currency precision page; every SWIFT currency has two except JPY. */
 const ZERO_DECIMALS = new Set(["JPY"]);
 
-/** IBAN length by country, from each guide ("22 alphanumeric characters" for DE and GB, 18 for NL, 26 for TR). */
-const IBAN_LENGTH: Record<string, number> = { DE: 22, GB: 22, NL: 18, TR: 26 };
+/**
+ * The SEPA countries and their IBAN length (ISO 13616, the SWIFT IBAN registry): a EUR payment to any of them is a SEPA
+ * credit transfer by IBAN.
+ */
+const SEPA_IBAN_LENGTH: Record<string, number> = {
+  AT: 20, BE: 16, BG: 22, CH: 21, CY: 28, CZ: 24, DE: 22, DK: 18, EE: 20, ES: 24, FI: 18, FR: 27, GB: 22, GR: 27, HR: 21, HU: 28, IE: 22, IS: 26,
+  IT: 27, LI: 21, LT: 20, LU: 20, LV: 21, MC: 27, MT: 31, NL: 18, NO: 15, PL: 28, PT: 25, RO: 24, SE: 24, SI: 19, SK: 24, SM: 27,
+};
+const SEPA_DOC = "SEPA credit transfer by IBAN (ISO 13616 lengths; Airwallex validates each beneficiary when it is created)";
+
+/** IBAN length by country, from each guide ("22 alphanumeric characters" for DE and GB, 18 for NL, 26 for TR) and SEPA's. */
+const IBAN_LENGTH: Record<string, number> = { ...SEPA_IBAN_LENGTH, DE: 22, GB: 22, NL: 18, TR: 26 };
 
 const guide = (c: string) => `https://www.airwallex.com/docs/payouts/payout-network/bank-accounts/${c}.md`;
 
@@ -106,6 +116,10 @@ const COUNTRIES: Record<string, Country> = {
   },
   NL: { doc: guide("netherlands"), local: [{ currency: "EUR", needs: ["iban"] }], swift: { needs: ["iban"] } },
   DE: { doc: guide("germany"), local: [{ currency: "EUR", needs: ["iban"] }], swift: { needs: ["iban"] } },
+  // Every other SEPA country (the CFO review, 14 Nov: Belgian, French and Irish EUR suppliers were refused): EUR by its
+  // IBAN on the local SEPA route, as NL and DE; any other currency there is refused (chooseRoute). Airwallex's own
+  // /beneficiaries/schema and /beneficiaries/validate still check each beneficiary when it is created.
+  ...Object.fromEntries(Object.keys(SEPA_IBAN_LENGTH).filter((c) => !["NL", "DE", "GB"].includes(c)).map((c) => [c, { doc: SEPA_DOC, local: [{ currency: "EUR", clearing: "SEPA", needs: ["iban"] }], swift: { needs: ["iban"] } } as Country])),
 };
 
 /** The countries Purser can pay (those whose guide it has read). */
@@ -124,6 +138,8 @@ const present = (d: BankDetails, f: Field) =>
 export function chooseRoute(d: BankDetails): { ok: true; route: Route } | { ok: false; reason: string } {
   const c = COUNTRIES[d.country];
   if (!c) return { ok: false, reason: `Purser has no payout guide for bank country ${d.country || "(none)"} yet; a person pays this supplier, or adds the country from Airwallex's payout network guide` };
+  // A country Purser pays by SEPA alone (no guide of its own): EUR only.
+  if (c.doc === SEPA_DOC && d.currency !== "EUR") return { ok: false, reason: `Purser has no payout guide for bank country ${d.country} yet beyond SEPA, which carries EUR, not ${d.currency || "(no currency)"}; a person pays this supplier` };
   if (!payableCurrency(d.currency)) return { ok: false, reason: `Purser cannot pay in ${d.currency || "(no currency)"}: only two-decimal currencies that SWIFT carries (${SWIFT_CURRENCIES.filter(payableCurrency).join(", ")})` };
   for (const l of c.local) {
     if (l.currency !== d.currency) continue;

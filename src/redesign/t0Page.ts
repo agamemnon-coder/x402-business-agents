@@ -84,7 +84,8 @@ export const t0Data = (): T0Data => ({
   refusals: t0Refusals(read(T0_FIRST_RECORD), read(T0_SECOND_RECORD)),
 });
 
-export const T0_CSS = `${T0_CLOSE_CSS}
+export const T0_CSS = `.t0p .t0what { margin: 4px 0 0; font-size: 16px; color: var(--muted); }
+${T0_CLOSE_CSS}
 .t0r { padding: 16px 18px; display: grid; gap: 4px; }
 .t0r h2 { font-size: 19px; line-height: 1.25; margin: 0 0 4px; }
 .t0r ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
@@ -157,6 +158,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   const fold = (title: string, items: string[]) => items.length ? `<details class="fold"><summary>${esc(title)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
+  <p class="t0what">${esc("T:0, an outside accounting ledger.")}</p>
   ${stats}
   ${t0CloseTileHtml()}
   ${sandbox}

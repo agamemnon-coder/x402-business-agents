@@ -635,7 +635,9 @@ const atOf=(ms)=>ms<50?'':fill(C.live.at,{s:secs(ms)});
 // Dates and amounts as the whole page writes them (try-fixes, 13 Nov): 30 Nov 2026, EUR 1,850.00.
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const dateOf=(v)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m&&+m[2]>=1&&+m[2]<=12?Number(m[3])+' '+MON[+m[2]-1]+' '+m[1]:String(v||'')};
-const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return String(v||'');const l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');return dateOf(l)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')};
+const whenOf=(v)=>{const d=new Date(String(v||''));if(isNaN(d.getTime()))return String(v||'');const l=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');// CFO review, 14 Nov: a time says its zone (the viewer's own, by its short name: "CET", "GMT+1").
+  let tz='';try{tz=(new Intl.DateTimeFormat('en-GB',{timeZoneName:'short'}).formatToParts(d).find((p)=>p.type==='timeZoneName')||{}).value||''}catch(e){}
+  return dateOf(l)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+(tz?' '+tz:'')};
 const cash=(cur,amt)=>booksKit.money(cur,amt);
 const say=(text)=>{$('#say').textContent=text};
 const note=(text)=>el('p','note',text);
@@ -1800,7 +1802,7 @@ ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
