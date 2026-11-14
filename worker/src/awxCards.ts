@@ -125,7 +125,8 @@ export class AwxCardsDesk {
     }
     switch (a.op) {
       case "scope": {
-        const r = await this.raw("GET", "/issuing/cards", undefined, { page_num: "0", page_size: "1" });
+        // page_size 10: Airwallex's list endpoints refuse a page smaller than 10 (HTTP 400); the read gateway uses 100.
+        const r = await this.raw("GET", "/issuing/cards", undefined, { page_num: "0", page_size: "10" });
         return r.ok ? { ok: true, op: "scope", issuing: "ok" } : r;
       }
       case "card": {

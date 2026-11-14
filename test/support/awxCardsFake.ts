@@ -26,6 +26,8 @@ export function fakeSandbox(o: { issuing?: boolean } = {}) {
     const ok = (j: unknown) => new Response(JSON.stringify(j), { status: 200, headers: { "content-type": "application/json" } });
     if (path === "/authentication/login") return ok({ token: "tok" });
     if (path.startsWith("/issuing") && o.issuing === false) return new Response(JSON.stringify({ code: "unauthorized" }), { status: 403 });
+    const ps = u.searchParams.get("page_size");
+    if (method === "GET" && ps !== null && Number(ps) < 10) return new Response(JSON.stringify({ code: "validation_failed" }), { status: 400 });
     if (method === "GET" && path === "/issuing/cards") return ok({ items: [...cards.values()].map(cardJson), has_more: false });
     if (method === "GET" && path === "/issuing/cardholders") return ok({ items: holders, has_more: false });
     if (method === "POST" && path === "/issuing/cardholders/create") { const h = { cardholder_id: `ch_${++n}`, email: body.email }; holders.push(h); return ok(h); }

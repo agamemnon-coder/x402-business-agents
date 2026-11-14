@@ -172,18 +172,27 @@ export async function cardsView(o: { sql: Sql; caller: Caller; gateway?: CardsPo
 }
 
 /** GET /v1/cards/scope: whether the sandbox key may use Issuing. ok or forbidden (or why it could not tell); no card data. */
-export async function cardsScope(sql: Sql, gateway: CardsPort | undefined, now: Date): Promise<{ issuing: "ok" | "forbidden" | "no_key" | "no_gateway" | "unavailable"; checked_at: string; label: string }> {
+export async function cardsScope(sql: Sql, gateway: CardsPort | undefined, now: Date): Promise<{ issuing: "ok" | "forbidden" | "no_key" | "no_gateway" | "unavailable"; why: string | null; http_status: number | null; awx_code: string | null; checked_at: string; label: string }> {
   await tables(sql);
   const hit = await sql.first<{ at: number; body_json: string }>("SELECT at, body_json FROM card_reads WHERE tenant_id = '' AND key = 'scope'");
   if (hit && now.getTime() - hit.at < SCOPE_TTL_MS) return JSON.parse(hit.body_json);
   let issuing: "ok" | "forbidden" | "no_key" | "no_gateway" | "unavailable";
+  // Why, in fixed codes only: the gateway's own code, Airwallex's HTTP status and its error code. Never its words.
+  let why: string | null = null, httpStatus: number | null = null, awxCode: string | null = null;
   if (!gateway) issuing = "no_gateway";
   else {
-    let a: CardsAnswer;
-    try { a = await gateway.ask({ op: "scope" }); } catch { a = { ok: false, code: "no_answer", reason: "" }; }
-    issuing = a.ok ? "ok" : a.code === "forbidden" ? "forbidden" : a.code === "no_key" ? "no_key" : "unavailable";
+    let a: CardsAnswer | null;
+    try { a = await gateway.ask({ op: "scope" }); } catch { a = null; }
+    if (!a) { issuing = "unavailable"; why = "rpc_failed"; }
+    else if (a.ok) issuing = "ok";
+    else {
+      issuing = a.code === "forbidden" ? "forbidden" : a.code === "no_key" ? "no_key" : "unavailable";
+      why = a.code;
+      httpStatus = typeof a.status === "number" ? a.status : null;
+      awxCode = typeof a.awx_code === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(a.awx_code) ? a.awx_code : null;
+    }
   }
-  const out = { issuing, checked_at: now.toISOString(), label: "Airwallex sandbox" };
+  const out = { issuing, why, http_status: httpStatus, awx_code: awxCode, checked_at: now.toISOString(), label: "Airwallex sandbox" };
   await sql.run("INSERT INTO card_reads (tenant_id, key, at, body_json) VALUES ('', 'scope', ?, ?) ON CONFLICT(tenant_id, key) DO UPDATE SET at = excluded.at, body_json = excluded.body_json", [now.getTime(), JSON.stringify(out)]);
   return out;
 }

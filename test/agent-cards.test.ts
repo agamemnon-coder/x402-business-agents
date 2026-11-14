@@ -178,11 +178,24 @@ describe("live cards in Purser Cloud (cloud/src/agentCards.ts)", () => {
   });
 
   it("answers the Issuing scope check as ok or forbidden, without card data", async () => {
-    expect((await c.req("GET", "/v1/cards/scope", { key: null })).json).toMatchObject({ issuing: "ok" });
+    expect((await c.req("GET", "/v1/cards/scope", { key: null })).json).toMatchObject({ issuing: "ok", why: null });
     const c2 = testCloud();
     const desk = new AwxCardsDesk({ AIRWALLEX_CLIENT_ID: "id", AIRWALLEX_API_KEY: "k" }, { fetchImpl: fakeSandbox({ issuing: false }).fetchImpl });
     c2.env.awxCards = { ask: (a) => desk.ask(a) };
-    expect((await c2.req("GET", "/v1/cards/scope", { key: null })).json).toMatchObject({ issuing: "forbidden" });
+    expect((await c2.req("GET", "/v1/cards/scope", { key: null })).json).toMatchObject({ issuing: "forbidden", why: "forbidden", http_status: 403, awx_code: "unauthorized" });
     c2.close();
+  });
+
+  it("says why the scope check failed in fixed codes only: a thrown call, Airwallex's status and code", async () => {
+    const c3 = testCloud();
+    c3.env.awxCards = { ask: async () => { throw new Error("no such entrypoint: secret words"); } };
+    const r = (await c3.req("GET", "/v1/cards/scope", { key: null })).json;
+    expect(r).toMatchObject({ issuing: "unavailable", why: "rpc_failed", http_status: null });
+    expect(JSON.stringify(r)).not.toContain("secret words");
+    c3.close();
+    const c4 = testCloud();
+    c4.env.awxCards = { ask: async () => ({ ok: false, code: "airwallex", reason: "the sandbox refused the call", status: 400, awx_code: "validation_failed" }) };
+    expect((await c4.req("GET", "/v1/cards/scope", { key: null })).json).toMatchObject({ issuing: "unavailable", why: "airwallex", http_status: 400, awx_code: "validation_failed" });
+    c4.close();
   });
 });
