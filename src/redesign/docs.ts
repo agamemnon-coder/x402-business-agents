@@ -142,6 +142,8 @@ ol.pchain.n5 { margin: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
 .cchip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 0 0 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--sunken); }
 .cchip .k { font-size: 14px; font-weight: 650; color: var(--muted); white-space: nowrap; }
+/* Jury scan, 14 Nov: the demo token's longer label wraps on a phone instead of widening the page. */
+@media (max-width: 640px) { .cchip { flex-wrap: wrap; padding-top: 6px; } .cchip .k { white-space: normal; flex-basis: 100%; } }
 .cchip code { min-width: 0; overflow-wrap: anywhere; }
 .cchip .cp { flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
 .cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); } .cchip .cp[hidden] { display: none; }
