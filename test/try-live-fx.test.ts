@@ -113,6 +113,10 @@ describe("/try's live FX quote in the signed terms", () => {
     expect(wrong.note).toMatchObject({ source: "recorded", reason: "bad_answer" });
     const capped = await company(liveSource({ answer: () => ({ ok: false, reason: "day_cap" }) }).source);
     expect(capped.note).toMatchObject({ source: "recorded", reason: "day_cap" });
+    // The sandbox's quote 1% over its own rate: over Purser's FX limit, so the recorded rate is used and Approve runs.
+    const dear = await company(liveSource({ answer: (a) => ({ ok: true, quote: { quote_id: QUOTE_ID, buy_currency: "EUR", sell_currency: "USD", buy_amount: a.buyAmount, sell_amount: (Math.ceil(Number(a.buyAmount) * 1.1717 * 100) / 100).toFixed(2), client_rate: "1.1717", valid_to_at: new Date(Date.now() + 15 * 60_000).toISOString() }, market_rate: "1.1601" }) }).source);
+    expect(dear.note).toMatchObject({ source: "recorded", reason: "over_limit" });
+    expect((dear.terms.terms as unknown as { conversion: Conversion }).conversion.quote_id).not.toBe(QUOTE_ID);
     const odd = await company(liveSource({ answer: () => ({ ok: false, reason: "something Airwallex said" }) }).source);
     expect(odd.note).toMatchObject({ source: "recorded", reason: "unavailable" });
     const thrown = await company({ quote: async () => { throw new Error("binding failed"); } });

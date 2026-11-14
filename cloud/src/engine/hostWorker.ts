@@ -100,7 +100,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   const fx = env.AWX_FX && tenantId.startsWith("t_try_")
     ? withLiveFx(bank, {
       company: tenantId, source: env.AWX_FX, db,
-      allowed: async () => on(await readSwitches(sql), "awx_fx"),
+      // On unless the owner set awx_fx to "off" (14 Nov): the quote is read-only and capped in kit11 (AWX_FX=off there stops it too).
+      allowed: async () => (await readSwitches(sql)).awx_fx !== "off",
       keep: {
         get: (id) => (storage.sql.exec("SELECT note FROM awx_fx_notes WHERE quote_id = ?", id).toArray()[0]?.note as string | undefined) ?? null,
         set: (id, note) => { storage.sql.exec("INSERT INTO awx_fx_notes (quote_id, note) VALUES (?, ?) ON CONFLICT(quote_id) DO UPDATE SET note = excluded.note", id, note); },
