@@ -17,6 +17,7 @@ import { tryPageResponse } from "./tryPage.js";
 import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
@@ -741,7 +742,7 @@ function workPoll(){
     catch(e){/* an ended session has gone to sign-in; anything else is asked again on the next tick */}
     finally{WORK.polling=null}
     if(WORK.token!==token)return;
-    if(fresh.length){const add=fresh.map((e)=>({n:Number(e.seq)||0,ts:e.ts,l:lineOf(e)}));WORK.lines=WORK.lines.concat(add).slice(-WORK_KEPT);workAdd(add);if(WORK.caught&&WORK.onEvents)WORK.onEvents(fresh)}
+    if(fresh.length){const add=fresh.map((e)=>({n:Number(e.seq)||0,ts:e.ts,l:awxLine(lineOf(e))}));WORK.lines=WORK.lines.concat(add).slice(-WORK_KEPT);workAdd(add);if(WORK.caught&&WORK.onEvents)WORK.onEvents(fresh)}
     WORK.caught=true})();
   return WORK.polling}
 const workItem=(x)=>{const d=new Date(x.ts);const tm=el('time','',isNaN(d)?'':d.toLocaleTimeString(NL?'nl-NL':'en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));tm.dateTime=String(x.ts||'');tm.title=stamp(x.ts);
@@ -853,7 +854,7 @@ async function invoicesView(q,embed){
     reloading=(async()=>{try{do{again=false;gen++;const p=await api('/v1/invoices?limit=200');all=p.items;cursor=p.next_cursor;more.hidden=!cursor;draw()}while(again)}
       catch(e){if(!(e instanceof Expired))list.before(note(e.message,'bad'))}finally{reloading=null}})();
     return reloading}
-  const nodes=[embed?null:head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean);
+  const nodes=[embed?null:head(t('nav.invoices'),write?t('cs.eng.invoices_lede'):ME&&ME.demo?t('cs.demo.invoices_lede'):t('cs.invoices_lede')),write?uploadRow({filed:reload}):null,write?awxBar({reload}):null,eng?workPanel():null,el('section','section',[bar,list,more])].filter(Boolean);
   if(embed)embed.replaceChildren(...nodes);else view().replaceChildren(...nodes);
   // An invoice that arrived, was paid or was filed in the archive: the list is read again.
   if(eng)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='ap.received'||e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))reload()};
@@ -915,7 +916,7 @@ function proofCard(i0){
     const tx=txs.v?txs.v.find((x)=>x.id==='transfer:'+p.id):null;
     const fm=/^([A-Z]{3,4}) (\d+\.\d{2})$/.exec(String(p.fee_actual||''));const fee=fm?ma(fm[1],fm[2]):tx&&tx.fee?ma(tx.fee.currency,tx.fee.amount):'';
     const b=block('paid','circle-check',t('cs.eng.paid_h'),t('cs.eng.paid_line',{money:ma(p.currency,p.amount),date:day(p.updated_at)}),[]);
-    b.firstChild.append(el('span','pill ok',String(p.status||'')),el('span','pill warn',t('cs.eng.test_bank')));
+    b.firstChild.append(el('span','pill ok',String(p.status||'')),el('span','pill warn',AWX_ON?aw('test_money'):t('cs.eng.test_bank')));
     b.append(el('details','',[el('summary','',t('cs.eng.paid_fold')),dl([[t('status'),String(p.status||'')],[t('amount'),ma(p.currency,p.amount)],[t('cs.eng.fee'),fee],[t('cs.eng.method'),p.method],
       [t('cs.eng.transfer_ref'),p.transfer_id||(tx&&tx.proof)||'','mono'],[t('cs.eng.payment_id'),p.id,'mono']])]));
     if(txs.e)b.append(failed(txs.e));
@@ -995,7 +996,7 @@ function payCard(o){
   // The terms as the engine gives them (the phone page's facts): the first four in view and the rest in a fold, as the
   // phone page shows first and details; the stand-in bank beside them; the fingerprint (hash and request id) last.
   const factsDl=(fs)=>{const d=dl(fs);d.classList.add('facts');return d};
-  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),p.second_key?note(p.second_key.message,'warn'):null,note(t('cs.eng.stand_in')),factsDl(fs.slice(0,4)),
+  const terms=(p)=>{const fs=p.facts||[];return [...(p.warnings||[]).map((w)=>note(w,'warn')),p.second_key?note(p.second_key.message,'warn'):null,awxBankNote(i.id),factsDl(fs.slice(0,4)),
     fs.length>4?el('details','',[el('summary','',t('cs.eng.more_terms',{n:fs.length-4})),factsDl(fs.slice(4))]):null]};
   const print=(p)=>el('details','',[el('summary','',t('cs.eng.terms_fold')),dl([[t('cs.eng.terms_hash'),p.terms_sha256,'mono'],[t('cs.eng.proposal_id'),p.id,'mono']])]);
   function proposal(p){
@@ -1032,7 +1033,9 @@ function payCard(o){
   // Not ready: the checks further down say why (the pay route's 409 is never asked just to learn it); where the reason is
   // not a check, the rule the engine's payable comes from (src/ap/detail.ts actionsFor) says it.
   else{const why=i.status==='needs_vendor'?t('action.needs_vendor'):i.status==='ready'?t('action.currency_not_paid',{currency:i.currency||''}):'';
-    draw([el('p','lead',why?t('cs.eng.not_yet_why',{why}):t('cs.eng.not_yet'))])}
+    // A new supplier (14 Nov): the owner's check, the payee's bank through Airwallex, then the CFO's passkey (cloud/src/awxActUi.ts).
+    const sup=o.write&&i.status==='needs_vendor'?awxSupplier(i,(p,checked)=>{proposal(p);if(checked)box.insertBefore(checked,box.children[1])}):null;
+    draw([el('p','lead',why?t('cs.eng.not_yet_why',{why}):t('cs.eng.not_yet')),sup])}
   return box}
 // The supplier's PDF is drawn in a sandboxed frame with an opaque origin (red team round 5): pdf.js parses it there, in
 // a worker, under its own policy and time limit; the frame cannot reach this page, its session or the API. This page
@@ -1697,7 +1700,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + UI_JS + AWX_UI_JS + BODY);
+const USED = keysUsedIn(SCRIPT + UI_JS + AWX_UI_JS + AWX_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -1706,13 +1709,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
   return `<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;

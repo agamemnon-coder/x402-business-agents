@@ -53,7 +53,7 @@ beforeAll(async () => {
 afterAll(() => c.close());
 
 describe("the route table", () => {
-  it("holds the engine's sixteen routes, each with what it needs", () => {
+  it("holds the engine's twenty routes, each with what it needs", () => {
     expect(ENGINE_ROUTES.map((r) => `${r.method} ${r.path} ${r.need}`)).toEqual([
       "GET /v1/engine read",
       "POST /v1/engine/documents admin",
@@ -67,6 +67,11 @@ describe("the route table", () => {
       "POST /v1/engine/security-key/finish admin",
       "POST /v1/engine/proposals/{id}/approve admin",
       "POST /v1/engine/proposals/{id}/retry admin",
+      // 14 Nov: Purser Cloud's Airwallex actions (src/engine/awxActions.ts).
+      "GET /v1/engine/airwallex read",
+      "POST /v1/engine/invoices/{id}/supplier admin",
+      "POST /v1/engine/batch admin",
+      "POST /v1/engine/deposit admin",
       "POST /v1/engine/sync admin",
       "GET /v1/engine/events read",
       "GET /v1/engine/vault read",
@@ -314,7 +319,7 @@ describe("the cloud's own gates", () => {
   const reads = ENGINE_ROUTES.filter((r) => r.method === "GET" && r.path !== "/v1/engine/vault/file");
 
   it("lets a viewer and a read-only key read, and do nothing else", async () => {
-    expect(posts).toHaveLength(10);
+    expect(posts).toHaveLength(13);
     for (const key of [viewer, reader]) {
       for (const r of posts) {
         const res = await c.req("POST", at(r.path), { key, body: {} });
@@ -329,6 +334,9 @@ describe("the cloud's own gates", () => {
 
   it("asks for a sign-in, and turns away a caller who is not signed in", async () => {
     for (const r of ENGINE_ROUTES) expect((await c.req(r.method, at(r.path), r.method === "POST" ? { body: {} } : {})).status, r.path).toBe(401);
+    // Twenty routes are twenty failed sign-ins from one address, the minute's limit (14 Nov: the Airwallex routes made
+    // them twenty): the next tests start in the next minute, as a person trying again would.
+    c.clock.now = new Date(c.clock.now.getTime() + 61_000);
   });
 
   it("does not let a key run a passkey ceremony for a person: an admin key gets 403 on the three passkey routes", async () => {
@@ -522,7 +530,7 @@ describe("a cloud with no engine wired", () => {
     const off = testCloud();
     try {
       const t = await off.tenant("plain");
-      expect(ENGINE_ROUTES).toHaveLength(16);
+      expect(ENGINE_ROUTES).toHaveLength(20);
       for (const key of [t.session, t.key]) {
         for (const r of ENGINE_ROUTES) {
           const res = await off.req(r.method, at(r.path), { key, ...(r.method === "POST" ? { body: {} } : {}) });

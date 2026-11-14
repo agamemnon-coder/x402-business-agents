@@ -168,6 +168,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/engine/policy/second-key` | admin | `{ changes: [{ key, to }] }` of `approval.second_key_eur`, `approval.second_key_new_payee`, `approval.second_key_bank_changed`, `approval.second_key_new_country`: a policy change the CFO then approves with Face ID; nothing changes before that. |
 | `POST /v1/engine/proposals/{id}/approve` | admin | A session only. `{ terms_sha256, credential }`: the passkey's signature over the proposal's challenge. Answers `{ status, message, settled }`; only `approved` pays, on the stand-in bank. For a test company of the hands-on demo the approval is stored and the payment held (`{ status: "approved", message, settled: null, held: true }`): it is paid through `POST /v1/engine/proposals/{id}/pay`. A `terms_sha256` other than the proposal's is refused before the signature is read. 404 for a proposal the company's engine does not hold. |
 | `POST /v1/engine/proposals/{id}/retry` | admin | Try again: a payment that was approved but whose execution failed (the stand-in bank was away, say) is run once more by the executor's own resume path, which looks a payout written before the failure up by its request id and never pays twice. Answers `{ status: "retried", message, settled }`; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused); 404 for a proposal the company's engine does not hold. |
+| `GET /v1/engine/airwallex` | read | Which bank each invoice was planned and paid at (the Airwallex sandbox or the simulated bank, test money either way), with Airwallex's ids: the payee's beneficiary id, the payee's bank check, the quote and conversion for a shortfall, the transfer (id, request_id, status, signed hash), a batch; the caps used today; the labels of every fallback. |
+| `POST /v1/engine/invoices/{id}/supplier` | admin | A new supplier from an invoice waiting for one (a session only): `{ how, street, city, postcode }`. The payee's bank is asked whether the account carries the supplier's name, then a payee_add waits for the CFO's passkey; signed, the supplier is added at the bank. 409 with the reason and the check when refused. |
+| `POST /v1/engine/batch` | admin | Pay all ready: `{ invoice_ids }` (1 to 20). Each is planned on its own terms, then one batch proposal waits for one passkey signature over its totals and lines; at Airwallex it runs as one batch transfer. 409 when none could be planned. |
+| `POST /v1/engine/deposit` | admin | Money in (a session only): `{ amount }` up to 500.00 USD, a deposit on the bank's simulation into the company's USD account, booked as a payment that names no invoice (held in suspense). Test money. |
 | `POST /v1/engine/sync` | admin | Follow the payments, book, archive and feed the read model again; safe to repeat. |
 | `GET /v1/engine/events` | read | What the engine did, oldest first: `?after=<seq>&limit=<1 to 200>`; `{ items, next }`. At most 2 reads a second per company, counted in its object: past that 429 `{ error, code: "slow_down", retry_ms }`. |
 | `GET /v1/engine/vault` | read | The archive's files as its indexes list them: `{ files }`. |
@@ -621,6 +625,32 @@ hands-on lane's.
   Cloudflare's current D1 Time Travel page for the retention window on the plan used, and rehearse one restore of a
   copy with `wrangler d1 time-travel` into a scratch database. R2 has no point-in-time restore of its own here: the
   documents are written once under their hash and never changed, and the export lists them.
+
+## Airwallex actions in Purser Cloud (14 Nov, off by default)
+
+A signed-in company's payables can run at the Airwallex sandbox (test money), every step behind the CFO's passkey over
+the exact terms. Built on Airwallex. Off until switched on; anything Airwallex cannot do runs on the simulated bank, and
+the invoice says so.
+
+- **New supplier:** the owner records how the account was confirmed; the payee's bank is asked through Airwallex
+  (`/beneficiaries/verify_account`); the CFO signs the new supplier; then Airwallex's schema, validation and create run
+  (`/beneficiaries/schema`, `/validate`, `/create`). The beneficiary id is on the invoice.
+- **Pay:** planned on Airwallex's balances; a live quote (`/fx/quotes/create`) only for the shortfall, in the signed
+  terms. After the signature: the conversion and the transfer, each with its request_id from the signed terms and
+  `metadata.approval_sha256`; the sandbox simulation moves the transfer to PAID. The transfer id is on the invoice in full.
+- **Pay all ready:** one batch proposal, one signature over its totals and lines; at Airwallex one batch transfer.
+- **Money in:** a deposit simulation into the USD global account, booked (held in suspense until named).
+- **Agent cards:** not part of these actions; they have their own gateway (`AwxCards`, below).
+
+Locks, all off by default: the admin switches `awx_act` (and `awx_act_try` for /try companies), the daily caps
+`awx_act_company_cents_day` (at most 1,000.00) and `awx_act_global_cents_day` (at most 5,000.00), and on the kit11
+Worker `AWX_GATEWAY_WRITE=on`. Only kit11 holds the sandbox key (`AWX_ACT_CLIENT_ID` and `AWX_ACT_API_KEY` when set, else the Worker's
+`AIRWALLEX_CLIENT_ID` and `AIRWALLEX_API_KEY`); Purser Cloud reaches it through the named entrypoint `AwxGateway`, which no HTTP request can reach. The
+allow-list is `src/airwallex/gatewayRules.ts`. After a signature nothing falls back to another bank: the signed terms
+name that bank's ids, so a failed payment stays failed with its reason and Pay plans it again.
+
+The screenshots `docs/assets/cloud/console-airwallex-*.png` are from a local run with an in-memory stand-in in
+Airwallex's place (ids start `local-standin-`), not from the sandbox.
 
 ## The agents' live sandbox cards (Agents tab)
 

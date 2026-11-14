@@ -154,7 +154,7 @@ function liveCardPanel(x,CV){
     kids.push(el('p','sub',t('cs.cards.none',{per:eurc(P.per_tx_cents),month:eurc(P.monthly_cents)})));
     if(CV.can_act)kids.push(el('div','cbar',[act('issue',t('cs.cards.issue'),'credit-card','primary')]));
   }
-  if(!CV.on)kids.push(el('p','fine',[ic('lock'),t('cs.cards.off',{why:CV.why||''})]));
+  if(!CV.on)kids.push(el('p','fine',[ic('lock'),t('cs.cards.off',{why:(CV.why||'').replace(/\s*\([a-z_]+\)$/,'')})]));
   else if(!CV.can_act)kids.push(el('p','fine',[ic('lock'),t('cs.cards.owner_only')]));
   kids.push(el('p','fine',[ic('lock'),t('cs.cards.never')]),out);
   const box=el('div','lcard',kids);return box}
@@ -335,7 +335,7 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')),getDoc]),pages]);
   // The payment card where the person acts, or the proof once paid, first; then the checks, the entries it produced; the
   // panel "At work" last; without an engine, the note that the phone approves. On a phone this column comes first.
-  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,eng?awxCard(id):null,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
   view().replaceChildren(back,top,trail,el('div','split inv',[el('div','docs',[paper,doc]),stack]));
   readJournal();
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
