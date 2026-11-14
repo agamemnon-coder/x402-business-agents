@@ -11,6 +11,7 @@
 // test/airi-hosted-checkout.test.ts (one origin only) and test/airi-purchase.test.ts (a leftover folder removed at the
 // next start).
 
+import { AIRI_CREDENTIAL } from "../config/brand.js";
 import { CREDENTIAL_DIR_MODE, HPP_ORIGIN, SCRUB_DIGITS_FROM } from "../airi/cardData.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc } from "./ui.js";
@@ -24,7 +25,7 @@ export const CARD_DATA_SUMMARY = "Card data: not a network-tokenised checkout, n
  */
 export const CARD_DATA_NOT: readonly string[] = [
   "This is not a network-tokenised checkout.",
-  "In a sandbox test run, a headless browser types Airi's Visa credential into Airwallex's hosted card page, as Airi's instructions say: like a normal card. How that credential relates to a Visa network token is not documented.",
+  `In a sandbox test run, a headless browser types the ${AIRI_CREDENTIAL} into Airwallex's hosted card page, as Airi's instructions say: like a normal card. How that credential relates to a Visa network token is not documented.`,
   "There is no PCI attestation.",
 ];
 /** The code that handles the credential, and the test that holds this block. */

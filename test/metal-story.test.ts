@@ -114,7 +114,10 @@ describe("the four mandates, one table", () => {
     expect(live.recorded_on).toBe("2026-11-12");
     // The final review (13 Nov): a recorded answer says so plainly; the live wording is hidden until a live read succeeds.
     expect(text(cards)).toContain(`Spent: a recorded snapshot from 12 Nov (block ${live.block}), not a live read.`);
-    expect(cards).toContain(`<span id="mlive-rec">It answers with the recorded snapshot from 12 Nov (block ${live.block}) until a live Alta testnet read is set up, and says so.</span><span id="mlive-how" hidden>Read live: one read for everyone every 15 minutes`);
+    // Partner scan, 14 Nov: the API reads Alta testnet live now; the text says what it does, cache and fallback included.
+    expect(cards).toContain(`<span id="mlive-rec">It reads Alta testnet live when the chain answers: one cached read for everyone every 15 minutes, at most `);
+    expect(cards).toContain(`When the chain does not answer, it returns the recorded snapshot from 12 Nov (block ${live.block}), and its source field says which.</span><span id="mlive-how" hidden>Read live: one read for everyone every 15 minutes`);
+    expect(cards).not.toContain("until a live Alta testnet read is set up");
     expect(METAL_INSPECT_JS).toMatch(/a\.source === "chain"[\s\S]*how\.hidden = false;[\s\S]*rec\.hidden = true;/);
     expect(cards).toContain(`data-rec="${METAL_INSPECTOR_RECORD}"`);
     for (const m of live.mandates) {
