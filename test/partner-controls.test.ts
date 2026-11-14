@@ -10,6 +10,7 @@ import { visaPage } from "../src/redesign/partners.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, notFoundResponse, type Pages } from "../worker/src/core.js";
 import { t0CloseLine } from "../cloud/src/t0Close.js";
+import { t0CloseGen, t0CloseLineOf } from "../src/accounting/t0CloseLine.js";
 import { consolePage } from "../cloud/src/console.js";
 import { VIC3_RUN_FILE } from "../src/redesign/vic3Run.js";
 
@@ -62,8 +63,13 @@ describe("Purser Cloud's Books: the same check", () => {
     const off = structuredClone(rec);
     off.entries[0]!.lines[0]!.cents -= 1;
     off.entries[0]!.lines[1]!.cents -= 1;
-    expect(t0CloseLine(off)).toMatchObject({ agrees: false, differences: 2 });
-    expect(t0CloseLine(off).first).toMatch(/^account \d{5} differs/);
+    expect(t0CloseLineOf(off)).toMatchObject({ agrees: false, differences: 2 });
+    expect(t0CloseLineOf(off).first).toMatch(/^account \d{5} differs/);
+  });
+
+  it("the cloud's generated line is the check recomputed from the record (npm run t0:readback writes it)", () => {
+    expect(t0CloseLine()).toEqual(t0CloseLineOf(rec));
+    expect(readFileSync(new URL("../cloud/src/t0Close.gen.ts", import.meta.url), "utf8")).toBe(t0CloseGen(t0CloseLineOf(rec)));
   });
 
   it("puts it in the console's config, with the words in both languages", () => {

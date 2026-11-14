@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { T0Client, type T0JournalEntry } from "../src/accounting/t0.js";
 import { readBackRecord } from "../src/accounting/t0Readback.js";
+import { t0CloseGen, t0CloseLineOf } from "../src/accounting/t0CloseLine.js";
 
 const { values } = parseArgs({ options: { from: { type: "string" }, out: { type: "string", default: "docs/runs/2026-11-14-t0-readback.json" }, day: { type: "string", default: "2026-11-03" } } });
 const ENTITY = "entity_prod_ieEAMzvhgtHalvsm";
@@ -27,4 +28,5 @@ if (values.from) {
 }
 const record = readBackRecord(entries, { readAt, entity: ENTITY, day: values.day! });
 writeFileSync(values.out!, `${JSON.stringify(record, null, 2)}\n`);
+writeFileSync("cloud/src/t0Close.gen.ts", t0CloseGen(t0CloseLineOf(record)));
 console.log(`${values.out}: ${record.entries.length} Purser entries, ${record.other_entries_ignored} other ignored; ${record.close_check.text}`);
