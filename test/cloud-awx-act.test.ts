@@ -70,8 +70,8 @@ describe("the gateway's allow-list", () => {
     const urls: string[] = [];
     const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
       urls.push(String(url));
-      if (String(url).endsWith("/authentication/login")) return new Response(JSON.stringify({ token: "tok-0123456789abcdefghijkl" }), { status: 200 });
-      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer tok-0123456789abcdefghijkl");
+      if (String(url).endsWith("/authentication/login")) return new Response(JSON.stringify({ token: "fake-token-for-tests-only-xxxxx" }), { status: 200 });
+      expect((init?.headers as Record<string, string>).authorization).toBe("Bearer fake-token-for-tests-only-xxxxx");
       return new Response(JSON.stringify({ id: "b-1" }), { status: 201 });
     }) as typeof fetch;
     const off = new AwxGatewayDesk({ AWX_ACT_CLIENT_ID: "id", AWX_ACT_API_KEY: "key-secret" }, { fetchImpl });
