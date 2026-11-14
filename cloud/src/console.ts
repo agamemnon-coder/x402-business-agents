@@ -1064,7 +1064,7 @@ async function transactionsView(){
   async function load(){
     const [s,p]=await Promise.all([api('/v1/transactions/summary?'+q.toString()),api('/v1/transactions?limit=200&'+q.toString())]);
     const tot=s.totals||[];const inn={},out={},fee={};for(const t of tot){inn[t.currency]=Math.round(Number(t.in||0)*100);out[t.currency]=Math.round(Number(t.out||0)*100);if(t.fees)fee[t.currency]=Math.round(Number(t.fees)*100)}
-    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t('cs.x.rails')),
+    tiles.replaceChildren(tile(t('cs.tile.in'),'arrow-down-left',money(inn),others(inn)||null),tile(t('cs.tile.out'),'arrow-up-right',money(out),others(out)||null),tile(t('cs.tile.fees'),'wallet',money(fee),t(ME&&ME.demo?'cs.x.rails_demo':'cs.x.rails')),
       tile(t('tx.tile.unreconciled'),'shield-check',String(s.check.unreconciled),s.check.unreconciled?t('cs.x.look'):t('cs.x.all_match'),s.check.unreconciled?'alert':'calm'),
       tile(t('tx.tile.no_approval'),'octagon-x',String(s.check.without_approval.length),s.check.without_approval.length?t('cs.x.look'):t('cs.x.all_approved'),s.check.without_approval.length?'alert':'calm'));
     list.replaceChildren(el('div','trow th',[el('span','',t('date')),el('span','',t('what')),el('span','',t('rail')),el('span','amt',t('amount')),el('span','',t('status')),el('span','',t('books')),el('span','')]));

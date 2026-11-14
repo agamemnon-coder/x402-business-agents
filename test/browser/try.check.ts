@@ -587,7 +587,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".blk.paid .bh"))!.includes(BOOKS.paid), `${tag}: paid: on the simulated bank, test money`);
   const entries = await every("/v1/ledger/entries") as { entry_id: number; source_key: string | null; entry_hash: string; lines: { account: string; debit_cents: number; credit_cents: number }[] }[];
   const ids = new Set((ourTx.booking as { entry_ids: number[] }).entry_ids);
-  const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id));
+  // 14 Nov (judge scan): the conversion that funded the payment is booked and shown too, under the same signed terms.
+  const sha = (ourTx.approval as { terms_sha256?: string } | null)?.terms_sha256;
+  if (sha) for (const y of txs) if (y.rail === "airwallex_fx" && (y.approval as { terms_sha256?: string } | null)?.terms_sha256 === sha) for (const n of (y.booking as { entry_ids: number[] } | null)?.entry_ids ?? []) ids.add(n);
+  const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id)).sort((a, b) => a.entry_id - b.entry_id);
+  ok(mine.some((e) => String(e.source_key).startsWith("fx|")) === (!!sha && txs.some((y) => y.rail === "airwallex_fx" && (y.approval as { terms_sha256?: string } | null)?.terms_sha256 === sha)), `${tag}: booked: the conversion that funded the payment is in the entries shown when there was one`);
   const apiLines = mine.flatMap((e) => e.lines);
   const shownAccounts = await page.locator(".blk.booked tbody td > span.mono").allTextContents();
   ok(apiLines.length > 0 && shownAccounts.join() === apiLines.map((l) => l.account).join(), `${tag}: booked: the invoice's journal lines, as the ledger holds them (${shownAccounts.join(" ")})`);
