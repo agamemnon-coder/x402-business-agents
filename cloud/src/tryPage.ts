@@ -779,28 +779,46 @@ function livePanel(){
   const node=el('div','card',[list,more]);node.hidden=true;
   // One clock (try-fixes, 13 Nov): once the answer is in, each row's time is the engine's own spacing between rows,
   // anchored at the answer's round trip as the browser measured it, so the last row and "Answered in" agree.
-  const rows=[];const shown=new Set();let done=null;
-  function settle(ms){done=ms;const ts=rows.map((r)=>r.ts).filter((n)=>n!==null);if(!ts.length)return;const last=Math.max(...ts);
-    for(const r of rows)if(r.ts!==null)r.t.textContent=fill(W.at,{s:secs(Math.max(0,ms-(last-r.ts)))})}
-  function add(items,t0){
-    for(const e of items){
-      if(agentRow(e))askClose(keyOf(e));
-      const l=lineOf(e);
-      // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
-      if(!l.lead&&l.text===W.step)continue;
-      const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
-      const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
-      if(t0!==undefined)rows.push({t,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
-      const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
-      list.append(el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]));
-      if(l.asking)askOpen(keyOf(e),t);
-      if(!l.fold)say(l.who+' · '+l.text);
-    }
+  // Round 4 (14 Nov): every Claude call's row is its own (two calls of one reader no longer share a timer); a row's
+  // call is answered by the next row of the same reader or agent ("asked."); once the answer is in, a call with no answer
+  // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
+  const rows=[];const shown=new Set();const asks=[];let done=null,n=0;
+  function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.what.textContent=W.asked}
+  function order(){
+    const lis=[...list.children];let carry=-Infinity;
+    const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.ts!==null)carry=r.ts;return {li,ts:carry,i}});
+    keyed.sort((a,b)=>a.ts-b.ts||a.i-b.i);
+    if(keyed.some((x,i)=>x.li!==lis[i]))for(const x of keyed)list.append(x.li);
+  }
+  function settle(ms){done=ms;
+    for(const a of asks)if(!a.answered){askClose(a.id);a.what.textContent=W.noAnswer}
+    order();
+    const ts=rows.map((r)=>r.ts).filter((x)=>x!==null);if(ts.length){const last=Math.max(...ts);
+      for(const r of rows)if(r.ts!==null)r.t.textContent=fill(W.at,{s:secs(Math.max(0,ms-(last-r.ts)))})}
+    past();
+  }
+  function past(){
     // The last three rows outside the fold stay in view; every other row waits behind "All steps".
     let seen=0;
     for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>3)}
     node.hidden=!list.children.length;more.hidden=!list.querySelector('.fold,.past');
-    if(done!==null)settle(done);
+  }
+  function add(items,t0){
+    for(const e of items){
+      const l=lineOf(e);
+      if(agentRow(e)&&!l.asking)answer(keyOf(e));
+      // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
+      if(!l.lead&&l.text===W.step)continue;
+      const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
+      const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
+      const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
+      const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]);
+      list.append(li);
+      if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
+      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false});askOpen(id,t)}
+      if(!l.fold)say(l.who+' · '+l.text);
+    }
+    if(done!==null)settle(done);else past();
   }
   return {node,add,settle};
 }

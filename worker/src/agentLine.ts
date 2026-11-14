@@ -2,7 +2,7 @@
 // Claude Opus advises when to pay (the runner's Treasury timing agent). What goes to a model is written by code: the
 // fixed invoice documents and the test world's facts. Nothing a visitor sends (no body, no address, no world id or
 // token) is ever part of it. The models only read and advise: the amounts, the payee, the plan, the checks and the
-// approval stay in code and the visitor's passkey. Limits: a budget of USD 10 a UTC day for every live agent call on the
+// approval stay in code and the visitor's passkey. Limits: a budget of USD 50 a UTC day for every live agent call on the
 // page together, a few calls a minute for everyone and a few an hour per address, an 8 s timeout per call; past any of
 // them, or on any error, the page shows a recorded real output of the same agent (docs/demo/try-agents-recorded.json,
 // labelled "recorded: the live agent was unavailable") or, without one, code's reading and a fixed sentence, labelled
@@ -21,7 +21,8 @@ import type { AgentAsk } from "../../src/try/world.js";
 import { adviceBounds, licenceNumbers, plainReason, type TimingFacts } from "../../src/agents/timingCore.js";
 
 /** Model spend allowed per UTC day for every live agent call on /try/sign together, in US dollars. */
-export const AGENT_LINE_DAILY_USD = 10;
+// 14 Nov (Max, for the judging days 15 and 16 Nov): USD 50 a UTC day, was 10. The kill switch and the per-address limits stay.
+export const AGENT_LINE_DAILY_USD = 50;
 /** A live call that takes longer is dropped (the reader's call, and each of Opus's calls). */
 export const AGENT_LINE_TIMEOUT_MS = 8_000;
 

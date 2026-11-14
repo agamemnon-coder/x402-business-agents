@@ -921,7 +921,7 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await run(p.page, 1000);
   const shown = await p.page.locator(".live li:visible").allInnerTexts();
   ok(shown.length === 3 && await p.page.locator(".live li.agent:visible").count() === 3, `agents: three lines in view, one per agent (${shown.length})`);
-  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code enforced: ask the CFO; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
+  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code overrode it: ask the CFO; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
   ok(/^Coder agent · Claude Haiku 4\.5\s+6200 expense, VAT 21%: “?Office supplies at the high rate”? \(its own words\)/.test(shown[1] ?? "") && !(shown[1] ?? "").includes("enforced"), `agents: the Coder's line (${shown[1]?.replace(/\s+/g, " ")})`);
   ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 20 Nov 2026 by a SWIFT bank transfer from EUR, because .*\(its own words\)\s+Purser's code enforced: ask the CFO/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
   ok(await p.page.locator(".live .own").count() === 3 && await p.page.locator(".live .enf:visible").count() === 2, "agents: each reason marked as its own words; what code enforced, where the event says it");

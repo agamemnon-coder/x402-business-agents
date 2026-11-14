@@ -1,6 +1,6 @@
 // /try/sign (spec 6b): the Treasury agent's line on the waiting payment is Claude Opus's reason, from the runner's own
 // Treasury timing agent (the same system prompt, prompt, tools, bounds, effort and turns), given the test world's facts
-// only, never a visitor's words; a budget of USD 10 a day for every live agent on the page, limits per minute and per
+// only, never a visitor's words; a budget of USD 50 a day for every live agent on the page, limits per minute and per
 // address, 8 s a call and a deadline for the run; otherwise its recorded advice or the fixed sentence, labelled with the
 // reason. Code checks the reason: one or two sentences, every amount one of code's numbers. The model only advises: the
 // amounts, the payee, the plan and the approval stay in code and the passkey. No network: Anthropic is a fake fetch.
@@ -201,7 +201,7 @@ describe("on the page: Opus's reason, labelled, or its recording, or the fixed s
     const { d, db, at } = deskWith(advisor);
     db.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?)").run(t0.toISOString().slice(0, 10), AGENT_LINE_DAILY_USD - 0.01);
     const { t2 } = await world(d);
-    expect(t2.voice!.label).toBe(`${FIXED_TEXT} · today's USD 10.00 for live agents on this page is spent`);
+    expect(t2.voice!.label).toBe(`${FIXED_TEXT} · today's USD 50.00 for live agents on this page is spent`);
     expect(advisor.calls).toBe(0);
     at(new Date(t0.getTime() + 86_400_000));
     expect((await world(d)).t2.voice?.source).toBe("live");

@@ -122,8 +122,8 @@ describe("eventLine", () => {
     const checker = eventLine(ev("ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", action: "pay", outcome: "ask_cfo", overridden: true, overridden_by: "agent_may_not_pay_alone",
       code_requires: "ask_cfo", codes: "possible_duplicate", reason: "Bergtex is on file and the totals add up.", enforced: "The agent may pay no invoice alone.", request_id: "req_1" }, "checker"));
     expect(checker).toMatchObject({ who: "Checker agent · Claude Haiku 4.5", tag: "claude", fold: false, lead: "Decided: pay, because", own: "Bergtex is on file and the totals add up",
-      enforced: "Purser's code enforced: ask the CFO; The agent may pay no invoice alone" });
-    expect(checker.text).toBe("Decided: pay, because Bergtex is on file and the totals add up. Purser's code enforced: ask the CFO; The agent may pay no invoice alone.");
+      enforced: "Purser's code overrode it: ask the CFO; The agent may pay no invoice alone" }); // round 4: code's outcome is not the agent's
+    expect(checker.text).toBe("Decided: pay, because Bergtex is on file and the totals add up. Purser's code overrode it: ask the CFO; The agent may pay no invoice alone.");
 
     const coded = eventLine(ev("ap.coded", { source: "claude", model: "claude-haiku-4-5", status: "coded", lines: 2, account: "6200", vat_code: "P21", cost_centre: "OPS", reason: "Office supplies at the high rate.", request_id: "req_2" }, "treasury"));
     expect(coded).toMatchObject({ who: "Coder agent · Claude Haiku 4.5", tag: "claude", fold: false, lead: "6200 expense, VAT 21%:", own: "Office supplies at the high rate", enforced: "" });
@@ -172,5 +172,44 @@ describe("eventLine", () => {
 
   it("is plain script with no DOM, clock or network, so the page carries the same text", () => {
     expect(EVENT_LINE_JS).not.toMatch(/\b(document|window|fetch|Date|setTimeout|setInterval|innerHTML|eval|Function)\b/);
+  });
+});
+
+// Jury round 4 (14 Nov): a reason is never cut at "B.V."; where code's outcome is not the agent's, the line says code
+// overrode it; a step Claude was not asked for says why, in plain words, from the event's own reason.
+describe("round 4: the agents' lines read whole", () => {
+  const pub = (event: string, payload: Record<string, unknown>) => publicEvent({ seq: 1, ts: "2026-11-14T12:00:00Z", actor: "checker", event, subject: "AP-0005", payload_json: JSON.stringify(payload) });
+
+  it("keeps a reason's first sentence whole past an abbreviation, and cuts a long one at a word", () => {
+    const e = pub("ap.checker_decided", { source: "claude", model: "claude-haiku-5-5", action: "ask_cfo", outcome: "hold", overridden: true, overridden_by: "new_supplier",
+      reason: "Zeeland Verpakkingen B.V. is not on file as a supplier yet, so the CFO should decide. Its bank details are new.", why: "a new supplier waits for a person." });
+    expect(e.fields.reason).toBe("Zeeland Verpakkingen B.V. is not on file as a supplier yet, so the CFO should decide.");
+    const line = eventLine(e);
+    expect(line.lead).toBe("Decided: ask the CFO, because");
+    expect(line.own).toBe("Zeeland Verpakkingen B.V. is not on file as a supplier yet, so the CFO should decide");
+    expect(line.enforced).toBe("Purser's code overrode it: hold for a person; a new supplier waits for a person");
+    expect(line.text).toBe("Decided: ask the CFO, because Zeeland Verpakkingen B.V. is not on file as a supplier yet, so the CFO should decide. Purser's code overrode it: hold for a person; a new supplier waits for a person.");
+    const ends = pub("ap.checker_decided", { source: "claude", model: "claude-haiku-5-5", action: "hold", outcome: "hold", reason: "The supplier is Zeeland Verpakkingen B.V.", why: "" });
+    expect(eventLine(ends).own).toBe("The supplier is Zeeland Verpakkingen B.V.");
+    const long = pub("ap.checker_decided", { source: "claude", model: "claude-haiku-5-5", action: "hold", outcome: "hold", reason: `${"word ".repeat(60)}end.` });
+    expect(long.fields.reason).toMatch(/^word( word)+…$/);
+  });
+
+  it("says Purser's code enforced it when code's outcome is the agent's own decision", () => {
+    const e = pub("ap.checker_decided", { source: "claude", model: "claude-haiku-5-5", action: "hold", outcome: "hold", overridden: false, reason: "The bank details changed.", why: "possible fraud holds it." });
+    expect(eventLine(e).enforced).toBe("Purser's code enforced: hold for a person; possible fraud holds it");
+  });
+
+  it("the rule for a company without an alone-limit: agents pay no invoice alone, the CFO decides every one", async () => {
+    const { limitRule } = await import("../src/ap/checkerCore.js");
+    expect(limitRule(null, "EUR", "1850.00")).toEqual({ rule: "no_alone_limit", why: "in this company, agents pay no invoice alone: the CFO decides every one" });
+  });
+
+  it("a step Claude was not asked for says why: today's live budget is used, and Purser's code decided", () => {
+    for (const [reason, words] of Object.entries(LIVE.caps)) {
+      expect(eventLine(pub("claude.capped", { reason, model: "claude-haiku-5-5" })).text).toBe(`Claude was not asked: ${words}. Purser's code read and decided.`);
+    }
+    expect(LIVE.caps.pool_day_cap).toBe("today's live budget for Claude is used");
+    expect(eventLine(pub("claude.capped", { reason: "something_else" })).text).toBe(LIVE.ev["claude.capped"]);
   });
 });

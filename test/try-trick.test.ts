@@ -147,14 +147,14 @@ describe("the /trick endpoint and its live call", () => {
     const r2 = (await (await call(t.d, "trick", { token: w2.world.token, attack: "pre_approved" })).json()) as TrickOut;
     expect(r2.trick).toMatchObject({ blocked: true, agent: { live: false, note: "the live agent did not answer in time, or not in the expected shape" } });
   });
-  it("today's budget, USD 10 for every live call on the page together: when it is spent, no call", async () => {
-    expect(AGENT_LINE_DAILY_USD).toBe(10);
+  it("today's budget, USD 50 for every live call on the page together: when it is spent, no call", async () => {
+    expect(AGENT_LINE_DAILY_USD).toBe(50); // 14 Nov (Max): USD 50 a day for the judging days, was 10;
     const s = standIn();
     const { d, db } = deskWith(s.source);
     const w = await newWorld(d, undefined, { agents: false });
     db.prepare("INSERT INTO ts_spend (day, usd) VALUES (?, ?) ON CONFLICT(day) DO UPDATE SET usd = excluded.usd").run(new Date().toISOString().slice(0, 10), AGENT_LINE_DAILY_USD);
     const r = (await (await call(d, "trick", { token: w.world.token, attack: "lookalike" })).json()) as TrickOut;
-    expect(r.trick.agent.note).toBe("today's USD 10.00 for live agents on this page is spent");
+    expect(r.trick.agent.note).toBe("today's USD 50.00 for live agents on this page is spent");
     expect(s.seen).toEqual([]);
   });
   it("takes only a listed attack: no free text, so no visitor's words reach any code or model", async () => {
