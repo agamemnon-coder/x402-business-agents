@@ -10,8 +10,9 @@ import { GATEWAY_SANDBOX_BASE, gatewayCheck, type GatewayAnswer, type GatewayReq
 
 export interface GatewayEnv {
   /**
-   * The sandbox key for Cloud's actions, Worker secrets the owner sets (never a file or a script here). Its own key, not
-   * /try/sign's quote key (that one is scoped to quotes): it needs beneficiaries, FX, transfers and batch transfers.
+   * The sandbox key for Cloud's actions, Worker secrets the owner sets (never a file or a script here): AWX_ACT_* when
+   * set, else the Worker's one sandbox key (worker/src/index.ts hands it in). It needs beneficiaries, FX, transfers and
+   * batch transfers.
    */
   AWX_ACT_CLIENT_ID?: string;
   AWX_ACT_API_KEY?: string;
