@@ -59,8 +59,6 @@ export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with
 /**
  * Airwallex at the centre (Max, 14 Nov): what is new and live today, said the same on Home and /proof, linked to /try.
  * Only what is merged and live (#333): the sandbox quote is real, the conversion and the payment are on a simulated bank.
- * TODO(#338) live sandbox payout · TODO(#330) Cloud Airwallex tab · TODO(#332) Cloud Airwallex actions · TODO(#336)
- * learning loop · TODO(#335) Built on Airwallex: add each here when it is merged and live.
  */
 /** Home's shorter form: Home says "live" only on its button, "simulated" once, and no new date (test/home-story.test.ts). */
 export const AWX_HOME_LINE = "In /try, the Airwallex sandbox quotes the FX, and the quote is part of the terms you sign.";
