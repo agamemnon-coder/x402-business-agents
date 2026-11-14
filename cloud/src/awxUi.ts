@@ -68,7 +68,10 @@ const AWL_RENDER={
   transfers(d){const r=d.transfers||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
     const hash=(x)=>{if(!x.approval_sha256)return el('span','sub',t('cs.awl.no_hash'));const w=el('div','awhash',[awlId(x.approval_sha256)]);
       if(x.recorded)w.append(el('span','obadge '+(x.recorded.matches?'ok':'bad'),[ic(x.recorded.matches?'circle-check':'ban'),t(x.recorded.matches?'cs.awl.hash_match':'cs.awl.hash_differs',{inv:x.recorded.invoice})]));return w};
-    return el('div','',[el('p','sub',t('cs.awl.with_hash',{n:d.with_approval_hash,all:r.length})),awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.status')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.beneficiary')],[t('cs.awl.col.approval')],[t('cs.awl.col.date')]],
+    // The headline: each recorded payout read back live by id, Airwallex's hash next to the one the CFO signed.
+    const rb=(d.readback||[]).map((x)=>el('div','awrb '+(x.matches?'ok':'bad'),[el('div','awrbh',[el('span','obadge '+(x.matches?'ok':'bad'),[ic(x.matches?'circle-check':'ban'),t(x.matches?'cs.awl.rb_match':'cs.awl.rb_differs')]),el('b','',x.invoice),el('span','sub',[x.status||'',' · ',awlAmt(x.currency,x.amount)])]),
+      dl([[t('cs.awl.col.id'),awlId(x.id)],[t('cs.awl.rb_awx'),awlId(x.airwallex_sha256)],[t('cs.awl.rb_signed'),awlId(x.signed_sha256)]])]));
+    return el('div','',[rb.length?el('div','awrbs',[el('h3','tsec',t('cs.awl.rb_title')),...rb]):null,el('p','sub',t('cs.awl.with_hash',{n:d.with_approval_hash,all:r.length})),awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.status')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.beneficiary')],[t('cs.awl.col.approval')],[t('cs.awl.col.date')]],
       r.map((x)=>el('tr','',[awlTd(awlId(x.id)),awlTd(x.status),awlTd(awlAmt(x.currency,x.amount),'num r'),awlTd(awlId(x.beneficiary_id)),awlTd(hash(x)),awlTd(awlDay(x.created_at),'num')]))),el('p','links',[ext(d.record.url,t('cs.awl.run_record',{run:d.record.run}))])])},
   beneficiaries(d){const r=d.beneficiaries||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
     const chk=(b)=>b.payee_check?el('span','obadge '+(b.payee_check.match==='FULL_MATCH'?'ok':'wait'),t('cs.awl.check_recorded',{match:b.payee_check.match,day:awlDay(b.payee_check.at)})):el('span','sub',b.status?b.status:t('cs.awl.no_check'));
@@ -172,6 +175,12 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .awaccts { display: grid; gap: 12px; }
 .awacct { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
 .awah { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.awrbs { display: grid; gap: 10px; margin-bottom: 14px; }
+.awrb { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.awrb.ok { border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); background: color-mix(in srgb, var(--ok) 5%, var(--surface)); }
+.awrb.bad { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); }
+.awrbh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.awrb dl.read code.awid { word-break: break-all; white-space: normal; }
 .awcalls { margin: 4px 0 0; font-size: 15px; } .awcalls b { font-size: 22px; }
 @media (max-width: 900px) { .awgrid.two { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .awt { min-width: 560px; } code.awid { font-size: 11px; } }

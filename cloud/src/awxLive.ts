@@ -81,7 +81,13 @@ export function annotateTransfers(data: Record<string, unknown>): Record<string,
     const sha = typeof t.approval_sha256 === "string" ? t.approval_sha256 : null;
     return { ...t, approval_sha256: sha, recorded: rec ? { invoice: rec.invoice, approval_sha256: rec.sha, matches: sha === rec.sha } : null };
   });
-  return { transfers, with_approval_hash: transfers.filter((t) => t.approval_sha256).length, record: RUN_RECORD };
+  // The recorded payouts read back by id: Airwallex's metadata.approval_sha256 against the hash the CFO signed (the record).
+  const readback = list(data, "readback").map((t) => {
+    const rec = typeof t.id === "string" ? RECORDED_SHA.get(t.id) : undefined;
+    const sha = typeof t.approval_sha256 === "string" ? t.approval_sha256 : null;
+    return rec ? { id: t.id, status: t.status ?? null, amount: t.amount ?? null, currency: t.currency ?? null, invoice: rec.invoice, airwallex_sha256: sha, signed_sha256: rec.sha, matches: sha === rec.sha } : null;
+  }).filter((x) => x !== null);
+  return { transfers, with_approval_hash: transfers.filter((t) => t.approval_sha256).length, readback, record: RUN_RECORD };
 }
 
 /** Beneficiaries with the recorded payee check whose name matches (recorded on 12 Nov, not live). */

@@ -49,6 +49,7 @@ const standIn = (async (input: string) => {
   if (p === "/api/v1/fx/rates/current") { const sell = u.searchParams.get("sell_currency"), buy = u.searchParams.get("buy_currency"); return Response.json({ sell_currency: sell, buy_currency: buy, ...ratesLive[`${sell}>${buy}`] }); }
   if (p === "/api/v1/authentication/login") return Response.json({ token: "stand-in-token-" + "x".repeat(30) }, { status: 201 });
   if (p === "/api/v1/financial_transactions") return Response.json({ items: ft, has_more: false });
+  if (p.startsWith("/api/v1/transfers/")) { const x = transfers.find((t) => t.id === p.split("/").pop()); return x ? Response.json(x) : Response.json({ code: "not_found" }, { status: 404 }); }
   if (p === "/api/v1/transfers") return Response.json({ items: transfers });
   if (p === "/api/v1/beneficiaries") return Response.json({ items: beneficiaries });
   return Response.json({ code: "unavailable" }, { status: 503 });
@@ -99,7 +100,7 @@ try {
     ok(/^0 differences: all \d+ movements match to the cent\.$/.test(rec?.trim() ?? ""), `${name}: the reconciliation says 0 differences as computed (${rec?.trim()})`);
     const ids = await page.$$eval(".aw-transfers code.awid", (cs) => cs.map((c) => c.textContent));
     ok(ids.includes(transfers[0]!.id!) && ids.includes(run.invoices[0]!.approval_sha256), `${name}: transfer ids and approval hashes in full`);
-    ok((await page.$$eval(".aw-transfers .obadge.ok", (b) => b.length)) === transfers.length, `${name}: each recorded transfer's approval hash matches the record`);
+    ok((await page.$$eval(".aw-transfers .awrb.ok", (b) => b.length)) === transfers.length, `${name}: each recorded payout read back live by id, its hash a Match with the CFO's signed one`);
     if (name === "1440") {
       await page.click(".aw-transfers .awcopy");
       ok((await page.evaluate(() => navigator.clipboard.readText())) === transfers[0]!.id, `${name}: the copy button copies the full id`);

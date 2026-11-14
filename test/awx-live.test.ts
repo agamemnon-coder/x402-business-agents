@@ -34,6 +34,7 @@ function sandbox(o: { issuing?: number; down?: boolean; ftItems?: unknown[] } = 
     if (p === "/api/v1/global_accounts") return Response.json({ items: [{ id: "ga_1", account_name: "Northwind Outdoor", account_number: "12345678", iban: "GB33BUKB20201555555555", country_code: "GB", status: "ACTIVE", institution: { name: "Test Bank" }, swift_code: "TESTGB2L" }] });
     if (p === "/api/v1/financial_transactions") return Response.json({ items: o.ftItems ?? FT_ITEMS, has_more: false });
     if (p === "/api/v1/fx/rates/current") return Response.json({ sell_currency: u.searchParams.get("sell_currency"), buy_currency: u.searchParams.get("buy_currency"), rate: 0.885, currency_pair: "USDEUR", created_at: "2026-11-14T10:00:00+0000" });
+    if (p.startsWith("/api/v1/transfers/")) { const inv = RUN.invoices.find((i) => i.transfer_id === p.split("/").pop()); return inv ? Response.json({ id: inv.transfer_id, status: "PAID", transfer_amount: 240, transfer_currency: "EUR", metadata: { approval_sha256: inv.approval_sha256 } }) : Response.json({ code: "not_found" }, { status: 404 }); }
     if (p === "/api/v1/transfers") return Response.json({ items: RUN.invoices.filter((i) => i.transfer_id).map((i, k) => ({ id: i.transfer_id, status: "PAID", transfer_amount: 240, transfer_currency: "EUR", metadata: { approval_sha256: k === 0 ? i.approval_sha256 : "0".repeat(64) }, created_at: "2026-11-07T12:12:00+0000" })) });
     if (p === "/api/v1/beneficiaries") return Response.json({ items: [{ id: "ben_1", nickname: "Stockline", beneficiary: { entity_type: "COMPANY", company_name: "Stockline Data GmbH", bank_details: { iban: "DE02120300000000202051", bank_country_code: "DE", account_currency: "EUR" } }, transfer_methods: ["LOCAL"] }] });
     if (p === "/api/v1/issuing/cards" || p === "/api/v1/issuing/transactions") {
@@ -326,6 +327,39 @@ describe("the records the tab checks against", () => {
     expect(AWX_RUN_RECORDED).toEqual({ run: run.run, invoices: run.invoices.map(pick) });
     const pc = JSON.parse(readFileSync(new URL("../docs/runs/2026-11-12-airwallex-payee-check.json", import.meta.url), "utf8")) as { audit: { ts: string; event: string; subject: string | null; payload: { match?: string; label?: string } }[] };
     expect(PAYEE_CHECKS_RECORDED).toEqual(pc.audit.filter((a) => a.subject && /^payee\.name_check/.test(a.event)).map((a) => ({ name: a.subject, match: a.payload.match ?? null, label: a.payload.label ?? null, at: a.ts })));
+  });
+});
+
+describe("the recorded payouts read back live by id", () => {
+  it("pins the run record's two transfer ids in the gateway", async () => {
+    const { RECORDED_TRANSFER_IDS } = await import("../worker/src/awxRead.js");
+    expect([...RECORDED_TRANSFER_IDS]).toEqual(RUN.invoices.filter((i) => i.transfer_id).map((i) => i.transfer_id));
+  });
+  it("reads only GET /transfers/{id} (a UUID), never a write or a sub-path", () => {
+    const id = RUN.invoices.find((i) => i.transfer_id)!.transfer_id!;
+    expect(readAllowedUrl("GET", `${HOST}/api/v1/transfers/${id}`).pathname).toBe(`/api/v1/transfers/${id}`);
+    for (const [m, u] of [["POST", `${HOST}/api/v1/transfers/${id}`], ["GET", `${HOST}/api/v1/transfers/${id}/cancel`], ["POST", `${HOST}/api/v1/transfers/${id}/cancel`], ["GET", `${HOST}/api/v1/transfers/create`]] as const) expect(() => readAllowedUrl(m, u), `${m} ${u}`).toThrow(AwxReadNotAllowed);
+  });
+  it("puts Airwallex's metadata.approval_sha256 next to the hash the CFO signed, with Match", async () => {
+    const { d } = desk();
+    const { annotateTransfers } = await import("../cloud/src/awxLive.js");
+    const a = await d.read("transfers") as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>;
+    const rb = (annotateTransfers(a.data as Record<string, unknown>) as { readback: { invoice: string; airwallex_sha256: string; signed_sha256: string; matches: boolean }[] }).readback;
+    expect(rb.map((x) => [x.invoice, x.matches])).toEqual(RUN.invoices.filter((i) => i.transfer_id).map((i) => [i.invoice_no, true]));
+    expect(rb[0]!.airwallex_sha256).toBe(rb[0]!.signed_sha256);
+    // A hash one character off is "Differs", never a match.
+    const off = annotateTransfers({ readback: [{ id: RUN.invoices[0]!.transfer_id, approval_sha256: RUN.invoices[0]!.approval_sha256.replace(/.$/, (c) => (c === "0" ? "1" : "0")) }] }) as { readback: { matches: boolean }[] };
+    expect(off.readback[0]!.matches).toBe(false);
+  });
+});
+
+describe("contrast", () => {
+  it("the console's faint text is at least 4.5:1 on white (axe, 14 Nov)", () => {
+    const src = readFileSync(new URL("../cloud/src/console.ts", import.meta.url), "utf8");
+    const hex = /--faint: (#[0-9a-f]{6});/.exec(src)![1]!;
+    const lum = (h: string) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!; };
+    expect((1 + 0.05) / (lum(hex) + 0.05)).toBeGreaterThanOrEqual(4.5);
+    expect((lum("#f4f5f7") + 0.05) / (lum(hex) + 0.05)).toBeGreaterThanOrEqual(4.5); // on the sunken grey too
   });
 });
 

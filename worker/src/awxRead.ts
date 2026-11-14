@@ -38,6 +38,8 @@ export const AWX_READ_ALLOWED: readonly { method: Method; path: string; pattern?
   { method: "GET", path: "/api/v1/issuing/transactions", query: ["page_num", "page_size"] },
   // One card, by its id: the list carries no spending limits, the card's own record does (live, 14 Nov). Only the card
   // itself: never /details (the card number), never a write. The pattern is anchored: a UUID and nothing after it.
+  // One transfer, by its id: the live read-back of the recorded run's payouts (their metadata.approval_sha256).
+  { method: "GET", path: "/api/v1/transfers/{id}", pattern: /^\/api\/v1\/transfers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, query: [] },
   { method: "GET", path: "/api/v1/issuing/cards/{id}", pattern: /^\/api\/v1\/issuing\/cards\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, query: [] },
 ];
 
@@ -73,6 +75,9 @@ export const isAwxView = (v: unknown): v is AwxView => typeof v === "string" && 
 
 /** The currency pairs the live rates are read for: the currencies in Purser's books (EUR the base; USD and GBP bills). */
 export const RATE_PAIRS: readonly [sell: string, buy: string][] = [["USD", "EUR"], ["GBP", "EUR"], ["EUR", "USD"]];
+/** The recorded awx-1 run's two payouts (docs/demo/airwallex-run.json; test/awx-live.test.ts holds them equal): read back
+ *  by id on every refresh, so their approval hash stays on the page however many transfers come after them. */
+export const RECORDED_TRANSFER_IDS = ["738a4263-6d6c-4de8-94a3-93da1c175fb4", "4140dee2-6373-4eb4-a71f-bf69130f96a7"] as const;
 /** The window of the recorded awx-1 run (7 Nov), the one Purser's ledger reconciles with Airwallex's financial transactions. */
 export const RUN_WINDOW = { from: "2026-11-07T12:00:00+0000", to: "2026-11-07T14:00:00+0000" } as const;
 
@@ -272,7 +277,12 @@ export class AwxReadDesk {
         }
         return { rates };
       }
-      case "transfers": return { transfers: transfersOf(await this.get("/api/v1/transfers", { page_num: "0", page_size: "20" })) };
+      case "transfers": {
+        const transfers = transfersOf(await this.get("/api/v1/transfers", { page_num: "0", page_size: "20" }));
+        const readback = [];
+        for (const id of RECORDED_TRANSFER_IDS) { const t = transfersOf({ items: [await this.get(`/api/v1/transfers/${id}`)] })[0]; if (t) readback.push(t); }
+        return { transfers, readback };
+      }
       case "beneficiaries": return { beneficiaries: beneficiariesOf(await this.get("/api/v1/beneficiaries", { page_num: "0", page_size: "20" })) };
       case "issuing": {
         // Issuing needs its own scope on the key. Without it Airwallex answers 401/403: said so, not hidden.

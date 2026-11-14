@@ -1495,7 +1495,7 @@ const CLOUD_CSS = `
 .skel .sk-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } .skel .sk-cards i { height: 96px; }
 @media (prefers-reduced-motion: no-preference) { .skel i { animation: skp 1.4s ease-in-out infinite; } }
 @keyframes skp { 50% { opacity: .55; } }
-:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #8a93a1; --r: 12px; }
+:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #667085; --r: 12px; }
 body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
 header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .appbar .wrap { min-height: 52px; }
