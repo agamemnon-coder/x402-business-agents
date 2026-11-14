@@ -91,6 +91,12 @@ export const CARDS: Record<Agent, { firstName: string; email: string; nickname: 
 
 /** A locked FX quote may cost at most this much (basis points) above the market's current rate; dearer, it escalates. */
 export const FX_QUOTE_MAX_MARKUP_BPS = 50;
+/**
+ * The hands-on demo's test companies (t_try_*) only: the Airwallex sandbox prices its quotes about 100 bps over its own
+ * market rate, so the sample company's limit is 1.50% (live, 14 Nov: every live quote escalated at 0.50%). Set by the
+ * company's seed (setting fx.max_markup_bps, src/world/settings.ts fxMarkupLimitBps); every other company keeps 50.
+ */
+export const TRY_FX_QUOTE_MAX_MARKUP_BPS = 150;
 
 /** A card works this many days from issue; Airwallex declines everything after (its end date, `active_to`). */
 export const CARD_ACTIVE_DAYS = 90;

@@ -16,6 +16,7 @@ import HelveticaBold from "pdfkit/standard-fonts/HelveticaBold";
 import HelveticaOblique from "pdfkit/standard-fonts/HelveticaOblique";
 import Courier from "pdfkit/standard-fonts/Courier";
 import CourierBold from "pdfkit/standard-fonts/CourierBold";
+import { TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
 import { useDocStore } from "../../../src/ap/docStore.js";
 import { usePdfReader } from "../../../src/ap/pdfText.js";
 import { readPdfInline } from "../../../src/ap/pdfTextInline.js";
@@ -100,7 +101,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
   const fx = env.AWX_FX && tenantId.startsWith("t_try_")
     ? withLiveFx(bank, {
       company: tenantId, source: env.AWX_FX, db,
-      allowed: async () => on(await readSwitches(sql), "awx_fx"),
+      // On unless the owner set awx_fx to "off" (14 Nov): the quote is read-only and capped in kit11 (AWX_FX=off there stops it too).
+      allowed: async () => (await readSwitches(sql)).awx_fx !== "off",
       keep: {
         get: (id) => (storage.sql.exec("SELECT note FROM awx_fx_notes WHERE quote_id = ?", id).toArray()[0]?.note as string | undefined) ?? null,
         set: (id, note) => { storage.sql.exec("INSERT INTO awx_fx_notes (quote_id, note) VALUES (?, ?) ON CONFLICT(quote_id) DO UPDATE SET note = excluded.note", id, note); },
@@ -128,7 +130,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     ...withClaude(env, sql, tenantId),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
     // Speed (12 Nov): on Pay no Claude review note for a try company; code writes it (the Payer agent's reason is on screen).
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true } : {}),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS } : {}),
     // Speed (13 Nov, the owner's yes): the Payer proposes while the invoice is filed; Pay reads that answer when it is
     // finished and the plan is the same case. Its calls count against the same caps, and it runs only with room to spare.
     earlyPayer: true,
@@ -163,6 +165,8 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     forgetPasskey: async (person) => host.forgetPasskey(person),
     samples: async () => host.samples(),
     uploadSample: async (key) => host.uploadSample(key),
+    clearHold: async (id) => host.clearHold(id),
+    rejectHold: async (id) => host.rejectHold(id),
     suppliers: async () => host.suppliers(),
     compose: async (input) => host.compose(input),
     // The terms, and beside them the note on the quote they carry (live from the Airwallex sandbox, or the recorded rate).

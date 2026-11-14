@@ -2,6 +2,8 @@
 // passes /try and exactly the paths its page calls to purser-try, the request unchanged; everything else stays the
 // site's (/try/sign and under it above all), and without the binding the site answers as before.
 import { readFileSync } from "node:fs";
+import { LOGO_FILES } from "../cloud/src/try/logos.gen.js";
+import { LOGOS } from "../src/servers/dashboard.js";
 import { describe, expect, it } from "vitest";
 import { isTryEngineRequest, tryEngineResponse, TRY_ENGINE_PATHS, type TryEngine } from "../worker/src/tryEngine.js";
 import { tryPage } from "../cloud/src/tryPage.js";
@@ -20,7 +22,7 @@ const PAGE_CALLS: [string, string][] = [
   ["GET", "/try"], ["HEAD", "/try"],
   ["POST", "/v1/try/start"], ["POST", "/v1/try/session"],
   ["GET", "/v1/engine"], ["GET", "/v1/engine/events?after=0&limit=200"], ["GET", "/v1/engine/samples"], ["POST", "/v1/engine/samples/clean"],
-  ["GET", "/v1/engine/suppliers"], ["POST", "/v1/engine/compose"], ["GET", "/v1/engine/invoices"], ["POST", "/v1/engine/invoices/AP-0001/pay"],
+  ["GET", "/v1/engine/suppliers"], ["POST", "/v1/engine/compose"], ["GET", "/v1/engine/invoices"], ["POST", "/v1/engine/invoices/AP-0001/pay"], ["POST", "/v1/engine/invoices/AP-0001/clear"], ["POST", "/v1/engine/invoices/AP-0001/reject"],
   ["GET", "/v1/engine/proposals/P-0001"], ["GET", "/v1/engine/proposals/P-0001/terms"], ["POST", "/v1/engine/proposals/P-0001/approve"],
   ["POST", "/v1/engine/proposals/P-0001/pay"], ["POST", "/v1/engine/proposals/P-0001/retry"], ["POST", "/v1/engine/passkey/start"],
   ["POST", "/v1/engine/passkey/finish"], ["GET", "/v1/engine/vault"], ["GET", "/v1/engine/vault/file?path=a.pdf"], ["GET", "/v1/engine/export"], ["GET", "/v1/engine/export.pdf"],
@@ -49,11 +51,16 @@ describe("the paths the site passes to purser-try", () => {
     const html = tryPage("n", { origin: "https://x.test", rpId: "x.test" });
     const named = [...new Set([...html.matchAll(/['"`(](\/(?:v1|try|assets)\/?[A-Za-z0-9_./-]*)/g)].map((m) => m[1]!))].sort();
     expect(named).toEqual([
-      "/assets/inter.woff2", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
+      "/assets/inter.woff2", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
       "/v1/engine/passkey/finish", "/v1/engine/passkey/start", "/v1/engine/proposals/", "/v1/engine/samples", "/v1/engine/samples/", "/v1/engine/suppliers",
       "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/session", "/v1/try/start",
     ]);
-    for (const p of named) if (!p.endsWith("/") && p !== "/assets/inter.woff2") expect(PAGE_CALLS.some(([, c]) => new URL(c, SITE).pathname === p), p).toBe(true);
+    // The start's partner logos (14 Nov) are the site's own files too, the same bytes purser-try serves (logos.gen.ts).
+    for (const p of named.filter((x) => x.startsWith("/assets/logo-"))) {
+      expect(isTryEngineRequest("GET", p), p).toBe(false);
+      expect(Buffer.from(LOGO_FILES[p]!.b64, "base64").equals(LOGOS[p.slice("/assets/".length)]!.body), p).toBe(true);
+    }
+    for (const p of named) if (!p.endsWith("/") && !p.startsWith("/assets/")) expect(PAGE_CALLS.some(([, c]) => new URL(c, SITE).pathname === p), p).toBe(true);
   });
 
   it("leaves /try/sign and everything under it to the site", () => {

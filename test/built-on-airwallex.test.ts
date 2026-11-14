@@ -4,6 +4,7 @@
 // unaltered, smaller than Purser's mark; "Built on" only, never a word that implies a partnership or an endorsement.
 // The link preview says it too (test/site-meta.test.ts holds the card and the tags).
 import { createHash } from "node:crypto";
+import { START_LOGOS } from "../cloud/src/try/run.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
@@ -58,10 +59,11 @@ describe("the Built on Airwallex badge", () => {
     }
     expect(cloudConsole).toMatch(/<p class="foot-awx wrap"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
     // On a phone, signed out (the landing), in the app bar's empty left, so the sign-in card keeps the first screen;
-    // /try's start lays its line over the band's empty top for the same reason (test/browser/console.check.ts, try.check.ts).
     expect(cloudConsole).toMatch(/<span class="awx-app"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
     expect(cloudConsole).toContain(".signed-out .awx-app { display: inline-flex; }");
-    expect(cloudTry).toContain("body:has(.screen.start) .awx-row { position: absolute; top: 65px;");
+    // /try's start (cloud/src/try/run.ts, 14 Nov) is one column on a phone with no band: the badge's line sits in the
+    // flow above the start's eyebrow (its header badges are checked above; test/browser/try.check.ts holds the button in
+    // view at 390 px).
     // The cloud's pages may load images from the site, for this logo; nothing else in the policy moved.
     expect(consoleCsp("N")).toContain(`img-src 'self' data: blob: ${SITE_ORIGIN};`);
     // The header is the site's own function, so every page draws it alike.
@@ -79,7 +81,9 @@ describe("the Built on Airwallex badge", () => {
   });
 
   it("leaves the others on the \"Works with\" line: Airwallex is the platform", () => {
-    expect(COPY.START.trust.startsWith("Works with Alta")).toBe(true);
+    // /try's start (cloud/src/try/run.ts): "Works with", then Alta's and Claude's logos, Visa in text; no Airwallex logo.
+    expect(COPY.START.worksWith).toBe("Works with");
+    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta", "Claude"]);
     expect(t("en", "cs.trust_works").startsWith("Works with Alta")).toBe(true);
     expect(t("nl", "cs.trust_works").startsWith("Werkt met Alta")).toBe(true);
   });

@@ -12,14 +12,15 @@ import { liveRuns } from "../src/redesign/runs.js";
 import { ICONS } from "../src/ui/icons.js";
 import { icon } from "../src/redesign/ui.js";
 import { siteHeader } from "../cloud/src/siteHeader.js";
-import { SCENE_CSS, sceneSvg } from "../cloud/src/scene.js";
+import { START_CSS } from "../cloud/src/try/run.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
 const html = tryPage("n0nce", { origin: ORIGIN, rpId: RP });
 const script = (() => {
   const blocks = scriptBlocks(html);
-  expect(blocks).toHaveLength(1);
+  // 14 Nov: the page script, then the visual layer's own module (cloud/src/try/visuals.ts).
+  expect(blocks).toHaveLength(2);
   return scriptBody(blocks[0]!);
 })();
 /** A word is a run of non-space characters with a letter or a digit in it ("·" and "…" are not words). */
@@ -40,7 +41,7 @@ describe("GET /try", () => {
     expect(n).not.toBe(/'nonce-([^']+)'/.exec(b.headers.get("content-security-policy")!)![1]);
     expect(csp).toBe(consoleCsp(n));
     const page = await a.text();
-    expect(scriptBlocks(page)).toHaveLength(1);
+    expect(scriptBlocks(page)).toHaveLength(2);
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
     // The same headers as the console's page, the policy's nonce aside.
@@ -89,7 +90,7 @@ describe("the page", () => {
   it("uses a timer only for polling, the session's renewal, the running time of an open Claude call, the passkey's limit, Copy link and the live quote's countdown", () => {
     const uses = [...script.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
     expect(uses.length).toBeGreaterThanOrEqual(3);
-    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer|quoteTimer)$/);
+    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer|quoteTimer|runTimer)$/);
     expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},30000\)/);
     expect(script).toMatch(/pollTimer=setTimeout\(/);
     expect(script).toMatch(/renewTimer=setTimeout\(/);
@@ -101,7 +102,7 @@ describe("the page", () => {
     // One start request in the whole script, inside the start button's click handler: never on load or on hover.
     expect(script.match(/\/v1\/try\/start/g)).toHaveLength(1);
     expect(script).not.toMatch(/mouseover|mouseenter|pointerenter|pointerover|focusin/);
-    const click = script.indexOf("b.addEventListener('click',async()=>{\n    b.disabled=true;label(C.start.starting,false);");
+    const click = script.indexOf("b.addEventListener('click',async()=>{\n    b.disabled=true;label(T.starting,false);");
     expect(click).toBeGreaterThan(-1);
     expect(script.indexOf("'/v1/try/start'")).toBeGreaterThan(click);
     // Then, not awaited, before screen 1: the engine's status and the samples, in parallel; screen 1 takes the samples' answer.
@@ -160,12 +161,12 @@ describe("the page", () => {
     expect(script.replace("const TOKEN=", "").replace("TOKEN?{token:TOKEN}:{}", "")).not.toContain("TOKEN");
   });
 
-  it("has no words outside the copy: the markup's own text is the brand and the start's trust line (the illustration aside)", () => {
+  it("has no words outside the copy: the markup's own text is the brand (the start's partners are drawn by the script)", () => {
     // 12 Nov: the site's header (cloud/src/siteHeader.ts) is the site's navigation, its words the site's: its brand word
     // stays counted here, its menu is held by test/site-header-shared.test.ts.
     const own = html.replace(siteHeader("try"), `<header>${COPY.CHROME.brand}</header>`);
     expect(own).not.toBe(html);
-    expect(textOutsideTags(withoutBlocks(own, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual(`${COPY.CHROME.brand} ${COPY.START.trust}`.split(" "));
+    expect(textOutsideTags(withoutBlocks(own, ["script", "style", "title", "svg"])).trim().split(/\s+/)).toEqual([COPY.CHROME.brand]);
     expect(readFileSync(new URL("../cloud/src/tryPage.ts", import.meta.url), "utf8")).not.toMatch(/ui\/i18n/);
   });
 });
@@ -181,21 +182,20 @@ describe("the frame and the start", () => {
     expect(ic.feather).toEqual(ICONS.feather);
   });
 
-  it("shows the illustration in the page as it is built, with its CSS and its reduced-motion rule in the page's one nonce style", () => {
-    expect(html).toContain(`<div class="hero">${sceneSvg()}</div>`);
-    expect(html).toContain(SCENE_CSS);
-    expect(html).toContain("@media (prefers-reduced-motion: reduce) { .scene, .scene * { animation: none !important; } }");
+  it("styles the start in the page's one nonce style, and draws it in the script, with no illustration", () => {
+    expect(html).toContain(START_CSS);
+    expect(html).not.toContain('class="hero"');
     expect(html.match(/<style/g)).toHaveLength(1);
   });
 
-  it("keeps the start's words: the product line, the button, test money deleted after 24 h, and the trust line", () => {
-    expect(COPY.START.fine).toBe("Test money · deleted after 24 h");
-    expect(COPY.START.text).toContain("Purser's real engine");
-    // 13 Nov: the trust line names Visa as the README and the site do ("via Airwallex Airi"); VIC is said where a VIC run is shown.
-    // 14 Nov: Metal is now Alta; the first mention says so.
-    // 14 Nov (owner): Airwallex is the platform ("Built on Airwallex", the header's badge); the others work with it.
-    expect(COPY.START.trust).toBe("Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.");
-    expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.trust))).toBe(true);
+  it("keeps the start's words: the headline, the line under it, the button, test money deleted after 24 h, and the partners", () => {
+    expect(COPY.START.fine).toBe("Purser's real engine · test money · deleted after 24 h");
+    expect(COPY.START.text).toBe("Purser refuses it: your signature covers the exact terms.");
+    // 14 Nov: Metal is now Alta; the first mention says so. Visa as text, "via Airwallex Airi". No endorsement implied.
+    expect(`Alta ${COPY.START.formerly}`).toBe("Alta (formerly Metal)");
+    expect(COPY.START.visa).toBe("Visa via Airwallex Airi");
+    expect(COPY.START.runs_note).toContain("No endorsement implied.");
+    expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.runs_note) && state.includes(COPY.START.formerly))).toBe(true);
   });
 });
 
@@ -232,19 +232,20 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: COPY.START, invoice: COPY.INVOICE, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow" && k !== "real")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
       // A {method} line is counted with a method filled in; PAY's sandbox line shows only when the rail is on (one more line,
       // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence. Screen 6's
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
-      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
+      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did", "skip"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "work 2", "work 10", "invoice 6", "work 11", "work 12", "approve 6", "approve 7", "approve 8", "approve 16", "company 4", "approve 3"]);
+    // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs; Approve shows the hash's start.
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
@@ -276,9 +277,9 @@ describe("the copy", () => {
 
   it("says what the visitor uses in the band, and what reads the invoice from the start answer's mode", () => {
     expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
-    expect(COPY.BAND.claudeLive).toBe("Claude reads live");
+    expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
-    expect(COPY.START.heading).toBe("Run a company's payables with Purser.");
+    expect(COPY.START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
     expect(COPY.START.button).toBe("Start with a test company");
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");
@@ -484,8 +485,23 @@ interface Kit {
   changedFields(signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string[];
   verdict(W: typeof COPY.PAY, signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string;
   methodOf(M: typeof COPY.METHOD, ua: string): string;
+  rateLine(cv: unknown): string;
 }
 const kit = new Function(`${SIGN_JS}\nreturn signKit;`)() as Kit;
+
+describe("a conversion's rate with its units (rateLine)", () => {
+  it("Airwallex's EURUSD rate on a buy of EUR for USD reads as USD per EUR", () => {
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "413.38", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "401.45", client_rate: "1.0850" })).toBe("1 EUR = 1.0850 USD");
+  });
+  it("a rate stated the other way round (sell per buy below 1) names the sold currency first", () => {
+    expect(kit.rateLine({ buy_currency: "USD", sell_currency: "EUR", buy_amount: "413.38", sell_amount: "370.00", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+  });
+  it("no rate, nothing", () => {
+    expect(kit.rateLine(null)).toBe("");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", client_rate: "" })).toBe("");
+  });
+});
 const buf = (...b: number[]) => new Uint8Array(b).buffer;
 
 describe("signing and paying, in the page's own script", () => {

@@ -12,6 +12,8 @@
 // so: { source: "recorded", reason }. Never a made-up quote.
 import type { AnyQuote, MarketRate, Quote } from "../../../src/airwallex/port.js";
 import { audit } from "../../../src/audit/log.js";
+import { FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
+import { fxMarkupLimitBps } from "../../../src/world/settings.js";
 import type { DB } from "../../../src/db/open.js";
 
 /** How long the engine waits for Airwallex before it uses the recorded rate. */
@@ -25,7 +27,7 @@ export type LiveFxAnswer = { ok: true; quote: LiveQuote; market_rate: string; ca
 export interface LiveFxSource { quote(a: { company: string; buyCurrency: string; sellCurrency: string; buyAmount: string }): Promise<LiveFxAnswer> }
 
 /** Why the recorded rate was used, as a fixed code (the page says it in words). */
-export const RECORDED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "unavailable", "timeout", "bad_answer", "bad_request"] as const;
+export const RECORDED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "unavailable", "timeout", "bad_answer", "bad_request", "over_limit"] as const;
 export type RecordedReason = (typeof RECORDED_REASONS)[number];
 
 /** What the page shows beside the terms, for a quote in them. */
@@ -58,13 +60,20 @@ const centsOf = (s: string): number | null => (/^\d{1,12}\.\d{2}$/.test(s) ? Num
 const rateOk = (s: unknown): s is string => typeof s === "string" && /^\d{1,6}(\.\d{1,12})?$/.test(s) && Number(s) > 0;
 
 /** A live answer checked against what was asked: anything off is no live quote, never a guess. */
-function checked(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }, ans: LiveFxAnswer): { quote: LiveQuote; market_rate: string } | RecordedReason {
+function checked(a: { buyCurrency: string; sellCurrency: string; buyAmountCents: number }, ans: LiveFxAnswer, limitBps = FX_QUOTE_MAX_MARKUP_BPS): { quote: LiveQuote; market_rate: string } | RecordedReason {
   if (!ans || typeof ans !== "object") return "bad_answer";
   if (!ans.ok) return (RECORDED_REASONS as readonly string[]).includes(ans.reason) ? ans.reason as RecordedReason : "unavailable";
   const q = ans.quote;
   if (!q || typeof q.quote_id !== "string" || !/^[A-Za-z0-9-]{8,64}$/.test(q.quote_id) || q.buy_currency !== a.buyCurrency || q.sell_currency !== a.sellCurrency
     || centsOf(q.buy_amount) !== a.buyAmountCents || centsOf(q.sell_amount) === null || !rateOk(q.client_rate) || !rateOk(ans.market_rate)
     || !Number.isFinite(Date.parse(q.valid_to_at))) return "bad_answer";
+  // 14 Nov: the sandbox's client rate can sit about 1% over its own rate; Purser's FX check (FX_QUOTE_MAX_MARKUP_BPS,
+  // src/config/policy.ts) would then refuse the payment at Approve. A live quote over that limit is not planned with:
+  // the recorded rate is used and the note says why ("over_limit"), so the visit still runs to paid. The limit is the
+  // company's own (src/world/settings.ts fxMarkupLimitBps: a try company's 1.50%), the same one Purser's FX check applies.
+  const marketCents = Math.ceil(a.buyAmountCents * Number(ans.market_rate));
+  const markupBps = Math.round(((centsOf(q.sell_amount)! - marketCents) / marketCents) * 10_000);
+  if (markupBps > limitBps) return "over_limit";
   return { quote: q, market_rate: ans.market_rate };
 }
 
@@ -78,6 +87,8 @@ export function liveFxRail<B extends QuotingBank>(bank: B, o: {
   source: LiveFxSource | null;
   allowed: () => Promise<boolean>;
   onQuote: (note: FxQuoteNote) => void;
+  /** The company's FX limit (basis points over the market rate), read when a quote is checked; absent: FX_QUOTE_MAX_MARKUP_BPS. */
+  limitBps?: () => number;
   now?: () => number;
   waitMs?: number;
 }): B {
@@ -96,7 +107,7 @@ export function liveFxRail<B extends QuotingBank>(bank: B, o: {
       const late = new Promise<"timeout">((r) => { timer = setTimeout(() => r("timeout"), o.waitMs ?? LIVE_FX_WAIT_MS); });
       try {
         const ans = await Promise.race([o.source.quote({ company: o.company, buyCurrency: a.buyCurrency, sellCurrency: a.sellCurrency, buyAmount: amountOf(a.buyAmountCents) }), late]);
-        got = ans === "timeout" ? "timeout" : checked(a, ans);
+        got = ans === "timeout" ? "timeout" : checked(a, ans, o.limitBps ? o.limitBps() : FX_QUOTE_MAX_MARKUP_BPS);
       } catch {
         got = "unavailable";
       } finally {
@@ -164,6 +175,7 @@ export function withLiveFx<B extends QuotingBank>(bank: B, o: {
 }): { rail: B; noteFor(terms: unknown): FxQuoteNote | null } {
   const rail = liveFxRail(bank, {
     company: o.company, source: o.source, allowed: o.allowed, ...(o.waitMs ? { waitMs: o.waitMs } : {}),
+    limitBps: () => fxMarkupLimitBps(o.db),
     onQuote: (note) => {
       o.keep.set(note.quote_id, JSON.stringify(note));
       if (note.source === "airwallex-sandbox") {

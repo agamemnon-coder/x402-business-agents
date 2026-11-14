@@ -76,7 +76,7 @@ function bankCard(a,demo){
     el('span','bcchip'),el('div','bcn num',[el('span','bcd','•••• •••• •••• '),c.last4]),
     el('div','bcf',[el('span','',a.name),c.brand?el('span','bcbr',c.brand):null])])}
 function limitRow(icon,label,value,extra){return el('div','lim',[el('span','limic',ic(icon)),el('div','limb',[el('span','liml',label),extra||null]),el('b','limv num',value)])}
-function agentCard(a,demo){
+function agentCard(a,demo,live,CV){
   const st=el('span','ast '+String(a.status).replace(/[^a-z]/g,''),[ic(a.status==='active'?'circle-check':a.status==='paused'?'snowflake':'ban'),' '+tk('cs.agents.status.'+a.status,a.status)]);
   const hd=el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',a.name),el('p','sub',a.job)]),st]);
   let settings;
@@ -101,11 +101,68 @@ function agentCard(a,demo){
     el('div','',[el('h3','',t('cs.agents.rails')),a.rails.length?el('p','',a.rails.join(', ')):el('p','sub',t('cs.agents.no_rail')),a.spent||a.declined?el('p','sub',t('cs.agents.moved',{n:a.spent,k:a.declined})):null]),
     el('div','',[el('h3','',t('cs.agents.decided')),el('ul','plain',a.decisions.filter((d)=>d.decided_by).map((d)=>el('li','sub',day(d.at)+' · '+d.decided_by)))]),
     a.status_since?el('div','',[el('h3','',t('cs.agents.status_h')),el('p','',tk('cs.agents.status.'+a.status,a.status)+' '+t('cs.agents.since',{day:day(a.status_since)}))]):null])]);
-  return el('section','card agent rise',[hd,top,rules,dec,det])}
+  return el('section','card agent rise',[hd,top,live?liveCardPanel(live,CV):null,rules,dec,det])}
+// --- The agent's live sandbox card (14 Nov): last four only, live status and limits, newest authorizations with their ids;
+// freeze, unfreeze, limits and a test purchase, each signed with the owner's own passkey over the exact action's hash.
+let cardMsg=null;
+const eurc=(c)=>c===null||c===undefined?'—':cur('EUR')+' '+(c/100).toFixed(2);
+async function cardAct(kind,agent,out){
+  if(!hasPasskeys())throw new Error(t('cs.no_passkeys'));
+  const r=await api('/v1/cards/actions',{method:'POST',body:{kind,agent}});const a=r.action;
+  out.replaceChildren(el('div','cact',[el('b','',[ic('scan-face'),' '+t('cs.cards.sign_title')]),el('ul','plain',a.lines.map((l)=>el('li','',l))),el('p','fine mono',t('cs.cards.hash',{h:a.sha256.slice(0,16)}))]));
+  let cred;try{cred=await navigator.credentials.get({publicKey:{challenge:fromB64u(a.challenge),rpId:CFG.rpId,userVerification:'required',timeout:120000}})}
+  catch(e){throw new Error(e&&e.name==='NotAllowedError'?t('cs.stepup.cancelled'):(e&&e.message)||String(e))}
+  return api('/v1/cards/actions/'+encodeURIComponent(a.id)+'/sign',{method:'POST',body:{credential_id:b64u(cred.rawId),assertion:assertionOf(cred)}});
+}
+function cardResultText(res){
+  if(res.status!=='done')return [t('cs.cards.failed',{why:res.reason||''})+(res.awx_code?' ('+res.awx_code+')':''),'bad'];
+  if(res.tx)return [res.tx.approved?t('cs.cards.test_ok',{amt:eurc(res.tx.amount_cents)}):t('cs.cards.test_declined',{amt:eurc(res.tx.amount_cents),why:res.tx.failure_reason||res.tx.status}),res.tx.approved?'warn':'ok'];
+  return [t('cs.cards.done.'+res.kind,{last4:res.card&&res.card.last4||''}),'ok'];
+}
+function liveCardPanel(x,CV){
+  const out=el('div','cmsg');out.setAttribute('aria-live','polite');
+  if(cardMsg&&cardMsg.agent===x.agent){out.append(note(cardMsg.text,cardMsg.tone));cardMsg=null}
+  const act=(kind,label,icon,cls)=>{const b=btn(label,cls||'',icon);b.onclick=async()=>{for(const q of box.querySelectorAll('button'))q.disabled=true;
+    try{const res=await cardAct(kind,x.agent,out);const [text,tone]=cardResultText(res);cardMsg={agent:x.agent,text,tone};await agentsView()}
+    catch(e){if(e instanceof Expired)return;out.replaceChildren(note(e.message,'bad'));for(const q of box.querySelectorAll('button'))q.disabled=false}};return b};
+  const c=x.card,P=x.policy;
+  const head=el('div','th',[el('h3','',[ic('credit-card'),' '+t('cs.cards.h')]),el('span','rlabel',CV.label)]);
+  const kids=[head];
+  if(c){
+    const active=c.status==='ACTIVE';
+    const face=el('div','bcard'+(active?'':' frozen'),[el('div','bct',[el('span','bcb','Airwallex'),el('span','bcs',[ic(active?'circle-check':'snowflake'),active?t('cs.cards.active'):c.status==='INACTIVE'?t('cs.cards.frozen'):c.status.charAt(0)+c.status.slice(1).toLowerCase()])]),
+      el('span','bcchip'),el('div','bcn num',[el('span','bcd','•••• •••• •••• '),c.last4||'····']),el('div','bcf',[el('span','',x.name),el('span','bcbr',c.brand||'VISA')])]);
+    const lims=el('div','lims',[
+      limitRow('credit-card',t('cs.agents.lim_purchase'),eurc(c.per_tx_cents)),
+      limitRow('calendar-range',t('cs.agents.lim_month'),eurc(c.monthly_cents)),
+      el('p','fine',[ic(x.in_sync?'circle-check':'triangle-alert'),x.in_sync?t('cs.cards.in_sync'):t('cs.cards.out_of_sync',{per:eurc(P.per_tx_cents),month:eurc(P.monthly_cents)})]),
+      el('p','fine',[ic(x.live?'zap':'clock'),x.live?t('cs.cards.live_at',{at:stamp(x.read_at)}):t('cs.cards.not_live',{why:x.reason||''})]),
+      el('p','fine',t('cs.cards.card_id',{id:c.card_id_last4}))]);
+    kids.push(el('div','atop',[el('div','bcwrap',[face]),lims]));
+    const bar=el('div','cbar');
+    if(CV.can_act){
+      if(active)bar.append(act('freeze',t('cs.cards.freeze'),'snowflake','primary'));
+      else if(c.status==='INACTIVE')bar.append(act('unfreeze',t('cs.cards.unfreeze'),'circle-check','primary'));
+      if(!x.in_sync)bar.append(act('limits',t('cs.cards.sync'),'shield-check'));
+      if(active)bar.append(act('test',t('cs.cards.test',{amt:eurc((c.per_tx_cents||0)+500)}),'flask'));
+    }
+    kids.push(bar);
+    kids.push(el('h3','',t('cs.cards.recent')));
+    kids.push(x.transactions.length?el('ul','outs ctx',x.transactions.map((tx)=>el('li','',[el('span','obadge '+(tx.approved?'ok':'bad'),[ic(tx.approved?'circle-check':'ban'),tx.approved?t('cs.cards.approved'):t('cs.cards.declined')]),
+      el('span','otext',[(tx.merchant||t('cs.cards.merchant'))+' · '+eurc(tx.amount_cents),tx.failure_reason?el('small','sub',' · '+tx.failure_reason):null,el('small','sub mono',' · '+tx.id)]),el('time','num',stamp(tx.at))]))):el('p','sub',t('cs.cards.no_tx')));
+  }else{
+    kids.push(el('p','sub',t('cs.cards.none',{per:eurc(P.per_tx_cents),month:eurc(P.monthly_cents)})));
+    if(CV.can_act)kids.push(el('div','cbar',[act('issue',t('cs.cards.issue'),'credit-card','primary')]));
+  }
+  if(!CV.on)kids.push(el('p','fine',[ic('lock'),t('cs.cards.off',{why:CV.why||''})]));
+  else if(!CV.can_act)kids.push(el('p','fine',[ic('lock'),t('cs.cards.owner_only')]));
+  kids.push(el('p','fine',[ic('lock'),t('cs.cards.never')]),out);
+  const box=el('div','lcard',kids);return box}
 async function agentsView(){
   title(t('cs.nav.agents'));
-  const [m,r,tk0]=await Promise.all([me(),api('/v1/agents'),api('/v1/tokenisation').catch((e)=>{if(e instanceof Expired)throw e;return null})]);shell();
-  const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo));
+  const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
+  const [m,r,tk0,CV]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards')]);shell();
+  const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo,CV&&(CV.agents||[]).find((x)=>x.agent===a.id),CV));
   // The agents' real cards and Visa runs from the live sandbox runs (judge scan, 14 Nov: they sat on Tokenisation, and
   // their limits read as the demo cards' own). Each section says which run its figures come from.
   const live=tk0?sandboxSections(tk0):[];
@@ -125,6 +182,8 @@ function t0CloseCard(){
   const pg=el('a','',t('cs.books.t0_page'));pg.href=c.page;pg.rel='noopener';pg.target='_blank';
   return el('section','card panel t0close'+(c.agrees?'':' bad'),[
     el('h2','',[ic(c.agrees?'circle-check':'triangle-alert'),t('cs.books.t0_h')]),
+    // CFO review, 14 Nov: whose books the check is of comes first (not this company's 31-entry ledger).
+    el('p','sub t0lead',t('cs.books.t0_lead')),
     el('p','says',c.agrees?t('cs.books.t0_agrees',{n:c.entries}):t('cs.books.t0_differs',{n:c.differences})),
     !c.agrees&&c.first?el('p','sub mono',c.first):null,
     el('p','',t('cs.books.t0_rule')),
@@ -164,13 +223,15 @@ async function booksView(){
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
     const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
     const eur=(c)=>cur('EUR')+' '+cents(c);
+    // CFO review, 14 Nov: with lines still without a VAT code (sales among them), a nil 5a or 5c is not known to be nil.
+    const owedOr=(c)=>v.uncoded_lines&&!c?t('cs.vat.incomplete',{n:v.uncoded_lines}):eur(c);
     const lr=(v0,l)=>{const d=el('td','r',v0);d.dataset.l=l;return d};
     for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),lr(eur(r.base_cents),t('cs.base')),lr(eur(r.vat_cents),t('dt.vat'))]))}
     // VAT a supplier abroad charged (13 Nov: German 19%): its own row, outside the Dutch return's boxes and not in 5b.
     const fv=v.foreign_vat;if(fv&&fv.lines)tb.append(el('tr','',[el('td','',t('cs.vat_foreign',{n:fv.lines})),el('td','sh'),lr(eur(fv.base_cents),t('cs.base')),lr(eur(fv.vat_cents),t('dt.vat'))]));
     // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
     if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',owedOr(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',owedOr(v.balance_5c_cents)))]));
     tbl.append(tb);
     vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
       v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));
@@ -418,6 +479,14 @@ details.adet .agrid { margin-top: 10px; }
 @media (max-width: 860px) { .agent .atop { grid-template-columns: minmax(0, 1fr); } .bcard { max-width: 340px; } }
 @media (max-width: 640px) { .card.agent { padding: 16px; } .agent .rules { grid-template-columns: 1fr; gap: 14px; }
   ul.outs li { grid-template-columns: minmax(0, 1fr) auto; } ul.outs .otext { grid-column: 1 / -1; grid-row: 2; } }
+.agent .lcard { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--border); }
+.lcard .th { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; } .lcard h3 { margin: 0; display: flex; align-items: center; gap: 6px; }
+.lcard .cbar { display: flex; flex-wrap: wrap; gap: 8px; } .lcard .cbar:empty { display: none; }
+.lcard .cact { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; background: var(--sunken); }
+.lcard .cact b { display: flex; align-items: center; gap: 6px; } .lcard .cact ul { margin: 0; padding-left: 18px; }
+.lcard .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.lcard ul.ctx .otext { overflow-wrap: anywhere; }
+.lcard > .fine { display: flex; gap: 6px; align-items: center; margin: 0; color: var(--muted); font-size: 12.5px; } .lcard > .fine svg { width: 13px; height: 13px; flex: none; }
 /* Books: the balance sheet as one block per currency. */
 .bsheet { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 8px; }
 .bsc { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; }
@@ -495,7 +564,7 @@ h3.tsec { margin: 20px 0 10px; font-size: 13px; text-transform: uppercase; lette
 .tnode.on .tni { border-color: var(--ok); color: var(--ok); }
 .tnode[aria-expanded="true"] .tni { background: var(--ok); color: #fff; }
 .tnode b { font-size: 14px; } .tnode .sub { font-size: 12px; }
-.tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 11.5px; font-weight: 650; }
+.tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12px; font-weight: 650; }
 .tchain svg { width: 12px; height: 12px; }
 .thint { margin: 6px 0 0; color: var(--faint); font-size: 12.5px; text-align: center; }
 .tpanel { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; background: var(--sunken); }

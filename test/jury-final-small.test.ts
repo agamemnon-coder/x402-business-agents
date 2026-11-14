@@ -30,13 +30,14 @@ describe("final jury: small fixes", () => {
 });
 
 describe("/try's first screen", () => {
-  it("says under the button what the visit is and how long, in words that hold on every device", async () => {
+  it("says in the headline what the visit does, and that any passkey works, in words that hold on every device", async () => {
     const { START } = await import("../cloud/src/tryCopy.js");
-    expect(START.what).toBe("About 2 minutes: read an invoice, sign it with your passkey, see it booked.");
-    const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
-    // The walkthrough on YouTube (13 Nov, owner): one small link, its address FILM_URL; since jury round 2 right under
-    // the button, "Or watch the walkthrough" (no duration since 14 Nov, owner), then what the visit is.
-    expect(html).toContain("box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));");
-    expect(START.walk).toBe("Or watch the walkthrough");
+    // 14 Nov (review): "your passkey" holds on every device (an iPhone SE has Touch ID; an iPad says Macintosh).
+    expect(START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
+    expect(START.eyebrow).toBe("Hands-on · about 2 minutes");
+    expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You sign"]);
+    expect(START.flow[2]!.line).toBe("Face ID or any passkey.");
+    // The trailer on YouTube, one quiet link beside the button (14 Nov, owner).
+    expect(START.trailer).toBe("Watch the 90 s trailer");
   });
 });

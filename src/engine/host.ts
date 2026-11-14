@@ -12,10 +12,13 @@
 // host is made over it, so no file is ever written.
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
+import { payableAccount } from "../ap/checkerCore.js";
+import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
+import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
-import { ingestDocument, type IngestResult } from "../ap/inbox.js";
-import { earlyPayer, payApInvoice, syncPayments } from "../ap/pay.js";
+import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
+import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
@@ -41,7 +44,7 @@ import { sha256, type VaultSink } from "../vault/sink.js";
 import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { invoicePdf } from "./invoicePdf.js";
-import { checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, type ComposeInput, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
+import { BILL_TO_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
 import { recordsPdf } from "./recordsPdf.js";
@@ -97,6 +100,11 @@ export interface EngineDeps {
    * for it on the simulated bank, and the audit row says so. Default false; only a try company turns it on.
    */
   seedPaid?: boolean;
+  /**
+   * This company's FX limit (basis points over the market's current rate a locked quote may cost), written by the seed
+   * as its setting fx.max_markup_bps. Absent: FX_QUOTE_MAX_MARKUP_BPS. Only a try company sets it (TRY_FX_QUOTE_MAX_MARKUP_BPS).
+   */
+  fxMarkupBps?: number;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -139,8 +147,23 @@ export interface InvoiceView {
   /** When it came in (14 Nov: /try's finish says how long from upload to paid, from these two). */
   received_at?: string;
   findings: FindingView[];
+  /**
+   * 14 Nov (jury): the checks code ran on this invoice that left no finding, so a page lists what was checked, never a
+   * fixed list. not_paid_before: a supplier and a number were read and no copy was found; bank_on_file and
+   * known_supplier: bank details were read, matched the supplier on file and raised no fraud signal.
+   */
+  checks_passed?: ("not_paid_before" | "bank_on_file" | "known_supplier")[];
   doc_sha256: string;
   proposal: ProposalView | null;
+}
+
+/** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
+function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
+  const codes = new Set(inv.findings.map((f) => f.code));
+  const out: NonNullable<InvoiceView["checks_passed"]> = [];
+  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before"].some((c) => codes.has(c))) out.push("not_paid_before");
+  if (inv.vendor && payableAccount(inv.reading) !== null && !codes.has("possible_fraud") && !codes.has("new_supplier")) out.push("bank_on_file", "known_supplier");
+  return out;
 }
 
 /** Where things stand after the payments were followed, booked, archived and fed. */
@@ -203,7 +226,11 @@ function plainRefusal(message: string): string {
 }
 
 /** A proposal's terms as the hands-on demo's pay route shows them. */
-export interface TermsView { proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null }
+export interface TermsView {
+  proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null;
+  /** Terms that convert: this company's FX limit (basis points over the market's current rate), as its checks applied it. */
+  fx_limit_bps?: number;
+}
 
 /** What the one pay route answers; a layer that did not run says so (null). */
 export interface PaySignedResult {
@@ -365,6 +392,8 @@ export class EngineHost {
   seed(): Promise<void> {
     return this.act(async () => {
       const { db, rails } = this.deps;
+      const fx = this.deps.fxMarkupBps;
+      if (fx !== undefined && getSetting(db, "fx.max_markup_bps", "") !== String(fx)) setSetting(db, "system", "fx.max_markup_bps", String(fx), this.now());
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
       if (this.deps.seedPaid) await this.seedPaidOriginal();
     });
@@ -380,7 +409,7 @@ export class EngineHost {
     const now = this.now();
     const out = await ingestDocument(db, { dir: NO_FOLDER, reader: parserOnly, now: () => now, agents: false }, { bytes, filename: s.filename, mime: "application/pdf", source: "upload" });
     const inv = firstInvoice(out);
-    if (inv) setStatus(db, inv.id, "paid", "system", { paid_at: now.toISOString(), reason: "seeded: paid before this test company started (simulated, no money moved)" }, now);
+    if (inv) setStatus(db, inv.id, "paid", "system", { paid_at: now.toISOString(), reason: `${SEEDED_PAID_REASON} paid before this test company started (simulated, no money moved)` }, now);
   }
 
   /** A document through the inbox: filed, read and checked. What the inbox refuses (not a PDF, too large) is thrown. */
@@ -429,6 +458,7 @@ export class EngineHost {
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
       issue_date: inv.issue_date, paid_at: inv.paid_at, received_at: inv.received_at,
       findings: inv.findings.map((f) => this.findingView(f)),
+      checks_passed: checksPassed(inv),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,
     };
@@ -717,15 +747,73 @@ export class EngineHost {
   }
 
   /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
-  samples(): { key: string; title: string; filename: string }[] {
-    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
+  samples(): { key: string; title: string; filename: string; expect?: Sample["expect"]; row?: Sample["row"] }[] {
+    // 14 Nov (inbox table): each sample's row (what its document says) and the engine's measured outcome for it.
+    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename, ...(s.expect ? { expect: s.expect } : {}), ...(s.row ? { row: s.row } : {}) }));
   }
 
-  /** A sample through the inbox, as an upload of its PDF; null for a key that is not a sample. */
+  /**
+   * A sample through the inbox, as an upload of its PDF; null for a key that is not a sample. The clean sample a second
+   * time in the same company (14 Nov, owner: "running the demo a second time must always work") is a new invoice from
+   * the same supplier: a fresh number, today's date and its own amount (freshClean), so the standard run is never held
+   * by the visitor's own earlier run. Every other sample stays the very same file, on purpose: they show the holds.
+   */
   uploadSample(key: string): Promise<UploadResult | null> {
     return this.act(async () => {
       const s = (this.deps.samples ?? []).find((x) => x.key === key);
-      return s ? this.ingest({ bytes: Buffer.from(s.base64, "base64"), filename: s.filename, mime: "application/pdf" }) : null;
+      if (!s) return null;
+      const bytes = Buffer.from(s.base64, "base64");
+      if (key === CLEAN_SAMPLE && this.deps.db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(sha256(bytes))) {
+        const fields = this.freshClean();
+        const pdf = await invoicePdf({ fields, supplierKey: supplierKey(fields.supplier.name), billTo: BILL_TO_SAMPLE });
+        return this.ingest({ bytes: pdf, filename: `bergtex-${fields.invoiceNo}.pdf`, mime: "application/pdf" });
+      }
+      return this.ingest({ bytes, filename: s.filename, mime: "application/pdf" });
+    });
+  }
+
+  /**
+   * The clean sample's next run: the n-th re-run is BTX-2026-<30+n> (the first number not yet filed), dated today, due in
+   * 14 days, EUR 12.50 times n more than the clean sample, so it is neither the same invoice nor the same total as any
+   * earlier run (the duplicate checks stay as they are). Test data, the clean sample's supplier and IBAN on file.
+   */
+  private freshClean(): InvoiceFields {
+    const taken = new Set((this.deps.db.prepare("SELECT invoice_no FROM ap_invoices").all() as { invoice_no: string }[]).map((r) => r.invoice_no));
+    let n = 1;
+    while (taken.has(`BTX-2026-${30 + n}`) && n < 500) n++;
+    const day = (plus: number) => new Date(this.now().getTime() + plus * 86_400_000).toISOString().slice(0, 10);
+    return { ...CLEAN, invoiceNo: `BTX-2026-${30 + n}`, amountCents: CLEAN.amountCents + 1_250 * n, issueDate: day(0), dueDate: day(14) };
+  }
+
+  /**
+   * The hands-on demo's sandbox override of a hold (14 Nov, owner): a possible duplicate by the same total (twin_of) is
+   * cleared with the inbox's own person's path (clearPossibleDuplicate: kept per pair, in the audit log as
+   * ap.duplicate_cleared by a person), then checked again; every other check still applies, and nothing is paid before the
+   * passkey signs the exact terms. In production a second person would review it. A match on the invoice number, an exact
+   * duplicate, changed bank details or a new supplier are never cleared this way: those can only be rejected.
+   */
+  clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      try {
+        const next = await this.withClaude(`engine.clear:${id}`, (reader) => clearPossibleDuplicate(this.deps.db, { now: () => this.now(), reader }, id,
+          { by: "You (visitor)", note: "cleared on the hands-on demo (sandbox): a new invoice, not the same one", actor: "human" }));
+        if (next.status === "ready") this.startEarlyPayer(next.id);
+        return { ok: true as const, invoice: this.view(next) };
+      } catch (e) {
+        return { ok: false as const, reason: message(e) };
+      }
+    });
+  }
+
+  /** The hands-on demo's Reject of a held invoice: the inbox's own rejection, with its reason kept; nothing is paid. */
+  rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      try {
+        const next = await rejectApInvoice(this.deps.db, id, "rejected by the visitor on the hands-on demo (sandbox)", {}, this.now());
+        return { ok: true as const, invoice: this.view(next) };
+      } catch (e) {
+        return { ok: false as const, reason: message(e) };
+      }
     });
   }
 
@@ -764,7 +852,8 @@ export class EngineHost {
     const terms = JSON.parse(p.terms_json) as Terms;
     const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
     // The hash as stored with the proposal (what the passkey signs), never one recomputed from the instruction's text.
-    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at };
+    const converts = !!(terms as { conversion?: unknown }).conversion;
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at, ...(converts ? { fx_limit_bps: fxMarkupLimitBps(db) } : {}) };
   }
 
   /**

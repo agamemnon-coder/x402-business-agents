@@ -109,6 +109,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
+| `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
+| `POST /v1/cards/actions` | admin | A signed-in owner asks for a card action (`issue`, `freeze`, `unfreeze`, `limits`, `test`): the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing is sent yet. |
+| `POST /v1/cards/actions/{id}/sign` | admin | The owner's own passkey over the action's hash; the action then runs once at the Airwallex sandbox. The same signed action again answers its first result. |
 | `GET /v1/airwallex-live/{view}` | read | The live Airwallex tab, read-only, from the Airwallex sandbox (test money). Purser Cloud holds no Airwallex key: it asks the site Worker's gateway (`AWX_READ`, a service binding to kit11's `AwxRead` entrypoint; `worker/src/awxRead.ts`), which alone calls `api.sandbox.airwallex.com`, by a fixed list of GETs (and the login). Views: `balances`, `accounts`, `financial`, `rates`, `transfers`, `beneficiaries`, `issuing`, `calls`, `reconcile` (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions, to the cent). Each answer says when Airwallex was read, or why the sandbox is unavailable. Kept 45 s for everyone; capped per visitor here and for all visitors in the gateway. |
 | `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
 | `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
@@ -172,6 +176,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/stats` | anyone | The cloud's own counters per day, UTC, across every company, with no company's id or amount (`?days=` 1 to 90, default 14): requests, refused, rate_limited, errors, uploads, payments_filed, approvals, engine_refusals. 404 when the counters are off. |
 | `GET /v1/engine/samples` | read | The hands-on demo's sample invoices (test invoices, fake), in the tray's order: `{ items: [{ key, title, filename }] }`. Each title says what the visitor does, never what the engine will answer. |
 | `POST /v1/engine/samples/{key}` | admin | A sample through the engine's inbox, as an upload of its PDF; answers as `POST /v1/engine/documents`. 404 for a key that is not a sample; 400 in the engine's words when refused (a test company holds at most 8 documents, whatever route brings them). |
+| `POST /v1/engine/invoices/{id}/clear` | admin | A test company's sandbox override of a hold: a possible duplicate by the same total is cleared with the inbox's own person's path (kept per pair and in the audit log), then checked again; `{ invoice }`. Nothing is paid before the passkey signs the exact terms; in production a second person reviews it. 409 with the engine's reason for any other hold (a number match, an exact duplicate, new bank details, a new supplier). |
+| `POST /v1/engine/invoices/{id}/reject` | admin | A test company's Reject of a held invoice: the inbox's own rejection, its reason kept; `{ invoice }`. Nothing is paid. 409 when it cannot be rejected (paid, or waiting for the passkey). |
 | `GET /v1/engine/suppliers` | read | The suppliers the company has on file, as the engine's seed recorded them: `{ items: [{ key, name, iban, bic }] }`. Their IBANs are published test IBANs, not anyone's account. |
 | `POST /v1/engine/compose` | admin | "Write your own" (a test company of the hands-on demo only): `{ supplier_key, invoice_no, amount, issue_date, due_date, iban }`, checked (EUR 1.00 to 5,000.00 with two decimals; dates within 60 days of today; an IBAN with a valid mod-97 check), written in the sample's layout, rendered to a PDF inside the engine and filed through its inbox. Answers as `POST /v1/engine/documents`; a refused field is 400 `{ code, message, field }`. The typed text stays in the company's own ledger and is never logged. |
 | `GET /v1/engine/proposals/{id}/terms` | read | A proposal's exact terms as the passkey signs them: `{ proposal_id, status, terms, canonical, terms_sha256, approved, expires_at }` (the canonical JSON and its SHA-256, the signature's challenge). |
@@ -615,3 +621,29 @@ hands-on lane's.
   Cloudflare's current D1 Time Travel page for the retention window on the plan used, and rehearse one restore of a
   copy with `wrangler d1 time-travel` into a scratch database. R2 has no point-in-time restore of its own here: the
   documents are written once under their hash and never changed, and the export lists them.
+
+## The agents' live sandbox cards (Agents tab)
+
+Each agent can have its own virtual Visa card at the **Airwallex sandbox** (test money). The card's limits are the CFO
+policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with Face ID, on the Agents tab.
+
+- **No key in Purser Cloud.** The Cloud asks the kit11 Worker's `AwxCards` entrypoint (`worker/src/awxCards.ts`) over a
+  service binding (`AWX_CARDS` in `cloud/wrangler.try.jsonc`). No HTTP request reaches that entrypoint.
+- **Allow-list** (`src/airwallex/cardGate.ts`): read cards, one card, card transactions, cardholders; create a card;
+  update a card's status (ACTIVE or INACTIVE) or its limits, nothing else; a delegate cardholder for a new card; the
+  sandbox's purchase simulation. Every body shape is checked. Anything else is refused before it is sent.
+- **Never card data.** kit11 cuts every answer down to the last four digits. No full number, CVV or cardholder reaches
+  the Cloud, its database, its logs or the page.
+- **Every write is signed.** `POST /v1/cards/actions` writes the exact action down as canonical JSON. The passkey
+  challenge is its SHA-256. `POST /v1/cards/actions/{id}/sign` checks the owner's own passkey over that hash, then runs it
+  once. Signing the same action again answers the first result and sends nothing. A new card's `request_id` at Airwallex
+  is that hash too.
+- **Locks** (all off or zero unless set): the admin switch `awx_cards` (on/off, in `/v1/try/admin`), kit11's var
+  `AWX_CARDS_WRITE=on`, never a `/try` test company, one card an agent, 3 a company, 20 writes a company a UTC day (60 in all).
+- **Issuing check:** `GET /v1/cards/scope` answers `{ issuing: ok | forbidden | no_key | no_gateway | unavailable }`,
+  one Airwallex read a minute at most, no card data.
+- **Decline demo:** "Test: buy for …" has the agent try a purchase 5.00 EUR over its limit, through Airwallex's own
+  purchase simulation, signed like any write. Airwallex declines it (`LIMIT_EXCEEDED`) and the decline shows with its id.
+- Checked on this machine with a stand-in sandbox: `npx tsx test/browser/agent-cards.check.ts docs/assets/cloud`.
+
+![The Sourcing agent's live card, frozen, with a declined over-limit purchase](assets/cloud/cloud-agents-card-1440.png)

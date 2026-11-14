@@ -29,7 +29,7 @@ function liveSource(o: { answer?: (a: { buyAmount: string }) => LiveFxAnswer; ha
   return { source, asked };
 }
 
-async function company(source: LiveFxSource, o: { allowed?: boolean; waitMs?: number } = {}) {
+async function company(source: LiveFxSource, o: { allowed?: boolean; waitMs?: number; fxMarkupBps?: number } = {}) {
   const { SAMPLES } = await import("../cloud/src/engine/samples.gen.js");
   const db = openDb(":memory:");
   const docs = new Map<string, Buffer>();
@@ -38,7 +38,7 @@ async function company(source: LiveFxSource, o: { allowed?: boolean; waitMs?: nu
   const bank = standInBank(store);
   const notes = new Map<string, string>();
   const fx = withLiveFx(bank, { company: "t_try_test", source, allowed: async () => o.allowed ?? true, db, keep: { get: (id) => notes.get(id) ?? null, set: (id, n) => { notes.set(id, n); } }, ...(o.waitMs ? { waitMs: o.waitMs } : {}) });
-  const h = new EngineHost({ db, reader: parserOnly, rails: { rail: fx.rail, sim: bank }, afterMoney: () => store.save(bankToText(bank)), rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Try Co", lang: "en" }, vault: null, feed: null, samples: SAMPLES });
+  const h = new EngineHost({ db, reader: parserOnly, rails: { rail: fx.rail, sim: bank }, afterMoney: () => store.save(bankToText(bank)), rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Try Co", lang: "en" }, vault: null, feed: null, samples: SAMPLES, ...(o.fxMarkupBps !== undefined ? { fxMarkupBps: o.fxMarkupBps } : {}) });
   await h.seed();
   const up = await h.uploadSample("clean");
   const p = await h.propose(up!.invoice!.id);
@@ -113,6 +113,16 @@ describe("/try's live FX quote in the signed terms", () => {
     expect(wrong.note).toMatchObject({ source: "recorded", reason: "bad_answer" });
     const capped = await company(liveSource({ answer: () => ({ ok: false, reason: "day_cap" }) }).source);
     expect(capped.note).toMatchObject({ source: "recorded", reason: "day_cap" });
+    // The sandbox's quote 1% over its own rate: over Purser's FX limit, so the recorded rate is used and Approve runs.
+    const dear = await company(liveSource({ answer: (a) => ({ ok: true, quote: { quote_id: QUOTE_ID, buy_currency: "EUR", sell_currency: "USD", buy_amount: a.buyAmount, sell_amount: (Math.ceil(Number(a.buyAmount) * 1.1717 * 100) / 100).toFixed(2), client_rate: "1.1717", valid_to_at: new Date(Date.now() + 15 * 60_000).toISOString() }, market_rate: "1.1601" }) }).source);
+    expect(dear.note).toMatchObject({ source: "recorded", reason: "over_limit" });
+    expect((dear.terms.terms as unknown as { conversion: Conversion }).conversion.quote_id).not.toBe(QUOTE_ID);
+    // A try company's limit is 1.50% (TRY_FX_QUOTE_MAX_MARKUP_BPS): the same quote 1% over is used live; one 2% over is not.
+    const tryCo = await company(liveSource({ answer: (a) => ({ ok: true, quote: { quote_id: QUOTE_ID, buy_currency: "EUR", sell_currency: "USD", buy_amount: a.buyAmount, sell_amount: (Math.ceil(Number(a.buyAmount) * 1.1717 * 100) / 100).toFixed(2), client_rate: "1.1717", valid_to_at: new Date(Date.now() + 15 * 60_000).toISOString() }, market_rate: "1.1601" }) }).source, { fxMarkupBps: 150 });
+    expect(tryCo.note).toMatchObject({ source: "airwallex-sandbox", quote_id: QUOTE_ID });
+    expect((tryCo.terms.terms as unknown as { conversion: Conversion }).conversion.quote_id).toBe(QUOTE_ID);
+    const tooDear = await company(liveSource({ answer: (a) => ({ ok: true, quote: { quote_id: QUOTE_ID, buy_currency: "EUR", sell_currency: "USD", buy_amount: a.buyAmount, sell_amount: (Math.ceil(Number(a.buyAmount) * 1.1833 * 100) / 100).toFixed(2), client_rate: "1.1833", valid_to_at: new Date(Date.now() + 15 * 60_000).toISOString() }, market_rate: "1.1601" }) }).source, { fxMarkupBps: 150 });
+    expect(tooDear.note).toMatchObject({ source: "recorded", reason: "over_limit" });
     const odd = await company(liveSource({ answer: () => ({ ok: false, reason: "something Airwallex said" }) }).source);
     expect(odd.note).toMatchObject({ source: "recorded", reason: "unavailable" });
     const thrown = await company({ quote: async () => { throw new Error("binding failed"); } });
