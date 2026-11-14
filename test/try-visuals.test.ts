@@ -12,7 +12,7 @@ describe("the /try visual layer", () => {
     const html = tryPage("N0NCE", { origin: "https://x.test", rpId: "x.test" });
     expect(html).toContain(VIS_CSS);
     expect(html).toContain(`<script type="module" nonce="N0NCE">${js}</script>`);
-    for (const tag of html.match(/<script\b[^>]*>/g) ?? []) expect(tag).toContain('nonce="N0NCE"');
+    for (const tag of html.match(/<script\b[^>]*>/gi) ?? []) expect(tag).toContain('nonce="N0NCE"');
   });
 
   it("adds under 15 KB, parses, and draws text only (no innerHTML, no inline handlers)", () => {
