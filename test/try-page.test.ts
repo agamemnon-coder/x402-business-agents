@@ -231,19 +231,19 @@ describe("the copy", () => {
   });
 
   it("counts every string of a screen in at least one of its states", () => {
-    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow")) as Record<string, string>, invoice: COPY.INVOICE, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
+    const groups: Record<string, Record<string, string>> = { start: Object.fromEntries(Object.entries(COPY.START).filter(([k]) => k !== "flow")) as Record<string, string>, invoice: Object.fromEntries(Object.entries(COPY.INVOICE).filter(([k]) => k !== "hints")) as Record<string, string>, work: COPY.WORK, approve: COPY.APPROVE, pay: COPY.PAY, books: COPY.BOOKS, company: COPY.COMPANY, gone: COPY.GONE, ended: COPY.ENDED };
     expect(Object.keys(COPY.VISIBLE).sort()).toEqual(Object.keys(groups).sort());
     for (const [screen, group] of Object.entries(groups)) {
       const seen = new Set(COPY.VISIBLE[screen as keyof typeof COPY.VISIBLE].flat());
       // A {method} line is counted with a method filled in; PAY's sandbox line shows only when the rail is on (one more line,
       // 4 words), the executor's note sits in its fold, and the verdict is counted with its one-cent sentence. Screen 6's
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
-      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
+      for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did", "skip"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "company 4", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "invoice 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "company 4", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "approve 6", "approve 7", "approve 8", "approve 16"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {

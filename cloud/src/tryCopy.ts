@@ -114,7 +114,19 @@ export const INVOICE = {
   heading: "An invoice comes in.",
   tabSample: "Pick a sample",
   tabWrite: "Write your own",
-  loading: "Loading…",
+  /** While the start's company is made and its samples load (judges, 14 Nov: up to 7 s on a phone, with no words). */
+  loading: "Setting up your test company…",
+  /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
+  hints: {
+    clean: "Ready to pay once you sign",
+    again: "The same file again: Purser holds it",
+    renumbered: "A paid invoice, new number: held",
+    bank: "New bank details: held for your check",
+    unknown: "A new supplier: held until checked",
+  } as Record<string, string>,
+  startHere: "Start here",
+  /** The skip link, first in the tab order (judges, 14 Nov). */
+  skip: "Skip to the demo",
   failed: "Purser could not load this. Try again.",
   supplier: "Supplier",
   invoiceNo: "Invoice number",
@@ -306,7 +318,11 @@ export const APPROVE = {
    * Tester, 14 Nov: "is the limit per transaction or a total?" Here, every supplier invoice waits for the CFO: the
    * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
    */
-  limit: "Every invoice waits for your signature here, whatever its amount.",
+  /**
+   * 14 Nov (judges: this read as if agents never pay alone, against the headline): in this demo the limit is zero, so
+   * every invoice waits; with a CFO's limit set, an agent pays alone below it (the main run on /proof, run live).
+   */
+  limit: "Demo limit: zero, so every invoice waits for you. Below a CFO's limit, agents pay alone.",
   fileAgain: "File it again",
   failed: "Purser could not file this payment.",
 };
@@ -317,6 +333,8 @@ export const APPROVE = {
  */
 export const PROPOSAL_FIELDS = {
   account: "Account ending", due: "Due", amount: "Amount", payee: "Payee",
+  /** A CFO's eye (14 Nov): the payee's whole IBAN, its BIC and the invoice number on the terms. */
+  iban: "IBAN", bic: "BIC", invoiceNo: "Invoice number",
   /**
    * try-fixes, 13 Nov: every signed term in words. {sell}, {buy}: amounts; {rate}: the quote's rate; {money}: the cap.
    * final-polish, 13 Nov: the engine converts only the EUR shortfall (needed minus free EUR, src/policy/treasury.ts), so the
@@ -383,7 +401,6 @@ export const PAY = {
   /** final-polish, 13 Nov: the screen leads with what to do; it is shown above the fields. */
   line: "These are the terms you signed. Change one and press Pay.",
   /** Screen 4 comes after paid: a quiet line under the fields, not an error (final-polish, 13 Nov). */
-  already: "This invoice is already paid.",
   /** Screen 4's quiet link back to screen 5. */
   back: "Back",
   button: "Pay with my signature",
@@ -468,7 +485,7 @@ export const BOOKS = {
   /** Under it: this visit's own record, screen 5b ("What Purser did with it"). */
   what: "What Purser did",
   /** A quiet link under the main button, to screen 4's fields. */
-  cheat: "Try changing what you signed",
+  cheat: "Now change one cent",
 };
 
 /**
@@ -554,6 +571,9 @@ export const VISIBLE = {
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
     // An amount past the demo's cap: the same hint in the cap's words (the lead's, 7), over budget at its own count.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountCap, INVOICE.send],
+    // Judges, 14 Nov: the samples in, each with its muted line, the first marked (titles are the engine's data).
+    // The skip link is off screen until it has focus, so it is not counted.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.startHere, ...Object.values(INVOICE.hints), INVOICE.send],
   ],
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],
@@ -601,12 +621,12 @@ export const VISIBLE = {
   ],
   pay: [
     [PAY.heading, PAY.loading],
-    [PAY.heading, PAY.line, PAY.already, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.amountBad, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.paying, APPROVE.slow, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.paidOnce, PAY.button, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.fileAgain, PAY.back],
-    [PAY.heading, PAY.line, PAY.already, PAY.failed, PAY.retry, PAY.back],
+    [PAY.heading, PAY.line, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.amountBad, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.paying, APPROVE.slow, PAY.back],
+    [PAY.heading, PAY.line, PAY.paidOnce, PAY.button, PAY.back],
+    [PAY.heading, PAY.line, PAY.fileAgain, PAY.back],
+    [PAY.heading, PAY.line, PAY.failed, PAY.retry, PAY.back],
     // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
     // 14 Nov (owner): the reason first, signed beside asked, one plain line, the transfers; the stamp, the layers, the
     // fingerprints, the verdict, the round trip and the raw answer are in the closed fold (TAMPER.proof).
@@ -686,7 +706,13 @@ export const VISIBLE = {
 // picture with a word each, the one-cent refusal, the trailer link and the partners' logos with "No endorsement implied"
 // ("start 0" to "start 3", +15 to +20). The finish adds the run's score and Share ("company 0" to "company 3", +13 each);
 // "company 4" is the score before the one-cent change, its link in the refusal's place. Each pinned at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov (judges): screen 4 has no "already paid" line during the one-cent test ("pay 4" and "pay 6" are back under 45);
+// screen 5's test is its main button, "Now change one cent" ("books 0" to "books 5", one word fewer).
+// 14 Nov (judges: "every invoice waits" read against the headline): the approval says the demo's limit is zero and
+// that agents pay alone below a CFO's limit (+6 on each state with it, "approve 2" to "approve 16").
+// 14 Nov (judges, round 2): the samples each say in one muted line what they show, the first marked "Start here"
+// ("invoice 6", 60).
+export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "invoice 6": 60, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 61, "approve 4": 61, "approve 9": 59, "approve 10": 54, "approve 11": 60, "approve 12": 59, "approve 13": 54, "approve 14": 53, "approve 15": 63, "approve 5": 51, "approve 6": 49, "approve 7": 47, "approve 8": 50, "approve 16": 49 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -725,7 +751,11 @@ export const LIVE = {
    */
   booksVat: "German VAT 19%: no Dutch purchase code applies; booked from the supplier's German VAT ID as VAT to reclaim from Germany",
   /** The same without a VAT id on the invoice: the rate only, and that a person codes it ({pct}: a whole percent). */
-  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; booked without a VAT code for the accountant to check",
+  /**
+   * 14 Nov (judges: the step said "booked without a VAT code" while the ledger showed a VAT line): the VAT itself is
+   * booked, only without a code (src/ap/books.ts codedEntries decides its account); the line says so, naming no account.
+   */
+  uncodedVat: "VAT at {pct}%: no Dutch purchase code applies; the VAT is booked without a code, for the accountant to check",
   /** VAT codes in words (P21 reads as 21% by itself). */
   vat: { PF_DE19: "German 19%, reclaimed from Germany" } as Record<string, string>,
   /** The agents' decisions and code's outcomes in words, never the raw value ("ask_cfo"). */

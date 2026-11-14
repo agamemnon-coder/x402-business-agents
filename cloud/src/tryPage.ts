@@ -78,6 +78,17 @@ main .tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; 
 main .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .samples { display: grid; gap: 8px; }
 .samples .btn { justify-content: flex-start; text-align: left; border-radius: 14px; padding: 12px 16px; font-weight: 600; }
+.samples .btn { display: grid; gap: 2px; justify-items: start; }
+.samples .btn .st { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.samples .btn .here { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.samples .btn .sh { color: var(--muted); font-size: 13px; font-weight: 500; }
+.payrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 14px; }
+.payrow .paynote { margin: 0; flex: 1 1 200px; color: var(--muted); font-size: 14px; }
+.payrow .btn.big { margin-left: auto; }
+.payrow .btn.big { margin-top: 0; }
+@media (max-width: 520px) { .payrow { flex-direction: column; align-items: stretch; } }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; text-decoration: none; }
+.skip:focus { top: 12px; }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
@@ -281,6 +292,7 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
 .jsonl { margin: 10px 0 0; font-size: 14px; }
 /* 14 Nov (owner): screen 6 as a finish: the result, the three steps ticking in, the way on, then the records. */
 .done { margin: 0 0 16px; font-size: 19px; line-height: 1.4; font-weight: 650; }
+.done .sk-line { display: block; height: 1.4em; width: 85%; border-radius: 8px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 ul.did .dic svg { animation: pop .5s ease-out both; animation-delay: .25s; }
 ul.did li:nth-child(2) .dic svg { animation-delay: .37s; } ul.did li:nth-child(3) .dic svg { animation-delay: .49s; }
 .acts.next { margin-top: 18px; }
@@ -652,6 +664,8 @@ function screen(name,def){SCREENS[name]=def}
 function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode),el('span','bx',[runClock(),sameStep(S.screen)])])}
 // Where the visit stands: one segment per step, and the current step's name.
 function steps(name){
+  // Screen 4 after paid (the one-cent test) stays on Paid's dot: the rail never steps back (judges, 14 Nov).
+  if(name==='pay'&&S.settled)name='books';
   const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
   const ol=el('ol','prog');ol.setAttribute('aria-label',fill(C.steps.where,{n:at+1,of:order.length}));
   // Each dot with its word, small; the current one marked (14 Nov, a tester: "what are the other dots?").
@@ -741,7 +755,12 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         pick.replaceChildren(el('p','hint calm',[C.invoice.failed,' ',again]));return}
       const list=el('div','samples');list.setAttribute('role','group');
       for(const s of items){
-        const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
+        // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
+        const hint=C.invoice.hints[s.key];const first=!list.children.length;
+        const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
+        const b=btn([el('span','st',[title,first?el('span','here',C.invoice.startHere):null]),sh]);b.setAttribute('aria-pressed','false');
+        // The title is the button's name; its line is its description.
+        b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
         list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
       pick.replaceChildren(list);samplesIn=true;gate();
@@ -949,13 +968,14 @@ function drawResult(box,r,ms){
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    box.append(el('p','big ok',C.work.ready),el('p','sub',C.work.readySub));
+    box.append(el('p','big ok',C.work.ready));
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
     main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
-    box.append(...(took?[took]:[]),card.node,main);chipFill();
+    // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
+    box.append(...(took?[took]:[]),card.node,el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
@@ -1033,6 +1053,9 @@ function mainButton(){
   return {node:b,set(label,fn){b.textContent=label;act=fn;b.hidden=false;b.disabled=false},off(label){b.textContent=label;act=null;b.disabled=true}};
 }
 
+// The suppliers on file, read once (the approval's IBAN row).
+let SUPP=null;
+const suppliersOnFile=()=>(SUPP||(SUPP=api('GET','/v1/engine/suppliers').then((r)=>r.status===200&&Array.isArray(r.json.items)?r.json.items:[]).catch(()=>[]))).then((x)=>{if(!x.length)SUPP=null;return x});
 // The terms being prepared for an invoice (started from screen 2's answer), taken once by screen 3.
 const PREP=new Map();
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
@@ -1043,14 +1066,24 @@ function factRows(p,inv,terms){
   const m=payee?/^(.*), IBAN \S*?(\w{2,8})$/.exec(String(payee[1])):null;
   const pairs=[];
   if(payee)pairs.push(m?[String(payee[0]),m[1]]:[String(payee[0]),String(payee[1])]);
-  if(m)pairs.push([C.proposal.account,'…'+m[2]]);
+  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
+  // A CFO's eye (14 Nov): the payee's whole IBAN in groups of four, its BIC and the invoice number. The terms sign the
+  // payee on file (beneficiary_id), its IBAN's last four and its BIC; the whole IBAN is that payee's, from the suppliers
+  // on file, shown once it matches by name and last four (until then, its last four).
+  const last4=T&&typeof T.iban_last4==='string'?T.iban_last4:m?m[2]:'';
+  let ibanDd=null;
+  if(last4){ibanDd=el('dd','mono','…'+last4);pairs.push([C.proposal.iban,ibanDd]);
+    const name=T&&T.beneficiary_name?String(T.beneficiary_name):m?m[1]:'';
+    suppliersOnFile().then((list)=>{const sup=list.find((x)=>x&&typeof x.iban==='string'&&x.name===name&&x.iban.replace(/\s/g,'').slice(-4)===last4);if(sup&&ibanDd)ibanDd.textContent=sup.iban.replace(/\s/g,'').replace(/(.{4})/g,'$1 ').trim()})}
+  if(T&&typeof T.bic==='string'&&T.bic)pairs.push([C.proposal.bic,T.bic]);
+  // The terms' invoice_no is the ledger's key, '<number> · <supplier>': the number alone here (the payee is its own row).
+  if(T&&typeof T.invoice_no==='string'&&T.invoice_no)pairs.push([C.proposal.invoiceNo,T.invoice_no.split(' · ')[0]]);
   if(inv&&inv.due_date)pairs.push([C.proposal.due,dateOf(inv.due_date)]);
   // Everything else the passkey signs, in words (try-fixes, 13 Nov): the conversion, the fee's cap and the deadline.
-  const T=terms&&typeof terms==='object'?terms:null;const cv=T&&T.conversion&&typeof T.conversion==='object'?T.conversion:null;
   if(cv&&cv.sell_amount&&cv.buy_amount)pairs.push([C.proposal.fx,fill(C.proposal.fxLine,{sell:cash(cv.sell_currency,cv.sell_amount),buy:cash(cv.buy_currency,cv.buy_amount),rate:String(cv.client_rate||'')})]);
   if(T&&T.fee_max)pairs.push([C.proposal.feeCap,fill(C.proposal.feeLine,{money:cash(T.currency,T.fee_max)})]);
   if(T&&T.expires_at)pairs.push([C.proposal.expires,whenOf(T.expires_at)]);
-  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),el('dd','',v));
+  const d=el('dl','read');for(const [k,v] of pairs)d.append(el('dt','',k),typeof v==='string'?el('dd','',v):v);
   return {amount,list:d};
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
@@ -1255,7 +1288,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
 screen('pay',{heading:C.pay.heading,draw(box){
   const Y=C.pay;const pid=S.proposal&&S.proposal.id;
   const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
-  const main=mainButton();main.off(Y.button);
+  const main=mainButton();main.off(Y.button);main.node.classList.add('asking');
   const live=livePanel();
   // Back to screen 5, a quiet link (the payment is already made).
   const back=el('button','link',Y.back);back.type='button';back.addEventListener('click',()=>show('books',{settled:S.settled}));
@@ -1278,8 +1311,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
     // What to do first, then the fields, then the paid state as a quiet line (final-polish, 13 Nov).
     const intro=el('div','',[el('p','',Y.line)]);
-    top.replaceChildren(intro,form,el('p','hint',Y.already));reset();
-    main.set(Y.button,()=>send(intro));
+    // 14 Nov (judges): no "already paid" note here, which read like a duplicate check; the test is the signature's.
+    top.replaceChildren(intro,form);reset();
+    main.node.classList.remove('asking');main.set(Y.button,()=>send(intro));
   });
   async function send(intro){
     const v=values();
@@ -1403,7 +1437,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // Purser Cloud's guest dashboard, which is a sample company and not this one, said so under the link (try-fixes,
   // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
-  const another=btn(B.another,true);another.addEventListener('click',()=>show('invoice'));
+  // 14 Nov (owner's judges): the one-cent test is the main step on, a primary button; another invoice beside it.
+  const another=btn(B.another,!pid);another.addEventListener('click',()=>show('invoice'));
   const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
@@ -1413,10 +1448,12 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
-  const cheat=pid?el('button','link cheat',B.cheat):null;if(cheat){cheat.type='button';cheat.addEventListener('click',()=>show('pay'))}
+  const cheat=pid?btn(B.cheat,true):null;if(cheat){cheat.classList.add('cheat');cheat.addEventListener('click',()=>{
+    // At once, the ring and its words while the signed terms load (live QA: about 3 s with nothing to show).
+    cheat.disabled=true;cheat.classList.add('asking');cheat.textContent=C.pay.loading;show('pay')})}
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed
   // under three grey skeletons): until then the blocks hold the screen alone.
-  const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
   const awxPaid=payoutCard(S.awx,sha);
   box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
   const drawn=[];
@@ -1496,14 +1533,18 @@ screen('company',{heading:C.company.heading,draw(box){
   const Y=C.company;
   // 14 Nov (owner: "add a CTA, now it just ends"): a real finish. What the run did, from its own record; the three
   // steps; one primary way on (the real runs) and three quiet links; then the records; then Start again. No form.
-  const done=el('p','done',Y.donePlain);
+  // The line once its figures are in (live QA, 14 Nov: the plain line, then the figures 1.5 to 6 s later): a shimmering
+  // placeholder until then; the plain line only when the figures cannot be read.
+  const done=el('p','done',el('span','sk-line'));done.setAttribute('aria-busy','true');
+  const plain=()=>{if(done.getAttribute('aria-busy')){done.removeAttribute('aria-busy');done.textContent=Y.donePlain}};
   api('GET','/v1/engine/invoices').then((r)=>{
-    if(S.screen!=='company'||r.status!==200||!Array.isArray(r.json.items))return;
+    if(S.screen!=='company')return;
+    if(r.status!==200||!Array.isArray(r.json.items)){plain();return}
     const paid=r.json.items.filter((i)=>i&&i.status==='paid'&&i.proposal);
     const want=S.proposal&&S.proposal.invoice;
     const inv=paid.find((i)=>i.id===want)||paid[paid.length-1];
     const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
-    if(inv&&isFinite(ms)&&ms>=0)done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)});
+    if(inv&&isFinite(ms)&&ms>=0){done.removeAttribute('aria-busy');done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)})}else plain();
   });
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
@@ -1550,6 +1591,8 @@ for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{headi
 
 // A reload returns to the screen the server's state calls for.
 async function boot(){
+  // Judges, 14 Nov: a skip link first in the tab order, to the screen's heading.
+  const skip=el('a','skip',C.invoice.skip);skip.href='#main';skip.addEventListener('click',(e)=>{e.preventDefault();const h=$('#main h1');if(h)h.focus()});document.body.prepend(skip);
   restore();
   if(!S.session){show('start');return}
   if(due()&&!(await renew()))return;

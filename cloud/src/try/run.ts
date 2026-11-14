@@ -182,7 +182,7 @@ const tour=(()=>{
     // The control must be on screen (the try-to-cheat link waits in a hidden tail until Paid's blocks are drawn).
     const shown=(n)=>n&&n.offsetParent!==null?n:null;
     // On Paid the tip means the try-to-cheat link: Next waits for it; only without it (a failed payment) the main button.
-    if(s==='books'){const ch=$('#main .link.cheat');return ch?shown(ch):shown($('#main .btn.primary:not([disabled])'))}
+    if(s==='books'){const ch=$('#main .cheat');return ch?shown(ch):shown($('#main .btn.primary:not([disabled])'))}
     if(s==='pay'&&refusedNow())return null;
     if(s==='company')return $('#main .score');
     // On screen 2, only Pay or Try another invoice: the tour never presses a sandbox override for the visitor.
