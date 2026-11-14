@@ -239,9 +239,10 @@ describe("the copy", () => {
     // "recorded {date}" labels the runs inside the "Recorded real runs" fold; "What you just did" names the three icons for screen readers only.
       for (const [k, v] of Object.entries(group)) if (!["sandbox", "executorNote", "vAmount", "vPayee", "vAccount", "vOther", "recorded", "did"].includes(k)) expect(seen.has(v) || [...seen].some((x) => v.includes("{method}") && x === v.replace("{method}", COPY.METHOD.other)), `${screen}.${k}`).toBe(true);
     }
+    // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {

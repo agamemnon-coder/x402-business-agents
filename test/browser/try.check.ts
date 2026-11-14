@@ -22,7 +22,7 @@ import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import type { DB } from "../../src/db/open.js";
@@ -631,6 +631,13 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".stamp");
   stand.payDelay = 0;
   ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
+  // 14 Nov (owner): the reason first, signed beside asked with the changed value marked, one plain line; the rest in the fold.
+  ok((await page.locator(".why .head").textContent()) === TAMPER.head && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
+  const cmp = await page.locator(".why .cmp div").allTextContents();
+  ok(cmp.length === 2 && cmp[0] === `${TAMPER.signed} · AmountEUR 1,850.00` && cmp[1] === `${TAMPER.asked} · AmountEUR 1,850.01`
+    && await page.locator(".why .cmp mark").count() === 1 && (await page.locator(".why .cmp mark").textContent()) === "EUR 1,850.01", `${tag}: refused: signed beside asked, the asked amount marked (${cmp.join(" | ")})`);
+  ok(/^(Face ID|Touch ID|Fingerprint|Windows Hello|Your passkey) signs the exact terms\. Change one cent and the signature no longer matches, so nothing is paid\.$/.test((await page.locator(".why .rule").textContent()) ?? ""), `${tag}: refused: the plain line`);
+  ok(!(await page.locator(".stamp").isVisible()) && (await page.locator(".why > details > summary").first().textContent()) === TAMPER.proof, `${tag}: refused: the stamp and the proof folded under "${TAMPER.proof}"`);
   ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
   const layers = await page.locator(".layer").allTextContents();
   ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
@@ -642,8 +649,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(marks.join("").length === diffs && diffs > 0, `${tag}: refused: every differing character marked (${diffs})`);
   ok((await page.textContent(".verdict")) === `${PAY.vAmountCent} ${PAY.vCover}`, `${tag}: refused: the verdict, from the two values`);
   const proofs = await page.locator(".proof").allTextContents();
-  const ms = Number(/^Round trip (\d+) ms, measured in your browser$/.exec(proofs[0] ?? "")?.[1]);
-  ok(ms >= 800 && proofs[1] === PAY.transfers.replace("{n}", "0") && proofs.length === 2, `${tag}: refused: the round trip measured in the browser (${proofs[0]}), Transfers made: 0, no sandbox line with the rail off`);
+  const ms = Number(/^Round trip (\d+) ms, measured in your browser$/.exec(proofs[1] ?? "")?.[1]);
+  ok(ms >= 800 && proofs[0] === PAY.transfers.replace("{n}", "0") && await page.locator(".proof.xfer").isVisible() && proofs.length === 2, `${tag}: refused: the round trip measured in the browser (${proofs[0]}), Transfers made: 0, no sandbox line with the rail off`);
   ok((await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid, `${tag}: refused: the stand-in bank made no transfer`);
   ok(await page.locator("pre.raw").evaluate((e) => e.textContent) === rawText, `${tag}: refused: the raw answer exactly as received`);
   ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
