@@ -24,8 +24,9 @@ import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, INBOX, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
+import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
 import { TRAILER_URL } from "../../src/config/brand.js";
@@ -97,7 +98,9 @@ async function company(slug: string): Promise<Visitor> {
 const visitors = new Map<string, Visitor>();
 let made = 0;
 const SUPPLIER = { key: "bergtex", name: "Bergtex Textil GmbH", iban: "DE89370400440532013000", bic: "COBADEFFXXX" };
-const SAMPLES = [{ key: "clean", title: "A clean invoice from a supplier on file" }, { key: "again", title: "The same file again" }];
+// With the engine's own rows and measured outcomes (cloud/src/engine/samples.gen.ts), as GET /v1/engine/samples gives them (14 Nov, inbox table).
+const GEN = (k: string) => { const g = GEN_SAMPLES.find((x) => x.key === k)!; return { row: g.row, expect: g.expect }; };
+const SAMPLES = [{ key: "clean", title: "A clean invoice from a supplier on file", ...GEN("clean") }, { key: "again", title: "The same file again", ...GEN("again") }];
 const clean = await pdfOf(EN);
 const long = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 /** An invoice as the compose route would write it: Bergtex's layout with the visitor's number, amount, dates and IBAN. */
@@ -438,6 +441,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     if (shots) { await page.locator("#f-amt").scrollIntoViewIfNeeded(); await page.screenshot({ path: join(shots, "try-1-amount-hint-390-light.png") }); }
     await page.click(`text=${INVOICE.tabSample}`);
     ok(await page.getAttribute(`.samples .btn:has-text("${SAMPLES[0]!.title}")`, "aria-pressed") === "true", `${tag}: the first sample is picked`);
+    // 14 Nov (inbox table): each row says its supplier, number, amount, due date and the risk the engine measured.
+    const rowsTxt = await page.locator(".samples.inbox .btn.row").allInnerTexts();
+    ok(rowsTxt.length === 2 && rowsTxt[0]!.includes("Bergtex Textil GmbH") && rowsTxt[0]!.includes("BTX-2026-21") && rowsTxt[0]!.includes("EUR 1,850.00") && rowsTxt[0]!.includes(INBOX.risk.clean!) && rowsTxt[1]!.includes(INBOX.risk.duplicate_document!),
+      `${tag}: the samples are an inbox: supplier, number, amount, due and the engine's risk per row (${rowsTxt.map((r) => r.replace(/\s+/g, " ")).join(" | ")})`);
     // The answer held: the card's skeleton (labels only, no amount) under who is reading.
     stand.fileDelay = 2500;
     await page.click(`text=${INVOICE.send}`);

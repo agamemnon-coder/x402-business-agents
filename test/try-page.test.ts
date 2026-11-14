@@ -243,7 +243,7 @@ describe("the copy", () => {
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "work 2", "work 10", "invoice 6", "work 11", "work 12", "approve 6", "approve 7", "approve 8", "approve 16", "company 4"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "work 2", "work 10", "invoice 6", "work 11", "work 12", "approve 6", "approve 7", "approve 8", "approve 16", "company 4", "approve 3"]);
     // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs; Approve shows the hash's start.
   });
 
