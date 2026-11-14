@@ -69,7 +69,7 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
-    expect(REASSURE).toEqual({ sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." });
+    expect(REASSURE).toEqual({ sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
     expect(ON).toMatch(new RegExp(`${PROOF_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
@@ -92,7 +92,7 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A4: one note line with the What's real? link; the only date in sight is the sample invoice's own due date", () => {
-    expect(FLOW_NOTE).toBe("One /try run, a test company's sample invoice, test money.");
+    expect(FLOW_NOTE).toBe("One /try run, a test company's sample invoice.");
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       expect(main.match(/<p class="hf-note">/g)).toHaveLength(1);
@@ -140,7 +140,8 @@ describe("Home, the enterprise pass", () => {
       ["Airwallex", "Airwallex declined the card", "EUR 45.00 over a 30.00 limit."],
       ["Alta", "Alta refused it on chain", "Over its cap."],
       // Visa judge, 14 Nov: the outcome the judge found buried, to /visa#visa-reuse (vic-4 F2, vic-3).
-      ["Visa", "Visa: reused credential refused", "By Purser; the sandbox had accepted it."],
+      // Partner scan, 14 Nov: the row says what Purser does, not what the sandbox accepted (that finding stays on /visa).
+      ["Visa", "Visa: reused credential refused", "Purser binds each credential to one purchase."],
     ]);
     // The rows' figures stay held to their records (Airwallex's decline over its card's limit, the Visa read-backs).
     const decline = AWX.card_transactions.find((t) => !t.approved && t.decline_code === "LIMIT_EXCEEDED")!;
@@ -220,9 +221,10 @@ describe("Home, the enterprise pass", () => {
   // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words. 345 since the
   // review of 13 Nov: the main run's line (its company, agents, figures and the film; 32 words) and which agents the
   // flow shows (9 words); 341 as built. 355 since the Visa judge (14 Nov): one line on the Visa outcome, to /visa's
-  // reuse section (13 words; 354 as built).
-  it("A11: stays within 355 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(355);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(355);
+  // reuse section (13 words; 354 as built). 360 since the partner scan (14 Nov): Visa in "Works with" named in full,
+  // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built).
+  it("A11: stays within 360 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(360);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(360);
   });
 });

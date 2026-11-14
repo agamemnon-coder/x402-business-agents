@@ -4,6 +4,7 @@
 // (docs/demo/main-run.json) and its trace companion (docs/demo/main-run-trace.json); nothing is typed in.
 // test/runs-page.test.ts holds the figures to the records.
 
+import { quotedNote } from "../ui/formerly.js";
 import { AGENT_DISPLAY, KIT11_JOBS } from "../config/brand.js";
 import { EXPLORER_TX } from "../metal/network.js";
 import { decisionsOf, loadRecord, type AgentId, type RunRecord } from "./run.js";
@@ -104,7 +105,7 @@ export function agentPage(id: AgentId, r?: RunRecord, t?: RunTrace): string {
   const v = agentView(id, r, t);
   const decision = (d: AgentView["decisions"][number]) => {
     const [head, rest] = split(d.text);
-    return `<li><details><summary><span class="t">${esc(time(d.at))}</span><span class="s">${esc(head)}</span><span class="m">more</span></summary><p class="rest">${rest ? `${esc(rest)}<br>` : ""}${esc(d.model)}${d.requestId ? ` · request <code>${esc(d.requestId)}</code>` : ""}</p></details></li>`;
+    return `<li><details><summary><span class="t">${esc(time(d.at))}</span><span class="s">${esc(head)}${esc(quotedNote(d.text, d.at))}</span><span class="m">more</span></summary><p class="rest">${rest ? `${esc(rest)}<br>` : ""}${esc(d.model)}${d.requestId ? ` · request <code>${esc(d.requestId)}</code>` : ""}</p></details></li>`;
   };
   const pay = (p: AgentView["payments"][number]) => `<li><a class="amt" href="/trace#${esc(p.id)}">${esc(p.amount)} ${esc(unit(p.currency))}</a><span>${esc(KIND[p.kind] ?? p.kind)}</span><span class="t">${esc(time(p.at))} UTC</span>${p.railId ? (p.railId.startsWith("0x") ? `<a class="t" href="${esc(EXPLORER_TX + p.railId)}" target="_blank" rel="noopener">tx ${esc(p.railId.slice(0, 10))}… ↗</a>` : `<code class="t">${esc(p.railId)}</code>`) : ""}</li>`;
   const first = v.decisions.slice(0, 4), rest = v.decisions.slice(4);

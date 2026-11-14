@@ -17,6 +17,7 @@ import { SAMPLES } from "./samples.gen.js";
 import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
+import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -26,6 +27,11 @@ export interface NodeEngineEnv {
   origin: string;
   /** The cloud's clock, for what the read model stamps; the engine itself runs on the real clock, as its executor does. */
   now?: () => Date;
+  /**
+   * /try's live FX quote (./liveFx.ts), as purser-try has it through its AWX_FX binding for its test companies; here,
+   * when handed in (tests and local checks, with a stand-in source), for every company of this process.
+   */
+  liveFx?: { source: LiveFxSource; allowed: () => Promise<boolean> };
 }
 
 /** A ledger's documents in memory: no file is written anywhere. */
@@ -37,7 +43,7 @@ function memoryDocs(): DocStore {
   };
 }
 
-interface Engine { db: DB; host: EngineHost }
+interface Engine { db: DB; host: EngineHost; fxNote: (terms: unknown) => FxQuoteNote | null }
 
 /** The company's engine, made on first use: its name and language are read once, and the treasury's test money is seeded. */
 async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
@@ -49,14 +55,18 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
   const kept = { text: null as string | null };
   const bank = standInBank({ load: () => kept.text, save: (text) => { kept.text = text; } });
   const target = cloudTarget(tenant, env.blobs, env.now ?? (() => new Date()));
+  const notes = new Map<string, string>();
+  const fx = env.liveFx
+    ? withLiveFx(bank, { company: tenantId, source: env.liveFx.source, allowed: env.liveFx.allowed, db, keep: { get: (id) => notes.get(id) ?? null, set: (id, n) => { notes.set(id, n); } } })
+    : null;
   const host = new EngineHost({
-    db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => { kept.text = bankToText(bank); },
+    db, reader: parserOnly, rails: { rail: fx ? fx.rail : bank, sim: bank }, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(env.blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
     samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true } : {}),
   });
   await host.seed();
-  return { db, host };
+  return { db, host, fxNote: (terms) => (fx ? fx.noteFor(terms) : null) };
 }
 
 /** A visitor's test company (t_try_...) holds at most this many documents, whatever route brings them. */
@@ -99,7 +109,13 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       uploadSample: async (key) => (await host()).uploadSample(key),
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
-      terms: async (id) => (await host()).terms(id),
+      terms: async (id) => {
+        await host();
+        const { host: h, fxNote } = await engines.get(tenantId)!;
+        const t = h.terms(id);
+        const note = t ? fxNote(t.terms) : null;
+        return t && note ? { ...t, fx_quote: note } : t;
+      },
       paySigned: async (id, sent, credential) => (await host()).paySigned(id, sent, credential),
       exportBatch: async () => (await host()).exportBatch(),
       exportPdf: async () => (await host()).exportPdf(),
