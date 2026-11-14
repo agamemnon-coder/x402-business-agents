@@ -13,14 +13,14 @@ const lines = README.split("\n");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
 
 describe("the README's shape (jury panel, 12 Nov)", () => {
-  it("is at most 389 lines, with a badge row and a partners row, and 'The business hypothesis' in the first 180 lines", () => {
+  it("is at most 390 lines, with a badge row and a partners row, and 'The business hypothesis' in the first 180 lines", () => {
     // 150 lines until 13 Nov; the owner then asked for the diagrams and the charts inline, so the cap was 300; the
     // restored header (the mark and the three buttons, 13 Nov, evening) added four lines; the README upgrade (13 Nov,
     // evening: Watch it, the 3 steps, Built with, the gallery, the collapsibles) makes it 360.
     // +15, jury scan 14 Nov: the quick start's sample output folded in a details block, and "Where things are" (5 rows).
     // +2, #335: the "Built on Airwallex" line under the title. 14 Nov (Max: Airwallex at the centre): today's merged and
-    // live Airwallex upgrades and the table of the endpoints called live; the Architecture stub went (389 as built).
-    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(389);
+    // live Airwallex upgrades and the table of the endpoints called live; the Architecture stub went (389 as built); +1, #332 (not run live).
+    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(390);
     // 14 Nov (Max, the README and repo upgrade): two rows, the project's badges and one row of the partners.
     expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(2);
     expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
