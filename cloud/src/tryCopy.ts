@@ -105,6 +105,14 @@ export const WORK = {
   signNeeded: "{money} is paid only with your signature: the agents pay no supplier invoice alone.",
   /** The time line with the model that read it ({model}: "Claude Haiku 4.5"), when Claude did. */
   tookBy: "{model} read it; answered in {s} s, measured in your browser.",
+  /**
+   * A held invoice (14 Nov, owner): a possible duplicate by the same total can be cleared in the sandbox, then signed as
+   * always; every hold can be rejected. Said plainly that in production a second person reviews it.
+   */
+  override: "Clear it and sign anyway (sandbox)",
+  overrideNote: "Sandbox only: in production a second person reviews it. Nothing is paid until you sign.",
+  reject: "Reject",
+  rejected: "Rejected. Nothing is paid.",
 };
 
 /** 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed), by code. */
@@ -524,12 +532,16 @@ export const VISIBLE = {
     // the same file again; the paid invoice under a new number; new bank details; a new supplier; and a check with no
     // side by side (its engine sentence in its place), e.g. a total that is not its lines.
     [WORK.heading, WHY.again.head, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.sameFile, WHY.again.rule, WHY.more, WORK.another],
-    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.another],
-    [WORK.heading, WHY.codes.bank_details_changed!.head, WHY.onInvoice, WHY.onFile, WHY.codes.possible_fraud!.rule!, WHY.more, WORK.another],
-    [WORK.heading, WHY.codes.new_supplier!.head, WHY.onInvoice, WHY.onFile, WHY.notOnFile, WHY.codes.new_supplier!.rule!, WHY.more, WORK.another],
-    [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.another],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.reject, WORK.another],
+    [WORK.heading, WHY.codes.bank_details_changed!.head, WHY.onInvoice, WHY.onFile, WHY.codes.possible_fraud!.rule!, WHY.more, WORK.reject, WORK.another],
+    [WORK.heading, WHY.codes.new_supplier!.head, WHY.onInvoice, WHY.onFile, WHY.notOnFile, WHY.codes.new_supplier!.rule!, WHY.more, WORK.reject, WORK.another],
+    [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.reject, WORK.another],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
+    // 14 Nov (owner): a possible duplicate by the same total (the visitor's own invoice, say): cleared in the sandbox, then
+    // signed as always; or rejected. Then the rejected answer.
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.override, WORK.reject, WORK.another, WORK.overrideNote],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.rejected, WORK.another],
     // Read by Claude (round 2, 14 Nov): the time line names the model ({model}).
     [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.tookBy, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
   ],
@@ -636,7 +648,9 @@ export const VISIBLE = {
 // refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
 // 14 Nov: +2 on each start state, the trust line's "Alta (formerly Metal)" (Metal renamed itself).
 // Partner scan, 14 Nov: the start screens +3 for "No endorsement implied."; Airwallex left the "Works with" line (it is the platform, "Built on Airwallex").
-export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 63, "start 2": 63, "start 3": 57, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 57, "approve 4": 57, "approve 9": 53, "approve 10": 50, "approve 11": 56, "approve 12": 55, "approve 13": 50, "approve 14": 49, "approve 15": 59, "approve 5": 47, "work 2": 75, "work 10": 78 };
+// 14 Nov (owner: "always be able to override and try it again"): every hold can be rejected (+1, "work 4" to "work 6");
+// a possible duplicate by the same total can be cleared in the sandbox ("work 10") or rejected ("work 11").
+export const OVER_BUDGET: Record<string, number> = { "start 0": 67, "start 1": 63, "start 2": 63, "start 3": 57, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "work 10": 91, "work 11": 73, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 57, "approve 4": 57, "approve 9": 53, "approve 10": 50, "approve 11": 56, "approve 12": 55, "approve 13": 50, "approve 14": 49, "approve 15": 59, "approve 5": 47, "work 2": 75, "work 12": 78 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -654,6 +668,8 @@ export const LIVE = {
    * had answered before any answer to that call came back, that fact in place of "asking…" (nothing keeps counting).
    */
   asked: "Answered.",
+  /** An answered call, by the engine's own timestamps ({s}: seconds). */
+  answeredIn: "Answered in {s} s.",
   noAnswer: "No answer had come back when Purser answered.",
   /** A row's time: seconds since the request started, as the browser measured it when the row arrived. */
   at: "+{s} s",

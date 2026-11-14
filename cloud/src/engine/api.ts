@@ -64,6 +64,10 @@ export interface EngineApi {
   samples(): Promise<{ key: string; title: string; filename: string }[]>;
   /** A sample through the inbox; null for a key that is not a sample. The document cap applies, in the engine's words. */
   uploadSample(key: string): Promise<UploadResult | null>;
+  /** The hands-on demo's sandbox override of a possible duplicate by the same total (src/engine/host.ts clearHold). */
+  clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
+  /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
+  rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
   suppliers(): Promise<SupplierOnFile[]>;
   /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
@@ -99,4 +103,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "payoutSimulate", "exportBatch", "exportPdf"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "payoutSimulate", "exportBatch", "exportPdf"] as const);
