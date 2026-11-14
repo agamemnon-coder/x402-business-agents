@@ -42,6 +42,8 @@ export interface CheckerOutcome {
   run: AgentRun;
   task: string;
   provenance: RunProvenance;
+  /** The precedents the agent was given (the CFO's past decisions it learned from), by record id. */
+  precedents: string[];
 }
 
 export interface CheckerOptions {
@@ -84,7 +86,7 @@ export async function runChecker(db: DB, c: InvoiceCase, findings: Finding[], op
   const enforced = enforce(c, decision, findings);
   const provenance = runProvenance(db, CHECKER_AGENT, opts.task, run, source === "claude", "the payables checks decide alone (the Checker agent was unavailable or did not decide)");
   const need = codeRequires(c, findings);
-  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance };
+  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance, precedents: (c.precedents ?? []).map((p) => p.case.ref) };
 }
 
 /**
@@ -127,5 +129,7 @@ export function recordChecked(db: DB, invoiceId: string, out: CheckerOutcome, st
     outcome: out.enforced.outcome, overridden_by: out.enforced.overridden_by, overridden: out.overridden, code_requires: out.required.action, why: out.required.why.slice(0, 600), status,
     task: out.task, run_id: out.provenance.run_id, request_ids: out.provenance.request_ids, origin: out.provenance.origin as Json | null,
     ...(out.run.note ? { note: out.run.note } : {}),
+    // What the agent learned from: the CFO's past decisions it was given as precedent (only when Claude decided).
+    ...(out.source === "claude" && out.precedents.length ? { precedents: out.precedents } : {}),
   }, now);
 }
