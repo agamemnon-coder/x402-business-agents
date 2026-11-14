@@ -91,6 +91,18 @@ export const SFX: readonly { at: number; kind: SfxKind; gain?: number }[] = [
   ...CUTS.map((at) => ({ at: at - 0.05, kind: "whoosh" as const, gain: 0.55 })),
 ];
 
+/**
+ * A cut of the promo: its narration, scenes, music placement, effects and frame page. V2 is the default (this file);
+ * V1 (src/film/promoV1.ts) is v1.1, v1's cut with the record fixes. Both are checked by checkPromo.
+ */
+export interface Cut {
+  name: string; total: number; lines: readonly Line[]; scenes: readonly Scene[];
+  /** The music take placed `at` seconds into the film, starting `from` seconds into the take. */
+  music: { at: number; from: number };
+  sfx: readonly { at: number; kind: SfxKind; gain?: number }[]; cuts: readonly number[]; html: string;
+}
+export const V2: Cut = { name: "v2", total: TOTAL, lines: LINES, scenes: SCENES, music: { at: 0, from: MUSIC_FROM }, sfx: SFX, cuts: CUTS, html: "src/film/promo.html" };
+
 /** A figure on screen: the text shown, the record it comes from, and the string that must be found there. */
 export interface Figure { text: string; source: string; find: string }
 
@@ -165,6 +177,8 @@ export const LABELS = {
   hostile: "A script in the model's place makes the worst call it can · test data",
   endorse: "Airwallex, Metal and Claude named in text only · No endorsement implied",
   credits: "Voice and music: AI-generated (ElevenLabs) · sound effects made in code",
+  /** v1.1 has no sound effects. */
+  creditsV1: "Voice and music: AI-generated (ElevenLabs)",
 } as const;
 
 /** Names the film must never show or say (it names partners in text only, and no one else's product). */
@@ -173,7 +187,8 @@ const NOT_SAID = /\b(stripe|ramp|brex|paypal|mastercard|revolut|wise|coinbase|op
 const FRACTION = /\b\d+\s*(?:\/|of)\s*\d+\b/;
 
 /** Problems with the cut: empty when it may be rendered. */
-export function checkPromo(): string[] {
+export function checkPromo(cut: Cut = V2): string[] {
+  const { lines: LINES, scenes: SCENES, total: TOTAL, sfx: SFX } = cut;
   const out: string[] = [];
   let data: PromoData;
   try { data = promoData(); } catch (e) { return [(e as Error).message]; }
@@ -207,6 +222,6 @@ const stamp = (s: number) => {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms % 1000).padStart(3, "0")}`;
 };
 /** The narration as English subtitles, one cue per line, on the take's own length. */
-export function promoSrt(): string {
-  return LINES.map((l, i) => `${i + 1}\n${stamp(l.at)} --> ${stamp(l.at + l.dur + 0.15)}\n${l.words.replace("... ", " … ")}\n`).join("\n");
+export function promoSrt(cut: Cut = V2): string {
+  return cut.lines.map((l, i) => `${i + 1}\n${stamp(l.at)} --> ${stamp(l.at + l.dur + 0.15)}\n${l.words.replace("... ", " … ")}\n`).join("\n");
 }

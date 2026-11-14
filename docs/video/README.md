@@ -19,6 +19,26 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Promo film (13 Nov)
 
+**v1.1 (14 Nov): Max prefers v1 ("the v2 sound effects were a bit annoying").** v1.1 is v1's cut, 1:12, with v1's look,
+pacing and audio (the narration and the music only, no sound effects), and only these changes:
+
+- **The hostile-model card** says the split in the site's words (`hostileWords`, src/redesign/partners.ts): "380 hostile
+  tool calls · 370 stopped or tightened by code · 318 refused · 52 made stricter · 0 unsafe", each read from
+  `docs/evals/ap-hostile.json` (v1 said "370 refused by code", which a judge could set against the site's "318 refused").
+- **The end card** adds "Full walkthrough: youtu.be/mp9fmOYfBWc" (`FILM_URL`) under the try link, and credits the voice
+  and music only.
+- **Two transitions tightened**, with no line moved: the dip to black before the mark is shorter and lighter (it held
+  "Who holds the pen?" near black for about 0.3 s), and the Metal bars grow from the cut instead of 0.2 s and 0.7 s
+  after it.
+- **Captions** burned in on the vertical cut, in a dark pill, the words lit as said.
+
+`src/film/promoV1.ts` is the cut and `src/film/promo-v1.html` its frames, beside v2 (`npm run promo -- <step>
+--version v1`; the check, the render, the mix and the stills all take it). Files: `purser-promo-v1.1-1080p.mp4`,
+`purser-promo-v1.1-vertical.mp4` and `purser-promo-v1.1.srt` on `promo-asset`, next to v2's. No new credits.
+
+### v2
+
+
 **v2 (13 Nov, night): 1:06.5, cut to the beat.** Max on v1 (1:12): "looks nice but it still felt boring. It's a
 promo, upgrade it." v2 opens on a live refusal, shows the product recorded from the live pages, and turns each partner
 moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing in it was recorded by Max.

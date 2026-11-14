@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FILM_URL } from "../src/config/brand.js";
 import { LABELS, LINES, ROOT, SCENES, SFX, TOTAL, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../src/film/promo.js";
+import { V1 } from "../src/film/promoV1.js";
 import { effect } from "../src/film/sfx.js";
 import { hostileWords } from "../src/redesign/partners.js";
 
@@ -76,5 +77,32 @@ describe("the promo film", () => {
     expect(srt.split("\n").filter((l) => /^\d{2}:\d{2}:\d{2},\d{3} \S+ \d{2}:/.test(l)).length).toBe(LINES.length);
     expect(srt.startsWith("1\n00:00:02,600 --> ")).toBe(true);
     expect(srt).toContain("Purser. Try it yourself.");
+  });
+
+  describe("v1.1 (Max preferred v1): v1's cut with the record fixes", () => {
+    it("passes the same check: every figure in its record, 60–75 s, the spoken counts", () => {
+      expect(checkPromo(V1)).toEqual([]);
+      expect(V1.total).toBe(72);
+    });
+
+    it("has no sound effects and keeps v1's music placement", () => {
+      expect(V1.sfx).toEqual([]);
+      expect(V1.music).toEqual({ at: 1.0, from: 0 });
+    });
+
+    it("says the hostile-model split in the site's words, shows the walkthrough, and credits no effects", () => {
+      const html = readFileSync(resolve(ROOT, V1.html), "utf8");
+      expect(html).toContain("stopped or tightened by code");
+      expect(html).toContain("made stricter");
+      expect(html).not.toContain("refused by code");
+      expect(html).toContain("Full walkthrough: ${B.walkthrough}");
+      expect(html).toContain("L.creditsV1");
+      expect(LABELS.creditsV1).not.toMatch(/effects/);
+      for (const s of ["45.00", "30.00", "240.00", "4074d684", "aaaf56a1", "LIMIT_EXCEEDED", "IN_APPROVAL", "380", ">53<"]) expect(html.replace(/<style>[\s\S]*?<\/style>/, "")).not.toContain(s);
+    });
+
+    it("writes one subtitle per v1.1 line", () => {
+      expect(promoSrt(V1).split("\n").filter((l) => /^\d{2}:\d{2}:\d{2},\d{3} \S+ \d{2}:/.test(l)).length).toBe(V1.lines.length);
+    });
   });
 });

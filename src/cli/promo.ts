@@ -7,6 +7,7 @@
 //   npm run promo -- render [--vertical]  out/promo/picture-{h,v}.mp4, silent, 60 fps
 //   npm run promo -- mix [--vertical]     out/promo/purser-promo-{1080p,vertical}.mp4 at -14 LUFS, and the .srt
 //   npm run promo -- stills               three PNG stills from the 1080p master
+//   … --version v1                        any step for v1.1 (src/film/promoV1.ts): v1's cut, no effects
 //
 // Read-only on the live site: GETs, and the Cloud's read-only "Try as guest" (no company is made).
 
@@ -15,7 +16,8 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
 import { measureFilter, normaliseFilter, parseMeasured, placeFilter, type Piece } from "../film/mix.js";
-import { CUTS, FPS, LABELS, LINES, MUSIC_FROM, ROOT, SCENES, SFX, TOTAL, TRY_URL, VOICE, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../film/promo.js";
+import { FPS, LABELS, ROOT, TRY_URL, V2, VOICE, WALKTHROUGH_URL, checkPromo, promoData, promoSrt } from "../film/promo.js";
+import { V1 } from "../film/promoV1.js";
 import { sfxTrack, wav } from "../film/sfx.js";
 
 const OUT = resolve(ROOT, "out/promo");
@@ -23,10 +25,19 @@ const LIVE = resolve(OUT, "live");
 const args = process.argv.slice(2);
 const vertical = args.includes("--vertical");
 const draft = args.includes("--draft");
-const tag = vertical ? "v" : "h";
+// The cut: v2 by default; `--version v1` is v1.1 (src/film/promoV1.ts). Its files carry its name: picture-v1-h.mp4,
+// purser-promo-v1.1-1080p.mp4, purser-promo-v1.1.srt.
+const vArg = args.find((a) => a.startsWith("--version"));
+const version = vArg?.includes("=") ? vArg.split("=")[1] : vArg ? args[args.indexOf(vArg) + 1] : "v2";
+if (version !== "v1" && version !== "v2") throw new Error(`promo: no version ${version}`);
+const cut = version === "v1" ? V1 : V2;
+const { total: TOTAL, lines: LINES, scenes: SCENES, sfx: SFX, cuts: CUTS } = cut;
+const tag = `${version === "v1" ? "v1-" : ""}${vertical ? "v" : "h"}`;
+const finalName = (vert: boolean) => `purser-promo${version === "v1" ? "-v1.1" : ""}-${vert ? "vertical" : "1080p"}.mp4`;
+const srtName = `purser-promo${version === "v1" ? "-v1.1" : ""}.srt`;
 
 function gate() {
-  const problems = checkPromo();
+  const problems = checkPromo(cut);
   if (problems.length) { console.error(problems.map((p) => `✕ ${p}`).join("\n")); process.exit(1); }
 }
 
@@ -124,14 +135,16 @@ const count = (dir: string) => (existsSync(resolve(LIVE, dir)) ? readdirSync(res
 
 /** The page that draws the frames, booted with every figure from its record and the captured live frames. */
 async function framePage(browser: import("playwright").Browser, layout: "h" | "v") {
+  // v1.1 draws from the /try loop and the Cloud overview only; v2 needs every capture.
   const frames = { try: count("try"), phone: count("phone"), home: count("home") };
-  if (!frames.try || !frames.phone || !frames.home || !["cloud.png", "cloud-agents.png", "cloud-books.png"].every((f) => existsSync(resolve(LIVE, f))))
+  const need = version === "v1" ? [frames.try] : [frames.try, frames.phone, frames.home];
+  if (need.some((n) => !n) || !(version === "v1" ? ["cloud.png"] : ["cloud.png", "cloud-agents.png", "cloud-books.png"]).every((f) => existsSync(resolve(LIVE, f))))
     throw new Error("promo: run `npm run promo -- capture` first");
   const page = await (await browser.newContext({ viewport: layout === "v" ? { width: 1080, height: 1920 } : { width: 1920, height: 1080 }, deviceScaleFactor: 1 })).newPage();
-  const boot = { data: promoData(), labels: LABELS, lines: LINES, scenes: SCENES, cuts: CUTS, total: TOTAL, url: TRY_URL, walkthrough: WALKTHROUGH_URL, live: `file://${LIVE}`, frames, fps: FPS, layout };
+  const boot = { data: promoData(), labels: LABELS, lines: LINES, scenes: SCENES, cuts: CUTS, total: TOTAL, url: TRY_URL, walkthrough: WALKTHROUGH_URL, live: `file://${LIVE}`, frames, tryFrames: frames.try, fps: FPS, layout };
   await page.addInitScript((b) => { (window as unknown as { __boot: unknown }).__boot = b; }, boot);
   page.on("pageerror", (e) => { throw e; });
-  await page.goto(`file://${resolve(ROOT, "src/film/promo.html")}`);
+  await page.goto(`file://${resolve(ROOT, cut.html)}`);
   await page.evaluate(() => document.fonts.ready);
   return page;
 }
@@ -143,7 +156,7 @@ async function framePage(browser: import("playwright").Browser, layout: "h" | "v
 async function sheets() {
   gate();
   const browser = await chromium.launch();
-  const page = await framePage(browser, tag);
+  const page = await framePage(browser, vertical ? "v" : "h");
   for (const [name, times] of [["open", Array.from({ length: 20 }, (_, i) => i * 0.5)], ["all", Array.from({ length: Math.ceil(TOTAL / 3) }, (_, i) => i * 3 + 1)]] as const) {
     const dir = resolve(OUT, `sheet-${tag}-${name}`);
     mkdirSync(dir, { recursive: true });
@@ -176,7 +189,7 @@ async function render() {
     "-c:v", "libx264", "-preset", draft ? "veryfast" : "slow", "-crf", draft ? "23" : "15", "-pix_fmt", "yuv420p", "-r", String(FPS), "-movflags", "+faststart", file], { stdio: ["pipe", "inherit", "inherit"] });
   const done = new Promise<void>((ok, no) => ff.on("close", (c) => (c ? no(new Error(`ffmpeg ${c}`)) : ok())));
   const browser = await chromium.launch();
-  const page = await framePage(browser, tag);
+  const page = await framePage(browser, vertical ? "v" : "h");
   const step = draft ? 2 : 1;
   for (let f = from; f < to; f += step) {
     await page.evaluate(`window.__promo(${f / FPS})`);
@@ -208,38 +221,41 @@ async function render() {
  * sidechain, the synthesised effects on their own bus (not ducked), two-pass loudnorm to -14 LUFS.
  */
 function mix() {
-  const picture = resolve(OUT, `picture-${tag}.mp4`), sfxFile = resolve(OUT, "sfx.wav");
-  writeFileSync(sfxFile, wav(sfxTrack(SFX, TOTAL)));
+  const picture = resolve(OUT, `picture-${tag}.mp4`), sfxFile = resolve(OUT, "sfx.wav"), fx = SFX.length > 0;
+  if (fx) writeFileSync(sfxFile, wav(sfxTrack(SFX, TOTAL)));
   const voice: Piece[] = LINES.map((l) => ({ file: resolve(OUT, "vo", `${l.id}.mp3`), at: l.at }));
   for (const p of [picture, ...voice.map((v) => v.file), resolve(OUT, "music.mp3")]) if (!existsSync(p)) throw new Error(`promo: ${p} is missing`);
-  const inputs = [picture, ...voice.map((v) => v.file), resolve(OUT, "music.mp3"), sfxFile].flatMap((f) => ["-i", f]);
+  const inputs = [picture, ...voice.map((v) => v.file), resolve(OUT, "music.mp3"), ...(fx ? [sfxFile] : [])].flatMap((f) => ["-i", f]);
   const m = voice.length + 1;
+  // v1.1 keeps v1's music: placed 1 s in, a 2.5 s fade at the end; v2's starts 4.6 s into the take, a 2 s fade.
+  const fade = version === "v1" ? 2.5 : 2;
   const graph = `${placeFilter(voice, TOTAL).replace("[mix]", "[vo]")};[vo]asplit=2[vo1][key];`
-    + `[${m}:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=start=${MUSIC_FROM},asetpts=PTS-STARTPTS,volume=-6dB,afade=t=out:st=${TOTAL - 2}:d=2,apad,atrim=duration=${TOTAL}[mus];`
+    + `[${m}:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=start=${cut.music.from},asetpts=PTS-STARTPTS,volume=-6dB,adelay=${Math.round(cut.music.at * 1000)}|${Math.round(cut.music.at * 1000)},afade=t=out:st=${TOTAL - fade}:d=${fade},apad,atrim=duration=${TOTAL}[mus];`
     + `[mus][key]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=400:makeup=1[duck];`
-    + `[${m + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=0.9[fx];`
-    + `[vo1]volume=1.6[vo2];[vo2][duck][fx]amix=inputs=3:normalize=0:duration=first[mix]`;
+    + (fx ? `[${m + 1}:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=0.9[fx];` : "")
+    + `[vo1]volume=1.6[vo2];[vo2][duck]${fx ? "[fx]" : ""}amix=inputs=${fx ? 3 : 2}:normalize=0:duration=first[mix]`;
   // loudnorm prints its measurement on stderr; ffmpeg is run directly, no shell.
   const measure = spawnSync("ffmpeg", ["-hide_banner", "-nostats", ...inputs, "-filter_complex", `${graph};[mix]${measureFilter()}[m]`, "-map", "[m]", "-f", "null", "-"], { encoding: "utf8", maxBuffer: 1 << 26 });
   const measured = parseMeasured(measure.stderr);
-  const file = resolve(OUT, vertical ? "purser-promo-vertical.mp4" : "purser-promo-1080p.mp4");
+  const file = resolve(OUT, finalName(vertical));
   execFileSync("ffmpeg", ["-y", "-hide_banner", "-loglevel", "error", ...inputs, "-filter_complex", `${graph};[mix]${normaliseFilter(measured)},alimiter=limit=0.7:attack=0.5:release=60:level=false,aresample=48000[a]`,
     "-map", "0:v", "-map", "[a]", "-c:v", "copy", "-c:a", "aac", "-b:a", "320k", "-t", String(TOTAL), "-movflags", "+faststart", file], { stdio: "inherit" });
-  writeFileSync(resolve(OUT, "purser-promo.srt"), promoSrt());
+  writeFileSync(resolve(OUT, srtName), promoSrt(cut));
   console.log(file);
 }
 
 function stills() {
-  const master = resolve(OUT, "purser-promo-1080p.mp4");
-  for (const [name, at] of [["still-1-phone", 14.2], ["still-2-metal", 35.6], ["still-3-end", 65.0]] as const)
+  const master = resolve(OUT, finalName(false));
+  const at3 = version === "v1" ? [["still-v1.1-1-sign", 18.6], ["still-v1.1-2-metal", 44.8], ["still-v1.1-3-end", 70.0]] as const : [["still-1-phone", 14.2], ["still-2-metal", 35.6], ["still-3-end", 65.0]] as const;
+  for (const [name, at] of at3)
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", String(at), "-i", master, "-frames:v", "1", resolve(OUT, `${name}.png`)]);
   console.log("stills: out/promo/still-*.png");
 }
 
-const cmd = args.find((a) => !a.startsWith("--"));
+const cmd = args.find((a, i) => !a.startsWith("--") && args[i - 1] !== "--version");
 if (args.includes("--check") && !cmd) {
-  const p = checkPromo();
-  console.log(p.length ? p.map((x) => `✕ ${x}`).join("\n") : `promo: ${TOTAL} s, ${LINES.length} lines, every figure found in its record`);
+  const p = checkPromo(cut);
+  console.log(p.length ? p.map((x) => `✕ ${x}`).join("\n") : `promo ${cut.name}: ${TOTAL} s, ${LINES.length} lines, every figure found in its record`);
   process.exit(p.length ? 1 : 0);
 }
 if (cmd === "capture") await capture(args.filter((a) => !a.startsWith("--") && a !== "capture"));
