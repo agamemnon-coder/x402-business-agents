@@ -1,8 +1,8 @@
 {
-  "total": 6687,
-  "passed": 6683,
+  "total": 6668,
+  "passed": 6664,
   "failed": 0,
   "skipped": 4,
-  "files": 595,
-  "commit": "9ac79d4"
+  "files": 594,
+  "commit": "abd11df2"
 }

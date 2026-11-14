@@ -25,8 +25,8 @@ Settings → General → Social preview: upload `docs/assets/social-preview.png`
 
 ## Releases
 
-The tag `v1.0-submission` exists (8 November). The next one, `v1.1-final`, is the owner's to create after the final
-merge; its notes are [docs/releases/v1.1-final.md](releases/v1.1-final.md). Create the release from that tag and paste
+The tag `v1.0-submission` exists (8 November). The next one, `v1.1-submission` (Max, 14 Nov), is the owner's to create after the final
+merge; its notes are [docs/releases/v1.1-submission.md](releases/v1.1-submission.md). Create the release from that tag and paste
 those notes.
 
 ## Branch protection (main)
