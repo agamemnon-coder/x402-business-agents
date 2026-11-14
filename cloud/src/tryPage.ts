@@ -1195,7 +1195,7 @@ function factRows(p,inv,terms){
 }
 // 14 Nov: the Airwallex card: the live sandbox quote the terms carry (id, rate, amounts, a countdown to its valid-to),
 // or the recorded rate and why. Only for terms that convert; the note comes with GET .../terms as fx_quote.
-function fxCard(note,terms){
+function fxCard(note,terms,limitBps){
   const X=C.fxCard;const cv=terms&&terms.conversion&&typeof terms.conversion==='object'?terms.conversion:null;
   if(!cv||!note||typeof note!=='object'||note.quote_id!==cv.quote_id)return null;
   const live=note.source==='airwallex-sandbox';const d=el('dl','');
@@ -1212,6 +1212,7 @@ function fxCard(note,terms){
     if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
   }else box.append(el('p','',fill(X.recordedNote,{why:(typeof note.reason==='string'&&X.why[note.reason])||X.why.unavailable})));
+  if(typeof limitBps==='number'&&limitBps>0)row(X.limit,fill(X.limitLine,{pct:(limitBps/100).toFixed(2)}));
   box.setAttribute('data-awx',live?'live':'recorded');
   return box;
 }
@@ -1311,7 +1312,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
-    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
+    const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms,tr.status===200?tr.json.fx_limit_bps:null);
     top.replaceChildren(el('div','receipt sheet',[el('p','sheet-h',A.sheet),f.payee,el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
       el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,' ',el('span','mono sha',fill(A.signsSha,{sha:String(p.terms_sha256||'').slice(0,8)})),saves]));
     stage();

@@ -13,6 +13,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
 import { payableAccount } from "../ap/checkerCore.js";
+import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
@@ -98,6 +99,11 @@ export interface EngineDeps {
    * for it on the simulated bank, and the audit row says so. Default false; only a try company turns it on.
    */
   seedPaid?: boolean;
+  /**
+   * This company's FX limit (basis points over the market's current rate a locked quote may cost), written by the seed
+   * as its setting fx.max_markup_bps. Absent: FX_QUOTE_MAX_MARKUP_BPS. Only a try company sets it (TRY_FX_QUOTE_MAX_MARKUP_BPS).
+   */
+  fxMarkupBps?: number;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -219,7 +225,11 @@ function plainRefusal(message: string): string {
 }
 
 /** A proposal's terms as the hands-on demo's pay route shows them. */
-export interface TermsView { proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null }
+export interface TermsView {
+  proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null;
+  /** Terms that convert: this company's FX limit (basis points over the market's current rate), as its checks applied it. */
+  fx_limit_bps?: number;
+}
 
 /** What the one pay route answers; a layer that did not run says so (null). */
 export interface PaySignedResult {
@@ -381,6 +391,8 @@ export class EngineHost {
   seed(): Promise<void> {
     return this.act(async () => {
       const { db, rails } = this.deps;
+      const fx = this.deps.fxMarkupBps;
+      if (fx !== undefined && getSetting(db, "fx.max_markup_bps", "") !== String(fx)) setSetting(db, "system", "fx.max_markup_bps", String(fx), this.now());
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
       if (this.deps.seedPaid) await this.seedPaidOriginal();
     });
@@ -839,7 +851,8 @@ export class EngineHost {
     const terms = JSON.parse(p.terms_json) as Terms;
     const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
     // The hash as stored with the proposal (what the passkey signs), never one recomputed from the instruction's text.
-    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at };
+    const converts = !!(terms as { conversion?: unknown }).conversion;
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at, ...(converts ? { fx_limit_bps: fxMarkupLimitBps(db) } : {}) };
   }
 
   /**

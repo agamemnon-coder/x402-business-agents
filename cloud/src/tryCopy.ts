@@ -407,15 +407,15 @@ export const FX_CARD = {
   live: "Airwallex · live sandbox quote",
   recorded: "Airwallex unavailable, recorded rate used",
   quote: "Quote", rate: "Rate", amounts: "Buys", amountsLine: "{buy} for {sell}", valid: "Valid for", left: "{left}", expired: "expired: file it again for a new quote",
-  /** The quote's valid-to, as a date and time. */
-  validTo: "Valid to",
+  /** The quote's valid-to as a date and time, and the company's FX limit ({pct}: a percent with two decimals). */
+  validTo: "Valid to", limit: "Limit", limitLine: "FX quote at most {pct}% over Airwallex's market rate",
   liveNote: "Your passkey signs this quote id and rate. Test money: the simulated bank converts at these amounts; nothing is converted at Airwallex.",
   recordedNote: "{why}. The terms carry the simulated bank's recorded rate.",
   why: {
     switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
     day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
     timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
-    over_limit: "Airwallex's sandbox quote was over Purser's 0.50% FX limit",
+    over_limit: "Airwallex's sandbox quote was over this company's FX limit",
   } as Record<string, string>,
 };
 

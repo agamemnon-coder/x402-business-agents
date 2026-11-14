@@ -162,7 +162,7 @@ async function laneC(method: string, path: string, session: string, body: Record
     // The note on the terms' FX quote, as the engine gives it (cloud/src/engine/liveFx.ts).
     const tenant = visitors.get(session)?.id;
     const real = tenant ? await env.engine!(tenant).terms(id) : null;
-    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at, ...(real?.fx_quote ? { fx_quote: real.fx_quote } : {}) });
+    send(res, 200, { proposal_id: id, status: L.status, terms: L.terms, canonical: canonicalTerms(L.terms), terms_sha256: L.terms_sha256, approved: kept.has(`${session} ${id}`), expires_at: L.terms.expires_at, ...(real?.fx_quote ? { fx_quote: real.fx_quote } : {}), ...(real?.fx_limit_bps ? { fx_limit_bps: real.fx_limit_bps } : {}) });
     return true;
   }
   if (method !== "POST" || what !== "pay") return false;
@@ -569,8 +569,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov: the Airwallex card: the quote the terms carry, its id and rate, and a countdown to its valid-to.
   const cv = (L0.terms as unknown as { conversion: { quote_id: string; client_rate: string } | null }).conversion;
   const awx = (await page.locator("section.awx").count()) ? await page.innerText("section.awx") : "";
-  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(`1 EUR = ${cv.client_rate} USD`) && /\b1[45]:\d\d\b/.test(awx) && awx.includes(FX_CARD.validTo),
-    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate with its units, the time left and its valid-to (${awx.replace(/\s+/g, " ").slice(0, 160)})`);
+  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(`1 EUR = ${cv.client_rate} USD`) && /\b1[45]:\d\d\b/.test(awx)
+    && awx.includes(FX_CARD.validTo) && awx.includes(FX_CARD.limitLine.replace("{pct}", "0.50")),
+    // This server's companies are not t_try_ tenants: the default 0.50%; a try company's 1.50% is test/try-fx-limit.test.ts.
+    `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate, the time left, its valid-to and the company's FX limit (${awx.replace(/\s+/g, " ").slice(0, 400)})`);
   await shot2("3-approve");
   // The approval held 800 ms: "Approving…" with the ring while it runs, then the tick as soon as the answer is in.
   // 12 Nov (one tap): the held approval's answer is drawn, and the pay call starts by itself with the terms as signed and
