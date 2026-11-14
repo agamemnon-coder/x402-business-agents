@@ -487,6 +487,8 @@ const railChip = ([, name, ic, cls]: (typeof RAILS)[number]) => `<span class="rl
 const partnersOf = (r: RunRow) => r.partners ? RAILS.filter(([, n]) => (r.partners as string[]).includes(n))
   // A simulated run without its own list names the partners it faked: none of them took part.
   : kindOf(r) === "simulated" ? [] : railsOf(r).filter(([, , , cls]) => cls !== "pk");
+/** The partners' names for a run, as its chips show them (shared with /proof's strip, 14 Nov). */
+export const partnerNamesOf = (r: RunRow): string[] => partnersOf(r).map(([, n]) => n);
 
 /** The honest badge: the kind of run, in the words the page shows. */
 export const KIND_LABEL: Record<RunKind, string> = {

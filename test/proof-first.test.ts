@@ -263,7 +263,8 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   it("has the heading, the chain, the band, the offline check and the live runs above \"What Purser guarantees\", the fold after it: no run label", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
+    // Max, 14 Nov: the walkthrough and the strip of partners, under the lead.
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <p class="pwatch">[\s\S]*?<\/p> <ul class="ptiles"[\s\S]*?<\/ul> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });
@@ -366,18 +367,21 @@ describe("/proof's folds: the Airi runs, the read-back, every check, the busines
 });
 
 describe("/proof's utility links: one quiet row at the end", () => {
-  it("links the film, the CFO's view, the trace and the month-end pack, in that order, and nowhere above", () => {
+  // Max, 14 Nov: the walkthrough is at the top, under the lead; the quiet row at the end keeps the other three.
+  it("links the walkthrough at the top; the CFO's view, the trace and the month-end pack at the end, in that order, and nowhere above", () => {
+    expect(main).toContain(`<p class="pwatch"><a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
+    expect(words(main.slice(main.indexOf('<p class="pwatch">')))).toContain(FILM_LINK);
+    expect(main.indexOf('<p class="pwatch">')).toBeLessThan(main.indexOf('<ul class="ptiles"'));
     const at = main.indexOf('<nav class="util"'), util = main.slice(at);
-    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([FILM_URL, CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);
+    expect([...util.matchAll(/<a class="open" href="([^"]+)"/g)].map((m) => decode(m[1]!))).toEqual([CFO_VIEW_URL, TRACE_URL, `assets/${PACK_NAME}`]);
     const text = words(util), above = words(main.slice(0, at));
     let from = -1;
-    for (const label of [FILM_LINK, CFO_VIEW_LINK, TRACE_LINK, PACK_LINK]) {
+    for (const label of [CFO_VIEW_LINK, TRACE_LINK, PACK_LINK]) {
       const i = text.indexOf(label);
       expect({ label, after: i > from }).toEqual({ label, after: true });
       from = i;
       expect({ label, above: above.includes(label) }).toEqual({ label, above: false });
     }
-    expect(util).toMatch(/<a class="open" href="[^"]+" target="_blank" rel="noopener">/);
     expect(util).toMatch(/<a class="open" href="assets\/[^"]+" download>/);
   });
 });

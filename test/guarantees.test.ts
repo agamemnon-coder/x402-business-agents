@@ -36,14 +36,14 @@ describe("What Purser guarantees", () => {
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
+    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<p class="pwatch">[\s\S]*?<\/p>\s*<ul class="ptiles"[\s\S]*?<\/ul>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
     expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
   });
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {
     const html = guaranteesHtml();
     expect(GUARANTEES.map((g) => g.id)).toEqual(["g-terms", "g-cards", "g-visa", "g-chain", "g-once", "g-keys", "g-log"]);
-    expect([...html.matchAll(/<li id="([a-z-]+)" data-by="(airwallex|metal|purser)"><b>[^<]+<\/b><span class="by">[^<]+<\/span><span class="ev"><a href="[^"]+"[^>]*>[^<]+<\/a><\/span>\s*<details><summary>How<\/summary>/g)].map((m) => m[1])).toEqual(GUARANTEES.map((g) => g.id));
+    expect([...html.matchAll(/<li id="([a-z-]+)" data-by="(airwallex|metal|purser)"><span class="gi" aria-hidden="true"><svg[\s\S]*?<\/svg><\/span><b>[^<]+<\/b><span class="by">[^<]+<\/span><span class="ev"><a href="[^"]+"[^>]*>[^<]+<\/a><\/span>\s*<details><summary>How<\/summary>/g)].map((m) => m[1])).toEqual(GUARANTEES.map((g) => g.id));
     expect(html).not.toMatch(/<details[^>]* open/);
   });
 });
