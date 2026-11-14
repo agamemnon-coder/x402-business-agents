@@ -25,6 +25,9 @@ export const TRY_ROUTES: readonly string[] = [
   "GET /v1/engine",
   "GET /v1/engine/invoices",
   "POST /v1/engine/invoices/{id}/pay",
+  // 14 Nov (owner): the sandbox override of a possible duplicate, and Reject (cloud/src/try/engineRoutes.ts).
+  "POST /v1/engine/invoices/{id}/clear",
+  "POST /v1/engine/invoices/{id}/reject",
   "GET /v1/engine/proposals/{id}",
   "POST /v1/engine/passkey/start",
   "POST /v1/engine/passkey/finish",

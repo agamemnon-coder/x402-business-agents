@@ -20,7 +20,7 @@ import { chromium, type Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { APPROVE, BOOKS, COMPANY, LIVE, WHY, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BOOKS, COMPANY, INVOICE, LIVE, WHY, WORK } from "../../cloud/src/tryCopy.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -147,7 +147,10 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
     await page.getByRole("button", { name: LIVE.allSteps }).click();
     const rows = await page.locator("ol.live li").evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
     ok(rows.length === 4 && !rows.some((r) => r.includes(LIVE.ev["claude.asking"]!)), `${tag}: held: no row stays on "asking…" (${rows.join(" | ")})`);
-    ok(rows.filter((r) => r.includes(LIVE.asked) && !r.includes(LIVE.noAnswer)).length === 1 && rows.filter((r) => r.includes(LIVE.noAnswer)).length === 1, `${tag}: held: the answered call says "${LIVE.asked}", the other "${LIVE.noAnswer}"`);
+    // 14 Nov (live QA): an answered call says how long it took by the engine's own clock ("answered in 1.2 s."), or "asked."
+    // when the engine wrote both rows in the same instant; never a running count stopped at 0.0 s.
+    const isAnswered = (r: string) => (r.includes(LIVE.asked) || /answered in \d+\.\d s\./.test(r)) && !r.includes(LIVE.noAnswer);
+    ok(rows.filter(isAnswered).length === 1 && rows.filter((r) => r.includes(LIVE.noAnswer)).length === 1 && !rows.some((r) => / 0\.0 s/.test(r)), `${tag}: held: the answered call says how long it took, the other "${LIVE.noAnswer}" (${rows.join(" | ")})`);
     ok(rows[2]!.includes("answered live") && rows[3]!.includes("came in and was checked"), `${tag}: held: the rows in the engine's time order`);
     const secs = (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1]));
     const before = secs.join(",");
@@ -256,6 +259,51 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   ok((await page.getByRole("button", { name: COMPANY.again }).isVisible()), `${tag}: keeping the company leaves it as it was`);
   await shot("6-company");
   await fits(page, width, `${tag} company`);
+  await ctx.close();
+}
+
+// 7 (14 Nov, owner: "with the sandbox you should always be able to override and try it again"), at 390 px: the same
+// sample again in the same company is a fresh invoice, ready to pay; the visitor's own invoice for the same total from the
+// same supplier is held, and "Clear it and sign anyway (sandbox)" leads to the approval (the passkey still signs); new
+// bank details can only be rejected, and Reject says nothing is paid.
+{
+  const tag = "rerun-390";
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  let page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
+  await page.goto(`${ORIGIN}/try`);
+  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
+  await pick(page, "A supplier's invoice");
+  ok((await page.locator("main").innerText()).includes(WORK.ready), `${tag}: the clean sample is ready to pay`);
+  await page.goBack();
+  await pick(page, "A supplier's invoice");
+  let text = await page.locator("main").innerText();
+  ok(text.includes(WORK.ready) && text.includes("BTX-2026-31") && !text.includes(WHY.again.head), `${tag}: the same sample again is a fresh invoice (BTX-2026-31), ready to pay, not held`);
+  await page.goBack();
+  await page.getByRole("tab", { name: INVOICE.tabWrite }).click();
+  await page.waitForFunction(() => (document.querySelector("#f-iban") as HTMLInputElement | null)?.value !== "");
+  await page.fill("#f-no", "INV-8807");
+  await page.fill("#f-amt", "1850.00");
+  await page.getByRole("button", { name: INVOICE.send }).click();
+  await page.getByRole("button", { name: WORK.override }).waitFor({ timeout: 30_000 });
+  text = await page.locator("main").innerText();
+  ok(text.includes(WHY.codes.possible_duplicate!.rule!) && text.includes(WORK.overrideNote) && await page.locator("main .btn.primary:visible").count() === 1, `${tag}: the same total from the same supplier is held, with the sandbox override as the one main button and its note`);
+  await page.getByRole("button", { name: WORK.override }).click();
+  await page.getByRole("heading", { name: APPROVE.heading }).waitFor({ timeout: 30_000 });
+  ok(true, `${tag}: cleared in the sandbox, it goes to the approval: the passkey still signs the exact terms`);
+  // A fresh company for the rest, in a new tab (this one returns to its approval, as a reload should).
+  await page.close();
+  page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
+  await page.goto(`${ORIGIN}/try`);
+  await page.getByRole("button", { name: /Start with a test company/ }).click();
+  await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
+  await pick(page, "An invoice with new bank details");
+  ok(await page.getByRole("button", { name: WORK.override }).count() === 0 && await page.getByRole("button", { name: WORK.reject }).isVisible(), `${tag}: new bank details: no override, only Reject`);
+  await page.getByRole("button", { name: WORK.reject }).click();
+  await page.getByText(WORK.rejected).waitFor();
+  ok(await page.locator("main .btn.primary:visible").count() === 1 && (await page.locator("main .btn.primary:visible").innerText()).includes(WORK.another), `${tag}: rejected, nothing is paid; the way on is another invoice`);
   await ctx.close();
 }
 
