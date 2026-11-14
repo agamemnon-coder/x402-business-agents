@@ -24,9 +24,10 @@ export const TRY_ENGINE_PATHS: readonly (readonly [methods: readonly string[], p
   [["GET"], /^\/v1\/engine\/(events|samples|suppliers|invoices|vault|vault\/file|export|export\.pdf)$/],
   [["POST"], new RegExp(`^/v1/engine/samples/${ID}$`)],
   [["POST"], /^\/v1\/engine\/(compose|passkey\/start|passkey\/finish)$/],
-  [["POST"], new RegExp(`^/v1/engine/invoices/${ID}/pay$`)],
+  [["POST"], new RegExp(`^/v1/engine/invoices/${ID}/(pay|clear|reject)$`)],
   [["GET"], new RegExp(`^/v1/engine/proposals/${ID}(/terms)?$`)],
   [["POST"], new RegExp(`^/v1/engine/proposals/${ID}/(approve|pay|retry)$`)],
+  [["POST"], new RegExp(`^/v1/engine/proposals/${ID}/payout/simulate$`)],
   [["GET"], /^\/v1\/(payments|transactions|ledger\/entries)$/],
 ];
 

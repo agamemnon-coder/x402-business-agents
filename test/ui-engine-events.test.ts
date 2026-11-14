@@ -82,14 +82,17 @@ describe("a line for every event", () => {
   });
 
   it("says where the money is: the stand-in bank and test money, and never that Airwallex did something", () => {
-    // 14 Nov: /try's live FX quote is the one thing Airwallex's sandbox does (a read-only quote, nothing converted or
-    // paid there): its two events name it, and say quote; no other event names Airwallex.
+    // 14 Nov: /try's Airwallex events are the only ones that name it, always as the sandbox: the live FX quote (a quote,
+    // nothing exchanged there) and, step 2, the sandbox transfer of a signed payment in test money, or that none was made.
     for (const name of NAMES) for (const payload of PAYLOADS) for (const lang of LANGS) {
       const text = eventLine(row(name, payload), lang).text;
       if (name.startsWith("airwallex.")) {
         expect(text).toMatch(/Airwallex[- ]sandbox/);
-        expect(text).toMatch(/quote|offerte/);
-        expect(text).not.toMatch(/sent|paid|exchanged|betaald|verstuurd|gewisseld/i);
+        if (/^airwallex\.(quote|unavailable)$/.test(name)) {
+          expect(text).toMatch(/quote|offerte/);
+          expect(text).not.toMatch(/sent|paid|exchanged|betaald|verstuurd|gewisseld/i);
+        } else expect(text).toMatch(/transfer|overboeking/);
+        if (name === "airwallex.transfer") expect(text).toMatch(/test[- ]money|testgeld/);
         continue;
       }
       expect({ name, lang, airwallex: /airwallex|sandbox/i.test(text) }).toEqual({ name, lang, airwallex: false });

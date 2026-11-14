@@ -13,6 +13,7 @@ import type { AwxView } from "../../../src/engine/awxActions.js";
 
 export type { AwxView, NameCheckView };
 import type { FxQuoteNote } from "./liveFx.js";
+import type { PayoutNote, SimulateReason } from "./livePayout.js";
 
 export type { ComposeInput, ComposeRefusal, EngineEvent, InvoiceView, PaySignedResult, ProposalView, Settled, SupplierOnFile, TermsView, UploadResult, VaultFile };
 
@@ -67,6 +68,10 @@ export interface EngineApi {
   samples(): Promise<{ key: string; title: string; filename: string }[]>;
   /** A sample through the inbox; null for a key that is not a sample. The document cap applies, in the engine's words. */
   uploadSample(key: string): Promise<UploadResult | null>;
+  /** The hands-on demo's sandbox override of a possible duplicate by the same total (src/engine/host.ts clearHold). */
+  clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
+  /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
+  rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
   suppliers(): Promise<SupplierOnFile[]>;
   /** The visitor's typed invoice, checked, rendered to a PDF and filed; a refused field comes back naming it. */
@@ -77,7 +82,12 @@ export interface EngineApi {
    */
   terms(proposalId: string): Promise<(TermsView & { fx_quote?: FxQuoteNote }) | null>;
   /** The one pay route: the sent terms with the browser's own signature, through the verifier and the executor's gate; pays only the signed terms. */
-  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<PaySignedResult | { bad: string } | null>;
+  paySigned(proposalId: string, sent: Record<string, unknown>, credential: unknown): Promise<(PaySignedResult & { airwallex_payout?: PayoutNote }) | { bad: string } | null>;
+  /**
+   * purser-try's "Sandbox: move to PAID" (./livePayout.ts): the proposal's Airwallex sandbox transfer moved by the
+   * sandbox's own simulation; the note as it now stands, or why it was not moved. Elsewhere: { ok: false, no_binding }.
+   */
+  payoutSimulate(proposalId: string): Promise<{ ok: true; note: PayoutNote } | { ok: false; reason: SimulateReason; note: PayoutNote | null }>;
   // Purser Cloud's Airwallex actions (src/engine/awxActions.ts): each at the Airwallex sandbox when the admin's switch
   // and the caps allow it, else on the simulated bank, labelled. Test money either way.
   /** A new supplier from an invoice waiting for one: the owner's verification, the payee's bank check, a payee_add for the CFO's passkey. */
@@ -107,4 +117,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);

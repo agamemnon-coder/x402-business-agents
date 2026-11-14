@@ -91,6 +91,8 @@ describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   // 14 November 2026: 11.5 MB. The live Airwallex tab (cloud/src/awxLive.ts, awxUi.ts, its words in two languages and the
   // pure reconciliation, src/finance/awxReconcile.ts) added 35,928 bytes to main's 11,499,047 (fcb63fd): 11,534,975,
   // gzipped 2,428,999. The compressed limit is unchanged.
+  // Then /try's sandbox payout (cloud/src/engine/livePayout.ts, step 2) on main at 4ae6d29: 11,577,033 bytes, gzipped
+  // 2,441,268; inside the same budget.
   // Then Purser Cloud's Airwallex actions (the gateway client, the routed rail, the engine's Airwallex adapters in the
   // object): 11,635,948 bytes with #333 and #330, gzipped 2,456,708 (Cloudflare limits the compressed size: 3 MiB free, 10 MiB paid).
   it("stays under 11.5 MB, and under 3 MB gzipped", () => {
