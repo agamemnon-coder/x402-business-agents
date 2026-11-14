@@ -405,7 +405,8 @@ const signKit=(()=>{
  * - isPaid(p): its status is PAID (a FAILED payment is never shown as paid). feeOf(p, tx): the fee the payment reports,
  *   else the register's.
  * - entriesOf(i, p, txs, entries): the accrual on receipt (source_key 'ap-accrual|<id>', any version '@v<n>'), the
- *   payment's entries as the register books them (booking.entry_ids) and every entry that reverses one of those.
+ *   payment's entries as the register books them (booking.entry_ids), the entries of the conversion that funded it
+ *   (the register's FX legs under the same signed terms, 14 Nov) and every entry that reverses one of those.
  * - balance(entries): debits equal credits per currency, summed from the lines. headOf(entries): the newest entry of
  *   the whole ledger (its own entry_hash is the chain's head; a session cannot ask /v1/sync/state).
  * - filesOf(i, files, invoices): the original by its own hash (doc_sha256), and the receipt by the name the archive
@@ -437,6 +438,9 @@ const booksKit=(()=>{
     return tx&&tx.fee&&typeof tx.fee.amount==='string'?{currency:String(tx.fee.currency||''),amount:tx.fee.amount}:null};
   const entriesOf=(i,p,txs,es)=>{
     const tx=txOf(p,txs);const ids=new Set(tx&&tx.booking&&Array.isArray(tx.booking.entry_ids)?tx.booking.entry_ids:[]);
+    // The conversion that funded it (judge scan, 14 Nov): the FX legs the register books under the same signed terms.
+    const sha=tx&&tx.approval&&tx.approval.sha;
+    if(sha)for(const y of txs||[])if(y&&y.rail==='airwallex_fx'&&y.approval&&y.approval.sha===sha&&y.booking&&Array.isArray(y.booking.entry_ids))for(const n of y.booking.entry_ids)ids.add(n);
     const all=(es||[]).filter(Boolean);
     const mine=all.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
     const have=new Set(mine.map((e)=>e.entry_id));
