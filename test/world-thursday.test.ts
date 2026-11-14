@@ -7,7 +7,7 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DB } from "../src/db/open.js";
 
-// Metal's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
+// Alta's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
 vi.mock("@x402/core/server", async (orig) => (await import("./support/facilitatorStandIn.js")).standInServer(await orig<typeof import("@x402/core/server")>()));
 
 const state = vi.hoisted(() => ({ db: null as DB | null, attempts: [] as { cents: number; noticePending: boolean }[] }));
@@ -75,7 +75,7 @@ describe("(a) Stockline's silent price rise", () => {
     const first = db.prepare("SELECT id, supplier, outcome, refusal_reason FROM upstream_purchases WHERE id > ? ORDER BY id LIMIT 1").get(rise.from_id) as { id: number; supplier: string; outcome: string; refusal_reason: string };
     expect(first).toMatchObject({ id: rise.first_attempt_id, supplier: "stockline", outcome: "REFUSED", refusal_reason: expect.stringMatching(/^mandate_cap_exceeded/) });
 
-    // The ledger's order: the refusal, then Metal's record of it on chain, then Stockline's notice.
+    // The ledger's order: the refusal, then Alta's record of it on chain, then Stockline's notice.
     const refused = seqOf(db, "upstream.refused", String(first.id));
     const onChain = db.prepare("SELECT seq, payload_json FROM audit_log WHERE event = 'upstream.refused_on_chain'").get() as { seq: number; payload_json: string };
     const notice = seqOf(db, "world.event", String(rise.notice_event));

@@ -82,7 +82,7 @@ function demoOpenApi(url: string): string {
 
 // Payments and webhooks; offline.
 
-const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-metal-agents-pay-per-request";
+const X402_DOC = "docs/metal-award.md", X402_ANCHOR = "#3-x402-on-alta-agents-pay-per-request";
 const WEBHOOKS_DOC = "docs/airwallex.md", WEBHOOKS_ANCHOR = "#webhooks";
 const README = "README.md", README_ANCHOR = "#verify-it-yourself-in-3-commands";
 /** Connect your AI (owner, 13 Nov): the connector's own guide, and the demo company's public read-only token. */
@@ -138,7 +138,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <p>One JSON API for invoices, suppliers, payments and the ledger. Its OpenAPI document, ${code(CLOUD_OPENAPI_PATH)}, is built from the route table.${demo ? "" : " It runs publicly as a test preview: test companies, test money on a simulated bank."}</p>
     <div class="links">${outLink(repoHref(CLOUD_DOC, "#the-api"), "The API reference")}${outLink(repoHref(CLOUD_ROUTES), "The route table")}${demo ? outLink(demoOpenApi(demo), "OpenAPI on the demo (test money)") : outLink(TRY_URL, "The test preview")}</div></article>
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
-    <ul class="pl"><li>Agents pay each other per request over x402, on Metal's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Metal")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
+    <ul class="pl"><li>Agents pay each other per request over x402, on Alta's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Alta")}</li><li>Airwallex's sandbox sends its webhooks to the relay, which checks each signature. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
     <p>${code(JUDGE_COMMAND)} serves this site's pages on your computer from the recorded run, with no keys.</p>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>
@@ -150,7 +150,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     body,
     source: `Source: src/platform/mcpServer.ts (the tools), package.json (the commands), ${CLOUD_ROUTES} and the docs each link names.`,
     real: [
-      "Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.",
+      "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
       "The tools are read from the agent API's own code where this page is built.",
       "Purser Cloud runs publicly as a test preview at purser-try.max-31b.workers.dev/try: test companies, test money on a simulated bank. Its console's hosted preview exists but is private (behind an access key); no customer uses it.",
     ],

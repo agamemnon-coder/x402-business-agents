@@ -96,7 +96,7 @@ describe("velocity limits", () => {
     expect(stopped(db, "treasury")).toBe(true);
   });
 
-  it("refuses a stopped agent's Metal payment before anything is signed", async () => {
+  it("refuses a stopped agent's Alta payment before anything is signed", async () => {
     for (let i = 0; i <= VELOCITY.treasury.perMinute; i++) velocityGate(db, "treasury", "metal", 1, at(i * 100));
     // No chain is reachable in this test: a refusal must come before any call to it.
     const r = await executeSweep(db, "sweep-1", 100, "0x00000000000000000000000000000000000000aa");

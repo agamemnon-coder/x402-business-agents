@@ -4,7 +4,7 @@
 // at most 60 model calls a minute from everyone together (a typed task counts two, a world change five), and a budget per UTC day for the models; past either of the
 // last two, code alone reads the request and the page says so. A world change (D21) is one try too: one wake of the
 // Sourcing agent, at most five model calls, under the same limits. Nothing
-// here reaches Airwallex, Metal or the runner: the demo world is simulated (src/try/engine.ts).
+// here reaches Airwallex, Alta or the runner: the demo world is simulated (src/try/engine.ts).
 
 import { claudeAgentAsk, claudeModels } from "../../src/try/claude.js";
 import { tryWorld, worldChange, type AgentAsk } from "../../src/try/world.js";

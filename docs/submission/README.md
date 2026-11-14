@@ -20,12 +20,12 @@ Purser · AI agents spend. You sign off.
 ## Synopsis
 
 <!-- synopsis -->
-For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone). An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude. Try it in 2 minutes.
+For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone). An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. One CFO policy, a lock per rail: Airwallex card controls, Alta's mandate, the CFO's signature on invoices. A prompt is not a control. Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude. Try it in 2 minutes.
 <!-- /synopsis -->
 
 ## Description
 
-Characters: **3,961** (the text between the markers, as pasted; 3,987 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
+Characters: **3,972** (the text between the markers, as pasted; 3,998 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
 not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
 5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
 The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
@@ -60,25 +60,27 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
 On 14 November (jury, round 3) the Visa line covers all four Visa runs from their records (7 to 14 November, 6 paid)
 and the reused credential Purser refused (vic-5) that the sandbox had accepted (vic-3), in place of the 7 November run
 alone ([visa-1114.md](../plans/visa-1114.md)).
+Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Slack): the text says Alta, with
+"Alta (formerly Metal)" at the first mention; the award keeps the hackathon's name, the Metal Award.
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.
 
-**The solution.** Per agent, an Airwallex card and a Metal mandate.
+**The solution.** Per agent, an Airwallex card and an Alta (formerly Metal) mandate.
 - An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless. Try it in 2 minutes. https://kit11.max-31b.workers.dev/try
-- One CFO policy, a lock per rail: Airwallex card controls, Metal's mandate, the CFO's signature on invoices. A prompt is not a control.
+- One CFO policy, a lock per rail: Airwallex card controls, Alta's mandate, the CFO's signature on invoices. A prompt is not a control.
 - Real agents: Claude made all 24 decisions (routine payments are code); no key reaches Claude.
 
 **The proof.** The Kit 11 scenario, run live on 3 November. Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award. Three Claude agents run Northwind Outdoor, an outdoor wholesaler that sells live stock data to retailers per query, on 20 test USD; Max plays the CFO and signs with a personal passkey (Face ID on a phone). The CFO signed 5 decisions with Face ID (+1 co-signature).
-1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Metal refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A, a higher cap for Sourcing (P-0002).
+1. **The price rise.** Stockline's price doubled. We switched off our own check once to prove the chain holds the line: Purser refuses an over-cap purchase before signing; with that check off for one purchase, Alta refused it anyway. That was purchase #24; the refusal is recorded on chain (tx `0x2e92f9cb…1871`). The CFO signed option A, a higher cap for Sourcing (P-0002).
 2. **The dispute.** A simulated customer disputes 12 orders, saying its agent never placed them. Every order carries its agent's signature, so that claim fails. Three orders had wrong data; the Support agent refunds those 3 (0.15 test USD) itself. "Refund the other 9" goes to the CFO, who rejects it with Face ID. Refunds #7, #10 and #13, each on chain.
 3. **The euro bill.** The EUR 240.00 licence: EUR 110.00 bought by FX for USD 124.29, SWIFT transfer `03360bfa-afce-457b-89d1-e1097fbe3985`, accepted by Airwallex with the signed hash.
 
-86 Metal payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
+86 Alta payments + 1 card charge, all inside the limits. 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.
 
-**Airwallex, Metal and Claude.**
+**Airwallex, Alta and Claude.**
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex.
-- Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
+- Alta (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey).
 - Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step.
 - Visa Intelligent Commerce via Airwallex's Airi (sandbox, 4 runs 7–14 Nov, 6 paid): above Purser's limit only after Face ID; a reused credential refused by Purser before any call (14 Nov), which the sandbox had accepted (12 Nov).
 
@@ -101,8 +103,8 @@ alone ([visa-1114.md](../plans/visa-1114.md)).
      moves. Claude reads a sample invoice, Purser's code checks it (a file sent twice is caught and nothing is added),
      you approve the exact terms with your own passkey (Face ID, Touch ID or a PIN), and it is paid on a simulated bank,
      booked and filed. Change what you signed: refused.
-   - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Metal ones checkable on
-     Metal's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
+   - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Alta ones checkable on
+     Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
      credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
      (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The replay of the main run of 3 November (three Claude agents, a price
@@ -114,7 +116,7 @@ alone ([visa-1114.md](../plans/visa-1114.md)).
 2. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,
    the partner pages, the CFO dashboard and the Scenario Lab from the main run's record, fetches each page once and
-   exits; `npm run judge` serves them and opens the browser). Running it live (sandbox keys, a Metal RPC):
+   exits; `npm run judge` serves them and opens the browser). Running it live (sandbox keys, an Alta RPC):
    [docs/run-it.md](../run-it.md).
 <!-- /instructions -->
 

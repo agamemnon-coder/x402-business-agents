@@ -30,7 +30,7 @@ export const RECEIPT_CHECK_STEPS = [
 /** A link made absolute: "http…" stays; "../../x" (from the repository's docs) is the repository's x; else a page of the site. */
 export const absolute = (href: string) => href.startsWith("http") ? href : href.startsWith("../../") ? REPO_BLOB + href.slice("../../".length) : `${SITE_URL}/${href}`;
 
-/** The units the agent pages show next to these amounts: the Airwallex card is in EUR; a Metal mandate in test USD. */
+/** The units the agent pages show next to these amounts: the Airwallex card is in EUR; an Alta mandate in test USD. */
 const CARD_UNIT = "EUR", MANDATE_UNIT = "test USD";
 
 const agentEntry = (v: AgentView) => ({

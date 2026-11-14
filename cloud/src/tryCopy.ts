@@ -39,7 +39,7 @@ export const START = {
   /** Under that, small: the walkthrough on YouTube (its address is FILM_URL, src/config/brand.ts, sent as `film`; 13 Nov). */
   walk: "Or watch the walkthrough",
   /** Under the card, small and grey. */
-  trust: "Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
+  trust: "Works with Airwallex · Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs)",
   starting: "Starting…",
   /** In the text's place when the start answer has no sentence of its own. */
   failed: "Purser could not start a test company. Try again soon.",
@@ -450,7 +450,8 @@ export const VISIBLE = {
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
 // 14 Nov (a tester's questions): the approval says the limit plainly ("Every invoice waits for your signature here,
 // whatever its amount.", +10 words), so its states with the terms are pinned at their counts.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov: +2 on each start state, the trust line's "Alta (formerly Metal)" (Metal renamed itself).
+export const OVER_BUDGET: Record<string, number> = { "start 0": 65, "start 1": 61, "start 2": 61, "start 3": 55, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

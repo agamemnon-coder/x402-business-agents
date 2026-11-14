@@ -28,9 +28,9 @@ describe("the submission pack", () => {
     expect(synopsis.length).toBeLessThanOrEqual(500);
   });
 
-  it("explains Metal and Airwallex under their own headings, in the long text", () => {
+  it("explains Alta and Airwallex under their own headings, in the long text", () => {
     expect(longRaw).toMatch(/^### How we use Airwallex$/m);
-    expect(longRaw).toMatch(/^### How we use Metal$/m);
+    expect(longRaw).toMatch(/^### How we use Alta$/m);
   });
 
   it("no longer heads with the 30 October run's figures; the card story and the stops are the main run's (Max, 4 Nov)", () => {
@@ -71,7 +71,7 @@ describe("the submission pack", () => {
     // One payment breakdown, the site's own; 14 queries that got an error, counted.
     // One canonical set (jury review, 6 Nov, #5): no 87 beside the 86.
     for (const t of [pack, long]) {
-      expect(t).toContain("86 Metal payments + 1 card charge, all inside the limits");
+      expect(t).toContain("86 Alta payments + 1 card charge, all inside the limits");
       expect(t).not.toMatch(/87 inside the limits/);
     }
     expect(long).toContain("14 queries got an error and were not charged");
@@ -123,7 +123,7 @@ describe("the submission pack", () => {
     expect(long).toContain(`fee ${m.licence_fee}`);
     expect(long).toContain(`${m.face_id} decisions signed with Face ID by the CFO`);
     expect(long).toContain("Second approver: a labelled test passkey in this demo. In production this is a second person.");
-    expect(long).toContain("Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Metal — Metal refused it; nothing moved");
+    expect(long).toContain("Defense in depth: Purser normally refuses before signing. To prove the rail itself enforces the limit, one purchase was let through to Alta — Alta refused it; nothing moved");
   });
 
   it("states the red team and the Lab as their reports have them, never counting inconclusive as stopped", () => {
@@ -197,11 +197,11 @@ describe("the short Description (Max, 5 Nov)", () => {
     expect(pack).toMatch(/On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated[^.]*\[record\]\(\.\.\/runs\/2026-11-12-airwallex-two-locks-paid\.md\)/);
   });
 
-  it("goes problem, solution (the three sentences), proof, Airwallex and Metal, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
+  it("goes problem, solution (the three sentences), proof, Airwallex and Alta, business, what's real, links, with Max's lines word for word (section D, 6 Nov)", () => {
     const at = (s: string) => { const i = flat.indexOf(s); expect({ s, found: i >= 0 }).toEqual({ s, found: true }); return i; };
     expect(flat.startsWith("The problem. AI agents are starting to spend company money.")).toBe(true);
     const order = [at("The problem."), at("The solution."), at(DIFFERENTIATORS[0]), at(`${DIFFERENTIATORS[0]} ${TRY_IT} https://kit11.max-31b.workers.dev/try`), at(DIFFERENTIATORS[1]), at(DIFFERENTIATORS[2]), at("The proof."), at(KIT11_RUN_LINE), at("1. The price rise."), at("2. The dispute."), at("3. The euro bill."),
-      at(f.main.stop_line), at("Airwallex, Metal and Claude."), ...PROOF_SENTENCES.map((p) => at(p.text)), at("The business (not validated with customers yet)."), at(WHY_COMPANY[2]!.text),
+      at(f.main.stop_line), at("Airwallex, Alta and Claude."), ...PROOF_SENTENCES.map((p) => at(p.text)), at("The business (not validated with customers yet)."), at(WHY_COMPANY[2]!.text),
       at("What's real."), at(`${CAVEAT_LINE} Details →`), at("Links.")];
     expect([...order].sort((a, b) => a - b)).toEqual(order);
     expect(flat.match(/not validated/gi)).toHaveLength(1);

@@ -40,7 +40,7 @@ describe("no agent has or can use an owner key", () => {
     expect(SRC.find((f) => f.path === "src/agents/treasury.ts")!.text).toMatch(/credential_hash: next\.hash/);
   });
 
-  it("recording Metal's refusal on chain pays gas from a gas-only key, not the owner's", () => {
+  it("recording Alta's refusal on chain pays gas from a gas-only key, not the owner's", () => {
     const rec = SRC.find((f) => f.path === "src/metal/recordRefusal.ts")!.text;
     expect(rec).not.toMatch(/owner-/);
     expect(rec).toMatch(/gas-sponsor\.key\.json/);

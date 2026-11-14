@@ -1,5 +1,5 @@
 // The dashboard = the chain, for the Sourcing mandate too (night batch follow-up, 2 November): a purchase whose answer was
-// lost, then found settled by its nonce, is recorded with what Metal paid. Before, its row said 0.00 while its hold was
+// lost, then found settled by its nonce, is recorded with what Alta paid. Before, its row said 0.00 while its hold was
 // settled, so the ledger, the dashboard and the budget counted 0.02 less than the chain.
 import { describe, expect, it, vi } from "vitest";
 
@@ -25,7 +25,7 @@ const { SourcingAgent } = await import("../src/agents/sourcing.js");
 const { mandateAvailability, mandatePayments } = await import("../src/policy/available.js");
 
 describe("a purchase found settled after a lost answer", () => {
-  it("is recorded with what was paid, so the ledger counts what Metal counts", async () => {
+  it("is recorded with what was paid, so the ledger counts what Alta counts", async () => {
     const db = openDb(":memory:");
     audit(db, "owner-signer", "mandate.bound", "sourcing", { cap: "0.03", budget: "10.00" });
     await new SourcingAgent(db, "http://127.0.0.1:1", "0x0000000000000000000000000000000000000001").buy(4);

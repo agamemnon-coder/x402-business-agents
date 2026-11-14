@@ -429,7 +429,7 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.status(a.status).json(a.json);
   });
 
-  app.get("/metal", (_req, res) => {
+  app.get(["/metal", "/alta"], (_req, res) => {
     res.setHeader("Content-Security-Policy", METAL_CSP);
     res.type("html").send(METAL_PAGE);
   });

@@ -1,4 +1,4 @@
-// The outside world for the kill test (test/chaos-kill.test.ts): Airwallex and the Metal chain as fakes that keep
+// The outside world for the kill test (test/chaos-kill.test.ts): Airwallex and the Alta chain as fakes that keep
 // their state in files, so they outlive a worker the test kills, as the real services outlive a crashed runner.
 // Test code only.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

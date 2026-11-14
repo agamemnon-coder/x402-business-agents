@@ -45,10 +45,10 @@ export interface Env {
   TRY_GO_URL?: string;
   /** /x402/proof's testnet settlement (worker/src/x402.ts): "on" only with the owner's go; off by default. */
   X402_TESTNET_SETTLE?: string;
-  /** /x402/proof's payee on Metal testnet; Northwind's business account when unset. */
+  /** /x402/proof's payee on Alta testnet; Northwind's business account when unset. */
   X402_PAY_TO?: string;
   /**
-   * /metal's live mandate inspector (GET /api/metal/mandates, worker/src/metalInspector.ts): the Metal testnet RPC URL,
+   * /metal's live mandate inspector (GET /api/metal/mandates, worker/src/metalInspector.ts): the Alta testnet RPC URL,
    * a Worker secret Max sets himself; no script in this repo sets it. Read-only calls, at most 500 a UTC day. Without it
    * the inspector answers the record's read of 12 November, labelled as recorded.
    */

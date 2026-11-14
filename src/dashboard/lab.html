@@ -62,7 +62,7 @@ dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
 </style>
 </head>
 <body>
-<header class="top"><a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>Purser</a><nav class="nav" aria-label="Main"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab" class="on" aria-current="page">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+<header class="top"><a class="brand" href="./"><span class="mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.67 19a2 2 0 0 0 1.416-.588l6.154-6.172a6 6 0 0 0-8.49-8.49L5.586 9.914A2 2 0 0 0 5 11.328V18a1 1 0 0 0 1 1z"/><path d="M16 8 2 22"/><path d="M17.5 15H9"/></svg></span>Purser</a><nav class="nav" aria-label="Main"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Alta</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab" class="on" aria-current="page">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <header>
   <h1>Scenario Lab</h1>
   <p class="honest" id="honest"></p>
@@ -79,7 +79,7 @@ dt { color: var(--muted); } dd { margin: 0; overflow-wrap: anywhere; }
   var live = data.mode === "live";
   function el(tag, cls, kids) { var e = document.createElement(tag); if (cls) e.className = cls; (kids || []).forEach(function (k) { if (k !== null && k !== undefined) e.append(k); }); return e; }
   function txt(tag, cls, t) { var e = el(tag, cls); e.textContent = t; return e; }
-  document.getElementById("honest").textContent = "Each scenario runs in a fresh throwaway world with Airwallex and Metal simulated: no money moves and nothing reaches a phone. The live versions of the same stories are the run logs. " +
+  document.getElementById("honest").textContent = "Each scenario runs in a fresh throwaway world with Airwallex and Alta simulated: no money moves and nothing reaches a phone. The live versions of the same stories are the run logs. " +
     (live ? "Running again starts from a new world (the reset)." : "These results were recorded on the runner, where the Lab runs them again on click.");
   var passed = data.results.filter(function (r) { return r.passed; }).length;
   var count = document.getElementById("count");

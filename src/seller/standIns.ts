@@ -1,5 +1,5 @@
 // Stand-ins for the Dispute desk in the Scenario Lab and the red team: sales as the seller's ledger stores them, a
-// chain check that answers as verifyMandatePayment would, and a refund that only records. Nothing here reaches Metal;
+// chain check that answers as verifyMandatePayment would, and a refund that only records. Nothing here reaches Alta;
 // the live desk is docs/runs/2026-10-30-dispute-desk.md.
 
 import { createHash } from "node:crypto";
@@ -14,7 +14,7 @@ export const LAB_MANDATE_REF = `0x${"2f".repeat(32)}`;
 const SELLER = "0x828c7de12cab8149aa516958433f6eee23aec875";
 const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
 
-/** A signed order in Metal's shape (an SD-JWT carrying the x402 checkout); its signature is the stand-in chain's to judge. */
+/** A signed order in Alta's shape (an SD-JWT carrying the x402 checkout); its signature is the stand-in chain's to judge. */
 export const labOrder = (nonce: string, cents = 5) =>
   `${b64({ alg: "ES256" })}.${b64({ nonce })}.sig~${b64(["s", { vct: "mandate.checkout.1", checkout_jwt: `h.${b64({ amount: (BigInt(cents) * 10n ** 16n).toString(), id: SELLER, extra: { resource: "GET /v1/stock" } })}.s` }])}~`;
 
@@ -35,7 +35,7 @@ export const labChain = async (sales: SaleRow[]): Promise<OrderEvidence[]> => sa
     mandate_principal: LAB_CUSTOMER, mandate_bound_tx: `0x${"b".repeat(64)}`, detail: ok ? "all steps pass" : "step 4 fails: the checkout mandate is not this payment's signed order" };
 });
 
-/** Records the refund as paid, without Metal. */
+/** Records the refund as paid, without Alta. */
 export async function labRefund(db: DB, r: { sale_id: number; amount_cents: number; to: Address; dispute_id: string }): Promise<RefundResult> {
   const tx = `0x${createHash("sha256").update(`refund-${r.sale_id}`).digest("hex")}`;
   db.prepare("INSERT OR IGNORE INTO refunds (sale_id, payment_id, amount_cents, to_address, outcome, tx_hash, dispute_id) VALUES (?, ?, ?, ?, 'PAID', ?, ?)")

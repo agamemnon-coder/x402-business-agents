@@ -33,7 +33,7 @@ export interface Pages {
   try: string;
   /** The Scenario Lab's recorded results (docs/lab/results.json), its data inside the page. */
   lab: string;
-  /** How Purser uses Metal: features, mandates and the Dispute desk case, its data inside the page. */
+  /** How Purser uses Alta: features, mandates and the Dispute desk case, its data inside the page. */
   metal: string;
   /** The recorded case's evidence report (no script); empty when no case was recorded. */
   metalReport: string;
@@ -190,7 +190,8 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/try/sign" && pages.trySign && pages.csp.trySign) return page(pages.trySign, pages.csp.trySign);
   if (path === "/try/verify" && pages.tryVerify && pages.csp.tryVerify) return page(pages.tryVerify, pages.csp.tryVerify);
   if (path === "/lab") return page(pages.lab, pages.csp.lab);
-  if (path === "/metal") return page(pages.metal, pages.csp.metal);
+  // Metal is now Alta (14 Nov): /alta is the same page; /metal stays for the links already out there.
+  if (path === "/metal" || path === "/alta") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);

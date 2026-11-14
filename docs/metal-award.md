@@ -1,6 +1,6 @@
 # Metal Award checklist
 
-What this build uses from Metal, where it runs, and the proof on Metal testnet, told from **the main run of
+What this build uses from Alta (formerly Metal), where it runs, and the proof on Alta testnet, told from **the main run of
 3 November 2026** ([run log](runs/2026-11-03-main-run.md), [record](demo/main-run.json), every payment checked
 against the chain one by one in [the data check](runs/2026-11-03-main-run-data-qa.md)). Explorer:
 https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4, `@metalntwx/metal-agent` 0.3.3,
@@ -8,21 +8,21 @@ https://testnet.metalntwx.com. Packages: `@metalntwx/metal-pay` 0.3.4, `@metalnt
 
 ## What it uses
 
-From Metal, in the main run of 3 November: a smart account for the business and one for the customer; a **mandate per
+From Alta, in the main run of 3 November: a smart account for the business and one for the customer; a **mandate per
 agent** on chain (a cap per payment, a total budget, one payee, an end date), bound with `metal-agent mandate bind` and
-replaced with `mandate replace`; **x402 `exact`** payments with signed orders through Metal's hosted facilitator;
-**mandate pulls** for refunds and the earnings sweep; Metal's **`MandateRefused`** event for a payment over the cap;
+replaced with `mandate replace`; **x402 `exact`** payments with signed orders through Alta's hosted facilitator;
+**mandate pulls** for refunds and the earnings sweep; Alta's **`MandateRefused`** event for a payment over the cap;
 and the Mandate Binding's `mandates(ref)` view, to read each mandate back. Sections 1 to 3 cite the main run's
 transactions. The features that ran in separate worlds (sections 4, 5, 5b and 8) are dated, each with its own record;
 the rehearsals and the Friday runs before the main run are in [the appendix](#appendix-earlier-runs-dated).
 
-| What | Proof on Metal testnet |
+| What | Proof on Alta testnet |
 |---|---|
 | A mandate bound on chain per agent at the start (Sourcing 0.03 a payment, Support 0.10, Treasury 6.00, the customer's agent 0.10) | Sourcing [`0xb7ef08bb…44ad`](https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad), Support [`0x9cb93362…1808`](https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808), Treasury [`0x809e7a30…3a9f`](https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f), customer [`0x9c7d37f2…a2f7`](https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7) |
-| 86 payments, each its own transaction: 41 sales over x402, 41 supplier purchases, 3 refunds as mandate pulls, 1 sweep | All 86 listed one by one on `/metal` ("All 86 Metal transactions of the main run"); refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep 0.69 after finality [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) |
-| Purchase #24: 0.04 over the 0.03 cap. We switched off Purser's own check for this one purchase; Metal's facilitator answered 402, and a second call (`mandate pull --record-refusal`, `src/metal/recordRefusal.ts`) had Metal record the refusal on chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871): a `MandateRefused` event, reason 8 (`OverPerPaymentCap`), decoded in [the check of 12 November](runs/2026-11-12-metal-inspector.md) (the explorer shows the log undecoded) |
+| 86 payments, each its own transaction: 41 sales over x402, 41 supplier purchases, 3 refunds as mandate pulls, 1 sweep | All 86 listed one by one on `/metal` ("All 86 Alta transactions of the main run"); refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep 0.69 after finality [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) |
+| Purchase #24: 0.04 over the 0.03 cap. We switched off Purser's own check for this one purchase; Alta's facilitator answered 402, and a second call (`mandate pull --record-refusal`, `src/metal/recordRefusal.ts`) had Alta record the refusal on chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871): a `MandateRefused` event, reason 8 (`OverPerPaymentCap`), decoded in [the check of 12 November](runs/2026-11-12-metal-inspector.md) (the explorer shows the log undecoded) |
 | The mandates replaced after the CFO's Face ID (P-0002): Treasury to 2.00, Sourcing to 0.04 a payment | Treasury [`0x789abb24…ebbc`](https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc), Sourcing [`0x2a91ac97…e790`](https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790) |
-| Query #37 on the old Sourcing mandate during the replace | Refused by Metal's facilitator, `mandate_revoked`: a 402, so no transaction |
+| Query #37 on the old Sourcing mandate during the replace | Refused by Alta's facilitator, `mandate_revoked`: a 402, so no transaction |
 | Read back from the chain on 12 November: the three agents' mandates on Northwind's account at block 26003049, spent 1.18 (41 payments), 0.15 (3) and 0.69 (1), as the main run recorded them, none revoked | [The check of 12 November](runs/2026-11-12-metal-inspector.md): 8 read-only calls, its record [2026-11-12-metal-inspector.json](runs/2026-11-12-metal-inspector.json) |
 
 **Who signs what on chain.** In the main run the CFO approves with Face ID inside Purser, over the exact terms; the
@@ -31,7 +31,7 @@ key of the account, held by Purser's runner, signed each replace on chain (audit
 did not check Face ID.** Passkeys as the account's own owners, signing on chain, ran in a separate world on
 1 November with software passkeys, not a phone (section 8).
 
-**Read it yourself, now.** `/metal` reads each mandate's spend from Metal testnet through a read-only endpoint on the
+**Read it yourself, now.** `/metal` reads each mandate's spend from Alta testnet through a read-only endpoint on the
 hosted site, `GET /api/metal/mandates` (`worker/src/metalInspector.ts`): one `eth_blockNumber`, then one `eth_call`
 of `mandates(ref)` per mandate at that block. One answer serves everyone for 15 minutes; at most 500 calls a UTC day,
 counted before each call; the Worker variable `METAL_INSPECTOR=off` stops every call, and the RPC URL is a Worker
@@ -46,20 +46,20 @@ Purser uses `metal-agent` and `metal-pay` against their own docs: [metal-review.
 
 ## Why this wins
 
-- **Metal is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
+- **Alta is the agents' spending rail, not a demo add-on.** Every agent that pays per request does it under its
   own on-chain mandate: a cap per payment, a total budget, one payee and an end date. When the supplier raised its
   price, Purser refuses the over-cap payment before signing, and in the main run, with that check switched off for
-  purchase #24, Metal's own refusal is recorded on chain (above).
+  purchase #24, Alta's own refusal is recorded on chain (above).
 - **The CFO changes on-chain limits with Face ID, safely.** A price rise becomes options; the CFO approves the exact
   terms with Face ID in Purser; the runner's owner key then replaces the mandates on chain in an order that never exceeds the
   20.00 the business allows, and the old credential is refused (`mandate_revoked`).
-- **Three ways to pay on Metal, each where it fits:** `exact` x402 with signed orders for per-request sales,
+- **Three ways to pay on Alta, each where it fits:** `exact` x402 with signed orders for per-request sales,
   mandate pulls for refunds and the earnings sweep, and Offer Pay-per-Call Clearing (new in October 2026) for a
   customer that prepays and pays each query with a receipt.
 - **Purser can set the sweep wallet to accept money only from the business account** (live on testnet in a separate
-  world, 30 October; not set in the recorded run). Metal's receive policy then holds a payment from anyone else in
+  world, 30 October; not set in the recorded run). Alta's receive policy then holds a payment from anyone else in
   quarantine; the CFO returns or accepts it with Face ID, and it never reaches the bank on its own.
-- **Money on Metal reaches the bank only when it is final.** The sweep is credited in Airwallex once, after
+- **Money on Alta reaches the bank only when it is final.** The sweep is credited in Airwallex once, after
   finality, keyed by `chainId:tx:logIndex`.
 - **Code checks the chain before and after.** Before signing: the CFO policy and the velocity limits (an agent that
   pays too often or too much is stopped). After: `npm run verify` re-checks every credential, pull and receipt, and
@@ -81,68 +81,68 @@ The packages are pinned to the versions above. Two things a reader of `package-l
   mandates, refusals or signed orders, and the CLI does no clearing (Purser's clearing runs on 0.3.4). Purser scrubs
   the CLI's output itself in any case (`src/metal/agentCli.ts`).
 - **Overrides.** `package.json` forces `@x402/*` 2.29.0 everywhere and gives `metal-agent` `zod` 4.6.7, where
-  metal-agent 0.3.3 declares `@x402/core` 2.28.0 and `zod` ^3.25.76. That combination is ours, not one Metal
+  metal-agent 0.3.3 declares `@x402/core` 2.28.0 and `zod` ^3.25.76. That combination is ours, not one Alta
   shipped. It has worked for every CLI call on testnet this week (binds, replaces, pulls, recorded refusals,
-  verifies); the source is the Metal QA of the week ([section 3](metal-qa-2026-11-01-week.md)).
+  verifies); the source is the Alta QA of the week ([section 3](metal-qa-2026-11-01-week.md)).
 
 ## 1. Accounts, *USDZ and the faucet
 
-| What | Where in the code | Proof (main run, 3 November) | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Alta docs |
 |---|---|---|---|
-| Metal smart accounts for the business and the customer (`metal-agent account create`); every mandate, payment and refusal of the run is on Northwind's account | `src/cli/bootstrap.ts` | Northwind's account [`0x6e621D0f…Efefc`](https://testnet.metalntwx.com/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
+| Alta smart accounts for the business and the customer (`metal-agent account create`); every mandate, payment and refusal of the run is on Northwind's account | `src/cli/bootstrap.ts` | Northwind's account [`0x6e621D0f…Efefc`](https://testnet.metalntwx.com/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
 | Testnet *USDZ from the faucet (`metal-agent fund`), and *USDZ pays the gas | `src/cli/bootstrap.ts`, `src/metal/chain.ts` | funded at bootstrap (29 October, [appendix](#appendix-earlier-runs-dated)) | [Fund a test account](https://docs.metalntwx.com/build/prepare/fund-a-test-account.md), [Estimate and record fees](https://docs.metalntwx.com/build/prepare/estimate-and-record-fees.md) |
 
 ## 2. Mandates: each agent's limits enforced by the account
 
-| What | Where in the code | Proof (main run, 3 November) | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Alta docs |
 |---|---|---|---|
 | Four mandates bound on chain (three agents and the customer's), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | Sourcing [`0xb7ef08bb…44ad`](https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad), Support [`0x9cb93362…1808`](https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808), Treasury [`0x809e7a30…3a9f`](https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f), customer [`0x9c7d37f2…a2f7`](https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| Metal refuses a payment over the cap, against the on-chain mandate: #24, 0.04 over the 0.03 cap, with Purser's own check off for that one purchase; the facilitator answered 402 and the refusal was recorded on chain (`MandateRefused`, reason 8, `OverPerPaymentCap`) | `src/agents/sourcing.ts`, `src/metal/recordRefusal.ts` | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Alta refuses a payment over the cap, against the on-chain mandate: #24, 0.04 over the 0.03 cap, with Purser's own check off for that one purchase; the facilitator answered 402 and the refusal was recorded on chain (`MandateRefused`, reason 8, `OverPerPaymentCap`) | `src/agents/sourcing.ts`, `src/metal/recordRefusal.ts` | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Mandates replaced after Face ID (P-0002), in a safe order (shrink Treasury, then grow Sourcing; never over 20.00), signed on chain by the runner's owner key (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | Treasury [`0x789abb24…ebbc`](https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc), Sourcing [`0x2a91ac97…e790`](https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The replaced credential is refused: #37, `mandate_revoked` (a 402 from the facilitator, so no transaction) | `src/agents/sourcing.ts` | [main run log](runs/2026-11-03-main-run.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds #7 [`0xe4bf7962…c89d`](https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d), #10 [`0xe44a3460…75e5`](https://testnet.metalntwx.com/tx/0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5), #13 [`0x5099fe44…4510`](https://testnet.metalntwx.com/tx/0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510); sweep [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 | Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`; on 12 November, `mandates(ref)` at one block) | `src/cli/verify.ts`, `src/metal/mandate.ts`, `worker/src/metalInspector.ts` | `npm run verify`: all checks pass on the main run ([run log](runs/2026-11-03-main-run.md)); [the check of 12 November](runs/2026-11-12-metal-inspector.md) | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
-## 3. x402 on Metal: agents pay per request
+## 3. x402 on Alta: agents pay per request
 
-| What | Where in the code | Proof (main run, 3 November) | Metal docs |
+| What | Where in the code | Proof (main run, 3 November) | Alta docs |
 |---|---|---|---|
-| Our seller offers `exact` x402 on Metal through Metal's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7); first supplier purchase [`0x64d22177…4c7d`](https://testnet.metalntwx.com/tx/0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d) | [x402 on Metal](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
-| Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 41 sales and 41 supplier purchases, every one listed in [the main run's Metal transactions](runs/2026-11-03-main-run-metal-transactions.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
+| Our seller offers `exact` x402 on Alta through Alta's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7); first supplier purchase [`0x64d22177…4c7d`](https://testnet.metalntwx.com/tx/0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d) | [x402 on Alta](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
+| Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 41 sales and 41 supplier purchases, every one listed in [the main run's Alta transactions](runs/2026-11-03-main-run-metal-transactions.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
 | A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`) | `src/agents/disputes.ts` | the main run's dispute: only #7, #10 and #13 refunded ([run log](runs/2026-11-03-main-run.md)) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Metal QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
+| A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Alta QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
 | The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | sweep 0.69 [`0x86936a5b…ccb4`](https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4), locked after its block was finalized ([run log](runs/2026-11-03-main-run.md)) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |
 | x402 version 2 on the wire, tested offline: the seller's and the supplier's offer in `PAYMENT-REQUIRED`, the buyer's `PAYMENT-SIGNATURE`, the outcome read from `PAYMENT-RESPONSE` | `src/servers/seller.ts`, `src/servers/supplier.ts`, `src/metal/pay.ts` | `test/x402-wire.test.ts` | — |
 
-Which words are x402's and which are Metal's or Purser's. Purser runs x402 version 2 (`@x402/*` 2.29.0) on Metal
-testnet, through Metal's facilitator.
+Which words are x402's and which are Alta's or Purser's. Purser runs x402 version 2 (`@x402/*` 2.29.0) on Alta
+testnet, through Alta's facilitator.
 
 | Our word | x402's word | Whose it is |
 |---|---|---|
-| `exact` on `eip155:63825` | the `exact` scheme, on a CAIP-2 network id | x402's standard scheme; the network is Metal testnet |
+| `exact` on `eip155:63825` | the `exact` scheme, on a CAIP-2 network id | x402's standard scheme; the network is Alta testnet |
 | 503, and nothing settles | the default `authorization` flow: verify, resource, settle, respond | x402's flow: when the handler answers with an error, `@x402/express` does not settle, so a refused upstream purchase costs the customer nothing |
-| Prepaid clearing (`bajillion`) | no standard x402 scheme; Metal plugs it into x402's scheme interface, in x402's `upfront` flow: settle, resource, respond | Metal's scheme, not an x402 standard scheme. The money is committed before the work, so Purser offers it only after a free price check |
-| The buyer's signed order | an entry in the payment's `extensions` (Metal's own); not x402's offer-and-receipt extension, where the seller signs | Metal's `requireSignedOffer`: the offer asks for it (`extra.signedOffer: "required"`), the payment carries it under the `metal-mandate` extension key |
-| Never paid twice | the EIP-3009 nonce in the `exact` payment | the nonce, plus Metal's `/settlements` lookup by that nonce; x402's payment-identifier extension is not used |
+| Prepaid clearing (`bajillion`) | no standard x402 scheme; Alta plugs it into x402's scheme interface, in x402's `upfront` flow: settle, resource, respond | Alta's scheme, not an x402 standard scheme. The money is committed before the work, so Purser offers it only after a free price check |
+| The buyer's signed order | an entry in the payment's `extensions` (Alta's own); not x402's offer-and-receipt extension, where the seller signs | Alta's `requireSignedOffer`: the offer asks for it (`extra.signedOffer: "required"`), the payment carries it under the `metal-mandate` extension key |
+| Never paid twice | the EIP-3009 nonce in the `exact` payment | the nonce, plus Alta's `/settlements` lookup by that nonce; x402's payment-identifier extension is not used |
 | The CFO's limit | client-side budgets, out of scope for x402 | Purser's: checked in the x402 client hook `onBeforePaymentCreation`, before anything is signed |
 | Not used | x402 over MCP, A2A, Bazaar, sign-in-with-x, `upto`, x402's offer-and-receipt extension (the seller's signed offers and receipts) | none of these is in Purser's code; a clearing receipt is signed by the clearing operator, not by the seller |
-| Ran against | facilitator | Metal's hosted facilitator, on Metal testnet only |
+| Ran against | facilitator | Alta's hosted facilitator, on Alta testnet only |
 
 ## 4. Offer Pay-per-Call Clearing (new on testnet, October 2026)
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof | Alta docs |
 |---|---|---|---|
 | A prepaying test customer (a new account in the rehearsal-3 world) deposits 5.00 *USDZ once into the Clearing contract and pays each 0.07 query with a signed receipt, with no transaction per query | `src/metal/clearing.ts`, `src/agents/customer.ts` | deposit [`0x055ba899…6766`](https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766); [clearing run log](runs/2026-10-29-clearing.md) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 | Our seller offers the `bajillion` scheme on a prepaid route beside `exact`. It offers clearing only when it can deliver (a clearing payment is counted before the seller can refuse, as seen live), and falls back to the mandate route | `src/servers/seller.ts` | [clearing run log](runs/2026-10-29-clearing.md) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 | Our earnings leave clearing in two steps: a queued withdrawal, then a claim once its epoch is final | `src/metal/clearing.ts`, `src/cli/clearing.ts` | queue [`0x902badf6…c3d4`](https://testnet.metalntwx.com/tx/0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4), claim of 0.70 [`0x522470d2…5092`](https://testnet.metalntwx.com/tx/0x522470d292f78b390fe153cb40905cdc6102afef1345d62e1dc975f900145092) | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
-| Each clearing receipt is checked again with Metal's clearing service (`verifyClearingPayment`) | `src/cli/verify.ts` | `npm run verify` | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
+| Each clearing receipt is checked again with Alta's clearing service (`verifyClearingPayment`) | `src/cli/verify.ts` | `npm run verify` | [Clearing](https://docs.metalntwx.com/agents/clearing.md) |
 
 Status: the deposit and five probe payments ran live; then, after the CFO approved P-0009 with Face ID, five real
 clearing sales ran on the seller, all five receipts verified, and 0.70 was withdrawn (clearing run log).
 
 ## 5. Receive policy and quarantine (built into Purser, 30 October)
 
-Metal's [receive policy](https://docs.metalntwx.com/reference/compliance/receive-policy.md) lets an account choose
+Alta's [receive policy](https://docs.metalntwx.com/reference/compliance/receive-policy.md) lets an account choose
 whom it accepts *USDZ from. A refused credit can go to **quarantine** instead of reverting: the payment completes,
 but `ReceivePolicy` (`0x…0f4d`) holds the funds until the recovery authority releases them. For Purser this fits the
 sweep wallet: accept earnings only from Northwind's own business account, and hold anything else for the CFO.
@@ -158,7 +158,7 @@ world:
 | An unknown sender pays 0.02 | the transfer succeeds but the receiver gets nothing: `Quarantined`, reason 2, and the receipt id we recompute matches the event | [`0x695eea1d…fa83`](https://testnet.metalntwx.com/tx/0x695eea1d805f30d646e0eb530d8e55dd15fda6834a609ef53f8bd11006dcfa83) |
 | The receiver accepts it after review (`claim` to itself) | `open(receiptId)` goes from true to false; the receiver is credited 0.02 less the gas for the claim | [`0x33fb24ff…44fc`](https://testnet.metalntwx.com/tx/0x33fb24ff25bdac52b38767d3e71064106bff106e51cb7bcb7f3633ac1c4f44fc) |
 
-What testnet does not have yet, as Metal's page warns: maximum amounts, sender totals and sender frequency (an
+What testnet does not have yet, as Alta's page warns: maximum amounts, sender totals and sender frequency (an
 earlier `ReceivePolicy`; `policyOf` returns five fields). Allowlist, blocklist, token filter, minimum amount,
 quarantine and claim work.
 
@@ -168,7 +168,7 @@ account, whose balance a mandate pull debits). The runner reads ReceivePolicy's 
 every 30 seconds (`src/policy/quarantine.ts`). Each held payment is recorded once with chain id, transaction hash, log
 index and the full receipt, shown on the dashboard (treasury panel and feed), and never bridged to Airwallex: the
 finality gate only credits a transfer that reached the wallet. The CFO gets two options with Face ID, return it to the
-sender or accept it; the executor checks the stored receipt against the approved terms and that Metal still holds it,
+sender or accept it; the executor checks the stored receipt against the approved terms and that Alta still holds it,
 claims it, and the other option is superseded.
 
 Live on testnet with Purser's own code, in a separate world (`b1-world`; not a Northwind run world):
@@ -177,21 +177,21 @@ Live on testnet with Purser's own code, in a separate world (`b1-world`; not a N
 |---|---|---|
 | `npm run receive-policy -- setup` on the sweep wallet `0x5eFC…6b23` | allowlist only, quarantine; the business account `0xBb24…E30F` allowed | [`0xf1a7fe96…0c37`](https://testnet.metalntwx.com/tx/0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37), [`0xb29628dd…fc2f`](https://testnet.metalntwx.com/tx/0xb29628dd47cc27aebe345ebc19f0af38da6a733dc67a46698d3d8fe13a69fc2f) |
 | An earnings sweep: the treasury mandate pulls 0.01 from the business account | credited to the sweep wallet | [`0x3caf1e9d…11b7`](https://testnet.metalntwx.com/tx/0x3caf1e9dbb0d2fca75e5af80dc825d3790dbeac5a0ff1c3f83a7dd700f7811b7) |
-| An unknown sender `0xA262…b646` pays 0.02 | the sweep wallet gets nothing; Metal holds it | [`0x9076343b…20d3`](https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3) |
+| An unknown sender `0xA262…b646` pays 0.02 | the sweep wallet gets nothing; Alta holds it | [`0x9076343b…20d3`](https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3) |
 | `npm run receive-policy -- poll` | recorded as held; two proposals (return, accept) wait for the CFO's Face ID | — |
-| Max approves P-0001 (return to the sender) with his passkey on the phone, 30 October 08:45 UTC | Purser checks the receipt against the approved terms and that Metal still holds it, then the sweep wallet claims it back to `0xA262…b646`; P-0002 (accept) is superseded | [`0x786686b6…fc3c`](https://testnet.metalntwx.com/tx/0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c) |
+| Max approves P-0001 (return to the sender) with his passkey on the phone, 30 October 08:45 UTC | Purser checks the receipt against the approved terms and that Alta still holds it, then the sweep wallet claims it back to `0xA262…b646`; P-0002 (accept) is superseded | [`0x786686b6…fc3c`](https://testnet.metalntwx.com/tx/0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c) |
 
-So the whole path is in the evidence: a stranger's payment held by Metal, recorded by Purser, never bridged, and
+So the whole path is in the evidence: a stranger's payment held by Alta, recorded by Purser, never bridged, and
 returned only after the CFO's Face ID.
 
-## 5b. The Dispute desk: what the seller can prove, then decide (Metal jury input, 30 October)
+## 5b. The Dispute desk: what the seller can prove, then decide (Alta jury input, 30 October)
 
 When a customer says its agent never agreed to an order or a price, or asks whether the agent acted under a mandate a
 real person signed, Northwind as the seller settles it on its own terms (`src/seller/`, `npm run dispute`):
 
-| What the seller holds | From Metal | Proves |
+| What the seller holds | From Alta | Proves |
 |---|---|---|
-| The order the customer's agent signed | the buyer's signed order, carried in the x402 payment by Metal's mandate extension (`signedOfferOf`), with the checkout: amount, payee, resource | what the agent agreed to, and the price |
+| The order the customer's agent signed | the buyer's signed order, carried in the x402 payment by Alta's mandate extension (`signedOfferOf`), with the checkout: amount, payee, resource | what the agent agreed to, and the price |
 | The payment checked against the customer's mandate | `verifyMandatePayment` (step 4: the payment is the agent's per-payment mandate, inside the mandate at its block) | the agent acted inside limits its principal set |
 | The mandate | its `MandateBound` event on the customer's account: limits, payee, expiry, bound by the owner key | who stood behind it: the account's owner |
 | The settlement and the delivery | the tx and `/settlements`; the SHA-256 of the data delivered | that it was paid once and what was delivered |
@@ -206,19 +206,19 @@ The rules are code (`decideDispute`):
 Opus explains the decision (advice). The customer gets a one-page report with explorer links
 ([example, live](disputes/DD-a88e8959.html), [run log](runs/2026-10-30-dispute-desk.md)).
 
-**A real person?** Metal proves the owner key bound the mandate. It does not prove that a person holds that key.
+**A real person?** Alta proves the owner key bound the mandate. It does not prove that a person holds that key.
 Purser's optional addition: the customer's owner registers a passkey with the seller and confirms each mandate with it
 (Face ID or similar), and the seller checks the signature (`src/seller/humanProof.ts`). This is labelled as Purser's,
-not enforced by Metal.
+not enforced by Alta.
 
-## 6. Evidence: how Purser's records map to Metal's model
+## 6. Evidence: how Purser's records map to Alta's model
 
-Metal's [Evidence and Regulatory Access](https://docs.metalntwx.com/learn/compliance/regulatory-access.md) page
+Alta's [Evidence and Regulatory Access](https://docs.metalntwx.com/learn/compliance/regulatory-access.md) page
 describes what a payment service provider keeps so an auditor can follow a MIP20 payment: the on-chain reference
 (chain id, token, transaction hash, the transfer's log index) and the provider's own records under the same payment
 reference. Purser is software, not a payment service provider, but it keeps the same kinds of record:
 
-| Metal's model | Where Purser keeps it | Gap |
+| Alta's model | Where Purser keeps it | Gap |
 |---|---|---|
 | Chain id, token, transaction hash, log index of the transfer | `chain_credits.event_key` is `chainId:tx:logIndex` for the sweep; the token is always *USDZ (`src/metal/network.ts`) | Sales, refunds and upstream purchases keep the transaction hash but not the log index; the transfer is found in that transaction |
 | Payment instruction, payment reference and each attempt | Refunds by `payment_id` (`refund-<sale>`), sweeps by `payment_id`, each proposal step by `executions.idempotency_key`; a signed purchase in doubt by its nonce; refusals are recorded, not only successes | — |
@@ -230,16 +230,16 @@ reference. Purser is software, not a payment service provider, but it keeps the 
 
 ## 7. What we do not use, and why
 
-| Metal feature | Why not |
+| Alta feature | Why not |
 |---|---|
 | MIP410 shielded payments | Purser's point is that the CFO and an auditor can see every agent payment on the explorer. Private amounts and parties would hide exactly that. A business paying suppliers privately could use it later, with viewing keys for its auditor. |
 | Payment messaging between institutions (Travel Rule exchange) | It is for payments between institutions (VASPs). Purser's agents pay one supplier and refund one customer inside a testnet demo; there is no counterparty institution to exchange messages with. Purser does export a paid invoice as ISO 20022 pacs.008 for a bank's or an ERP's tooling (section 9). |
 | Bridges, swaps and on-chain FX | The kit says the Airwallex sandbox cannot receive stablecoins, so the step to Airwallex is a simulated deposit that names the testnet transaction. FX happens at Airwallex. |
-| Metal mainnet | Test money only, as the hackathon asks. |
+| Alta mainnet | Test money only, as the hackathon asks. |
 
-## 8. Enterprise controls on Metal (30 October, evening)
+## 8. Enterprise controls on Alta (30 October, evening)
 
-Each was first checked against Metal's docs, then run live on testnet in a separate test world (test keys, test
+Each was first checked against Alta's docs, then run live on testnet in a separate test world (test keys, test
 money), not in Northwind's recorded run. Risks, controls and tests: [controls-matrix.md](controls-matrix.md).
 
 **Four eyes on chain** ([run log](runs/2026-10-30-four-eyes.md); two test keys on one machine, not two people).
@@ -254,11 +254,11 @@ money), not in Northwind's recorded run. Risks, controls and tests: [controls-ma
 - **Revoking the mandate:**
   - with the CFO alone, reverted: [`0x3bf9f70e…3ab5`](https://testnet.metalntwx.com/tx/0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5);
   - with both, revoked: [`0xb1723632…6d4b`](https://testnet.metalntwx.com/tx/0xb1723632242a7951136860c69baa46561c0d7d637b73196d98b6a051037e6d4b).
-- **The agent still pays alone inside its mandate.** "Large" means above the mandate's cap: Metal documents no
+- **The agent still pays alone inside its mandate.** "Large" means above the mandate's cap: Alta documents no
   per-amount threshold.
 
 **Programmable compliance: a send policy** ([run log](runs/2026-10-30-compliance-policy.md)).
-- **The contract.** `contracts/ComplianceSendPolicy.sol`, Metal's documented pattern; Metal ships no such contract.
+- **The contract.** `contracts/ComplianceSendPolicy.sol`, Alta's documented pattern; Alta ships no such contract.
   Funds held at it leave only with a decision Purser's compliance key signed for exactly that payment, after
   screening the payee.
 - **The good payment** paid 0.50: [`0xc2eb6814…f237`](https://testnet.metalntwx.com/tx/0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237).
@@ -269,39 +269,39 @@ money), not in Northwind's recorded run. Risks, controls and tests: [controls-ma
   - the replay: [`0x222385b5…2737`](https://testnet.metalntwx.com/tx/0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737);
   - a decision redirected to the attacker: [`0x03811931…e23a`](https://testnet.metalntwx.com/tx/0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a);
   - the sanctioned stand-in with a self-made decision: [`0x91ed35a5…442e`](https://testnet.metalntwx.com/tx/0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e).
-- **Limit:** agents' mandate payments do not pass through it (Metal's design).
+- **Limit:** agents' mandate payments do not pass through it (Alta's design).
 
 **Finality certificates** (`metal_getFinalityCertificate`).
-- **Stored per transaction.** The runner stores, every minute, the certificate Metal's RPC reports for each ledger
+- **Stored per transaction.** The runner stores, every minute, the certificate Alta's RPC reports for each ledger
   transaction's block. Each of the 26 transactions above has one: 3 of the 4 validators named, the header hashing
   to the block.
-- **Not a proof.** The BLS signature is not verified, because Metal has not published testnet's validator keys. So
+- **Not a proof.** The BLS signature is not verified, because Alta has not published testnet's validator keys. So
   these are what the RPC reported.
 - **About 2 hours.** Nodes keep certificates for about 2 hours on testnet (100,000 blocks at 13.4 a second,
   measured). The recorded run's had expired before this was built.
 - **Where they appear:** the dispute evidence pack, the audit PDF and `npm run verify`.
 
 **Clearing under load** ([run log](runs/2026-10-30-clearing-load.md)).
-- **The test.** 16 payer wallets paid 125 requests each at 0.001, all at once, through Metal's clearing and
+- **The test.** 16 payer wallets paid 125 requests each at 0.001, all at once, through Alta's clearing and
   facilitator.
 - **Result.** 2,000 of 2,000 paid in 471.8 s: 4.24 a second, latency p50 1.4 s and p95 8.1 s (most of the tail is
   waiting out epoch boundaries). The seller's balance rose by exactly 2.000. 32 chain transactions in all (16 approvals and 16
   deposits).
-- **Cost.** About $0.0007 of RPC calls per payment, estimated from Metal's published rates; not a bill.
+- **Cost.** About $0.0007 of RPC calls per payment, estimated from Alta's published rates; not a bill.
 - **Found.** In a first run, one wallet was held after a lost answer (1,879 of 2,000 paid, nothing paid twice).
-  Resending the same request, as Metal's docs say, fixed it.
-- **Not shown.** Metal's ceiling: 16 wallets, one machine, testnet.
+  Resending the same request, as Alta's docs say, fixed it.
+- **Not shown.** Alta's ceiling: 16 wallets, one machine, testnet.
 
-## 9. ISO 20022: one message linking the SWIFT transfer and the Metal transaction
+## 9. ISO 20022: one message linking the SWIFT transfer and the Alta transaction
 
 `npm run iso20022 -- BTX-2026-11` (`src/finance/iso20022.ts`) exports the recorded run's paid invoice as a
 pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml).
 - **Two transactions in one message:**
   - the Airwallex SWIFT transfer that paid Bergtex's invoice: EUR 1,850.00, EndToEndId `BTX-2026-11`, UETR
     `4d508b0b-ef38-41d3-b96e-f6cc3f5cfeb4` (Airwallex's transfer id), the invoice as structured remittance;
-  - the Metal transaction that swept 1.35 test USD of earnings to the bank, booked at Airwallex as deposit
+  - the Alta transaction that swept 1.35 test USD of earnings to the bank, booked at Airwallex as deposit
     `56366c9d…c838`. Test USD is written as the ISO test currency XTS; chain addresses are proxies.
-- **The link.** Both carry one Purser reference, and a supplementary block names the Metal transaction and its
+- **The link.** Both carry one Purser reference, and a supplementary block names the Alta transaction and its
   block, the Airwallex deposit, the conversion, the transfer and the hash of the terms the CFO approved.
 - **Checked.** It is valid against the official XSD (`test/iso20022.test.ts`, with xmllint, also in CI).
 - **What it is not.** It is not a message a bank sent. The sandbox assigns no SWIFT UETR, and the IBAN is masked
@@ -310,15 +310,15 @@ pacs.008.001.08 message: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs
 ## 10. How a judge checks it
 
 With no keys:
-- **Every hash on this page and on `/metal`** opens on the Metal testnet explorer; `/metal` reads the mandates' spend
+- **Every hash on this page and on `/metal`** opens on the Alta testnet explorer; `/metal` reads the mandates' spend
   live (or shows the read of 12 November, labelled), and `npm run metal-inspect` makes the same read from a clone.
 - **The main run's audit log**: 412 rows, head `f8d2a633…3220`, intact when the run ended. Its links (each row's hash
   and the hash before it) are in [the main run's trace](demo/main-run-trace.json); `/trace` checks every link offline
   and shows the head. The rows themselves stay in the run's ledger, where `npm run verify` recomputes each hash.
 - **`npm run judge`** serves the main run's pages offline: start at `/`, then `/metal`.
 
-With the ledger and a Metal RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
-disputed payment and clearing receipt against the chain and Metal's services, and every Face ID approval against its
+With the ledger and an Alta RPC endpoint, `npm run verify` goes further. It re-checks every credential, pull,
+disputed payment and clearing receipt against the chain and Alta's services, and every Face ID approval against its
 stored passkey signature.
 
 ## Appendix: earlier runs, dated
@@ -326,7 +326,7 @@ stored passkey signature.
 Before the main run, the same story ran in rehearsal 3 (29 October, [run log](runs/2026-10-29-rehearsal-3.md)) and in
 two Friday runs on 30 October ([Friday run 1](runs/2026-10-30-friday-1.md), the earlier recorded demo, and
 [Friday run 2](runs/2026-10-30-friday-2.md)); `npm run verify` passes on both. In those runs #24's refusal came from
-Metal's facilitator as a 402, with no transaction. Friday run 1's audit log is in the repo; this recomputes its
+Alta's facilitator as a 402, with no transaction. Friday run 1's audit log is in the repo; this recomputes its
 194-row chain offline:
 
 ```bash
@@ -342,7 +342,7 @@ rows 102 and 103 of that run's audit log ([docs/audit/](audit/README.md)).
 
 ### Friday runs (30 October): the chain's answers, twice
 
-| What Metal did | Run 1 | Run 2 |
+| What Alta did | Run 1 | Run 2 |
 |---|---|---|
 | Stock check #41 refused against the on-chain mandate at the old cap (`mandate_cap_exceeded`), customer not charged (absent from `/settlements`) | yes | yes |
 | Old Sourcing agent credential refused after the CFO's mandate replace (`mandate_revoked`) | yes | not logged |
@@ -354,29 +354,29 @@ rows 102 and 103 of that run's audit log ([docs/audit/](audit/README.md)).
 
 #### 1. Accounts, *USDZ and the faucet (bootstrap, 29 October)
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof | Alta docs |
 |---|---|---|---|
-| Metal smart accounts for the business and the customer (`metal-agent account create`) | `src/cli/bootstrap.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
+| Alta smart accounts for the business and the customer (`metal-agent account create`) | `src/cli/bootstrap.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Create and manage a smart account](https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account.md) |
 | Testnet *USDZ from the faucet (`metal-agent fund`) | `src/cli/bootstrap.ts`, `src/metal/clearing.ts` | [bootstrap run log](runs/2026-10-29-bootstrap.md) | [Fund a test account](https://docs.metalntwx.com/build/prepare/fund-a-test-account.md) |
 | A MIP20 *USDZ transfer: exactly 20.00 from the owner key into the business account; *USDZ pays the gas | `src/metal/chain.ts` `transferUsdz` | [`0xe8150bf7…afd5`](https://testnet.metalntwx.com/tx/0xe8150bf7c4f98d85085d470e8f7b2ef9ca9bdc9adda812768f3aefdec26aafd5) | [Direct payment](https://docs.metalntwx.com/build/payments/direct-payment.md), [Estimate and record fees](https://docs.metalntwx.com/build/prepare/estimate-and-record-fees.md) |
 
 #### 2. Mandates (rehearsals, 29 October)
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof | Alta docs |
 |---|---|---|---|
 | Four mandates bound on chain (three agents and the customer's; the links here are from the 29 October rehearsal world, Northwind's own binds are audit rows 2 to 5 of the recorded run, e.g. the customer's [`0x6a4622a9…59a6`](https://testnet.metalntwx.com/tx/0x6a4622a9ed5a1880b9e56f89adb59f003c9793a78c080db7ec2ae2f4f2ba59a6)), each with a per-payment cap, a total budget, one payee and an expiry (`metal-agent mandate bind`) | `src/executors/ownerSigner.ts`, `src/cli/bootstrap.ts` | sourcing [`0xd525573c…19bf`](https://testnet.metalntwx.com/tx/0xd525573c5ef06c01e4a92c39f0ab087c06ef21ec5281a3a490dfe410615919bf), support [`0x12a319f3…76ee`](https://testnet.metalntwx.com/tx/0x12a319f3baf957dbbb6a6cadfc4f1dda0a28ccda6fe4c4f766de1853fad576ee), treasury [`0x6ea66684…8e0e`](https://testnet.metalntwx.com/tx/0x6ea6668492b625f7812cbae5be1178dc2adc13f83342136b074a547283378e0e), Summit [`0xe78b3197…c729`](https://testnet.metalntwx.com/tx/0xe78b3197e617179a3a78fd0f59c4a8f05715984caca0594e82e0d293edd9c729) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| Metal refuses a payment over the cap, against the on-chain mandate: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
+| Alta refuses a payment over the cap, against the on-chain mandate: `mandate_cap_exceeded`, so the customer is not charged (S1) | `src/agents/sourcing.ts`, `src/servers/seller.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Mandates replaced after Face ID, in a safe order (shrink treasury, then grow sourcing; never over 20.00) (`metal-agent mandate replace`) | `src/executors/mandateReplace.ts`, `src/policy/mandates.ts` | treasury [`0x6b77d994…6f7e`](https://testnet.metalntwx.com/tx/0x6b77d9942f5e7ff9669c0a2fd11d4cea166f7db4eaf3f9728c89bc45ac846f7e), sourcing [`0x4c995a76…ccdc`](https://testnet.metalntwx.com/tx/0x4c995a768da10d611bee3d82d0d54812b3018bbdc12969bc4c20e46f3a5dccdc) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | The replaced credential is refused: `mandate_revoked` | `src/cli/s1.ts` | [S1 run log](runs/2026-10-29-s1.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
 | Pull payments under a mandate: refunds and the earnings sweep, each with its own payment id, so a retry pays nothing twice (`metal-agent mandate pull`) | `src/executors/refunds.ts`, `src/agents/sweep.ts` | refunds [`0x0197b1c9…2281`](https://testnet.metalntwx.com/tx/0x0197b1c9e3c8339775439ff90b22d416644f9f0774fc58244826cc724c622281), [`0xa4fb723c…8e52`](https://testnet.metalntwx.com/tx/0xa4fb723c41bddbe6de84ac1064aa9abbadaab3a2d4c5be29efeba04e25b48e52), [`0x788788ee…08d1`](https://testnet.metalntwx.com/tx/0x788788eec4c8d99bb7d7129a68f0a0eea42412b87879d8ec41e66cefee0c08d1); sweep [`0x7c53378d…486b`](https://testnet.metalntwx.com/tx/0x7c53378d3e989e8f780657f39392dfd0a319a79cb0e4d84aae158a430fd0486b) | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 | Every credential checked again by `metal-agent mandate verify`; mandate state read from the chain (`mandate status`) | `src/cli/verify.ts`, `src/metal/mandate.ts` | `npm run verify`: all checks pass on rehearsal 3 (20 in its run log) and on both Friday runs | [metal-agent](https://docs.metalntwx.com/agents/metal-agent.md) |
 
-#### 3. x402 on Metal (rehearsal 3, 29 October)
+#### 3. x402 on Alta (rehearsal 3, 29 October)
 
-| What | Where in the code | Proof | Metal docs |
+| What | Where in the code | Proof | Alta docs |
 |---|---|---|---|
-| Our seller offers `exact` x402 on Metal through Metal's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0xc1b06070…ecfa`](https://testnet.metalntwx.com/tx/0xc1b06070a050556f5e2ef820fb2826dd1babde33787fab5c75aef7d3b677ecfa); first supplier purchase [`0xf6f364ea…643d`](https://testnet.metalntwx.com/tx/0xf6f364ea7114b3b3bd47271b4938677629744a939ac9af285733c8b86a33643d) | [x402 on Metal](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
+| Our seller offers `exact` x402 on Alta through Alta's hosted facilitator (`registerMetalScheme`) | `src/servers/seller.ts`, `src/servers/supplier.ts` | first sale [`0xc1b06070…ecfa`](https://testnet.metalntwx.com/tx/0xc1b06070a050556f5e2ef820fb2826dd1babde33787fab5c75aef7d3b677ecfa); first supplier purchase [`0xf6f364ea…643d`](https://testnet.metalntwx.com/tx/0xf6f364ea7114b3b3bd47271b4938677629744a939ac9af285733c8b86a33643d) | [x402 on Alta](https://docs.metalntwx.com/agents/x402-on-metal.md), [Facilitator](https://docs.metalntwx.com/agents/facilitator.md) |
 | Agents pay under their mandate (`createMandatePaymentClient`); the buyer must sign the order (`requireSignedOffer`) | `src/metal/pay.ts`, `src/servers/seller.ts` | 50 sales in rehearsal 3 | [Mandates](https://docs.metalntwx.com/agents/mandates.md), [Authorized payment](https://docs.metalntwx.com/build/payments/authorized-payment.md) |
 | A dispute re-checks each payment and its signed order from the chain (`verifyMandatePayment`): 12 of 12 ordered | `src/agents/disputes.ts` | [S2 run log](runs/2026-10-29-s2.md) | [Mandates](https://docs.metalntwx.com/agents/mandates.md) |
-| A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Metal QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
+| A payment in doubt is looked up in the facilitator's `/settlements` by its nonce, never paid twice | `src/metal/pay.ts` | tested in code (`test/` in-doubt cases); not yet exercised live (Alta QA, 1 November) | [Facilitator](https://docs.metalntwx.com/agents/facilitator.md), [Verify and reconcile payments](https://docs.metalntwx.com/build/payments/verify-and-reconcile-payments.md) |
 | The sweep is credited only once final, locked once by `chainId:tx:logIndex` | `src/agents/sweep.ts` | [S3 run log](runs/2026-10-29-s3.md) | [Settlement and finality](https://docs.metalntwx.com/reference/network-fundamentals/settlement.md) |

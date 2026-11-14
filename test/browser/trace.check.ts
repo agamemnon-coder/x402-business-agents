@@ -1,6 +1,6 @@
 // 4.1 The agent trace in a browser: the dashboard on a throwaway ledger where the Sourcing agent ran (fake Claude
 // client, no chain), at phone (390 px) and laptop (1440 px) width, light and dark. Opens the trace from the decision's
-// feed line and checks the timeline: five steps, the refused call named with its check, the Metal tx link, each row's
+// feed line and checks the timeline: five steps, the refused call named with its check, the Alta tx link, each row's
 // hash, the dialog fits the screen, Escape closes it and focus goes back. Fails on any console or page error and on
 // "null", "undefined" or "NaN" on screen.
 //   npx tsx test/browser/trace.check.ts [screenshot dir]
@@ -25,7 +25,7 @@ const turns = [[{ name: "check_offer", input: {} }], [{ name: "try_purchase", in
 const client = { beta: { messages: { create: async () => {
   const t = turns[i++];
   const usage = { input_tokens: 1200, output_tokens: 180, cache_read_input_tokens: 900, cache_creation_input_tokens: 0 };
-  if (!t) return { content: [{ type: "text", text: "Stockline now charges 0.04; my cap is 0.03, so Metal refused #41. I need a cap of 0.04." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
+  if (!t) return { content: [{ type: "text", text: "Stockline now charges 0.04; my cap is 0.03, so Alta refused #41. I need a cap of 0.04." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
   return { content: t.map((c, k) => ({ type: "tool_use", id: `t${i}-${k}`, name: c.name, input: c.input })), stop_reason: "tool_use", model: "claude-haiku-5-5", usage };
 } } } } as unknown as Anthropic;
 await runAgent(db, {
@@ -34,11 +34,11 @@ await runAgent(db, {
     { name: "check_offer", description: "d", input: z.object({}), run: async () => ({ text: "Live offer 0.04; your cap 0.03; 9.20 of budget left" }) },
     { name: "try_purchase", description: "d", input: z.object({}), run: async () => {
       audit(db, "sourcing", "upstream.refused", "41", { seq: 41, reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", tx: TX });
-      return { text: "Metal refused stock check #41 against the mandate", blocked: "Metal mandate" };
+      return { text: "Alta refused stock check #41 against the mandate", blocked: "Alta mandate" };
     } },
   ],
 }, client);
-audit(db, "sourcing", "price_rise.met", "41", { source: "claude", model: "claude-haiku-5-5", tried: true, refusal: "mandate_cap_exceeded", message: "Stockline now charges 0.04; my cap is 0.03, so Metal refused #41. I need a cap of 0.04." });
+audit(db, "sourcing", "price_rise.met", "41", { source: "claude", model: "claude-haiku-5-5", tried: true, refusal: "mandate_cap_exceeded", message: "Stockline now charges 0.04; my cap is 0.03, so Alta refused #41. I need a cap of 0.04." });
 
 const server = dashboardApp(db, { approvalsUrl: "http://127.0.0.1:1/approvals" }).listen(0, "127.0.0.1");
 await new Promise((r) => server.once("listening", r));
@@ -62,9 +62,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await page.waitForSelector("#trace-sheet[open]");
     const steps = await page.locator("#trace-steps li").allTextContents();
     check(steps.length === 5, `${tag}: five steps (${steps.length})`);
-    check(steps.some((s) => /Stopped by: Metal mandate/.test(s)), `${tag}: the refused call names what stopped it`);
+    check(steps.some((s) => /Stopped by: Alta mandate/.test(s)), `${tag}: the refused call names what stopped it`);
     check(steps.some((s) => /Check: read only/.test(s)), `${tag}: the read-only call names its check`);
-    check((await page.locator("#trace-steps a").first().getAttribute("href")) === `https://testnet.metalntwx.com/tx/${TX}`, `${tag}: the refusal's Metal tx links to the explorer`);
+    check((await page.locator("#trace-steps a").first().getAttribute("href")) === `https://testnet.metalntwx.com/tx/${TX}`, `${tag}: the refusal's Alta tx links to the explorer`);
     check(steps.every((s) => /audit #\d+ · hash [0-9a-f]{12}…/.test(s)), `${tag}: every step shows its audit row and hash`);
     const sum = await page.locator("#trace-sum").textContent() ?? "";
     check(/claude-haiku-5-5/.test(sum) && /Tokens\s*6840/.test(sum) && /\$0\.\d{4}/.test(sum), `${tag}: model, tokens and cost in the summary (${sum.replace(/\s+/g, " ").slice(0, 120)})`);

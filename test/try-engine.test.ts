@@ -99,8 +99,8 @@ describe("Try Purser in the demo world", () => {
   });
 });
 
-describe("Try Purser on Metal: pay per request under the agent's mandate", () => {
-  it("pays stock checks per request on Metal, each inside the mandate's cap, to the one payee it allows", async () => {
+describe("Try Purser on Alta: pay per request under the agent's mandate", () => {
+  it("pays stock checks per request on Alta, each inside the mandate's cap, to the one payee it allows", async () => {
     const r = await tryPurser("Buy 25 live stock checks from Stockline", fake("api_data", { item: "live stock checks", merchant: "Stockline", quantity: 25 }), now);
     expect(r).toMatchObject({ outcome: "paid", rail: "metal", live: "x402" });
     expect(r.steps.find((s) => s.title === "Checked the amount")?.detail).toBe("25 × 0.04 test USD = 1.00 test USD (Stockline's price per request).");
@@ -219,7 +219,7 @@ describe("Try Purser reads numbers the way people write them, and never drops a 
     expect(r.detail).toMatch(/2\.50 or 2,500\.00/);
   });
 
-  it("code alone reads a price per request on Metal, and never takes a date for a count", async () => {
+  it("code alone reads a price per request on Alta, and never takes a date for a count", async () => {
     expect(await tryPurser("Pay Stockline 0.10 test USD per stock check", plainModels, now)).toMatchObject({ outcome: "refused", headline: "Refused by the chain" });
     expect(amountStep(await tryPurser("Book a train on 2026-11-20 to Paris, €120", plainModels, now))).toBe("€120.00, as written in the message.");
   });

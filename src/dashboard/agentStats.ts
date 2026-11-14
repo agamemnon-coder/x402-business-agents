@@ -95,20 +95,20 @@ export function agentChat(db: DB, limit = 40): ChatLine[] {
 
 /**
  * A refused supplier purchase, worded by who refused it (the event's `refused_by`, src/agents/sourcing.ts refusedByOf):
- * Metal answered (on the main run's #24, a purchase let through on purpose), or before anything was signed the agent's
+ * Alta answered (on the main run's #24, a purchase let through on purpose), or before anything was signed the agent's
  * own buy policy, the supplier (no offer) or Purser. Final review, 4 Nov: every refusal read "refused before signing",
- * Metal's own included.
+ * Alta's own included.
  */
 export function refusedPurchaseLine(pl: Record<string, unknown>): string {
   const str = (v: unknown) => (typeof v === "string" ? v : v == null ? "" : JSON.stringify(v));
   const supplier = str(pl.supplier), reason = str(pl.reason);
-  if (pl.refused_by === "metal") return `A purchase from ${supplier}${pl.let_through === true ? ", let through on purpose," : ""} was refused by Metal: ${reason}`;
+  if (pl.refused_by === "metal") return `A purchase from ${supplier}${pl.let_through === true ? ", let through on purpose," : ""} was refused by Alta: ${reason}`;
   if (pl.refused_by === "buy_policy") return `The Sourcing agent's own buy policy refused a purchase before signing: ${reason}`;
   if (pl.refused_by === "supplier") return `${supplier} made no offer, so nothing was signed: ${reason}`;
   return `A purchase from ${supplier} was refused by Purser before signing: ${reason}`;
 }
 /** A refused-purchase line, in today's words or as older records wrote it ("… was refused before signing: …"). */
-export const REFUSED_PURCHASE_LINE = /^(A purchase from \S+(, let through on purpose,)? was refused (before signing|by Metal|by Purser before signing): |The Sourcing agent's own buy policy refused a purchase before signing: |\S+ made no offer, so nothing was signed: )/;
+export const REFUSED_PURCHASE_LINE = /^(A purchase from \S+(, let through on purpose,)? was refused (before signing|by Alta|by Purser before signing): |The Sourcing agent's own buy policy refused a purchase before signing: |\S+ made no offer, so nothing was signed: )/;
 
 /** What changed in the world, in plain words (the full email or notice stays in the agent's own input, not on the page). */
 function worldWords(kind: string, pl: Record<string, unknown>, str: (v: unknown) => string): string {

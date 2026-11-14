@@ -3,7 +3,7 @@
 // PAYMENT-SIGNATURE, and the seller's answer carries PAYMENT-RESPONSE. Other tests stand the seller's middleware aside;
 // here the real middleware serves the offer, and the real x402 client and wrapFetchWithPayment build the payment.
 //
-// Offline: Metal's facilitator is stood in for /supported (test/support/facilitatorStandIn.ts), the RPC URL points
+// Offline: Alta's facilitator is stood in for /supported (test/support/facilitatorStandIn.ts), the RPC URL points
 // nowhere, the seller and supplier listen on 127.0.0.1, and the buyer's seller is a stubbed fetch. The mandate scheme
 // is a fake signer, as in test/contract/metal-facilitator.test.ts. Header values are encoded at run time.
 import type { AddressInfo } from "node:net";
@@ -14,7 +14,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoadedMandate } from "../src/metal/mandate.js";
 
-// Metal's facilitator stood in: building the seller or a supplier asks its /supported.
+// Alta's facilitator stood in: building the seller or a supplier asks its /supported.
 vi.mock("@x402/core/server", async (orig) => (await import("./support/facilitatorStandIn.js")).standInServer(await orig<typeof import("@x402/core/server")>()));
 
 const h = vi.hoisted(() => ({ signed: 0 }));
@@ -94,7 +94,7 @@ describe("the 402 offer Purser's servers send (PAYMENT-REQUIRED, x402 version 2)
     const offer = await offerOf(`${base}${SELLER_ROUTE}?seq=1`);
     expectExactOnMetal(offer, 7);
     expect(offer.resource.url).toContain(`${SELLER_ROUTE}?seq=1`);
-    // Metal's mandate extension: the buyer signs the order (requireSignedOffer), not x402's seller-signed offer.
+    // Alta's mandate extension: the buyer signs the order (requireSignedOffer), not x402's seller-signed offer.
     expect(offer.accepts[0]!.extra).toMatchObject({ signedOffer: "required", resource: `GET ${SELLER_ROUTE}` });
   });
 
@@ -163,7 +163,7 @@ describe("the buyer's paid request (PAYMENT-SIGNATURE) and the answer it reads (
     expect(await payUnderMandate(m, URL_)).toMatchObject({ kind: "in_doubt", reason: "seller answered 200 without a settlement" });
   });
 
-  it("a settle refusal Metal does not list (the specification's insufficient_funds) is in doubt, never refused", async () => {
+  it("a settle refusal Alta does not list (the specification's insufficient_funds) is in doubt, never refused", async () => {
     // Fails if: an unknown reason is read as "nothing moved" (refused), which would license paying a second time
     // (proved red by adding insufficient_funds to NOTHING_SETTLED in src/metal/pay.ts).
     seller(() => new Response("", { status: 402, headers: { "PAYMENT-RESPONSE": settleAnswer({ success: false, errorReason: "insufficient_funds" }) } }));

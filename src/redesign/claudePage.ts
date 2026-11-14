@@ -70,7 +70,7 @@ const link = (file: string, label = "record") => `<a class="pf" href="${esc(`${R
 const r1 = (n: number) => Math.round(n * 10) / 10;
 
 export interface SplitFigures { routine: number; decisions: number; byClaude: number; fallbacks: number; calls: number; faceId: number;
-  /** The main run's payments on Metal (metalStory), to say how they relate to the split (jury review, 13 Nov). */
+  /** The main run's payments on Alta (metalStory), to say how they relate to the split (jury review, 13 Nov). */
   onChain?: { total: number; sales: number; purchases: number; refunds: number; sweeps: number } }
 
 /** The split as one sentence (both drawings say it; the figure carries it for readers who do not see them). */
@@ -116,11 +116,11 @@ ${bar("sk-face", f.faceId, "of those, high-risk: the CFO's Face ID")}
 </ul></div>`;
   // What a decision is here (jury review, 7 Nov, #19): holding and doing nothing count, as the record's own rows show.
   const cap = `${f.byClaude === f.decisions ? `<b>All ${f.decisions}</b>` : `<b>${f.byClaude} of ${f.decisions}</b>`} decisions by Claude, holds included; <b>${f.fallbacks}</b> fallbacks · <b>${f.calls}</b> Claude calls, each logged`;
-  // How the split relates to Metal's and x402's counts (jury review, 13 Nov), said only when the record's figures add up:
+  // How the split relates to Alta's and x402's counts (jury review, 13 Nov), said only when the record's figures add up:
   // the routine payments are the x402 sales and code's purchases; the refunds and the sweep are among the exceptions.
   const oc = f.onChain;
   const rel = oc && oc.sales + oc.purchases === f.routine && oc.total === f.routine + oc.refunds + oc.sweeps
-    ? `<br>${esc(`On Metal: ${oc.total} payments, the ${f.routine} routine ones (${oc.sales} x402 sales, ${oc.purchases} purchases) and ${oc.refunds} refunds and ${oc.sweeps} sweep, decided among the ${f.decisions} exceptions.`)}` : "";
+    ? `<br>${esc(`On Alta: ${oc.total} payments, the ${f.routine} routine ones (${oc.sales} x402 sales, ${oc.purchases} purchases) and ${oc.refunds} refunds and ${oc.sweeps} sweep, decided among the ${f.decisions} exceptions.`)}` : "";
   return `<figure class="csplit card" id="split">${wide}${nar}<figcaption>${cap}${rel}</figcaption></figure>`;
 }
 

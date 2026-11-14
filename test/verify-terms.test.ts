@@ -34,7 +34,7 @@ describe("verify the signed terms", () => {
     for (const s of all) if (!s.terms) expect(verifyItem(s)).not.toContain('class="vfb"');
   });
 
-  it("awx-1 and the platform run carry their payout ids; the Metal run its transactions", () => {
+  it("awx-1 and the platform run carry their payout ids; the Alta run its transactions", () => {
     expect(runs["awx-1"]?.[0]?.ref?.value).toBe("738a4263-6d6c-4de8-94a3-93da1c175fb4");
     expect(runs["awx-1"]?.[0]?.terms).not.toBeNull();
     expect(runs["platform-e2e-1"]?.[0]?.ref?.value).toBe("593c340b-1752-4537-9ef2-0eb3558897cc");

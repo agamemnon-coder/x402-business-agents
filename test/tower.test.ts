@@ -53,7 +53,7 @@ describe("the control tower", () => {
     expect(t.agents.find((a) => a.agent === "support")).toMatchObject({ status: "paused", mandate: null, card: null, last: null });
   });
 
-  it("says who enforced each refusal: Purser before signing, Metal on chain (its tx), Airwallex at the card (its id)", () => {
+  it("says who enforced each refusal: Purser before signing, Alta on chain (its tx), Airwallex at the card (its id)", () => {
     const t = towerView(world(), inputs);
     // An unavailable supplier is not a limit: only refusals against the mandate count.
     expect(t.enforced.map((e) => [e.who, e.count])).toEqual([["purser", 1], ["metal", 1], ["airwallex", 1]]);
@@ -63,13 +63,13 @@ describe("the control tower", () => {
     expect(t.enforced[0]!.last!.words).toBe("Over the mandate's cap per payment");
   });
 
-  it("counts a refusal Metal's facilitator gave (refused_by metal) as Metal's", () => {
+  it("counts a refusal Alta's facilitator gave (refused_by metal) as Alta's", () => {
     const db = world();
     audit(db, "sourcing", "upstream.refused", "9", { reason: "mandate_cap_exceeded", refused_by: "metal" });
     expect(towerView(db, inputs).enforced[1]!.count).toBe(2);
   });
 
-  it("reads an older row without refused_by: a bare code is Metal's facilitator, Purser's own always has its detail (Metal QA)", () => {
+  it("reads an older row without refused_by: a bare code is Alta's facilitator, Purser's own always has its detail (Alta QA)", () => {
     const db = world();
     audit(db, "sourcing", "upstream.refused", "41", { reason: "mandate_cap_exceeded", seq: 41 });
     audit(db, "sourcing", "upstream.refused", "42", { reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", seq: 42 });

@@ -50,7 +50,7 @@ Nothing private on screen: no `.env`, no key, no viewer link, no mail. The termi
 1. **Repeat the question** in one short sentence, so the room hears it and you get three seconds.
 2. **Answer in two sentences.** The answers are in [qa.md](qa.md) (questions 27 to 33 are the seven most likely) and
    in [jury/](jury/), one sheet per company on the jury.
-3. **Say "not tested yet" when it is not.** Exact, a real second approver, invoice tokens live on Metal, paying
+3. **Say "not tested yet" when it is not.** Exact, a real second approver, invoice tokens live on Alta (formerly Metal), paying
    customers: each is "next", never "done". If you do not know: "Good question. I'll check and send it to you."
 4. **Point to the QR code:** "You can try that part yourself: scan the code, sign with your own Face ID, change one
    cent."
@@ -69,9 +69,9 @@ its URL and what to do if it fails. Performing it is Max's job; rehearse it once
 | 3. Forged IBAN refused | 0:35–0:55 | `/try` (the forged sample), or the demo world's held invoice | Held as possible fraud: changed bank details, no proposal | Say it and show [docs/runs/2026-10-29-fraud.md](../runs/2026-10-29-fraud.md) |
 | 4. Face ID, then Airwallex | 0:55–1:30 | `/try` on the mirrored iPhone; then [/airwallex](https://kit11.max-31b.workers.dev/airwallex) | Sign the exact terms with Face ID; change one cent: refused. On `/try` the bank is simulated and says so; the Airwallex sandbox payouts are on /airwallex | Face ID fails: the laptop (Touch ID). /airwallex down: [the two-locks record](../runs/2026-11-12-airwallex-two-locks-paid.md) |
 | 5. T:0, Moneybird and the vault | 1:30–1:55 | [/runs](https://kit11.max-31b.workers.dev/runs) (T:0); [the Moneybird record](../runs/2026-11-12-moneybird-sandbox.md); the `/try` company's vault | The T:0 journal sandbox run, the Moneybird sandbox run, then the paid invoice filed in the vault | Records: [T:0](../runs/2026-11-10-t0-journal-sandbox.md), [Moneybird](../runs/2026-11-12-moneybird-sandbox.md) |
-| 6. The token on Metal | 1:55–2:10 | [the run record](../runs/2026-11-12-tokenize.md) | Said by record status: **one prototype run on Metal testnet, 12 November** (mint, finance, settle; the financier simulated; test money) | Skip it: "next" |
-| 7. The agent overview | 2:10–2:35 | [/airwallex#awx-1](https://kit11.max-31b.workers.dev/airwallex#awx-1); [/metal](https://kit11.max-31b.workers.dev/metal) | An agent's own card declined over its limit (`LIMIT_EXCEEDED`); Metal refused #24 on chain | Local: `http://localhost:4311/metal` |
-| 8. The proof | 2:35–3:00 | [/proof](https://kit11.max-31b.workers.dev/proof) | Every id, the Metal ones on chain; then the QR | Local: `http://localhost:4311/proof` |
+| 6. The token on Alta | 1:55–2:10 | [the run record](../runs/2026-11-12-tokenize.md) | Said by record status: **one prototype run on Alta testnet, 12 November** (mint, finance, settle; the financier simulated; test money) | Skip it: "next" |
+| 7. The agent overview | 2:10–2:35 | [/airwallex#awx-1](https://kit11.max-31b.workers.dev/airwallex#awx-1); [/metal](https://kit11.max-31b.workers.dev/metal) | An agent's own card declined over its limit (`LIMIT_EXCEEDED`); Alta refused #24 on chain | Local: `http://localhost:4311/metal` |
+| 8. The proof | 2:35–3:00 | [/proof](https://kit11.max-31b.workers.dev/proof) | Every id, the Alta ones on chain; then the QR | Local: `http://localhost:4311/proof` |
 
 ## 6. The jury's criteria, and where the submission pitch of 7 November met them (kept for questions)
 
@@ -83,12 +83,12 @@ your repository with setup instructions."
 |---|---|---|
 | Finance and product value | 0:15 who and what (a small company that sells live stock data per query; the rule: inside its limits an agent pays alone, beyond them the CFO signs); 2:05 the core line | [/](https://kit11.max-31b.workers.dev/); deck slides 2–3 |
 | Airwallex relevance and financial context | 0:40, beat 3: FX for only the shortfall, SWIFT accepted by Airwallex with the signed hash (settlement simulated) | conversion `3ca88196-05da-4d88-9caa-796f03704636`; transfer `03360bfa-afce-457b-89d1-e1097fbe3985`; authorization `01a1a12f-4113-7000-b76d-014677710007`; if asked about Airi: the separate Airi run, 7 Nov (Airwallex sandbox, test card, test money), [/airwallex#airi-run](https://kit11.max-31b.workers.dev/airwallex#airi-run), qa.md 18–19 |
-| Agentic behaviour and controls | 0:40, beat 1: Metal refuses; Treasury proposes options 40 s later; four eyes (the second signature from a test passkey, not a second person) | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
-| Technical execution | 1:50: every id published on /proof, the Metal ones on chain and checkable; `npm run verify`; 6609 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
+| Agentic behaviour and controls | 0:40, beat 1: Alta refuses; Treasury proposes options 40 s later; four eyes (the second signature from a test passkey, not a second person) | tx `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871`; P-0002 |
+| Technical execution | 1:50: every id published on /proof, the Alta ones on chain and checkable; `npm run verify`; 6609 tests | [/proof](https://kit11.max-31b.workers.dev/proof); 412 audit rows, hash-chained |
 | "(1) a working end-to-end workflow for a clear user" | The whole run: 0:40–1:50 | [/replay](https://kit11.max-31b.workers.dev/replay) |
 | "(2) Airwallex used for a necessary financial action" | Beat 3: the euro licence paid by SWIFT, euros bought by FX | transfer `03360bfa…3985` |
 | "(3) financial context influencing what the agent decides" | Beat 1: the price rise; Treasury's two options within the same 20.00: A, Sourcing's cap to 0.04 and our price stays 0.05; B, the same cap and our price up to 0.07 | P-0002 (option A, signed), P-0003 (option B, superseded) |
-| "(4) clear controls: what the agent can do, what requires approval, how it handles an exception" | Beats 1 and 2: Metal's cap, the refunds by Support itself, "refund the other 9" rejected with Face ID; 1:50 the jury signs | P-0004; [/try/sign](https://kit11.max-31b.workers.dev/try/sign) |
+| "(4) clear controls: what the agent can do, what requires approval, how it handles an exception" | Beats 1 and 2: Alta's cap, the refunds by Support itself, "refund the other 9" rejected with Face ID; 1:50 the jury signs | P-0004; [/try/sign](https://kit11.max-31b.workers.dev/try/sign) |
 
 ## 7. Rehearsal: the video, three takes
 
@@ -118,6 +118,6 @@ Also, once:
 ## 8. Three sentences that always work
 
 - "Inside the limits the agent pays alone; beyond them, a person signs with Face ID."
-- "Metal and Airwallex hold the limits in the rails, not in a prompt."
+- "Alta and Airwallex hold the limits in the rails, not in a prompt."
 - "Everything simulated is labelled: the demo companies, the bank on the hands-on page, the sandbox settlement, and
   the testnet."

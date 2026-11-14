@@ -35,13 +35,13 @@ export interface RunId { label: string; value: string; href?: string }
 /** One number of a run and what it counts. A row in the old shape may carry some: they are listed quietly in its fold. */
 export interface RunStat { v: string; l: string }
 /**
- * The kind of run, its honest badge: real calls to a partner's sandbox, real transactions on Metal testnet, both, a run
+ * The kind of run, its honest badge: real calls to a partner's sandbox, real transactions on Alta testnet, both, a run
  * on Purser's own fakes (no payment partner called), a rehearsal or dry run, or a live run that called no partner and
  * moved nothing.
  */
 export type RunKind = "sandbox" | "testnet" | "both" | "simulated" | "rehearsal" | "nothing" | "control";
 /** A partner a run can take part in: its chip, its filter and its count. */
-export type RunPartner = "Airwallex" | "Metal" | "T:0" | "Visa" | "Claude";
+export type RunPartner = "Airwallex" | "Alta" | "T:0" | "Visa" | "Claude";
 /** A series as a rate: "done of of what" ("7 of 7 checks passed", "18 of 20 paid"). */
 export interface RunRate { done: number; of: number; what: string }
 export interface RunRow {
@@ -113,12 +113,12 @@ function ledgerRow(key: string, file: string, log: string, title: string, name: 
     const transfer = t.payments.find((x) => x.kind === "transfer");
     const sweep = t.payments.find((x) => x.kind === "sweep");
     if (transfer) ids.push({ label: "SWIFT transfer (Airwallex)", value: transfer.ref, href: `trace#${transfer.id}` });
-    if (sweep?.rail_id) ids.push(tx("Sweep on Metal", sweep.rail_id));
+    if (sweep?.rail_id) ids.push(tx("Sweep on Alta", sweep.rail_id));
     ids.push({ label: "Every payment", value: "Trace any payment", href: "trace" });
   }
-  const what = `${pl(p.onChain, "Metal payment")}, ${pl(p.cards, "card charge")}, ${pl(p.transfers, "SWIFT transfer")}; ${pl((r.proof as unknown as { face_id: number }).face_id, "CFO Face ID decision")}.`;
+  const what = `${pl(p.onChain, "Alta payment")}, ${pl(p.cards, "card charge")}, ${pl(p.transfers, "SWIFT transfer")}; ${pl((r.proof as unknown as { face_id: number }).face_id, "CFO Face ID decision")}.`;
   return {
-    key, iso: r.recorded_at, date: day(r.recorded_at), title, rails: "Metal testnet, Airwallex sandbox, Claude",
+    key, iso: r.recorded_at, date: day(r.recorded_at), title, rails: "Alta testnet, Airwallex sandbox, Claude",
     name, line: `${what} ${SIMULATED_LINE}`, kind: rehearsal ? "rehearsal" : "both", what,
     checks: `${s.reconciliation.checked} money flows reconciled, ${s.reconciliation.differences} differences; audit log ${s.audit.rows} rows, ${s.audit.intact ? "intact" : "broken"}.`,
     money: rehearsal ? "Rehearsal · test money" : "Test money",
@@ -291,7 +291,7 @@ export function liveRuns(): RunRow[] {
 
   const metal = readJson<{ recorded_at: string; dispute: { case_id: string; packs: { tx: string }[]; decision: { outcome: string } } }>("docs/demo/metal.json");
   rows.push({
-    key: "friday-1", iso: metal.recorded_at, date: day(metal.recorded_at), title: "Friday run 1, with a Dispute desk case", rails: "Metal testnet",
+    key: "friday-1", iso: metal.recorded_at, date: day(metal.recorded_at), title: "Friday run 1, with a Dispute desk case", rails: "Alta testnet",
     name: "A customer disputes payments its agent made; Purser answers from the signed orders", kind: "rehearsal",
     line: `${metal.dispute.packs.length} payments disputed as never ordered; each was checked on chain against its signed order (outcome: ${metal.dispute.decision.outcome}). The customer was simulated.`,
     what: `A customer's agent claimed it never ordered ${metal.dispute.packs.length} paid stock checks; Purser answered from the signed orders and the on-chain payments (outcome: ${metal.dispute.decision.outcome}).`,
@@ -308,7 +308,7 @@ export function liveRuns(): RunRow[] {
 }
 
 /**
- * The live runs added after the jury check of 12 Nov: payment acceptance, the Metal hold, Face ID on chain, the invoice
+ * The live runs added after the jury check of 12 Nov: payment acceptance, the Alta hold, Face ID on chain, the invoice
  * token, the batch transfer, the payee check, Moneybird and real customers. The JSON records are read here; a markdown
  * log's figures are typed and held to the log by test/runs-page.test.ts. A record that is missing leaves its row out.
  */
@@ -328,27 +328,27 @@ function extraRuns(): RunRow[] {
   });
 
   if (has("docs/runs/2026-11-10-metal-extra.md")) out.push({
-    key: "metal-hold-1", iso: "2026-11-12", date: day("2026-11-12T12:00:00Z"), kind: "testnet", partners: ["Metal"],
-    name: "A hold for exactly the approved amount on Metal, then captured to the supplier",
+    key: "metal-hold-1", iso: "2026-11-12", date: day("2026-11-12T12:00:00Z"), kind: "testnet", partners: ["Alta"],
+    name: "A hold for exactly the approved amount on Alta, then captured to the supplier",
     line: "0.25 test USD reserved on chain on 10 Nov; the capture sent on 12 Nov. Testnet, test money.",
-    title: "Metal: a hold for exactly the approved amount", rails: "Metal testnet (MIP20 holds)",
+    title: "Alta: a hold for exactly the approved amount", rails: "Alta testnet (MIP20 holds)",
     what: "After an approval, Purser reserved exactly the approved amount on chain for one spender (approve, holdFrom), and captured it to the supplier on 12 Nov (captureHold).",
     checks: "Each step's receipt status success; the capture simulated read-only first. Every RPC request within a hard cap of 15.", money: "Testnet · test money",
     ids: [tx("captureHold", "0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859"), tx("holdFrom", "0x41ef8b799002e32015fad9a0a988d1f7c2772636a0552e22f8424ed4e1bb39fb"), tx("approve", "0x2f2d7afce9fce6b21278104828cc552c9d0aea387857f1c8384419cc6b64fb2a")],
     files: [log("docs/runs/2026-11-10-metal-extra.md")],
   });
 
-  // The anchor run (13 Nov): one Metal testnet transaction whose calldata is the head of Purser's committed records.
+  // The anchor run (13 Nov): one Alta testnet transaction whose calldata is the head of Purser's committed records.
   type Anchor = { anchored_at: string; height: number; tx: string; block: number; parts: { name: string }[] };
   const an = has("docs/runs/2026-11-13-anchor.json") ? readJson<Anchor>("docs/runs/2026-11-13-anchor.json") : null;
   if (an) out.push({
-    key: "anchor-1", iso: an.anchored_at, date: day(an.anchored_at), kind: "testnet", partners: ["Metal"],
+    key: "anchor-1", iso: an.anchored_at, date: day(an.anchored_at), kind: "testnet", partners: ["Alta"],
     name: "Records anchored on chain",
     // Plain words for a CFO (jury review, 13 Nov); the calldata and the head are in "what" and the checks.
-    line: `One transaction seals ${an.height} records; anyone can re-check them. Metal testnet, test money.`,
-    title: "Records anchored", rails: "Metal testnet (one anchor transaction)",
-    what: `Purser hashed ${an.parts.length} parts of its committed records (the recorded run's decision log, the main run's audit chain and its journal) into one head and wrote it as the calldata of one Metal testnet transaction.`,
-    checks: "npm run verify-anchor recomputes the head from the repository, reads the transaction from the chain (a Metal testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
+    line: `One transaction seals ${an.height} records; anyone can re-check them. Alta testnet, test money.`,
+    title: "Records anchored", rails: "Alta testnet (one anchor transaction)",
+    what: `Purser hashed ${an.parts.length} parts of its committed records (the recorded run's decision log, the main run's audit chain and its journal) into one head and wrote it as the calldata of one Alta testnet transaction.`,
+    checks: "npm run verify-anchor recomputes the head from the repository, reads the transaction from the chain (an Alta testnet RPC is needed) and prints MATCH or MISMATCH.", money: "Testnet · test money",
     ids: [tx("Anchor", an.tx), { label: "Block", value: String(an.block) }],
     files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-13-anchor.json") }, { label: "run log", href: blob("docs/runs/2026-11-13-anchor.md") }],
   });
@@ -359,11 +359,11 @@ function extraRuns(): RunRow[] {
     const ran = ow.steps.filter((x) => x.kind === "relay" && x.outcome === "executed" && x.tx);
     const refused = ow.steps.find((x) => x.kind === "refusal" && x.tx);
     out.push({
-      key: "faceid-onchain-1", iso: ow.ran_at, date: day(ow.ran_at), kind: "testnet", partners: ["Metal"],
+      key: "faceid-onchain-1", iso: ow.ran_at, date: day(ow.ran_at), kind: "testnet", partners: ["Alta"],
       name: "Passkeys sign on chain (P-256): the agent's limit changes only when two passkeys sign",
       line: `${ran.length} mandate changes run by the account only with both signatures; one payment refused on chain, then paid. Second signer: a virtual test passkey.`,
-      title: "The passkey account on chain", rails: "Metal testnet (a passkey account, two owners), CFO passkey, labelled virtual test passkey",
-      what: "A passkey account on Metal testnet with two passkey owners and a threshold of 2 bound, raised and revoked an agent's mandate; the account checked both signatures itself (WebAuthn verifier). The second owner is a labelled virtual test passkey.",
+      title: "The passkey account on chain", rails: "Alta testnet (a passkey account, two owners), CFO passkey, labelled virtual test passkey",
+      what: "A passkey account on Alta testnet with two passkey owners and a threshold of 2 bound, raised and revoked an agent's mandate; the account checked both signatures itself (WebAuthn verifier). The second owner is a labelled virtual test passkey.",
       checks: `${countOf(ran.length, ow.proposals.length)} proposals executed by the account; the over-cap payment refused on chain, then paid under the raised cap.`, money: "Testnet · test money",
       ids: [{ label: "Passkey account", value: ow.account }, ...ran.map((x, i) => tx(`Change ${i + 1}`, x.tx!)), ...(refused?.tx ? [tx("Refused on chain", refused.tx)] : [])],
       files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-faceid-onchain.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-faceid-onchain.md") }],
@@ -376,11 +376,11 @@ function extraRuns(): RunRow[] {
     const t = (k: string) => tk.transactions.find((x) => x.key === k && x.status === "success");
     const last = tk.transactions[tk.transactions.length - 1]!;
     out.push({
-      key: "tokenize-1", iso: last.at, date: day(last.at), kind: "testnet", partners: ["Metal"],
+      key: "tokenize-1", iso: last.at, date: day(last.at), kind: "testnet", partners: ["Alta"],
       name: "An approved invoice becomes a token, is pre-financed, then settled (prototype)",
-      line: `Face value ${tk.face_value.amount} test USD (amounts scaled down ${tk.labels.face_value_scaled_by}× for testnet); a simulated financier paid ${tk.received.creditor ?? "nothing"}. Metal testnet.`,
-      title: "Invoice token (prototype)", rails: "Metal testnet (an invoice token contract)",
-      what: "An invoice the CFO approved with Face ID on 7 Nov became a token on Metal testnet, was bought by a simulated financier, and was settled by the debtor to its holder.",
+      line: `Face value ${tk.face_value.amount} test USD (amounts scaled down ${tk.labels.face_value_scaled_by}× for testnet); a simulated financier paid ${tk.received.creditor ?? "nothing"}. Alta testnet.`,
+      title: "Invoice token (prototype)", rails: "Alta testnet (an invoice token contract)",
+      what: "An invoice the CFO approved with Face ID on 7 Nov became a token on Alta testnet, was bought by a simulated financier, and was settled by the debtor to its holder.",
       checks: "Each transaction's receipt status success; the record verified against the chain.", money: "Prototype · testnet · test money",
       ids: ["mint", "accept", "settle"].map((k) => t(k)).filter((x): x is NonNullable<typeof x> => !!x).map((x) => tx(x.key, x.hash)),
       files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-tokenize.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-tokenize.md") }],
@@ -439,7 +439,7 @@ function extraRuns(): RunRow[] {
     checks: "Account CREATED, read back CREATED; hosted_flows/create answered 400. 8 of 30 approved calls.", money: "Sandbox · test money; none moved",
     ids: [{ label: "Connected account", value: "acct_tqitvOzLOL2gzTyLb5mgXg" }], files: [log("docs/runs/2026-11-12-real-customers.md")],
   });
-  // The separate runs on Metal that /metal lists ("Also on Metal"), from the same data (src/redesign/metalStory.ts), so
+  // The separate runs on Alta that /metal lists ("Also on Alta"), from the same data (src/redesign/metalStory.ts), so
   // that both pages count the same runs (jury check, 12 Nov).
   for (const m of separateRuns()) {
     const what = m.what.replace(/^\d{1,2} \w+: /, "");
@@ -450,8 +450,8 @@ function extraRuns(): RunRow[] {
     const soft = /software passkeys/.test(plain) && !/software passkeys/.test(first) ? " Software passkeys, not a phone." : "";
     const line = `${first[0]!.toUpperCase()}${first.slice(1)}.${soft}`;
     out.push({
-      key: `metal-${m.id}`, iso: m.date, date: day(`${m.date}T12:00:00Z`), kind: "testnet", partners: ["Metal"],
-      name: m.title, line, title: m.title, rails: "Metal testnet", what, checks: `As its run record says.${m.proofs.length ? ` ${pl(m.proofs.length, "transaction")} linked.` : ""}`, money: "Testnet · test money",
+      key: `metal-${m.id}`, iso: m.date, date: day(`${m.date}T12:00:00Z`), kind: "testnet", partners: ["Alta"],
+      name: m.title, line, title: m.title, rails: "Alta testnet", what, checks: `As its run record says.${m.proofs.length ? ` ${pl(m.proofs.length, "transaction")} linked.` : ""}`, money: "Testnet · test money",
       ids: m.proofs.flatMap((x) => { const h = /0x[0-9a-f]{64}/.exec(x.href ?? "")?.[0]; return h ? [tx(x.label, h)] : []; }),
       files: [{ label: "run record", href: m.record.href ?? blob("docs/runs") }],
     });
@@ -467,7 +467,7 @@ export const MAIN_RUN_GLOSSARY: [string, string][] = [
   ["proof", "The headline counts: payments alone, blocked, Face ID decisions, refusals on chain, money over a limit."],
   ["snapshot", "The CFO dashboard at the end of the run: budgets, cards, decisions, refusals, reconciliation, audit head, books, Claude calls."],
   ["snapshot.traces", "Each Claude decision: agent, model, turns, tokens, latency and Anthropic request ids."],
-  ["snapshot.reconciliation", "Every money flow checked against Airwallex and Metal, and the differences found."],
+  ["snapshot.reconciliation", "Every money flow checked against Airwallex and Alta, and the differences found."],
   ["snapshot.audit", "The hash-chained audit log: row count, head hash, whether the chain is intact."],
   ["ledger", "The ledger's rows the pages are built from (sanitised)."],
   ["kind", "What kind of record it is: from a live run, or an example."],
@@ -475,7 +475,7 @@ export const MAIN_RUN_GLOSSARY: [string, string][] = [
 
 /** The rails a run touched, from its rails line and title: an icon and a name each (the name is always written out). */
 const RAILS: [RegExp, string, string, string][] = [
-  [/Airwallex|Airi/i, "Airwallex", "credit-card", "awx"], [/Metal/i, "Metal", "database", "metal"], [/T:0/, "T:0", "receipt", "t0"],
+  [/Airwallex|Airi/i, "Airwallex", "credit-card", "awx"], [/Alta/i, "Alta", "database", "metal"], [/T:0/, "T:0", "receipt", "t0"],
   [/Visa|Airi|TAP/i, "Visa", "wallet", "visa"], [/Claude/i, "Claude", "sparkles", "claude"], [/passkey/i, "Passkey", "scan-face", "pk"],
 ];
 export const railsOf = (r: Pick<RunRow, "rails" | "title">) => RAILS.filter(([re]) => re.test(`${r.rails} ${r.title}`));
@@ -504,7 +504,7 @@ export function kindOf(r: Pick<RunRow, "kind" | "title" | "rails" | "money">): R
   if (/rehearsal|dry run/i.test(r.money)) return "rehearsal";
   if (FAKED.test(`${r.money} ${r.rails} ${r.title}`)) return "simulated";
   if (/no money moved|nothing bought/i.test(r.money)) return "nothing";
-  const testnet = /Metal/i.test(r.rails), sandbox = /Airwallex|Airi\b|T:0|sandbox/i.test(r.rails);
+  const testnet = /Alta/i.test(r.rails), sandbox = /Airwallex|Airi\b|T:0|sandbox/i.test(r.rails);
   return testnet && sandbox ? "both" : testnet ? "testnet" : sandbox ? "sandbox" : "simulated";
 }
 // A local control test (no partner called) sits with the rehearsals, outside the live runs (review 12 Nov).
@@ -556,7 +556,7 @@ const DOC_NAMES = new Set(["awx-1", "vic-1", "vic-2", "main-1", "agent-1", "frid
  * class of every entry it keeps.
  */
 const FILTERS: { id: string; label: string; has: (r: RunRow) => boolean }[] = [
-  ...["Airwallex", "Metal", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => partnersOf(r).some(([, n]) => n === name) })),
+  ...["Airwallex", "Alta", "Visa", "Claude"].map((name) => ({ id: name.toLowerCase(), label: name, has: (r: RunRow) => partnersOf(r).some(([, n]) => n === name) })),
   { id: "sandbox", label: KIND_LABEL.sandbox, has: (r) => ["sandbox", "both"].includes(kindOf(r)) },
   { id: "testnet", label: KIND_LABEL.testnet, has: (r) => ["testnet", "both"].includes(kindOf(r)) },
   { id: "simulated", label: KIND_LABEL.simulated, has: (r) => kindOf(r) === "simulated" },

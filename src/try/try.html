@@ -121,8 +121,8 @@ button.run:disabled { opacity: .5; cursor: wait; }
 </head>
 <body>
 <header class="top"><a class="brand" href="home" aria-label="Purser, home"><i></i><span class="nm">Purser</span></a><button class="real" id="real-btn" type="button" aria-expanded="false" aria-controls="real"><span class="long">Demo world · </span>what's real?</button>
-  <nav aria-label="Pages"><a href="./">Overview</a><a href="try" aria-current="page">Try it</a><a href="metal">Metal</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
-<div class="realbox" id="real" hidden><b>What is real here.</b> __TRY_MODELS__ The limits are a fixed demo copy of Northwind's CFO policy, not the main run's (€50 a software purchase here; in the main run the Sourcing card's limit was €30, raised to €46 with the CFO's Face ID; every bank transfer with Face ID, 0.04 test USD a request on Metal; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Metal, and no money exists. Each answer shows the same flow from __TRY_PROOF_RUN__, where Airwallex and Metal did act. Fair use__TRY_FAIR_WHERE__: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try" aria-current="page">Try it</a><a href="metal">Alta</a><a href="live">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+<div class="realbox" id="real" hidden><b>What is real here.</b> __TRY_MODELS__ The limits are a fixed demo copy of Northwind's CFO policy, not the main run's (€50 a software purchase here; in the main run the Sourcing card's limit was €30, raised to €46 with the CFO's Face ID; every bank transfer with Face ID, 0.04 test USD a request on Alta; task cards up to €300 without Face ID, a policy that ran live in a separate test); on this page a copy of those rules is checked in code. Simulated here: the cards and the payments; nothing on this page calls Airwallex or Alta, and no money exists. Each answer shows the same flow from __TRY_PROOF_RUN__, where Airwallex and Alta did act. Fair use__TRY_FAIR_WHERE__: 6 tries a minute and 40 a day per visitor, 280 characters each; when many people try at once, or the day's model budget is used, code alone reads the request and says so.</div>
 <main>
   <div class="kicker">Try it yourself · demo world, no money moves</div>
   <h1>Give an agent a task. Watch the limits hold.</h1>
@@ -147,7 +147,7 @@ button.run:disabled { opacity: .5; cursor: wait; }
         <div class="link" id="l2"></div>
         <div class="rails">
           <div class="railtile" id="r-awx"><span class="lg">Airwallex</span><small id="r-awx-s">Company cards (Issuing), FX and SWIFT payouts</small></div>
-          <div class="railtile" id="r-mtl"><span class="lg">Metal</span><small id="r-mtl-s">Mandates: pay per request (x402), on chain</small></div>
+          <div class="railtile" id="r-mtl"><span class="lg">Alta</span><small id="r-mtl-s">Mandates: pay per request (x402), on chain</small></div>
         </div>
         <div class="link" id="l3"></div>
         <div id="outcome-slot"><div class="node" id="n-out"><div class="ic">?</div><div><b>The outcome</b><small>paid · Face ID · refused · blocked</small></div></div></div>
@@ -186,12 +186,12 @@ button.run:disabled { opacity: .5; cursor: wait; }
   var ICON = { paid: "✓", face_id: "◉", refused: "✕", blocked: "⛨", question: "?" };
   var AGENT = { card: "Sourcing agent", task_card: "Treasury agent (task cards)", swift: "Treasury agent", metal: "Sourcing agent" };
   var ROLE = { card: "buys software on its own card", task_card: "books travel on single-use cards", swift: "pays suppliers' invoices", metal: "pays for data per request" };
-  var RAILNOTE = { card: "Its company card at Airwallex: the limit sits on the card", task_card: "A single-use card from Airwallex Issuing", swift: "An Airwallex SWIFT payout, on a locked FX quote if needed", metal: "Its mandate on Metal: the chain enforces the cap" };
+  var RAILNOTE = { card: "Its company card at Airwallex: the limit sits on the card", task_card: "A single-use card from Airwallex Issuing", swift: "An Airwallex SWIFT payout, on a locked FX quote if needed", metal: "Its mandate on Alta: the chain enforces the cap" };
   function usd(v) { return v >= 0.01 ? "$" + v.toFixed(3) : "$" + v.toFixed(4); }
   function on(id, yes) { var n = document.getElementById(id); if (n) n.classList.toggle("on", !!yes); }
   function resetFlow() { ["n-agent", "n-purser", "r-awx", "r-mtl", "l1", "l2", "l3"].forEach(function (id) { on(id, false); }); var lv = document.getElementById("live"); lv.classList.remove("show"); lv.replaceChildren(); }
 
-  // The same flow from the recorded live run, with its proof: an Airwallex id, or a Metal transaction on the explorer.
+  // The same flow from the recorded live run, with its proof: an Airwallex id, or an Alta transaction on the explorer.
   function railItem(side, what) { var list = (DATA.rails && DATA.rails[side]) || []; for (var i = 0; i < list.length; i++) if (list[i].what === what) return list[i]; return null; }
   var LIVE = {
     card_approved: function () { return railItem("airwallex", "Approved by Airwallex"); },

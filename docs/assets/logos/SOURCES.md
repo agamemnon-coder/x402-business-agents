@@ -11,11 +11,11 @@ partner gave permission; that permission is not itself recorded here). List of w
 | Claude (Anthropic), light grounds | `claude-logo-slate.svg` | Anthropic press kit, https://www.anthropic.com/press-kit (zip: "Anthropic logos/Claude logos/1 Claude logo/SVG/Claude logo - Slate.svg") | 2026-11-12 | `02737f748297f2c6e4863b775809038bda8549c7297e57070ed9e5ceafdf2871` |
 | Claude (Anthropic), dark grounds | `claude-logo-ivory.svg` | same kit, "Claude logo - Ivory.svg" | 2026-11-12 | `812dab87d7e0ab0ca602fce4c21aad423e3a814b8372f4bc3298e454dd5a6b87` |
 | Airwallex | `src/ui/logos/airwallex.png` (already in the repository) | the hackathon microsite's sponsor section, https://airwallex.hackerearth.com/ (src/ui/logos/README.md); airwallex.com has no public brand or press page with logo files | 2026-10-28 | `58f3984f584548271144122c7d139e9a6a8a1ad37d683263e74104ac65cd390e` |
-| Metal | `src/ui/logos/metal.svg` (already in the repository) | the hackathon microsite's sponsor section, https://airwallex.hackerearth.com/ (src/ui/logos/README.md); Metal's brand guidelines are a Figma file linked from metalblockchain.org | 2026-10-28 | `b97b29c2b4c2cfa55b960261655e139493fd0f105885c4c158049baf98a3f0b7` |
+| Metal | `src/ui/logos/metal.svg` (already in the repository) | the hackathon microsite's sponsor section, https://airwallex.hackerearth.com/ (src/ui/logos/README.md); Metal's brand guidelines are a Figma file linked from metalblockchain.org | 2026-10-28 | `b97b29c2b4c2cfa55b960261655e139493fd0f105885c4c158049baf98a3f0b7` | No longer shown since 14 Nov 2026: Metal is now Alta (see below).
 | Visa | `src/ui/logos/visa.png` | Visa media kits, https://corporate.visa.com/en/about-visa/mediakits.html ("Download Visa brandmark"); the page says "available for media usage only": use here rests on the owner's stated permission ([docs/evidence/logo-permissions.md](../../evidence/logo-permissions.md)) | 2026-11-12 | `7b0b7f701755a409ee169f77ee3116c9d669ec6dfc82135fe2e3b48ecc51b788` |
 | Cloudflare | `src/ui/logos/cloudflare.png` | Cloudflare press kit, https://www.cloudflare.com/press-kit/ (Logos.zip, "CF-Logo 1.png"); its trademark guidelines ask for written permission: use here rests on the owner's stated permission ([docs/evidence/logo-permissions.md](../../evidence/logo-permissions.md)) | 2026-11-12 | `400b70b8bb7db80da137ef8e8fcb835a692410a3083598964da08ed1756df145` |
 
-The Anthropic press kit carries no written usage rules. The Airwallex, Metal, Visa and Cloudflare files come in no light version, so all logos sit on white tiles in both themes.
+The Anthropic press kit carries no written usage rules. The Airwallex, Visa and Cloudflare files come in no light version, so all logos sit on white tiles in both themes.
 
 ## Left out, named in text only
 
@@ -23,3 +23,4 @@ The Anthropic press kit carries no written usage rules. The Airwallex, Metal, Vi
 |---|---|
 | Moneybird | No brand or press page with logo files or usage rules found on its site (2026-11-12). |
 | T:0 | No brand or press page with logo files or usage rules found on its site (2026-11-12). |
+| Alta (formerly Metal) | Renamed from Metal on 14 Nov 2026. alta.finance has no brand kit, and its terms (https://alta.finance/terms, read 2026-11-14) say the Alta logos "may not be used without our prior written consent". |

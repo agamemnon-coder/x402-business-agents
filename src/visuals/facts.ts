@@ -5,8 +5,8 @@
 // - Airwallex: the two-locks run (10 and 12 Nov), its two run logs: after a labelled virtual test passkey signed the
 //   terms in Purser, Airwallex's own transfer approval workflow held the transfer IN_APPROVAL until a person approved it
 //   at Airwallex (12 Nov); then PAID, with simulated settlement.
-// - Metal: the main run (3 Nov), its record (docs/demo/main-run.json): Purser's pre-check switched off for one purchase
-//   as a test, and Metal refused it on chain (mandate_cap_exceeded). Nothing settled.
+// - Alta: the main run (3 Nov), its record (docs/demo/main-run.json): Purser's pre-check switched off for one purchase
+//   as a test, and Alta refused it on chain (mandate_cap_exceeded). Nothing settled.
 // - Airi (Visa Intelligent Commerce via Airwallex's Airi): the Airi run (7 Nov), its record (docs/demo/airi-run.json):
 //   in a failed attempt, a purchase waited for the cardholder's passkey in Airi; none came, so Airi gave no card
 //   credential and nothing was charged; Purser's own timeout then cancelled the mandate. Airi has not refused a
@@ -73,7 +73,7 @@ export function airwallexHold(log = read(TWO_LOCKS_LOG), paid = read(TWO_LOCKS_P
 }
 const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${iso}T12:00:00Z`));
 
-/** Metal's refusal on chain, from the main run's record. */
+/** Alta's refusal on chain, from the main run's record. */
 export function metalRefusal(): RailRefusal | null {
   const run = agentRun();
   if (run.standIn) return null;
@@ -81,10 +81,10 @@ export function metalRefusal(): RailRefusal | null {
   const day = run.events.find((e) => e.k === "money")?.at ?? run.record.snapshot.flows[0]?.at;
   if (!r || !r.code || !r.amount || !r.cap || !day) return null;
   return {
-    rail: "metal", name: "Metal", code: r.code, control: "The agent's mandate cap, on chain",
+    rail: "metal", name: "Alta", code: r.code, control: "The agent's mandate cap, on chain",
     short: `Refused #${r.seq} on chain: ${r.amount} over the ${r.cap} cap.`,
-    what: `As a test, Purser's own check was switched off for one purchase. Metal refused #${r.seq} (${r.amount} test USD, over the ${r.cap} cap) and recorded the refusal on chain; nothing settled.`,
-    date: isoDay(day), label: "Metal testnet, test money", record: MAIN_RUN_LOG, ...(r.proof.href ? { proof: { label: r.proof.label, href: r.proof.href } } : {}),
+    what: `As a test, Purser's own check was switched off for one purchase. Alta refused #${r.seq} (${r.amount} test USD, over the ${r.cap} cap) and recorded the refusal on chain; nothing settled.`,
+    date: isoDay(day), label: "Alta testnet, test money", record: MAIN_RUN_LOG, ...(r.proof.href ? { proof: { label: r.proof.label, href: r.proof.href } } : {}),
   };
 }
 

@@ -58,7 +58,7 @@ describe("a passkey owner's signature for the WebAuthn verifier", () => {
 });
 
 describe("the owner-call selectors", () => {
-  it("are Metal's bind, replace and revoke on the mandate binding ABI", async () => {
+  it("are Alta's bind, replace and revoke on the mandate binding ABI", async () => {
     const { toFunctionSelector } = await import("viem");
     const { mandateBindingAbi } = await import("@metalntwx/metal-pay/mandates");
     const { OWNER_CALL_SELECTORS } = await import("../src/metal/ownersExecute.js");

@@ -1,5 +1,5 @@
-// The live, read-only Metal mandate inspector: GET /api/metal/mandates (jury panel, 12 Nov: "nothing on /metal can be
-// checked against the chain now"). It reads each agent's mandate on Northwind's account from Metal testnet, the same
+// The live, read-only Alta mandate inspector: GET /api/metal/mandates (jury panel, 12 Nov: "nothing on /metal can be
+// checked against the chain now"). It reads each agent's mandate on Northwind's account from Alta testnet, the same
 // way the check of 12 November did (docs/runs/2026-11-12-metal-inspector.md): one eth_blockNumber, then one eth_call of
 // the Mandate Binding's mandates(ref) per agent, all at that block. Reads only: nothing is signed or sent.
 //
@@ -24,7 +24,7 @@ export const INSPECTOR_TTL_SECONDS = 900;
 export const INSPECTOR_DAILY_CEILING = 500;
 /** The Worker variable that stops every call when it says "off". */
 export const INSPECTOR_SWITCH = "METAL_INSPECTOR";
-/** The Mandate Binding's mandates(bytes32 ref) view, its 4-byte selector (Metal's mandateBindingAbi). */
+/** The Mandate Binding's mandates(bytes32 ref) view, its 4-byte selector (Alta's mandateBindingAbi). */
 export const MANDATES_SELECTOR = "0x01e07972";
 /** The reason a local server gives: it never calls the chain. */
 export const LOCAL_REASON = "a local copy makes no chain calls";
@@ -37,7 +37,7 @@ export interface InspectorAnswer {
   source: "chain" | "recorded";
   /**
    * What this answer is, in plain words (the final review, 13 Nov: a recorded answer must never read as a live one):
-   * "A recorded snapshot from 12 Nov (block …), not a live read: <reason>." or "Read live from Metal testnet at …".
+   * "A recorded snapshot from 12 Nov (block …), not a live read: <reason>." or "Read live from Alta testnet at …".
    */
   says: string;
   reason: string | null;
@@ -50,7 +50,7 @@ export interface InspectorAnswer {
   cache_seconds: number;
   calls_today: number;
   ceiling: number;
-  /** The exact read, so anyone with a Metal testnet RPC can make it: eth_call to the account at the block. */
+  /** The exact read, so anyone with an Alta testnet RPC can make it: eth_call to the account at the block. */
   check: { method: "eth_call"; to: string; block: string; data: Record<string, string> };
 }
 
@@ -59,7 +59,7 @@ const shortDay = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
 /** The words of a recorded answer: the snapshot's day and block, and why it is not live. */
 export const recordedSays = (recordedOn: string, block: number, reason: string) => `A recorded snapshot from ${shortDay(recordedOn)} (block ${block}), not a live read: ${reason}.`;
 /** The words of a live answer: when and at which block the chain was read. */
-export const liveSays = (readAt: string, block: number) => `Read live from Metal testnet at ${readAt.slice(11, 16)} UTC, block ${block}.`;
+export const liveSays = (readAt: string, block: number) => `Read live from Alta testnet at ${readAt.slice(11, 16)} UTC, block ${block}.`;
 
 /** "off" in any case, with spaces around it, turns the inspector off; anything else, or nothing, leaves it on. */
 export const inspectorOff = (v: string | undefined): boolean => (v ?? "").trim().toLowerCase() === "off";
@@ -115,7 +115,7 @@ export const localInspector = (recorded: MetalRecorded | null): MetalInspector =
 /** One log of MandateRefused (event MandateRefused(bytes32 indexed ref, address indexed to, bytes20 l3aDigest, bytes agentKey, uint256 amount, uint8 reason)). */
 export interface RefusalLog { address: string; topics: string[]; data: string }
 export const MANDATE_REFUSED_TOPIC = "0x4084f1f1447ac5e65f441c04fd31a9d7e5874a7d4d1d4853f5bb5211b9717116";
-/** Metal's refusal reasons, in the order of the contract's enum (@metalntwx/metal-pay). */
+/** Alta's refusal reasons, in the order of the contract's enum (@metalntwx/metal-pay). */
 export const REFUSAL_REASONS = ["None", "NoMandate", "Revoked", "Expired", "BadSignature", "NonceUsed", "OutsideWindow", "PayeeNotAllowed", "OverPerPaymentCap", "OverBudget", "OutsideRecurrence", "OverOccurrences"] as const;
 /** A MandateRefused log decoded: the mandate, the payee, the amount (18 decimals) and the reason; null for any other log. */
 export function decodeRefusal(log: RefusalLog): { account: string; ref: string; to: string; l3aDigest: string; agentKey: string; amount: string; reason: number; reason_name: string } | null {

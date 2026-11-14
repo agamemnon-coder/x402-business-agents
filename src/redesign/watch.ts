@@ -85,9 +85,9 @@ const JS = `
   function caption(e) {
     var who = "", what = "";
     if (e.k === "say" || e.k === "msg") { var a = names[e.agent] || { short: e.agent }; who = a.short + " agent" + (e.k === "say" ? (e.by === "claude" ? " · decided by Claude" : " · fallback code") : " · message"); what = first(e.text); }
-    else if (e.k === "money") { var rail = e.rail === "metal" ? "Metal" : "Airwallex", amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : ""; who = rail; what = e.refused ? amt + e.what + " → refused" : (e.dir === "in" ? amt + e.what + " → received" : amt + e.what + " → paid"); }
+    else if (e.k === "money") { var rail = e.rail === "metal" ? "Alta" : "Airwallex", amt = e.amount ? (e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD") + " · " : ""; who = rail; what = e.refused ? amt + e.what + " → refused" : (e.dir === "in" ? amt + e.what + " → received" : amt + e.what + " → paid"); }
     else if (e.k === "face") { who = "CFO · Face ID"; what = e.status === "STOPPED" ? e.title + " was approved, but not run" : e.status === "REJECTED" ? "Rejects " + e.title.toLowerCase() : "Signs " + e.title.toLowerCase() + " (the exact terms)"; }
-    else if (e.k === "mandate") { who = "Metal"; what = "New mandate for " + (names[e.agent] ? names[e.agent].short : e.agent) + ": cap " + e.cap; }
+    else if (e.k === "mandate") { who = "Alta"; what = "New mandate for " + (names[e.agent] ? names[e.agent].short : e.agent) + ": cap " + e.cap; }
     else if (e.k === "routine") { who = "Routine checks"; what = e.text; }
     else { who = e.k === "shield" ? "Blocked" : "The world changes"; what = first(e.text); }
     cap.textContent = ""; cap.appendChild(el("small", "", who)); cap.appendChild(document.createTextNode(what));
@@ -126,11 +126,11 @@ const JS = `
     } else if (e.k === "money") {
       var r = e.refused;
       head = el("span", "ic " + (r ? "bad" : e.rail)); head.appendChild(svg(r ? "ban" : e.rail === "metal" ? "zap" : /^card/.test(e.via) ? "credit-card" : "landmark"));
-      meta.appendChild(el("b", "", (e.rail === "metal" ? "Metal" : "Airwallex") + " · " + e.via));
+      meta.appendChild(el("b", "", (e.rail === "metal" ? "Alta" : "Airwallex") + " · " + e.via));
       var res = !r ? (e.dir === "in" ? "✓ received" : /refund/i.test(e.what) ? "✓ refunded" : "✓ paid")
-        : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Metal" : r.by === "airwallex-sandbox" ? (e.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced") : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";
+        : r.by === "recorded" ? "✕ Refused · recorded on chain" : r.by === "metal" ? "✕ Refused by Alta" : r.by === "airwallex-sandbox" ? (e.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced") : r.by === "airwallex" ? "✕ Declined by Airwallex" : "✕ Refused before signing";
       var rp = el("span", "res " + (r ? "bad" : "ok"), res);
-      if (r) rp.title = (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
+      if (r) rp.title = (r.by === "recorded" ? "Purser refused it before signing; Alta recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
       meta.appendChild(rp);
       if (e.run) meta.appendChild(el("span", "res face", e.run));
       meta.appendChild(el("span", "", time(e.at)));
@@ -138,7 +138,7 @@ const JS = `
       var one = e.unit === "EUR" ? "EUR " + e.amount : e.unit === "USD" ? "USD " + e.amount : e.amount + " test USD";
       // Several payments of one amount: how many, each, and the total (jury review, 7 Nov, #24): "3 × 0.05 test USD (0.15)".
       var amt = e.amount ? (e.count > 1 ? e.count + " × " + one + " (" + (Math.round(parseFloat(e.amount) * 100) * e.count / 100).toFixed(2) + ")" : one) + " · " : "";
-      var p = el("p", "", amt + e.what + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Metal recorded the refusal on chain" : "") + " ");
+      var p = el("p", "", amt + e.what + (r && r.by !== "recorded" ? ": " + r.reason : r ? ": Purser refused it before signing, and Alta recorded the refusal on chain" : "") + " ");
       var pe = proofEl(e.proof); if (pe) p.appendChild(pe);
       body.appendChild(p);
       // Who decided it, as the record says: the agent's Claude model, or code applying a rule inside the limits.
@@ -149,7 +149,7 @@ const JS = `
       body.appendChild(meta); body.appendChild(el("p", "", e.text + " (" + e.agents.map(function (a) { return names[a] ? names[a].short : a; }).join(", ") + ")"));
     } else if (e.k === "mandate") {
       head = el("span", "ic metal"); head.appendChild(svg("zap"));
-      meta.appendChild(el("b", "", "Metal · new mandate"));
+      meta.appendChild(el("b", "", "Alta · new mandate"));
       meta.appendChild(el("span", "res ok", "✓ replaced on chain"));
       meta.appendChild(el("span", "", time(e.at)));
       body.appendChild(meta);

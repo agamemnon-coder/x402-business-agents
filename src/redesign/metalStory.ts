@@ -1,7 +1,7 @@
-// The top of /metal (C2, 6 November): one screen with the main run's Metal story, every claim one click from Metal's
+// The top of /metal (C2, 6 November): one screen with the main run's Alta story, every claim one click from Alta's
 // testnet explorer. A mandate on chain per agent; the payments, each its own transaction; #24 refused on chain; the
 // mandate replace after the CFO's Face ID. Every figure, hash and address is read here from the main run's record
-// (docs/demo/main-run.json), never typed in. Below it, folded and dated, what Purser ran on Metal beyond the kit in
+// (docs/demo/main-run.json), never typed in. Below it, folded and dated, what Purser ran on Alta beyond the kit in
 // separate runs, each with its run record: never presented as the main run.
 
 import { readFileSync } from "node:fs";
@@ -12,7 +12,7 @@ export const EXPLORER_HOST = "testnet.metalntwx.com";
 export const EXPLORER = `https://${EXPLORER_HOST}`;
 
 /**
- * A link to one transaction or one address on Metal's testnet explorer, and nothing else: parsed as a URL and its
+ * A link to one transaction or one address on Alta's testnet explorer, and nothing else: parsed as a URL and its
  * host compared exactly (never matched as a pattern, so a look-alike host such as metalntwx.com.evil.test fails).
  */
 export function explorerLink(href: string | null | undefined): { kind: "tx" | "address"; id: string } | null {
@@ -47,7 +47,7 @@ export interface MetalStory {
   replace: { proposal: string; signers: string[]; steps: { agent: AgentId; cap: string; budget: string; proof: Proof }[]; revoked: { seq: string; code: string } | null } | null;
 }
 
-/** The main run's Metal story, from its record alone. */
+/** The main run's Alta story, from its record alone. */
 export function metalStory(record: RunRecord): MetalStory {
   const r = record as MetalRecord, s = r.snapshot, rows = r.ledger?.events ?? [];
   const replaced = rows.filter((e) => e.event === "mandate.replaced" && isTx(e.payload.tx));
@@ -85,22 +85,22 @@ export function metalStory(record: RunRecord): MetalStory {
   };
 }
 
-/** Metal's event for a refusal it records on chain, as metal-pay's Mandate Binding ABI names it (docs/metal-qa-2026-11-01-week.md). */
+/** Alta's event for a refusal it records on chain, as metal-pay's Mandate Binding ABI names it (docs/metal-qa-2026-11-01-week.md). */
 export const REFUSAL_EVENT = "MandateRefused";
 
 /**
  * What a juror sees on the explorer for the refusal on chain (jury review, 7 Nov, #3): the explorer shows the transaction
- * as "finalized · unknown method", with one undecoded log. Metal's MandateRefused(ref, to, l3aDigest, agentKey, amount,
+ * as "finalized · unknown method", with one undecoded log. Alta's MandateRefused(ref, to, l3aDigest, agentKey, amount,
  * reason) has `ref` indexed, so topic 1 is the mandate the record names; the amount is in the log's data. The mandate and
  * the amount come from the record's upstream.refused_on_chain row; null when it does not name them.
  */
 export function refusalNote(r: MetalStory["refusal"]): string | null {
   if (!r || !/^0x[0-9a-f]{64}$/i.test(r.mandate) || !r.amount || !r.agent) return null;
-  return `On the explorer: log #0 is Metal's ${REFUSAL_EVENT} event (undecoded there); topic 1 is the ${r.agent[0]!.toUpperCase()}${r.agent.slice(1)} mandate ${r.mandate.slice(0, 8)}…${r.mandate.slice(-4)} and its data carries ${r.amount}.`;
+  return `On the explorer: log #0 is Alta's ${REFUSAL_EVENT} event (undecoded there); topic 1 is the ${r.agent[0]!.toUpperCase()}${r.agent.slice(1)} mandate ${r.mandate.slice(0, 8)}…${r.mandate.slice(-4)} and its data carries ${r.amount}.`;
 }
 
 /**
- * What Purser ran on Metal beyond the kit, each in its own test world on its own day, with its run record. The day and
+ * What Purser ran on Alta beyond the kit, each in its own test world on its own day, with its run record. The day and
  * the record are written here; what ran and its transactions come from the records (docs/demo/metal.json, built from
  * the run logs, and docs/runs/passkey-owners.json). Tests check each date against its record.
  */
@@ -128,7 +128,7 @@ export function separateRuns(): SeparateRun[] {
     if (run.id === "passkey-owners") {
       const pick = (re: RegExp) => owners.steps.find((x) => re.test(x.step) && isTx(x.tx));
       const steps = [pick(/^bind .* CFO's passkey alone/), pick(/^bind .* both passkeys/), pick(/^revoke .* both passkeys/)].filter((x) => x !== undefined);
-      return [{ id: run.id, date: run.date, title: "Passkeys as the account's owners", what: `${day}: a ${owners.threshold}-of-${owners.threshold} account whose owners are two passkeys, signed on chain through Metal's authorizeMandateCall; ${owners.stand_in}`,
+      return [{ id: run.id, date: run.date, title: "Passkeys as the account's owners", what: `${day}: a ${owners.threshold}-of-${owners.threshold} account whose owners are two passkeys, signed on chain through Alta's authorizeMandateCall; ${owners.stand_in}`,
         proofs: steps.map((x) => txLink(x.tx!, `${x.step.replace(/^(bind|revoke) the agent's mandate with /, "$1, ")}: ${x.outcome}`)), record }];
     }
     if (run.id === "clearing-load") {

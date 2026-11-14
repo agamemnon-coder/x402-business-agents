@@ -18,7 +18,7 @@ The pitch: [pitch.md](pitch.md). The one page beside the laptop: [cheat-sheet.pd
 
 Letting it through was, and we say so: we switched off our own check once to prove the chain holds the line. Purser
 refuses an over-cap purchase before signing (0.04 over the 0.03 cap, `mandate_cap_exceeded`), and with that check off
-for purchase #24, Metal refused it anyway. Metal refused it; the refusal is recorded on chain.
+for purchase #24, Alta (formerly Metal) refused it anyway. Alta refused it; the refusal is recorded on chain.
 
 **Evidence:** [tx `0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871);
 [the main run's log](../runs/2026-11-03-main-run.md), acceptance row 5; `CHAIN_TEST` in `src/config/brand.ts`.
@@ -34,10 +34,10 @@ on the list for next.
 
 ### 3. It's all sandbox and testnet: what's real?
 
-Real: the Airwallex sandbox calls, the Metal testnet transactions, 24 of 24 Claude decisions and my passkey with Face
+Real: the Airwallex sandbox calls, the Alta testnet transactions, 24 of 24 Claude decisions and my passkey with Face
 ID; I play the CFO, and all money is test money. Simulated or ours: the customer, the suppliers, the merchant, the
 second approver, and the SWIFT settlement, which Purser moves to SENT and PAID through Airwallex's sandbox simulation
-API. <!-- METAL-ONCHAIN -->On Metal testnet, on chain and checkable: 86 payments, each its own transaction (41 sales,
+API. <!-- METAL-ONCHAIN -->On Alta testnet, on chain and checkable: 86 payments, each its own transaction (41 sales,
 41 supplier purchases, 3 refunds, 1 sweep), plus 6 mandate transactions and the refusal of #24; no clearing in this
 run.<!-- /METAL-ONCHAIN -->
 
@@ -77,9 +77,9 @@ KMS, and a signing page the relay does not serve.
 
 ### 7. Why a blockchain?
 
-Because the limit then lives outside our code: each agent's Metal mandate holds its cap, budget and one payee, and
-Metal refused #24 with our own check off. x402 pays per data query over HTTP, 0.02 to 0.05 test USD a query: in the
-main run 86 Metal payments (sales, purchases, refunds and a sweep), each its own transaction, on testnet. And a dispute is checked from the chain: all 12
+Because the limit then lives outside our code: each agent's Alta mandate holds its cap, budget and one payee, and
+Alta refused #24 with our own check off. x402 pays per data query over HTTP, 0.02 to 0.05 test USD a query: in the
+main run 86 Alta payments (sales, purchases, refunds and a sweep), each its own transaction, on testnet. And a dispute is checked from the chain: all 12
 disputed orders carried the buying agent's own signature, so "never placed" failed.
 
 **Evidence:** [docs/metal-award.md](../metal-award.md); [/metal](https://kit11.max-31b.workers.dev/metal);
@@ -117,7 +117,7 @@ platform that does it.
 
 Each agent is one mandate, one card and its own limits, so a new agent adds bounded risk, and Claude costs come per
 exception, not per payment. But we ran 3 agents, not 1000: today it is one company per ledger (SQLite) on test rails,
-and a separate load run pushed 2,000 clearing payments from 16 wallets through Metal. At 1000
+and a separate load run pushed 2,000 clearing payments from 16 wallets through Alta. At 1000
 agents we would need Postgres and keys in a KMS, neither of which is built or measured; connected accounts for many
 companies are built and ran in the sandbox on 10 November for three test companies, not at that scale.
 
@@ -128,7 +128,7 @@ companies are built and ran in the sandbox on 10 November for three test compani
 ### 12. Worst-case loss per day inside the limits, and how fast does the CFO know?
 
 Worst case, set by policy: the agents together can spend at most EUR 28,200 (cards and task cards) and USD 20 (test
-USD) a month; everything above waits for the CFO. The parts: at most 20.00 test USD on Metal (the three mandates'
+USD) a month; everything above waits for the CFO. The parts: at most 20.00 test USD on Alta (the three mandates'
 budgets, 10.00 + 4.00 + 6.00, held to that total in code); EUR 300.00 on the cards (monthly limits 100.00 + 150.00 +
 50.00); and the Treasury agent's task cards without Face ID, up to EUR 300.00 each and 3 in 24 hours, so EUR 900.00 a
 day and EUR 27,900.00 over 31 days; a card or a mandate has no daily ceiling, so it can all go in one day: the worst day
@@ -142,7 +142,7 @@ connected yet.
 ### 13. Why not Airwallex's own spend controls and approvals?
 
 We use them: each agent's card limit is Airwallex's, enforced by Airwallex, and read back on 6 November, all 3 cards
-carry the CFO policy as Airwallex's own controls. Purser adds one policy across Airwallex and Metal, each agent's
+carry the CFO policy as Airwallex's own controls. Purser adds one policy across Airwallex and Alta, each agent's
 mandate on chain, and a signature on the exact terms of each payment beyond the limits, whose hash Airwallex's own
 record of the EUR 240.00 SWIFT payment carries.
 
@@ -221,7 +221,7 @@ and asks for no quote.
 
 ### 21. What is awx-1?
 
-A separate world on the Airwallex sandbox only, run live on 7 November with test money and 0 Metal calls; I signed
+A separate world on the Airwallex sandbox only, run live on 7 November with test money and 0 Alta calls; I signed
 all three proposals with Face ID on my phone, and it was accepted with all seven checks passed in one attempt. Three
 agent cards carried the policy's limits, read back from Airwallex; Airwallex itself approved the charges within the limits, declined one
 over the limit (`LIMIT_EXCEEDED`) and one outside the card's merchant category (`MERCHANT_CATEGORY_NOT_ALLOWED`); two
@@ -309,7 +309,7 @@ and in the main run Claude made 24 of 24 decisions with 0 fallbacks.
 ### 28. Why not a spending limit or 2FA?
 
 We use spending limits, and the rails enforce them: Airwallex declined an agent's EUR 45.00 purchase on a 30.00 card
-limit with `LIMIT_EXCEEDED`, and Metal refused #24 over its mandate. But a limit only says no, and 2FA approves
+limit with `LIMIT_EXCEEDED`, and Alta refused #24 over its mandate. But a limit only says no, and 2FA approves
 whatever is on the screen, while the CFO's passkey signs a hash of the exact terms, so one changed cent makes that
 signature worthless.
 
@@ -318,17 +318,17 @@ signature worthless.
 
 ### 29. Do you hold money? Are you regulated?
 
-No: the money stays in the company's own Airwallex account and Metal wallet, and Purser is software that asks those
+No: the money stays in the company's own Airwallex account and Alta wallet, and Purser is software that asks those
 rails to move it within limits they enforce themselves. Airwallex is the regulated party on the bank side; Purser is
 not licensed, certified or audited, we have had no legal advice yet, and everything so far ran on test money.
 
 **Evidence:** [docs/compliance.md](../compliance.md), "Roles and money"; [docs/business/model.md](../business/model.md),
 "Regulatory".
 
-### 30. Why Metal?
+### 30. Why Alta?
 
-Because the limit then lives outside our code: each agent's Metal mandate holds its cap, its budget and its payee, and
-with our own check switched off once, Metal refused #24 itself and the refusal is on chain. The payments are checkable
+Because the limit then lives outside our code: each agent's Alta mandate holds its cap, its budget and its payee, and
+with our own check switched off once, Alta refused #24 itself and the refusal is on chain. The payments are checkable
 by anyone on the explorer, on testnet and with test money.
 
 **Evidence:** [tx `0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871);
@@ -352,10 +352,10 @@ partners, finance teams on Airwallex whose agents pay suppliers.
 
 ### 33. What is real and what is simulated?
 
-Real, in sandboxes and on testnet with test money: Airwallex's own approvals, declines and payouts, Metal's on-chain
+Real, in sandboxes and on testnet with test money: Airwallex's own approvals, declines and payouts, Alta's on-chain
 refusals, Claude's decisions, Max's passkey with Face ID, and the posts to the Moneybird and T:0 sandboxes. Simulated
 or ours: the companies, suppliers and customers, the second approver, every settlement (the sandbox's simulation), the
-bank on the hands-on page, and the financier in the one invoice-token run on Metal testnet.
+bank on the hands-on page, and the financier in the one invoice-token run on Alta testnet.
 
 **Evidence:** [docs/runs/README.md](../runs/README.md); [/runs](https://kit11.max-31b.workers.dev/runs);
 [docs/runs/2026-11-12-airwallex-two-locks-paid.md](../runs/2026-11-12-airwallex-two-locks-paid.md);

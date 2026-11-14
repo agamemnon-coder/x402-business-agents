@@ -37,8 +37,12 @@ describe("About Purser on Home", () => {
   it("shows the partners' official logos in the hero, unaltered on white tiles, alt their names, never recoloured", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
     const trust = /<div class="trust">[\s\S]*?<\/small><\/div>/.exec(hero)![0];
-    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-airwallex.png", "Airwallex"], ["logo-visa.png", "Visa"], ["logo-metal.svg", "Metal"], ["logo-claude-slate.svg", "Claude"]]);
-    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} ${NO_ENDORSEMENT}`);
+    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-airwallex.png", "Airwallex"], ["logo-visa.png", "Visa"], ["logo-claude-slate.svg", "Claude"]]);
+    // 14 Nov: Metal is now Alta, and no Alta logo may be used without its written consent (docs/evidence/logo-permissions.md):
+    // its tile carries the name as text, in the same place, and Metal's old mark is gone.
+    expect(trust).toContain('<span class="tile tname alta">Alta</span>');
+    expect(trust).not.toContain("logo-metal");
+    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} Alta ${NO_ENDORSEMENT}`);
     expect(ON).not.toMatch(/filter: (brightness|invert|grayscale)|mix-blend-mode/);
     expect(ON).toMatch(/\.trust \.tile \{[^}]*background: #ffffff/);
     // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).

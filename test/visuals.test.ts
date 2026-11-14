@@ -76,7 +76,7 @@ describe("held by the rail itself: from the records", () => {
   it("Airwallex: a paid log that no longer says PAID drops the card", () => {
     expect(airwallexHold(read(TWO_LOCKS_LOG), read(TWO_LOCKS_PAID_LOG).replace("| `PAID`, simulated settlement |", "| |"))).toBeNull();
   });
-  it("Metal: the main run's refusal on chain", () => {
+  it("Alta: the main run's refusal on chain", () => {
     const m = metalRefusal()!, rec = read("docs/demo/main-run.json");
     expect(m.code).toBe("mandate_cap_exceeded");
     expect(m.proof!.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);

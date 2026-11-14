@@ -56,7 +56,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   });
   const lab = labPage();
   app.get("/lab", page(LAB_CSP, () => lab));
-  app.get("/metal", page(METAL_CSP, () => METAL_PAGE));
+  app.get(["/metal", "/alta"], page(METAL_CSP, () => METAL_PAGE));
   // /metal's read-only inspector, as a local copy answers it: the record's read of 12 November, no chain call, no secret.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
   app.get("/visa", page(VISA_CSP, () => VISA_PAGE));
@@ -111,7 +111,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/metal/report", "/visa", "/airwallex", "/claude", "/security", "/docs", "/status", "/t0", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/metal", "/alta", "/metal/report", "/visa", "/airwallex", "/claude", "/security", "/docs", "/status", "/t0", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its

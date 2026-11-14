@@ -45,7 +45,7 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     const DEPTH = read("docs/in-depth.md");
     const block = DEPTH.slice(DEPTH.indexOf("## What ran live, one id per rail"), DEPTH.indexOf("\n## ", DEPTH.indexOf("## What ran live, one id per rail") + 5));
     const rows = block.split("\n").filter((l) => l.startsWith("| ") && !l.startsWith("| Rail") && !l.startsWith("|---"));
-    expect(rows.map((r) => r.split("|")[1]!.trim())).toEqual(["Airwallex", "Metal", "Visa", "Claude", "x402"]);
+    expect(rows.map((r) => r.split("|")[1]!.trim())).toEqual(["Airwallex", "Alta", "Visa", "Claude", "x402"]); // Alta since 14 Nov (Metal renamed itself)
     const row = (rail: string) => rows.find((r) => r.split("|")[1]!.trim() === rail)!;
     // Airwallex: its own decline of an agent's card in the Airwallex-only run of 7 November.
     const awx = json<{ card_transactions: { id: string; approved: boolean; decline_code: string | null; amount: string }[] }>("docs/demo/airwallex-run.json");
@@ -54,7 +54,7 @@ describe("the README's shape (jury panel, 12 Nov)", () => {
     expect(row("Airwallex")).toContain(`EUR ${decline.amount}`);
     // Metal: the refusal on chain in the main run (the same tx the record holds).
     const main = read("docs/demo/main-run.json");
-    const tx = /testnet\.metalntwx\.com\/tx\/(0x[0-9a-f]{64})/.exec(row("Metal"))![1]!;
+    const tx = /testnet\.metalntwx\.com\/tx\/(0x[0-9a-f]{64})/.exec(row("Alta"))![1]!;
     expect(main).toContain(tx);
     // Visa: the Airi run's purchase above the limit, paid only after the CFO's Face ID; a scripted purchase, no model call.
     const airi = json<{ purchases: { proposal_id?: string; payment_intent_id?: string }[] }>("docs/demo/airi-run.json");

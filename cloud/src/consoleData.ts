@@ -3,7 +3,7 @@
 //   agents        each agent the company's records name: its job, its Claude model as its own runs recorded it, what it
 //                 may and may not do, its card limits as issued, the rails its money moved on, its status, and its newest
 //                 decisions with who decided (Claude, or Purser's code when no model answered)
-//   tokenisation  the invoice token on Metal testnet (mint, finance, settle), the agents' Airwallex cards and the Visa
+//   tokenisation  the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa
 //                 credential via Airi, each labelled exactly as its record labels it, with record and explorer links
 //   bookings      which ledger entries book each supplier invoice (its accrual, and the payment that settled it)
 // Read only. Nothing here pauses, revokes, approves or writes.

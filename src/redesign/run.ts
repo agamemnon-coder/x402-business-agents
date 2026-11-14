@@ -45,8 +45,8 @@ export interface Proof { label: string; href: string | null }
 /** One agent decision's Claude call(s), from its trace in the record (D2): model family, total tokens, latency, first request id. */
 export interface Call { family: string; tokens: number; /** Claude's own time over the decision's calls (claude_ms summed). */ latencyMs: number; /** The whole decision, tools and waits included (latency_ms). */ wallMs: number; requestId: string; requestIds: string[]; calls: number }
 /**
- * Who said no, in one vocabulary: "recorded" is Purser refusing before signing with Metal recording the same refusal on
- * chain; "metal" is Metal's facilitator; "airwallex" is an Airwallex limit; "airwallex-sandbox" is the sandbox failing
+ * Who said no, in one vocabulary: "recorded" is Purser refusing before signing with Alta recording the same refusal on
+ * chain; "metal" is Alta's facilitator; "airwallex" is an Airwallex limit; "airwallex-sandbox" is the sandbox failing
  * to do something (not a limit); "purser" is Purser alone. The raw code stays in `code` for a tooltip.
  */
 export interface Refused { by: "recorded" | "metal" | "airwallex" | "airwallex-sandbox" | "purser"; reason: string; code?: string }
@@ -54,14 +54,14 @@ export type Ev =
   | { k: "world"; at: string; text: string }
   | { k: "say"; at: string; agent: AgentId; model: string | null; by: "claude" | "fallback"; text: string; tools: string[]; call?: Call | null }
   | { k: "msg"; at: string; agent: AgentId; text: string }
-  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string }; /** The main run: the one purchase let through to Metal, which Metal refused itself. */ letThrough?: boolean }
+  | { k: "money"; at: string; agent: AgentId | null; rail: "metal" | "airwallex"; via: string; dir: "in" | "out"; what: string; amount: string; unit: string; count: number; label: string; refused: Refused | null; proof: Proof; run?: string; /** Who decided it: code, or the agent's Claude model (the flow's own "decided"). */ by?: string; /** A failed attempt before the one that paid: nothing paid. */ earlier?: boolean; /** The proposal that paid it later. */ retried?: { id: string; at: string; status: string }; /** The main run: the one purchase let through to Alta, which Alta refused itself. */ letThrough?: boolean }
   | { k: "face"; at: string; id: string; title: string; status: string; signers: string[]; /** STOPPED: why code did not run it. */ reason?: string }
   | { k: "mandate"; at: string; agent: AgentId; cap: string; budget: string; proposal: string; proof: Proof }
   | { k: "routine"; at: string; count: number; agents: AgentId[]; text: string }
   | { k: "shield"; at: string; text: string };
 
 export type Mini =
-  | { kind: "price"; from: string; old: string | null; price: string; cap: string; newCap: string | null; tx: Proof | null; signers: number; /** Metal refused it itself (the purchase let through, main run). */ byMetal?: boolean }
+  | { kind: "price"; from: string; old: string | null; price: string; cap: string; newCap: string | null; tx: Proof | null; signers: number; /** Alta refused it itself (the purchase let through, main run). */ byMetal?: boolean }
   | { kind: "orders"; orders: string[]; refunded: string[] }
   | { kind: "flow"; rows: { icon: string; text: string; tone: "ok" | "bad" | "face" }[] };
 export interface Step { icon: string; text: string; tone: "ok" | "bad" | "face" | "info"; proof?: Proof }
@@ -194,16 +194,16 @@ function events(r: RunRecord): Ev[] {
     const count = f.count ?? 1;
     let refused: Refused | null = f.refused ? { by: (["metal", "airwallex", "purser"].includes(f.refused.by) ? f.refused.by : "purser") as Refused["by"], reason: f.refused.reason, code: /^([a-z_]+)/.exec(f.refused.reason)?.[1] } : null;
     let proof: Proof = { label: f.proof.label, href: f.proof.href };
-    // One attempt, one step: Purser refused it before signing, and Metal then recorded the same refusal on chain.
+    // One attempt, one step: Purser refused it before signing, and Alta then recorded the same refusal on chain.
     if (f.refused?.by === "purser") {
       const onChain = flows.find((g) => g !== f && g.refused?.by === "metal" && g.proof.href && g.amount === f.amount && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
       if (onChain) {
         merged.add(onChain);
-        refused = { by: "recorded", reason: "Purser refused it before signing; Metal recorded the same refusal on chain", code: refused?.code };
+        refused = { by: "recorded", reason: "Purser refused it before signing; Alta recorded the same refusal on chain", code: refused?.code };
         proof = { label: onChain.proof.label, href: onChain.proof.href };
       }
     }
-    // The main run: one purchase let through past Purser's pre-check; Metal's facilitator refused it itself (a 402, no
+    // The main run: one purchase let through past Purser's pre-check; Alta's facilitator refused it itself (a 402, no
     // tx), and the same refusal was then put on chain. One attempt, one step, framed as the test it was (CHAIN_TEST);
     // the run's own label (DEFENSE_IN_DEPTH) stays in its ledger row and is not shown beside it (jury review, 7 Nov, #13).
     let amount = f.amount, letThrough = false;
@@ -274,7 +274,7 @@ export function stoppedFace(row: { ts: string; event: string; subject: string | 
   return { k: "face", at: row.ts, id: row.subject ?? "", title, status: "STOPPED", signers: [], reason: String(row.payload.error ?? "") };
 }
 
-/** The purchase let through to Metal in the main run (Max's flag), with its label, from the run's ledger; null otherwise. */
+/** The purchase let through to Alta in the main run (Max's flag), with its label, from the run's ledger; null otherwise. */
 export function letThroughOf(r: RunRecord): { at: string; amount: string; cap: string; label: string; tx: string | null } | null {
   const ev = r.ledger?.events ?? [];
   const lt = ev.find((e) => e.event === "upstream.let_through");
@@ -359,14 +359,14 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
     const before = s.flows.find((f) => f.kind === "upstream" && f.what === supplier && !f.refused && Date.parse(f.at) < Date.parse(ev[i1]!.at));
     const old = before ? (Number(before.amount) / (before.count ?? 1)).toFixed(2) : null;
     const steps: Step[] = [{ icon: "trending-up", text: `${supplier} ${old ? `${old} → ` : ""}${price}`, tone: "info" }];
-    if (chain) steps.push({ icon: "ban", text: chain.letThrough ? "Metal refused it · on chain" : "Refused · recorded on chain", tone: "bad", proof: chain.proof });
+    if (chain) steps.push({ icon: "ban", text: chain.letThrough ? "Alta refused it · on chain" : "Refused · recorded on chain", tone: "bad", proof: chain.proof });
     const toOptions = timings(r).toOptions;
     if (replan) steps.push({ icon: "bot", text: `${nameOf("treasury")} · ${family(replan.model)} replans${toOptions !== null ? `: options in ${toOptions} s` : ""}`, tone: "ok" });
     if (signed) steps.push({ icon: "scan-face", text: `${signed.signers.length} of ${signed.signers.length} signatures`, tone: "face" });
     if (replaced && newCap) steps.push({ icon: "circle-check", text: `Mandate replaced: cap ${newCap}`, tone: "ok" });
     // The main run's #24: Purser let it through on purpose (defense in depth), so the sentence says so (final review, 4 Nov),
     // framed as the test it was (jury review, 6 Nov, #8: CHAIN_TEST).
-    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "we switched off our own check once to prove the chain holds the line: Metal refused the purchase on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
+    const parts = [`${supplier} raises its price to ${price}`, chain ? (chain.letThrough ? "we switched off our own check once to prove the chain holds the line: Alta refused the purchase on chain" : "refused, and recorded on chain") : "", replan ? "Treasury replans" : "", signed ? `${signed.signers.length === 2 ? "two" : String(signed.signers.length)} signatures` : "", replaced ? "the mandate is replaced" : ""].filter(Boolean);
     out.push({ n: 1, title: "The price rise", start: i1, steps, sentence: `${parts.join(" → ")}.`, mini: price && capWas ? { kind: "price", from: supplier, old, price, cap: capWas, newCap, tx: chain?.proof ?? null, signers: signed?.signers.length ?? 0, ...(chain?.letThrough ? { byMetal: true } : {}) } : null });
   }
 
@@ -418,7 +418,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
 }
 
 /**
- * Each rail's refusals from the run's flows, for the partner pages: Metal at the mandate's cap (`metal`, one attempt
+ * Each rail's refusals from the run's flows, for the partner pages: Alta at the mandate's cap (`metal`, one attempt
  * counted once) and under a mandate that had just been replaced (`revoked`), the CFO's rejections, Airwallex's card
  * declines in this run, the separate TAP run's decline (`tapDeclines`, its own labelled line, `tapLimitLine`), and
  * an Airwallex sandbox failure such as fee_unknown (`feeUnknown`), which is not a limit. The stops figure and sentence
@@ -426,7 +426,7 @@ function scenes(r: RunRecord, ev: Ev[]): Scene[] {
  */
 export function stops(r: RunRecord): { metal: number; revoked: number; airwallex: number; tapDeclines: number; cfo: number; feeUnknown: number } {
   const s = r.snapshot;
-  // One attempt counts once: the main run's purchase let through to Metal has two rows (the facilitator's 402 and its
+  // One attempt counts once: the main run's purchase let through to Alta has two rows (the facilitator's 402 and its
   // record on chain).
   const capRefused = s.flows.filter((f) => f.refused?.by === "metal" && !/mandate_revoked/.test(f.refused.reason));
   const twin = (f: Flow) => !f.proof.href && capRefused.some((g) => g !== f && !!g.proof.href && g.agent === f.agent && Date.parse(g.at) >= Date.parse(f.at) && Date.parse(g.at) - Date.parse(f.at) < 15_000);
@@ -446,7 +446,7 @@ export function stops(r: RunRecord): { metal: number; revoked: number; airwallex
  * in \`snapshot.counts.blocked\`, by who stopped it. A buy rule Claude set stopped the overpriced checks: the Sourcing
  * agent (Claude) set its buy policy, and code applied it to each check (src/agents/sourcing.ts refuses every purchase
  * while the policy says supplier "none"; jury review, 6 Nov, #6: not "Claude skipped"; nothing signed);
- * Metal refused purchases (over the mandate's cap, or on a mandate that had just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
+ * Alta refused purchases (over the mandate's cap, or on a mandate that had just been replaced); the CFO rejected proposals with Face ID; a planted instruction in a document changed nothing.
  * \`other\` is whatever none of these name (0 in the main run, said as "N other" so nothing is hidden); the parts sum
  * to \`total\` (test/redesign-numbers.test.ts). The separate TAP run's decline is not counted (\`tapLimitLine\`).
  */
@@ -481,14 +481,14 @@ export const stopSub = (st: StopStory) => st.overLimitEur === null ? "" : Number
 /** Who stopped what, in the sentence's order; a part only when its count is not 0. */
 export const stopParts = (st: StopStory) => [
   st.claude ? `one buy rule Claude set stopped ${plural(st.claude, "overpriced check")}` : "",
-  st.metal ? `Metal refused ${plural(st.metal, "purchase")}` : "",
+  st.metal ? `Alta refused ${plural(st.metal, "purchase")}` : "",
   st.cfo ? `the CFO rejected ${plural(st.cfo, "proposal")}` : "",
   st.planted ? `${plural(st.planted, "planted instruction")} changed nothing` : "",
   st.other ? `${st.other} other` : "",
 ].filter(Boolean);
 /**
  * The stops in one sentence, the same on every surface (Max, 5 Nov; jury review, 6 Nov, #6): "16 stops, nothing paid
- * over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1
+ * over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1
  * proposal, and 1 planted instruction changed nothing." Every count is stopStory()'s.
  */
 export function stopsLine(st: StopStory): string {
@@ -496,7 +496,7 @@ export function stopsLine(st: StopStory): string {
   const list = p.length > 1 ? `${p.slice(0, -1).join(", ")}, and ${p[p.length - 1]}` : (p[0] ?? "");
   return `${stopFigure(st)}${sub ? `, ${sub}` : ""}${list ? `: ${list}` : ""}.`;
 }
-/** Metal's refusals in detail (Proof, the claims): "1 over the mandate's cap, 1 on a mandate that had just been replaced". */
+/** Alta's refusals in detail (Proof, the claims): "1 over the mandate's cap, 1 on a mandate that had just been replaced". */
 export const metalDetail = (st: StopStory) => [st.metalCap ? `${st.metalCap} over the mandate's cap` : "", st.metalReplaced ? `${st.metalReplaced} on a mandate that had just been replaced` : ""].filter(Boolean).join(", ");
 
 /** The separate TAP run's card decline, on its own labelled line below the figure ("" without one). */
@@ -620,7 +620,7 @@ export interface HomeFilm {
   supplier: string; old: string; price: string; cap: string; newCap: string; refusedTx: Proof;
   orders: string[]; refunded: string[]; refundEach: string;
   sweep: string; licence: string; licenceUnit: string; tapAmount: string | null; tapRun: string | null;
-  /** Who refused the price-rise purchase on chain: Metal itself (let through, main run) or Purser with Metal's record. */
+  /** Who refused the price-rise purchase on chain: Alta itself (let through, main run) or Purser with Alta's record. */
   refusedByMetal: boolean;
 }
 export function homeFilm(run: AgentRun): HomeFilm | null {
@@ -652,10 +652,10 @@ export function faceIdDecisions(r: RunRecord): number {
 
 /**
  * One breakdown of the run's payments, said the same way everywhere (jury review, 4 Nov; one canonical set since the
- * jury review of 6 Nov, #5: no "87", no "82" beside "86" on a judge-facing surface): "86 Metal payments + 1 card
- * charge" (`canonical`), all inside the limits (the snapshot's `counts.alone` is their sum), the Metal ones as sales +
+ * jury review of 6 Nov, #5: no "87", no "82" beside "86" on a judge-facing surface): "86 Alta payments + 1 card
+ * charge" (`canonical`), all inside the limits (the snapshot's `counts.alone` is their sum), the Alta ones as sales +
  * supplier purchases + refunds + sweeps (`metalParts`). Also: the routine ones by code (the sales and the code's
- * supplier purchases, on /claude only, labelled) and what reconcile checks (the Metal payments, each SWIFT transfer and
+ * supplier purchases, on /claude only, labelled) and what reconcile checks (the Alta payments, each SWIFT transfer and
  * each card buy). `sums` is false when the parts do not add up to `counts.alone`; then no page shows the line.
  */
 export function payments(r: RunRecord): { alone: number; sales: number; purchases: number; refunds: number; sweeps: number; cards: number; onChain: number; routine: number; transfers: number; reconciled: number; sums: boolean; canonical: string; metalParts: string; line: string; onChainLine: string } {
@@ -665,14 +665,14 @@ export function payments(r: RunRecord): { alone: number; sales: number; purchase
   const alone = r.snapshot.counts.alone;
   const pl = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
   const onChain = sales + purchases + refunds + sweeps;
-  const canonical = `${onChain} Metal payments${cards ? ` + ${pl(cards, "card charge")}` : ""}`;
+  const canonical = `${onChain} Alta payments${cards ? ` + ${pl(cards, "card charge")}` : ""}`;
   const metalParts = `${pl(sales, "sale")} + ${pl(purchases, "supplier purchase")} + ${pl(refunds, "refund")} + ${pl(sweeps, "sweep")}`;
   return {
     alone, sales, purchases, refunds, sweeps, cards, onChain, routine: split(r).routine, transfers, reconciled: onChain + transfers + cards,
     sums: sales + purchases + refunds + sweeps + cards === alone,
     canonical, metalParts,
-    line: `${canonical}, all inside the limits: ${metalParts} on Metal${cards ? `, and ${pl(cards, "card charge")} at Airwallex` : ""}`,
-    onChainLine: `${onChain} on Metal = ${metalParts}`,
+    line: `${canonical}, all inside the limits: ${metalParts} on Alta${cards ? `, and ${pl(cards, "card charge")} at Airwallex` : ""}`,
+    onChainLine: `${onChain} on Alta = ${metalParts}`,
   };
 }
 
@@ -742,7 +742,7 @@ interface Enforcer { who: string; count: number; last: { reason: string; words: 
 
 /**
  * The played run as the CFO dashboard replays it (/?autonomy). Final review, 4 Nov: the dashboard counted the run its
- * own way (Metal 3, #24's facilitator refusal and its record on chain counted twice plus #37 refused under a replaced
+ * own way (Alta 3, #24's facilitator refusal and its record on chain counted twice plus #37 refused under a replaced
  * mandate; "16 stops, all counted"; 58 Claude calls beside Proof's 50) and still read #24 as refused before signing. So
  * its figures here come from stops() and the agents' stats, as on Home, Watch and Proof, and the record's lines are
  * worded as the pages word them now: a refused purchase by who refused it (from the run's ledger, as
@@ -750,15 +750,15 @@ interface Enforcer { who: string; count: number; last: { reason: string; words: 
  */
 export function replayRecord(r: RunRecord): RunRecord & { figures: ReplayFigures } {
   const s = r.snapshot, ev = r.ledger?.events ?? [];
-  // The stops as Home and Proof say them (Max, 5 Nov): all of the run's stops, one sentence, Metal's in detail.
+  // The stops as Home and Proof say them (Max, 5 Nov): all of the run's stops, one sentence, Alta's in detail.
   const story = stopStory(r), stopped = story.total, line = stopsLine(story);
-  const metalNote = story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : "";
+  const metalNote = story.metal && metalDetail(story) ? ` Alta's ${story.metal}: ${metalDetail(story)}.` : "";
   // Claude: every call of the run (the agents' and the reader's, which sorts and reads documents and reviews proposals), and the agents' own as Proof counts them.
   const c = (s as unknown as { claude?: { calls: number; cost_usd_micros: number } | null }).claude;
   const agentCalls = s.agent_stats.reduce((n, a) => n + a.claude_calls, 0), agentMicros = s.agent_stats.reduce((n, a) => n + a.cost_usd_micros, 0);
   const usd = (m: number) => `$${(m / 1e6).toFixed(m >= 10000 ? 2 : 4)}`;
   const claude = c?.calls ? `${c.calls} Claude calls in all, ${usd(c.cost_usd_micros)}: the agents' own ${agentCalls} (USD ${(agentMicros / 1e6).toFixed(4)}, as on Proof) and ${c.calls - agentCalls} more that read documents or review proposals.` : "";
-  // Enforced by: Metal's refusals on chain as stopStory() counts them; the last shown is the one at the cap, with its
+  // Enforced by: Alta's refusals on chain as stopStory() counts them; the last shown is the one at the cap, with its
   // refusal's tx (#24 let through on purpose).
   const cap = events(r).find((e): e is Extract<Ev, { k: "money" }> => e.k === "money" && (e.refused?.by === "metal" || e.refused?.by === "recorded") && e.refused.code !== "mandate_revoked" && !!e.proof.href);
   const tx = /0x[0-9a-fA-F]{64}/.exec(cap?.proof.href ?? "")?.[0];
@@ -814,12 +814,12 @@ export function agentRun(): AgentRun {
   const pay = payments(r);
   const tiles: Tile[] = [
     { value: `${byClaude}/${decisions}`, label: "decisions made by Claude", explain: `Every time an agent decided something, it was a Claude call. ${fallbacks} fell back to code.`, href: "proof#claude" },
-    // One canonical set (jury review, 6 Nov, #5): "86 Metal payments + 1 card charge", not 87 or 82.
-    { value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: pay.sums ? `${pay.metalParts} on Metal, all inside the limits with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
+    // One canonical set (jury review, 6 Nov, #5): "86 Alta payments + 1 card charge", not 87 or 82.
+    { value: String(pay.onChain), label: pay.canonical.replace(/^\d+ /, ""), explain: pay.sums ? `${pay.metalParts} on Alta, all inside the limits with no approval at the time; the sales are the simulated customer's agent buying from us.` : `Paid with no approval at the time, inside the limits; ${sales} of them the simulated customer's agent buying from us.`, href: "proof#metal" },
     {
       value: stopFigure(story), label: stopSub(story), href: "proof#stops",
       explain: stopsLine(story),
-      tip: `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Metal's ${story.metal}: ${metalDetail(story)}.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
+      tip: `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Alta's ${story.metal}: ${metalDetail(story)}.` : ""}${st.feeUnknown ? " Not counted: the licence, whose fee the sandbox could not price (fee_unknown): not a limit." : ""}`,
       ...(tapLimitLine() ? { separate: tapLimitLine() } : {}),
     },
     { value: String(faceIdDecisions(r)), label: faceIdLine(faceIdDecisions(r), ev.filter((e) => e.k === "face").length).label, explain: cosigned ? "The CFO signed each one on his phone; the mandate change needed a second signature too." : "The CFO signed each one on his phone.", href: "proof#faceid" },

@@ -10,7 +10,7 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 <a href="https://kit11.max-31b.workers.dev/try"><img src="https://img.shields.io/badge/Try_it-2_minutes-0b1220?style=for-the-badge" alt="Try it: a test company of your own, 2 minutes"></a> <a href="https://kit11.max-31b.workers.dev/proof"><img src="https://img.shields.io/badge/See_the_proof-every_id-0b1220?style=for-the-badge" alt="See the proof: every id"></a> <a href="https://youtu.be/mp9fmOYfBWc"><img src="https://img.shields.io/badge/Watch_the_walkthrough-YouTube-0b1220?style=for-the-badge" alt="Watch the walkthrough on YouTube (AI voice and music: ElevenLabs)"></a>
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![MCP Registry: io.github.agamemnon-coder/purser](https://img.shields.io/badge/MCP_Registry-io.github.agamemnon--coder%2Fpurser-0b1220)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.agamemnon-coder/purser) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Metal: testnet](https://img.shields.io/badge/Metal-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0)
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![Node: ^22.13.0 || >=23.4.0](https://img.shields.io/badge/node-%5E22.13.0%20%7C%7C%20%3E%3D23.4.0-339933)](package.json) [![TypeScript: strict](https://img.shields.io/badge/TypeScript-strict-3178c6)](tsconfig.json) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai) [![MCP Registry: io.github.agamemnon-coder/purser](https://img.shields.io/badge/MCP_Registry-io.github.agamemnon--coder%2Fpurser-0b1220)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.agamemnon-coder/purser) [![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Alta: testnet](https://img.shields.io/badge/Alta-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/metal) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0)
 
 **Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)
 
@@ -26,23 +26,23 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 | 1 · The agent asks | 2 · Code checks the limit | 3 · You sign the exact terms |
 |---|---|---|
-| A Claude agent proposes a payment: an invoice, a card charge, an x402 purchase. | Within the CFO's limits it pays alone; Airwallex and Metal hold the limit again. | Above them, the CFO's passkey (Face ID on iPhone) signs the SHA-256 of the exact terms. |
+| A Claude agent proposes a payment: an invoice, a card charge, an x402 purchase. | Within the CFO's limits it pays alone; Airwallex and Alta (formerly Metal) hold the limit again. | Above them, the CFO's passkey (Face ID on iPhone) signs the SHA-256 of the exact terms. |
 
 **Not signed is never paid.**
 
 
 - **Face ID or a passkey signs the exact terms.** The approval is a signature over the SHA-256 of the terms; change one cent and it no longer verifies. The owner's real approval of 7 November is checked offline by `npm run verify-approval` ([record](docs/runs/2026-11-07-awx-1.md)).
-- **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Metal's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Metal refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Metal testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
-- **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Metal testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md)).
+- **Limits are enforced in 3 layers: Purser's code, Airwallex's card controls and Alta's on-chain mandate.** Airwallex itself declined an agent's card over the CFO's limit ([record](docs/runs/2026-11-07-awx-1.md)); Alta refused a purchase over the mandate on chain ([record](docs/runs/2026-11-03-main-run.md)). The mandates: [/api/metal/mandates](https://kit11.max-31b.workers.dev/api/metal/mandates), a live read from Alta testnet, or the recorded 12 Nov snapshot when the chain does not answer (the answer says which).
+- **The audit chain is anchored on chain.** Every event goes into a hash-chained log; its head is in a value-0 Alta testnet transaction, and `npm run verify-anchor` prints MATCH ([record](docs/runs/2026-11-13-anchor.md)).
 
-Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))
+Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))
 
 ## Built with
 
 | Partner | What Purser uses | Proof |
 |---|---|---|
 | **Airwallex** (sandbox) | agent cards and limits, FX, SWIFT payouts, its approval as a second lock, the payee name check | [the card decline](docs/runs/2026-11-07-awx-1.md), [two locks](docs/runs/2026-11-12-airwallex-two-locks-paid.md), [name check](docs/runs/2026-11-12-airwallex-payee-check.md) |
-| **Metal** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
+| **Alta** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
 | **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
 | **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
 | **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
@@ -87,7 +87,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format.
 
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6609 tests passing**, 4 skipped, in 592 files (the last full run, on commit `fdb6b6a5`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6609 tests passing**, 4 skipped, in 592 files (the last full run, on commit `fdb6b6a5`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
@@ -110,16 +110,16 @@ your behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos),
 ```mermaid
 flowchart LR
   A["Claude agent<br/>proposes a payment"] --> P["CFO policy<br/>Purser's code"]
-  P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
+  P -- "within the limit" --> R["Airwallex · Alta · Visa via Airi<br/>each with its own limit"]
   P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
   F --> R
   R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
-  B --> L["Hash-chained audit log"] --> N["Its head anchored on Metal testnet<br/>npm run verify-anchor"]
+  B --> L["Hash-chained audit log"] --> N["Its head anchored on Alta testnet<br/>npm run verify-anchor"]
 ```
 
 ## For judges: 3 minutes
 
-**What it is:** the control layer between a company's AI agents and its money on Airwallex and Metal, built for
+**What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta, built for
 Starter Kit 11 (x402 Business Agents) and entered for the Metal Award and the Visa Award.
 The Kit 11 scenario, run live on 3 November.\
 **1. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
@@ -136,15 +136,15 @@ Each row from its run record; test money throughout. Every run, newest first: [d
 
 | What | Status | Date | Record |
 |---|---|---|---|
-| Three Claude agents run a company for a day: 86 Metal payments, 1 card charge, 1 SWIFT transfer | Live: Metal testnet, Airwallex sandbox. Customer, supplier, settlement and second approver simulated | 3 Nov | [main run](docs/runs/2026-11-03-main-run.md) |
+| Three Claude agents run a company for a day: 86 Alta payments, 1 card charge, 1 SWIFT transfer | Live: Alta testnet, Airwallex sandbox. Customer, supplier, settlement and second approver simulated | 3 Nov | [main run](docs/runs/2026-11-03-main-run.md) |
 | Airwallex itself declines an agent's card over the CFO's limit | Live, Airwallex sandbox | 7 Nov | [record](docs/runs/2026-11-07-awx-1.md) |
 | An agent pays via Airwallex's Airi with a Visa credential Purser binds to one purchase (the sandbox did not refuse reuse; Purser did); above the limit only after Face ID | Live, Airwallex sandbox, test card | 7, 12 and 13 Nov | [first](docs/runs/2026-11-07-vic-1.md), [reuse not refused](docs/runs/2026-11-12-vic-3.md), [latest](docs/runs/2026-11-13-vic-4.md) |
 | Airwallex's own approval as a second lock: a payout signed in Purser waited `IN_APPROVAL` until a person approved it there, then PAID; later the owner's iPhone approved an invoice, held `IN_APPROVAL` | Live, Airwallex sandbox; 12 Nov a labelled test passkey, settlement simulated; 13 Nov not taken to PAID | 12 and 13 Nov | [PAID](docs/runs/2026-11-12-airwallex-two-locks-paid.md), [iPhone](docs/runs/2026-11-13-airwallex-faceid.md) |
 | Before the CFO is asked, the payee's bank checks the name; one signature covers a batch of two payouts, read back before submit | Live, Airwallex sandbox; no money moved by the name check; a test passkey | 12 Nov | [name check](docs/runs/2026-11-12-airwallex-payee-check.md), [batch](docs/runs/2026-11-12-airwallex-batch-transfer.md) |
-| An agent's limit on chain changes only when two passkeys sign; over the cap, Metal refuses | Live, Metal testnet; the second owner a labelled test passkey | 12 Nov | [record](docs/runs/2026-11-12-faceid-onchain.md) |
+| An agent's limit on chain changes only when two passkeys sign; over the cap, Alta refuses | Live, Alta testnet; the second owner a labelled test passkey | 12 Nov | [record](docs/runs/2026-11-12-faceid-onchain.md) |
 | The books posted to T:0 and to Moneybird, read back | Live, both sandboxes | 10 and 12 Nov | [T:0](docs/runs/2026-11-10-t0-journal-sandbox.md), [Moneybird](docs/runs/2026-11-12-moneybird-sandbox.md) |
 | The hands-on demo: Claude reads a sample invoice | Live Claude; the bank simulated; a test passkey | 13 Nov | [record](docs/runs/2026-11-13-try-sample.json) |
-| Purser's records anchored on chain: one value-0 transaction carries their head; `npm run verify-anchor` prints MATCH | Live, Metal testnet | 13 Nov | [record](docs/runs/2026-11-13-anchor.md) |
+| Purser's records anchored on chain: one value-0 transaction carries their head; `npm run verify-anchor` prints MATCH | Live, Alta testnet | 13 Nov | [record](docs/runs/2026-11-13-anchor.md) |
 | In Purser Cloud: the payee check, batch approval and reconciliation as product features | Built and tested on stand-ins; not shown switched on in a live run | — | [reconcile-books.md](docs/reconcile-books.md) |
 | Real customers, real money, a second person approving | Not yet | — | [go-live.md](docs/go-live.md) |
 
@@ -160,7 +160,7 @@ Not proven yet: a Visa-provisioned agentic token, a real card or real money, reg
 
 ## Metal Award
 
-Each agent pays x402 under its own mandate on Metal testnet, and Metal refuses what is over it: in the main run of 3 November, 86 Metal payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Metal refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-metal-bound-refused-raised-revoked)). [/metal](https://kit11.max-31b.workers.dev/metal) · [docs/metal-award.md](docs/metal-award.md)
+Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/metal](https://kit11.max-31b.workers.dev/metal) · [docs/metal-award.md](docs/metal-award.md)
 
 ## The business hypothesis
 
@@ -170,9 +170,9 @@ Not validated with customers yet: 2 finance conversations (a CFO and a bank fina
 - **Who buys:** the finance team of a small company or scale-up that already banks with Airwallex and lets AI agents pay; the CFO uses it and decides. ([model.md](docs/business/model.md#who-buys-and-who-uses-it-hypothesis))
 - **Pilot pricing:** Starter €49 a month (100 invoices, then €0.25 each); Business from €249 a month; a small fee per payout. A hypothesis. ([model.md](docs/business/model.md#pilot-pricing-hypothesis))
 - **Why now:** Airwallex wrote on 5 October 2026 that agents moving money need limits enforced "through underlying infrastructure rather than prompts" ("Agentic banking starts with governance", source S1). ([problem.md](docs/business/problem.md#why-now-sourced))
-- **Why Purser:** it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log. ([model.md](docs/business/model.md#risks-and-what-we-do-not-know))
+- **Why Purser:** it builds on Airwallex's own card controls and Alta's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log. ([model.md](docs/business/model.md#risks-and-what-we-do-not-know))
 
-**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Metal, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey `IN_APPROVAL` until the owner approved it in Airwallex's web app; then `PAID`, settlement simulated ([run](docs/runs/2026-11-12-airwallex-two-locks-paid.md)).
+**Why not Airwallex's own approvals?** Purser signs the exact terms with the CFO's passkey before the API call, enforces per-agent limits across Airwallex and Alta, and can additionally require Airwallex's approval workflow (`IN_APPROVAL` handled, [src/airwallex/approvals.ts](src/airwallex/approvals.ts)). Live in the sandbox, 10 and 12 Nov: Airwallex held a payout signed by a labelled test passkey `IN_APPROVAL` until the owner approved it in Airwallex's web app; then `PAID`, settlement simulated ([run](docs/runs/2026-11-12-airwallex-two-locks-paid.md)).
 
 ## Try it in 2 minutes
 
@@ -200,13 +200,13 @@ The pages and the console as the live site showed them on 13 November (`npm run 
 <details><summary><b>The code in 5 files, one payment end to end, and the worst case the policy allows</b></summary>
 
 Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the
-kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Metal on-chain mandate. Metal holds
+kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Alta on-chain mandate. Alta holds
 each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
 beyond them, with a passkey (Face ID on iPhone) on the exact terms.
 
-**Claude agents propose and pay; Purser's code, Airwallex and Metal each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**
+**Claude agents propose and pay; Purser's code, Airwallex and Alta each hold a limit; above them, the CFO signs the exact terms with a passkey (Face ID on iPhone).**
 
-![Agent, then policy. Within the limits the agent pays under its own mandate or card limit; beyond them the CFO's passkey signs the SHA-256 of the exact terms, the executor re-checks the hash, then Airwallex or Metal. Every step goes into the hash-chained audit log.](docs/assets/how-it-works.svg)
+![Agent, then policy. Within the limits the agent pays under its own mandate or card limit; beyond them the CFO's passkey signs the SHA-256 of the exact terms, the executor re-checks the hash, then Airwallex or Alta. Every step goes into the hash-chained audit log.](docs/assets/how-it-works.svg)
 
 <details><summary>One payment beyond the limit, end to end</summary>
 
@@ -217,7 +217,7 @@ sequenceDiagram
   participant Po as Purser policy (code)
   participant CFO as CFO's phone (Face ID)
   participant Ex as Executor
-  participant Rail as Airwallex or Metal
+  participant Rail as Airwallex or Alta
   participant Bk as Books and audit log
   Ag->>Po: propose: pay this invoice
   Po->>Po: check payee allowlist, caps, floors
@@ -245,7 +245,7 @@ Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for t
 - Support agent: EUR 150 on its card + USD 4 on chain (test USD) a month.
 - Treasury agent: EUR 50 on its card + EUR 27,900 in task cards + USD 6 on chain (test USD) a month.
 - A day: EUR 1,200 + USD 20: a card or a mandate can go in one day, task cards 3 a day.
-- Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue on its own within the limit the CFO signed with Face ID: up to EUR 300 each (approval.task_card_eur), 3 a day (EUR 900), 31 days a month (EUR 27,900), counted above.
+- Counted: each card's monthly limit (card.*.monthly, EUR) and each Alta mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue on its own within the limit the CFO signed with Face ID: up to EUR 300 each (approval.task_card_eur), 3 a day (EUR 900), 31 days a month (EUR 27,900), counted above.
 - ≈ EUR 28,217.70 in all at the main run's rate of 3 Nov 2026 (1.129917 USD per EUR, docs/demo/main-run.json); test USD is never added to EUR otherwise.
 - With a shared card or an API key, the limit is the card's or the account's.
 - Computed from the policy by [`exposureOf`](src/policy/exposure.ts); `test/exposure.test.ts` checks this block against it.
@@ -256,7 +256,7 @@ Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for t
 1. **The policy.** [`reserveSpend`](src/policy/holds.ts#L63) runs before an agent's payment is signed or charged: its identity, the CFO's stops and caps, the mandate's cap and budget, the shared 20.00 total and velocity. A refusal means nothing is signed.
 2. **The terms hash and the passkey.** [`termsHash`](src/lib/terms.ts#L41) is the SHA-256 of a proposal's exact terms as canonical JSON; [`verifyApprovalSignature`](src/passkey/webauthn.ts#L53) accepts a passkey's signature only if it signed that hash, with user verification (Face ID) on.
 3. **The executors' hash check.** Every executor in [src/executors/](src/executors/) starts with [`beginExecution`](src/policy/approvals.ts#L265), which re-hashes the stored terms and runs nothing unless they match the approved hash, before the expiry.
-4. **The Metal mandate layer.** [`payUnderMandate`](src/metal/pay.ts#L34) signs an x402 payment with the agent's own mandate key only after the caller's guard passes it (Sourcing's is `reserveSpend`); on chain, Metal refuses what is over the mandate.
+4. **The Alta mandate layer.** [`payUnderMandate`](src/metal/pay.ts#L34) signs an x402 payment with the agent's own mandate key only after the caller's guard passes it (Sourcing's is `reserveSpend`); on chain, Alta refuses what is over the mandate.
 5. **The audit chain.** [`audit`](src/audit/log.ts#L37) appends each event with `row_hash = SHA-256(prev_hash ‖ JCS(row))`; the database refuses UPDATE and DELETE, and `npm run verify` re-checks the chain.
 
 </details>
@@ -285,7 +285,7 @@ flowchart LR
   end
   AI["Your AI · any MCP client"] --> MCP
   API & MCP --> E --> D
-  RN --> AW["Airwallex sandbox"] & M["Metal testnet"] & V["Airi · Visa Intelligent Commerce"]
+  RN --> AW["Airwallex sandbox"] & M["Alta testnet"] & V["Airi · Visa Intelligent Commerce"]
   S -- "FX quote, read-only" --> AW
   S & E --> CL["Claude · Anthropic API"]
 ```
@@ -314,7 +314,7 @@ Since then, in this repository (live once the cloud is redeployed): the server s
 
 <details><summary><b>The payables inbox, scanned invoices, batch approval, the console, the attack rounds, connected accounts</b></summary>
 
-On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's invoice and the CFO signs the exact terms with a passkey (Face ID on iPhone). The payables inbox below is built to do that for every supplier invoice of a small company. It runs on this site as the [hands-on demo](https://kit11.max-31b.workers.dev/try) and [/books](https://kit11.max-31b.workers.dev/books), on test money; the product console is a private preview. Its code is in this repository: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview at [purser-try.max-31b.workers.dev](https://purser-try.max-31b.workers.dev/), where *Try as guest* opens a demo company read-only (made-up data from a simulated month); what ran live and when is [above](#whats-live-whats-simulated). The product's own console deployment is another matter: that hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout ran end to end in the Airwallex sandbox on 10 November: EUR 4.84 PAID on a test company's behalf (`593c340b-1752-4537-9ef2-0eb3558897cc`, settlement simulated), with Purser's EUR 0.02 fee, booked in T:0 ([run record](docs/runs/2026-11-10-platform-e2e.md)); an earlier run that morning paid EUR 5.00 with a EUR 0.05 fee (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, [record](docs/runs/2026-11-10-connected-accounts-sandbox.md)). The Kit 11 build keeps Metal and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
+On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's invoice and the CFO signs the exact terms with a passkey (Face ID on iPhone). The payables inbox below is built to do that for every supplier invoice of a small company. It runs on this site as the [hands-on demo](https://kit11.max-31b.workers.dev/try) and [/books](https://kit11.max-31b.workers.dev/books), on test money; the product console is a private preview. Its code is in this repository: the inbox in [src/ap](src/ap), the books in [src/ledger](src/ledger), the documents in [src/vault](src/vault), the accounting links in [src/erp](src/erp), payments in other currencies in [src/payouts](src/payouts), and Purser Cloud, the console and its API, in [cloud/](cloud). It is built and tested against stand-ins and on Cloudflare's local database; on 10 November it ran once end to end in the Airwallex sandbox for three test companies (1 payout PAID, 3 refused by Airwallex: [run record](docs/runs/2026-11-10-platform-e2e.md)). Purser Cloud runs publicly as a test preview at [purser-try.max-31b.workers.dev](https://purser-try.max-31b.workers.dev/), where *Try as guest* opens a demo company read-only (made-up data from a simulated month); what ran live and when is [above](#whats-live-whats-simulated). The product's own console deployment is another matter: that hosted preview exists but is private (behind an access key); no customer uses it, and it is not ready for real money. Its connected-account payout ran end to end in the Airwallex sandbox on 10 November: EUR 4.84 PAID on a test company's behalf (`593c340b-1752-4537-9ef2-0eb3558897cc`, settlement simulated), with Purser's EUR 0.02 fee, booked in T:0 ([run record](docs/runs/2026-11-10-platform-e2e.md)); an earlier run that morning paid EUR 5.00 with a EUR 0.05 fee (`a9460dba-f31b-4111-be58-6d9a9e71adb1`, [record](docs/runs/2026-11-10-connected-accounts-sandbox.md)). The Kit 11 build keeps Alta and x402 for the agents' own payments; the inbox pays suppliers through Airwallex payouts. Details and screenshots: [docs/after-the-kit.md](docs/after-the-kit.md).
 
 - **Payables inbox:** supplier invoices arrive as PDF or e-mail, are read, checked (duplicates, changed bank details, totals) and booked.
 - **Scanned invoices:** two independent readings must agree on IBAN, total, currency and invoice number; otherwise a person decides.
@@ -327,16 +327,16 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 
 ## Who does what
 
-<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
 
 - **Built by Max Geurtsen** (Claude by Anthropic as the developer, directed and reviewed by Max): Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.
 - **Airwallex (sandbox):** the agents' cards and card limits, FX, the SWIFT euro payout, webhooks; its own approval
   workflow as a second lock. [/airwallex](https://kit11.max-31b.workers.dev/airwallex)
-- **Metal (testnet):** the on-chain mandates and the agents' payments; it refuses what is over a mandate, and a passkey
+- **Alta (testnet):** the on-chain mandates and the agents' payments; it refuses what is over a mandate, and a passkey
   account changes a limit only when two owners sign. [/metal](https://kit11.max-31b.workers.dev/metal)
 - **Claude by Anthropic:** two sets of agents. The Kit 11 agents pay for the company's own running costs (cards, x402
-  on Metal), the three agents' decisions: Sourcing on Claude Haiku, Support on Claude Sonnet, Treasury on Claude Opus.
+  on Alta), the three agents' decisions: Sourcing on Claude Haiku, Support on Claude Sonnet, Treasury on Claude Opus.
   The payables agents handle supplier invoices (Home, /try, Purser Cloud): the Reader reads an invoice, the Checker
   checks it, the Coder books account and VAT, the Payer proposes the payment; code enforces the limits and the CFO
   signs with a passkey (Face ID on iPhone). [/claude](https://kit11.max-31b.workers.dev/claude)
@@ -352,9 +352,9 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 
 - **Read:** [docs/in-depth.md](docs/in-depth.md) (each judging criterion, the live runs with every id, what is real and what is mock) · [docs/README.md](docs/README.md) (every doc, by reader) · [docs/diagrams.md](docs/diagrams.md) · [docs/claims.md](docs/claims.md) (every claim and its source) · [docs/runs/](docs/runs/) (every run log, dated) · [docs/controls.md](docs/controls.md) · [docs/security.md](docs/security.md)
 - **Partners:** [docs/metal-award.md](docs/metal-award.md) and [docs/airwallex.md](docs/airwallex.md) (what Purser uses from each) · [The Visa TAP note](docs/submission/long-description.md#visa): built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov)
-- **Run and build:** [docs/run-it.md](docs/run-it.md) (live, with sandbox keys and a Metal RPC) · [docs/payables.md](docs/payables.md) (the invoice inbox, built after the submission; code in [src/ap](src/ap)) · [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md) (for outside agents) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
+- **Run and build:** [docs/run-it.md](docs/run-it.md) (live, with sandbox keys and an Alta RPC) · [docs/payables.md](docs/payables.md) (the invoice inbox, built after the submission; code in [src/ap](src/ap)) · [skills/purser-spend/SKILL.md](skills/purser-spend/SKILL.md) (for outside agents) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md)
 - **Site:** [Hands-on demo](https://kit11.max-31b.workers.dev/try) (a test company of your own, test money) · [The replay of the main run of 3 November](https://kit11.max-31b.workers.dev/replay) (under Proof, not in the menu) · [/security](https://kit11.max-31b.workers.dev/security)
 - **Releases:** [`v1.0-submission`](https://github.com/agamemnon-coder/x402-business-agents/releases/tag/v1.0-submission) (8 November, the hackathon submission) · [CHANGELOG.md](CHANGELOG.md) (every pull request since, generated from git) · [docs/releases/v1.1-final.md](docs/releases/v1.1-final.md)
 - **Submission:** [docs/submission/README.md](docs/submission/README.md) (the submission text, with the short Description) · [docs/submission/long-description.md](docs/submission/long-description.md) (the long form text it replaced, in full)
 
-All money here is test money: the Airwallex sandbox and Metal testnet. Licence: MIT.
+All money here is test money: the Airwallex sandbox and Alta testnet. Licence: MIT.

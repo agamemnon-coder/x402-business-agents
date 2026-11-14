@@ -111,7 +111,8 @@ describe("/ for a guest", () => {
 
 describe("the honest core sentence", () => {
   it("is the CFO dashboard's Overview line, word for word", () => {
-    expect(pages.dashboard).toContain(`<h1>Overview</h1><div class="sub">${CORE_SENTENCE}</div>`);
+    // 14 Nov: the first mention on the page reads "Alta (formerly Metal)" (src/ui/formerly.ts).
+    expect(pages.dashboard.replace("Alta (formerly Metal)", "Alta")).toContain(`<h1>Overview</h1><div class="sub">${CORE_SENTENCE}</div>`);
     expect(pages.dashboard).not.toContain("__CORE_SENTENCE__");
   });
 

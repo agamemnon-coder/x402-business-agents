@@ -1,6 +1,6 @@
 // The claims of the hands-on demo (C6): one sentence for what Purser Cloud does with money, everywhere it is said; the
 // hands-on link "coming" until the orchestrator flips it; and in the hands-on docs, the words that would overclaim
-// ("real money", "Airwallex", "Metal", "streamed", "three agents") only next to what ran.
+// ("real money", "Airwallex", "Alta", "streamed", "three agents") only next to what ran.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { HANDS_ON_LIVE, HOLDS_SANDBOX_KEY, MONEY_SENTENCE } from "../cloud/src/try/claims.js";
@@ -51,8 +51,8 @@ describe("the hands-on docs", () => {
     for (const s of sentences().filter((x) => /real money/i.test(x))) expect(s).toMatch(/\bno real money\b|real money;|What is not there/);
   });
 
-  it("names Airwallex and Metal only as not there, or as a leg built only if its gate passes", () => {
-    for (const s of sentences().filter((x) => /Airwallex|Metal/.test(x))) expect(s, s).toMatch(/not there|only if|sandbox key/);
+  it("names Airwallex and Alta only as not there, or as a leg built only if its gate passes", () => {
+    for (const s of sentences().filter((x) => /Airwallex|Alta/.test(x))) expect(s, s).toMatch(/not there|only if|sandbox key/);
   });
 
   it("never says streamed or three agents", () => {

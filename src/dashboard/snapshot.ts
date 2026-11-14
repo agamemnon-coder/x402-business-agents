@@ -55,7 +55,7 @@ export interface Budget {
   /** Credentials this agent has held (bound, replaced, resumed after a pause); spend carries over on replacement. */
   credentials: number;
   /**
-   * The bound credential's own budget, when it is not the mandate's budget above: after a resume Metal binds a fresh
+   * The bound credential's own budget, when it is not the mandate's budget above: after a resume Alta binds a fresh
    * credential with what was left (budget − spent), so the lifetime figures above stay what the CFO approved.
    */
   chain_budget: string | null;
@@ -121,19 +121,19 @@ export interface CardTx {
   reason: string | null;
 }
 
-/** Summit's prepaid budget in Metal clearing, and what we earned there: kept apart from the mandates. */
+/** Summit's prepaid budget in Alta clearing, and what we earned there: kept apart from the mandates. */
 export interface ClearingView {
   /** Who prepays (the customer's name). */
   customer: string;
   /** Summit's deposits into clearing (USDZ). */
   deposited: string;
-  /** What the customer has paid by receipt, from Metal's balance (deposits less what it may still spend); includes
-   * receipts made before this ledger started. Null before Metal's first balance read. */
+  /** What the customer has paid by receipt, from Alta's balance (deposits less what it may still spend); includes
+   * receipts made before this ledger started. Null before Alta's first balance read. */
   charged: string | null;
   /** Stock checks sold by clearing, and what they brought. */
   sales: number;
   earned: string;
-  /** What Metal's clearing service last said each side may spend; null before the first read. */
+  /** What Alta's clearing service last said each side may spend; null before the first read. */
   customer_spendable: string | null;
   seller_spendable: string | null;
   as_of: string | null;
@@ -176,7 +176,7 @@ export interface Snapshot {
     };
     metal: {
       sales: string; upstream: string; refunds: string; net: string; swept: string; sell_price: string; upstream_price: string;
-      /** B1: payments to the sweep wallet from unknown senders, held by Metal's receive policy (newest first). */
+      /** B1: payments to the sweep wallet from unknown senders, held by Alta's receive policy (newest first). */
       quarantine: { receipt_id: string; from: string; amount: string; reason: string; status: string; tx: string }[];
     };
   };
@@ -198,7 +198,7 @@ export interface Snapshot {
   clearing: ClearingView | null;
   /** The emergency stop, while it is on: who pulled it, when, and why. */
   frozen: { since: string; by: string; proposal_id: string; reason: string } | null;
-  /** The latest hourly reconciliation against Airwallex and Metal (finance item 5), or null before the first. */
+  /** The latest hourly reconciliation against Airwallex and Alta (finance item 5), or null before the first. */
   reconciliation: { at: string; checked: number; differences: number; skipped: string[] } | null;
   /** Agents stopped by code for breaking a velocity limit (security item 2); the CFO lifts each with Face ID. */
   stopped: { agent: string; since: string; reason: string }[];
@@ -248,7 +248,7 @@ export interface Snapshot {
   passkey: { credential: string | null; label: string | null; enrolled_at: string | null; enrolment_open: boolean };
   /** Monitoring (B7): the alarms standing now and the numbers behind them; the relay's /health reads this. */
   health: Health;
-  /** What Airwallex and Metal did, each with its proof (an Airwallex id or a Metal transaction). */
+  /** What Airwallex and Alta did, each with its proof (an Airwallex id or an Alta transaction). */
   rails: RailsView;
 }
 
@@ -270,7 +270,7 @@ export const PAYEE_NAMES: Record<string, string> = {
   business: "Northwind Outdoor",
 };
 
-/** The unit of a CFO policy value: mandate limits are Metal's test dollars, card limits and floors are euros. */
+/** The unit of a CFO policy value: mandate limits are Alta's test dollars, card limits and floors are euros. */
 function policyUnit(key: string): string {
   if (key.startsWith("cap.") || key.startsWith("counterparty:")) return "USDZ";
   if (key === "usd_floor") return "USD";
@@ -290,7 +290,7 @@ const REFUSAL_WORDS: Record<string, string> = {
   mandate_revoked: "the credential was revoked by a replacement",
   mandate_expired: "the mandate has expired",
   payee_not_allowed: "payee not allowed by the mandate",
-  // Metal's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
+  // Alta's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
   mandate_budget_spent: "over the mandate's total budget",
   mandate_payee_not_listed: "payee not allowed by the mandate",
   mandate_payee_not_allowed: "payee not allowed by the mandate",
@@ -641,9 +641,9 @@ export function refundsUnder(db: DB): RefundsUnder | undefined {
 
 // Each refund outcome, in the escalation row's words and in this order; an amount is given where money was or may be
 // on its way (a REFUSED refund paid nothing). PROPOSED: started, its pull's outcome not recorded (it may have reached
-// Metal before a crash), so it is not called unsent.
+// Alta before a crash), so it is not called unsent.
 const UNDER_WORDS: [outcome: string, words: string, amount: boolean][] = [
-  ["PAID", "refunded", true], ["PENDING", "sent, not yet confirmed", true], ["HELD", "sent, held at Metal, not refunded yet", true],
+  ["PAID", "refunded", true], ["PENDING", "sent, not yet confirmed", true], ["HELD", "sent, held at Alta, not refunded yet", true],
   ["PROPOSED", "started, outcome not yet recorded", true], ["REFUSED", "refused (nothing paid)", false],
 ];
 
@@ -701,7 +701,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
           ? out(`Purchase of stock check #${str(p.seq)} refused by Purser before signing, against the mandate: ${refusalWords(reason)}`, "refusal")
           : out(`Purchase of stock check #${str(p.seq)} refused on chain: ${refusalWords(reason)}`, "refusal");
     }
-    case "upstream.refused_on_chain": return out(`Metal's mandate refused the same ${str(p.amount)} USDZ on chain and recorded it: ${str(p.metal_reason)}`, "refusal", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
+    case "upstream.refused_on_chain": return out(`Alta's mandate refused the same ${str(p.amount)} USDZ on chain and recorded it: ${str(p.metal_reason)}`, "refusal", { tx: /^0x[0-9a-f]{64}$/i.test(str(p.tx)) ? str(p.tx) : null });
     case "policy.changed": {
       const unit = policyUnit(str(p.key));
       const v = (x: unknown) => (str(x) ? `${str(x)}${unit && /^\d+\.\d{2}$/.test(str(x)) ? ` ${unit}` : ""}` : "no extra limit");
@@ -712,7 +712,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "upstream.in_doubt": return out(`Purchase of stock check #${str(p.seq)} unconfirmed; it is looked up before any retry`, "refusal");
     case "sale.delivered": {
       const sale = saleOf(s);
-      const how = str(p.scheme) === "bajillion" ? " by Metal clearing (a receipt, no transaction)" : "";
+      const how = str(p.scheme) === "bajillion" ? " by Alta clearing (a receipt, no transaction)" : "";
       return out(sale ? `Sold stock check #${sale.seq} to Summit Outfitters for ${fromCents(sale.price)} USDZ${how}` : `Sale ${s} delivered${how}`, "ok");
     }
     case "sale.settlement_resolved": return str(p.outcome) === "CHARGED"
@@ -722,7 +722,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "sale.settle_failed": return out(`A sale did not settle; the customer was not charged (${str(p.error)})`, "refusal");
     case "sale.refused": return out(`Customer query #${str(p.seq)} answered ${str(p.status)}: the stock check could not be bought, so the middleware did not settle and Summit Outfitters was not charged`, "refusal");
     case "query.answered": return out(`Customer query #${str(p.seq)}: Summit Outfitters got ${p.status === null ? "no answer" : `HTTP ${str(p.status)}`}; ${p.settled === true ? "its payment settled" : p.settled === false ? "its payment did not settle (not charged)" : "settlement unknown"}`, p.settled === true ? "ok" : "refusal");
-    case "upstream.let_through": return out(`Defense in depth: purchase of stock check #${str(p.seq)} at ${str(p.amount)} USDZ, over the ${str(p.bound_cap)} cap, let through to Metal once (Purser would have refused it before signing)`, "info");
+    case "upstream.let_through": return out(`Defense in depth: purchase of stock check #${str(p.seq)} at ${str(p.amount)} USDZ, over the ${str(p.bound_cap)} cap, let through to Alta once (Purser would have refused it before signing)`, "info");
     case "upstream.let_through_refused": return out(str(p.label), "refusal");
     case "upstream.let_through_incident": return out(`INCIDENT: ${str(p.what)}; the Sourcing agent is stopped until the CFO lifts it with Face ID`, "refusal");
     // The sandbox starts with millions; the floors calibrated against it are not this business's money, so no numbers.
@@ -741,7 +741,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     // The agents (src/agents/): each decision in the agent's own words, and every call code refused.
     case "agent.tool": {
       const who = agentWho(str(p.agent));
-      if (str(p.blocked_by) === "Metal mandate") return out(`Metal refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
+      if (str(p.blocked_by) === "Metal mandate") return out(`Alta refused ${who}'s purchase against its on-chain mandate`, "refusal", { model: modelName(str(p.model)) });
       if (str(p.blocked_by).startsWith("mandate cap")) return out(`${capFirst(who)}'s purchase was refused before signing: over its mandate's cap`, "refusal", { model: modelName(str(p.model)) });
       return out(`Code refused ${who}'s ${str(p.tool).replace(/_/g, " ")}: ${str(p.blocked_by)}`, "refusal", { model: modelName(str(p.model)) });
     }
@@ -770,7 +770,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
       : out("The Sourcing agent's model was not available; code served the next query as before", "info");
     // Block 5.1: the rail per purchase. The choice is the agent's (or code's fallback); the supplier's rails are code's check.
     case "purchase.rail_chosen": {
-      const rail = str(p.rail) === "metal_x402" ? "x402 on Metal" : "its Airwallex card";
+      const rail = str(p.rail) === "metal_x402" ? "x402 on Alta" : "its Airwallex card";
       const who = str(p.by) === "claude" ? "The Sourcing agent" : "Code (the agent did not decide)";
       const ref = str(p.ref);
       return out(`${who} paid ${capFirst(s)} on ${rail}${str(p.by) === "claude" && str(p.reason) ? ` ("${str(p.reason)}")` : ""}: ${str(p.result)}`, p.ok === false ? "refusal" : "ok", {
@@ -790,7 +790,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "owners.reverted": return out(`The account refused ${s} on chain: ${str(p.reason)}`, "refusal");
     // The agent's own payments on the passkey account (npm run owners -- pay): inside the mandate, and one cent over its cap.
     case "owners.paid": return out(`The Sourcing agent paid ${str(p.amount)} USDZ to ${str(p.payee_name)} inside its mandate on the passkey account: its mandate key signed, no owner did`, "ok");
-    case "owners.refused_on_chain": return out(`Metal refused ${str(p.amount)} USDZ to ${str(p.payee_name)}, over the mandate's ${str(p.cap)} cap, and recorded the refusal on chain`, "refusal");
+    case "owners.refused_on_chain": return out(`Alta refused ${str(p.amount)} USDZ to ${str(p.payee_name)}, over the mandate's ${str(p.cap)} cap, and recorded the refusal on chain`, "refusal");
     case "owners.pay_not_paid": return out(`The Sourcing agent's ${str(p.amount)} USDZ to ${str(p.payee_name)} on the passkey account was not paid: ${str(p.reason) || str(p.outcome).toLowerCase()}`, "refusal");
     case "owners.over_cap_not_refused": return out(`A payment of ${str(p.amount)} USDZ over the mandate's ${str(p.cap)} cap was not reported as refused; a person checks it`, "refusal");
     // Block 5.2: a card decline started the agent whose card it is.
@@ -813,7 +813,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "purchase.rail_refused": return out(`Code refused the Sourcing agent's payment to ${capFirst(s)}: ${str(p.why)}; nothing was charged`, "refusal");
     case "purchase.rails_chosen": {
       const ps = Array.isArray(p.purchases) ? (p.purchases as P[]) : [];
-      const list = ps.map((x) => `${capFirst(str(x.supplier))} on ${str(x.rail) === "metal_x402" ? "x402 on Metal" : "the card"}`).join(", ");
+      const list = ps.map((x) => `${capFirst(str(x.supplier))} on ${str(x.rail) === "metal_x402" ? "x402 on Alta" : "the card"}`).join(", ");
       return str(p.source) === "claude"
         ? out(`The Sourcing agent picked the rail per purchase: ${list}; code checked each supplier accepts it`, "info", { model: modelName(str(p.model)) })
         : out(`Code paid on the rail each supplier accepts (${list}); the Sourcing agent's choice was not used`, "info");
@@ -888,7 +888,7 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "refund.auto_approved": return out(`Refunds for sales ${(Array.isArray(p.sales) ? (p.sales as unknown[]) : []).map((x) => `#${str(x)}`).join(", ")} are within the automatic limits`, "ok");
     case "refund.paid": return out(`Refunded ${str(p.amount)} to Summit Outfitters for sale #${s} (${str(p.payment_id)})`, "ok");
     case "refund.already_paid": return out(`Retry of ${str(p.payment_id)}: already paid, nothing sent`, "ok");
-    case "refund.already_held": return out(`Looked again at ${str(p.payment_id)}: sent, still held at Metal; nothing sent again, not refunded yet`, "info");
+    case "refund.already_held": return out(`Looked again at ${str(p.payment_id)}: sent, still held at Alta; nothing sent again, not refunded yet`, "info");
     case "refund.refused":
     case "refund.held": return out(`Refund ${str(p.payment_id)} ${r.event.split(".")[1]}: ${refusalWords(str(p.reason))}`, "refusal");
     case "sweep.paid": return out(`Swept ${str(p.amount)} USDZ of earnings to the sweep wallet (${s})`, "ok");
@@ -940,12 +940,12 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "transfer.row_conflict": return out(`Alarm: Airwallex holds transfer ${s} (${str(p.amount)}) under payout ${str(p.request_id)}, but the ledger's row is ${str(p.row_status)}; nothing more is sent, a person checks it now`, "refusal", { awx_id: s || null });
     case "transfer.payee_unconfirmed": return out(`Alarm: transfer ${s} (${str(p.amount)}) was adopted, but Airwallex never stated its payee; a person checks the payee in the Airwallex web app`, "refusal", { awx_id: s || null });
     case "transfer.found_after_close": return out(`Alarm: Airwallex holds transfer ${s} (${str(p.amount)}, ${str(p.status)}) under the closed payout ${str(p.request_id)} of invoice ${str(p.invoice_no)}; it is not proposed again, a person checks it now`, "refusal", { awx_id: s || null });
-    case "clearing.deposited": return out(`Summit put ${str(p.amount)} USDZ into Metal clearing: its prepaid budget for our stock checks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
+    case "clearing.deposited": return out(`Summit put ${str(p.amount)} USDZ into Alta clearing: its prepaid budget for our stock checks`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "clearing.withdrawn": return out(`Our clearing earnings of ${str(p.amount)} USDZ went to the business account`, "ok", { tx: TX.test(str(p.tx)) ? str(p.tx) : null });
     case "sale.prepaid_not_offered": return out(`Prepaid clearing not offered for stock check #${s}: ${str(p.reason).replace(/^[a-z_]+: /, "")}; the buyer uses the mandate route`, "info");
     case "sale.prepaid_undelivered": return out(`Stock check #${s} was paid by clearing but not delivered (${str(p.reason)}); it is owed and refunded`, "refusal");
     case "reconcile.difference": return out(`Reconciliation: ${str(p.area)} ${s}: the ledger says ${str(p.ledger)}; ${str(p.area) === "metal" ? "the chain" : "Airwallex"} says ${str(p.outside)}. A person looks; nothing was changed`, "refusal");
-    case "reconcile.done": return out(`Reconciled ${str(p.checked)} money flows against Airwallex and Metal: ${Number(p.differences) ? `${str(p.differences)} difference(s)` : "no differences"}`, Number(p.differences) ? "refusal" : "ok");
+    case "reconcile.done": return out(`Reconciled ${str(p.checked)} money flows against Airwallex and Alta: ${Number(p.differences) ? `${str(p.differences)} difference(s)` : "no differences"}`, Number(p.differences) ? "refusal" : "ok");
     case "fx.rate_checked": return out(`Before locking a quote for ${str(p.buy)}, checked the market's current rate: ${str(p.market_cost)} now, the quote ${str(p.quote_cost)} (${(Number(p.markup_bps) / 100).toFixed(2)}% apart; above ${(FX_QUOTE_MAX_MARKUP_BPS / 100).toFixed(2)}% it goes to the CFO)`);
     case "velocity.tripped": return out(`Stopped automatically: ${str(p.reason)}. Every payment it tries is refused until the CFO lifts the stop with Face ID`, "refusal");
     case "card.frozen": return out(`${str(p.why) === "velocity limit" ? "Velocity limit" : "Emergency stop"}: Airwallex froze ${cardOwner(str(p.agent))}'s card •••• ${str(p.last4)}`, "refusal");
@@ -953,8 +953,8 @@ function describeRow(r: AuditRow, saleOf: (id: string) => { seq: number; price: 
     case "payee.change_requested": return out(`${str(p.vendor)}'s bank details: a change to a ${str(p.to_country)} account ending ${str(p.to_last4)} was requested (${s}); nothing changes until a person verifies it with the supplier and the CFO approves`, "approval");
     case "payee.change_verified": return out(`${str(p.by)} verified ${s} with ${str(p.vendor)}: ${str(p.how)}`, "approval");
     case "payee.changed": return out(`${str(p.vendor)} is now paid to the account ending ${str(p.to_last4)} (was …${str(p.from_last4)}), after verification and approval (${str(p.proposal_id)})`, "ok");
-    case "receive_policy.set": return out("The sweep wallet now accepts test USD only from the business account; anything else is held by Metal in quarantine", "ok", { tx: str(p.txs).split(",")[0] || null });
-    case "quarantine.held": return out(`Metal held ${str(p.amount)} test USD sent to the sweep wallet by an unknown sender ${short(str(p.from))} (${str(p.reason)}); it waits for you`, "refusal", { tx: str(p.tx) || null });
+    case "receive_policy.set": return out("The sweep wallet now accepts test USD only from the business account; anything else is held by Alta in quarantine", "ok", { tx: str(p.txs).split(",")[0] || null });
+    case "quarantine.held": return out(`Alta held ${str(p.amount)} test USD sent to the sweep wallet by an unknown sender ${short(str(p.from))} (${str(p.reason)}); it waits for you`, "refusal", { tx: str(p.tx) || null });
     case "quarantine.returned": return out(`The held ${str(p.amount)} test USD went back to its sender ${short(str(p.to))} (${str(p.proposal_id)})`, "approval", { tx: str(p.tx) || null });
     case "quarantine.accepted": return out(`The held ${str(p.amount)} test USD was accepted into the sweep wallet (${str(p.proposal_id)})`, "approval", { tx: str(p.tx) || null });
     case "card.issued":
@@ -987,7 +987,7 @@ const BLOCKED_EVENTS = new Set([
   "invoice.fraud_suspected", "document.injection_flagged", "passkey.refused", "velocity.tripped",
 ]);
 
-/** The KPIs in money. Card amounts are EUR; Metal amounts *USDZ (test USD); they are never added together. */
+/** The KPIs in money. Card amounts are EUR; Alta amounts *USDZ (test USD); they are never added together. */
 const CLAUDE_ROLES: [RegExp, string, string][] = [
   [/haiku/i, "Haiku", "sorts each incoming document"],
   [/sonnet/i, "Sonnet", "reads documents into checked fields"],

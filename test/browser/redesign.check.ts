@@ -171,8 +171,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await look(page, `/proof ${tag}`, w);
     if (w < 500) await checkTaps(page, { name: `/proof ${tag}, header and footer`, scopes: CHROME, fail });
     await menu(page, `/proof ${tag}`);
-    // Airwallex, Metal, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
-    // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Metal, T:0, Claude.
+    // Airwallex, Alta, Claude (Visa TAP is on /visa; its footer link left Proof on 12 Nov).
+    // 12 Nov (wire-in, owner): five partner cards, Airwallex, Visa, Alta, T:0, Claude.
     if ((await page.locator(".pcard").count()) !== 5) fail(`/proof ${tag}: not five partner cards`);
     // The jury pass (13 Nov): four cards directly under the heading, on the first screen, then the seven guarantees (in
     // sight again since the jury's second round), then one closed fold; with it open, each partner card with one claim to tap in sight; four tiles; every closed

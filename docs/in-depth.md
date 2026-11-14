@@ -2,21 +2,21 @@
 
 Back to the [README](../README.md). The README's first screen in full: what ran live with one id per rail, where each
 judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the Kit 11 runs with
-every id, Try step by step, what is real and what is mock, and the words. Every live run: [runs/README.md](runs/README.md). Test money only throughout: the Airwallex sandbox and Metal testnet.
+every id, Try step by step, what is real and what is mock, and the words. Every live run: [runs/README.md](runs/README.md). Test money only throughout: the Airwallex sandbox and Alta testnet.
 
 ## What ran live, one id per rail
 
 The Kit 11 scenario, run live on 3 November, and the separate runs after it:
 
-| Rail | What ran live (Airwallex sandbox, Metal testnet, test money) | One id |
+| Rail | What ran live (Airwallex sandbox, Alta testnet, test money) | One id |
 |---|---|---|
 | Airwallex | Airwallex's own card controls declined an agent's EUR 45.00 purchase over its EUR 30.00 limit (`LIMIT_EXCEEDED`; the charge simulated through the sandbox), in the Airwallex-only run of 7 November | card transaction [`01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38`](demo/airwallex-run.json) |
-| Metal | Purchase #24, over the agent's mandate, refused on chain in the main run of 3 November, after we switched off our own check once to test the chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
+| Alta | Purchase #24, over the agent's mandate, refused on chain in the main run of 3 November, after we switched off our own check once to test the chain | [`0x2e92f9cb…1871`](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871) |
 | Visa | Visa Intelligent Commerce (VIC) through Airwallex's Airi wallet. Latest live run, 13 November: 2 paid (1 after Face ID), 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([record](runs/2026-11-13-vic-4.md)). First run, 7 November: a scripted purchase with no model call, confirmed by a person's passkey tap in Airi; above Purser's limit it ran only after the CFO's Face ID. TAP is an extra ([note](submission/long-description.md#visa)) | PaymentIntent [`int_sgpvzc9hjhnxvxc26ie`](runs/2026-11-07-vic-1.md) |
 | Claude | Three tool-use agents made all 24 of the main run's decisions, with 0 fallbacks; routine payments are code | request [`req_011Cgfuhfh5iBjb9NbobuahB`](demo/main-run.json) |
-| x402 | The seller checks each payment before it does the work and settles it on Metal before it sends the answer; the protocol leaves the payer's budget to the payer, and in Purser that is the CFO's signed limit. 41 sales among the main run's 86 test-USD payments, each its own transaction | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7) |
+| x402 | The seller checks each payment before it does the work and settles it on Alta before it sends the answer; the protocol leaves the payer's budget to the payer, and in Purser that is the CFO's signed limit. 41 sales among the main run's 86 test-USD payments, each its own transaction | first sale [`0x2cc5a16e…2fc7`](https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7) |
 
-**The live runs of 12 and 13 November** (sandbox and testnet, test money; [all runs](runs/README.md)): on Metal, a passkey account whose two owners (the CFO's passkey and a labelled virtual test passkey) signed 2 of 2, and Metal refused a payment over the mandate's cap on chain ([record](runs/2026-11-12-faceid-onchain.md)); at Airwallex, a payout held `IN_APPROVAL` until a person approved it there, then PAID, settlement simulated ([record](runs/2026-11-12-airwallex-two-locks-paid.md)); an invoice token minted, financed and settled on Metal testnet, a prototype with a simulated financier ([record](runs/2026-11-12-tokenize.md)); the books in a Moneybird sandbox, 0 differences ([record](runs/2026-11-12-moneybird-sandbox.md)); and Try with Claude Haiku reading the invoice, on a simulated bank and a test passkey ([record](runs/2026-11-13-try-sample.json)).
+**The live runs of 12 and 13 November** (sandbox and testnet, test money; [all runs](runs/README.md)): on Alta, a passkey account whose two owners (the CFO's passkey and a labelled virtual test passkey) signed 2 of 2, and Alta refused a payment over the mandate's cap on chain ([record](runs/2026-11-12-faceid-onchain.md)); at Airwallex, a payout held `IN_APPROVAL` until a person approved it there, then PAID, settlement simulated ([record](runs/2026-11-12-airwallex-two-locks-paid.md)); an invoice token minted, financed and settled on Alta testnet, a prototype with a simulated financier ([record](runs/2026-11-12-tokenize.md)); the books in a Moneybird sandbox, 0 differences ([record](runs/2026-11-12-moneybird-sandbox.md)); and Try with Claude Haiku reading the invoice, on a simulated bank and a test passkey ([record](runs/2026-11-13-try-sample.json)).
 
 ## Where each judging criterion is proven
 
@@ -35,7 +35,7 @@ The Kit 11 scenario, run live on 3 November, and the separate runs after it:
 ```mermaid
 flowchart LR
   A["Claude agent<br/>proposes a payment"] --> P{"Purser's code<br/>within the CFO's policy?"}
-  P -- "yes" --> L["Pays on its own<br/>🔒 Airwallex card controls<br/>🔒 Metal mandate on chain"]
+  P -- "yes" --> L["Pays on its own<br/>🔒 Airwallex card controls<br/>🔒 Alta mandate on chain"]
   P -- "no" --> F["🔐 CFO's Face ID<br/>signs the SHA-256<br/>of the exact terms"]
   F --> X{"Executor re-hashes<br/>the terms"}
   X -- "one cent changed" --> N["Refused"]
@@ -54,7 +54,7 @@ flowchart LR
 </tr>
 <tr>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/runs"><img src="media/readme/runs.png" alt="Every live run, newest first, with its ids"></a><br/><b>Runs</b> · every live run and its ids</td>
-<td width="33%"><a href="https://kit11.max-31b.workers.dev/agents/sourcing"><img src="media/readme/agent.png" alt="The Sourcing agent: its Airwallex card, its Metal mandate, Claude's decisions"></a><br/><b>An agent</b> · card, mandate, every decision</td>
+<td width="33%"><a href="https://kit11.max-31b.workers.dev/agents/sourcing"><img src="media/readme/agent.png" alt="The Sourcing agent: its Airwallex card, its Alta mandate, Claude's decisions"></a><br/><b>An agent</b> · card, mandate, every decision</td>
 <td width="33%"><a href="https://kit11.max-31b.workers.dev/airwallex"><img src="media/readme/airwallex.png" alt="Airwallex: cards per agent, declines, SWIFT with the signed hash"></a><br/><b>Airwallex</b> · cards, declines, the signed hash</td>
 </tr>
 </table>
@@ -62,13 +62,13 @@ flowchart LR
 ## The proof, one sentence per partner
 
 - Airwallex (sandbox): the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, and all 3 agent cards carry the CFO's policy as Airwallex's own controls, read back from Airwallex. ([proof](https://kit11.max-31b.workers.dev/proof#airwallex))
-- Metal (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey). ([proof](https://kit11.max-31b.workers.dev/proof#metal))
+- Alta (testnet): a mandate on chain per agent; 86 payments, each its own transaction; purchase #24 refused on chain (mandate_cap_exceeded); the mandates replaced on chain by the owner key after the CFO's Face ID in Purser (four eyes; second approver a labelled test passkey). ([proof](https://kit11.max-31b.workers.dev/proof#metal))
 - Claude: all 24 decisions in the main run by Claude, 0 fallbacks; a reliability run (rel-1) found a fault in how the agents hand off a card raise, and after the fix the eval rebuilt from that moment now passes every run, and the next run (rel-1b) passed every step. ([proof](https://kit11.max-31b.workers.dev/proof#claude))
-- awx-1, a separate Airwallex-only run (7 November; sandbox, test money, 0 Metal calls): accepted, all seven checks passed in one attempt. Airwallex approved and declined the agents' cards itself (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`); the Sourcing agent (Claude Haiku) read the decline and asked the CFO for a raise instead of retrying; two invoices were paid by SWIFT after the CFO's Face ID (settlement simulated in the sandbox), each carrying the signed hash in Airwallex's own metadata. ([run](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money), [on the site](https://kit11.max-31b.workers.dev/airwallex#awx-1))
+- awx-1, a separate Airwallex-only run (7 November; sandbox, test money, 0 Alta calls): accepted, all seven checks passed in one attempt. Airwallex approved and declined the agents' cards itself (`LIMIT_EXCEEDED`, `MERCHANT_CATEGORY_NOT_ALLOWED`); the Sourcing agent (Claude Haiku) read the decline and asked the CFO for a raise instead of retrying; two invoices were paid by SWIFT after the CFO's Face ID (settlement simulated in the sandbox), each carrying the signed hash in Airwallex's own metadata. ([run](#the-airwallex-only-run-awx-1-7-november-sandbox-test-money), [on the site](https://kit11.max-31b.workers.dev/airwallex#awx-1))
 
 ## The main run (3 November)
 
-World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Metal testnet with test money, frozen commit `35e1cac`.
+World `main-1`, 11:16–11:33 UTC, on the Airwallex sandbox and Alta testnet with test money, frozen commit `35e1cac`.
 All 24 decisions by Claude (Sourcing on Haiku, Support on Sonnet, Treasury on Opus), 0 fallbacks. Max, the builder,
 plays the CFO and signed with a personal passkey (Face ID on a phone). The second approval (four eyes on P-0002, 2 of 2) came from a labelled
 virtual test passkey on the runner machine, pressed by our build tool, Claude Code, on the builder's go; in production the
@@ -80,10 +80,10 @@ Claude models. Log: [docs/runs/2026-11-03-main-run.md](runs/2026-11-03-main-run.
 
 **1. The price rise** ([watch](https://kit11.max-31b.workers.dev/replay?scene=1)). Stockline went from 0.02 to 0.04 a
 stock check, over the Sourcing mandate's 0.03 cap. We switched off our own check once to prove the chain holds the line:
-Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Metal refused it anyway; the
+Purser refuses an over-cap purchase before signing; with that check off for purchase #24, Alta refused it anyway; the
 refusal is recorded on chain: `mandate_cap_exceeded` at 11:23:27, tx
 `0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871` (11:23:33). Treasury's options came at 11:24:07,
-40 s after Metal's refusal and 34 s after that tx, within the same 20.00: option A (P-0002) raises Sourcing's cap to
+40 s after Alta's refusal and 34 s after that tx, within the same 20.00: option A (P-0002) raises Sourcing's cap to
 0.04 and keeps our price at 0.05; option B (P-0003) takes the same cap and raises our price to 0.07. The CFO signed A;
 after four eyes (the second signature from a test passkey, not a second person), both mandates were replaced on chain: Treasury `0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc` (11:26:54), Sourcing
 `0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790` (11:26:59).
@@ -107,16 +107,16 @@ Airwallex's simulation API (marked PAID 11:31:24, 6 s after Face ID). The Sourci
 asked for a card raise first (P-0006, EUR 30.00 → 46.00), the CFO approved it with Face ID, and Airwallex approved the
 TAP-signed EUR 45.00 purchase (authorization `01a1a12f-4113-7000-b76d-014677710007`).
 
-**16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
+**16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing.**
 The buy rule's 12: stock checks #25–#36. The Sourcing agent (Claude Haiku) set its buy rule; code applied it to each
-check while Stockline asked 0.04, over its 0.03 cap; nothing signed, no customer charged. Metal's 2: 1 over the mandate's cap (#24, its refusal
+check while Stockline asked 0.04, over its 0.03 cap; nothing signed, no customer charged. Alta's 2: 1 over the mandate's cap (#24, its refusal
 recorded in the tx above), 1 on a mandate that had just been replaced (#37, `mandate_revoked`, no tx of its own). The
 CFO's 1: P-0004, with Face ID. The planted instruction: a line aimed at the AI inside the dispute document, treated as
 data.\
 *Not counted (a separate TAP run, 2 November):* Airwallex declined EUR 45.00 over the card limit (`LIMIT_EXCEEDED`).
 
-**Payments:** 86 Metal payments + 1 card charge, all inside the limits with no approval at the time: 41 sales + 41
-supplier purchases + 3 refunds + 1 sweep on Metal, and 1 card charge at Airwallex. 14 of the 55 queries got an error and were not charged. `verify` passes,
+**Payments:** 86 Alta payments + 1 card charge, all inside the limits with no approval at the time: 41 sales + 41
+supplier purchases + 3 refunds + 1 sweep on Alta, and 1 card charge at Airwallex. 14 of the 55 queries got an error and were not charged. `verify` passes,
 `reconcile` checked 88 with 0 differences, and every one of the 110 money movements has an origin.
 
 </details>
@@ -136,7 +136,7 @@ merchant is ours.
 
 ## The Airwallex-only run, awx-1 (7 November; sandbox, test money)
 
-A separate world, Airwallex sandbox only, test money only, 0 Metal calls; accepted, all seven checks (a–g) passed in
+A separate world, Airwallex sandbox only, test money only, 0 Alta calls; accepted, all seven checks (a–g) passed in
 one attempt. The CFO signed all three proposals with Face ID on a personal phone. Log:
 [docs/runs/2026-11-07-awx-1.md](runs/2026-11-07-awx-1.md); record:
 [docs/demo/airwallex-run.json](demo/airwallex-run.json); on the site:
@@ -231,20 +231,20 @@ gives an agent a task of yours: Claude reads it, code applies the CFO's limits, 
 
 ## What is real, what is mock
 
-- **Live, in the main run:** the Airwallex sandbox calls and Metal testnet transactions above, the Claude decisions and
+- **Live, in the main run:** the Airwallex sandbox calls and Alta testnet transactions above, the Claude decisions and
   Max's passkey (Face ID on a phone). Test money only. The sandbox simulates a SWIFT transfer's last steps (SENT, PAID), the merchant's
-  card charge and the deposit that stands in for Metal earnings at Airwallex.
-- **On Metal testnet, checked against the chain on 5 November:** the 4 mandates bound at setup that morning and the
+  card charge and the deposit that stands in for Alta earnings at Airwallex.
+- **On Alta testnet, checked against the chain on 5 November:** the 4 mandates bound at setup that morning and the
   2 replacements; 86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep);
   1 refusal recorded on chain (#24, [tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871)).
-  No emulator and no clearing in this run. Not on Metal: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex
-  sandbox; the other 13 refused purchases (12 stopped by the buy rule the Sourcing agent set, applied by code; #37, refused by Metal against
+  No emulator and no clearing in this run. Not on Alta: the EUR licence (FX, SWIFT) and the card buy, on the Airwallex
+  sandbox; the other 13 refused purchases (12 stopped by the buy rule the Sourcing agent set, applied by code; #37, refused by Alta against
   its just-revoked mandate, with no transaction of its own) are in the ledger, not as transactions on chain.
 - **Run by us:** Summit Outfitters (the customer) and its agent, Stockline (the supplier), the TAP merchant.
 - **Replayed:** Proof and the replay at `/replay` on the hosted site, and `npm run judge` offline, play the main run's record; Home's hero plays the Airwallex-only run's record of 7 November, and its fourth step checks the owner's real signature of that payment in the visitor's browser.
-- **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Metal and Anthropic.
+- **Stand-ins:** the automated tests and the Scenario Lab (`/lab`) run on stand-ins for Airwallex, Alta and Anthropic.
 - **Your own test world:** `/try/sign` (live since 4 November 2026) runs each visitor's world on stand-in executors: no
-  payment reaches Airwallex or Metal. Real: your passkey's signature and the server's check of it, the Airwallex sandbox
+  payment reaches Airwallex or Alta. Real: your passkey's signature and the server's check of it, the Airwallex sandbox
   FX quote (read-only), and the Claude agents' calls, each labelled live, or labelled as a fallback when none answered.
 - **Live in the sandbox:** T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line ([record](runs/2026-11-10-t0-journal-sandbox.md)).
 - **Built, not yet live (stand-ins only):** the Cardputer hub push and gate (a fake hub in the tests), the emergency stop and `npm run smoke:sandbox`.
@@ -257,8 +257,8 @@ clearing under load (30 October): [docs/runs/](runs/) and [docs/metal-award.md](
 
 <details><summary>Mandate, x402, terms hash, four eyes</summary>
 
-- **Mandate:** an agent's on-chain spending permission on Metal: a cap per payment, a total budget, one payee, an end date.
-- **x402:** HTTP 402 "Payment Required" as a payment protocol (version 2). On the mandate route the seller checks each payment before it does the work and settles it on Metal before it sends the answer. The protocol leaves the payer's budget to the payer; in Purser that is the CFO's signed limit, checked before anything is signed.
+- **Mandate:** an agent's on-chain spending permission on Alta: a cap per payment, a total budget, one payee, an end date.
+- **x402:** HTTP 402 "Payment Required" as a payment protocol (version 2). On the mandate route the seller checks each payment before it does the work and settles it on Alta before it sends the answer. The protocol leaves the payer's budget to the payer; in Purser that is the CFO's signed limit, checked before anything is signed.
 - **Terms hash:** the SHA-256 of a proposal's exact terms; the CFO's Face ID signs that hash, and nothing else runs.
 - **Four eyes:** above the CFO's threshold, two approvers must each sign with their own passkey (in production two
   different people; in the main run the second signature came from a test passkey, not a second person); the proposer never approves.
