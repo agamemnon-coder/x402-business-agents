@@ -15,6 +15,7 @@ import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
+import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
 import { t0CloseLine } from "./t0Close.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
@@ -365,7 +366,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 // The page's frame in English (the default); the script re-words it in Dutch when the person chose Dutch.
 const BODY = `
 ${siteHeader(null)}
-<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
+<div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
 <span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</span><span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
@@ -1475,7 +1476,7 @@ async function route(){
     const m=/^\/invoices\/([^/]+)$/.exec(path);
     if(m)return await invoiceView(decodeURIComponent(m[1]));
     // 14 Nov: Invoices has its tab back (the invoices only); Books holds the ledger, the VAT overview and the exports.
-    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
+    const pages={'/overview':overviewView,'/agents':agentsView,'/invoices':invoicesView,'/books':booksView,'/transactions':transactionsView,'/tokenisation':tokensView,'/airwallex':airwallexView,'/settings':settingsView,...(CFG.engine?{'/archive':archiveView}:{})};
     if(!pages[path])return view().replaceChildren(el('div','expired',[el('h1','',t('cs.not_here')),(()=>{const a=el('a','btn',t('cs.back_overview'));a.href='#/overview';return a})()]));
     await pages[path](q);shell();
   }catch(e){if(e instanceof Expired)return;view().replaceChildren(note(t('cs.load_failed',{error:e.message}),'bad'))}
@@ -1692,7 +1693,7 @@ const nonce = () => {
 const T0_CLOSE = t0CloseLine();
 
 /** The keys the console's script and HTML ask for by name: always in its catalogue, whatever the prefix rules say. */
-const USED = keysUsedIn(SCRIPT + UI_JS + BODY);
+const USED = keysUsedIn(SCRIPT + UI_JS + AWX_UI_JS + BODY);
 
 /** The console's page: one document, its config in a meta tag (the origin, the passkey RP id, the mail domain, whether the cloud runs an engine). */
 export function consolePage(n: string, cfg: { origin: string; rpId: string; mailDomain: string; engine?: boolean }): string {
@@ -1700,13 +1701,13 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const keep = (k: string) => consoleKeys(k as keyof typeof MESSAGES.en) || USED.has(k);
   const cat = (lang: "nl" | "en") => ({ lang, m: Object.fromEntries(Object.entries(MESSAGES[lang]).filter(([k]) => keep(k))), data: lang === "nl" ? DATA_NL : {} });
   const catalogues = JSON.stringify({ nl: cat("nl"), en: cat("en") }).replace(/</g, "\\u003c");
-  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS);
+  const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS);
   return `<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title>
-<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}</style></head><body class="signed-out">
+<style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;
