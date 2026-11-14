@@ -23,7 +23,7 @@ const PAGE_CALLS: [string, string][] = [
   ["GET", "/v1/engine/suppliers"], ["POST", "/v1/engine/compose"], ["GET", "/v1/engine/invoices"], ["POST", "/v1/engine/invoices/AP-0001/pay"],
   ["GET", "/v1/engine/proposals/P-0001"], ["GET", "/v1/engine/proposals/P-0001/terms"], ["POST", "/v1/engine/proposals/P-0001/approve"],
   ["POST", "/v1/engine/proposals/P-0001/pay"], ["POST", "/v1/engine/proposals/P-0001/retry"], ["POST", "/v1/engine/passkey/start"],
-  ["POST", "/v1/engine/passkey/finish"], ["GET", "/v1/engine/vault"], ["GET", "/v1/engine/vault/file?path=a.pdf"], ["GET", "/v1/engine/export"],
+  ["POST", "/v1/engine/passkey/finish"], ["GET", "/v1/engine/vault"], ["GET", "/v1/engine/vault/file?path=a.pdf"], ["GET", "/v1/engine/export"], ["GET", "/v1/engine/export.pdf"],
   ["GET", "/v1/payments?cursor=x"], ["GET", "/v1/transactions"], ["GET", "/v1/ledger/entries"],
 ];
 
@@ -49,7 +49,7 @@ describe("the paths the site passes to purser-try", () => {
     const html = tryPage("n", { origin: "https://x.test", rpId: "x.test" });
     const named = [...new Set([...html.matchAll(/['"`(](\/(?:v1|try|assets)\/?[A-Za-z0-9_./-]*)/g)].map((m) => m[1]!))].sort();
     expect(named).toEqual([
-      "/assets/inter.woff2", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/invoices", "/v1/engine/invoices/",
+      "/assets/inter.woff2", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
       "/v1/engine/passkey/finish", "/v1/engine/passkey/start", "/v1/engine/proposals/", "/v1/engine/samples", "/v1/engine/samples/", "/v1/engine/suppliers",
       "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/session", "/v1/try/start",
     ]);
