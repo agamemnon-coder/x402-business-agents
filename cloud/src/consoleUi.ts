@@ -115,6 +115,19 @@ async function agentsView(){
 }
 
 // --- Books --------------------------------------------------------------------------------------------------------
+// The independent ledger check (partner review, 14 Nov): books close only when T:0 agrees. The numbers come from the
+// page's config (cloud/src/t0Close.ts computes them from the recorded read-back); the words from the catalogue.
+function t0CloseCard(){
+  const c=CFG.t0Close;if(!c)return null;
+  const dl=el('a','',t('cs.books.t0_download',{n:c.entries}));dl.href=c.download;dl.rel='noopener';dl.target='_blank';
+  const pg=el('a','',t('cs.books.t0_page'));pg.href=c.page;pg.rel='noopener';pg.target='_blank';
+  return el('section','card panel t0close'+(c.agrees?'':' bad'),[
+    el('h2','',[ic(c.agrees?'circle-check':'triangle-alert'),t('cs.books.t0_h')]),
+    el('p','says',c.agrees?t('cs.books.t0_agrees',{n:c.entries}):t('cs.books.t0_differs',{n:c.differences})),
+    !c.agrees&&c.first?el('p','sub mono',c.first):null,
+    el('p','',t('cs.books.t0_rule')),
+    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})),
+    el('p','links',[dl,pg])])}
 // One currency's balance sheet: liabilities plus equity (capital and this year's result) against assets, in cents.
 const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0);return {left:v.assets_cents||0,right,balanced:(v.assets_cents||0)===right}};
 // Ledger entries by posting date, then number, newest first.
@@ -131,7 +144,7 @@ async function booksView(){
   // (print styles leave out the menus and buttons). No PDF code in the Worker: only the engine may carry it.
   const pdfBtn=btn(t('cs.books.pdf'),'primary','download');
   pdfBtn.onclick=()=>{if(typeof drawAll==='function')drawAll();setTimeout(()=>window.print(),50)};let drawAll=null;
-  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),el('p','fine printhint',t('cs.books.pdf_hint')),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
+  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),el('p','fine printhint',t('cs.books.pdf_hint')),t0CloseCard(),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
@@ -313,6 +326,13 @@ async function tokensView(){
 `;
 
 export const UI_CSS = `
+.t0close { border-left: 4px solid var(--ok, #067647); display: grid; gap: 6px; margin-bottom: 16px; }
+.t0close.bad { border-left-color: var(--bad, #b42318); }
+.t0close h2 { display: flex; align-items: center; gap: 8px; }
+.t0close .says { font-weight: 650; font-size: 16px; margin: 0; }
+.t0close p { margin: 0; }
+.t0close .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.t0close .links a { display: inline-flex; align-items: center; min-height: 44px; }
 /* The CFO's pass (14 Nov): calm cards, one accent, numbers that settle, motion only when the person allows it. */
 .card.next.hero { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 20px; margin: 4px 0 16px; text-decoration: none; color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, #fff), #fff); }
 .card.next.hero:not(.act) { border-color: var(--border); background: #fff; }

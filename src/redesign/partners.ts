@@ -35,6 +35,7 @@ import { VIC_FLOW_CSS, VIC_FLOW_ID, vicFlowBlock } from "./vicFlow.js";
 import { VIC_NETWORK_CSS, vicNetworkBlock, vicNetworkRecord } from "./vicNetwork.js";
 import { VIC_RULES_CSS, vicRulesBlock } from "./vicRules.js";
 import { VISA_ASKS_ID, VISA_MEETS_ID, VISA_RUNS3_ID, VISA_STORY_CSS, VISA_TAP_SECTION_HEADING, visaAsksHtml, visaMeetsHtml, visaNotYetHtml, visaReuseHtml, visaTapSectionHtml, visaThreeRunsHtml } from "./visaStory.js";
+import { VISA_CARD_SCENE_CSS, visaCardSceneHtml } from "./visaCardScene.js";
 import { VISA_OVERVIEW_CSS, VISA_OVERVIEW_ID, VISA_SUMMARY_HEADING, VISA_TAP_ID, tapCardHtml, visaOverviewBlock } from "./visaOverview.js";
 import { tokenizeRun, tokenizeRunBlock, type TokenizeRun } from "./tokenizeRun.js";
 import { METAL_ONCHAIN_CSS, faceIdOnChainSection } from "./metalOnchain.js";
@@ -93,6 +94,7 @@ ${READBACK_CSS}
 ${AIRI_CSS}
 ${VIC_FLOW_CSS}
 ${VISA_OVERVIEW_CSS}
+${VISA_CARD_SCENE_CSS}
 ${VIC_NETWORK_CSS}
 ${VIC_RULES_CSS}
 ${CARD_DATA_CSS}
@@ -330,6 +332,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
   ${visaAsksHtml()}
   ${visaMeetsHtml()}
   ${visaReuseHtml()}
+  ${visaCardSceneHtml()}
   ${vic3 ? visaFlowHtml(vic3) : ""}
   ${visaThreeRunsHtml()}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}

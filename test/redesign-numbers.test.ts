@@ -105,6 +105,9 @@ const visibleText = (html: string) => html
   // hashes are checked against docs/runs/2026-11-13-vic-4.json in test/visa-hero.test.ts.
   .replace(/The agent asks to buy[\s\S]*?read-backs equal to the signed hash \(SHA-256 [0-9a-f]{64}\)\./g, " ")
   .replace(/As reported by the Airwallex sandbox[\s\S]*?airwallex-vic-payment-intents-[\d-]+\.json/g, " ")
+  // /visa's card-rail scene (partner review, 14 Nov): its amounts, ids and codes are read from docs/runs/2026-11-14-vic-5.json
+  // and checked against it in test/partner-controls.test.ts.
+  .replace(/Agent pays with an Airi credential \(test card[\s\S]*?its tests/g, " ")
   // The CFO's policy next to Visa's published VIC rules (12 Nov, folded on /visa): Purser's figures from the two Airi
   // records and the code's constants, Visa's from its own quoted words; all checked in test/vic-rules.test.ts.
   .replace(/The CFO's policy next to Visa's VIC rules[\s\S]*?developer\.visa\.com, read \d{1,2} \w{3} \d{4}\./g, " ")
