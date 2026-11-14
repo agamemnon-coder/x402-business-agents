@@ -15,6 +15,7 @@ type Kit = {
   ORDER: string[]; clock: (ms: number) => string; mark: (p: unknown, s: string) => string[];
   elapsed: (t0: unknown, t1: unknown, now: number) => number | null;
   score: (p: unknown, t0: unknown, t1: unknown, now: number) => { steps: number; refused: boolean; ms: number | null };
+  oneCent: (signed: unknown, sent: unknown) => boolean;
   shareText: (R: typeof RUN, sc: { steps: number; refused: boolean; ms: number | null }) => string;
   proofHref: (base: string, map: Record<string, string>, screen: string) => string | null;
   tipOf: (G: typeof GUIDE, screen: string, refused: boolean) => string | null;
@@ -50,13 +51,27 @@ describe("the steps passed", () => {
     expect(kit.mark(["nonsense", "pay"], "")).toEqual(["pay"]);
   });
   it("scores the steps, the refusal and the time; never as a fraction", () => {
-    expect(kit.score(["read", "check", "sign", "pay", "refuse"], 1000, 103_000, 0)).toEqual({ steps: 5, refused: true, ms: 102_000 });
+    // The refusal is its own line, never counted with the steps.
+    expect(kit.score(["read", "check", "sign", "pay", "refuse"], 1000, 103_000, 0)).toEqual({ steps: 4, refused: true, ms: 102_000 });
     expect(kit.score(null, null, null, 0)).toEqual({ steps: 0, refused: false, ms: null });
     for (const v of Object.values(RUN)) expect(v).not.toMatch(/\d+\s*\/\s*\d+|\bof \d/);
   });
   it("shares what happened, the time only when there is one, the cent line only when it was refused", () => {
     expect(kit.shareText(RUN, { steps: 4, refused: false, ms: 62_000 })).toBe("I signed an invoice with my passkey on Purser, on test money. My run: 1:02.");
     expect(kit.shareText(RUN, { steps: 5, refused: true, ms: null })).toBe("I signed an invoice with my passkey on Purser, on test money. Then I changed one cent: refused.");
+  });
+});
+
+describe("the one-cent change", () => {
+  it("is the amount alone moved by one cent; any other change is not called one", () => {
+    const signed = { amount: "1850.00", beneficiary_name: "Bergtex Textil GmbH", iban_last4: "3000" };
+    expect(kit.oneCent(signed, { ...signed, amount: "1849.99" })).toBe(true);
+    expect(kit.oneCent(signed, { ...signed, amount: "1850.01" })).toBe(true);
+    expect(kit.oneCent(signed, { ...signed, amount: "1849.00" })).toBe(false);
+    expect(kit.oneCent(signed, { ...signed, iban_last4: "9999" })).toBe(false);
+    expect(kit.oneCent(signed, { ...signed, amount: "1849.99", beneficiary_name: "Someone else" })).toBe(false);
+    expect(kit.oneCent(signed, { ...signed, amount: "1849,99" })).toBe(false);
+    expect(kit.oneCent(null, signed)).toBe(false);
   });
 });
 

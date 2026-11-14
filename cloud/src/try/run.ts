@@ -49,12 +49,17 @@ const runKit=(()=>{
   };
   const stamp=(t)=>typeof t==='number'&&isFinite(t)&&t>0;
   const elapsed=(t0,t1,now)=>stamp(t0)?Math.max(0,(stamp(t1)?t1:now)-t0):null;
-  const score=(passed,t0,t1,now)=>{const p=mark(passed,'');return {steps:p.length,refused:p.indexOf('refuse')>=0,ms:elapsed(t0,t1,now)}};
+  // The steps the visit passed (read, checked, signed, paid); the one-cent refusal is its own line, never counted twice.
+  const score=(passed,t0,t1,now)=>{const p=mark(passed,'');return {steps:p.filter((x)=>x!=='refuse').length,refused:p.indexOf('refuse')>=0,ms:elapsed(t0,t1,now)}};
+  // Whether a refused payment differed from the signed terms only by one cent of the amount.
+  const cents=(v)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(v));return m?Number(m[1])*100+Number(m[2]):null};
+  const oneCent=(signed,sent)=>{if(!signed||!sent)return false;const a=cents(signed.amount),b=cents(sent.amount);
+    return a!==null&&b!==null&&Math.abs(a-b)===1&&String(signed.beneficiary_name)===String(sent.beneficiary_name)&&String(signed.iban_last4)===String(sent.iban_last4)};
   const shareText=(R,sc)=>[R.shareText,sc.ms===null?'':R.shareTime.replace('{time}',clock(sc.ms)),sc.refused?R.shareCent:''].filter(Boolean).join(' ');
   const proofHref=(base,map,screen)=>Object.prototype.hasOwnProperty.call(map,screen)?base+'#'+map[screen]:null;
   const tipOf=(G,screen,refused)=>screen==='pay'&&refused?G.tips.refused:Object.prototype.hasOwnProperty.call(G.tips,screen)?G.tips[screen]:null;
   const oneCentLess=(amount)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(amount));if(!m)return null;const c=Number(m[1])*100+Number(m[2])-1;return c<0?null:Math.floor(c/100)+'.'+String(c%100).padStart(2,'0')};
-  return {ORDER,clock,mark,elapsed,score,shareText,proofHref,tipOf,oneCentLess};
+  return {ORDER,clock,mark,elapsed,score,oneCent,shareText,proofHref,tipOf,oneCentLess};
 })();
 `;
 
@@ -62,7 +67,7 @@ const runKit=(()=>{
 export const START_JS = String.raw`
 // 0 Start (14 Nov, owner): eyebrow, headline, the line under it, the three steps and the one-cent refusal as a picture,
 // the button with the trailer beside it, the small print, then the partners. The layout is CSS (START_CSS).
-screen('start',{heading:C.start.heading,band:false,draw(box){
+screen('start',{heading:()=>/iPhone|iPad|iPod/.test(navigator.userAgent||'')?C.start.headingFace:C.start.heading,band:false,draw(box){
   const T=C.start;box.classList.add('start');
   const eyebrow=el('p','eyebrow',[el('span','dot'),T.eyebrow]);
   const text=el('p','lede',T.text);
@@ -134,7 +139,8 @@ function runScore(){
   if(!sc.steps&&sc.ms===null)return null;
   const tile=(v,l,cls)=>el('li','tile'+(cls?' '+cls:''),[el('span','v',v),el('span','l',l)]);
   const tiles=el('ul','tiles');
-  if(sc.ms!==null)tiles.append(tile(runKit.clock(sc.ms),R.time));
+  // A visit left open for hours is not a run time: shown up to two hours only.
+  if(sc.ms!==null&&sc.ms<7200000)tiles.append(tile(runKit.clock(sc.ms),R.time));
   tiles.append(tile(String(sc.steps),R.steps));
   if(sc.refused)tiles.append(tile(icon('circle-check',24),R.refused,'ok'));
   else if(S.proposal&&S.proposal.id){const t=el('button','link cent',R.tryCent);t.type='button';t.addEventListener('click',()=>show('pay'));tiles.append(el('li','tile go',t))}
@@ -143,7 +149,7 @@ function runScore(){
   share.addEventListener('click',async()=>{
     const url=location.origin+location.pathname,text=runKit.shareText(R,runKit.score(S.passed,S.t0,S.t1,Date.now()));
     if(typeof navigator.share==='function'&&matchMedia('(pointer: coarse)').matches){
-      try{await navigator.share({title:'Purser',text,url});return}catch(e){if(e&&e.name==='AbortError')return}
+      try{await navigator.share({title:R.shareTitle,text,url});return}catch(e){if(e&&e.name==='AbortError')return}
     }
     let ok=false;try{await navigator.clipboard.writeText(text+' '+url);ok=true}catch(e){}
     said.hidden=false;said.textContent=ok?R.copied:url;
@@ -169,31 +175,38 @@ const tour=(()=>{
   // The control a screen's tip means: its main button, or the try-to-cheat link after paid; none once refused.
   const target=()=>{
     const s=S.screen;
-    if(s==='books')return $('#main .link.cheat');
+    // The control must be on screen (the try-to-cheat link waits in a hidden tail until Paid's blocks are drawn).
+    const shown=(n)=>n&&n.offsetParent!==null?n:null;
+    if(s==='books')return shown($('#main .link.cheat'))||shown($('#main .btn.primary:not([disabled])'));
     if(s==='pay'&&refusedNow())return null;
     if(s==='company')return $('#main .score');
-    return $('#main .btn.primary:not([disabled])');
+    return shown($('#main .btn.primary:not([disabled])'));
   };
-  const light=(t)=>{if(lit&&lit!==t)lit.classList.remove('tour-hl');lit=t;if(t)t.classList.add('tour-hl')};
+  const light=(t)=>{if(lit===t)return;if(lit)lit.classList.remove('tour-hl');lit=t;if(t)t.classList.add('tour-hl')};
+  // After Next, keyboard focus comes back to Next once the page has answered (show() puts it on the new heading).
+  let refocus=false;
   function update(){
     if(!on)return;
     const s=S.screen,words=runKit.tipOf(G,s,refusedNow());
     card.hidden=!words;if(!words){light(null);return}
-    tip.textContent=words;
+    if(tip.textContent!==words)tip.textContent=words;
     const at=C.steps.order.indexOf(s);n.textContent=at>=0?' · '+(at+1):'';
     const t=target();light(t);
     const last=s==='company';next.hidden=last;
     next.disabled=!(t||(s==='pay'&&refusedNow()));
+    if(refocus&&!next.disabled&&!next.hidden&&document.activeElement!==next){refocus=false;next.focus({preventScroll:true})}
   }
   next.addEventListener('click',()=>{
     const s=S.screen,t=target();
+    refocus=true;
     if(s==='pay'&&refusedNow()){show('company');return}
     if(s==='pay'&&t){
       // One cent less than what was signed, as a person would type it, then Pay.
       const f=$('#main .screen.pay input');const v=f&&runKit.oneCentLess(normAmount(f.value));
       if(f&&v){f.value=v;f.dispatchEvent(new Event('input',{bubbles:true}))}
     }
-    if(t){t.scrollIntoView({block:'center',behavior:'smooth'});t.click()}
+    let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
+    if(t){t.scrollIntoView({block:'center',behavior:calm?'auto':'smooth'});t.click()}
   });
   end.addEventListener('click',()=>{on=false;light(null);card.remove()});
   new MutationObserver(update).observe($('#main'),{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden']});
@@ -217,7 +230,7 @@ body:has(.screen.start) main { max-width: 600px; padding-top: 22px; padding-bott
 body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-size: 33px; line-height: 1.08; letter-spacing: -.03em; font-weight: 780; text-wrap: balance; animation: rise .5s cubic-bezier(.2,.7,.2,1) .05s both; }
 .start .eyebrow { grid-area: eyebrow; justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 5px 12px 5px 10px; border-radius: 999px;
   background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); color: var(--muted); font-size: 13px; font-weight: 600; animation: rise .5s cubic-bezier(.2,.7,.2,1) both; }
-.start .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
+.start .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .start .lede { grid-area: lede; margin: 0 0 18px; color: var(--muted); font-size: 16.5px; line-height: 1.5; text-wrap: pretty; animation: rise .5s cubic-bezier(.2,.7,.2,1) .1s both; }
 .start .flow { grid-area: flow; list-style: none; margin: 0 0 18px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .15s both; }
 .start .fs { position: relative; display: grid; gap: 6px; align-content: start; padding: 12px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
@@ -227,13 +240,14 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .start .fs .fx { display: grid; gap: 2px; min-width: 0; }
 .start .fs .fn { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14.5px; }
 .start .fs .num { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--sunken); color: var(--muted); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.start .fs .fl { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+.start .fs .fl { color: var(--muted); font-size: 12.5px; line-height: 1.35; text-wrap: balance; }
 .start .fs.fend { grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: center; padding: 10px 12px; background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); box-shadow: none;
   animation: fsend 7.2s ease-in-out infinite; }
 .start .fs.fend .fi { width: 30px; height: 30px; border-radius: 9px; background: color-mix(in srgb, var(--bad) 14%, var(--surface)); color: var(--bad); }
 .start .fs.fend .fn { color: var(--bad); font-size: 14px; }
-@keyframes fslit { 0%, 4% { border-color: var(--border); } 10%, 30% { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } 42%, 100% { border-color: var(--border); } }
-@keyframes fsend { 0%, 44% { opacity: .45; transform: none; } 50% { opacity: 1; transform: translateX(-5px); } 54% { transform: translateX(4px); } 58% { transform: translateX(-2px); } 62%, 94% { opacity: 1; transform: none; } 100% { opacity: .45; } }
+@keyframes fslit { 0%, 2% { border-color: var(--border); } 5%, 15% { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), var(--shadow); } 19%, 100% { border-color: var(--border); } }
+/* The refusal is always readable: only a shake and its border move, after the three steps have lit. */
+@keyframes fsend { 0%, 50% { transform: none; border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } 53% { transform: translateX(-5px); border-color: var(--bad); } 56% { transform: translateX(4px); } 59% { transform: translateX(-2px); } 62%, 85% { transform: none; border-color: var(--bad); } 100% { border-color: color-mix(in srgb, var(--bad) 40%, var(--border)); } }
 .start .cta { grid-area: cta; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; animation: rise .55s cubic-bezier(.2,.7,.2,1) .2s both; }
 .start .cta .btn.big { margin: 0; width: 100%; min-height: 54px; box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--accent) 70%, transparent); transition: transform .15s ease, box-shadow .15s ease; }
 .start .cta .btn.big:hover { transform: translateY(-1px); box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--accent) 80%, transparent); }
@@ -247,13 +261,13 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .start .logos { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 /* The official files on white tiles in both themes (their marks are dark; docs/assets/logos/SOURCES.md). */
 .start .logos .tile { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid #e3e6ec; color: #0b1220; font-size: 12.5px; font-weight: 650; }
-.start .logos .tile.tname { background: var(--surface); border-color: var(--border); color: var(--text); }
+.start .logos .tile.tname { background: #fff; border-color: #e3e6ec; color: #0b1220; }
 .start .logos .lg { display: block; width: auto; height: 16px; }
 .start .logos .lg-alta { height: 20px; }
 .start .logos .was { color: #586174; font-size: 11.5px; font-weight: 600; }
 .start .partners .pn { margin: 10px 0 0; color: var(--faint); font-size: 11.5px; }
 @media (min-width: 1024px) {
-  body:has(.screen.start) main { max-width: 1180px; min-height: calc(100vh - 65px); min-height: calc(100svh - 65px); padding: 40px 48px 36px; align-content: center;
+  body:has(.screen.start) main { max-width: 1180px; padding: 72px 48px 40px; align-content: start;
     grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); column-gap: 72px;
     grid-template-areas: "eyebrow flow" "h1 flow" "lede flow" "cta flow" "fine flow" "partners partners"; }
   body:has(.screen.start) main > h1 { font-size: 54px; margin: 20px 0 16px; }
@@ -276,6 +290,7 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 /* The band's clock and "Same step, live" (screens after the start). */
 .band .clock { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .band .bx { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.band:not(:has(.same)) .bx { margin-left: 8px; }
 .band .bx:empty { display: none; }
 .band .same { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; text-decoration: none; white-space: nowrap; }
 /* The finish's score. */

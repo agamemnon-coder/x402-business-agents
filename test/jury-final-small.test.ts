@@ -32,8 +32,9 @@ describe("final jury: small fixes", () => {
 describe("/try's first screen", () => {
   it("says in the headline what the visit does, and that any passkey works, in words that hold on every device", async () => {
     const { START } = await import("../cloud/src/tryCopy.js");
-    // 14 Nov (owner): "Face ID" in the headline is the iPhone's word; the third step says any passkey works.
-    expect(START.heading).toBe("Sign an invoice with your Face ID. Then change one cent.");
+    // 14 Nov (review): "your passkey" holds on every device; "Face ID" only where the device is an iPhone or iPad.
+    expect(START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
+    expect(START.headingFace).toBe("Sign an invoice with your Face ID. Then change one cent.");
     expect(START.eyebrow).toBe("Hands-on · about 2 minutes");
     expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You sign"]);
     expect(START.flow[2]!.line).toBe("Face ID or any passkey.");

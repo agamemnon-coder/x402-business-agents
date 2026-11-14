@@ -1154,7 +1154,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
-    if(o==='refused'){intro.hidden=true;S.passed=runKit.mark(S.passed,'refuse');save();const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
+    // The score's "one-cent change refused" only when the amount alone moved by one cent (review, 14 Nov).
+    if(o==='refused'){intro.hidden=true;if(runKit.oneCent(T.terms,sent)){S.passed=runKit.mark(S.passed,'refuse');save()}const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
     if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}

@@ -31,7 +31,9 @@ export const BAND = {
  */
 export const START = {
   eyebrow: "Hands-on · about 2 minutes",
-  heading: "Sign an invoice with your Face ID. Then change one cent.",
+  /** The headline says "your passkey" (true on every device); on an iPhone or iPad, where it is Face ID, headingFace. */
+  heading: "Sign an invoice with your passkey. Then change one cent.",
+  headingFace: "Sign an invoice with your Face ID. Then change one cent.",
   text: "Purser refuses it: your signature covers the exact terms.",
   /** The three steps as a picture, each a word and one short line; then what a one-cent change gets. */
   flow: [
@@ -70,7 +72,7 @@ export const SAME_STEP = { label: "Same step, live" };
 export const RUN = {
   clock: "Your run time",
   head: "Your run",
-  time: "start to finish",
+  time: "your whole visit",
   steps: "steps passed",
   refused: "one-cent change refused",
   tryCent: "Try the one-cent change",
@@ -79,6 +81,7 @@ export const RUN = {
   /** The text shared with the link (not on the page): the time line with the run's time, the cent line only when it was refused. */
   shareText: "I signed an invoice with my passkey on Purser, on test money.",
   shareTime: "My run: {time}.",
+  shareTitle: "Purser",
   shareCent: "Then I changed one cent: refused.",
 };
 
@@ -94,7 +97,7 @@ export const GUIDE = {
   tips: {
     start: "Start a test company of your own. Nothing real moves.",
     invoice: "Pick a sample invoice and file it.",
-    work: "Agents read it, Purser's code checks it. Then pay it.",
+    work: "Agents read it, Purser's code checks it. Next takes the step it offers.",
     approve: "Sign the exact terms with Face ID or your passkey.",
     books: "Paid with test money. Now try to cheat: change what you signed.",
     pay: "Next changes the amount by one cent and asks to pay.",
@@ -487,6 +490,8 @@ export const VISIBLE = {
     [START.eyebrow, START.heading, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.starting, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
     [START.eyebrow, START.heading, START.failed, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
     [START.eyebrow, START.heading, START.runs, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
+    // On an iPhone or iPad the headline says Face ID (headingFace), the same count.
+    [START.eyebrow, START.headingFace, START.text, ...START.flow.flatMap((f) => [f.name, f.line]), START.flowEnd, START.button, START.trailer, START.fine, START.worksWith, START.formerly, START.visa, START.runs_note],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -624,7 +629,7 @@ export const VISIBLE = {
 // picture with a word each, the one-cent refusal, the trailer link and the partners' logos with "No endorsement implied"
 // ("start 0" to "start 3", +15 to +20). The finish adds the run's score and Share ("company 0" to "company 3", +13 each);
 // "company 4" is the score before the one-cent change, its link in the refusal's place. Each pinned at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 80, "start 1": 76, "start 2": 81, "start 3": 75, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "start 4": 80, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

@@ -243,7 +243,7 @@ describe("the copy", () => {
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "company 4", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "start 4", "pay 7", "pay 8", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "company 4", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
@@ -277,7 +277,8 @@ describe("the copy", () => {
     expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
     expect(COPY.BAND.claudeLive).toBe("Claude reads live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
-    expect(COPY.START.heading).toBe("Sign an invoice with your Face ID. Then change one cent.");
+    expect(COPY.START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
+    expect(COPY.START.headingFace).toBe("Sign an invoice with your Face ID. Then change one cent.");
     expect(COPY.START.button).toBe("Start with a test company");
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");
