@@ -159,7 +159,7 @@ describe("/docs: docs and API", () => {
     expect(repoLinks(api)).toEqual([{ file: "docs/cloud.md", anchor: "the-api" }, { file: "cloud/src/app.ts", anchor: "" }]);
     // The other cards are the same.
     for (const id of ["agent-api", "payments", "offline"]) expect(card(set, id)).toBe(card(html, id));
-    expect(visibleWords(set)).toBeLessThanOrEqual(190); // 14 Nov: the demo's OpenAPI link is in sight then (187 as built)
+    expect(visibleWords(set)).toBeLessThanOrEqual(190); // 14 Nov: the demo's OpenAPI link is in sight then (188 as built)
     // Only an https address is linked; anything else is an error where the page is built.
     expect(() => docsPage({ cloudDemoUrl: "javascript:alert(1)" })).toThrow();
     expect(() => docsPage({ cloudDemoUrl: "http://demo.example.test" })).toThrow();
@@ -193,11 +193,15 @@ describe("/docs: docs and API", () => {
   // 245 since 13 Nov (owner): the "Connect your AI" card, its sentence, the demo token and its link (35 words). 280 since
   // the jury the same day: Purser Cloud as a guest in the card, its link, and its steps with Claude folded (274 as built).
   // 185 since 14 Nov (Max: "so much text for docs, it should be a bit less and more clear and concrete"): one promise
-  // per card, the values as chips, the tools as a grid, a five-step drawing; the rest folded (181 as built, from 274).
+  // per card, the values as chips, the tools as a grid, a five-step drawing; the rest folded (184 as built, from 274).
   it("draws the path from your AI to the rails, gives each value to paste a copy button, and names the AI clients as chips", () => {
     expect(html).toMatch(/<ol class="pchain n5" aria-label="From your AI to the rails">/);
     const steps = [.../<ol class="pchain n5"[\s\S]*?<\/ol>/.exec(html)![0].matchAll(/<b>([^<]+)<\/b>/g)].map((m) => decode(m[1]!));
     expect(steps).toEqual(["Your AI", "MCP", "Purser", "CFO's Face ID", "The rails"]);
+    // The review of 14 Nov: a propose-scoped token files a payment, and below the limit no Face ID is asked.
+    expect(/<ol class="pchain n5"[\s\S]*?<\/ol>/.exec(html)![0]).toContain("<small>Reads, proposes</small>");
+    expect(/<ol class="pchain n5"[\s\S]*?<\/ol>/.exec(html)![0]).toContain("<small>Approves above the limit</small>");
+    expect(html).toMatch(/<button type="button" class="cp" data-copy="[^"]+" aria-label="Copy mcp: [^"]+" hidden>/);
     const copies = [...html.matchAll(/<button type="button" class="cp" data-copy="([^"]+)"/g)].map((m) => decode(m[1]!));
     expect(copies).toEqual([PURSER_CLOUD_MCP, DEMO_CONNECTOR_TOKEN, MCP_COMMAND, CLOUD_OPENAPI_PATH, "npm run judge"]);
     expect(WORKS_WITH).toEqual(["Claude", "Cursor", "VS Code", "Gemini CLI"]);

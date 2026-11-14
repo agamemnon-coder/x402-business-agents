@@ -103,9 +103,9 @@ export function readToolCount(): number {
 
 const code = (s: string) => `<code>${esc(s)}</code>`;
 const head = (ic: string, title: string, pill = "") => `<h2><span class="ic">${icon(ic, 22)}</span>${esc(title)}${pill ? `<span class="pill">${esc(pill)}</span>` : ""}</h2>`;
-/** A value to paste, with a copy button (Max, 14 Nov: "less text, more clear and concrete"). The button needs the
- *  clipboard, so without it (or without script) it is hidden and the value stays selectable. */
-const chip = (label: string, value: string) => `<span class="cchip"><span class="k">${esc(label)}</span>${code(value)}<button type="button" class="cp" data-copy="${esc(value)}" aria-label="${esc(`Copy ${label.toLowerCase()}`)}">${icon("copy", 15)}</button></span>`;
+/** A value to paste, with a copy button (Max, 14 Nov: "less text, more clear and concrete"). The button is rendered
+ *  hidden; the script shows it where there is a clipboard, so without script the value simply stays selectable. */
+const chip = (label: string, value: string) => `<span class="cchip"><span class="k">${esc(label)}</span>${code(value)}<button type="button" class="cp" data-copy="${esc(value)}" aria-label="${esc(`Copy ${label.toLowerCase()}: ${value}`)}" hidden>${icon("copy", 15)}</button></span>`;
 /** The AI clients the connector's guide names (docs/connect-claude.md), as small chips. */
 export const WORKS_WITH = ["Claude", "Cursor", "VS Code", "Gemini CLI"] as const;
 /**
@@ -117,15 +117,15 @@ export const TOOL_PURPOSE: Readonly<Record<string, string>> = {
   request_company_card: "Ask for a card",
   company_card: "Show my card",
   pay_with_card: "Pay a merchant",
-  request_limit_raise: "Ask a higher limit",
+  request_limit_raise: "Ask for a higher limit",
   ask_for_task_card: "A card per task",
 };
 /** The path of a request, from your AI to the rails: what /docs draws above the cards. */
 export const DOCS_FLOW: readonly ChainStep[] = [
   { icon: "bot", title: "Your AI", text: "Asks" },
-  { icon: "link-2", title: "MCP", text: "Read only" },
+  { icon: "link-2", title: "MCP", text: "Reads, proposes" },
   { icon: "database", title: "Purser", text: "Checks" },
-  { icon: "scan-face", title: "CFO's Face ID", text: "Approves" },
+  { icon: "scan-face", title: "CFO's Face ID", text: "Approves above the limit" },
   { icon: "landmark", title: "The rails", text: "Pay" },
 ];
 
@@ -138,7 +138,7 @@ ol.pchain.n5 { margin: 0; }
 .cchip .k { font-size: 13px; font-weight: 650; color: var(--muted); white-space: nowrap; }
 .cchip code { min-width: 0; overflow-wrap: anywhere; }
 .cchip .cp { flex: none; width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: 10px; display: inline-grid; place-items: center; }
-.cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); }
+.cchip .cp:hover { color: var(--text); } .cchip .cp.ok { color: var(--ok); } .cchip .cp[hidden] { display: none; }
 .ww { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--muted); }
 .ww li { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; }
 .ww li.l { padding: 0; border: 0; background: none; color: var(--muted); font-weight: 600; }
@@ -193,7 +193,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
   <article class="pc card" id="payments">${head("arrow-left-right", "Payments and webhooks")}
     <ul class="pl"><li>x402 payments between agents, on Alta's testnet. ${outLink(repoHref(X402_DOC, X402_ANCHOR), "x402 on Alta")}</li><li>Airwallex's sandbox webhooks, each signature checked. ${outLink(repoHref(WEBHOOKS_DOC, WEBHOOKS_ANCHOR), "Airwallex webhooks")}</li></ul></article>
   <article class="pc card wide" id="offline">${head("play", "Run it yourself, offline")}
-    <p class="promise">This site offline, from the recorded run, no keys.</p>
+    <p class="promise">The whole site offline, no keys.</p>
     <div class="chips">${chip("Run", JUDGE_COMMAND)}</div>
     <div class="links">${outLink(repoHref(README, README_ANCHOR), "The README")}</div></article>
 </div>`;

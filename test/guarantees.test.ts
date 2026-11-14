@@ -36,7 +36,7 @@ describe("What Purser guarantees", () => {
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
     const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<p class="pwatch">[\s\S]*?<\/p>\s*<ul class="ptiles"[\s\S]*?<\/ul>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
+    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<p class="pwatch">[\s\S]*?<\/p>\s*<p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
     expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
   });
 

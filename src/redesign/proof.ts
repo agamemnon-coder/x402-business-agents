@@ -571,7 +571,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
-  ${partnerStripHtml()}
+  ${partnerStripHtml(undefined, liveRunCount())}
   ${proofChainHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}

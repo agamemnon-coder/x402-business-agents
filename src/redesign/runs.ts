@@ -680,6 +680,7 @@ const FTP_CSS = `.runsp details.ftp { margin: 4px 0 14px; } .runsp details.ftp s
 /** The copy buttons (button.cp with data-copy): hidden without a clipboard. Shared with /docs (14 Nov). */
 export const COPY_JS = `document.querySelectorAll("button.cp").forEach(function (b) {
   if (!navigator.clipboard) { b.hidden = true; return; }
+  b.hidden = false;
   b.addEventListener("click", function () { navigator.clipboard.writeText(b.dataset.copy || "").then(function () { b.classList.add("ok"); setTimeout(function () { b.classList.remove("ok"); }, 1200); }); });
 });`;
 
