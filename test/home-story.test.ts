@@ -69,7 +69,7 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
-    expect(REASSURE).toEqual({ sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." });
+    expect(REASSURE).toEqual({ sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
     expect(ON).toMatch(new RegExp(`${PROOF_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
@@ -92,7 +92,7 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A4: one note line with the What's real? link; the only date in sight is the sample invoice's own due date", () => {
-    expect(FLOW_NOTE).toBe("One /try run, a test company's sample invoice, test money.");
+    expect(FLOW_NOTE).toBe("One /try run, a test company's sample invoice.");
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       expect(main.match(/<p class="hf-note">/g)).toHaveLength(1);

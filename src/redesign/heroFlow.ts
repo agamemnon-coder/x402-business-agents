@@ -28,7 +28,8 @@ export const FLOW = {
 /** The step labels above the card, a few words each. */
 export const FLOW_STEPS = ["Invoice", "Read", "Check", "Sign", "Paid"] as const;
 // Jury, 13 Nov: whose run it is (a test company in /try, not the main run's Northwind Outdoor); its day is in "What's real?".
-export const FLOW_NOTE = "One /try run, a test company's sample invoice, test money.";
+// Partner scan, 14 Nov: "test money" moved up to the line under the buttons (REASSURE), still said once on Home.
+export const FLOW_NOTE = "One /try run, a test company's sample invoice.";
 
 const LOOP = 12;
 

@@ -177,7 +177,8 @@ export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms
  * test company of your own on test money, deleted after 24 hours (its start page says "Test money · deleted after
  * 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
-export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
+// Partner scan, 14 Nov: Visa named in full in "Works with" takes a row on a phone, so "test money" moves up into this line.
+export const REASSURE = { sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";

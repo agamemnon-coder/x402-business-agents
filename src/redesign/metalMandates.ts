@@ -307,7 +307,7 @@ export function metalBody(record: RunRecord, o: MetalBody): string {
   const hero = r && sourcing && atTheTime ? `<section class="mhero card" id="mstory" aria-labelledby="mh-h"><h2 class="mh" id="mh-h">${esc("Each payment, checked on chain")}</h2>
 <ol class="mflow" aria-label="${esc("From the agent to the chain, step by step")}">
 <li><span class="ic">${icon("bot", 20)}</span><b>${esc("Sourcing agent")}</b><small>${esc(`pays ${sourcing.payee} per stock check, over x402`)}</small></li>
-<li><span class="ic">${icon("link-2", 20)}</span><b>${esc("Its mandate, on chain")}</b><small>${esc(`cap ${atTheTime.cap} a payment · budget ${atTheTime.budget} · payee ${sourcing.payee} `)}${a(tx(atTheTime.tx), "bind")}</small></li>
+<li><span class="ic">${icon("link-2", 20)}</span><b>${esc(sourcing.first ? "Its mandate at #24, the first bind" : "Its mandate, on chain")}</b><small>${esc(`cap ${atTheTime.cap} a payment · budget ${atTheTime.budget} · payee ${sourcing.payee} `)}${a(tx(atTheTime.tx), "bind")}</small></li>
 <li><span class="ic">${icon("shield-check", 20)}</span><b>${esc("Alta checks each payment")}</b><small>${esc("against cap, budget, payee and expiry")}</small></li>
 </ol>
 <div class="mpaths">
@@ -318,7 +318,7 @@ ${green ? `<div class="mpath ok"><span class="tag">${icon("circle-check", 18)}${
   // 2. The charts. (a) Budget and spend per mandate, one shared *USDZ scale (the largest budget). (b) The payments by
   // kind, one stacked bar. (c) The refusals, as a moment.
   const max = rows.reduce((m, x) => (cents(x.budget) > cents(m) ? x.budget : m), "0.00");
-  const budgetChart = `<section class="mchart card" aria-labelledby="mb-h"><h2 class="mh" id="mb-h">${esc("Budget and spend, per mandate")}</h2><p class="msub">${esc("One scale, in *USDZ.")}</p>
+  const budgetChart = `<section class="mchart card" aria-labelledby="mb-h"><h2 class="mh" id="mb-h">${esc("Budget and spend, per mandate")}</h2><p class="msub">${esc("One scale, in *USDZ; the terms as the main run ended (3 Nov).")}</p>
 <ul class="mbars">${rows.map((x) => `<li><span class="row"><b><span class="dot d-${esc(x.agent)}"></span>${esc(name(x))}</b><span>${esc("spent ")}<span data-spent="${esc(x.agent)}">${esc(spentOf(x))}</span>${esc(` of ${x.budget} · cap ${x.cap}`)}</span></span>${barSvg(x.agent, x.agent, x.budget, spentOf(x), max, `${name(x)}: spent ${spentOf(x)} of a ${x.budget} budget, cap ${x.cap} a payment`)}</li>`).join("")}</ul></section>`;
 
   const p = st.payments;

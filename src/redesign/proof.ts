@@ -239,7 +239,8 @@ export function partnerProof(run: AgentRun, o: { tap?: boolean } = {}): Record<"
       ...s.rails.metal.filter((r) => !/^Refused|^Mandate replaced/.test(r.what)).map((r) => li(altaWords(`${r.what}: ${r.detail}`), "", r.proof && { ...r.proof, label: altaWords(r.proof.label) })),
     ],
     airwallex: [
-      ...sandboxRails(s.rails.airwallex).map((r) => li(altaWords(`${r.what}: ${r.detail}`), "", r.proof && { ...r.proof, label: altaWords(r.proof.label) })),
+      // Judge scan, 14 Nov: a fee is said with its run and day (the main run's SWIFT fee is not the Try bank's or awx-1's).
+      ...sandboxRails(s.rails.airwallex).map((r) => li(altaWords(`${r.what}: ${r.detail}${/\bfee EUR\b/.test(r.detail) && run.record.run ? ` (${run.record.run})` : ""}`), "", r.proof && { ...r.proof, label: altaWords(r.proof.label) })),
       ...(tapDecline ? [li(`The limit, enforced by Airwallex (${tap!.label}): EUR ${tapDecline.amount} declined, ${tapDecline.reason ?? ""}`, "no", { label: `Airwallex ${tapDecline.txId.slice(0, 8)}… · read back with GET: status ${tapDecline.getStatus}${tapDecline.getStatus === "FAILED" ? " (Airwallex's decline)" : ""}`, href: null })] : []),
       ...money.filter((e) => e.rail === "airwallex" && e.refused?.by === "airwallex-sandbox").map((e) => li(`${earlierLine(e)}`, "no", null)),
     ],
