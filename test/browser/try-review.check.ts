@@ -20,7 +20,7 @@ import { chromium, type Page } from "playwright";
 import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
-import { APPROVE, BOOKS, COMPANY, LIVE, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BOOKS, COMPANY, LIVE, WHY, WORK } from "../../cloud/src/tryCopy.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -101,14 +101,15 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   // 1. The duplicates, first thing in a fresh company.
   await pick(page, "An invoice you already paid, sent again");
   let text = await page.locator("main").innerText();
-  ok(text.includes(WORK.duplicate) && !text.includes(WORK.ready), `${tag}: the same file again is caught, not "Ready to pay"`);
-  ok(/BTX-2026-17, now paid/.test(text), `${tag}: it names the paid original`);
+  // 14 Nov (owner): why, big and first, then the paid original beside this copy.
+  ok(text.includes(WHY.again.head) && !text.includes(WORK.ready), `${tag}: the same file again is caught, not "Ready to pay"`);
+  ok(/Bergtex Textil GmbH · BTX-2026-17 · EUR 1,620\.00 · paid \d{1,2} \w{3} \d{4}/.test(text) && text.includes(WHY.again.rule), `${tag}: it names the paid original and the rule`);
   await shot("1-duplicate");
   await fits(page, width, `${tag} duplicate`);
   await page.getByRole("button", { name: WORK.another }).click();
   await pick(page, "A paid invoice under a new number");
   text = await page.locator("main").innerText();
-  ok(text.includes(WORK.notReady) && /same total EUR 1620\.00/.test(text) && !text.includes(WORK.ready), `${tag}: the renumbered copy is held for a person as a possible duplicate`);
+  ok(text.includes(WHY.codes.possible_duplicate!.headPaid!) && text.includes(WHY.codes.possible_duplicate!.rule!) && /BTX-2026-17 · EUR 1,620\.00 · paid/.test(text) && /BTX-2026-17A · EUR 1,620\.00 · dated/.test(text) && !text.includes(WORK.ready), `${tag}: the renumbered copy is held as a possible duplicate, the paid original beside it`);
   await shot("1-renumbered");
 
   // 2. Back: to the invoice screen, then forward to the same answer (never filed again).

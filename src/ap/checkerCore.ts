@@ -17,6 +17,7 @@ import { fromCents, toCents } from "../lib/money.js";
 import { accountKey, chooseRoute, payableCurrency, validateDetails, type BankDetails, type Route } from "../payouts/routes.js";
 import { assessAgainst, skeleton, type Beneficiary, type FraudFinding, type FraudSignal } from "../policy/fraudCore.js";
 import { dayForms, moneyForPeople, strayIn, type Given } from "../../worker/src/agentLine.js";
+import { TWIN_DAYS, UNUSUAL_FACTOR } from "../config/checkNumbers.js";
 import { amountsIn, IBAN_LENGTHS, ibanValid, totalAmbiguity, totalIsNegative, type ApReading } from "./reading.js";
 
 // ── The case ──
@@ -32,7 +33,9 @@ export interface Finding {
   /** A possible duplicate by the same supplier and total only: the earlier invoice it may copy (a person may clear it). */
   twin_of?: string;
   /** possible_fraud only: the signals that make it suspicious (a changed account, a lookalike name), each with its reason. */
-  signals?: { code: string; detail: string }[];
+  signals?: { code: string; detail: string; asked?: string; on_file?: string }[];
+  /** duplicate, possible_duplicate and rejected_before: the earlier invoice it matches (14 Nov: /try shows it side by side). */
+  of?: string;
 }
 
 /**
@@ -120,10 +123,9 @@ export interface InvoiceCase {
 
 // ── Code's checks ──
 
-/** An invoice this many times its supplier's usual (the median of its earlier ones) is flagged. */
-export const UNUSUAL_FACTOR = 2;
-/** Invoices from one supplier for the same total dated this close together are a possible duplicate under another number (past a month). */
-export const TWIN_DAYS = 45;
+// UNUSUAL_FACTOR and TWIN_DAYS live in src/config/checkNumbers.ts, without imports, so /try's words quote them (14 Nov) without
+// pulling the checks into the Worker's bundle.
+export { TWIN_DAYS, UNUSUAL_FACTOR };
 
 const MONEY = /^\d+\.\d{2}$/;
 const DAY_MS = 86_400_000;
@@ -269,8 +271,8 @@ function examine(c: InvoiceCase): Examined {
       .filter(sameParty);
     const same = earlier.find((x) => invoiceKey(x.invoiceNo) === key);
     const loose = same ? undefined : earlier.find((x) => sameInvoiceNo(x.invoiceNo, r.invoice_no));
-    if (same) f.push({ code: "duplicate", level: "block", detail: `${same.id} is the same invoice ${same.invoiceNo} from ${same.vendor} (${same.state.replace(/_/g, " ")}); a second copy is never paid` });
-    else if (loose) f.push({ code: "possible_duplicate", level: "review", detail: `${loose.id} is invoice ${loose.invoiceNo} from the same supplier, written differently; a person checks it is not the same invoice` });
+    if (same) f.push({ code: "duplicate", level: "block", of: same.id, detail: `${same.id} is the same invoice ${same.invoiceNo} from ${same.vendor} (${same.state.replace(/_/g, " ")}); a second copy is never paid` });
+    else if (loose) f.push({ code: "possible_duplicate", level: "review", of: loose.id, detail: `${loose.id} is invoice ${loose.invoiceNo} from the same supplier, written differently; a person checks it is not the same invoice` });
     else if (c.alreadyInLedger) f.push({ code: "duplicate", level: "block", detail: `${c.alreadyInLedger}; a second copy is never paid` });
     // A copy of an invoice a person rejected goes back to a person, citing that rejection (red team round 4: resent with
     // one line more, it came back ready to pay as if never rejected).
@@ -281,7 +283,7 @@ function examine(c: InvoiceCase): Examined {
         .find((x) => sameInvoiceNo(x.invoiceNo, r.invoice_no));
       if (rejected) {
         const why = rejected.rejectedWhy;
-        f.push({ code: "rejected_before", level: "review", detail: `${rejected.id}, invoice ${rejected.invoiceNo} from ${rejected.vendor}, was rejected by a person${why ? ` (${why})` : ""}; a person decides whether this copy is any different` });
+        f.push({ code: "rejected_before", level: "review", of: rejected.id, detail: `${rejected.id}, invoice ${rejected.invoiceNo} from ${rejected.vendor}, was rejected by a person${why ? ` (${why})` : ""}; a person decides whether this copy is any different` });
       }
     }
     // The same supplier, the same total, dated within TWIN_DAYS: possibly the same invoice under another number (red team
@@ -309,7 +311,7 @@ function examine(c: InvoiceCase): Examined {
     const blocking = fraud.signals.filter((s) => s.blocks && s.code !== "unknown_vendor");
     if (fraud.suspicious) {
       f.push({ code: "possible_fraud", level: "block", detail: `possible invoice fraud: ${blocking.map((s) => s.detail).join("; ")}. Nothing is paid until a person checks with the supplier on a number already on file`,
-        signals: blocking.map((s) => ({ code: s.code, detail: s.detail })) });
+        signals: blocking.map((s) => ({ code: s.code, detail: s.detail, ...(s.asked !== undefined ? { asked: s.asked, on_file: s.on_file } : {}) })) });
     } else if (fraud.signals.some((s) => s.code === "unknown_vendor")) {
       const pending = c.supplierRequest;
       f.push({ code: "new_supplier", level: "wait", detail: `${r.vendor} is not on file as a supplier yet: a person verifies its bank details with the supplier, then the CFO approves it with Face ID${pending ? ` (request ${pending.id}, ${pending.status.toLowerCase()})` : ""}` });

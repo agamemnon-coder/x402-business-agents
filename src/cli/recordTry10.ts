@@ -14,7 +14,7 @@ import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium, type Page } from "playwright";
-import { APPROVE, BOOKS, PAY, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BOOKS, PAY, TAMPER, WHY, WORK } from "../../cloud/src/tryCopy.js";
 
 const root = resolve(import.meta.dirname, "../..");
 const out = resolve(root, process.env.VIDEO_OUT ?? "out/video/v10", "recordings");
@@ -91,7 +91,7 @@ async function main(): Promise<void> {
     await page.getByRole("button", { name: "File this invoice" }).click();
     await page.locator(".result .btn.primary").waitFor({ timeout: 90_000 });
     await mark(page, "duplicate");
-    if (!said.duplicate!.includes(WORK.duplicate)) throw new Error(`record: the duplicate was not caught: ${said.duplicate}`);
+    if (!said.duplicate!.includes(WHY.again.head)) throw new Error(`record: the duplicate was not caught: ${said.duplicate}`);
     await hold(4);
     await mark(page, "duplicate-held");
     // 2. A supplier's invoice: read and checked, then the approval with every signed term.
@@ -133,9 +133,9 @@ async function main(): Promise<void> {
     await amount.fill("1850.01");
     await hold(1);
     await page.getByRole("button", { name: PAY.button }).click();
-    await page.getByText(PAY.stamp).first().waitFor({ timeout: 60_000 });
+    await page.getByText(TAMPER.head).first().waitFor({ timeout: 60_000 });
     await mark(page, "refused");
-    if (!said.refused!.includes(PAY.stamp)) throw new Error("record: no refusal on the page");
+    if (!said.refused!.includes(TAMPER.head)) throw new Error("record: no refusal on the page");
     await hold(4);
     await mark(page, "refused-held");
     await cdp.send("Page.stopScreencast");

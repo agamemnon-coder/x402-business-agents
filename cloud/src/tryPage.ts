@@ -28,9 +28,10 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
+import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import { SCENE_CSS, sceneSvg } from "./scene.js";
 import { TOKENS } from "../../src/redesign/ui.js";
@@ -131,6 +132,20 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .result .ok { color: var(--ok); }
 .result .bad { color: var(--bad); }
 .result ul { margin: 0 0 12px; padding-left: 20px; }
+/* 14 Nov (owner): why Purser holds or refuses, big and first; the evidence side by side, the changed value marked; the
+   rule in one line; the details folded. Existing tokens only. */
+.why { margin: 0 0 14px; }
+.why .head { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; font-size: 22px; line-height: 1.25; font-weight: 750; letter-spacing: -.01em; color: var(--bad); }
+.why .head .i { margin-top: 3px; }
+.why.flag .head { color: var(--text); }
+.why .cmp { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin: 0 0 12px; }
+.why .cmp div { padding: 10px 12px; border-radius: 12px; background: var(--sunken); border: 1px solid var(--border); min-width: 0; }
+.why .cmp dt { font-size: 13px; font-weight: 600; color: var(--muted); margin: 0 0 2px; }
+.why .cmp dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.why .cmp mark { background: var(--bad-soft); color: var(--bad); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px var(--bad); }
+.why .said { margin: 0 0 12px; font-weight: 600; }
+.why .rule { margin: 0; color: var(--muted); }
+.why details ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
 .note { padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); color: var(--text); }
 details { margin: 12px 0; }
 details summary { cursor: pointer; color: var(--muted); font-size: 14px; }
@@ -581,7 +596,7 @@ function steps(name){
 function rail(name){const o=$('#main .progw'),n=steps(name);if(o&&n)o.replaceWith(n)}
 // The browser's Back: one history entry per step (try-fixes, 13 Nov). An entry holds only what redraws the screen
 // without repeating its action: a filed invoice comes back as its result, never filed again.
-const histArg=(name,arg)=>name==='work'?{kind:'reload',invoice:arg&&arg.invoice||null}:name==='approve'?{invoice:arg&&arg.invoice||null}:name==='books'?{settled:S.settled}:null;
+const histArg=(name,arg)=>name==='work'?{kind:'reload',invoice:arg&&arg.invoice||null,upload:arg&&arg.upload||null}:name==='approve'?{invoice:arg&&arg.invoice||null}:name==='books'?{settled:S.settled}:null;
 function remember(name,arg,how){if(how==='pop')return;const st={screen:name,arg:histArg(name,arg)};
   try{if(how==='replace'||!history.state||!history.state.screen)history.replaceState(st,'');else history.pushState(st,'')}catch(e){}}
 window.addEventListener('popstate',(ev)=>{
@@ -815,28 +830,39 @@ const CLAUDE={on:false,req:null,slot:null};
 function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
 function chipFill(){if(!CLAUDE.on||!CLAUDE.slot||!CLAUDE.slot.isConnected||CLAUDE.slot.children.length)return;
   CLAUDE.slot.append(el('span','chip',[icon('sparkles',13),el('span','',C.work.claudeChip),CLAUDE.req?el('span','mono',CLAUDE.req):null]))}
+// The reason, big and first; the evidence side by side (a changed value marked); what the engine said when there is no
+// side by side; the rule in one line; then the fold (WHY.more) with what is given.
+// A value with the part that differs marked (the whole value when it is all of it).
+const marked=(v,m)=>{const i=m?v.indexOf(m):-1;return i<0?v:[v.slice(0,i),el('mark','',m),v.slice(i+m.length)].filter((x)=>x!=='')};
+function whyNode(w,folded){
+  const n=el('section','why '+w.tone,[el('p','head',[icon('triangle-alert',22),el('span','',w.head)])]);
+  n.setAttribute('role','status');
+  if(w.rows.length){const d=el('dl','cmp');for(const [k,v,m] of w.rows)d.append(el('div','',[el('dt','',k),el('dd','',marked(v,m))]));n.append(d)}
+  if(w.said)n.append(el('p','said',w.said));
+  if(w.rule)n.append(el('p','rule',w.rule));
+  if(folded&&folded.length)n.append(el('details','',[el('summary','',C.why.more),...folded]));
+  return n;
+}
 function drawResult(box,r,ms){
   const took=ms===null?null:el('p','muted',fill(C.work.took,{s:secs(ms)}));
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
-    if(r.json.kind==='duplicate_document'){
-      // The same file again (the test company starts with this invoice already paid): caught, nothing added.
-      box.append(el('p','big bad',C.work.duplicate),el('p','muted',fill(C.work.duplicateOf,{no:String(inv.invoice_no||''),status:String(inv.status_words||inv.status||'').toLowerCase()})));
+    const why=whyKit.whyOf(C.why,r.json,{money:cash,date:dateOf});
+    if(why){
+      // Held or refused (14 Nov, owner): why, big and first; the evidence; the rule; the engine's words, the round trip and
+      // the invoice folded.
+      const card=invoiceCard(inv);CLAUDE.slot=card.chip;
       main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
-    // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    }else if(inv.payable===true||(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')){
-      box.append(el('p','big ok',C.work.ready),el('p','muted',C.work.readySub));
-      // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
-      // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
-      if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
-      main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
-    }else{
-      box.append(el('p','big bad',[C.work.notReady,' ',String(inv.status_words||inv.status||'')]));
-      const fs=Array.isArray(inv.findings)?inv.findings.filter((f)=>f&&typeof f.message==='string'):[];
-      if(fs.length)box.append(el('ul','',fs.map((f)=>el('li','',f.message))));
-      main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
+      box.append(whyNode(why,[...(why.words.length?[el('ul','',why.words.map((w)=>el('li','',w)))]:[]),...(took?[took]:[]),card.node]),main);chipFill();
+      return;
     }
+    // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
+    box.append(el('p','big ok',C.work.ready),el('p','muted',C.work.readySub));
+    // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
+    // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
+    if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
+    main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
     box.append(...(took?[took]:[]),card.node,main);chipFill();
     return;
@@ -855,7 +881,8 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     // Only this invoice's rows (the company starts with a paid invoice of its own: its rows are not this one's).
     const mine=(e)=>!(typeof e.subject==='string'&&/^AP-\d+$/.test(e.subject)&&arg.invoice&&e.subject!==arg.invoice.id);
     call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it)}});
-    drawResult(result,{status:200,json:{invoice:arg.invoice}},null);
+    // A copy caught as the same file comes back as that answer (kept with the page's history), never as its paid original.
+    drawResult(result,{status:200,json:Object.assign({invoice:arg.invoice},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{})},null);
     return;
   }
   const sk=skeleton();result.append(sk.node);
@@ -870,7 +897,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:typeof r.json.message==='string'&&r.json.message?r.json.message:typeof r.json.error==='string'?r.json.error:C.work.failed});return}
     result.replaceChildren();drawResult(result,r,ms);
     // Back from the next step returns to this answer, never files the invoice again.
-    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed},'replace');
+    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
 }});
@@ -895,6 +922,7 @@ async function withTimeout(fn){
   try{return await fn(ac.signal)}catch(e){if(late){const x=new Error('timeout');x.name='PasskeyTimeout';throw x}throw e}finally{clearTimeout(passkeyTimer)}
 }
 const method=()=>methodOf(C.method,navigator.userAgent||'');
+const cap1=(s)=>s?s[0].toUpperCase()+s.slice(1):s;
 // The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
 async function signTerms(challenge,credentialId,signal){
   const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:30000}});
@@ -1152,20 +1180,29 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
   function refused(r,ms,sent){
     const j=r.json,L=j.layers&&typeof j.layers==='object'?j.layers:{};const sig=L.signature||{},ex=L.executor||{};
-    const card=el('div','card refusal shake',[el('p','stamp',Y.stamp)]);
-    if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;card.append(el('p','layer',fill(Y.signature,{reason:why})))}
-    if(ex.accepted===false){card.append(el('p','layer',Y.executor));
-      if(typeof ex.said==='string'&&ex.said)card.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
-    const d=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
+    // 14 Nov (owner): the reason first, what was signed beside what was asked (the changed value marked), one plain line;
+    // the stamp, each layer's words, the fingerprints, the round trip and the raw answer under "Show the proof".
+    const X=C.tamper,labels={amount:C.proposal.amount,beneficiary_name:C.proposal.payee,iban_last4:C.proposal.account};
+    const rows=whyKit.tamperRows(T.terms,sent,j.changed,labels,{money:cash});
+    const d=el('dl','cmp');
+    for(const [k,a,b] of rows)d.append(el('div','',[el('dt','',X.signed+' · '+k),el('dd','',a)]),el('div','',[el('dt','',X.asked+' · '+k),el('dd','',marked(b,b))]));
+    const card=el('section','why refuse card refusal shake',[el('p','head',[icon('triangle-alert',22),el('span','',X.head)]),d,el('p','rule',cap1(fill(X.line,{method:method()})))]);
+    card.setAttribute('role','status');
+    const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);
+    if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;proof.append(el('p','layer',fill(Y.signature,{reason:why})))}
+    if(ex.accepted===false){proof.append(el('p','layer',Y.executor));
+      if(typeof ex.said==='string'&&ex.said)proof.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
+    const h=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
     const line=(label,runs)=>el('p','hash mono',[el('span','hl',label),...runs.map((x)=>x[1]?el('mark','',x[0]):x[0])]);
-    card.append(line(Y.signed,d.a),line(Y.sent,d.b));
-    card.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
-    card.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
+    proof.append(line(Y.signed,h.a),line(Y.sent,h.b));
+    proof.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
+    proof.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
     const made=Number(j.transfers_after)-Number(j.transfers_before);
     if(isFinite(made))card.append(el('p','proof xfer',fill(Y.transfers,{n:made})));
-    if(S.mode&&S.mode.rail_awx==='on'&&typeof j.sandbox_calls==='number')card.append(el('p','proof',fill(Y.sandbox,{n:j.sandbox_calls})));
+    if(S.mode&&S.mode.rail_awx==='on'&&typeof j.sandbox_calls==='number')proof.append(el('p','proof',fill(Y.sandbox,{n:j.sandbox_calls})));
     const raw=el('pre','raw mono');raw.textContent=r.text;
-    card.append(el('details','',[el('summary','',Y.raw),raw]));
+    proof.append(el('details','',[el('summary','',Y.raw),raw]));
+    card.append(proof);
     const back=el('button','link',Y.putBack);back.type='button';back.addEventListener('click',()=>{reset();F.amount.focus()});
     card.append(el('p','',back));
     return card;
@@ -1382,12 +1419,12 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"] };
-  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => SIGN_JS).replace("__BOOKS__", () => BOOKS_JS)
+  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
   return `<!doctype html>

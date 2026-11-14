@@ -119,9 +119,23 @@ export interface ProposalView {
   second_key?: { reasons: string[]; message: string; security_keys: string[]; signed: { passkey: boolean; security_key: boolean } };
 }
 
+/**
+ * One check's finding, in the engine's words, with the evidence that triggered it (14 Nov, owner: /try shows why, big
+ * and first): the earlier invoice a copy matches (`earlier`, from `of` or `twin_of`), and for possible fraud the signals
+ * with what the invoice asks beside what is on file.
+ */
+export interface FindingView {
+  level: string; code: string; message: string;
+  twin_of?: string;
+  signals?: { code: string; detail: string; asked?: string; on_file?: string }[];
+  earlier?: { id: string; vendor: string; invoice_no: string; currency: string; total: string; issue_date: string; paid_at: string | null; status: string; status_words: string };
+}
+
 export interface InvoiceView {
   id: string; status: string; status_words: string; payable: boolean; vendor: string; invoice_no: string; currency: string; total: string; due_date: string; read_by: string;
-  findings: { level: string; code: string; message: string }[];
+  /** The invoice's own date and, once paid, when (14 Nov: /try's held answer shows when the earlier copy was paid). */
+  issue_date?: string; paid_at?: string | null;
+  findings: FindingView[];
   doc_sha256: string;
   proposal: ProposalView | null;
 }
@@ -396,11 +410,22 @@ export class EngineHost {
     return inv ? this.view(inv) : null;
   }
 
+  private findingView(f: ApInvoiceRow["findings"][number]): FindingView {
+    const out: FindingView = { level: f.level, code: f.code, message: f.detail };
+    if (f.twin_of) out.twin_of = f.twin_of;
+    if (f.signals?.length) out.signals = f.signals.map((x) => ({ ...x }));
+    const id = f.of ?? f.twin_of;
+    const e = id ? apInvoice(this.deps.db, id) : null;
+    if (e) out.earlier = { id: e.id, vendor: e.vendor, invoice_no: e.invoice_no, currency: e.currency, total: e.total, issue_date: e.issue_date, paid_at: e.paid_at, status: e.status, status_words: t(this.deps.company.lang, `status.${e.status}`) };
+    return out;
+  }
+
   private view(inv: ApInvoiceRow): InvoiceView {
     return {
       id: inv.id, status: inv.status, status_words: t(this.deps.company.lang, `status.${inv.status}`), payable: actionsFor(inv).pay.allowed,
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
-      findings: inv.findings.map((f) => ({ level: f.level, code: f.code, message: f.detail })),
+      issue_date: inv.issue_date, paid_at: inv.paid_at,
+      findings: inv.findings.map((f) => this.findingView(f)),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,
     };
