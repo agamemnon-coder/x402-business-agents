@@ -122,6 +122,41 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   ok((await page.locator("main").innerText()).includes("BTX-2026-17A") && docsAfter === docsBefore, `${tag}: Forward shows the same answer and files nothing again`);
   await page.getByRole("button", { name: WORK.another }).click();
 
+  // 2b. Round 4 (14 Nov): a held invoice whose reader asked Claude twice (classify, then read), one call answered and
+  // one not by the time Purser answered, the engine's rows written out of time order: no row stays on "asking…", nothing
+  // keeps counting, the call left without an answer says so, and the rows stand in the engine's time order.
+  {
+    const t0 = Date.now();
+    const at = (ms: number) => new Date(t0 + ms).toISOString();
+    const held = [
+      { seq: 801, ts: at(0), actor: "system", event: "claude.asking", subject: null, fields: { role: "classifier", model: "claude-haiku-5-5" } },
+      { seq: 802, ts: at(100), actor: "system", event: "claude.asking", subject: null, fields: { role: "reader", model: "claude-haiku-5-5" } },
+      { seq: 803, ts: at(1800), actor: "system", event: "ap.received", subject: null, fields: { status: "blocked", amount: "2380.00", currency: "EUR", findings: "possible_fraud" } },
+      { seq: 804, ts: at(900), actor: "claude", event: "claude.read", subject: null, fields: { source: "claude", model: "claude-haiku-5-5", request_id: "req_round4" } },
+    ];
+    let once = true;
+    await page.route(/\/v1\/engine\/events\?/, async (route) => {
+      if (!once) return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: [], next: 804 }) });
+      once = false;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ items: held, next: 804 }) });
+    });
+    await page.route("**/v1/engine/samples/bank", async (route) => { await new Promise((r) => setTimeout(r, 2500)); await route.continue(); });
+    await pick(page, "An invoice with new bank details");
+    await page.unroute("**/v1/engine/samples/bank");
+    await page.waitForTimeout(1500);
+    await page.getByRole("button", { name: LIVE.allSteps }).click();
+    const rows = await page.locator("ol.live li").evaluateAll((lis) => lis.map((li) => li.textContent ?? ""));
+    ok(rows.length === 4 && !rows.some((r) => r.includes(LIVE.ev["claude.asking"]!)), `${tag}: held: no row stays on "asking…" (${rows.join(" | ")})`);
+    ok(rows.filter((r) => r.includes(LIVE.asked) && !r.includes(LIVE.noAnswer)).length === 1 && rows.filter((r) => r.includes(LIVE.noAnswer)).length === 1, `${tag}: held: the answered call says "${LIVE.asked}", the other "${LIVE.noAnswer}"`);
+    ok(rows[2]!.includes("answered live") && rows[3]!.includes("came in and was checked"), `${tag}: held: the rows in the engine's time order`);
+    const secs = (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1]));
+    const before = secs.join(",");
+    await page.waitForTimeout(1200);
+    ok(secs.length === 4 && secs[0]! > 0 && secs.every((x, i) => Number.isFinite(x) && (i === 0 || x > secs[i - 1]!)) && (await page.locator("ol.live li .t").allInnerTexts()).map((x) => Number(/^\+([\d.]+) s$/.exec(x)?.[1])).join(",") === before, `${tag}: held: the times rise row by row and nothing keeps counting (${before})`);
+    await page.unroute(/\/v1\/engine\/events\?/);
+    await page.getByRole("button", { name: WORK.another }).click();
+  }
+
   // 3. The clean invoice, with the agents' rows stood in for, and its answer held 2.5 s.
   let stub = false;
   await page.route(/\/v1\/engine\/events\?/, async (route) => {
