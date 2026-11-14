@@ -213,8 +213,8 @@ export const ROUTES: Route[] = [
     const b = await body(c, z.object({ step_up: z.boolean() }).strict(), 1_000);
     return json(200, await setStepUp(c.env.sql, c.caller!.tenantId, b.step_up, c.caller!.principal, c.now));
   } },
-  { method: "GET", path: "/v1/alerts", summary: "Approval alerts (Settings, Alerts): who hears that a payment waits for the CFO's Face ID and on which channel (WhatsApp, e-mail, Slack, Teams, the signed webhook), targets masked, and the latest deliveries with their status. An alert only tells; nothing in it approves.", need: "admin", run: async (c) => json(200, await alertSettings(c.env.sql, c.caller!.tenantId, c.env.alerts)) },
-  { method: "POST", path: "/v1/alerts/targets", summary: "Add an alert target: { channel: whatsapp | email | slack | teams, target } (a number like +31612345678, an address, or a Slack or Teams webhook URL). A signed-in owner after a fresh passkey check (step-up); never a key. Answers the target masked.", need: "admin", run: async (c) => {
+  { method: "GET", path: "/v1/alerts", summary: "Approval alerts (Settings, Alerts): who hears that a payment waits for the CFO's Face ID and on which channel (e-mail, Slack, Teams, the signed webhook), targets masked, and the latest deliveries with their status. An alert only tells; nothing in it approves.", need: "admin", run: async (c) => json(200, await alertSettings(c.env.sql, c.caller!.tenantId, c.env.alerts)) },
+  { method: "POST", path: "/v1/alerts/targets", summary: "Add an alert target: { channel: email | slack | teams, target } (an address, or a Slack or Teams webhook URL). A signed-in owner after a fresh passkey check (step-up); never a key. Answers the target masked.", need: "admin", run: async (c) => {
     const b = await body(c, NewTarget, 4_000);
     return json(201, await addTarget(c.env.sql, c.caller!.tenantId, b, c.caller!.principal, c.now));
   } },

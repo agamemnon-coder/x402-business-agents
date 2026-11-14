@@ -105,7 +105,7 @@ purser-try (test companies, test money on a simulated bank), so the sentence bec
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
      data, test money) with its Agents and Tokenisation tabs, and Invoices & books in one tab. Approval alerts by
-     WhatsApp, e-mail, Slack and Teams are built, live once Twilio keys are set.
+     e-mail, Slack and Teams are built and tested with stand-ins, not sent live yet.
    - /security: <https://kit11.max-31b.workers.dev/security> draws the layers a payment must pass.
 2. Then the repository, offline, no keys and no network after `npm ci` (Node.js 22.13 or later):
    `npm ci`, then `npm test` (the full suite, on stand-ins), then `npm run judge -- --check` (serves Home, Watch, Proof,

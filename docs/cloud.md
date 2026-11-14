@@ -62,7 +62,7 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `POST /v1/webhook` | admin | Set the alert webhook (https, a public host name, port 443, no credentials); returns the signing secret once. |
 | `DELETE /v1/webhook` | admin | Remove the alert webhook. |
 | `GET /v1/alerts` | admin | Approval alerts: the targets (masked), which channels this cloud can send on, the latest deliveries and their status. |
-| `POST /v1/alerts/targets` | admin | Add an alert target `{ channel: whatsapp \| email \| slack \| teams, target }`. A signed-in owner with a fresh passkey check (step-up); never a key. |
+| `POST /v1/alerts/targets` | admin | Add an alert target `{ channel: email \| slack \| teams, target }`. A signed-in owner with a fresh passkey check (step-up); never a key. |
 | `DELETE /v1/alerts/targets/{id}` | admin | Remove an alert target (a signed-in owner, step-up). |
 | `GET /v1/security/settings` | admin | The company's security settings: `step_up`, whether sensitive settings ask for the passkey again after five minutes ("Ask again before sensitive changes"; off by default). |
 | `POST /v1/security/settings` | admin | Switch it on or off: `{ step_up: boolean }`. A signed-in owner after a fresh passkey check, whatever the setting; never a key. A security event records each switch. |
@@ -484,7 +484,6 @@ company chose in Settings, Alerts (`cloud/src/alerts.ts`). Every channel sits be
 
 | Channel | How | Status |
 |---|---|---|
-| WhatsApp | Twilio's Messages API (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`; the WhatsApp sandbox's number in a demo) | Built and tested with a stand-in; not yet sent live |
 | E-mail | A provider adapter; Resend's API today (`RESEND_API_KEY`, `ALERT_EMAIL_FROM`), with its `Idempotency-Key` | Built and tested with a stand-in; not yet sent live |
 | Slack, Teams | Their incoming webhooks, in the Block Kit and Adaptive Card formats of `cloud/src/connections.ts` | Built and tested with a stand-in; not yet sent live |
 | Signed webhook | The company's webhook (below): the event exactly as before, ids and amounts only, no payee's name | Tested with a stand-in, as before |
