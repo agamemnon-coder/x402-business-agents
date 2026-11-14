@@ -10,7 +10,7 @@ import { BUILT_WITH, LEFT_OUT } from "../src/visuals/logos.js";
 const pages = buildPages() as unknown as Record<string, unknown>;
 const html = (v: unknown) => (typeof v === "string" ? v : v && typeof v === "object" && "page" in v ? String((v as { page: unknown }).page) : "");
 // What a reader sees: no scripts, styles, drawings or menus (an SVG tooltip or a filter is not where the first mention goes).
-const visible = (h: string) => h.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<svg[\s\S]*?<\/svg>/g, " ").replace(/<nav[\s\S]*?<\/nav>/g, " ").replace(/<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+const visible = (h: string) => h.replace(/<script\b[\s\S]*?<\/script\s*>/gi, " ").replace(/<svg\b[\s\S]*?<\/svg\s*>/gi, " ").replace(/<nav\b[\s\S]*?<\/nav\s*>/gi, " ").replace(/<style\b[\s\S]*?<\/style\s*>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 const read = (f: string) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8");
 
 describe("formerlyMetal", () => {
