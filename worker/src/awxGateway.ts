@@ -9,11 +9,12 @@
 import { GATEWAY_SANDBOX_BASE, gatewayCheck, type GatewayAnswer, type GatewayRequest } from "../../src/airwallex/gatewayRules.js";
 
 export interface GatewayEnv {
-  /** The sandbox key for Cloud's actions (a Worker secret); unset: the key of /try/sign's quote is used. */
+  /**
+   * The sandbox key for Cloud's actions, Worker secrets the owner sets (never a file or a script here). Its own key, not
+   * /try/sign's quote key (that one is scoped to quotes): it needs beneficiaries, FX, transfers and batch transfers.
+   */
   AWX_ACT_CLIENT_ID?: string;
   AWX_ACT_API_KEY?: string;
-  AIRWALLEX_CLIENT_ID?: string;
-  AIRWALLEX_API_KEY?: string;
   /** "on": writes, simulations and money calls are allowed (reads always are, with a key). Off when missing. */
   AWX_GATEWAY_WRITE?: string;
 }
@@ -38,8 +39,8 @@ export class AwxGatewayDesk {
   }
 
   private key(): { id: string; key: string } | null {
-    const id = this.env.AWX_ACT_CLIENT_ID ?? this.env.AIRWALLEX_CLIENT_ID;
-    const key = this.env.AWX_ACT_API_KEY ?? this.env.AIRWALLEX_API_KEY;
+    const id = this.env.AWX_ACT_CLIENT_ID;
+    const key = this.env.AWX_ACT_API_KEY;
     return id && key ? { id, key } : null;
   }
 
