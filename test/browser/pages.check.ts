@@ -1016,7 +1016,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const pt = await page.evaluate(() => document.body.innerText);
       const strip = await page.locator("footer .builton").innerText().catch(() => "");
       const words = pt.split(/\s+/).filter((x) => /\w/.test(x)).length - strip.split(/\s+/).filter((x) => /\w/.test(x)).length;
-      if (words > 150 + 25) fail(`/t0 ${tag}: ${words} words on screen, budget 150 plus the frame`);
+      // 185 since the partner review (14 Nov): the "Independent ledger check" tile, books close only when T:0 agrees (184 as built).
+      if (words > 185 + 25) fail(`/t0 ${tag}: ${words} words on screen, budget 185 plus the frame`);
       if (!pt.includes("T:0 sandbox, test data")) fail(`/t0 ${tag}: not labelled as the T:0 sandbox with test data`);
       if (!/^Built on\s/.test(strip.trim()) || !/T:0: \d+ journal entries/.test(strip)) fail(`/t0 ${tag}: no Built on strip in the footer`);
       if (w < 500) await tapTargets(page, `/t0 ${tag}`);

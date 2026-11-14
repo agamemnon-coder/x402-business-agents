@@ -55,10 +55,11 @@ describe("/t0 reads every figure from the T:0 run records", () => {
 describe("/t0", () => {
   // Owner, 14 Nov ("also upgrade the T:0 page"): one story, result first. Three figures from the record, a calm flow,
   // the accounts ours against T:0's, the balance sheet card; the refusals and the platform run folded as history.
-  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 150 words", () => {
+  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 170 words", () => {
     expect(T0_PAGE).toContain(`<span class="pill run">${T0_LABEL}</span>`);
     expect(T0_LABEL).toBe("T:0 sandbox, test data");
-    expect(inSight(main).length).toBeLessThanOrEqual(150);
+    // 170 since the partner review (14 Nov): the "Independent ledger check" tile, books close only when T:0 agrees (165 as built).
+    expect(inSight(main).length).toBeLessThanOrEqual(170);
     const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
     const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
     const j = t0Journal(journalMd)!;

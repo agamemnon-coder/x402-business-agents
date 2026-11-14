@@ -1,0 +1,2593 @@
+{
+  "label": "T:0 sandbox, test data: T:0's read-back of Purser's journal entries (the main run's books), read only",
+  "read_at": "2026-11-14T15:44:36Z",
+  "how": "GET /v1/journal-entries for 2026-11-03, manual entries, one call, read only. The key was added by the network proxy; it is not in this file.",
+  "entity": "entity_prod_ieEAMzvhgtHalvsm",
+  "entry_date": "2026-11-03",
+  "compared_with": {
+    "record": "docs/runs/2026-11-10-t0-journal-sandbox.md",
+    "what": "Purser's books as recorded on 10 Nov: 95 entries, net per T:0 account"
+  },
+  "close_check": {
+    "month": "2026-11",
+    "agrees": true,
+    "how": "accounts",
+    "expected": 95,
+    "matched": 95,
+    "ignored": 1,
+    "problems": [],
+    "text": "T:0 agrees: all 95 of our journal entries are in T:0, and every account matches our books to the cent."
+  },
+  "totals": {
+    "debit_cents": 2114122186,
+    "credit_cents": 2114122186
+  },
+  "other_entries_ignored": 1,
+  "entries": [
+    {
+      "t0_id": "je_prod_z7kTCuZ1iiwad01q",
+      "je_number": "PUR-8264fd976b2da0702aaf01ae",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:02.994888Z",
+      "updated_at": "2026-11-10T06:07:02.994888Z",
+      "status": "editable",
+      "memo": "Owner funds the business account on Metal [test USD, Metal testnet]",
+      "debit_cents": 2000,
+      "credit_cents": 2000,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 2000,
+          "purser_code": "1210"
+        },
+        {
+          "account": "32000",
+          "account_name": "Common Stock",
+          "side": "credit",
+          "cents": 2000,
+          "purser_code": "3000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ylgcf70AtiY3ylVy",
+      "je_number": "PUR-5a96f68546bb47fe4a457407",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:12.498467Z",
+      "updated_at": "2026-11-10T06:07:12.498467Z",
+      "status": "editable",
+      "memo": "Airwallex EUR balance before the run (sandbox test money)",
+      "debit_cents": 1114491069,
+      "credit_cents": 1114491069,
+      "lines": [
+        {
+          "account": "11120",
+          "account_name": "Operating Checking Account #2",
+          "side": "debit",
+          "cents": 1114491069,
+          "purser_code": "1200"
+        },
+        {
+          "account": "32000",
+          "account_name": "Common Stock",
+          "side": "credit",
+          "cents": 1114491069,
+          "purser_code": "3000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_bNIX367ojTdLu2pr",
+      "je_number": "PUR-374457b597668b38a075a99f",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:13.085491Z",
+      "updated_at": "2026-11-10T06:07:13.085491Z",
+      "status": "editable",
+      "memo": "Airwallex USD balance before the run (sandbox test money)",
+      "debit_cents": 999570554,
+      "credit_cents": 999570554,
+      "lines": [
+        {
+          "account": "11210",
+          "account_name": "Savings Account #1",
+          "side": "debit",
+          "cents": 999570554,
+          "purser_code": "1201"
+        },
+        {
+          "account": "32000",
+          "account_name": "Common Stock",
+          "side": "credit",
+          "cents": 999570554,
+          "purser_code": "3000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_lFLdPZfMJKigdbLv",
+      "je_number": "PUR-3eb2f0a40f7f7acdd2f37e26",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:13.681105Z",
+      "updated_at": "2026-11-10T06:07:13.681105Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (1) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_LS44t5wtfoNbPHft",
+      "je_number": "PUR-cf051706f2897affdfe690cb",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:14.270432Z",
+      "updated_at": "2026-11-10T06:07:14.270432Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 1 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_KXBN6EYTIIxJY1sB",
+      "je_number": "PUR-e53f7d42da6a2a24ddf2941d",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:14.807124Z",
+      "updated_at": "2026-11-10T06:07:14.807124Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (2) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_XqV544m8SgcCRsrj",
+      "je_number": "PUR-60857cdb3d6f9d503d334296",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:15.538531Z",
+      "updated_at": "2026-11-10T06:07:15.538531Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 2 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_j3hZPucuN3rxTurE",
+      "je_number": "PUR-392d708244071def9344c386",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:16.203384Z",
+      "updated_at": "2026-11-10T06:07:16.203384Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (3) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_uJl75JncGGahf8iL",
+      "je_number": "PUR-df7fd8fa068242432706ac63",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:16.839076Z",
+      "updated_at": "2026-11-10T06:07:16.839076Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 3 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_w2B7XUjBnFTpcGOL",
+      "je_number": "PUR-52cd3c43743177ab03ceb140",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:17.558325Z",
+      "updated_at": "2026-11-10T06:07:17.558325Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (4) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ta33CT56aA9A0NbT",
+      "je_number": "PUR-3de7686c2f6fc3371d79123b",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:18.289003Z",
+      "updated_at": "2026-11-10T06:07:18.289003Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 4 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_KZbRFz31hm3xmPTZ",
+      "je_number": "PUR-1ef28bd01fc14218c690beb8",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:18.900168Z",
+      "updated_at": "2026-11-10T06:07:18.900168Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (5) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_dslT2muIhnDBjlpT",
+      "je_number": "PUR-22932317a898916efdb257b5",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:19.556561Z",
+      "updated_at": "2026-11-10T06:07:19.556561Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 5 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_tdA4cd65X3NWCeqf",
+      "je_number": "PUR-d6ffd78b8c69f50d1cf28db8",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:20.116951Z",
+      "updated_at": "2026-11-10T06:07:20.116951Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (6) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_MXsOCtshgX4L01Ue",
+      "je_number": "PUR-7a5a9f6517ceb6d99001c2e3",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:20.756952Z",
+      "updated_at": "2026-11-10T06:07:20.756952Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 6 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_BhkK5Z58AAPIiRH5",
+      "je_number": "PUR-1c65f8b210e1c133e2394ad5",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:21.352479Z",
+      "updated_at": "2026-11-10T06:07:21.352479Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (7) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_8AhcKOLlQRMFwWNW",
+      "je_number": "PUR-da17d5a1f141d624bc3da261",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:21.891231Z",
+      "updated_at": "2026-11-10T06:07:21.891231Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 7 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_JkGLZZs8bj1gpcMW",
+      "je_number": "PUR-07181b23eb1cc85edf1f18cf",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:22.767281Z",
+      "updated_at": "2026-11-10T06:07:22.767281Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (8) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_XKnlIZsCO12Uxpwm",
+      "je_number": "PUR-ac23d3e07ccb9d0b0c084aec",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:23.454530Z",
+      "updated_at": "2026-11-10T06:07:23.454530Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 8 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_6DG9yYWBMzPtQfBi",
+      "je_number": "PUR-a48c8dc5929f8c650c383d5e",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:24.079398Z",
+      "updated_at": "2026-11-10T06:07:24.079398Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (9) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_JnCHaBkyRvqJckyK",
+      "je_number": "PUR-8ef868eb0e1eb6b72bd89754",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:24.592132Z",
+      "updated_at": "2026-11-10T06:07:24.592132Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 9 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_Cyz9YZmkLHG6QCDb",
+      "je_number": "PUR-4691257700c229a0e5c3604e",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:25.212454Z",
+      "updated_at": "2026-11-10T06:07:25.212454Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (10) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_kt1gdfbb0zSXe8Ci",
+      "je_number": "PUR-40b521b357ceffc7fcfc59e9",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:25.920670Z",
+      "updated_at": "2026-11-10T06:07:25.920670Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 10 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_3h6bJgZMclxsQx36",
+      "je_number": "PUR-e068813bfca3183d60feee61",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:26.509749Z",
+      "updated_at": "2026-11-10T06:07:26.509749Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (11) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_5ULQpZZFWYWV4DfL",
+      "je_number": "PUR-bb07b2a8b1bdae0b995c2860",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:27.115140Z",
+      "updated_at": "2026-11-10T06:07:27.115140Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 11 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_E75STASSbJH3CYYy",
+      "je_number": "PUR-d3165c06ab4cda8688925c42",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:27.756680Z",
+      "updated_at": "2026-11-10T06:07:27.756680Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (12) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_77vYlzzcgyXiZ3Pi",
+      "je_number": "PUR-5005b421b8fb8a37d7ceb7e9",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:28.328053Z",
+      "updated_at": "2026-11-10T06:07:28.328053Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 12 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_BVURVqSAalcp0g0H",
+      "je_number": "PUR-9e55799d3bc62ebb5ab3fc7d",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:28.876369Z",
+      "updated_at": "2026-11-10T06:07:28.876369Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (13) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_kaCK3w1ac4AbvtYc",
+      "je_number": "PUR-13b785af59cc5a67e11c3f4e",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:29.472445Z",
+      "updated_at": "2026-11-10T06:07:29.472445Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 13 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ge2cAlGejpfi89ze",
+      "je_number": "PUR-e33d3f12b6eff5cc1ab12103",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:30.106369Z",
+      "updated_at": "2026-11-10T06:07:30.106369Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (14) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ezRkcHdNqRDyG3tq",
+      "je_number": "PUR-eaf33c35aa08924d96663332",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:30.662331Z",
+      "updated_at": "2026-11-10T06:07:30.662331Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 14 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_uua3Lpb87iikvbG4",
+      "je_number": "PUR-d52e1afdc57b76ae71288f0e",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:31.209383Z",
+      "updated_at": "2026-11-10T06:07:31.209383Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (15) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_9F8qaTeoFcGTuxe3",
+      "je_number": "PUR-7447c0f99bea5369e1316ad9",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:31.848573Z",
+      "updated_at": "2026-11-10T06:07:31.848573Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 15 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_Tyxt0WoOR2PNsuG3",
+      "je_number": "PUR-dc80168e5ca9cd81f55d5f81",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:32.362886Z",
+      "updated_at": "2026-11-10T06:07:32.362886Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (16) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_VNu3ZiXHuc1XToZl",
+      "je_number": "PUR-19054da1556bd0766c6c25ee",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:32.922318Z",
+      "updated_at": "2026-11-10T06:07:32.922318Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 16 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_lcd6ytD4DUyZHM2y",
+      "je_number": "PUR-012fcbcda4223afa6e9ebaa7",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:33.517635Z",
+      "updated_at": "2026-11-10T06:07:33.517635Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (17) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_BuCbTnSCihI084Xh",
+      "je_number": "PUR-9ab7755d19799d676fb0e62e",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:34.161478Z",
+      "updated_at": "2026-11-10T06:07:34.161478Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 17 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ptkMNfUMOrPubTqi",
+      "je_number": "PUR-f337b4b2ecda4c2b626d5293",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:34.777999Z",
+      "updated_at": "2026-11-10T06:07:34.777999Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (18) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_fFKg9FbjhnNfn7kE",
+      "je_number": "PUR-a0176c5a0c47caab44207bb9",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:35.343312Z",
+      "updated_at": "2026-11-10T06:07:35.343312Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 18 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_kZSj96S88v3tF2D9",
+      "je_number": "PUR-83c30f6a538ca282ffec6ee6",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:35.952468Z",
+      "updated_at": "2026-11-10T06:07:35.952468Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (19) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_GPWWXwiGDo5ADVOX",
+      "je_number": "PUR-ee807f1ed437d3bc847c6914",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:36.462024Z",
+      "updated_at": "2026-11-10T06:07:36.462024Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 19 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ifidUepTw3oAii6P",
+      "je_number": "PUR-0e87d41efc87788779e09d60",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:37.046428Z",
+      "updated_at": "2026-11-10T06:07:37.046428Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (20) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_X2OdjoCNfWFIBakX",
+      "je_number": "PUR-279f90a06b05b7a6a10070e1",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:37.668274Z",
+      "updated_at": "2026-11-10T06:07:37.668274Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 20 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_gGT9vxsQMN736dA7",
+      "je_number": "PUR-b2dcef0ef668860972760b52",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:38.315296Z",
+      "updated_at": "2026-11-10T06:07:38.315296Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (21) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_i9a6O8QvngZjTm0O",
+      "je_number": "PUR-1f64c286f19a9c6f1461533b",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:38.988446Z",
+      "updated_at": "2026-11-10T06:07:38.988446Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 21 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_YLxYecuecGBcMkjR",
+      "je_number": "PUR-b91428fd530b4095e5a59ca1",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:39.632362Z",
+      "updated_at": "2026-11-10T06:07:39.632362Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (22) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_UjFy7FFMbcH5ZjAL",
+      "je_number": "PUR-097a5637c77aa5b0e7afbb46",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:40.216404Z",
+      "updated_at": "2026-11-10T06:07:40.216404Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 22 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_97mWodD7Al78gisq",
+      "je_number": "PUR-9fe3c08723f66321f4d2fefe",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:40.832164Z",
+      "updated_at": "2026-11-10T06:07:40.832164Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (23) [test USD, Metal testnet]",
+      "debit_cents": 2,
+      "credit_cents": 2,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 2,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 2,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_q1ZCQBtciMWFvTOi",
+      "je_number": "PUR-e9c1cddd2e1ed369864a4700",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:41.370847Z",
+      "updated_at": "2026-11-10T06:07:41.370847Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 23 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_WSvhbzS7PEXzW2Lv",
+      "je_number": "PUR-8d800fb594dd7a37b75c481c",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:41.865617Z",
+      "updated_at": "2026-11-10T06:07:41.865617Z",
+      "status": "editable",
+      "memo": "Sweep earnings from Metal to Airwallex [test USD, Metal testnet]",
+      "debit_cents": 69,
+      "credit_cents": 69,
+      "lines": [
+        {
+          "account": "11999",
+          "account_name": "Money in Transit",
+          "side": "debit",
+          "cents": 69,
+          "purser_code": "1590"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 69,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_3wBsfMMVbnl63fad",
+      "je_number": "PUR-201df9e3e714254f49e5b36c",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:42.398413Z",
+      "updated_at": "2026-11-10T06:07:42.398413Z",
+      "status": "editable",
+      "memo": "Sweep credited at Airwallex (1 *USDZ = 1 USD)",
+      "debit_cents": 69,
+      "credit_cents": 69,
+      "lines": [
+        {
+          "account": "11210",
+          "account_name": "Savings Account #1",
+          "side": "debit",
+          "cents": 69,
+          "purser_code": "1201"
+        },
+        {
+          "account": "11999",
+          "account_name": "Money in Transit",
+          "side": "credit",
+          "cents": 69,
+          "purser_code": "1590"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_wCCi5p5WZISDriXo",
+      "je_number": "PUR-557da9b6ef6cef5e8bd550eb",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:42.920621Z",
+      "updated_at": "2026-11-10T06:07:42.920621Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (38) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_CGKQbhRROdSdsOPT",
+      "je_number": "PUR-24330d4a73e566c069ac46b8",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:43.601888Z",
+      "updated_at": "2026-11-10T06:07:43.601888Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 24 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_wvhFpw978KArq2hG",
+      "je_number": "PUR-c8191475c174ce1a439a7e5b",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:44.230223Z",
+      "updated_at": "2026-11-10T06:07:44.230223Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (39) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_giBvIndtaTORj160",
+      "je_number": "PUR-a30fb02aef31293ed9cdfbac",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:44.872140Z",
+      "updated_at": "2026-11-10T06:07:44.872140Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 25 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_mtzdXIgXvMEbA8As",
+      "je_number": "PUR-072ffc7c4335b323f88ef0ec",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:45.507218Z",
+      "updated_at": "2026-11-10T06:07:45.507218Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (40) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_0sc46DSX3GgmDSEQ",
+      "je_number": "PUR-29ea424983a83bf677ec92be",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:46.162559Z",
+      "updated_at": "2026-11-10T06:07:46.162559Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 26 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_RVOrbvGKzpEy28Dq",
+      "je_number": "PUR-19a1b269010fb2a5adf76081",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:46.793089Z",
+      "updated_at": "2026-11-10T06:07:46.793089Z",
+      "status": "editable",
+      "memo": "Refund of query 7 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "4100"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_cFC2RNPRlIa4qa3y",
+      "je_number": "PUR-ff05ee9ad116ff8f3a6d7bf2",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:47.437123Z",
+      "updated_at": "2026-11-10T06:07:47.437123Z",
+      "status": "editable",
+      "memo": "Refund of query 10 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "4100"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_kwj5RupGWaFObkFy",
+      "je_number": "PUR-57081cb35d3bd74ebda65909",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:48.092198Z",
+      "updated_at": "2026-11-10T06:07:48.092198Z",
+      "status": "editable",
+      "memo": "Refund of query 13 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "4100"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_gf9XEEpiriEjEPFY",
+      "je_number": "PUR-01712dc7ca8f0ff09a421700",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:48.748449Z",
+      "updated_at": "2026-11-10T06:07:48.748449Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (41) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_gc8T7Ohw1EZmCViP",
+      "je_number": "PUR-2538f8fe76bf2944291a0766",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:49.263554Z",
+      "updated_at": "2026-11-10T06:07:49.263554Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 27 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_wHlWN3c5n658xaBu",
+      "je_number": "PUR-c1db7072099f5c923cfd8e69",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:49.813457Z",
+      "updated_at": "2026-11-10T06:07:49.813457Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (42) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_1zmOvkryND5z18b3",
+      "je_number": "PUR-14d57c7840bfa66b928d9ba7",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:50.382398Z",
+      "updated_at": "2026-11-10T06:07:50.382398Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 28 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_4svcm5N2XcKJFUy0",
+      "je_number": "PUR-480fdbaa6ac2e182e7ce257b",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:51.006940Z",
+      "updated_at": "2026-11-10T06:07:51.006940Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (43) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_NlMTsbwVXsN4PPVF",
+      "je_number": "PUR-98a785b3358bb66bcf53d5cf",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:51.559901Z",
+      "updated_at": "2026-11-10T06:07:51.559901Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 29 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_HZHqZTHu7St3DwKD",
+      "je_number": "PUR-ed60ae74e3b0f4c4a6f140f0",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:52.137659Z",
+      "updated_at": "2026-11-10T06:07:52.137659Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (44) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_l50OA5v1VLyoPZJI",
+      "je_number": "PUR-0692c9a220950e94df71235c",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:52.844651Z",
+      "updated_at": "2026-11-10T06:07:52.844651Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 30 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_kxxCSMAmjECd1AgY",
+      "je_number": "PUR-c217aa44b87617b1623b7ac9",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:53.390822Z",
+      "updated_at": "2026-11-10T06:07:53.390822Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (45) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_8SkJFVvbjTvyoOZd",
+      "je_number": "PUR-c8a1e0ce99201bbc0d0cfd20",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:54.021380Z",
+      "updated_at": "2026-11-10T06:07:54.021380Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 31 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_TUndqaqJnfYJfkj0",
+      "je_number": "PUR-93f7ac36e7dac6aa8974acf1",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:54.523079Z",
+      "updated_at": "2026-11-10T06:07:54.523079Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (46) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_3LSbK3y3JlGIOYdV",
+      "je_number": "PUR-6c967518d6a07017fd94f655",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:55.047900Z",
+      "updated_at": "2026-11-10T06:07:55.047900Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 32 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_iXkdAvHynXBcRXlI",
+      "je_number": "PUR-6e6484fd78eb6b0e6105ee9a",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:55.639582Z",
+      "updated_at": "2026-11-10T06:07:55.639582Z",
+      "status": "editable",
+      "memo": "Convert USD to EUR",
+      "debit_cents": 12429,
+      "credit_cents": 12429,
+      "lines": [
+        {
+          "account": "11999",
+          "account_name": "Money in Transit",
+          "side": "debit",
+          "cents": 12429,
+          "purser_code": "1590"
+        },
+        {
+          "account": "11210",
+          "account_name": "Savings Account #1",
+          "side": "credit",
+          "cents": 12429,
+          "purser_code": "1201"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_ajbMLXqj2kJajhD5",
+      "je_number": "PUR-368a0bb31a8939e0e43d50f4",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:56.239361Z",
+      "updated_at": "2026-11-10T06:07:56.239361Z",
+      "status": "editable",
+      "memo": "Convert USD to EUR",
+      "debit_cents": 12297,
+      "credit_cents": 12297,
+      "lines": [
+        {
+          "account": "11120",
+          "account_name": "Operating Checking Account #2",
+          "side": "debit",
+          "cents": 12297,
+          "purser_code": "1200"
+        },
+        {
+          "account": "11999",
+          "account_name": "Money in Transit",
+          "side": "credit",
+          "cents": 12297,
+          "purser_code": "1590"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_lPp0QhJCZDtKzunk",
+      "je_number": "PUR-e4844de0909e235c5f3e6a22",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:56.761779Z",
+      "updated_at": "2026-11-10T06:07:56.761779Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (47) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_TTMaPyOZxVTSUbZk",
+      "je_number": "PUR-8ca6552dfcc09ca357a629a7",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:57.332498Z",
+      "updated_at": "2026-11-10T06:07:57.332498Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 33 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_pdwcBm3aKE48Mkyr",
+      "je_number": "PUR-4f12ccef379dc42972e3ffdd",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:57.836148Z",
+      "updated_at": "2026-11-10T06:07:57.836148Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (48) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_PXhz5XtEzwymmBul",
+      "je_number": "PUR-3961e5a6a68bc46baaf83e3f",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:58.393886Z",
+      "updated_at": "2026-11-10T06:07:58.393886Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 34 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_VVDEY5lQraXtUesh",
+      "je_number": "PUR-490d2aa013c5a83876cec8d1",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:58.953086Z",
+      "updated_at": "2026-11-10T06:07:58.953086Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (49) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_6EIRa135VvHor6xi",
+      "je_number": "PUR-0c988e57ade679383b1b2a1a",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:59.468588Z",
+      "updated_at": "2026-11-10T06:07:59.468588Z",
+      "status": "editable",
+      "memo": "Invoice SLL-2026-11",
+      "debit_cents": 26830,
+      "credit_cents": 26830,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 26830,
+          "purser_code": "6350"
+        },
+        {
+          "account": "11120",
+          "account_name": "Operating Checking Account #2",
+          "side": "credit",
+          "cents": 26830,
+          "purser_code": "1200"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_vpVW4gHNRaNdpLwG",
+      "je_number": "PUR-772ef7eabb807013d81aba43",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:07:59.996135Z",
+      "updated_at": "2026-11-10T06:07:59.996135Z",
+      "status": "editable",
+      "memo": "Transfer fee, invoice SLL-2026-11",
+      "debit_cents": 1500,
+      "credit_cents": 1500,
+      "lines": [
+        {
+          "account": "63700",
+          "account_name": "Bank Charges & Fees",
+          "side": "debit",
+          "cents": 1500,
+          "purser_code": "6800"
+        },
+        {
+          "account": "11120",
+          "account_name": "Operating Checking Account #2",
+          "side": "credit",
+          "cents": 1500,
+          "purser_code": "1200"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_7V9JvXvyDrdpg0vI",
+      "je_number": "PUR-71f0b8c2c03a95a90510a5f3",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:00.517607Z",
+      "updated_at": "2026-11-10T06:08:00.517607Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 35 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_olezDlvsvwWsgc3x",
+      "je_number": "PUR-4860fae55daeef4e3cf3f22c",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:01.041221Z",
+      "updated_at": "2026-11-10T06:08:01.041221Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (50) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_rkEamu3xgpcj6KN9",
+      "je_number": "PUR-98785b4943f189fe0e6e3502",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:01.584047Z",
+      "updated_at": "2026-11-10T06:08:01.584047Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 36 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_mi7fF4otQhRWjWeA",
+      "je_number": "PUR-907d3e9cabafa70ec776102b",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:02.176742Z",
+      "updated_at": "2026-11-10T06:08:02.176742Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (51) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_DBHEdAzonOxHwnaE",
+      "je_number": "PUR-a7778e339604267ee110135a",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:02.824276Z",
+      "updated_at": "2026-11-10T06:08:02.824276Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 37 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_Mqyk183cYm4jd9cv",
+      "je_number": "PUR-b6c07b96071a6c6b4bf86652",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:03.392478Z",
+      "updated_at": "2026-11-10T06:08:03.392478Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (52) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_a0HkHVWDFKJPOP9Q",
+      "je_number": "PUR-2d533e3fb0a3d2e66f6c5411",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:03.938707Z",
+      "updated_at": "2026-11-10T06:08:03.938707Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 38 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_NyN4GVvZFEs9TvLt",
+      "je_number": "PUR-10bce55058a9105810a70778",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:04.580539Z",
+      "updated_at": "2026-11-10T06:08:04.580539Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (53) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_Wrj0iXWQMHeZxw2r",
+      "je_number": "PUR-fc6c09d8e8a4731e64ff64ba",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:05.266655Z",
+      "updated_at": "2026-11-10T06:08:05.266655Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 39 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_HrgASeiapjYpff8Q",
+      "je_number": "PUR-a4e41c4c921d4032907588e1",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:05.917648Z",
+      "updated_at": "2026-11-10T06:08:05.917648Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (54) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_eGWxNtbE9Wk5cVBJ",
+      "je_number": "PUR-d4a69d781c5d54cefb472e96",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:06.547566Z",
+      "updated_at": "2026-11-10T06:08:06.547566Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 40 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_VXg66A1qxKKXovuS",
+      "je_number": "PUR-009a04b037f83d390c1a6706",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:07.059777Z",
+      "updated_at": "2026-11-10T06:08:07.059777Z",
+      "status": "editable",
+      "memo": "Packwise, Pro plan, monthly (more warehouses, live sync)",
+      "debit_cents": 5031,
+      "credit_cents": 5031,
+      "lines": [
+        {
+          "account": "63410",
+          "account_name": "Software Subscriptions",
+          "side": "debit",
+          "cents": 5031,
+          "purser_code": "6100"
+        },
+        {
+          "account": "11120",
+          "account_name": "Operating Checking Account #2",
+          "side": "credit",
+          "cents": 5031,
+          "purser_code": "1200"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_Lf5WJYvaWWOcnT5k",
+      "je_number": "PUR-abd46caa2e390bbb5e587458",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:07.592544Z",
+      "updated_at": "2026-11-10T06:08:07.592544Z",
+      "status": "editable",
+      "memo": "Stock check bought from the warehouse API (55) [test USD, Metal testnet]",
+      "debit_cents": 4,
+      "credit_cents": 4,
+      "lines": [
+        {
+          "account": "51200",
+          "account_name": "Third-Party Services & Licenses",
+          "side": "debit",
+          "cents": 4,
+          "purser_code": "5000"
+        },
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "credit",
+          "cents": 4,
+          "purser_code": "1210"
+        }
+      ]
+    },
+    {
+      "t0_id": "je_prod_BUYP5umE2VtDdeDl",
+      "je_number": "PUR-60c15b4415a6f0164eea3a98",
+      "entry_date": "2026-11-03",
+      "created_at": "2026-11-10T06:08:08.238645Z",
+      "updated_at": "2026-11-10T06:08:08.238645Z",
+      "status": "editable",
+      "memo": "Stock check sold to a retailer 41 [test USD, Metal testnet]",
+      "debit_cents": 5,
+      "credit_cents": 5,
+      "lines": [
+        {
+          "account": "11410",
+          "account_name": "Payment Processor #1",
+          "side": "debit",
+          "cents": 5,
+          "purser_code": "1210"
+        },
+        {
+          "account": "42000",
+          "account_name": "Services Revenue",
+          "side": "credit",
+          "cents": 5,
+          "purser_code": "4000"
+        }
+      ]
+    }
+  ]
+}
