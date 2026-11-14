@@ -147,7 +147,7 @@ describe("the /trick endpoint and its live call", () => {
     const r2 = (await (await call(t.d, "trick", { token: w2.world.token, attack: "pre_approved" })).json()) as TrickOut;
     expect(r2.trick).toMatchObject({ blocked: true, agent: { live: false, note: "the live agent did not answer in time, or not in the expected shape" } });
   });
-  it("today's budget, USD 10 for every live call on the page together: when it is spent, no call", async () => {
+  it("today's budget, USD 50 for every live call on the page together: when it is spent, no call", async () => {
     expect(AGENT_LINE_DAILY_USD).toBe(50); // 14 Nov (Max): USD 50 a day for the judging days, was 10;
     const s = standIn();
     const { d, db } = deskWith(s.source);
