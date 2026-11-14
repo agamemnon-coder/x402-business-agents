@@ -97,8 +97,8 @@ jobs:
         run: npx tsx test/browser/approve-design.check.ts test-results/approve-design
       - name: Purser Cloud's console in Chromium (first run and sign-in with a virtual passkey, every page at 1440 and 390 px)
         run: npx tsx test/browser/console.check.ts test-results/console
-      - name: /try in an in-app browser (WhatsApp on an iPhone, no WebAuthn, a refused or silent passkey) in Chromium
-        run: npx tsx test/browser/try-inapp.check.ts test-results/try-inapp
+      - name: /try when the passkey fails (no WebAuthn, refused, cancelled, a silent prompt) in Chromium at phone size
+        run: npx tsx test/browser/try-passkey.check.ts test-results/try-passkey
       - name: Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client)
         run: npx tsx test/browser/connector.check.ts test-results/connector
   # Safari's engine, in Playwright's own image (browsers and system libraries preinstalled, version = our lockfile's

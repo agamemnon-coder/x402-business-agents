@@ -241,7 +241,7 @@ describe("the copy", () => {
     }
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3", "start 4", "start 5", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {

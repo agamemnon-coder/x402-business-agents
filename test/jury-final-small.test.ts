@@ -36,7 +36,7 @@ describe("/try's first screen", () => {
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
     // The walkthrough on YouTube (13 Nov, owner): one small link, its address FILM_URL; since jury round 2 right under
     // the button, "Or watch the walkthrough (4:58)", then what the visit is.
-    expect(html).toContain("box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));if(inApp())box.append(inappCard(false));"); // and, in an in-app browser, the Open in Safari card (14 Nov)
+    expect(html).toContain("box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));");
     expect(START.walk).toBe("Or watch the walkthrough (4:58)");
   });
 });
