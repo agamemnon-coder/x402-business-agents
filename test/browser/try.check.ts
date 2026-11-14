@@ -22,7 +22,7 @@ import { nodeEngines } from "../../cloud/src/engine/node.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, GUIDE, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -246,9 +246,11 @@ async function passkeyContext(width: number, scheme: "light" | "dark"): Promise<
   return ctx;
 }
 
-// Part 0: the start screen in its two zones (the illustration, the card, the trust line) at a phone and a laptop, light
-// and dark: both zones in view, nothing wider than the screen, no large empty band, the feather mark, no console or CSP
-// error. Screenshots (the viewport) when a directory is given: try-start-<width>-<scheme>.png.
+// Part 0: the start screen (14 Nov, owner: enterprise-grade) at a phone and a laptop, light and dark: the eyebrow, the
+// headline, the three steps and the one-cent refusal, the button and the trailer link in view without scrolling, the
+// partners' logos loaded (the official files) with "No endorsement implied"; one column on a phone, the steps beside the
+// words on a laptop; nothing wider than the screen, the feather mark, no console or CSP error. Screenshots (the viewport)
+// when a directory is given: try-start-<width>-<scheme>.png.
 for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], [1440, 900, "light"], [1440, 900, "dark"]] as const) {
   const ctx = await browser.newContext({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: shots ? 2 : 1 });
   const page = await ctx.newPage();
@@ -258,39 +260,36 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   const tag = `start ${width}x${height} ${scheme}`;
   await page.goto(`${ORIGIN}/try`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(900);
   const box = (sel: string) => page.locator(sel).first().boundingBox();
-  const [hero, card, trust, main] = [await box(".hero"), await box("#main"), await box(".trust"), await box("#main .btn.primary")];
-  ok(!!hero && !!card && !!trust && !!main, `${tag}: the illustration, the card, its button and the trust line are shown`);
-  if (hero && card && trust && main) {
-    ok(main.y + main.height <= height && card.y >= 0 && card.y + card.height <= height && trust.y + trust.height <= height + 1, `${tag}: the card, its button and the trust line are in view without scrolling`);
-    if (width === 390) {
-      ok(hero.y + hero.height <= card.y + 40 && hero.height >= 0.38 * height, `${tag}: a phone: the illustration's band on top (${Math.round(hero.height)} px, at least 38% of the screen), the card below`);
-      ok(trust.y + trust.height >= 0.95 * height && trust.y - (card.y + card.height) < 0.15 * height, `${tag}: no empty band: the trust line ends the screen, close under the card`);
-    } else {
-      // 12 Nov: the site's header (cloud/src/siteHeader.ts, 64 px and its border) runs across the top; the illustration
-      // takes the full height under it.
-      ok(hero.x === 0 && Math.abs(hero.width - width / 2) < 2 && hero.y <= 66 && hero.y + hero.height >= height - 1 && card.x >= width / 2, `${tag}: a wide screen: the illustration left (the full height under the site's header), the card right`);
-      const above = card.y, below = height - (trust.y + trust.height);
-      ok(Math.abs(above - below) < 0.15 * height, `${tag}: no empty band: the card and the trust line are centred (${Math.round(above)} px above, ${Math.round(below)} px below)`);
-    }
+  const [h1, flow, main, trailer, partners] = [await box("main > h1"), await box(".start .flow"), await box("#main .btn.primary"), await box(".start .trailer"), await box(".start .partners")];
+  ok(!!h1 && !!flow && !!main && !!trailer && !!partners, `${tag}: the headline, the steps, the button, the trailer link and the partners are shown`);
+  ok(await page.locator(".start .flow li").count() === 4 && (await page.textContent(".start .fend"))!.includes(START.flowEnd), `${tag}: three steps and the one-cent refusal`);
+  if (h1 && flow && main && trailer) {
+    ok(main.y + main.height <= height && trailer.y + trailer.height <= height, `${tag}: the button and the trailer link are in view without scrolling`);
+    if (width === 390) ok(flow.y > h1.y + h1.height - 1 && main.y > flow.y + flow.height - 1, `${tag}: a phone: one column, the headline, the steps, then the button`);
+    else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
   }
+  const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
+  ok(JSON.stringify(logos) === JSON.stringify([["Airwallex", true], ["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
+  const ptext = (await page.textContent(".start .partners"))!;
+  ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
+  ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px`);
   ok(await page.locator(".brand .mk svg").count() === 1 && (await page.textContent(".brand"))!.trim() === "Purser", `${tag}: the brand is the feather mark and the name`);
-  ok(await page.getAttribute(".hero svg.scene", "aria-label") === "How Purser pays an invoice: an illustration", `${tag}: the illustration is named as one`);
-  if (shots) { await page.waitForTimeout(5800); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
+  if (shots) { await page.waitForTimeout(2600); await page.screenshot({ path: join(shots, `try-start-${width}-${scheme}.png`) }); }
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 }
 {
-  // With reduced motion the illustration stands still on its paid frame.
+  // With reduced motion the start stands still, the refusal in sight.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const page = await ctx.newPage();
   await page.goto(`${ORIGIN}/try`);
-  await page.waitForSelector(".scene");
-  const still = await page.evaluate(() => [...document.querySelectorAll(".scene *")].every((e) => getComputedStyle(e).animationName === "none")
-    && getComputedStyle(document.querySelector(".sc-paid")!).opacity === "1" && getComputedStyle(document.querySelector(".sc-refused")!).opacity === "0");
-  ok(still, "reduced motion: the illustration does not move, and shows its paid frame");
+  await page.waitForSelector(".start .flow");
+  const still = await page.evaluate(() => [...document.querySelectorAll(".start *")].every((e) => getComputedStyle(e).animationName === "none")
+    && getComputedStyle(document.querySelector(".start .fend")!).opacity === "1");
+  ok(still, "reduced motion: the start does not move, and shows the refusal");
   await ctx.close();
 }
 
@@ -403,7 +402,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".band"))!.includes(BAND.line) && (await page.textContent(".band"))!.includes(BAND.claudeCode), `${tag}: the band says test company, test money, simulated bank, and Purser's code reads today`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag}: focus moved to the new heading`);
   await screenChecks(page, `${tag} screen 1 (samples)`, width);
-  ok(!(await page.isVisible(".hero")) && !(await page.isVisible(".trust")) && await page.locator(".prog li.on").count() === 1, `${tag}: after the start: no illustration, no trust line; the rail lights the current step`);
+  ok(!(await page.isVisible(".start .partners")) && await page.locator(".prog li.on").count() === 1 && /^\d+:\d\d$/.test((await page.textContent(".band .clock"))!.trim()), `${tag}: after the start: no partners row; the rail lights the current step, the run's clock in the band`);
+  ok(await page.getAttribute(".band a.same", "href") === `${PROOF_URL}#run-main-1`, `${tag}: "Same step, live" goes to the same step in a live run on /proof`);
   await shot("1-invoice");
   await design("1-invoice");
 
@@ -775,6 +775,18 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await screenChecks(page, `${tag} screen 6 (after the download)`, width, 1, false);
   if (shots) await page.screenshot({ path: join(shots, `b3-6-company-${width}-${scheme}.png`), fullPage: true });
   ok(await page.locator("ul.did li").count() === 3 && await page.getAttribute("a.proofl", "href") === PROOF_URL, `${tag}: screen 6: what you just did in three icons, and the site's proof page`);
+  // 14 Nov (owner): the run's score on the finish: the time (the clock stopped), the steps passed (never a fraction), the
+  // one-cent change refused, and Share (copies the link here: no Web Share on a desktop pointer).
+  const tiles = await page.locator(".score .tile").allTextContents();
+  ok(tiles.length === 3 && /^\d+:\d\d/.test(tiles[0]!) && tiles[0]!.includes(RUN.time) && tiles[1] === `5${RUN.steps}` && tiles[2]!.includes(RUN.refused) && !tiles.join(" ").includes("/"), `${tag}: the score: time, steps passed, the one-cent change refused (${tiles.join(" | ")})`);
+  const t1 = (await page.textContent(".score .tile .v"))!;
+  await page.waitForTimeout(1200);
+  ok((await page.textContent(".score .tile .v")) === t1, `${tag}: the clock stopped at the finish (${t1})`);
+  await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.click(".score .btn.share");
+  await page.waitForSelector(`.score .shared:text-is("${RUN.copied}")`);
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  ok(clip.endsWith(`${ORIGIN}/try`) && clip.includes(RUN.shareCent), `${tag}: Share copies the text and the link (${clip})`);
   await design("6-company", { full: true });
   // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
   const done6 = (await page.locator("p.done").textContent()) ?? "";
@@ -786,6 +798,44 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(!(await keptState(page)).session, `${tag}: start again shows screen 0 and forgets the company in this tab`);
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  await ctx.close();
+}
+
+// Part 1b (14 Nov, owner): ?tour=1, a judge's guided visit. Only Next is pressed: each screen's tip names its control,
+// the control is lit, and Next presses it; on screen 4 Next changes the amount by one cent and the payment is refused;
+// then the finish with the score. A real engine and a virtual passkey, as in part 1.
+{
+  const ctx = await passkeyContext(390, "light");
+  const page = await ctx.newPage();
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.goto(`${ORIGIN}/try?tour=1`);
+  await page.waitForSelector(".guide .gt");
+  ok((await page.textContent(".guide .gt")) === GUIDE.tips.start && await page.locator("#main .btn.primary.tour-hl").count() === 1, "tour: the start's tip, its button lit");
+  const seen: string[] = [];
+  for (let i = 0; i < 20; i++) {
+    // Each step as a judge takes it: wait for Next, read the tip, press Next, wait for the page to answer.
+    await page.waitForFunction(() => { const b = document.querySelector(".guide .gnext") as HTMLButtonElement | null; return !!b && ((!b.disabled && !b.hidden) || document.querySelector(".guide .gt")?.textContent !== "" && b.hidden); }, null, { timeout: 30_000 });
+    await page.waitForTimeout(400);
+    const tip = (await page.textContent(".guide .gt")) ?? "";
+    if (tip === GUIDE.tips.company) break;
+    if (!(await page.isEnabled(".guide .gnext"))) continue;
+    const key = Object.entries(GUIDE.tips).find(([, v]) => v === tip)?.[0] ?? tip;
+    if (seen[seen.length - 1] !== key) seen.push(key);
+    const before = await page.evaluate(() => `${document.querySelector(".guide .gt")?.textContent ?? ""}|${document.querySelector("#main .btn.primary")?.textContent ?? ""}`);
+    await page.click(".guide .gnext");
+    await page.waitForFunction((t) => `${document.querySelector(".guide .gt")?.textContent ?? ""}|${document.querySelector("#main .btn.primary")?.textContent ?? ""}` !== t, before, { timeout: 30_000 });
+  }
+  ok(seen.join(" ") === "start invoice work approve books pay refused", `tour: Next alone walks every step, the one-cent refusal included (${seen.join(", ")})`);
+  await page.waitForSelector(`h1:text-is("${COMPANY.heading}")`);
+  ok(await page.locator(".score.tour-hl").count() === 1 && (await page.locator(".score .tile").allTextContents()).some((t) => t.includes(RUN.refused)), "tour: the finish's score is lit, the one-cent change refused");
+  await page.click(".guide .gend");
+  ok(await page.locator(".guide").count() === 0 && await page.locator(".tour-hl").count() === 0, "tour: End tour removes the card and the light");
+  ok(errors.length === 0, `tour: no page error${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+  if (shots) await page.screenshot({ path: join(shots, "try-tour-company-390.png") });
   await ctx.close();
 }
 

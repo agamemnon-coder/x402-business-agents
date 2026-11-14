@@ -28,12 +28,12 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, GUIDE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
-import { SCENE_CSS, sceneSvg } from "./scene.js";
+import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -55,31 +55,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 
 main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
 /* 12 Nov: the page's own brand line gave way to the site's header (cloud/src/siteHeader.ts, its style after this one). */
 main { padding-bottom: 56px; overflow-x: clip; }
-/* Screen 0 in two zones (the console's sign-in has the same): the illustration (cloud/src/scene.ts) in a band on the
-   brand's tokens, the card with the words and the button, the trust line under it. A phone: the site's header, the band,
-   the card below. A wide screen: the header across, the band left, the card right, centred. Other screens: neither. */
-.hero, .trust { display: none; }
-body:has(.screen.start) .hero { display: grid; }
-body:has(.screen.start) .trust { display: block; margin: 0 auto; padding: 14px var(--gut) 18px; max-width: 560px; width: 100%; text-align: center; color: var(--faint); font-size: 12.5px; line-height: 1.5; }
-body:has(.screen.start) main { width: calc(100% - 2 * var(--gut)); max-width: 560px; margin: -28px auto 0; position: relative; z-index: 1; padding: 22px 22px 22px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
-body:has(.screen.start) h1 { margin-top: 0; }
-body:has(.screen.start) { display: flex; flex-direction: column; min-height: 100vh; min-height: 100svh; }
-body:has(.screen.start) .hero { flex: 1 0 auto; min-height: 40vh; min-height: 40svh; padding: 16px 12px 40px; }
-body:has(.screen.start) .trust { margin-top: auto; }
-.start .lede { margin: 0 0 18px; font-size: 16.5px; }
-.start .btn.big { margin-top: 0; width: 100%; }
-.start .btn .i { vertical-align: 0; }
-.start .fine { margin: 12px 0 0; font-size: 13px; color: var(--muted); text-align: center; }
-.start .walkl { margin: 2px 0 0; font-size: 13px; text-align: center; }
-.start .walkl a { display: inline-flex; align-items: center; min-height: 44px; color: var(--accent); font-weight: 600; text-decoration: none; }
-@media (min-width: 1024px) {
-  body:has(.screen.start) { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto auto 1fr; }
-  body:has(.screen.start) header.top { grid-column: 1 / -1; grid-row: 1; }
-  body:has(.screen.start) .hero { grid-column: 1; grid-row: 2 / -1; height: calc(100vh - 65px); position: sticky; top: 65px; padding: 40px 48px 48px; }
-  body:has(.screen.start) main { grid-column: 2; grid-row: 3; width: calc(100% - 96px); max-width: 500px; margin: 0 auto; padding: 36px 36px 32px; }
-  body:has(.screen.start) .trust { grid-column: 2; grid-row: 4; max-width: 500px; padding: 18px 0 0; margin: 0 auto; }
-  body:has(.screen.start) h1 { font-size: 32px; }
-}
+/* Screen 0: cloud/src/try/run.ts START_CSS (14 Nov). */
 h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.02em; margin: 20px 0 12px; }
 h1:focus { outline: none; }
 p { margin: 0 0 12px; }
@@ -479,6 +455,7 @@ const lineOf=eventLineOf(W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
 const RUNS=__RUNS__;
 const PROOF=__PROOF__;
+__RUN__
 const $=(s)=>document.querySelector(s);
 const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids??[])){if(k===null||k===undefined||k===false)continue;e.append(typeof k==='string'?document.createTextNode(k):k)}return e};
 const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),label);b.type='button';return b};
@@ -508,8 +485,8 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled'];
-const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null};
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed'];
+const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
 const forget=()=>{for(const k of KEEP)S[k]=k==='after'?0:null;try{sessionStorage.removeItem(KEY)}catch(e){}};
@@ -598,7 +575,7 @@ function askCloseAll(){for(const k of [...OPEN.keys()])askClose(k)}
 // The screens: a registry, one shown at a time.
 const SCREENS={};
 function screen(name,def){SCREENS[name]=def}
-function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode)])}
+function band(){const live=!!(S.mode&&S.mode.claude==='live');return el('p','band',[el('span','',C.band.line),el('span','mode'+(live?' live':''),live?C.band.claudeLive:C.band.claudeCode),el('span','bx',[runClock(),sameStep(S.screen)])])}
 // Where the visit stands: one segment per step, and the current step's name.
 function steps(name){
   const order=C.steps.order,at=order.indexOf(name);if(at<1)return null;
@@ -629,7 +606,7 @@ window.addEventListener('popstate',(ev)=>{
 function show(name,arg,how){
   const d=SCREENS[name];if(!d)return false;
   pollStop();askCloseAll();revokeAll();
-  S.screen=name;save();remember(name,arg,how);
+  S.screen=name;runMark(name,arg);save();remember(name,arg,how);
   const h=el('h1','',typeof d.heading==='function'?d.heading(arg):d.heading);h.tabIndex=-1;
   const box=el('div','screen '+name);
   const top=d.band===false||!S.session?[]:[steps(name),band()].filter(Boolean);
@@ -639,32 +616,7 @@ function show(name,arg,how){
   return true;
 }
 
-// 0 Start.
-// In two zones with the illustration (static in the page, cloud/src/scene.ts) and the trust line under the card (CSS).
-screen('start',{heading:C.start.heading,band:false,draw(box){
-  box.classList.add('start');
-  const text=el('p','lede',C.start.text);const b=btn(C.start.button,true);
-  const label=(words,glyph)=>b.replaceChildren(...[words,glyph?icon('arrow-right',18):null].filter(Boolean));label(C.start.button,true);
-  const walk=el('a','walk',C.start.walk);walk.href=C.film;walk.target='_blank';walk.rel='noopener';
-  // The walkthrough link right under the button (jury round 2, 13 Nov), then what the visit is.
-  box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));
-  b.addEventListener('click',async()=>{
-    b.disabled=true;label(C.start.starting,false);
-    const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
-    if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
-      for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
-      // Warm the company's engine while screen 1 is read: its status (which loads the engine object) and the samples, in
-      // parallel and not awaited, so the engine is warm when the visitor files an invoice. Only here, after the click:
-      // never on load or on hover, which would start a company for every crawler and spend the start limits.
-      S.after=0;save();armRenewal();WARM.engine=api('GET','/v1/engine');WARM.samples=api('GET','/v1/engine/samples');show('invoice');return;
-    }
-    b.disabled=false;label(C.start.button,true);
-    const said=typeof r.json.message==='string'&&r.json.message?r.json.message:C.start.failed;
-    const why=el('div','',[el('p','note',said)]);
-    if(r.status===429||r.status===503){const a=el('a','',C.start.runs);a.href=RUNS;a.rel='noopener';why.append(el('p','',a))}
-    text.replaceWith(why);
-  });
-}});
+__START__
 
 // The warm-up's answers, taken once by the screen that needs them (screen 1 takes the samples).
 const WARM={engine:null,samples:null};
@@ -1199,7 +1151,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const j=r.json,o=r.status===200?j.outcome:null;
     if(o==='paid'){S.settled=j.settled||null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
-    if(o==='refused'){intro.hidden=true;out.replaceChildren(refused(r,ms,sent));return}
+    if(o==='refused'){intro.hidden=true;S.passed=runKit.mark(S.passed,'refuse');save();out.replaceChildren(refused(r,ms,sent));return}
     if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
@@ -1410,7 +1362,7 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  box.append(done,did,el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
+  box.append(done,did,runScore(),el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
   // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
   // "more", never a form, and nothing collected on this page.
   async function download(asJson){
@@ -1454,6 +1406,7 @@ async function boot(){
   if(S.screen==='invoice'||S.screen==='start'){show('invoice');return}
   if(last)show('work',{kind:'reload',invoice:last});else show('invoice');
 }
+__TOUR__
 boot();
 `;
 
@@ -1472,25 +1425,24 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }): string {
-  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
-    "external-link": ICONS["external-link"] };
+    "external-link": ICONS["external-link"], "shield-check": ICONS["shield-check"], ban: ICONS.ban, play: ICONS.play, "arrow-up-right": MORE["arrow-up-right"] };
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
-    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL));
+    .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}</style></head><body>
+<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}</style></head><body>
 ${siteHeader("try")}
-<div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
-<p class="trust">${escAttr(START.trust)}</p>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 <script type="module" nonce="${n}">${script}</script>
 </body></html>`;
