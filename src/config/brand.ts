@@ -53,9 +53,12 @@ export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with
 /**
  * TAP's status, on Max's wording (5 Nov, after Visa's answer in the hackathon Slack), said once per surface (/visa, the
  * form, the deck): built and verified against Visa's public reference verifier, not eligible Visa tooling for this
- * hackathon. Never "certified", "endorsed" or "confirmed by Visa".
+ * hackathon. Never "certified", "endorsed" or "confirmed by Visa". Partner scan, 14 Nov: no "(Visa, 5 Nov)" and no
+ * "not eligible Visa tooling"; it says plainly that TAP is outside this entry.
  */
-export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).";
+/** The one name /visa gives the card credential Airi hands out (partner scan, 14 Nov): what it is, and that it is a test card. */
+export const AIRI_CREDENTIAL = "Airi credential (test card)";
+export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.";
 /**
  * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
  * run counts), on the Airi run, not on TAP.

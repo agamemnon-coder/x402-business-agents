@@ -181,7 +181,8 @@ export const RECORDINGS_10 = {
   "try-cent": "/try: the amount changed by one cent, the same signature refused",
 } as const;
 
-export const CREDITS_10 = "Test money only: Airwallex sandbox · Metal testnet · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs).";
+// Judge scan, 14 Nov: the credits name the chain partner as Alta (formerly Metal).
+export const CREDITS_10 = "Test money only: Airwallex sandbox · Alta testnet (formerly Metal) · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs).";
 
 /**
  * Film v10 (13 Nov, the enterprise hand-in, under five minutes): what Purser is today. The problem; Purser Cloud as the

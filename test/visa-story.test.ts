@@ -48,7 +48,8 @@ describe("/visa, how Purser meets each one", () => {
     expect([f1.outcome?.code, f2.outcome?.code]).toEqual(["PURSER_CREDENTIAL_AMOUNT_MISMATCH", "PURSER_CREDENTIAL_ALREADY_USED"]);
     expect([f1.calls.airwallex, f2.calls.airwallex]).toEqual([0, 0]);
     expect(s).toContain(`another amount, ${f1.outcome?.code}; a second use, ${f2.outcome?.code}; before any Airwallex call`);
-    expect(s).toContain("Airi's credential, not a Visa agentic token");
+    // Partner scan, 14 Nov: one name for the credential; the plain "not a Visa agentic token" stays.
+    expect(s).toContain("The Airi credential (test card), not a Visa agentic token");
   });
 
   it("says the passkey is Purser's, the hash read back for B, and the limits from the run's own policy row", () => {

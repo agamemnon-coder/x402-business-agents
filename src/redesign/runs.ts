@@ -14,6 +14,7 @@
 // title is its name, its badge and partners are read from its rails and money words, its what's first sentence is its
 // line. A new row adds the optional fields: name, line, kind, rate (and product, for the one run that is the product).
 
+import { altaLabel } from "../ui/formerly.js";
 import { readFileSync } from "node:fs";
 import { AIRI_RUN_FILE, AIRI_RUN_LOG, airiRun } from "./airiRun.js";
 import { AWX_RUN_FILE, AWX_RUN_LOG, awxRun } from "./awxRun.js";
@@ -567,8 +568,8 @@ const FILTERS: { id: string; label: string; has: (r: RunRow) => boolean }[] = [
 const idChip = (i: RunId) => {
   const ext = i.href?.startsWith("http");
   const val = i.href ? `<a class="v" href="${esc(i.href)}"${ext ? ' target="_blank" rel="noopener"' : ""}>${esc(i.value)}${ext ? " ↗" : ""}</a>` : `<code class="v">${esc(i.value)}</code>`;
-  const copy = i.href && !ext ? "" : `<button type="button" class="cp" data-copy="${esc(i.value)}" aria-label="Copy ${esc(i.label)}">${icon("copy", 14)}</button>`;
-  return `<span class="idc"><span class="k">${esc(i.label)}</span>${val}${copy}</span>`;
+  const copy = i.href && !ext ? "" : `<button type="button" class="cp" data-copy="${esc(i.value)}" aria-label="Copy ${esc(altaLabel(i.label))}">${icon("copy", 14)}</button>`;
+  return `<span class="idc"><span class="k">${esc(altaLabel(i.label))}</span>${val}${copy}</span>`;
 };
 
 /**
