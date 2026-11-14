@@ -182,7 +182,9 @@ describe("the console", () => {
   it("names a VAT code in words where Purser knows it, keeps the account, and says the runner sent the last update (jury, 13 Nov)", () => {
     expect(MESSAGES.en["cs.vat.PF_DE19"]).toBe("German 19%, reclaimed from Germany");
     expect(MESSAGES.nl["cs.vat.PF_DE19"]).toBeTruthy();
-    expect(html).toContain("l.account+(l.vat_code?' · '+vatWord(l.vat_code):'')");
+    expect(html).toContain("l.account+(ACCT[l.account]?' '+ACCT[l.account]:'')+(l.vat_code?' · '+vatWord(l.vat_code):'')");
+    // The account's name from the chart beside its number (the CFO review, 14 Nov).
+    expect(html).toMatch(/const ACCT=\{[^}]*"2100":"Accounts payable"/);
     expect(html).not.toContain("l.vat_code?' · '+l.vat_code");
     expect(MESSAGES.en["cs.last_update"]).toBe("Last update from the runner");
   });

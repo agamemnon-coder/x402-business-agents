@@ -117,7 +117,7 @@ const COUNTRIES: Record<string, Country> = {
   NL: { doc: guide("netherlands"), local: [{ currency: "EUR", needs: ["iban"] }], swift: { needs: ["iban"] } },
   DE: { doc: guide("germany"), local: [{ currency: "EUR", needs: ["iban"] }], swift: { needs: ["iban"] } },
   // Every other SEPA country (the CFO review, 14 Nov: Belgian, French and Irish EUR suppliers were refused): EUR by its
-  // IBAN on the local SEPA route, as NL and DE, and SWIFT by IBAN for any other currency. Airwallex's own
+  // IBAN on the local SEPA route, as NL and DE; any other currency there is refused (chooseRoute). Airwallex's own
   // /beneficiaries/schema and /beneficiaries/validate still check each beneficiary when it is created.
   ...Object.fromEntries(Object.keys(SEPA_IBAN_LENGTH).filter((c) => !["NL", "DE", "GB"].includes(c)).map((c) => [c, { doc: SEPA_DOC, local: [{ currency: "EUR", clearing: "SEPA", needs: ["iban"] }], swift: { needs: ["iban"] } } as Country])),
 };
@@ -138,6 +138,8 @@ const present = (d: BankDetails, f: Field) =>
 export function chooseRoute(d: BankDetails): { ok: true; route: Route } | { ok: false; reason: string } {
   const c = COUNTRIES[d.country];
   if (!c) return { ok: false, reason: `Purser has no payout guide for bank country ${d.country || "(none)"} yet; a person pays this supplier, or adds the country from Airwallex's payout network guide` };
+  // A country Purser pays by SEPA alone (no guide of its own): EUR only.
+  if (c.doc === SEPA_DOC && d.currency !== "EUR") return { ok: false, reason: `Purser has no payout guide for bank country ${d.country} yet beyond SEPA, which carries EUR, not ${d.currency || "(no currency)"}; a person pays this supplier` };
   if (!payableCurrency(d.currency)) return { ok: false, reason: `Purser cannot pay in ${d.currency || "(no currency)"}: only two-decimal currencies that SWIFT carries (${SWIFT_CURRENCIES.filter(payableCurrency).join(", ")})` };
   for (const l of c.local) {
     if (l.currency !== d.currency) continue;

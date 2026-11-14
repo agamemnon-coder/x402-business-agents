@@ -128,9 +128,10 @@ describe("a SEPA supplier's EUR", () => {
     for (const [country, iban] of [["BE", "BE68539007547034"], ["FR", "FR1420041010050500013M02606"], ["IE", "IE29AIBK93115212345678"]] as const) {
       const d = { country, currency: "EUR", accountName: "Supplier SA", iban };
       const r = chooseRoute(d);
-      expect(r.ok && r.route).toMatchObject({ country, method: "LOCAL", currency: "EUR", clearing: "SEPA" });
-      expect(validateDetails(d, (r as { route: never }).route)).toEqual([]);
-      expect(validateDetails({ ...d, iban: iban.slice(0, -1) }, (r as { route: never }).route)[0]).toMatch(/IBAN has \d+ characters/);
+      if (!r.ok) throw new Error(r.reason);
+      expect(r.route).toMatchObject({ country, method: "LOCAL", currency: "EUR", clearing: "SEPA" });
+      expect(validateDetails(d, r.route)).toEqual([]);
+      expect(validateDetails({ ...d, iban: iban.slice(0, -1) }, r.route)[0]).toMatch(/IBAN has \d+ characters/);
     }
     expect(chooseRoute({ country: "BR", currency: "EUR", accountName: "Fornecedor", iban: "BR1800360305000010009795493C1" }).ok).toBe(false);
   });
