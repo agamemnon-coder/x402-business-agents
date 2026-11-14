@@ -478,7 +478,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.click(`.result .btn.primary:has-text("${WORK.pay}")`);
   await page.waitForSelector(`h1:text-is("${APPROVE.heading}")`);
   await page.waitForSelector(`.btn.primary:has-text("${APPROVE.create}")`, { timeout: 20_000 });
-  ok((await page.textContent(".stepname")) === STEPS.names.approve, `${tag}: the steps say Approve`);
+  ok((await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.approve, `${tag}: the steps say Approve`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag} screen 3: focus on the heading`);
   ok((await page.textContent(".amount")) === "EUR 1,850.00", `${tag}: the amount, large, once (${await page.textContent(".amount")})`);
   const st = await keptState(page);
@@ -543,7 +543,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } | null };
   const outcomeShown = () => page.evaluate(() => document.querySelectorAll(".stamp, .layer, .hash, .verdict, .proof, .outcome .card, .paidstamp").length);
   await page.waitForTimeout(300);
-  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1 && (await page.textContent(".stepname")) === STEPS.names.pay && await page.locator(`text=${APPROVE.approved}`).count() === 1,
+  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1 && (await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.pay && await page.locator(`text=${APPROVE.approved}`).count() === 1,
     `${tag}: one tap: "${PAY.paying}" with the ring, the rail on Pay, the approval's "${APPROVE.approved}" still shown`);
   ok(await outcomeShown() === 0 && stand.payAnswers === answered && (await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held, no transfer`);
   ok(Object.keys(pp).join() === "terms,credential" && JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && pp.credential?.response.signature === ab.credential?.response?.signature, `${tag}: pay as signed: the signed terms unchanged and the approval's own signature`);

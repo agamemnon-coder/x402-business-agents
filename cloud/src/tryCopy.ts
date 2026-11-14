@@ -104,8 +104,26 @@ export const WORK = {
 export const INVOICE_FIELDS = { vendor: "Supplier", number: "Invoice number", total: "Amount", due: "Due", status: "Status" };
 
 /**
+ * In-app browsers (14 Nov, a tester in WhatsApp on an iPhone: "I can't get past the third one"): WhatsApp, Instagram,
+ * Facebook, LinkedIn, Line, WeChat, the Google app and similar open a link in their own web view, where a passkey cannot
+ * be made or used. The card says so on the start screen and again at the passkey step, with a way out.
+ */
+export const INAPP = {
+  title: "Open this page in Safari or Chrome to sign with Face ID.",
+  why: "In-app browsers, such as WhatsApp's, cannot use your passkey.",
+  copy: "Copy link",
+  copied: "Link copied",
+  /** Only on an iPhone or iPad. */
+  ios: "On iPhone: tap ⋯ or the share icon, then Open in Safari.",
+  /** The recorded walkthrough (FILM_URL), for a visitor who cannot leave the app. */
+  film: "Or watch the 5-min walkthrough",
+};
+
+/**
  * The steps of a visit, shown small under the band on every screen after the start: one segment per step, and only the
  * current step's name in words (the others are segments, named for screen readers only). Counted in each screen's budget.
+ * 14 Nov (tester: "what are the other dots at the top?"): every dot carries its word, small, the current one marked; the
+ * seven words are a fixed legend, outside each screen's count.
  */
 export const STEPS = {
   names: { invoice: "Invoice", work: "At work", approve: "Approve", pay: "Pay", books: "Paid", company: "Company" } as Record<string, string>,
@@ -142,6 +160,15 @@ export const APPROVE = {
   approved: "Approved. Nothing is paid yet.",
   cancelled: "Nothing was signed. Try again when you are ready.",
   noPasskey: "This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.",
+  /** The passkey's prompt gave no answer in 30 s (in-app browsers can leave it open without showing it): given up. */
+  timeout: "Your passkey did not answer.",
+  /** The main button after a passkey failed or timed out, or when this browser has none: never a dead end. */
+  again: "Try again",
+  /**
+   * Tester, 14 Nov: "is the limit per transaction or a total?" Here, every supplier invoice waits for the CFO: the
+   * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
+   */
+  limit: "Every invoice waits for your signature here, whatever its amount.",
   fileAgain: "File it again",
   failed: "Purser could not file this payment.",
 };
@@ -322,6 +349,9 @@ export const VISIBLE = {
     [START.heading, START.text, START.starting, START.what, START.fine, START.walk, START.trust],
     [START.heading, START.failed, START.button, START.what, START.fine, START.walk, START.trust],
     [START.heading, START.runs, START.button, START.what, START.fine, START.walk, START.trust],
+    // 14 Nov: in an in-app browser the card under the start (its walkthrough link is already above it).
+    [START.heading, START.text, START.button, START.what, START.fine, START.walk, INAPP.title, INAPP.why, INAPP.ios, INAPP.copy, START.trust],
+    [START.heading, START.text, START.button, START.what, START.fine, START.walk, INAPP.title, INAPP.why, INAPP.ios, INAPP.copy, INAPP.copied, START.trust],
   ],
   invoice: [
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loading, INVOICE.send],
@@ -347,21 +377,25 @@ export const VISIBLE = {
   approve: [
     [APPROVE.heading, APPROVE.filing],
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
     // The fold open: what the passkey signs, above the terms (the terms themselves are data).
     [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.create],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
     // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
-    [APPROVE.heading, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
-    [APPROVE.heading, APPROVE.terms, APPROVE.noPasskey],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.noPasskey, APPROVE.again, INAPP.title, INAPP.why, INAPP.ios, INAPP.copy, INAPP.film],
     // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
-    [APPROVE.heading, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
+    // 14 Nov: a passkey that failed or gave no answer: a plain line, Try again, and (in an in-app browser, or when the
+    // refusal came at once) the card.
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.cancelled, APPROVE.again, INAPP.title, INAPP.why, INAPP.ios, INAPP.copy, INAPP.film],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.timeout, APPROVE.again],
   ],
   pay: [
     [PAY.heading, PAY.loading],
@@ -422,7 +456,10 @@ export const VISIBLE = {
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
 // and +5 for the walkthrough link (on YouTube, 4:58; 13 Nov, owner; since jury round 2: "Or watch the walkthrough (4:58)").
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58 };
+// 14 Nov (a tester in WhatsApp's in-app browser): the approval says the limit plainly ("whatever its amount", +10
+// words), and an in-app browser shows the card (open in Safari or Chrome, Copy link, on iPhone how): "start 4"/"start 5"
+// and "approve 9"/"approve 14" carry the card; the other approve states the limit line.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 64, "start 1": 60, "start 2": 60, "start 3": 54, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "start 4": 98, "start 5": 100, "approve 2": 55, "approve 4": 55, "approve 9": 88, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 86 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
