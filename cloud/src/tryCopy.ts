@@ -274,6 +274,7 @@ export const FX_CARD = {
     switched_off: "Live quotes are switched off", no_binding: "Live quotes are not set up here", no_key: "No Airwallex sandbox key is set",
     day_cap: "Today's limit of live quotes is used", company_cap: "This test company's limit of live quotes is used", unavailable: "Airwallex did not answer",
     timeout: "Airwallex took longer than 3 seconds", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The quote could not be asked for",
+    over_limit: "Airwallex's sandbox quote was over Purser's 0.50% FX limit",
   } as Record<string, string>,
 };
 

@@ -12,6 +12,7 @@
 // so: { source: "recorded", reason }. Never a made-up quote.
 import type { AnyQuote, MarketRate, Quote } from "../../../src/airwallex/port.js";
 import { audit } from "../../../src/audit/log.js";
+import { FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
 import type { DB } from "../../../src/db/open.js";
 
 /** How long the engine waits for Airwallex before it uses the recorded rate. */
@@ -25,7 +26,7 @@ export type LiveFxAnswer = { ok: true; quote: LiveQuote; market_rate: string; ca
 export interface LiveFxSource { quote(a: { company: string; buyCurrency: string; sellCurrency: string; buyAmount: string }): Promise<LiveFxAnswer> }
 
 /** Why the recorded rate was used, as a fixed code (the page says it in words). */
-export const RECORDED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "unavailable", "timeout", "bad_answer", "bad_request"] as const;
+export const RECORDED_REASONS = ["switched_off", "no_binding", "no_key", "day_cap", "company_cap", "unavailable", "timeout", "bad_answer", "bad_request", "over_limit"] as const;
 export type RecordedReason = (typeof RECORDED_REASONS)[number];
 
 /** What the page shows beside the terms, for a quote in them. */
@@ -65,6 +66,12 @@ function checked(a: { buyCurrency: string; sellCurrency: string; buyAmountCents:
   if (!q || typeof q.quote_id !== "string" || !/^[A-Za-z0-9-]{8,64}$/.test(q.quote_id) || q.buy_currency !== a.buyCurrency || q.sell_currency !== a.sellCurrency
     || centsOf(q.buy_amount) !== a.buyAmountCents || centsOf(q.sell_amount) === null || !rateOk(q.client_rate) || !rateOk(ans.market_rate)
     || !Number.isFinite(Date.parse(q.valid_to_at))) return "bad_answer";
+  // 14 Nov: the sandbox's client rate can sit about 1% over its own rate; Purser's FX check (FX_QUOTE_MAX_MARKUP_BPS,
+  // src/config/policy.ts) would then refuse the payment at Approve. A live quote over that limit is not planned with:
+  // the recorded rate is used and the note says why ("over_limit"), so the visit still runs to paid.
+  const marketCents = Math.ceil(a.buyAmountCents * Number(ans.market_rate));
+  const markupBps = Math.round(((centsOf(q.sell_amount)! - marketCents) / marketCents) * 10_000);
+  if (markupBps > FX_QUOTE_MAX_MARKUP_BPS) return "over_limit";
   return { quote: q, market_rate: ans.market_rate };
 }
 
