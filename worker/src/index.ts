@@ -126,7 +126,11 @@ export class RelayObject extends DurableObject<Env> {
 export class AwxGateway extends WorkerEntrypoint<Env> {
   private desk?: AwxGatewayDesk;
   async call(r: GatewayRequest): Promise<GatewayAnswer> {
-    return (this.desk ??= new AwxGatewayDesk(this.env)).call(r);
+    // Its own key when the owner set one (AWX_ACT_*), else the Worker's one sandbox key; the allow-list, AWX_GATEWAY_WRITE and
+    // Purser Cloud's switch and caps stay the locks either way. The key is read here and handed to the desk only.
+    const id = this.env.AWX_ACT_CLIENT_ID ?? this.env.AIRWALLEX_CLIENT_ID;
+    const key = this.env.AWX_ACT_API_KEY ?? this.env.AIRWALLEX_API_KEY;
+    return (this.desk ??= new AwxGatewayDesk({ AWX_ACT_CLIENT_ID: id, AWX_ACT_API_KEY: key, AWX_GATEWAY_WRITE: this.env.AWX_GATEWAY_WRITE })).call(r);
   }
 }
 

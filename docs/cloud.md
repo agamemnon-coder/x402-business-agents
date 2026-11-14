@@ -636,8 +636,8 @@ the invoice says so.
 
 Locks, all off by default: the admin switches `awx_act` (and `awx_act_try` for /try companies), the daily caps
 `awx_act_company_cents_day` (at most 1,000.00) and `awx_act_global_cents_day` (at most 5,000.00), and on the kit11
-Worker `AWX_GATEWAY_WRITE=on`. Only kit11 holds the sandbox key (its own secrets `AWX_ACT_CLIENT_ID` and `AWX_ACT_API_KEY`, not the
-quote-only key of /try/sign); Purser Cloud reaches it through the named entrypoint `AwxGateway`, which no HTTP request can reach. The
+Worker `AWX_GATEWAY_WRITE=on`. Only kit11 holds the sandbox key (`AWX_ACT_CLIENT_ID` and `AWX_ACT_API_KEY` when set, else the Worker's
+`AIRWALLEX_CLIENT_ID` and `AIRWALLEX_API_KEY`); Purser Cloud reaches it through the named entrypoint `AwxGateway`, which no HTTP request can reach. The
 allow-list is `src/airwallex/gatewayRules.ts`. After a signature nothing falls back to another bank: the signed terms
 name that bank's ids, so a failed payment stays failed with its reason and Pay plans it again.
 
