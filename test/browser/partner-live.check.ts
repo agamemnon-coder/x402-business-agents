@@ -15,7 +15,7 @@ const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${wha
 const j = await startJudge(0);
 const b = await chromium.launch();
 for (const w of [390, 1440]) {
-  const ctx = await b.newContext({ viewport: { width: w, height: w === 390 ? 844 : 900 } });
+  const ctx = await b.newContext({ viewport: { width: w, height: w === 390 ? 844 : 900 }, deviceScaleFactor: 2 });
   const p = await ctx.newPage();
   const errs: string[] = [];
   p.on("console", (m) => { if (m.type() === "error") errs.push(m.text()); });

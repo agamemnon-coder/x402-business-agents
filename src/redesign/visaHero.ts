@@ -179,7 +179,7 @@ export const VISA_HERO_CSS = `
   .vh-c { padding: 3px 8px; font-size: 12.5px; }
   .vh-leg { gap: 4px 12px; margin-bottom: 8px; font-size: 12.5px; }
   .vh-strip { grid-template-columns: 1fr 1fr; gap: 5px; }
-  .vh-strip .vh-c { padding: 4px 7px; } .vh-strip .vh-why { flex-basis: 100%; font-size: 11.5px; line-height: 1.25; }
+  .vh-strip .vh-c { padding: 4px 7px; } .vh-strip .vh-why { flex-basis: 100%; font-size: 12px; line-height: 1.25; }
   .vh-hl { flex-wrap: nowrap; gap: 4px; } .vh-hc { flex: 1 1 0; padding: 7px; } .vh-hs { display: none; }
   .vh-hc code { font-size: 11px; } .vh-hw { font-size: 13px; } .vh-tick { font-size: 12px; } .vh-eq { font-size: 16px; }
 }
