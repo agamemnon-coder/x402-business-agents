@@ -1,4 +1,4 @@
-// D19 block 3: the Sourcing agent's upstream suppliers, each an x402 seller on Metal testnet. With the autonomous agents
+// D19 block 3: the Sourcing agent's upstream suppliers, each an x402 seller on Alta testnet. With the autonomous agents
 // on there are two, so "which supplier" is a real choice: Stockline is fresh and reliable at its price; Ridgeline Data
 // is cheaper or dearer depending on the day, serves data that is minutes old, and is sometimes unavailable (before any
 // payment, so an outage costs nothing). Prices live in the ledger's settings, so the world can change them.

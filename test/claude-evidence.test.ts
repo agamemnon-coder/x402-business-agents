@@ -82,7 +82,8 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     // counts of one thing. One line says how they relate, from the record (metalStory's payments and the split).
     const chain = metalStory(run.record).payments;
     expect([chain.sales + chain.purchases, chain.total]).toEqual([f.routine, f.routine + chain.refunds + chain.sweeps]);
-    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).replace(/\s+/g, " ").trim()).toBe(`All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged On Metal: ${chain.total} payments, the ${f.routine} routine ones (${chain.sales} x402 sales, ${chain.purchases} purchases) and ${chain.refunds} refunds and ${chain.sweeps} sweep, decided among the ${f.decisions} exceptions.`);
+    // 14 Nov: the page's first mention of Alta (src/ui/formerly.ts).
+    expect(text(/<figcaption>[\s\S]*?<\/figcaption>/.exec(fig)![0]).replace(/\s+/g, " ").trim()).toBe(`All 24 decisions by Claude, holds included; 0 fallbacks · 50 Claude calls, each logged On Alta (formerly Metal): ${chain.total} payments, the ${f.routine} routine ones (${chain.sales} x402 sales, ${chain.purchases} purchases) and ${chain.refunds} refunds and ${chain.sweeps} sweep, decided among the ${f.decisions} exceptions.`);
     // The page's CSP hashes its one style block: no style attribute anywhere in it, no script.
     expect(CLAUDE_PAGE).not.toMatch(/\sstyle="/);
     // No pass-rate fraction anywhere on the page (13 Nov, from the judge run): words instead ("all 24", "50 of 60"). The

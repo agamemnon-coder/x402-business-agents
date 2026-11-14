@@ -37,11 +37,11 @@ it, so the taps, the Face ID prompts and the tab switches fit in the rest. The w
   for one click.
 - **Live: an invoice, Face ID, one cent, a copy:** 0:20–1:30 (70 s); budget 161 words; written 105 words; about 46 s of
   speech, the rest for the taps, two passkey prompts and Claude's reading.
-- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 110 words; about 48 s of speech, 2 s for two tab
+- **The proof:** 1:30–2:20 (50 s); budget 115 words; written 112 words; about 48 s of speech, 2 s for two tab
   switches (tight: cut the Airi line first if it runs over).
 - **The business and the ask:** 2:20–3:00 (40 s); budget 92 words; written 84 words; about 37 s of speech, 3 s for a
   pause.
-- **Total:** 3:00; budget 414 words; written 339 words; about 2:27 of speech, 33 s for taps and pauses.
+- **Total:** 3:00; budget 414 words; written 341 words; about 2:27 of speech, 33 s for taps and pauses.
 
 Before you start: the laptop's shared screen shows Home ([kit11.max-31b.workers.dev](https://kit11.max-31b.workers.dev/)).
 Your iPhone is mirrored to the screen (Safari, Face ID), with [/try](https://kit11.max-31b.workers.dev/try) open and
@@ -86,9 +86,9 @@ Demo Day script".
 | | All 3 agent cards carry my policy as Airwallex's own controls. | [airwallex-cards-2026-11-06.json](../runs/airwallex-cards-2026-11-06.json); `cardControlRows`: all 3 cards match the CFO policy |
 | Point at awx-1 below, "a separate run · Airwallex sandbox, test money". | On 7 November, an Airwallex-only run passed every check. | [docs/runs/2026-11-07-awx-1.md](../runs/2026-11-07-awx-1.md): ACCEPTED, checks a–g all passed; on `/proof` through `awxRunBlock` (`src/redesign/awxRun.ts`) |
 | Open the line above, "Visa Intelligent Commerce via Airwallex's Airi": ✓ Within the limit · ✓ Paid after Face ID · ✕ Refused by Purser. | Agents also paid with Visa Intelligent Commerce, through Airwallex's Airi. | [docs/runs/2026-11-07-vic-1.md](../runs/2026-11-07-vic-1.md): PASSED, 5 of 5 checks (Airwallex sandbox, test card, test money); on `/proof` through `airiRunBlock` (`src/redesign/airiRun.ts`) |
-| Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Metal. | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
-| | We switched off our own check once; Metal refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
-| | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Metal testnet"; Record: `payments` (onChain 86) |
+| Tab [/metal](https://kit11.max-31b.workers.dev/metal); point at #24's refusal and its tx. | Proof two: each agent has its own mandate on Alta (formerly Metal). | `/metal` (`src/redesign/metalStory.ts`): one mandate per agent, on chain |
+| | We switched off our own check once; Alta refused purchase 24 anyway. | `CHAIN_TEST`; Record: `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` |
+| | That refusal is on chain, next to 86 payments, each its own transaction. | README, "On Alta testnet"; Record: `payments` (onChain 86) |
 | Back to [/proof](https://kit11.max-31b.workers.dev/proof), the Claude figure. | Proof three: Claude made all 24 decisions, with 0 fallbacks. | Record: `split` (all 24, 0 fallbacks) |
 | | Said plainly: the second approver was a test passkey, and settlement is simulated. | `SECOND_APPROVER`; `SANDBOX_SETTLED` (`src/config/brand.ts`); README, "What is real, what is mock" |
 
@@ -116,11 +116,11 @@ shows the badges), then "Nothing is paid until I sign the exact terms." (the scr
 |---|---|---|
 | 1 | AI agents will spend company money. | Problem; the film's first line (`01-hook`) |
 | 2 | So who signs off? | The film's question (`01-hook`) |
-| 3 | Purser gives each agent its own Airwallex card and its own Metal mandate. | README, third paragraph |
+| 3 | Purser gives each agent its own Airwallex card and its own Alta mandate. | README, third paragraph |
 | 4 | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE`, `src/submission/deck.ts` (Max, 5 Nov); form text, Controls |
-| 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Metal testnet |
+| 5 | We proved it in one live run, on test money. | Log: the main run, 3 November, Airwallex sandbox and Alta testnet |
 | 6 | All 24 decisions were made by Claude. | Record: `split` (all 24 decisions by Claude, 0 fallbacks) |
-| 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Metal 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
+| 7 | 16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing. | Record: `stopStory` (`counts.blocked` 16: the buy rule Claude set, applied by code, 12, #25–#36; Alta 2, #24 over the cap and #37 on a replaced mandate; CFO 1, P-0004; 1 planted instruction; `over_limit_eur` 0.00) |
 | 8 | Every id is published. | `/proof`; README, "The main run" |
 | 9 | Sign one yourself, at kit11.max-31b.workers.dev/try. | Try: the hands-on demo, `/try` (`cloud/src/tryPage.ts`) |
 
@@ -140,13 +140,13 @@ screen at each step: [demo-day.md](demo-day.md), "The runbook".
 | | I'm Max Geurtsen, and this is Purser. | Max, live (the film's narrator, an AI voice, says “This is Purser, built by Max Geurtsen.”: `docs/video/narrator-script.md`) |
 | **0:15 Who and what** | Picture a small company that sells live stock data, per query. | `NORTHWIND_LINE`, `src/config/brand.ts` |
 | | Three Claude agents run it: Sourcing, Support and Treasury. | Record: `snapshot.agent_stats` (three agents) |
-| | Each has its own Airwallex card and its own Metal mandate. | README, third paragraph |
+| | Each has its own Airwallex card and its own Alta mandate. | README, third paragraph |
 | | Inside its limits an agent pays alone; beyond them, the CFO signs. | `RULE_LINE` (Max, 5 Nov); form text, Controls |
 | | In this demo, I play the CFO. | Log, "Approvals" (CFO = Max) |
 | **0:40 The run, on /watch** | A replay of our main run, 3 November. | Log; `/watch` heading "Replay of the main run, 3 November", beside it "11:16–11:33 UTC" |
 | | The supplier doubles its price, past the Sourcing agent's cap. | Record: Stockline 0.02 → 0.04, cap 0.03 (`homeFilm`) |
 | | We switched off our own check once to prove the chain holds the line. | Record: `letThroughOf` (`upstream.let_through`, seq 114); `CHAIN_TEST`, `DEFENSE_IN_DEPTH` |
-| | Metal refused it; the refusal is recorded on chain. | `REFUSAL_LINE`; Record: 402 `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` (seq 119) |
+| | Alta refused it; the refusal is recorded on chain. | `REFUSAL_LINE`; Record: 402 `mandate_cap_exceeded`, tx `0x2e92f9cb…1871` (seq 119) |
 | | Treasury proposes two options within the same 20.00. | Record: P-0002 and P-0003, `total_budget` 20.00; `timings` (40 s after the refusal) |
 | | Option A: cap 0.04, and our price stays 0.05. | Record: P-0002 terms (option A, Sourcing cap 0.04, `query_price` 0.05) |
 | | Option B: the same cap, our price up to 0.07. | Record: P-0003 terms (option B, Sourcing cap 0.04, `query_price` 0.07) |
@@ -184,7 +184,7 @@ own signature and "One cent. Worthless." stay last.
 | A Claude agent explains the situation and proposes a payment. | `docs/claude.md`; Record: 24 decisions |
 | Rules in code check every limit before anything moves. | `docs/controls.md` (executor pre-checks) |
 | Beyond a limit, a person signs the exact terms with Face ID. | `docs/phone-approval.md` |
-| Then Airwallex or Metal moves the money, and the books record it. | README; `npm run books` |
+| Then Airwallex or Alta moves the money, and the books record it. | README; `npm run books` |
 | <!-- T0-STATUS -->T:0: 95 journal entries posted to its shared sandbox, matching our books.<!-- /T0-STATUS --> | `T0_STATUS` (README, form, claims, `docs/t0.md`): "95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q)"; [docs/runs/2026-11-10-t0-journal-sandbox.md](../runs/2026-11-10-t0-journal-sandbox.md) |
 
 ### 3b. Why three models (after the run; 30 s; deck slide 8)
@@ -203,19 +203,19 @@ own signature and "One cent. Worthless." stay last.
 
 | Max says | Source |
 |---|---|
-| <!-- METAL-ONCHAIN -->On Metal testnet: 86 payments, each its own transaction, on chain and checkable.<!-- /METAL-ONCHAIN --> | README, "On Metal testnet, checked against the chain on 5 November" (41 sales, 41 supplier purchases, 3 refunds, 1 sweep); Record: `payments` (onChain 86) |
-| Plus 6 mandate transactions and Metal's refusal, recorded on chain. | README: 4 mandates bound at setup, 2 replacements, 1 refusal (#24) |
+| <!-- METAL-ONCHAIN -->On Alta testnet: 86 payments, each its own transaction, on chain and checkable.<!-- /METAL-ONCHAIN --> | README, "On Alta testnet, checked against the chain on 5 November" (41 sales, 41 supplier purchases, 3 refunds, 1 sweep); Record: `payments` (onChain 86) |
+| Plus 6 mandate transactions and Alta's refusal, recorded on chain. | README: 4 mandates bound at setup, 2 replacements, 1 refusal (#24) |
 | No emulator and no clearing in this run. | README, same line |
-| The euro licence and the card buy ran on Airwallex's sandbox. | README: "Not on Metal: the EUR licence (FX, SWIFT) and the card buy" |
+| The euro licence and the card buy ran on Airwallex's sandbox. | README: "Not on Alta: the EUR licence (FX, SWIFT) and the card buy" |
 
 ### 3d. The road to production (after the chain count; 25 s; deck slide 12)
 
 | Max says | Source |
 |---|---|
-| Today this runs on the Airwallex sandbox and Metal testnet. | README; deck slide 12 |
+| Today this runs on the Airwallex sandbox and Alta testnet. | README; deck slide 12 |
 | One company per ledger, with test money only. | Deck slide 12, "Now" |
 | Next: keys in a KMS, Postgres, and a pager on the health check. | Deck slide 12, "Next" (`src/submission/deck.ts`) |
-| Then Metal mainnet, with four eyes as the default. | Deck slide 12, "Then" |
+| Then Alta mainnet, with four eyes as the default. | Deck slide 12, "Then" |
 | Airwallex already offers what comes next: global accounts, local payouts, refunds. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md`, "Airwallex products that fit next" |
 | Airwallex's own AgentOS says to require manual approval for agents. | Research of Airwallex's docs, 30 October, kept for history: `docs/archive/roadmap.md` (`developer-tools/ai/agentos`); `docs/business/model.md`, "Risks and what we do not know" |
 | Purser is that approval, on the exact terms, with limits in the rails. | `docs/business/model.md`, "Risks and what we do not know" (what Purser adds on top) |

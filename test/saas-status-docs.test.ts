@@ -163,13 +163,13 @@ describe("/docs: docs and API", () => {
   it("names payments between agents (x402) and Airwallex's webhooks through the relay, one line each, with the document that describes it", () => {
     const pay = card(html, "payments");
     expect([...pay.matchAll(/<li>/g)].length).toBe(2);
-    expect(repoLinks(pay)).toEqual([{ file: "docs/metal-award.md", anchor: "3-x402-on-metal-agents-pay-per-request" }, { file: "docs/airwallex.md", anchor: "webhooks" }]);
+    expect(repoLinks(pay)).toEqual([{ file: "docs/metal-award.md", anchor: "3-x402-on-alta-agents-pay-per-request" }, { file: "docs/airwallex.md", anchor: "webhooks" }]);
     expect(plain(pay)).toMatch(/x402/);
     expect(plain(pay)).toMatch(/webhooks?/i);
     // What the two lines say is what the documents say.
-    expect(read("docs/metal-award.md")).toContain("## 3. x402 on Metal: agents pay per request");
+    expect(read("docs/metal-award.md")).toContain("## 3. x402 on Alta: agents pay per request");
     expect(read("docs/airwallex.md")).toContain("The relay checks the signature and keeps the event. The runner checks it again with its own copy of the secret");
-    expect(plain(pay)).toContain("Metal's testnet");
+    expect(plain(pay)).toMatch(/Alta(?: \(formerly Metal\))?'s testnet/); // the first mention (14 Nov)
     expect(plain(pay)).toContain("Airwallex's sandbox");
   });
 
@@ -205,7 +205,7 @@ describe("/docs: docs and API", () => {
 
   it("says what is real in its own words: sandbox and testnet only, and that the preview is private", () => {
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(html)?.[1] ?? "");
-    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");
+    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.");
     // 12 Nov (jury check): one statement on Purser Cloud everywhere (src/redesign/docs.ts CLOUD_PREVIEW_LINE).
     expect(real).toContain(CLOUD_PREVIEW_LINE);
     expect(real).not.toMatch(/Northwind|Real Claude decisions/);
@@ -617,7 +617,7 @@ describe("/status on the site", () => {
 
   it("is no longer in the menu or the footer (12 Nov, owner); the page itself still answers", () => {
     for (const html of [STATUS_PAGE, STATUS_PAGE_OFFLINE]) expect(nav(html)).not.toContain('href="status"');
-    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Security", "Docs", "Books", "Airwallex", "Metal", "Visa", "Claude"]);
+    expect([...nav(pages.home!).matchAll(/<div class="pmenu">([\s\S]*?)<\/div>/g)].flatMap((m) => [...m[1]!.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((a) => a[1]))).toEqual(["Purser Cloud", "Security", "Docs", "Books", "Airwallex", "Alta", "Visa", "Claude"]);
     expect(/<footer class="foot">[\s\S]*?<\/footer>/.exec(pages.home!)![0]).not.toMatch(/href="status"/);
   });
 
@@ -627,7 +627,7 @@ describe("/status on the site", () => {
       expect(html).toMatch(/<meta property="og:image" content="https:\/\/kit11\.max-31b\.workers\.dev\/assets\/og\.png\?v=1113c">/);
     }
     const real = decode(/<details class="real" id="real">([\s\S]*?)<\/details>/.exec(STATUS_PAGE)?.[1] ?? "");
-    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Metal's testnet, test money.");
+    expect(real).toContain("Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.");
     expect(real).toContain("The live part is this site's own /health, read by your browser when the page opens.");
     expect(real).toContain("No live run in progress is the normal state: the hosted pages replay the recorded run.");
     expect(real).not.toMatch(/Northwind|Real Claude decisions/);

@@ -3,10 +3,10 @@
 //   Airwallex  the card body IssuingRest itself sends (createCard, setCardLimits, setCardControls), captured from a stub
 //              API that answers locally; the limits as rules.ts's cardLimits() reads them from Purser's settings; the
 //              starting categories, currencies and end date as cards.ts's cardControls() gives them;
-//   Metal      the arguments the owner signer passes to metal-agent (issueReplacementCredential, with metal-agent
+//   Alta      the arguments the owner signer passes to metal-agent (issueReplacementCredential, with metal-agent
 //              itself mocked, so nothing runs), built by the one function both it and the bootstrap use;
 //   Purser     its settings by the rules' own keys, and "looser" for the amounts by rules.ts's loosens().
-// Nothing here reaches Airwallex or Metal.
+// Nothing here reaches Airwallex or Alta.
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
@@ -107,7 +107,7 @@ describe("(a) Airwallex's card controls: what IssuingRest itself would send", ()
   });
 });
 
-describe("(a) Metal's mandate: the arguments Purser's owner signer passes to metal-agent", () => {
+describe("(a) Alta's mandate: the arguments Purser's owner signer passes to metal-agent", () => {
   it("issueReplacementCredential builds its call with credentialCreateArgs, the function the panel uses", () => {
     const spec = { agent: "treasury" as const, principal: "0x00000000000000000000000000000000000000b0" as const, capCents: 1234, budgetCents: 9999, payees: [{ address: "0x00000000000000000000000000000000000000c1" as const, name: "Sweep" }], description: "kit11 P-0042" };
     issueReplacementCredential(spec, "P-0042", "/nowhere/keys/treasury.key.json");

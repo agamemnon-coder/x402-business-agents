@@ -575,7 +575,7 @@ export interface AirwallexBody {
   hash: string; controls: string;
   /** The Airwallex-only run's block and the Airi runs' blocks, as /proof and /visa show them. */
   awx1: string; airi: string;
-  /** The main run's flow (Metal earnings booked, the licence paid) and its list of Airwallex ids. */
+  /** The main run's flow (Alta earnings booked, the licence paid) and its list of Airwallex ids. */
   picture: string; mainProof: string[];
   /** The main run's lines of what is simulated (the SWIFT settlement, an earlier attempt), and the booked deposit's amount. */
   simulated: string[]; deposit: string | null;
@@ -609,12 +609,12 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",
     faceIdFoldHtml(liveRuns().find((r) => r.key === FACEID_KEY)),
     platformFoldHtml(platform, first, firstRow ? dayShort(firstRow.iso) : null),
-    foldHtml("Metal earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
-    foldHtml("The Airwallex features and Airi, with their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Metal earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
+    foldHtml("Alta earnings booked at Airwallex", `<div class="flow" role="img" aria-label="${esc("The main run at Airwallex, step by step")}">${o.picture}</div><ul class="pl">${[...o.mainProof, ...fxLine].join("")}</ul>`, ` id="${MAIN_RUN_FOLD_ID}"`),
+    foldHtml("The Airwallex features and Airi, with their docs", `<ul class="pl awd">${[...productDocs().filter((d) => tiles.some((t) => t.key === d.key)).map((d) => docsLi(d.name, d.docs)), ...(o.depositDocs.length ? [docsLi("Alta earnings booked", o.depositDocs)] : [])].join("")}</ul>`),
     foldHtml("What is simulated", `<ul class="pl">${[
       liPlain("The Airwallex sandbox, with test money only."),
       ...o.simulated.map((t) => liPlain(t)),
-      ...(o.deposit ? [liPlain(`Metal earnings: USD ${o.deposit} booked as a simulated sandbox deposit; no test USD reached Airwallex.`)] : []),
+      ...(o.deposit ? [liPlain(`Alta earnings: USD ${o.deposit} booked as a simulated sandbox deposit; no test USD reached Airwallex.`)] : []),
       liPlain("Card charges at merchants are simulated by the sandbox; the approve or decline is Airwallex's own."),
       ...(accept?.testCard && accept.testCustomer ? [liPlain("Payment acceptance: Airwallex's sandbox test card and a test customer.")] : []),
       ...(platform ? [liPlain("Connected accounts: verification simulated (the sandbox made them ACTIVE), and PAID through the sandbox's simulation API.")] : []),

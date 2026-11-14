@@ -1,4 +1,4 @@
-// Metal clearing for data sales: the prepaid route offers itself only when it can deliver (a clearing payment is
+// Alta clearing for data sales: the prepaid route offers itself only when it can deliver (a clearing payment is
 // counted before the seller can say no), Summit falls back to the mandate route only when nothing was paid, and the
 // dashboard shows the prepaid budget apart from the mandates.
 import type { AddressInfo } from "node:net";
@@ -12,7 +12,7 @@ import { openDb } from "../src/db/open.js";
 import { betweenEpochs } from "../src/metal/clearing.js";
 import { PREPAID_ROUTE, sellerApp } from "../src/servers/seller.js";
 
-// Metal's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
+// Alta's facilitator stood in: building the seller or a supplier asks its /supported (test/support/facilitatorStandIn.ts).
 vi.mock("@x402/core/server", async (orig) => (await import("./support/facilitatorStandIn.js")).standInServer(await orig<typeof import("@x402/core/server")>()));
 
 const SUPPLIER = "0x00000000000000000000000000000000000000f1";
@@ -104,7 +104,7 @@ describe("Summit's fallback", () => {
 });
 
 describe("the prepaid clearing budget on the dashboard", () => {
-  it("is shown apart from the mandates: deposit, clearing sales, and what Metal last reported", () => {
+  it("is shown apart from the mandates: deposit, clearing sales, and what Alta last reported", () => {
     const db = openDb(":memory:");
     expect(buildSnapshot(db).clearing).toBeNull();
     const op = db.prepare("INSERT INTO clearing_ops (party, kind, units, tx, detail, created_at) VALUES (?, ?, ?, NULL, NULL, ?)");
@@ -115,8 +115,8 @@ describe("the prepaid clearing budget on the dashboard", () => {
                 VALUES ('GET /v1/stock/prepaid', 7, '0x03', 'u', '{"seq":"60"}', 'DELIVERED', 'now', 'bajillion')`).run();
     audit(db, "system", "sale.delivered", "1", { settlement_id: "id", scheme: "bajillion" });
     const s = buildSnapshot(db);
-    // What the customer paid comes from Metal's balance, so receipts made before this ledger count too.
+    // What the customer paid comes from Alta's balance, so receipts made before this ledger count too.
     expect(s.clearing).toEqual({ customer: "Summit Outfitters", deposited: "5.00", charged: "0.35", sales: 1, earned: "0.07", customer_spendable: "4.65", seller_spendable: "0.35", as_of: "2026-10-29T16:50:01Z", withdrawn: "0.00" });
-    expect(s.feed[0]!.text).toBe("Sold stock check #60 to Summit Outfitters for 0.07 USDZ by Metal clearing (a receipt, no transaction)");
+    expect(s.feed[0]!.text).toBe("Sold stock check #60 to Summit Outfitters for 0.07 USDZ by Alta clearing (a receipt, no transaction)");
   });
 });

@@ -89,7 +89,7 @@ Three runs where the rail itself held a payment, each a live sandbox or testnet 
 ${proofCards.join("\n")}
 
 **Try it with your own Face ID:** [${LIVE.replace("https://", "")}/try/sign](${LIVE}/try/sign) signs a test payment
-in your own test world (stand-in executors: no payment reaches Airwallex or Metal).
+in your own test world (stand-in executors: no payment reaches Airwallex or Alta).
 
 ## How it works
 
@@ -101,7 +101,7 @@ ${pic("architecture", "AI agents propose; three layers that do not trust each ot
 3. **The CFO signs.** Above a limit, the CFO approves with Face ID: a passkey signs that hash. Every change to a
    limit is a proposal the CFO signs too. Before paying, Purser hashes the terms again; changed terms are refused.
    Within the limits, a payment goes without a new signature: the CFO signed those limits.
-4. **The rail checks on its own.** Airwallex (transfer approvals, card controls), Metal (a mandate cap on chain) and
+4. **The rail checks on its own.** Airwallex (transfer approvals, card controls), Alta (a mandate cap on chain) and
    Visa Intelligent Commerce via Airwallex's Airi (the cardholder's passkey per purchase) each keep their own limit.
 5. **Recorded.** Every step goes to the ledger's hash-chained audit log. Books were posted to T:0 and Moneybird in
    sandbox runs; Purser Cloud (a private preview, no customer) keeps invoices, suppliers and payments with every
@@ -113,9 +113,9 @@ ${pic("architecture", "AI agents propose; three layers that do not trust each ot
 |---|---|---|---|
 | 1. Purser's checks | Code in this repository | over a limit or budget, an unknown payee, totals that do not add up | No |
 | 2. The CFO's signature | The CFO's passkey (Face ID) over the hash of the exact terms | terms changed after signing (the executor re-hashes) | No |
-| 3. The rail's own controls | Airwallex, Metal, Airi | over the rail's own limit or approval, even after Purser's yes | No |
+| 3. The rail's own controls | Airwallex, Alta, Airi | over the rail's own limit or approval, even after Purser's yes | No |
 
-What this does not cover: the rails' limits (Metal mandate caps, Airwallex card limits) are set by Purser's runner,
+What this does not cover: the rails' limits (Alta mandate caps, Airwallex card limits) are set by Purser's runner,
 which holds the keys, with the CFO's signature for each change. So the layers hold against an agent, a changed
 invoice or changed terms, not against a compromised runner (see the threat model).
 
@@ -133,7 +133,7 @@ implied. Named in text only: ${LEFT_OUT.map((l) => l.name).join(", ")} (why: [so
 Every run is in sandbox or testnet with test money; dates and records in [runs/README.md](runs/README.md).
 
 - **Airwallex (sandbox).** Main run, ${day(mainDay)}: ${h ? `the hash the CFO signed is in Airwallex's own record of ${h.transferMethod} transfer \`${h.transferId.slice(0, 8)}…\` (${h.currency} ${h.amount})` : "the SWIFT payment after the CFO's Face ID"}. awx-1${awx?.attempts[0]?.at ? `, ${day(awx.attempts[0].at)}` : ""}: Airwallex declined agents' cards with its own controls${declines.length ? ` (${declines.map((d) => `\`${d}\``).join(", ")})` : ""}. ${twoLocks ? `Two locks, from ${day(`${twoLocks.date}T12:00:00Z`)}: ${twoLocks.what}` : ""}
-- **Metal (testnet).** Main run: a mandate on chain per agent; ${m.payments.total} payments, each its own transaction${m.refusal ? `; #${m.refusal.seq} refused on chain (\`${m.refusal.code}\`)` : ""}${m.replace ? `; the mandates replaced on chain after the CFO's Face ID` : ""}.
+- **Alta (testnet).** Main run: a mandate on chain per agent; ${m.payments.total} payments, each its own transaction${m.refusal ? `; #${m.refusal.seq} refused on chain (\`${m.refusal.code}\`)` : ""}${m.replace ? `; the mandates replaced on chain after the CFO's Face ID` : ""}.
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card).** ${day(airi.started_at)}: ${airiPaid} purchase${airiPaid === 1 ? "" : "s"} paid with a single-use credential, each confirmed by the cardholder's passkey in Airi; ${airiChecks.filter((c) => c.ok).length} of ${airiChecks.length} checks passed ([run log](${AIRI_RUN_LOG.replace(/^docs\//, "")})).
 - **Claude (Anthropic).** Main run: ${sp.byClaude} of ${sp.decisions} decisions by Claude, ${sp.fallbacks} fallbacks; ${faceIdDecisions(r)} Face ID signatures in the same run.
 - **Books.** T:0 (sandbox): ${t0 ?? "the"} journal entries of the main run posted ([record](runs/2026-11-10-t0-journal-sandbox.md)). Moneybird (${mb.labels.join(", ")}): ${mb.reconciliation.documents} documents read back, ${mb.reconciliation.differences} differences ([record](runs/2026-11-12-moneybird-sandbox.md)).
@@ -146,13 +146,13 @@ Needs Node.js 22.13 or later and git. No keys; after \`npm ci\`, no network.
 git clone https://github.com/agamemnon-coder/x402-business-agents.git
 cd x402-business-agents
 npm ci
-npm test                    # the tests, on stand-ins for Airwallex, Metal and Claude
+npm test                    # the tests, on stand-ins for Airwallex, Alta and Claude
 npm run judge -- --check    # builds the site's pages from the main run's record, offline
 npm run judge               # serves them on http://localhost:4311
 npm run visuals -- --check  # the diagrams in docs/assets are what the code draws
 \`\`\`
 
-Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
+Running it live (sandbox keys, an Alta RPC): [run-it.md](run-it.md).
 
 ## Repository map
 
@@ -161,7 +161,7 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 | \`src/\` | Purser: agents, policy, passkey approvals, executors per rail, ledger, the site's pages | ${count("src")} |
 | \`cloud/\` | Purser Cloud: the small-company product (invoices in, read, paid after Face ID, booked, archived) | ${count("cloud")} |
 | \`worker/\` | The hosted site and relay (Cloudflare Worker): /try/sign, the phone-to-runner relay | ${count("worker")} |
-| \`contracts/\` | Solidity contracts used on Metal testnet, with their ABIs | ${count("contracts")} |
+| \`contracts/\` | Solidity contracts used on Alta testnet, with their ABIs | ${count("contracts")} |
 | \`test/\` | Unit, integration and browser checks | ${count("test")} |
 | \`docs/\` | Run logs, records, security, plans (the generated visuals in \`docs/assets/\` not counted) | ${files("docs", /\.(md|json|svg)$/).filter((f) => !f.startsWith("docs/assets/")).length} |
 | \`fixtures/\` | Test invoices, including the hostile ones (bank change, look-alike, injection) | ${count("fixtures", /./)} |
@@ -177,15 +177,15 @@ Running it live (sandbox keys, a Metal RPC): [run-it.md](run-it.md).
 
 | | Status |
 |---|---|
-| Money | Test money only: Airwallex sandbox, Metal testnet, Airi's test card. No real money has moved. |
-| Main run (${day(mainDay)}) | Live calls to the Airwallex sandbox, Metal testnet and Claude; the CFO's Face ID on a phone. The sandbox simulates a SWIFT transfer's last steps and the merchant's card charge. |
+| Money | Test money only: Airwallex sandbox, Alta testnet, Airi's test card. No real money has moved. |
+| Main run (${day(mainDay)}) | Live calls to the Airwallex sandbox, Alta testnet and Claude; the CFO's Face ID on a phone. The sandbox simulates a SWIFT transfer's last steps and the merchant's card charge. |
 | Customer, supplier, second approver | Run by us (the second approver is a labelled test passkey). |
 | Home, Watch, Proof | Replay the main run's record. |
 | /try/sign | Your own test world on stand-in executors: your passkey's signature is real, no payment reaches a rail. |
 | Airi | Its own passkey step held a purchase; it has not refused one outright in a live run. |
 | Two locks | Purser's lock was a labelled virtual test passkey, not a person's Face ID. Airwallex held the transfer \`IN_APPROVAL\` until a person approved it at Airwallex; \`SENT\` and \`PAID\` came from the sandbox's simulation. |
 | Purser Cloud | A hosted preview behind an access key; no customer uses it; test money only. |
-| Tests | Run on stand-ins for Airwallex, Metal and Anthropic. |
+| Tests | Run on stand-ins for Airwallex, Alta and Anthropic. |
 | Customers | Not validated with customers yet; no pilots, no revenue. |
 
 Screenshots and short loops of the live site: [assets/screens/](assets/screens/README.md).

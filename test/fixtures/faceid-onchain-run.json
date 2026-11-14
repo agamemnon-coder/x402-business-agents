@@ -1,7 +1,7 @@
 {
   "record": "The passkey account on chain: run record (with a virtual test passkey)",
   "ran_at": "2026-11-12T13:43:25.504Z",
-  "network": "Metal testnet",
+  "network": "Alta testnet",
   "chain_id": 63825,
   "money": "amounts are in test USD (the testnet's token USDZ): test money, nothing here has real value",
   "stand_in": "the second approver \"test-controller\" is a virtual test passkey: Chromium's virtual authenticator driven by docs/runs/driver/test-controller.ts; not a person's device",
@@ -97,7 +97,7 @@
       "tx": "0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
       "explorer": "https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
       "outcome": "refused on chain",
-      "detail": "Metal's reason: mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
+      "detail": "Alta's reason: mandate_cap_exceeded (the amount is above the mandate's per-payment cap)",
       "paid_later": {
         "payment_id": "owners-P-0002-after-P-0001",
         "tx": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
@@ -145,7 +145,7 @@
       "at": "2026-11-12T13:53:27.079Z",
       "tx": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
       "explorer": "https://testnet.metalntwx.com/tx/0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
-      "step": "the Sourcing agent pays 0.06 to Stockline: the amount Metal refused before, under the mandate P-0002 bound",
+      "step": "the Sourcing agent pays 0.06 to Stockline: the amount Alta refused before, under the mandate P-0002 bound",
       "outcome": "paid",
       "detail": "the Sourcing agent's mandate key alone; no owner signed",
       "after_refusal": {

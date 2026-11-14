@@ -168,6 +168,6 @@ describe("the rail choice on the dashboard", () => {
     expect(t!.steps[1]).toMatchObject({ kind: "tool", blocked: true, check: "supplier's rails" });
     const feed = buildSnapshot(db).feed.map((f) => f.text);
     expect(feed).toContainEqual(expect.stringMatching(/^Code refused the Sourcing agent's payment to Packwise: Packwise accepts only a card/));
-    expect(feed).toContainEqual(expect.stringMatching(/^The Sourcing agent picked the rail per purchase: Stockline on x402 on Metal, Packwise on the card/));
+    expect(feed).toContainEqual(expect.stringMatching(/^The Sourcing agent picked the rail per purchase: Stockline on x402 on Alta, Packwise on the card/));
   });
 });

@@ -1,4 +1,4 @@
-// /trace (Max's last round, 1.2): any of the main run's payments, step by step. The count is computed (88 = 86 on Metal +
+// /trace (Max's last round, 1.2): any of the main run's payments, step by step. The count is computed (88 = 86 on Alta +
 // 1 card charge + 1 SWIFT transfer, not Max's 87: 87 is the payments inside the limits, counts.alone; the SWIFT
 // transfer went through a proposal); every chain is complete or says which step it lacks and why; every id and link
 // matches the main run's record; the companion record (docs/demo/main-run-trace.json) agrees with the record and with
@@ -41,25 +41,26 @@ const byId = new Map(trace.payments.map((p) => [p.id, p]));
 describe("/trace: the count, computed from the record", () => {
   const c = countOf(trace), pay = payments(record);
 
-  it("is 88 = 86 on Metal + 1 card charge + 1 SWIFT transfer, each part equal to the main run's record", () => {
+  it("is 88 = 86 on Alta + 1 card charge + 1 SWIFT transfer, each part equal to the main run's record", () => {
     expect([c.metal, c.sales, c.purchases, c.refunds, c.sweeps, c.cards, c.transfers]).toEqual([pay.onChain, pay.sales, pay.purchases, pay.refunds, pay.sweeps, pay.cards, pay.transfers]);
     expect(c.n).toBe(c.metal + c.cards + c.transfers);
     // 87, the number Max wrote, is the payments inside the limits (counts.alone); the SWIFT transfer is the 88th.
     expect(c.metal + c.cards).toBe(snap.counts.alone);
     // And reconcile checked exactly these 88 flows, with no difference.
     expect([c.n, pay.reconciled, snap.reconciliation.differences]).toEqual([snap.reconciliation.checked, snap.reconciliation.checked, 0]);
-    expect(c.line).toBe(`${c.n} = ${c.metal} on Metal + 1 card charge + 1 SWIFT transfer`);
+    expect(c.line).toBe(`${c.n} = ${c.metal} on Alta + 1 card charge + 1 SWIFT transfer`);
     expect(c.metalParts).toBe(pay.metalParts);
   });
 
   it("the header says it, and each number in it is the computed one", () => {
     const header = headerLine(c);
-    expect(header).toBe(`Pick any of the ${c.n} payments (${c.metal} on Metal + ${c.cards} card charge + ${c.transfers} SWIFT transfer).`);
+    expect(header).toBe(`Pick any of the ${c.n} payments (${c.metal} on Alta + ${c.cards} card charge + ${c.transfers} SWIFT transfer).`);
     const nums = [...header.matchAll(/\d+/g)].map((m) => Number(m[0]));
     expect(nums).toEqual([c.n, c.metal, c.cards, c.transfers]);
     expect(nums).toEqual([88, 86, 1, 1]);
-    expect(decode(html)).toContain(`${header} ${HEADER_SECOND}`);
-    expect(decode(html)).toContain(`On Metal: ${pay.metalParts}.`);
+    // 14 Nov: the page's first mention reads "Alta (formerly Metal)" (src/ui/formerly.ts).
+    expect(decode(html).replace("Alta (formerly Metal)", "Alta")).toContain(`${header} ${HEADER_SECOND}`);
+    expect(decode(html)).toContain(`On Alta: ${pay.metalParts}.`);
   });
 });
 
@@ -87,7 +88,7 @@ describe("/trace: every payment's chain", () => {
 
   it("names the lock that held each payment inside its limit, and the proposal for the one that was not", () => {
     const lock = (id: string) => all.find((x) => x.payment.id === id)!.steps.find((s) => s.key === "limit")!;
-    const want: Record<PaymentKind, RegExp> = { sale: /customer's mandate on Metal/, purchase: /^Metal's mandate on chain$/, refund: /^Metal's mandate on chain$/, sweep: /^Metal's mandate on chain$/, card: /^Airwallex's card controls$/, transfer: /^P-\d{4}$/ };
+    const want: Record<PaymentKind, RegExp> = { sale: /customer's mandate on Alta/, purchase: /^Alta's mandate on chain$/, refund: /^Alta's mandate on chain$/, sweep: /^Alta's mandate on chain$/, card: /^Airwallex's card controls$/, transfer: /^P-\d{4}$/ };
     for (const p of trace.payments) {
       const s = lock(p.id);
       expect({ id: p.id, ok: want[p.kind].test(s.ids[0]?.value ?? "") }).toEqual({ id: p.id, ok: true });
@@ -115,7 +116,7 @@ describe("/trace: every payment's chain", () => {
 });
 
 describe("/trace: every id and link matches the main run's record", () => {
-  it("each Metal payment links its own tx to the explorer, and every tx the record names for a payment is the same one", () => {
+  it("each Alta payment links its own tx to the explorer, and every tx the record names for a payment is the same one", () => {
     for (const x of all.filter((c) => c.payment.rail === "metal")) expect(x.steps.find((s) => s.key === "rail")!.ids).toEqual([{ label: "tx", value: x.payment.rail_id, href: `${EXPLORER_TX}${x.payment.rail_id}` }]);
     // The feed's payment rows (seq, tx), the ledger's (refunds, sweep, card, transfer) and the dispute's evidence (sale id, tx).
     const kindOf: Record<string, PaymentKind> = { "sale.delivered": "sale", "upstream.paid": "purchase", "card.charge_approved": "card" };
@@ -179,7 +180,7 @@ describe("/trace: every id and link matches the main run's record", () => {
   it("money in and out per rail and currency equals the record's books, and reconcile's 88", () => {
     const sum = (f: (p: (typeof trace.payments)[number]) => boolean) => fromCents(trace.payments.filter(f).reduce((s, p) => s + toCents(p.amount), 0));
     const cash = (account: string) => snap.books.cash.find((c) => c.account === account)!;
-    // Metal (1210): in = the sales; out = the purchases, refunds and the sweep.
+    // Alta (1210): in = the sales; out = the purchases, refunds and the sweep.
     expect([sum((p) => p.kind === "sale"), sum((p) => ["purchase", "refund", "sweep"].includes(p.kind))]).toEqual([cash("1210").in, cash("1210").out]);
     // Airwallex EUR (1200): out = the card charge, the transfer and its fee (EUR 13.42, on the transfer's booking).
     const fee = ev.find((e) => e.event === "transfer.fee")!.payload.fee as string;
@@ -239,7 +240,7 @@ describe("the companion record: labelled, and nothing private in it or on /trace
   it("the companion's 64-hex values are the record's own where the record names them", () => {
     const recHex = new Set([...rec.matchAll(/0x[0-9a-f]{64}/g)].map((m) => m[0]));
     const paymentTx = new Set(trace.payments.filter((p) => p.rail === "metal").map((p) => p.rail_id));
-    // 86 Metal payments, each its own transaction; those the record also names are equal by construction of the set.
+    // 86 Alta payments, each its own transaction; those the record also names are equal by construction of the set.
     expect(paymentTx.size).toBe(86);
     expect([...recHex].filter((h) => paymentTx.has(h)).length).toBeGreaterThan(30);
   });
@@ -282,7 +283,8 @@ describe("the count, said the same way wherever it appears", () => {
   it("claims.md and the release notes give 88 with its breakdown, as computed", () => {
     const c = countOf(trace);
     for (const file of ["docs/claims.md", "docs/submission/release-notes.md"]) {
-      const text = readFileSync(file, "utf8").replace(/\s+/g, " ");
+      // The release notes (v1.0, before 14 Nov) keep the name Metal had then; the claims say Alta.
+      const text = readFileSync(file, "utf8").replace(/\s+/g, " ").replace(/\bMetal\b(?! Award)/g, file.includes("release-notes") ? "Alta" : "Metal");
       expect({ file, line: text.includes(c.line) }).toEqual({ file, line: true });
       // Wherever the 88 payments are named, the breakdown follows.
       for (const m of text.matchAll(/\b88 payments\b/g)) expect({ file, at: m.index, next: text.slice(m.index!, m.index! + 120).includes(`(${c.line}`) }).toEqual({ file, at: m.index, next: true });

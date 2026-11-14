@@ -96,7 +96,7 @@ export async function liveWorld() {
 
 /**
  * The record of a whole run made here, on the in-memory chain: the same code a live run's record comes from. Its
- * hashes are this chain's, not Metal's: for tests and the browser check only, never written to docs/runs.
+ * hashes are this chain's, not Alta's: for tests and the browser check only, never written to docs/runs.
  */
 export async function sampleRunRecord(now = () => new Date("2026-11-12T10:00:00.000Z")): Promise<{ record: TokenizeRunRecord; file: string; repo: string }> {
   const w = await liveWorld();

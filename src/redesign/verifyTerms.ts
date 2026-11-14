@@ -2,12 +2,12 @@
 // the terms as the record stores them, puts them in canonical form (RFC 8785, as the phone does before it signs:
 // src/approve/client.ts), hashes them with WebCrypto, and compares the result with the hash that was signed. The answer
 // is plain words: "Hash matches the signed terms" or "Does not match the signed terms". The payment it led to sits next
-// to it, with its link (Metal's explorer for a transaction; an Airwallex id as text, Airwallex has no public explorer).
+// to it, with its link (Alta's explorer for a transaction; an Airwallex id as text, Airwallex has no public explorer).
 //
 // Only a record that keeps the full signed terms gets the button: the receipts of awx-1 and of the platform run, and the
 // proposals of the main run and agent run whose published copy still hashes to the signed hash. The published ledgers
 // are sanitised, so some of their terms are shortened: those say so in one line and get no button, never a false
-// "Does not match". A record that keeps only the hash (the passkey account on Metal) shows its transaction link alone.
+// "Does not match". A record that keeps only the hash (the passkey account on Alta) shows its transaction link alone.
 // The terms ride in the button's data-t attribute (no data <script>: a page keeps one script, its CSP hashes it).
 // test/verify-terms.test.ts runs the browser's code in Node on a real receipt and on tampered terms.
 
@@ -80,14 +80,14 @@ function fromLedger(file: string): Signed[] {
 }
 
 interface OwnersRecord { proposals: { proposal_id: string; what: string; status: string; terms_sha256: string; tx?: string; explorer?: string; cap?: string; budget?: string }[] }
-/** The passkey account on Metal (12 Nov): each proposal's signed hash and the transaction the account ran it in. */
+/** The passkey account on Alta (12 Nov): each proposal's signed hash and the transaction the account ran it in. */
 export function fromOwnersRecord(file: string): Signed[] {
   const rec = readJson<OwnersRecord>(file);
   if (!rec || !Array.isArray(rec.proposals)) return [];
   return rec.proposals.filter((p) => /^[0-9a-f]{64}$/.test(p.terms_sha256)).map((p) => {
     const href = p.tx && p.explorer === `${EXPLORER_TX}${p.tx}` ? p.explorer : undefined;
     return { id: p.proposal_id, what: `${p.what} the agent's mandate, signed by two passkeys`, hash: p.terms_sha256, terms: null, why: "hash-only" as const,
-      ...(p.tx && href ? { ref: { label: "Run on Metal testnet", value: shortId(p.tx), href } } : {}), source: file };
+      ...(p.tx && href ? { ref: { label: "Run on Alta testnet", value: shortId(p.tx), href } } : {}), source: file };
   });
 }
 

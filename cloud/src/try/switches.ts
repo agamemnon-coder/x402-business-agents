@@ -29,7 +29,7 @@ export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
   starts_per_day_public: { ceiling: 2_000, fallback: 300 },
   starts_per_day_event: { ceiling: 2_000, fallback: 300 },
   starts_per_day_jury: { ceiling: 500, fallback: 100 },
-  // The Airwallex sandbox and Metal testnet legs (a missing row is 0: no calls).
+  // The Airwallex sandbox and Alta testnet legs (a missing row is 0: no calls).
   awx_calls_day: { ceiling: 1_500, fallback: 0 },
   awx_eur_day: { ceiling: 10_000, fallback: 0 },
   metal_calls_day: { ceiling: 1_000, fallback: 0 },

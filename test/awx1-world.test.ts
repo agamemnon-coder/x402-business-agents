@@ -1,4 +1,4 @@
-// What an Airwallex-only world (awx-1) needs from the tools around the scenario: npm run verify must not ask for Metal
+// What an Airwallex-only world (awx-1) needs from the tools around the scenario: npm run verify must not ask for Alta
 // accounts that world never made; the runner's card poll can be slowed or turned off (the webhooks bring the
 // transactions, and every poll is a counted call); the call guard counts every request and refuses the one over budget.
 import { mkdtempSync, rmSync } from "node:fs";
@@ -17,7 +17,7 @@ const tmp = () => { const d = mkdtempSync(join(tmpdir(), "awx1-")); dirs.push(d)
 afterAll(() => { for (const d of dirs) rmSync(d, { recursive: true, force: true }); });
 
 describe("npm run verify in an Airwallex-only world", () => {
-  it("passes on a ledger with no Metal accounts and no dispute, without reaching any network", () => {
+  it("passes on a ledger with no Alta accounts and no dispute, without reaching any network", () => {
     const dir = tmp();
     const ledger = join(dir, "awx-1.sqlite");
     openDb(ledger).close();

@@ -4,7 +4,7 @@
 // middleware never settles and the customer is not charged. A sale is recorded only on the settle
 // answer that claimed the payment first, with its signed order, tx and the exact body delivered.
 //
-// Beside it, the prepaid route takes Metal's Offer Pay-per-Call Clearing (scheme `bajillion`): the buyer pays from a
+// Beside it, the prepaid route takes Alta's Offer Pay-per-Call Clearing (scheme `bajillion`): the buyer pays from a
 // clearing deposit with a signed receipt, no transaction per query. A clearing payment is counted when the buyer makes
 // it, before this handler runs, so a refused upstream purchase would leave the buyer charged. The prepaid route
 // therefore offers itself only when the supplier's current price is within the sourcing agent's limits (a free look
@@ -63,7 +63,7 @@ export function sellerApp(opts: SellerOptions) {
   const clearingSettled = new Map<string, ClearingSettled>();
   const authorizationOf = (paymentPayload: { payload: unknown }) => (paymentPayload.payload as { authorization?: Authorization }).authorization;
 
-  // A mandate payment is written down before Metal's facilitator settles it, so between its block and the sale's row
+  // A mandate payment is written down before Alta's facilitator settles it, so between its block and the sale's row
   // the dashboard shows it as pending, never a spend that differs from the chain without a reason (src/seller/settling.ts).
   // If it cannot be written, the settle does not start: the customer is not charged.
   server.onBeforeSettle(async ({ paymentPayload, transportContext }) => {
@@ -174,7 +174,7 @@ export function sellerApp(opts: SellerOptions) {
         ...(opts.clearing ? {
           [PREPAID_RESOURCE]: {
             accepts: { scheme: "bajillion", network: "eip155:63825", payTo: opts.clearing.payTo, price: () => opts.price() },
-            description: "Northwind Outdoor live stock check, paid from a Metal clearing deposit",
+            description: "Northwind Outdoor live stock check, paid from an Alta clearing deposit",
           },
         } : {}),
       },

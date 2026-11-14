@@ -1,6 +1,6 @@
 // The live-run runbook (docs/archive/internal/draaiboek-live-run.md) as a dry run, end to end, in a throwaway test world:
 //   KIT11_DB=data/dry-2.sqlite KIT11_KEYS_DIR=../x402-business-agents-keys/dry-2 npx tsx test/browser/dryrun.check.ts [out dir]
-// Not part of npm test. Live: Metal testnet, the Airwallex sandbox and Claude, with test money. The real runner
+// Not part of npm test. Live: Alta testnet, the Airwallex sandbox and Claude, with test money. The real runner
 // (npm run relay -- --local) serves the phone pages on localhost and runs the real executors. Two Chromium contexts,
 // each with its own virtual authenticator, stand in for the two phones: "test-cfo" and "test-controller". They are
 // test identities in a test world, never Max or the controller; nothing here touches another world. Refuses any
@@ -46,7 +46,7 @@ mkdirSync(keys, { recursive: true });
 const PORT = Number(process.env.KIT11_RELAY_PORT ?? 4466);
 const url = `http://localhost:${PORT}`;
 // One local relay token for every start of the runner, so a restart keeps the phones' viewer link (never printed).
-// Step 12d (KIT11_PASSKEY_OWNERS=on): the owners commands and the runner's relay call Metal only behind the owners guard.
+// Step 12d (KIT11_PASSKEY_OWNERS=on): the owners commands and the runner's relay call Alta only behind the owners guard.
 // Starting this dry run with the switch on is the go; the call log is kept in the out dir, and the budget is the one the
 // operator set (OWNERS_CALL_BUDGET) or else the most the plan of the owners steps can take (src/metal/ownersFlow.ts).
 const ownersGuard = process.env.KIT11_PASSKEY_OWNERS === "on" ? {
@@ -253,7 +253,7 @@ async function linksStep(): Promise<void> {
 
 // Block 1, behind KIT11_PASSKEY_OWNERS=on: an account whose only owners are the two passkeys; a mandate bound with both
 // Face IDs signing the account's Execute digest on the phone. The runner only relays: no server key is an owner.
-// Since 12 November the owners commands and the runner's relay call Metal only behind the owners guard: `env` above
+// Since 12 November the owners commands and the runner's relay call Alta only behind the owners guard: `env` above
 // sets it for both when KIT11_PASSKEY_OWNERS=on (src/metal/ownersBudget.ts).
 const OWNERS_STEP = "12d Face ID signs on chain: a mandate bound by both passkeys, no server key";
 async function ownersStep(): Promise<void> {
@@ -380,11 +380,11 @@ if (process.env.DRYRUN_AUTONOMY) {
         const seqOf = (event: string, subject: string) => (db().prepare("SELECT MIN(seq) AS n FROM audit_log WHERE event = ? AND subject = ?").get(event, subject) as { n: number | null }).n ?? Infinity;
         check(!!first && seqOf("upstream.refused", String(first.id)) < seqOf("world.event", String(rise.notice_event)), `that refusal came before Stockline's notice reached the Sourcing agent (the notice came ${rise.notice_after === "first_attempt" ? "after the first attempt" : "by time"})`);
         refusedAt = first?.supplier === "stockline" && first.outcome === "REFUSED" ? first.created_at : undefined;
-        // Metal records the refusal on chain (src/agents/sourcing.ts recordOnChain): the audit row carries its tx.
+        // Alta records the refusal on chain (src/agents/sourcing.ts recordOnChain): the audit row carries its tx.
         const rec = first ? await until("the refusal recorded on chain (or not)", () => db().prepare("SELECT event, payload_json FROM audit_log WHERE event IN ('upstream.refused_on_chain', 'upstream.refusal_not_recorded') AND seq > ? ORDER BY seq LIMIT 1").get(from) as { event: string; payload_json: string } | undefined, 180_000).catch(() => undefined) : undefined;
         const p = rec ? JSON.parse(rec.payload_json) as { tx?: string | null; error?: string; metal_reason?: string } : {};
         if (rec?.event === "upstream.refusal_not_recorded") say(`  not recorded on chain: ${p.error ?? ""}`);
-        check(rec?.event === "upstream.refused_on_chain" && /^0x[0-9a-f]{64}$/i.test(p.tx ?? ""), `Metal recorded the refusal on chain (tx ${p.tx ?? "none"}${p.metal_reason ? `, Metal: ${p.metal_reason}` : ""})`);
+        check(rec?.event === "upstream.refused_on_chain" && /^0x[0-9a-f]{64}$/i.test(p.tx ?? ""), `Alta recorded the refusal on chain (tx ${p.tx ?? "none"}${p.metal_reason ? `, Alta: ${p.metal_reason}` : ""})`);
       } else if (holdout === "supplier-bankrupt") say("HOLDOUT supplier-bankrupt: no price rise after the insolvency notice");
       else if (holdout === "double-price-rise") {
         say(cli("world.ts", "price-rise", "0.03").trim());
@@ -519,7 +519,7 @@ if (process.env.DRYRUN_AUTONOMY) {
       if (seedMap?.deposit === "exact") check(count("SELECT COUNT(*) AS n FROM receipts WHERE outcome = 'SHORT'") === 0, "the payment in full is not held as short");
       else check(count("SELECT COUNT(*) AS n FROM receipts WHERE outcome = 'SHORT'") >= 1, "the short payment waits in suspense for the CFO (code), whatever the agent decided");
     });
-    await timed("A4e World: Ridgeline offers a one-off report, over x402 (Metal) or on a single-use Airwallex card (the Sourcing agent picks)", async () => {
+    await timed("A4e World: Ridgeline offers a one-off report, over x402 (Alta) or on a single-use Airwallex card (the Sourcing agent picks)", async () => {
       const from = headSeq();
       say(cli("world.ts", "report-offer").trim());
       const ev = lastEvent("supplier.offer");
@@ -546,7 +546,7 @@ if (process.env.DRYRUN_AUTONOMY) {
     await timed("A5 Invariants: verify, request ids, fallbacks under 10%", async () => {
       const v = cli("verify.ts");
       check(/all checks pass|0 failed|passes/i.test(v), "npm run verify passes (nothing paid twice, every approval by passkey)");
-      // Metal QA: what the dashboard shows for each mandate, read against the chain.
+      // Alta QA: what the dashboard shows for each mandate, read against the chain.
       let vc = "";
       try { vc = cli("dashboardVsChain.ts"); } catch { /* reported below */ }
       check(/matches the chain for all/.test(vc), "the dashboard's mandates match the chain (cap, budget, spend)");
@@ -706,7 +706,7 @@ await timed("11 Cards: EUR 19.99 approved, EUR 45.00 declined, raise EUR 30 → 
     // Block 5.1: the Sourcing agent picked the rail per purchase; code checked each supplier accepts it.
     const rails = (db().prepare("SELECT subject, payload_json FROM audit_log WHERE event = 'purchase.rail_chosen' AND seq > ? ORDER BY seq").all(railsFrom) as { subject: string; payload_json: string }[])
       .map((r) => ({ supplier: r.subject, ...(JSON.parse(r.payload_json) as { rail: string; by: string; ok: boolean }) }));
-    check(rails.some((r) => r.supplier === "stockline" && r.rail === "metal_x402" && r.ok), "Stockline paid over x402 on Metal (a stock check under the Sourcing mandate)");
+    check(rails.some((r) => r.supplier === "stockline" && r.rail === "metal_x402" && r.ok), "Stockline paid over x402 on Alta (a stock check under the Sourcing mandate)");
     check(rails.some((r) => r.supplier === "packwise" && r.rail === "airwallex_card" && r.ok), "Packwise Starter paid on the Sourcing agent's Airwallex card");
     check(rails.length === 2, `each supplier paid once (${rails.length} payments)`);
     const sum = db().prepare("SELECT payload_json FROM audit_log WHERE event = 'purchase.rails_chosen' ORDER BY seq DESC LIMIT 1").get() as { payload_json: string } | undefined;
@@ -753,7 +753,7 @@ await timed("12 Emergency stop on, a card charge declined, stop off", async () =
   await sign(cfo, lift, { tag: "stop-off" });
   await executed(lift);
 });
-// 4.2, only with the agents on (Thursday's run): the CFO pauses one agent with Face ID. Its Metal mandate is revoked on
+// 4.2, only with the agents on (Thursday's run): the CFO pauses one agent with Face ID. Its Alta mandate is revoked on
 // chain and its card frozen at Airwallex; resuming takes both passkeys (four eyes) and binds a fresh mandate with the
 // same cap and what was left of the budget.
 if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent (mandate revoked on chain, card frozen), then resume with both passkeys", async () => {
@@ -778,7 +778,7 @@ if (process.env.KIT11_AGENTS === "on") await timed("12b Pause the Support agent 
   await executed(r);
   const after = await activeMandate("support");
   check(after.credentialHash !== before.credentialHash, "a new Support mandate is bound in place of the revoked one");
-  // Metal binds a fresh mandate (a revoked one cannot be replaced): same cap, only what was left of the budget.
+  // Alta binds a fresh mandate (a revoked one cannot be replaced): same cap, only what was left of the budget.
   const budgetOf = (m: typeof before) => extractTerms(m.credential).constraints.budget;
   check(budgetOf(after) === budgetOf(before) - spentBefore && (await mandateSpent(after)) === 0n,
     `the resumed mandate has what was left of the budget (${budgetOf(before) - spentBefore} of ${budgetOf(before)} base units), so the lifetime limit is unchanged`);
@@ -833,7 +833,7 @@ await killRunner("SIGTERM");
 await browser.close();
 check(errors.length === 0, `no page errors${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
 if (process.env.KIT11_AGENTS === "on") {
-  // Metal QA: what the dashboard shows for each mandate, read against the chain.
+  // Alta QA: what the dashboard shows for each mandate, read against the chain.
   let vc = "";
   try { vc = cli("dashboardVsChain.ts"); } catch { /* reported below */ }
   check(/matches the chain for all/.test(vc), "the dashboard's mandates match the chain (cap, budget, spend)");

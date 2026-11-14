@@ -1,4 +1,4 @@
-// Metal testnet's JSON-RPC, in process: enough of a chain for the owners path's tests. Every request is recorded in the
+// Alta testnet's JSON-RPC, in process: enough of a chain for the owners path's tests. Every request is recorded in the
 // order it arrives. A transaction is its signed bytes (hash = keccak256 of them, as on the chain), checked for its
 // sender's nonce, mined after a set number of receipt reads, and then applied: a factory call deploys the account, a
 // *USDZ transfer moves balance, and an account's executeSigned runs the mandate calls it carries (bind, replace,
@@ -97,7 +97,7 @@ export function fakeMetal() {
   }
   async function decode(raw: Hex): Promise<Omit<FakeTx, "hash" | "raw" | "reads" | "mined" | "ok">> {
     if (raw.startsWith("0x7f")) {
-      // Metal's MIP20 envelope: [chainId, nonce, tip, fee, gas, to, value, data, accessList, authorizations, gasToken, v, r, s].
+      // Alta's MIP20 envelope: [chainId, nonce, tip, fee, gas, to, value, data, accessList, authorizations, gasToken, v, r, s].
       const f = fromRlp(`0x${raw.slice(4)}`, "hex") as Hex[];
       if (!lastAsked) throw rpcError(-32000, "invalid sender");
       return { from: lastAsked, to: f[5] as Address, data: f[7]!, nonce: Number(BigInt(f[1] === "0x" ? "0x0" : f[1]!)), gas: BigInt(f[4]!) };

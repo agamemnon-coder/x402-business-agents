@@ -1,6 +1,6 @@
 // "Try Purser": anyone types a task and watches Purser handle it, in a demo world. Claude models read the words
 // (Haiku sorts the request, Sonnet reads it into fields); code checks every field against a fixed CFO policy and
-// decides. Nothing here calls Airwallex or Metal and no money exists: the cards and payments are simulated, and every
+// decides. Nothing here calls Airwallex or Alta and no money exists: the cards and payments are simulated, and every
 // answer says so. The engine is pure (the models come in as functions), so the relay Worker, npm run judge and the
 // tests run the same code. It imports nothing that needs a ledger.
 
@@ -64,7 +64,7 @@ export interface TryModels {
 
 export interface TryStep { by: string; title: string; detail: string; ms?: number; costUsd?: number; tone?: "ok" | "bad" | "wait" | "info" }
 export type Outcome = "paid" | "face_id" | "refused" | "blocked" | "question";
-/** Where the money would move: an Airwallex company card, an Airwallex single-use task card, an Airwallex SWIFT payout, or Metal. */
+/** Where the money would move: an Airwallex company card, an Airwallex single-use task card, an Airwallex SWIFT payout, or Alta. */
 export type Rail = "card" | "task_card" | "swift" | "metal" | null;
 /** Which flow from the recorded live run this one is (the page shows that run's proof). */
 export type Live = "card_approved" | "card_declined" | "task_card" | "swift" | "x402" | "chain_refused" | "planted" | null;
@@ -94,7 +94,7 @@ export const DEMO_WORLD = {
   company: "Northwind Outdoor (demo world)",
   softwareCard: { agent: "Sourcing agent", perTxCents: 5_000, monthlyLeftCents: 10_000, only: "software" },
   taskCardAutoCents: 30_000,
-  /** The sourcing agent's mandate on Metal, as in the recorded run: 0.04 a payment, 12.00 in total, 1.20 used. */
+  /** The sourcing agent's mandate on Alta, as in the recorded run: 0.04 a payment, 12.00 in total, 1.20 used. */
   metal: { agent: "Sourcing agent", payee: "Stockline", capCents: 4, budgetLeftCents: 1_080, priceCents: 4, unit: "stock check" },
   fourEyesCents: 1_000_000,
   eurFreeCents: 150_000,
@@ -129,7 +129,7 @@ export const plainModels: TryModels = {
     return { value, model: "code", ms: 0, costUsd: 0 };
   },
   async read(text, intent) {
-    // Euros, as the demo world's policy is set; a price per request (Metal) in USD, or written with two decimals.
+    // Euros, as the demo world's policy is set; a price per request (Alta) in USD, or written with two decimals.
     const m = intent === "api_data" ? numberTokens(text).find((t) => t.currency === "USD" || (t.currency === null && /[.,]\d{2}$/.test(t.raw))) : numberTokens(text).find((t) => t.currency === "EUR");
     const date = /\b(20\d{2}-\d{2}-\d{2})\b/.exec(text)?.[1] ?? null;
     return { value: { item: text.slice(0, 80), merchant: null, amount: m ? m.raw : null, currency: m ? (intent === "api_data" ? "USD" : "EUR") : null, date, payee: null }, model: "code", ms: 0, costUsd: 0 };
@@ -265,7 +265,7 @@ export async function tryPurser(input: string, models: TryModels, now: Date, mod
     return done("question", "Which amount?", `The message names more than one amount (${shown}). Try handles one request with one amount at a time, so nothing was done. Write the one amount it may cost.`);
   }
 
-  // Pay per request on Metal: the sourcing agent's mandate, checked here as the chain checks it.
+  // Pay per request on Alta: the sourcing agent's mandate, checked here as the chain checks it.
   if (c.value === "api_data") return metalRequest(text, f, read?.cents ?? null, steps, (o, h, d) => { rail = "metal"; live = o === "paid" ? "x402" : h === "Refused by the chain" ? "chain_refused" : null; return done(o, h, d); });
 
   let cents: number | null = read ? read.cents : null;
@@ -380,8 +380,8 @@ export async function tryPurserSafely(input: string, models: TryModels | null, n
 const usdz = (cents: number) => `${(cents / 100).toFixed(2)} test USD`;
 
 /**
- * A request to pay for data per request (x402 on Metal), under the sourcing agent's mandate: one payee (Stockline),
- * at most the mandate's cap a payment, inside what is left of its budget. These are the checks Metal itself makes on
+ * A request to pay for data per request (x402 on Alta), under the sourcing agent's mandate: one payee (Stockline),
+ * at most the mandate's cap a payment, inside what is left of its budget. These are the checks Alta itself makes on
  * chain; here code makes them on the demo world's copy of the mandate.
  */
 function metalRequest(text: string, f: Reading, written: number | null, steps: TryStep[], done: (o: Outcome, h: string, d: string) => TryResult): TryResult {
@@ -389,10 +389,10 @@ function metalRequest(text: string, f: Reading, written: number | null, steps: T
   const payee = f.merchant ?? f.payee;
   if (payee && !new RegExp(`\\b${m.payee}\\b`, "i").test(payee)) {
     steps.push({ by: "code", title: "Checked the mandate", detail: `The ${m.agent.toLowerCase()}'s mandate pays ${m.payee} only; ${payee} is not it.`, tone: "bad" });
-    return done("refused", "Refused: not the mandate's payee", `The mandate on Metal pays one payee, ${m.payee}. A payment to ${payee} would be refused on chain; the CFO would have to approve a new mandate first.`);
+    return done("refused", "Refused: not the mandate's payee", `The mandate on Alta pays one payee, ${m.payee}. A payment to ${payee} would be refused on chain; the CFO would have to approve a new mandate first.`);
   }
   if (f.currency === "EUR") {
-    steps.push({ by: "code", title: "Checked the amount", detail: "Metal mandates pay in test USD, not euros.", tone: "bad" });
+    steps.push({ by: "code", title: "Checked the amount", detail: "Alta mandates pay in test USD, not euros.", tone: "bad" });
     return done("question", "Ask in test USD", `Write the price per request in USD, for example "${m.unit}s at $0.04 each".`);
   }
   // The price per request: as written in the message (code checks it is there), or Stockline's price.
@@ -408,13 +408,13 @@ function metalRequest(text: string, f: Reading, written: number | null, steps: T
   const rule = `The ${m.agent.toLowerCase()}'s mandate: at most ${usdz(m.capCents)} a payment, ${usdz(m.budgetLeftCents)} left of its budget, ${m.payee} only.`;
   if (unit > m.capCents) {
     steps.push({ by: "code", title: "Checked the mandate", detail: `${rule} ${usdz(unit)} a request is over the cap.`, tone: "bad" });
-    return done("refused", "Refused by the chain", `Each request would cost ${usdz(unit)}, over the mandate's ${usdz(m.capCents)} a payment, so Metal refuses it on chain and nothing moves. The agent asks the CFO; a new mandate needs Face ID.`);
+    return done("refused", "Refused by the chain", `Each request would cost ${usdz(unit)}, over the mandate's ${usdz(m.capCents)} a payment, so Alta refuses it on chain and nothing moves. The agent asks the CFO; a new mandate needs Face ID.`);
   }
   if (total > m.budgetLeftCents) {
     steps.push({ by: "code", title: "Checked the mandate", detail: `${rule} ${usdz(total)} in all is more than is left.`, tone: "bad" });
     return done("refused", "Refused: over the mandate's budget", `${usdz(total)} is more than the ${usdz(m.budgetLeftCents)} left under the mandate; the payments past it would be refused on chain.`);
   }
   steps.push({ by: "code", title: "Checked the mandate", detail: `${rule} Inside it.`, tone: "ok" });
-  steps.push({ by: "demo world", title: "Paid per request on Metal", detail: `Simulated: in the live system each request is an x402 payment of ${usdz(unit)}, signed under the mandate and settled by Metal's facilitator.`, tone: "ok" });
+  steps.push({ by: "demo world", title: "Paid per request on Alta", detail: `Simulated: in the live system each request is an x402 payment of ${usdz(unit)}, signed under the mandate and settled by Alta's facilitator.`, tone: "ok" });
   return done("paid", "Paid per request, inside the mandate", `${count} payment${count > 1 ? "s" : ""} of ${usdz(unit)} to ${m.payee}, ${usdz(total)} in all. No one had to approve them: the mandate on chain sets the limit, and the chain enforces it.`);
 }

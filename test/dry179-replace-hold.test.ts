@@ -3,7 +3,7 @@
 // "treasury: spent moved from 0.00 to 0.45 since the proposal; a new one is needed". The guard stays as strict as it is.
 // Now, while a mandate replace is open for an agent's mandate (waiting for approval, approved and not yet run, or being
 // run, within its time), nothing that agent controls spends from that mandate: Purser refuses before signing, with the
-// reason and an audit row, on every Metal path (Sourcing's purchases, Support's refunds, Treasury's sweeps), and the
+// reason and an audit row, on every Alta path (Sourcing's purchases, Support's refunds, Treasury's sweeps), and the
 // agent's own situation states the hold. The hold lifts when the replace is executed, rejected, superseded, expires or
 // fails. Fakes only: no chain, no Claude.
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -102,14 +102,14 @@ describe("which replace holds which mandate", () => {
   });
 });
 
-describe("Purser holds every Metal payment of a named agent before signing", () => {
+describe("Purser holds every Alta payment of a named agent before signing", () => {
   it("Sourcing's purchase, Support's refund and Treasury's sweep are refused with the reason; nothing reserved or counted", () => {
     const db = world();
     replace(db, ["sourcing", "support", "treasury"]);
     for (const [agent, payee, cents] of [["sourcing", "supplier", 2], ["support", "customer", 5], ["treasury", "sweep", 45]] as const) {
       expect(reserveSpend(db, { agent, rail: "metal", cents, ref: `${agent}:1`, payee })).toMatch(/^replace_pending: mandate replace P-0002 pending; spending waits until it is executed or closed$/);
     }
-    // The one let-through and the record pull of Metal's refusal are Metal payments under the mandate too.
+    // The one let-through and the record pull of Alta's refusal are Alta payments under the mandate too.
     expect(holdBeyondCap(db, { agent: "sourcing", cents: 4, ref: "lt:1", payee: "supplier" })).toMatch(/^replace_pending: /);
     expect(n(db, "SELECT COUNT(*) AS n FROM holds")).toBe(0);
     expect(n(db, "SELECT COUNT(*) AS n FROM velocity_events")).toBe(0);

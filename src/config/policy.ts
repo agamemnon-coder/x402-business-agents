@@ -1,5 +1,5 @@
 // Every number that limits money lives here. Claude never sets one of these; code does.
-// Amounts are integer cents (*USDZ cents on Metal, EUR/USD cents on Airwallex).
+// Amounts are integer cents (*USDZ cents on Alta, EUR/USD cents on Airwallex).
 
 export type Agent = "sourcing" | "support" | "treasury";
 export const AGENTS: readonly Agent[] = ["sourcing", "support", "treasury"];
@@ -64,7 +64,7 @@ export const MANDATE_PROPOSAL_TTL_MS = 60 * 60 * 1000;
 /**
  * Velocity limits (security item 2): an agent that pays more often or more in total than this, in a sliding minute or
  * hour, is stopped by code at once; only the CFO's Face ID lifts the stop. Set well above the busiest live run so far
- * (rehearsal 3: the sourcing agent peaked at 18 payments in a minute and 52 in an hour). Metal amounts are *USDZ
+ * (rehearsal 3: the sourcing agent peaked at 18 payments in a minute and 52 in an hour). Alta amounts are *USDZ
  * cents, card amounts EUR cents; a declined card attempt counts towards the minute, not towards the amount.
  */
 export const VELOCITY: Record<Agent | "outside", { perMinute: number; usdzPerHourCents: number; eurPerHourCents: number }> = {
@@ -122,13 +122,13 @@ export const PLANS: Record<string, { agent: Agent; merchant: string; label: stri
 /**
  * Block 5.1: which rail each supplier accepts, as its checkout states it. The Sourcing agent picks the rail per purchase;
  * code refuses a rail the supplier does not accept before anything is paid. Stockline sells stock checks behind an x402
- * paywall on Metal; Packwise sells a monthly subscription through a card checkout, so the agent's own Airwallex card (a
+ * paywall on Alta; Packwise sells a monthly subscription through a card checkout, so the agent's own Airwallex card (a
  * single-use card would decline the next month's charge).
  */
 export type Rail = "metal_x402" | "airwallex_card";
-export const RAIL_WORDS: Record<Rail, string> = { metal_x402: "x402 on Metal", airwallex_card: "a card (Airwallex)" };
+export const RAIL_WORDS: Record<Rail, string> = { metal_x402: "x402 on Alta", airwallex_card: "a card (Airwallex)" };
 export const SUPPLIER_RAILS = {
-  stockline: { name: "Stockline", item: "one live stock check for the next customer query", rails: ["metal_x402"] as Rail[], checkout: "an x402 paywall on Metal testnet, paid under your on-chain mandate; no card checkout" },
+  stockline: { name: "Stockline", item: "one live stock check for the next customer query", rails: ["metal_x402"] as Rail[], checkout: "an x402 paywall on Alta testnet, paid under your on-chain mandate; no card checkout" },
   packwise: { name: "Packwise", item: "the Starter plan of its warehouse software, 19.99 EUR a month", rails: ["airwallex_card"] as Rail[], checkout: "a card checkout for a monthly subscription, charged to your company card (software only, a limit per purchase); no x402" },
 } as const;
 export type Supplier = keyof typeof SUPPLIER_RAILS;
@@ -146,7 +146,7 @@ export const TASK_KINDS = {
   data: { label: "Data purchase", mccs: ["5734"], maxCents: 5_000 },
 } as const;
 
-/** D22: Ridgeline Data's one-off demand report, on x402 (Metal, under the mandate) or a single-use Airwallex card. */
+/** D22: Ridgeline Data's one-off demand report, on x402 (Alta, under the mandate) or a single-use Airwallex card. */
 export const REPORT_OFFER = { supplier: "Ridgeline Data", item: "a one-off regional demand report", x402Cents: 20, cardCents: 1500, mcc: "5734", purpose: "Ridgeline Data, one-off regional demand report" } as const;
 /** A task card without a date in the message ends after this many days; a date may be at most TASK_MAX_DAYS ahead. */
 export const TASK_DEFAULT_DAYS = 7;

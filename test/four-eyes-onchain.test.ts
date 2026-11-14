@@ -1,4 +1,4 @@
-// Four eyes on chain (enterprise item 1; the off-chain approval rule is in four-eyes.test.ts): what Purser builds for a 2-of-2 Metal account must be exactly what Metal's
+// Four eyes on chain (enterprise item 1; the off-chain approval rule is in four-eyes.test.ts): what Purser builds for a 2-of-2 Alta account must be exactly what Alta's
 // own code builds, so the account judges the signatures and not our encoding. The live proof (one signature reverts,
 // two pass) is docs/runs/2026-10-30-four-eyes.md.
 import { decodeFunctionData, encodeFunctionData, erc20Abi, recoverAddress, decodeAbiParameters, parseAbiParameters, type Address, type Hex, type PublicClient } from "viem";
@@ -33,7 +33,7 @@ describe("a 2-of-2 account for the CFO and the controller", () => {
     await expect(quorumSignature(digest, [cfo, cfo])).rejects.toThrow(/twice/);
   });
 
-  it("builds exactly the executeSigned Metal's own authorizeMandateCall builds for the same call, nonce and keys", async () => {
+  it("builds exactly the executeSigned Alta's own authorizeMandateCall builds for the same call, nonce and keys", async () => {
     const selfCall = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [stranger.address, 0n] });
     const client = {
       chain: { id: CHAIN },

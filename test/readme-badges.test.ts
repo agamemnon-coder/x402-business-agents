@@ -24,7 +24,7 @@ describe("README badges", () => {
   // on main (a dynamic badge, so it cannot drift), MIT, the Node version package.json requires, TypeScript strict as
   // tsconfig.json sets it, the MCP server, and one static shield per partner in the site's own colours, no logos.
   it("is CI, CodeQL, the tests read from test-summary.json, MIT, Node, TypeScript strict, the MCP server and the four partners", () => {
-    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", `Node: ${pkgNode}`, "TypeScript: strict", "MCP server: read, propose only", "MCP Registry: io.github.agamemnon-coder/purser", "Airwallex: sandbox", "Metal: testnet", "Visa: VIC via Airi", "Claude: Haiku, Sonnet, Opus", "T:0: sandbox ledger"]); // T:0 since 13 Nov (owner)
+    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", `Node: ${pkgNode}`, "TypeScript: strict", "MCP server: read, propose only", "MCP Registry: io.github.agamemnon-coder/purser", "Airwallex: sandbox", "Alta: testnet", "Visa: VIC via Airi", "Claude: Haiku, Sonnet, Opus", "T:0: sandbox ledger"]); // T:0 since 13 Nov (owner)
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     // The official MCP Registry's entry (active since 13 Nov 2026), under the name server.json publishes.
     const registered = (JSON.parse(readFileSync(new URL("../server.json", import.meta.url), "utf8")) as { name: string }).name;
@@ -61,6 +61,6 @@ describe("README badges", () => {
     for (const r of proofs.flatMap((l) => [...l.matchAll(/\(docs\/runs\/([^)]+)\)/g)].map((m) => m[1]!))) expect({ r, there: existsSync(new URL(`../docs/runs/${r}`, import.meta.url)) }).toEqual({ r, there: true });
     expect(proofs[1]).toContain("(https://kit11.max-31b.workers.dev/api/metal/mandates)");
     expect(proofs[1]).toContain("or the recorded 12 Nov snapshot when the chain does not answer");
-    expect(readme).toContain("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude.");
+    expect(readme).toContain("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude.");
   });
 });

@@ -95,6 +95,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-claude-slate.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/assets/logos/claude-logo-slate.svg", import.meta.url)) },
   // Added 12 Nov on the owner's stated permission (docs/evidence/logo-permissions.md); sources in src/ui/logos/README.md.
   "logo-visa.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/visa.png", import.meta.url)) },
+  // Alta (formerly Metal), 14 Nov: shown with the Alta team's OK in the hackathon Slack (docs/evidence/logo-permissions.md).
+  "logo-alta.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/alta.svg", import.meta.url)) },
   "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },
   // Home's "Works with" row (home-polish, 12 Nov): the partners' official logos on white tiles, rendered by npm run visuals.
   "built-with.png": { type: "image/png", body: readFileSync(new URL("../../docs/assets/logos/built-with.png", import.meta.url)) },
@@ -344,7 +346,8 @@ export const PROOF_CSP = cspFor(PROOF_PAGE);
 /** Old addresses of pages folded into the four tabs: they redirect, so no link a juror has ends in a 404. */
 export const REDIRECTS: Record<string, string> = { "/live": "/replay", "/demo": "/replay", "/overview": "/home", "/tour": "/home", "/pricing": "/home" };
 /** Addresses retired for good, answered 301 so old links keep working: /judge (it became the product tour, then went with it, 13 Nov). */
-export const MOVED: Record<string, string> = { "/judge": "/home" };
+// 14 Nov: Metal is now Alta; /metal answers 301 to /alta (old links, the README, the form and the walkthrough point there).
+export const MOVED: Record<string, string> = { "/judge": "/home", "/metal": "/alta" };
 /** The label on the public evidence report: the customer in the 30 October case is simulated. */
 export const SIMULATED_CUSTOMER = "Summit Outfitters is a simulated customer run by us; we filed this claim on its behalf (30 October recorded run).";
 /** The evidence report the seller sends for the recorded case: no script at all, only its own style. */
@@ -429,7 +432,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
     res.status(a.status).json(a.json);
   });
 
-  app.get("/metal", (_req, res) => {
+  app.get("/metal", (_req, res) => { res.redirect(301, "/alta"); });
+  app.get("/alta", (_req, res) => {
     res.setHeader("Content-Security-Policy", METAL_CSP);
     res.type("html").send(METAL_PAGE);
   });

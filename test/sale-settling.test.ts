@@ -1,5 +1,5 @@
 // Night batch, 2 November: in 2 of 10 live worlds (dry-145, dry-146) the CFO dashboard showed Summit's buying mandate
-// 0.06 / 0.05 less spent than Metal (1.87 against 1.93; 3.30 against 3.35), with 0.00 pending. Each time the difference
+// 0.06 / 0.05 less spent than Alta (1.87 against 1.93; 3.30 against 3.35), with 0.00 pending. Each time the difference
 // was the world's last sale: its block came about a second before the seller wrote the sale's row, and the dashboard
 // was read in between (ledger copies: sale 33 of dry-145 in block 13253913 at 16:07:51, its row at 16:07:52.299; sale 67
 // of dry-146 in block 13271973 at 16:30:44, its row at 16:30:45.114). Nothing recorded the payment until the row.
@@ -66,7 +66,7 @@ function ctx(n: number, extra: Record<string, unknown> = {}) {
 }
 const settled = (n: number) => ({ result: { success: true, transaction: tx(n), network: "eip155:63825", payer: PAYER, extra: { settlement: { id: settlementId(n), first: true } } } });
 
-/** Metal as the chain read it a moment after sale n's block: n payments of 0.05 under the customer's mandate. */
+/** Alta as the chain read it a moment after sale n's block: n payments of 0.05 under the customer's mandate. */
 const chainWith = (n: number) => ({
   block: async () => 13271980n,
   mandate: async () => {
@@ -81,7 +81,7 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
   it("the dashboard shows the payment as pending while it is settled, so it agrees with the chain", async () => {
     const db = world();
     for (const h of hooks.before) expect(await h(ctx(67))).toBeUndefined();
-    // Metal's block holds sale 67 now; the seller has not written its row. This is the moment the night batch read.
+    // Alta's block holds sale 67 now; the seller has not written its row. This is the moment the night batch read.
     expect(customer(db)).toMatchObject({ spent: "3.30", pending: "0.05", remaining: "1.65" });
     // With when its authorization stops being valid, for the reconciliation's proof that nothing moved.
     expect(db.prepare("SELECT valid_before FROM sale_settlements").get()).toEqual({ valid_before: 1793637600 });
@@ -204,7 +204,7 @@ describe("a sale between its block and its row (dry-146, 2 November)", () => {
     }
   });
 
-  it("a clearing sale is not the mandate's: paid from Summit's deposit, Metal's mandate does not count it", () => {
+  it("a clearing sale is not the mandate's: paid from Summit's deposit, Alta's mandate does not count it", () => {
     const db = world();
     db.prepare(`INSERT INTO sales (route, price_cents, payer, request_url, request_params_json, status, created_at, scheme)
                 VALUES ('GET /v1/stock/prepaid', 5, '0x03', 'u', '{}', 'DELIVERED', 'now', 'bajillion')`).run();

@@ -1,6 +1,6 @@
-// What each rail did in this ledger, with its proof (awards item 1): Airwallex and Metal are where the money moves
+// What each rail did in this ledger, with its proof (awards item 1): Airwallex and Alta are where the money moves
 // and where the limits hold; Purser is the control layer above them. Every item is read from the ledger and carries
-// the id or transaction that proves it: an Airwallex id (as the sandbox API returns it), or a Metal testnet explorer
+// the id or transaction that proves it: an Airwallex id (as the sandbox API returns it), or an Alta testnet explorer
 // link. Nothing here is typed in by hand; an item the ledger has no record of is left out.
 
 import { SANDBOX_SETTLED } from "../config/brand.js";
@@ -13,7 +13,7 @@ export interface RailItem {
   what: string;
   /** The numbers, in plain words. */
   detail: string;
-  /** The proof: an Airwallex id (no public link) or a Metal transaction (explorer link). */
+  /** The proof: an Airwallex id (no public link) or an Alta transaction (explorer link). */
   proof: { label: string; href: string | null } | null;
   /** True where the sandbox simulates the other side (a merchant's charge, a deposit), said so on the page. */
   simulated?: boolean;
@@ -82,10 +82,10 @@ export function railsView(db: DB): RailsView {
     }
   }
   for (const d of events(db, "credit.deposited")) {
-    airwallex.push({ what: "Metal earnings booked at Airwallex", detail: `USD ${String(d.p.amount)} booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)`, proof: awxId(d.p.deposit_id), simulated: true });
+    airwallex.push({ what: "Alta earnings booked at Airwallex", detail: `USD ${String(d.p.amount)} booked once as a simulated sandbox deposit that names the sweep's testnet transaction (no test USD reached Airwallex)`, proof: awxId(d.p.deposit_id), simulated: true });
   }
 
-  // Metal: the mandates, the payments under them, and the chain's own refusals.
+  // Alta: the mandates, the payments under them, and the chain's own refusals.
   const bound = events(db, "mandate.bound").filter((m) => m.subject in AGENT);
   if (bound.length) {
     // As each agent's mandate stands now: the last bind or replacement.
@@ -96,7 +96,7 @@ export function railsView(db: DB): RailsView {
     const s = one(db, "SELECT COUNT(*) AS n, MIN(CASE WHEN tx_hash IS NOT NULL THEN tx_hash END) AS first FROM sales WHERE status = 'DELIVERED' AND scheme = 'exact'");
     if (s && Number(s.n) > 0) {
       const firstTx = one(db, "SELECT tx_hash FROM sales WHERE status = 'DELIVERED' AND tx_hash IS NOT NULL ORDER BY sale_id LIMIT 1");
-      metal.push({ what: "Paid per request (x402), with a signed order", detail: `${String(s.n)} stock checks sold, each paid under the customer's mandate and settled by Metal's facilitator`, proof: tx(firstTx?.tx_hash) });
+      metal.push({ what: "Paid per request (x402), with a signed order", detail: `${String(s.n)} stock checks sold, each paid under the customer's mandate and settled by Alta's facilitator`, proof: tx(firstTx?.tx_hash) });
     }
   }
   if (has(db, "upstream_purchases")) {
@@ -104,8 +104,8 @@ export function railsView(db: DB): RailsView {
     const first = one(db, "SELECT tx_hash FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY created_at LIMIT 1");
     if (n && Number(n.n) > 0) metal.push({ what: "The agent buys from its supplier", detail: `${String(n.n)} purchases, each under the Sourcing agent's mandate`, proof: tx(first?.tx_hash) });
   }
-  // Only real refusals over the mandate's cap: Purser's own before signing, and Metal's record of one on chain. A
-  // purchase the agent's buy policy chose not to make is not a cap refusal; a payment under a revoked mandate is Metal's
+  // Only real refusals over the mandate's cap: Purser's own before signing, and Alta's record of one on chain. A
+  // purchase the agent's buy policy chose not to make is not a cap refusal; a payment under a revoked mandate is Alta's
   // own refusal, said apart.
   const refused = events(db, "upstream.refused");
   const overCap = refused.filter((r) => /^mandate_cap_exceeded|over the mandate's (per-payment )?cap/.test(String(r.p.reason ?? "")));
@@ -113,12 +113,12 @@ export function railsView(db: DB): RailsView {
   const byMetal = overCap.filter((r) => r.p.refused_by === "metal");
   const onChain = events(db, "upstream.refused_on_chain");
   if (byPurser.length || byMetal.length || onChain.length) {
-    const parts = [`${byPurser.length} refused by Purser before signing`, `${onChain.length} recorded by Metal on chain`];
-    if (byMetal.length) parts.push(`${byMetal.length} refused by Metal's facilitator`);
+    const parts = [`${byPurser.length} refused by Purser before signing`, `${onChain.length} recorded by Alta on chain`];
+    if (byMetal.length) parts.push(`${byMetal.length} refused by Alta's facilitator`);
     metal.push({ what: "Refused over the mandate's cap", detail: `${parts.join(", ")} (mandate_cap_exceeded): nothing moved`, proof: tx(onChain[0]?.p.tx) });
   }
   const revoked = refused.filter((r) => r.p.refused_by === "metal" && /mandate_revoked/.test(String(r.p.reason ?? "")));
-  if (revoked.length) metal.push({ what: "Refused under a revoked mandate", detail: `${revoked.length} payment${revoked.length > 1 ? "s" : ""} refused by Metal's facilitator: the old mandate was revoked by its replacement (a 402, nothing moved)`, proof: null });
+  if (revoked.length) metal.push({ what: "Refused under a revoked mandate", detail: `${revoked.length} payment${revoked.length > 1 ? "s" : ""} refused by Alta's facilitator: the old mandate was revoked by its replacement (a 402, nothing moved)`, proof: null });
   const replaced = events(db, "mandate.replaced");
   if (replaced.length) metal.push({ what: "Mandate replaced after Face ID", detail: `${replaced.length} replacement${replaced.length > 1 ? "s" : ""} approved by the CFO's passkey; the old mandate is revoked on chain`, proof: tx(replaced[0]!.p.tx) });
   if (has(db, "refunds")) {
@@ -134,7 +134,7 @@ export function railsView(db: DB): RailsView {
   }
   if (has(db, "quarantines")) {
     const q = one(db, "SELECT COUNT(*) AS n FROM quarantines");
-    if (q && Number(q.n) > 0) metal.push({ what: "Receive policy: money from strangers held", detail: `${String(q.n)} payment${Number(q.n) > 1 ? "s" : ""} from unknown senders held by Metal until the CFO returns or accepts them with Face ID`, proof: null });
+    if (q && Number(q.n) > 0) metal.push({ what: "Receive policy: money from strangers held", detail: `${String(q.n)} payment${Number(q.n) > 1 ? "s" : ""} from unknown senders held by Alta until the CFO returns or accepts them with Face ID`, proof: null });
   }
   const decided = events(db, "dispute.decided");
   if (decided.length) {

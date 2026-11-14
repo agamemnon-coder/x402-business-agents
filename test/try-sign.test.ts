@@ -69,7 +69,7 @@ describe("/try/sign: the visitor's test world", () => {
     const out = (await res.json()) as { verified: boolean; terms_sha256: string; executed: { id: string; amount: string; balance_after: string; by: string } };
     expect(out).toMatchObject({ verified: true, terms_sha256: b.terms_sha256, executed: { amount: "1850.00", balance_after: "25020.00" } });
     expect(out.executed.id).toMatch(/^test-[0-9a-f]{12}$/);
-    expect(out.executed.by).toMatch(/stand-in.*nothing paid or converted at Airwallex, no Metal call/);
+    expect(out.executed.by).toMatch(/stand-in.*nothing paid or converted at Airwallex, no Alta call/);
     expect(db.prepare("SELECT status FROM ts_proposals WHERE id = 'T-0002'").get()).toEqual({ status: "executed" });
   });
 

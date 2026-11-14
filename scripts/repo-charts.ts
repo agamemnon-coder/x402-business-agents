@@ -53,7 +53,7 @@ export function line(title: string, pts: { date: string; value: number }[], note
   return svg(w, h, title, `${grid}\n<path class="ln" d="${path}"/>\n${label(pts[0]!, "start")}\n${label(pts.at(-1)!, "end")}\n${axis}`, note);
 }
 
-const RAILS: [string, RegExp][] = [["Airwallex sandbox", /airwallex/i], ["Metal testnet", /metal/i], ["Claude (live calls)", /claude/i], ["Visa (Airi, TAP)", /airi|visa|tap/i], ["T:0 sandbox", /t:0/i], ["Moneybird sandbox", /moneybird/i]];
+const RAILS: [string, RegExp][] = [["Airwallex sandbox", /airwallex/i], ["Alta testnet", /\balta\b|metal/i], ["Claude (live calls)", /claude/i], ["Visa (Airi, TAP)", /airi|visa|tap/i], ["T:0 sandbox", /t:0/i], ["Moneybird sandbox", /moneybird/i]];
 
 /** The completed runs in docs/runs/README.md, counted per rail named in their Rails column. */
 export function runsPerRail(readme: string): { label: string; value: number }[] {

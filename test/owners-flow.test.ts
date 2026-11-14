@@ -1083,7 +1083,7 @@ describe("the CFO's feed of an owners world", () => {
     expect(feed.filter((f) => f.event.startsWith("owners.")).filter((f) => f.text.startsWith("owners."))).toEqual([]);
     expect(feed.find((f) => f.event === "owners.sent")).toMatchObject({ text: expect.stringMatching(/^P-0001, signed by both passkeys, was sent to the business account on chain$/), tx: expect.stringMatching(/^0x[0-9a-f]{64}$/) });
     expect(feed.find((f) => f.event === "owners.paid")).toMatchObject({ text: "The Sourcing agent paid 0.05 USDZ to Stockline inside its mandate on the passkey account: its mandate key signed, no owner did", tone: "ok", tx: r.inside!.tx });
-    expect(feed.find((f) => f.event === "owners.refused_on_chain")).toMatchObject({ text: "Metal refused 0.06 USDZ to Stockline, over the mandate's 0.05 cap, and recorded the refusal on chain", tone: "refusal", tx: r.over!.tx });
+    expect(feed.find((f) => f.event === "owners.refused_on_chain")).toMatchObject({ text: "Alta refused 0.06 USDZ to Stockline, over the mandate's 0.05 cap, and recorded the refusal on chain", tone: "refusal", tx: r.over!.tx });
   });
 
   it("reads right for a replace and for the refused amount paid after it", async () => {

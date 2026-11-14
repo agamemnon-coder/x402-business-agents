@@ -1,4 +1,4 @@
-// The compliance decision for an outgoing Metal payment (enterprise item 2): only a payee the CFO approved and not on
+// The compliance decision for an outgoing Alta payment (enterprise item 2): only a payee the CFO approved and not on
 // the sanctions list gets one, screened by signDecision itself, valid for at most an hour, bound to that payment. The
 // contract side ran live: docs/runs/2026-10-30-compliance-policy.md.
 import { hashTypedData, recoverAddress, type Address, type Hex } from "viem";

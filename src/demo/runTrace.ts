@@ -4,10 +4,10 @@
 // written to docs/demo/main-run-trace.json. The main run's record is not changed.
 //
 // What it holds:
-// - every payment of the run (88: each sale, supplier purchase, refund and sweep on Metal, the card charge and the
+// - every payment of the run (88: each sale, supplier purchase, refund and sweep on Alta, the card charge and the
 //   SWIFT transfer), each with its own rail id, its approval hash where one exists, who decided it (as its audit row
 //   recorded it) and the seq of that audit row;
-// - the mandates bound and replaced on Metal (the locks that held the Metal payments), from their audit rows;
+// - the mandates bound and replaced on Alta (the locks that held the Alta payments), from their audit rows;
 // - the GL journal (src/accounting/gl.ts) with the opening lines (src/accounting/books.ts), so the books, the trial
 //   balance and the GL export are rebuilt from it with the existing code;
 // - the audit chain as {seq, prev_hash, row_hash} per row and nothing else from the rows, with the chain's head and
@@ -41,7 +41,7 @@ export interface TracePayment {
   amount: string;
   currency: string;
   rail: PaymentRail;
-  /** The Metal transaction hash, the Airwallex card transaction id or the Airwallex transfer id. */
+  /** The Alta transaction hash, the Airwallex card transaction id or the Airwallex transfer id. */
   rail_id: string;
   /** The approval hash carried by the payment (the SWIFT transfer's metadata), or null when nothing was signed for it. */
   approval_sha256: string | null;
@@ -49,7 +49,7 @@ export interface TracePayment {
   origin: Origin;
   /** The audit row that records the payment. */
   audit: { seq: number; event: string };
-  /** For a payment on Metal: the audit seq of the mandate row (bound or replaced) in force when it was paid. */
+  /** For a payment on Alta: the audit seq of the mandate row (bound or replaced) in force when it was paid. */
   mandate_seq: number | null;
 }
 

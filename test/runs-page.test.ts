@@ -219,7 +219,8 @@ describe("/runs", () => {
 // that work without JavaScript and never hide the newest run.
 describe("/runs as a timeline", () => {
   const rows = liveRuns();
-  const html = pages.runs!;
+  // 14 Nov: the page's first mention reads "Alta (formerly Metal)" (src/ui/formerly.ts, tested in test/formerly.test.ts).
+  const html = pages.runs!.replace("Alta (formerly Metal)", "Alta");
   const raw = (f: string) => readFileSync(f, "utf8");
   const row = (key: string) => rows.find((r) => r.key === key)!;
   // The kind of each run listed on 12 Nov. A row added later (in the old shape or the new) is held by the tests that
@@ -229,7 +230,7 @@ describe("/runs as a timeline", () => {
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
     "real-customers-1": "sandbox", "tokenize-1": "testnet", "batch-1": "sandbox", "payee-check-1": "sandbox", "faceid-onchain-1": "testnet", "moneybird-1": "sandbox",
     "metal-hold-1": "testnet", "acceptance-1": "sandbox",
-    // /metal's separate runs ("Also on Metal"), the same set on both pages (jury check, 12 Nov).
+    // /metal's separate runs ("Also on Alta"), the same set on both pages (jury check, 12 Nov).
     "metal-passkey-owners": "testnet", "metal-four-eyes": "testnet", "metal-clearing-load": "testnet", "metal-receive": "testnet", "metal-compliance": "testnet", "metal-clearing": "testnet",
   };
   const known = (keys: string[]) => keys.filter((k) => k in KINDS);
@@ -322,9 +323,9 @@ describe("/runs as a timeline", () => {
       expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : r.key === "vic-2" ? "nothing" : KINDS[r.key]);
     }
     expect(row("tap-1").money).toBe("Simulated merchant · test money");
-    // What the records say: the main run ran on Metal testnet and in the Airwallex sandbox; the second Airi run was live
+    // What the records say: the main run ran on Alta testnet and in the Airwallex sandbox; the second Airi run was live
     // and called nobody; the two rehearsals call themselves rehearsals.
-    expect(row("main-1").rails).toMatch(/Metal testnet, Airwallex sandbox/);
+    expect(row("main-1").rails).toMatch(/Alta testnet, Airwallex sandbox/);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { mode: string; outside_calls: { airi: number; airwallex: number } };
     expect([v2.mode, v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual(["live", 0, 0]);
     expect(raw("docs/runs/2026-11-02-agent-run-1.md")).toMatch(/\(rehearsal\)/);
@@ -349,9 +350,9 @@ describe("/runs as a timeline", () => {
   // "Live testnet and sandbox", counted as live and could become the last live run.
   it("never badges a row as live when its own words say simulated, fake or mock", () => {
     const faked: RunRow[] = [
-      { ...oldShape, key: "fake-a", iso: "2026-11-13T09:00:00.000Z", date: "13 Nov 2026", title: "A day on simulated rails", rails: "Simulated Airwallex and Metal (Purser's own fakes)", money: "Simulated · test money" },
-      { ...oldShape, key: "fake-b", iso: "2026-11-13T08:00:00.000Z", date: "13 Nov 2026", title: "Payouts on fakes", rails: "Fake Airwallex sandbox, fake Metal testnet", money: "Simulated · no partner called" },
-      { ...oldShape, key: "fake-c", iso: "2026-11-13T07:00:00.000Z", date: "13 Nov 2026", title: "Payouts to a mock bank", rails: "Airwallex sandbox (mocked), Metal testnet", money: "Test money" },
+      { ...oldShape, key: "fake-a", iso: "2026-11-13T09:00:00.000Z", date: "13 Nov 2026", title: "A day on simulated rails", rails: "Simulated Airwallex and Alta (Purser's own fakes)", money: "Simulated · test money" },
+      { ...oldShape, key: "fake-b", iso: "2026-11-13T08:00:00.000Z", date: "13 Nov 2026", title: "Payouts on fakes", rails: "Fake Airwallex sandbox, fake Alta testnet", money: "Simulated · no partner called" },
+      { ...oldShape, key: "fake-c", iso: "2026-11-13T07:00:00.000Z", date: "13 Nov 2026", title: "Payouts to a mock bank", rails: "Airwallex sandbox (mocked), Alta testnet", money: "Test money" },
     ];
     for (const f of faked) expect(kindOf(f), f.key).toBe("simulated");
     const page = runsPage([...rows, ...faked]);
@@ -372,7 +373,7 @@ describe("/runs as a timeline", () => {
     expect(text(page)).toContain(`Last live run: ${rows[0]!.date}.`);
     expect(runsReadme([...rows, ...faked])).toContain(`**Last live run:** ${rows[0]!.date}.`);
     // "Rehearsal" is read from the money words, not from a title that mentions one.
-    const after: RunRow = { ...oldShape, key: "again-x", title: "The main run again, after its rehearsal", rails: "Metal testnet, Airwallex sandbox", money: "Test money" };
+    const after: RunRow = { ...oldShape, key: "again-x", title: "The main run again, after its rehearsal", rails: "Alta testnet, Airwallex sandbox", money: "Test money" };
     expect(kindOf(after)).toBe("both");
     expect(kindOf({ ...after, money: "Rehearsal · test money" })).toBe("rehearsal");
     // A row with its own kind keeps it.
@@ -412,7 +413,7 @@ describe("/runs as a timeline", () => {
     // Rehearsals do not count as live runs.
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
     // vic-2 is a local control test since 12 Nov (review); since 13 Nov (jury pass) the two partial runs are listed apart;
-    // the records' anchor on Metal testnet joined on 13 Nov.
+    // the records' anchor on Alta testnet joined on 13 Nov.
     expect(known(live.map((e) => e.key))).toHaveLength(25); // vic-5, 14 Nov
   });
 
@@ -430,7 +431,7 @@ describe("/runs as a timeline", () => {
     const links = [...nav.matchAll(/<a(?: class="all")? href="#([a-z]+)">([^<]+) <b>(\d+)<\/b><\/a>/g)].map((m) => ({ id: m[1]!, label: m[2]!, n: Number(m[3]) }));
     expect(nav.match(/<a /g)).toHaveLength(links.length);
     // All first, then the partners, then the kinds present; only filters with at least one run.
-    expect(links.map((l) => [l.id, l.label])).toEqual([["all", "All"], ["airwallex", "Airwallex"], ["metal", "Metal"], ["visa", "Visa"], ["claude", "Claude"], ["sandbox", "Live sandbox"], ["testnet", "Live testnet"]]);
+    expect(links.map((l) => [l.id, l.label])).toEqual([["all", "All"], ["airwallex", "Airwallex"], ["alta", "Alta"], ["visa", "Visa"], ["claude", "Claude"], ["sandbox", "Live sandbox"], ["testnet", "Live testnet"]]);
     expect(links[0]!.n).toBe(live.length);
     for (const l of links.slice(1)) {
       expect(l.n, l.id).toBe(live.filter((e) => e.cls.includes(`f-${l.id}`)).length);
@@ -438,7 +439,7 @@ describe("/runs as a timeline", () => {
     }
     // Which runs carry which filter: from their rails and kind.
     const carrying = (id: string) => known(live.filter((e) => e.cls.includes(`f-${id}`)).map((e) => e.key));
-    expect(carrying("metal")).toEqual(["anchor-1", "tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    expect(carrying("alta")).toEqual(["anchor-1", "tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     expect(carrying("testnet")).toEqual(["anchor-1", "tokenize-1", "faceid-onchain-1", "metal-hold-1", "main-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     expect(carrying("claude")).toEqual(["vic-5", "vic-4", "awx-faceid-1", "vic-3", "platform-e2e-1", "main-1"]);
     // Review 12 Nov (DC-3): a partner's chip, class and count are for the runs it took part in, by the records. The second

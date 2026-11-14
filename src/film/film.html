@@ -124,7 +124,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
   }
   function toast(kind, title, sub, amt) { var n = E("div", "toast " + kind, null, [E("div", "ic", kind === "ok" ? "✓" : "✕"), E("div", null, title, [E("small", null, sub)]), E("div", "amt", amt)]); return n; }
   // Partner names as text, never a brand logo (Max, 7 Nov).
-  function logo(name, h) { var t = document.createElement("b"); t.className = "lgt"; t.textContent = { "logo-airwallex.png": "Airwallex", "logo-metal.svg": "Metal", "logo-claude.png": "Claude" }[name] || ""; t.style.fontSize = Math.round(h * 0.75) + "px"; return t; }
+  function logo(name, h) { var t = document.createElement("b"); t.className = "lgt"; t.textContent = { "logo-airwallex.png": "Airwallex", "logo-alta.svg": "Alta", "logo-claude.png": "Claude" }[name] || ""; t.style.fontSize = Math.round(h * 0.75) + "px"; return t; }
   var d = D.data;
 
   // ---- the scenes; their lengths and words come from the film's script (src/film/script.ts). ----
@@ -158,7 +158,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var cards = d.cards.map(function (c, i) { return put(L, E("div", "mini", null, [E("div", "t", c.name), E("div", "n", "•••• " + c.last4), E("div", "l", "€" + c.perTx + " a purchase · " + c.only)]), 140 + i * 340, 400); });
       var awx = put(L, E("div", "pill", "Airwallex Issuing · Visa"), 140, 620);
       var mand = d.mandates.map(function (m, i) { return put(L, E("div", "pill", m.name.replace(" agent", "") + ": at most " + m.cap + " test USD a payment, " + m.payee + " only"), 140, 720 + i * 78); });
-      var metal = put(L, E("div", "pill", "Mandates on chain · Metal"), 1300, 620); metal.style.color = "var(--metal)";
+      var metal = put(L, E("div", "pill", "Mandates on chain · Alta"), 1300, 620); metal.style.color = "var(--metal)";
       var fid = put(L, E("div", "pill ok", "Above the limits: Face ID"), 1300, 400);
       return function (t) {
         rise(k, t, .1); rise(h, t, .3);
@@ -204,7 +204,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     metal: function (L) {
-      var k = put(L, E("div", "kicker", "On chain · Metal"), 140, 90); k.style.color = "var(--metal)";
+      var k = put(L, E("div", "kicker", "On chain · Alta"), 140, 90); k.style.color = "var(--metal)";
       var h = put(L, E("div", "h2", "Pay per request, inside a mandate"), 140, 136);
       var a = put(L, E("div", "node", null, [E("b", null, "Summit's agent"), E("span", null, "a retail customer")]), 140, 360);
       var b = put(L, E("div", "node", null, [E("b", null, "Northwind"), E("span", null, "Sourcing agent")]), 810, 360);
@@ -278,7 +278,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       };
     },
     trust: function (L) {
-      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Claude agents handle the exceptions. Metal and Airwallex enforce the limits." : "Claude read the documents and advised. Metal and Airwallex enforce the limits."), 140, 150);
+      var k = put(L, E("div", "kicker", "Why you can trust it"), 140, 100), h = put(L, E("div", "h2", d.claude === "decided" ? "Claude agents handle the exceptions. Alta and Airwallex enforce the limits." : "Claude read the documents and advised. Alta and Airwallex enforce the limits."), 140, 150);
       var a = put(L, E("div", "big ok", "0"), 140, 330), al = put(L, E("div", "h3", "of " + d.trust.attacks + " red-team attacks failed · simulated rails, test world"), 150, 530);
       var s = put(L, E("div", "big ok", "0"), 760, 330), sl = put(L, E("div", "h3", "of " + d.trust.scenarios + " scenarios as expected"), 770, 530);
       var stop = put(L, E("div", "stop", "STOP"), 1450, 300);
@@ -299,7 +299,7 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--text); -webkit-fo
       var s = put(L, E("div", "h2 muted", "AI agents spend. You sign off."), 140, 420); s.style.width = "1500px";
       // "Powered by Claude" only for a recording in which the agents decided; the 30 October one predates them.
       var decided = d.claude === "decided";
-      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-metal.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [logo("logo-claude.png", 34)]), E("span", "w", "read the documents")])), 140, 640);
+      var lg = put(L, E("div", "logos", null, [E("span", "w", "Built on"), logo("logo-airwallex.png", 40), E("span", "sep"), logo("logo-alta.svg", 40), E("span", "sep")].concat(decided ? [E("span", "w", "Powered by"), E("span", "cl", null, [logo("logo-claude.png", 34)])] : [E("span", "cl", null, [logo("logo-claude.png", 34)]), E("span", "w", "read the documents")])), 140, 640);
       var e = put(L, E("div", "h2", "Every payment has a proof."), 140, 820); e.style.color = "var(--accent2)";
       var note = put(L, E("div", "muted", decided ? "“Built on” and “Powered by” name the services Purser uses; they are not an endorsement." : "“Built on” names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."), 140, 950); note.style.fontSize = "20px";
       return function (t) { rise(p, t, .2); rise(s, t, .8); rise(lg, t, 2); rise(e, t, 3.5); rise(note, t, 4); };

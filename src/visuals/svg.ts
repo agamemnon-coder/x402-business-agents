@@ -1,6 +1,6 @@
 // Purser's visual system as code (12 Nov): inline SVG drawn from the site's design tokens, light and dark, no images.
 // The diagrams carry no partner logos or brand marks: rails are named in text (the logos are a separate "Built with"
-// row, src/visuals/logos.ts). Each partner keeps one colour (Airwallex, Metal, Airi, Claude); Purser is the accent.
+// row, src/visuals/logos.ts). Each partner keeps one colour (Airwallex, Alta, Airi, Claude); Purser is the accent.
 // Three visuals:
 //
 // - architecture: agents → Purser's checks → the CFO's Face ID → the rail's own controls → ledger and books → archive,
@@ -118,7 +118,7 @@ ${o.body}
 // sandbox runs (T:0, Moneybird) and the archive is Purser Cloud's, a private preview.
 
 export const ARCH_TITLE = "Purser: who can stop a payment";
-export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Metal, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.";
+export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Alta, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.";
 export const LAYERS_LINE = "Three layers that do not trust each other: each can stop a payment on its own.";
 export const FOOT = "Sandbox and testnet runs, test money.";
 
@@ -129,7 +129,7 @@ const LAYERS = [
 ] as const;
 const RAILS = [
   { cls: "awx", name: "Airwallex", line: "Approvals, card limits" },
-  { cls: "metal", name: "Metal", line: "Mandate cap on chain" },
+  { cls: "metal", name: "Alta", line: "Mandate cap on chain" },
   { cls: "airi", name: "Visa via Airi", line: "Cardholder's passkey" },
 ] as const;
 const RAIL_REFUSES = "Refuses over its own limits, even after Purser's yes";
@@ -333,7 +333,7 @@ export const SOCIAL_SUB = ["Every payment above its limit", "waits for your Face
  * The "Built with" line, in words only (the final partner review, 13 Nov: no partner marks on the card, and Visa by the
  * product the build used): the partners' names in the site's ink colours, no logos.
  */
-export const SOCIAL_BUILT_WITH = { x: 72, y: 540, label: "Built with", names: ["Airwallex", "Metal", "Visa Intelligent Commerce", "Claude"] } as const;
+export const SOCIAL_BUILT_WITH = { x: 72, y: 540, label: "Built with", names: ["Airwallex", "Alta", "Visa Intelligent Commerce", "Claude"] } as const;
 
 /**
  * The link preview and the repository's social preview (the owner, 13 Nov: readable at thumbnail size). 1200×630, on

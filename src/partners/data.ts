@@ -138,8 +138,8 @@ export function airwallexData(): AirwallexData {
       runs: both((s) => lines(s, ["transfer.created", "transfer.status", "transfer.fee"], back)),
     },
     {
-      id: "deposit", title: "Metal earnings booked once final",
-      plain: "Earnings swept on Metal are booked at Airwallex only after the chain is final, once per transaction, as a sandbox deposit that names the testnet transaction.",
+      id: "deposit", title: "Alta earnings booked once final",
+      plain: "Earnings swept on Alta are booked at Airwallex only after the chain is final, once per transaction, as a sandbox deposit that names the testnet transaction.",
       docs: [{ label: "Simulate deposits to your Global Account", href: "https://www.airwallex.com/docs/accounts/receive-funds/receive-bank-transfers-to-global-accounts/simulate-deposits-to-your-global-account" }],
       runs: both((s) => lines(s, ["credit.deposited"], back)),
     },

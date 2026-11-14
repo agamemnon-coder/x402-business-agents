@@ -192,7 +192,8 @@ describe("the frame and the start", () => {
     expect(COPY.START.fine).toBe("Test money · deleted after 24 h");
     expect(COPY.START.text).toContain("Purser's real engine");
     // 13 Nov: the trust line names Visa as the README and the site do ("via Airwallex Airi"); VIC is said where a VIC run is shown.
-    expect(COPY.START.trust).toBe("Works with Airwallex · Metal · Visa via Airwallex Airi · Claude (sandbox and testnet runs)");
+    // 14 Nov: Metal is now Alta; the first mention says so.
+    expect(COPY.START.trust).toBe("Works with Airwallex · Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs)");
     expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.trust))).toBe(true);
   });
 });

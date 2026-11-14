@@ -11,7 +11,7 @@ export const LEDGER_EVENTS = [
   // dry-179: an approved proposal its executor's guard refused, closed with the reason.
   "proposal.needs_reapproval",
   "mandate.replaced", "refund.paid", "upstream.refused", "upstream.refused_on_chain", "credit.locked", "credit.deposited",
-  // The main run (3 Nov): the purchase let through to Metal and its label, the customer's error status per refused
+  // The main run (3 Nov): the purchase let through to Alta and its label, the customer's error status per refused
   // query, the FX for the licence's shortfall, and the TAP-signed card buy in the same world.
   "upstream.let_through", "upstream.let_through_refused", "sale.refused", "fx.converted", "tap.checkout_verified",
   "card.limits_synced", "card.charge_approved", "card.charge_declined",

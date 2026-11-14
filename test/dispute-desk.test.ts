@@ -1,4 +1,4 @@
-// The Dispute desk (Metal jury input, 30 October): Northwind as the seller settles a questioned agent purchase on its
+// The Dispute desk (Alta jury input, 30 October): Northwind as the seller settles a questioned agent purchase on its
 // own terms. Code reads the evidence and decides; a model only explains; a refund above the CFO's limits waits for
 // Face ID. Each test breaks if the seller pays out without a reason in the evidence, or keeps money it cannot prove.
 import { describe, expect, it } from "vitest";

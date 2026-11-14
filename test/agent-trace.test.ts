@@ -23,7 +23,7 @@ function fake(turns: { name: string; input: unknown }[][]): Anthropic {
         create: async () => {
           const t = turns[i++];
           const usage = { input_tokens: 1000, output_tokens: 200, cache_read_input_tokens: 50, cache_creation_input_tokens: 10 };
-          if (!t) return { content: [{ type: "text", text: "Metal refused #41; I told Treasury." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
+          if (!t) return { content: [{ type: "text", text: "Alta refused #41; I told Treasury." }], stop_reason: "end_turn", model: "claude-haiku-5-5", usage };
           return { content: t.map((c, k) => ({ type: "tool_use", id: `t${i}-${k}`, name: c.name, input: c.input })), stop_reason: "tool_use", model: "claude-haiku-5-5", usage };
         },
       },
@@ -40,7 +40,7 @@ async function world() {
       { name: "check_offer", description: "d", input: z.object({}), run: async () => ({ text: "Live offer 0.04, cap 0.03" }) },
       { name: "try_purchase", description: "d", input: z.object({}), run: async () => {
         audit(db, "sourcing", "upstream.refused", "41", { seq: 41, reason: "mandate_cap_exceeded: 0.04 is over the sourcing mandate's 0.03 a payment", tx: TX });
-        return { text: "Metal refused it", blocked: "Metal mandate" };
+        return { text: "Alta refused it", blocked: "Alta mandate" };
       } },
     ],
   }, fake([[{ name: "check_offer", input: {} }], [{ name: "try_purchase", input: {} }]]));
@@ -57,7 +57,7 @@ describe("the agent trace and money movements (D24)", () => {
         // The world's per-query buyer, by code, writes during the run; then the tool's own refusal.
         withOrigin({ actor: "code", rule: "the default buy policy", agent: "sourcing" }, () => audit(db, "sourcing", "upstream.paid", "50", { seq: 50 }));
         audit(db, "sourcing", "upstream.refused", "51", { seq: 51, reason: "mandate_cap_exceeded: x", tx: TX });
-        return { text: "refused", blocked: "Metal mandate" };
+        return { text: "refused", blocked: "Alta mandate" };
       } }],
     }, fake([[{ name: "try_purchase", input: {} }]]));
     const effects = agentTraces(db)[0]!.steps.map((s) => s.event);
@@ -79,7 +79,7 @@ describe("the agent trace", () => {
     const [t] = agentTraces(await world());
     const [offer, , purchase] = t!.steps;
     expect(offer).toMatchObject({ tool: "check_offer", blocked: false, check: expect.stringMatching(/read only/i) });
-    expect(purchase).toMatchObject({ tool: "try_purchase", blocked: true, check: "Metal mandate" });
+    expect(purchase).toMatchObject({ tool: "try_purchase", blocked: true, check: "Alta mandate" });
   });
 
   it("carries the chain tx the call caused, and every row's own hash in the audit chain", async () => {

@@ -1,4 +1,4 @@
-// Metal review (6 November, docs/metal-review.md), the small fixes besides the pull retry (metal-pull-after-replace):
+// Alta review (6 November, docs/metal-review.md), the small fixes besides the pull retry (metal-pull-after-replace):
 // a clearing wallet is kept for one Clearing deployment, a clearing payment whose answer was lost is recognised by
 // metal-pay's own reason, and a disputed order counts as signed from verifyMandatePayment's outcome, not its wording.
 import { existsSync, mkdtempSync, readFileSync } from "node:fs";

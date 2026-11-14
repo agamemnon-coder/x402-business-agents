@@ -1,6 +1,6 @@
 // /try/sign (TRY_SIGN_ENABLED): a visitor signs with their own passkey in a test world of their own. The world lives
 // one hour in its own Durable Object instance ("try-sign"), in its own tables (ts_*), with its own passkeys: nothing
-// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue. No Metal or relay token is
+// here reads or writes the relay's state, its enrolled passkeys, its sessions or its queue. No Alta or relay token is
 // handed to this desk.
 //
 // The waiting payment (T-0002) comes about step by step, one step per POST /agents (spec 6b, Max 7 Nov): (1) Claude
@@ -1304,7 +1304,7 @@ export class TrySignDesk {
       const execution = {
         id: `test-${hex(random(6))}`, at: new Date(nowMs).toISOString(), amount: t.amount, currency: TEST_WORLD.currency, payee: t.payee,
         ...TrySignDesk.executed(t.amount, bal, checked), fx_quote_id: t.fx?.quote_id ?? null,
-        by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call",
+        by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Alta call",
         alone: true, label: PAID_ALONE, rule: `at or below the ${eur(rules.alone_limit)} the agent may pay alone`,
         terms_sha256: next.sha, policy_version: String(pol.version), policy_change_sha256: pol.signed_sha,
       };
@@ -1473,7 +1473,7 @@ export class TrySignDesk {
     if (again.check === "fail") { refused("blocked by a rule"); return answer(409, { error: `blocked by a rule: ${again.rule}`, blocked: true, verified: true }); }
     const execution = {
       id: `test-${hex(random(6))}`, at: new Date(now).toISOString(), amount, currency: TEST_WORLD.currency, payee: (p.terms as { payee: string }).payee,
-      ...TrySignDesk.executed(amount, bal, again), fx_quote_id: (quote as { quote_id?: string } | null | undefined)?.quote_id ?? null, by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call",
+      ...TrySignDesk.executed(amount, bal, again), fx_quote_id: (quote as { quote_id?: string } | null | undefined)?.quote_id ?? null, by: "stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Alta call",
     };
     this.sql.exec("UPDATE ts_creds SET counter = ? WHERE world = ? AND id = ?", v.counter, world.id, cred.id);
     this.sql.exec("UPDATE ts_proposals SET status = 'executed', execution = ? WHERE world = ? AND id = ?", JSON.stringify(execution), world.id, p.id);
