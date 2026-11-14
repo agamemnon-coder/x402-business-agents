@@ -78,6 +78,17 @@ main .tabs button { flex: 1; min-height: 40px; border: 0; border-radius: 999px; 
 main .tabs button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .samples { display: grid; gap: 8px; }
 .samples .btn { justify-content: flex-start; text-align: left; border-radius: 14px; padding: 12px 16px; font-weight: 600; }
+.samples .btn { display: grid; gap: 2px; justify-items: start; }
+.samples .btn .st { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.samples .btn .here { padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; }
+.samples .btn .sh { color: var(--muted); font-size: 13px; font-weight: 500; }
+.payrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 14px; }
+.payrow .paynote { margin: 0; flex: 1 1 200px; color: var(--muted); font-size: 14px; }
+.payrow .btn.big { margin-left: auto; }
+.payrow .btn.big { margin-top: 0; }
+@media (max-width: 520px) { .payrow { flex-direction: column; align-items: stretch; } }
+.skip { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; text-decoration: none; }
+.skip:focus { top: 12px; }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
 .panel + .panel + .btn.big { margin-top: 16px; }
 form { display: grid; gap: 12px; }
@@ -744,7 +755,12 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         pick.replaceChildren(el('p','hint calm',[C.invoice.failed,' ',again]));return}
       const list=el('div','samples');list.setAttribute('role','group');
       for(const s of items){
-        const b=btn(String(s.title??s.key));b.setAttribute('aria-pressed','false');
+        // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
+        const hint=C.invoice.hints[s.key];const first=!list.children.length;
+        const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
+        const b=btn([el('span','st',[title,first?el('span','here',C.invoice.startHere):null]),sh]);b.setAttribute('aria-pressed','false');
+        // The title is the button's name; its line is its description.
+        b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
         list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
       pick.replaceChildren(list);samplesIn=true;gate();
@@ -920,13 +936,14 @@ function drawResult(box,r,ms){
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    box.append(el('p','big ok',C.work.ready),el('p','sub',C.work.readySub));
+    box.append(el('p','big ok',C.work.ready));
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
     main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
-    box.append(...(took?[took]:[]),card.node,main);chipFill();
+    // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
+    box.append(...(took?[took]:[]),card.node,el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
@@ -1503,6 +1520,8 @@ for(const [name,words] of [['gone',C.gone],['ended',C.ended]])screen(name,{headi
 
 // A reload returns to the screen the server's state calls for.
 async function boot(){
+  // Judges, 14 Nov: a skip link first in the tab order, to the screen's heading.
+  const skip=el('a','skip',C.invoice.skip);skip.href='#main';skip.addEventListener('click',(e)=>{e.preventDefault();const h=$('#main h1');if(h)h.focus()});document.body.prepend(skip);
   restore();
   if(!S.session){show('start');return}
   if(due()&&!(await renew()))return;

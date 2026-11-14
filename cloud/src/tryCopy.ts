@@ -114,7 +114,19 @@ export const INVOICE = {
   heading: "An invoice comes in.",
   tabSample: "Pick a sample",
   tabWrite: "Write your own",
-  loading: "Loading…",
+  /** While the start's company is made and its samples load (judges, 14 Nov: up to 7 s on a phone, with no words). */
+  loading: "Setting up your test company…",
+  /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
+  hints: {
+    clean: "Ready to pay once you sign",
+    again: "The same file again: Purser holds it",
+    renumbered: "A paid invoice, new number: held",
+    bank: "New bank details: held for your check",
+    unknown: "A new supplier: held until checked",
+  } as Record<string, string>,
+  startHere: "Start here",
+  /** The skip link, first in the tab order (judges, 14 Nov). */
+  skip: "Skip to the demo",
   failed: "Purser could not load this. Try again.",
   supplier: "Supplier",
   invoiceNo: "Invoice number",
@@ -524,6 +536,9 @@ export const VISIBLE = {
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountBad, INVOICE.send],
     // An amount past the demo's cap: the same hint in the cap's words (the lead's, 7), over budget at its own count.
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.supplier, INVOICE.invoiceNo, INVOICE.amount, INVOICE.issued, INVOICE.due, INVOICE.iban, INVOICE.ibanHint, INVOICE.amountCap, INVOICE.send],
+    // Judges, 14 Nov: the samples in, each with its muted line, the first marked (titles are the engine's data).
+    // The skip link is off screen until it has focus, so it is not counted.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.startHere, ...Object.values(INVOICE.hints), INVOICE.send],
   ],
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],
@@ -653,7 +668,9 @@ export const VISIBLE = {
 // screen 5's test is its main button, "Now change one cent" ("books 0" to "books 5", one word fewer).
 // 14 Nov (judges: "every invoice waits" read against the headline): the approval says the demo's limit is zero and
 // that agents pay alone below a CFO's limit (+6 on each state with it, "approve 2" to "approve 16").
-export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 61, "approve 4": 61, "approve 9": 59, "approve 10": 54, "approve 11": 60, "approve 12": 59, "approve 13": 54, "approve 14": 53, "approve 15": 63, "approve 5": 51, "approve 6": 49, "approve 7": 47, "approve 8": 50, "approve 16": 49 };
+// 14 Nov (judges, round 2): the samples each say in one muted line what they show, the first marked "Start here"
+// ("invoice 6", 60).
+export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "invoice 6": 60, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 61, "approve 4": 61, "approve 9": 59, "approve 10": 54, "approve 11": 60, "approve 12": 59, "approve 13": 54, "approve 14": 53, "approve 15": 63, "approve 5": 51, "approve 6": 49, "approve 7": 47, "approve 8": 50, "approve 16": 49 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
