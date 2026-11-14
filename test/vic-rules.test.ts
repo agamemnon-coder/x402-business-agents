@@ -83,7 +83,8 @@ describe("the CFO's policy next to Visa's VIC rules", () => {
     for (const r of rows) {
       expect(["Foundations", "Purchase types", "Lifecycles", "Controls and rules"]).toContain(r.section);
       expect(r.quotes.length).toBeGreaterThan(0);
-      for (const q of r.quotes) { expect(q.length).toBeLessThanOrEqual(160); expect(text(block)).toContain(`“${q}”`); }
+      // Partner scan, 14 Nov: Visa's rules paraphrased on the page, the link below; the verbatim quotes stay in the code only.
+      for (const q of r.quotes) { expect(q.length).toBeLessThanOrEqual(160); expect(text(block)).not.toContain(`“${q}”`); }
     }
     // The quotes, word for word as read on 12 Nov 2026 (the page and its raw .md, two fetches).
     expect(rows.flatMap((r) => r.quotes)).toEqual([

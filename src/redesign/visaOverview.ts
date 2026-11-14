@@ -10,6 +10,7 @@
 // part of the summary either: TAP is not eligible Visa tooling for this hackathon (Visa, 5 Nov), so its card sits in
 // the one closed TAP fold at the foot of the page (tapCardHtml). visaOverviewHtml refuses both. No motion.
 
+import { AIRI_CREDENTIAL } from "../config/brand.js";
 import { airiAsker, airiClaudeChoices, airiRun, AIRI_RUN_ID, type AiriRunRecord } from "./airiRun.js";
 import { tapRun } from "./run.js";
 import { countOf, esc } from "./ui.js";
@@ -38,7 +39,7 @@ export function airiCard(rec: AiriRunRecord): RunCard | null {
   // The paid purchase leads (the jury check, 12 Nov): purchase B's amount, paid after the CFO's Face ID. The day's
   // attempts, "N of M paid", are counted in their fold lower on the page (vicAttemptsHtml), not on this card.
   return {
-    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: "Visa credential for one purchase",
+    kind: "paid", tag: `VIC via Airi · ${day(rec.started_at)} · ${airiAsker(rec).short}`, title: `${AIRI_CREDENTIAL}, for one purchase`,
     stats: [{ v: `${b.currency} ${b.amount}`, l: "paid after the CFO's Face ID" }],
     ids: [["Mandate", b.mandate_id], ["Payment", b.payment_intent_id], ...claude.map((id) => ["Claude request", id] as [string, string])],
     label: "Airwallex sandbox · test card · cardholder confirmed each purchase in Airi", href: `#${AIRI_RUN_ID}`,

@@ -318,7 +318,8 @@ describe("the deck", () => {
     expect(words(slides[1]!)).toContain(RULE_LINE);
     expect(slides[4]).toContain("Only the 3 bad ones refunded");
     expect(slides[11]).toMatch(/<div class="qr small-qr"><svg><\/svg><\/div>/);
-    expect(slides[11]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)\.<\/p>/);
+    // Partner scan, 14 Nov: "not part of this entry", no "(Visa, 5 Nov)".
+    expect(slides[11]).toMatch(/<p class="oneline">Visa TAP: built and verified against Visa's public reference verifier; not part of this entry\.<\/p>/);
     // Since 7 Nov (Visa: the VIC run counts) the entry is the Metal Award and the Visa Award, on the Airi run; TAP is
     // never the entry's basis, and the old "+ Visa Award" and "still being confirmed" forms stay gone.
     expect(DECK).not.toMatch(/\+ Visa Award|still being confirmed with Visa|TAP counts as Visa tooling|Visa Award[^.<]{0,40}\bTAP\b/i);

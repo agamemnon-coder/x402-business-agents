@@ -3,6 +3,29 @@
 // so a juror who knows the kit as Metal connects the two. Done once here, on the page as served, rather than in each
 // page's copy: the first mention moves whenever a page changes. Run records keep the name they were written with.
 
+/**
+ * A label written into a run record before the rename ("Metal earnings booked at Airwallex", "settled by Metal's
+ * facilitator"), shown under the new name (partner scan, 14 Nov). Display only: the record keeps its words, and the
+ * award keeps the hackathon's name.
+ */
+export const altaWords = (t: string): string => t.replace(/(?<!formerly )\bMetal\b(?! Award)/g, "Alta");
+
+/**
+ * An id's label from a run record (judge scan, 14 Nov): a contract call keeps its own name, said as Alta's, formerly
+ * Metal ("Metal's authorizeMandateCall" → "authorizeMandateCall (Alta, formerly Metal)"); any other "Metal" reads Alta.
+ */
+export const altaLabel = (t: string): string => altaWords(t.replace(/\bMetal's ([a-z]\w*[A-Z]\w*)/g, "$1 of Alta, formerly Metal"));
+
+/**
+ * Beside a quote of Claude's own words that names Metal (partner scan, 14 Nov): the quote stays as Claude wrote it, and
+ * this says when, and the new name. "" when the quote does not name Metal.
+ */
+export function quotedNote(quote: string, iso: string): string {
+  if (!/\bMetal\b/.test(quote)) return "";
+  const day = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(iso));
+  return ` (quoted from ${day}; Metal is now Alta)`;
+}
+
 /** The words of the first mention. */
 export const ALTA_FIRST = "Alta (formerly Metal)";
 

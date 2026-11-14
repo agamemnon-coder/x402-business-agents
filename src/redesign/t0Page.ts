@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { PLATFORM_FACTS_FILE, PLATFORM_RUN_FILE } from "./airwallexProducts.js";
 import { REPO_BLOB } from "./metalStory.js";
+import { altaWords } from "../ui/formerly.js";
 import { esc, icon } from "./ui.js";
 import { T0_CLOSE_CSS, t0CloseTileHtml } from "./t0CloseTile.js";
 
@@ -100,9 +101,7 @@ table.t0a thead th { font-size: 13px; color: var(--muted); font-weight: 600; } t
 table.t0a tbody th { overflow-wrap: break-word; }
 table.t0a td.ok { color: var(--ok); white-space: nowrap; }
 table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } table.t0a th.c, table.t0a td.c { width: 2em; text-align: center; }
-.t0bs > p { margin: 0 0 4px; } .t0bs > p:last-child { margin-bottom: 8px; } details.t0acc > table { margin-bottom: 6px; }
-.t0bs .eq { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.t0bs p { font-size: 15.5px; line-height: 1.45; }
+details.t0acc > table { margin-bottom: 6px; }
 .t0p .folds { min-width: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .t0flow .node { animation: t0-lit 6s ease-in-out infinite; }
@@ -118,13 +117,13 @@ const arrow = `<span class="arrow" aria-hidden="true">${icon("arrow-right", 22)}
 /** Table rows: T:0's account, ours, T:0's; a check only where the two are the same, to the cent. */
 export const t0Rows = (accounts: Pick<T0Account, "code" | "name" | "ours" | "t0" | "our">[], codes = false): string => accounts.map((a) => {
   const same = cents(a.ours) === cents(a.t0);
-  return `<tr><th scope="row">${esc(codes ? `${a.code} ${a.name}` : a.name)}${codes && a.our ? `<small>${esc(`ours: ${a.our}`)}</small>` : ""}</th><td class="n">${esc(a.ours)}</td><td class="n">${esc(a.t0)}</td><td class="c${same ? " ok" : ""}">${same ? '<span role="img" aria-label="same">✓</span>' : esc("differs")}</td></tr>`;
+  return `<tr><th scope="row">${esc(codes ? `${a.code} ${a.name}` : a.name)}${codes && a.our ? `<small>${esc(`ours: ${altaWords(a.our)}`)}</small>` : ""}</th><td class="n">${esc(a.ours)}</td><td class="n">${esc(a.t0)}</td><td class="c${same ? " ok" : ""}">${same ? '<span role="img" aria-label="same">✓</span>' : esc("differs")}</td></tr>`;
 }).join("");
 const head = `<thead><tr><th scope="col">${esc("Account")}</th><th scope="col" class="n">${esc("Ours")}</th><th scope="col" class="n">T:0</th><th scope="col" class="c" aria-label="Same"></th></tr></thead>`;
 
 /** The body of /t0: three figures, the flow, the accounts and the balance sheet; the history and the ids folded. */
 export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: string }): string {
-  const j = d.journal, p = d.platform, s = j?.statements ?? null;
+  const j = d.journal, p = d.platform;
   const rec = `${T0_JOURNAL_RECORD}#read-back-and-second-push-10-nov-2-more-t0-calls`;
   const stat = (n: string, label: string, ic: string, href: string) => `<li class="ok"><span class="st-ic">${icon(ic, 20)}</span><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
   const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}</ul>` : "";
@@ -134,9 +133,10 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   const sandbox = j && funding ? `<p class="vbasis">${esc(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding.ours.replace(/^-/, "")} USD of owner funding. No real money. What counts is ${j.differences} differences.`)}</p>` : "";
   const flow = j ? `<div class="flow card t0flow" role="img" aria-label="${esc("Purser's books are posted to T:0's general ledger, read back line by line, and match")}">${[node("file-check", "Purser's books", "double-entry"), arrow, node("database", "T:0's ledger", "posted"), arrow, node("arrow-left-right", "Read back", "every line"), arrow, node("circle-check", "Match", "to the cent", "ok")].join("")}</div>` : "";
   const lead = j?.accounts.length ? `<details class="fold t0acc"><summary>${esc("Show the accounts, USD")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table><ul class="pl">${li("Net debit per account; credits show as minus. Sandbox test money.")}${li(`Debits and credits: ${j.debits} USD each, the same as our books.`)}</ul></details>` : "";
-  const bs = j && s && balances(s) ? `<details class="fold t0bs"><summary>${esc(`T:0's balance sheet, ${j.day}`)}</summary><p class="eq">${esc(`Assets ${s.assets} = liabilities ${s.liabilities} + equity ${s.equity} USD`)}</p><p>${esc("Shared entity: these totals include other teams.")}</p>${ownerFunding(j) ? `<p>${esc(`Financing, ${s.financing} USD, is only our owner funding.`)}</p>` : ""}<p>${link(`${T0_JOURNAL_RECORD}#t0s-own-statements-10-nov-0900-utc`, "record")}</p></details>` : "";
+  // Partner scan, 14 Nov: T:0's balance-sheet totals are the shared sandbox entity's, other teams' entries included;
+  // the page shows only Purser's own lines (the accounts above), each against T:0's read-back.
   const history = [
-    ...d.refusals.map((r) => `<li>${esc(`${r.day}: refused, ${r.code}: ${r.why}.`)} ${link(r.record, "record")}</li>`),
+    // Partner scan, 14 Nov: the early 401/403 answers are history for the run records (docs/runs), not this page.
     j ? `<li>${esc(`${j.day}: all ${j.posted} entries posted, one at a time, each with an idempotency key.`)} ${link(T0_JOURNAL_RECORD, "record")}</li>` : "",
     j?.secondPush ? li(`A second push posted ${j.secondPush.posted} and skipped ${j.secondPush.skipped}: re-running is safe.`) : "",
     p ? `<li>${esc(`10 Nov: the platform run booked ${p.entries.length} entries.`)} ${link(PLATFORM_RUN_FILE, "record")}</li>` : "",
@@ -153,7 +153,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
     li("Test money on Alta (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
     `<li>${link(T0_DOC, "How it works, and the account map")}</li>`,
   ];
-  const ids = [j && !j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${x.what}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
+  const ids = [j && !j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${altaWords(x.what)}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);
   const fold = (title: string, items: string[]) => items.length ? `<details class="fold"><summary>${esc(title)}</summary><ul class="pl">${items.join("")}</ul></details>` : "";
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
@@ -162,7 +162,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   ${sandbox}
   ${flow}
   <p class="vbasis">${esc("T:0 is an outside ledger. It must agree with ours to the cent, so the CFO need not take our word.")}</p>
-  <div class="folds card">${lead}${bs}${fold("How it got there", history)}${fold("Not done", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
+  <div class="folds card">${lead}${fold("How it got there", history)}${fold("Next steps", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
   <a class="open" href="proof">All the proof</a>
 </div></main>`;
 }

@@ -51,7 +51,7 @@ describe("the VIC flow on /visa", () => {
     expect(s.map((x) => x.owner)).toEqual(["agent", "purser", "airi", "airi", "airi", "airwallex", "purser"]);
     // Step 1 is the script's while purchase B was not asked for inside a Claude call (the record of 7 Nov: scripted).
     expect(s.map((x) => x.text.split(" ")[0])).toEqual(["Script", "Purser", "Airi", "Airi", "Airi", "Airwallex", "Purser"]);
-    for (const [i, title] of ["Asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Visa credential (VIC)", "Airwallex hosted checkout", "Result read back"].entries())
+    for (const [i, title] of ["Asks to buy", "Purser's policy", "Airi mandate", "Cardholder confirms", "Airi credential (test card)" /* partner scan, 14 Nov: one name on /visa */, "Airwallex hosted checkout", "Result read back"].entries())
       expect({ i, has: s[i]!.text.includes(title) }).toEqual({ i, has: true });
   });
 

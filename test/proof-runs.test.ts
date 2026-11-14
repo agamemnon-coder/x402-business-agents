@@ -44,14 +44,19 @@ describe("/proof: the live runs and the strip's count", () => {
     const rows = proofRuns().flatMap((g) => g.runs);
     const tiles = partnerTiles();
     expect(tiles.map((t) => [t.name, t.badge])).toEqual([["Airwallex", "Live · sandbox"], ["Visa via Airi", "Live · sandbox"], ["Alta", "Live · testnet"], ["T:0", "Live · sandbox"], ["Moneybird", "Live · sandbox"]]);
-    for (const [name, partner] of [["Airwallex", "Airwallex"], ["Visa via Airi", "Visa"], ["Alta", "Alta"], ["T:0", "T:0"]] as const) {
-      const mine = rows.filter((r) => partnerNamesOf(r).includes(partner));
+    // Judge scan, 14 Nov: one source; a tile counts the runs of its own group, so its count is that group's "Show all".
+    const groups = proofRuns();
+    for (const [name, partner, group] of [["Airwallex", "Airwallex", "Airwallex"], ["Visa via Airi", "Visa", "Visa via Airwallex's Airi"], ["Alta", "Alta", "Alta"], ["T:0", "T:0", "The books"]] as const) {
+      const mine = (groups.find((g) => g.group === group)?.runs ?? []).filter((r) => partnerNamesOf(r).includes(partner));
       const t = tiles.find((x) => x.name === name)!;
       expect({ name, runs: t.runs, latest: t.latest.iso }).toEqual({ name, runs: mine.length, latest: mine.map((r) => r.iso).sort().at(-1) });
     }
     for (const t of tiles) expect(runs).toContain(`<h3 id="${t.href.slice(1)}">`);
     expect(groupId("Visa via Airwallex's Airi")).toBe("pg-visa-via-airwallex-s-airi");
-    expect(main).toContain(`<p class="ptnote">${liveRunCount()} live runs. A run with several partners counts under each.</p>`);
+    const listed = rows.length;
+    expect(main).toContain(`<p class="ptnote">${liveRunCount()} live runs: ${listed} below, each listed once${liveRunCount() > listed ? `; ${liveRunCount() - listed} on /visa` : ""}.</p>`);
+    // Each tile's count is what its group's "Show all" opens (Airwallex and Alta, which have more than three).
+    for (const t of tiles.filter((x) => x.name === "Airwallex" || x.name === "Alta")) expect(runs).toContain(`Show all ${t.runs}`);
   });
 
   it("shows three runs of each group, the rest behind Show all; ids short in sight, whole on hover and in a copy button shown only by the script", () => {
