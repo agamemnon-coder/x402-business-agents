@@ -88,13 +88,14 @@ export const T0_CSS = `.t0r { padding: 16px 18px; display: grid; gap: 4px; }
 .t0r li { font-size: 15.5px; line-height: 1.45; padding: 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 .t0r li:first-child { border-top: 0; }
 .t0p a.pf { display: inline-flex; align-items: center; min-height: 44px; }
-.t0p ul.stats { margin: 0; }
+.t0p ul.stats { margin: 0; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+@media (max-width: 520px) { .t0p ul.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .t0p ul.stats small a.pf { display: flex; width: max-content; font-size: 13.5px; min-height: 44px; }
 .t0p .t0flow { padding: 14px; }
-table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+table.t0a { width: 100%; border-collapse: collapse; font-size: 14.5px; font-variant-numeric: tabular-nums; table-layout: auto; }
 table.t0a th, table.t0a td { text-align: left; padding: 6px 8px 6px 0; border-top: 1px solid var(--border); overflow-wrap: anywhere; }
 table.t0a thead th { font-size: 13px; color: var(--muted); font-weight: 600; } table.t0a tbody th { font-weight: 400; } table.t0a tbody th small { display: block; font-size: 12.5px; color: var(--muted); }
-table.t0a th:first-child { width: 40%; }
+table.t0a tbody th { overflow-wrap: break-word; }
 table.t0a td.ok { color: var(--ok); white-space: nowrap; }
 table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } table.t0a th.c, table.t0a td.c { width: 2em; text-align: center; }
 .t0bs { display: grid; gap: 4px; }
@@ -106,7 +107,7 @@ table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } 
   .t0flow .node:nth-child(3) { animation-delay: 1.5s; } .t0flow .node:nth-child(5) { animation-delay: 3s; } .t0flow .node:nth-child(7) { animation-delay: 4.5s; }
 }
 @keyframes t0-lit { 0%, 30%, 100% { box-shadow: inset 0 0 0 1px transparent; } 8%, 22% { box-shadow: inset 0 0 0 2px var(--accent); } }
-@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; table-layout: auto; } table.t0a th:first-child { width: auto; } table.t0a tbody th { overflow-wrap: break-word; } }`;
+@media (max-width: 700px) { .t0p a.pf { padding: 0; vertical-align: middle; max-width: 100%; } .t0p a.open { min-height: 44px; } table.t0a { font-size: 12.5px; } }`;
 
 const link = (file: string, label: string) => `<a class="pf" href="${esc(`${REPO_BLOB}${file}`)}" target="_blank" rel="noopener">${esc(label)} ↗</a>`;
 const li = (t: string) => `<li>${esc(t)}</li>`;
