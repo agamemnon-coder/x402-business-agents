@@ -12,6 +12,7 @@
 // host is made over it, so no file is ever written.
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
+import { payableAccount } from "../ap/checkerCore.js";
 import { actionsFor } from "../ap/detail.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { ingestDocument, type IngestResult } from "../ap/inbox.js";
@@ -139,8 +140,23 @@ export interface InvoiceView {
   /** When it came in (14 Nov: /try's finish says how long from upload to paid, from these two). */
   received_at?: string;
   findings: FindingView[];
+  /**
+   * 14 Nov (jury): the checks code ran on this invoice that left no finding, so a page lists what was checked, never a
+   * fixed list. not_paid_before: a supplier and a number were read and no copy was found; bank_on_file and
+   * known_supplier: bank details were read, matched the supplier on file and raised no fraud signal.
+   */
+  checks_passed?: ("not_paid_before" | "bank_on_file" | "known_supplier")[];
   doc_sha256: string;
   proposal: ProposalView | null;
+}
+
+/** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
+function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
+  const codes = new Set(inv.findings.map((f) => f.code));
+  const out: NonNullable<InvoiceView["checks_passed"]> = [];
+  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before"].some((c) => codes.has(c))) out.push("not_paid_before");
+  if (inv.vendor && payableAccount(inv.reading) !== null && !codes.has("possible_fraud") && !codes.has("new_supplier")) out.push("bank_on_file", "known_supplier");
+  return out;
 }
 
 /** Where things stand after the payments were followed, booked, archived and fed. */
@@ -429,6 +445,7 @@ export class EngineHost {
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
       issue_date: inv.issue_date, paid_at: inv.paid_at, received_at: inv.received_at,
       findings: inv.findings.map((f) => this.findingView(f)),
+      checks_passed: checksPassed(inv),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,
     };

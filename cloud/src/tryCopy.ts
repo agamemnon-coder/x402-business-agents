@@ -5,6 +5,7 @@
 
 import { TRAILER_LINK } from "../../src/config/brand.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
+import { FX_QUOTE_MAX_MARKUP_BPS } from "../../src/config/policy.js";
 
 /**
  * The page's frame: the brand mark.
@@ -19,7 +20,7 @@ export const CHROME = { brand: "Purser" };
 /** The band on every screen after the start; the second part follows the start answer's mode.claude. */
 export const BAND = {
   line: "Your test company · test money · simulated bank",
-  claudeLive: "Claude reads live",
+  claudeLive: "Claude, live",
   claudeCode: "Purser's code reads today",
 };
 
@@ -97,6 +98,28 @@ export const WORK = {
   claudeChip: "Claude",
   pay: "Pay this invoice",
   another: "Try another invoice",
+  /**
+   * 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed, never a fixed
+   * list), then why the CFO signs ({money}: the invoice's total; the agents pay no supplier invoice alone here).
+   */
+  signNeeded: "{money} is paid only with your signature: the agents pay no supplier invoice alone.",
+  /** The time line with the model that read it ({model}: "Claude Haiku 4.5"), when Claude did. */
+  tookBy: "{model} read it; answered in {s} s, measured in your browser.",
+};
+
+/** 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed), by code. */
+export const WORK_CHECKS: Record<string, string> = { not_paid_before: "Not paid before (same supplier and number)", bank_on_file: "Bank details match the ones on file", known_supplier: "Known supplier" };
+
+/**
+ * 14 Nov (jury): an FX quote dearer than the limit over the market rate, filed for approval and held: the reason first,
+ * the quote beside the market, the rule with the limit ({limit}: a percent), and a new quote. {pct}: how far over.
+ */
+export const FX_HOLD = {
+  head: "Held: this FX quote costs more than your limit over the market rate",
+  quote: "The quote", market: "The market rate now", over: "{pct}% over",
+  rule: `A quote may cost at most {limit}% more than the market's current rate; a dearer one waits for a person.`,
+  limitPct: (FX_QUOTE_MAX_MARKUP_BPS / 100).toFixed(2),
+  button: "Get a new quote",
 };
 
 /**
@@ -241,6 +264,8 @@ export const APPROVE = {
    * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
    */
   limit: "Every invoice waits for your signature here, whatever its amount.",
+  /** Once the receipt is in: the start of the exact terms' SHA-256 ({sha}: its first 8 hex characters). */
+  signsSha: "(SHA-256 {sha}…)",
   fileAgain: "File it again",
   failed: "Purser could not file this payment.",
 };
@@ -469,7 +494,7 @@ export const VISIBLE = {
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],
     [WORK.heading, WORK.readingCode, WORK.invoiceFold],
-    [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
     // 14 Nov (owner): held or refused, the reason first. The values beside the labels are data (the invoice, the earlier
     // one, what is on file), and so is the engine's own sentence; the fold (WHY.more) is closed. The five samples' answers:
     // the same file again; the paid invoice under a new number; new bank details; a new supplier; and a check with no
@@ -481,30 +506,32 @@ export const VISIBLE = {
     [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.another],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
+    // Read by Claude (round 2, 14 Nov): the time line names the model ({model}).
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.tookBy, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
   ],
   approve: [
     [APPROVE.heading, APPROVE.filing],
     [APPROVE.heading, APPROVE.failed, APPROVE.fileAgain],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.create],
     // The fold open: what the passkey signs, above the terms (the terms themselves are data).
-    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.create],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saves, APPROVE.waiting],
+    [APPROVE.heading, APPROVE.terms, APPROVE.termsNote, APPROVE.signs, APPROVE.signsSha, APPROVE.create],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saves, APPROVE.waiting],
     // Saving: the passkey is made on the device, so the sentence that it will be saved gives way.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.saving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approving, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approve.replace("{method}", METHOD.windows)],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.saving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approving, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approve.replace("{method}", METHOD.windows)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.cancelled, APPROVE.approve.replace("{method}", METHOD.other)],
     [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.noPasskey, APPROVE.again, OPEN.copy, OPEN.copied],
     // One tap: the approval's held answer, then the pay call with the ring (the rail on Pay); its other outcomes.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.paying, APPROVE.slow],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.approved, PAY.failed, PAY.retry],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.paidOnce, BOOKS.next],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, PAY.failed, APPROVE.fileAgain],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.paying, APPROVE.slow],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.approved, PAY.failed, PAY.retry],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.paidOnce, BOOKS.next],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, PAY.failed, APPROVE.fileAgain],
     // 14 Nov: a passkey that failed, was cancelled or gave no answer: a plain line and Try again; refused at once (no
     // prompt was shown): "open this page in Safari or Chrome" and its address to copy.
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.cancelled, APPROVE.again],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
-    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.timeout, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.cancelled, APPROVE.again],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.noPasskey, APPROVE.again, OPEN.copy],
+    [APPROVE.heading, APPROVE.limit, APPROVE.terms, APPROVE.signs, APPROVE.signsSha, APPROVE.timeout, APPROVE.again],
   ],
   pay: [
     [PAY.heading, PAY.loading],
@@ -585,7 +612,7 @@ export const VISIBLE = {
 // refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
 // 14 Nov: +2 on each start state, the trust line's "Alta (formerly Metal)" (Metal renamed itself).
 // Partner scan, 14 Nov: the start screens +3 for "No endorsement implied." beside the "Works with" line.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 68, "start 1": 64, "start 2": 64, "start 3": 58, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 68, "start 1": 64, "start 2": 64, "start 3": 58, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 57, "approve 4": 57, "approve 9": 53, "approve 10": 50, "approve 11": 56, "approve 12": 55, "approve 13": 50, "approve 14": 49, "approve 15": 59, "approve 5": 47, "work 2": 75, "work 10": 78 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -594,6 +621,8 @@ export const OVER_BUDGET: Record<string, number> = { "start 0": 68, "start 1": 6
  */
 export const LIVE = {
   allSteps: "All steps",
+  /** The reader's Claude calls in one row: "Reader · Claude Haiku 4.5 · 2 calls" ({n}: 2 or more). */
+  calls: "{n} calls",
   /** The panel's title: what Purser's code, the agents and Claude did, newest last, each with its time. */
   title: "Activity",
   /**
@@ -677,7 +706,7 @@ export const LIVE = {
     "payee.add_closed": "The request to add a supplier account was closed without approval.",
     "payee.adopted": "The supplier's account was already at the simulated bank. None was added.",
     "payee.added": "The supplier's account was added at the simulated bank.",
-    "claude.read": "answered live. Its answer was used.",
+    "claude.read": "Answered live. Its answer was used.",
     "claude.fallback": "Read by Purser's code. No model answer was used.",
     "claude.rejected": "Its answer did not pass Purser's check and was not used.",
     "claude.asking": "asking…",

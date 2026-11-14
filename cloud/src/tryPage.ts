@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -88,7 +88,8 @@ p { margin: 0 0 12px; }
 .muted { color: var(--muted); }
 .band { display: flex; flex-wrap: wrap; gap: 2px 8px; margin: 8px 0 0; padding: 8px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--muted); font-size: 13px; }
 .band .mode { color: var(--text); font-weight: 600; }
-.band .mode.live { color: var(--accent); } /* 14 Nov, jury: under "test money", the warm colour read as an error */
+.band .mode.live { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font-weight: 600; } /* 14 Nov, jury: a neutral pill with an accent dot; the warm colour under "test money" read as an error */
+.band .mode.live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: 999px; font: 650 15px/1.2 Inter, system-ui, sans-serif; text-decoration: none; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
 .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn.big { min-height: 52px; padding: 0 24px; font-size: 16px; margin-top: 8px; }
@@ -365,7 +366,7 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 /* The band under the rail: one quiet line, not a box. */
 .band { margin: 0 0 4px; padding: 0; border: 0; border-radius: 0; background: none; font-size: 12.5px; color: var(--faint); }
 .band .mode { color: var(--muted); }
-@media (min-width: 521px) { .band .mode::before { content: "· "; color: var(--faint); } }
+@media (min-width: 521px) { .band .mode:not(.live)::before { content: "· "; color: var(--faint); } }
 /* The rail: done steps ticked, the current one ringed and named in the text colour, the rest quiet; never backward. */
 .progw { margin: 8px 0 28px; }
 .prog li { height: 18px; }
@@ -414,6 +415,20 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 .skl { display: grid; gap: 10px; margin: 16px 0 0; }
 .skl .sk { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
 .skl .sk:nth-child(1) { width: 85%; } .skl .sk:nth-child(2) { width: 40%; height: 20px; } .skl .sk:nth-child(3) { width: 70%; }
+/* Round 2 (14 Nov, jury): the labels of the invoice and the receipt at 4.5:1 or more on their panel (they were 3.5:1); the
+   invoice's rows fade in by opacity only, quickly (the highlight dipped the contrast in dark mode mid-animation); the
+   checks that passed, in a quiet list; the hash's start in mono. */
+.inv .rows dt, .receipt dl.read dt { color: color-mix(in srgb, var(--muted) 60%, var(--text)); }
+.inv .rows > div { animation: fadein .28s ease-out both; }
+.inv .rows > div:nth-child(2) { animation-delay: .06s; } .inv .rows > div:nth-child(3) { animation-delay: .12s; } .inv .rows > div:nth-child(4) { animation-delay: .18s; } .inv .rows > div:nth-child(5) { animation-delay: .24s; }
+@keyframes fadein { from { opacity: 0; } }
+ul.checks { list-style: none; margin: 4px 0 16px; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+ul.checks li { display: flex; align-items: flex-start; gap: 8px; }
+ul.checks li .i { margin-top: 2px; }
+ul.checks li.ok .i { color: var(--ok); }
+ul.checks li.next { color: var(--muted); }
+ul.checks li.next .i { color: var(--accent); }
+.sha { font-size: 12.5px; color: var(--muted); }
 /* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
 .slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
 @media (max-width: 520px) {
@@ -896,8 +911,8 @@ function livePanel(){
   // Round 4 (14 Nov): every Claude call's row is its own (two calls of one reader no longer share a timer); a row's
   // call is answered by the next row of the same reader or agent ("Answered."); once the answer is in, a call with no answer
   // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
-  const rows=[];const shown=new Set();const asks=[];let done=null,n=0;
-  function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.what.textContent=W.asked}
+  const rows=[];const shown=new Set();const asks=[];let done=null,n=0;const READ={row:null};
+  function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);if(!(a.row&&a.row.read))a.what.textContent=W.asked}
   function order(){
     const lis=[...list.children];let carry=-Infinity;
     const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.ts!==null)carry=r.ts;return {li,ts:carry,i}});
@@ -905,7 +920,7 @@ function livePanel(){
     if(keyed.some((x,i)=>x.li!==lis[i]))for(const x of keyed)list.append(x.li);
   }
   function settle(ms){done=ms;
-    for(const a of asks)if(!a.answered){askClose(a.id);a.what.textContent=W.noAnswer}
+    for(const a of asks)if(!a.answered){askClose(a.id);if(!(a.row&&a.row.read))a.what.textContent=W.noAnswer}
     order();
     const ts=rows.map((r)=>r.ts).filter((x)=>x!==null);if(ts.length){const last=Math.max(...ts);
       for(const r of rows)if(r.ts!==null)r.t.textContent=atOf(ms-(last-r.ts))}
@@ -924,12 +939,22 @@ function livePanel(){
       // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
       if(!l.lead&&l.text===W.step)continue;
       const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
+      // 14 Nov (jury): the reader's Claude calls are one row ("Reader · Claude Haiku 4.5 · 2 calls"): a later call or answer
+      // of the reader updates that row instead of adding one.
+      const rd=keyOf(e)==='reader'&&!l.fold&&(l.asking||e.event==='claude.read')?READ.row:null;
+      if(rd){
+        if(l.asking){rd.calls++;rd.who.textContent=rd.base+' · '+fill(C.live.calls,{n:rd.calls});const id='live#'+(++n);asks.push({id,k:keyOf(e),what:rd.what,answered:false,row:rd});askOpen(id,rd.t);if(!rd.read)rd.what.textContent=l.text}
+        else{rd.read=true;rd.what.textContent=l.text}
+        continue;
+      }
       const t=el('span','t',t0===undefined?'':atOf(performance.now()-t0));
       const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
-      const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]);
+      const whoEl=el('span','who',l.who);
+      const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[whoEl,what,l.enforced?el('span','enf',l.enforced):null,t]);
       list.append(li);
+      if(keyOf(e)==='reader'&&!l.fold&&(l.asking||e.event==='claude.read')){const base=l.asking?l.who:C.live.reader+' · '+l.who;whoEl.textContent=base;READ.row={who:whoEl,what,t,base,calls:1,read:e.event==='claude.read'}}
       if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
-      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false});askOpen(id,t)}
+      if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false,row:READ.row&&READ.row.what===what?READ.row:null});askOpen(id,t)}
       if(!l.fold)say(l.who+' · '+l.text);
     }
     if(done!==null)settle(done);else past();
@@ -958,8 +983,8 @@ function skeleton(){
   return {node:el('div','',[line,card]),see};
 }
 // Whether this request's events say Claude read the invoice, and that call's request id.
-const CLAUDE={on:false,req:null,slot:null};
-function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
+const CLAUDE={on:false,req:null,slot:null,model:''};
+function claudeSeen(items){for(const e of items){const f=e&&e.fields;if(e&&e.event==='claude.read'&&f&&f.source==='claude'){CLAUDE.on=true;const mm=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(typeof f.model==='string'?f.model:'');if(mm)CLAUDE.model='Claude '+mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2]+(mm[3]?'.'+mm[3]:'');CLAUDE.req=typeof f.request_id==='string'&&/^[\w-]{1,80}$/.test(f.request_id)?f.request_id:null}}chipFill()}
 function chipFill(){if(!CLAUDE.on||!CLAUDE.slot||!CLAUDE.slot.isConnected||CLAUDE.slot.children.length)return;
   CLAUDE.slot.append(el('span','chip',[icon('sparkles',13),el('span','',C.work.claudeChip),CLAUDE.req?el('span','mono',CLAUDE.req):null]))}
 // The reason, big and first; the evidence side by side (a changed value marked); what the engine said when there is no
@@ -976,7 +1001,7 @@ function whyNode(w,folded){
   return n;
 }
 function drawResult(box,r,ms){
-  const took=ms===null?null:el('p','meta',fill(C.work.took,{s:ms<50?'<0.1':secs(ms)}));
+  const took=ms===null?null:el('p','meta',fill(CLAUDE.model?C.work.tookBy:C.work.took,{s:ms<50?'<0.1':secs(ms),model:CLAUDE.model||''}));
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
@@ -991,6 +1016,11 @@ function drawResult(box,r,ms){
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
     box.append(el('p','big ok',C.work.ready),el('p','sub',C.work.readySub));
+    // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
+    const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
+    const ul=el('ul','checks',ran.map((k)=>el('li','ok',[icon('check',15),el('span','',C.workChecks[k])])));
+    if(inv.total)ul.append(el('li','next',[icon('arrow-right',15),el('span','',fill(C.work.signNeeded,{money:cash(inv.currency,inv.total)}))]));
+    if(ul.children.length)box.append(ul);
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
@@ -1126,6 +1156,13 @@ function termsFold(p,terms){
       if(r.status===200&&r.json.terms&&typeof r.json.terms==='object')pre.textContent=JSON.stringify(r.json.terms,null,2);else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
   return f;
 }
+// 14 Nov (jury): an FX quote held for costing more than the limit over the market rate, from the engine's reason: the
+// hold first, the quote beside the market (the quote marked), the rule with the limit; null for any other reason.
+function fxHoldOf(why){
+  const m=/^The locked quote costs ([A-Z]{3}) ([\d,]+\.\d{2}), ([\d.]+)% above the market's current rate \(([A-Z]{3}) ([\d,]+\.\d{2})\)/.exec(String(why||''));
+  if(!m)return null;const F=C.fxHold;const q=m[1]+' '+m[2];
+  return {tone:'hold',code:'fx_markup',head:F.head,rows:[[F.quote,q+' · '+fill(F.over,{pct:m[3]}),q],[F.market,m[4]+' '+m[5],'']],said:'',rule:fill(F.rule,{limit:F.limitPct}),words:[why]};
+}
 // The receipt's skeleton while the terms are filed: the amount's and three rows' shapes, no value (nothing before its answer).
 // Six rows and the hash's pill, as the receipt has them, and the two lines and the fold under it: no jump when they come.
 function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<6;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));d.append(el('span','sk pill'));
@@ -1162,7 +1199,9 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
     if(S.screen!=='approve')return;
-    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren();top.replaceChildren(note(words(r.json,A.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+    if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren();const why=words(r.json,A.failed),fxw=fxHoldOf(why);
+      if(fxw){top.replaceChildren(whyNode(fxw,[el('p','',why)]));main.set(C.fxHold.button,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
+      top.replaceChildren(note(why));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
@@ -1171,7 +1210,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
     const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
+      el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,' ',el('span','mono sha',fill(A.signsSha,{sha:String(p.terms_sha256||'').slice(0,8)})),saves]));
     stage();
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
@@ -1607,7 +1646,7 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],

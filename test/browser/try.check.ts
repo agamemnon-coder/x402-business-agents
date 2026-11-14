@@ -24,7 +24,7 @@ import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { APPROVE, BAND, BOOKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
+import { APPROVE, BAND, BOOKS, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -489,6 +489,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForSelector(".result .btn.primary", { timeout: 20_000 });
   const result = (await page.textContent(".result")) ?? "";
   ok(result.includes(WORK.ready), `${tag}: the engine's answer says ready to pay`);
+  const checks = await page.locator(".result ul.checks li").allInnerTexts();
+  ok(checks.length === 4 && checks.slice(0, 3).join("|") === Object.values(WORK_CHECKS).join("|") && checks[3] === WORK.signNeeded.replace("{money}", "EUR 1,850.00"), `${tag}: under "Ready to pay", the checks that passed and who signs (${checks.join(" | ")})`);
   ok(/Answered in (<0\.1|\d+\.\d) s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
   await page.waitForTimeout(1500);
   ok(await page.locator(".live li").count() > 0, `${tag}: the engine's steps are in the live panel`);
@@ -993,6 +995,21 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   // Live, 14 Nov: a filing Purser refuses on Approve (409, a quote above the FX limit) says why in the receipt's place,
   // its first letter capitalised, offers to file it again, and leaves no receipt skeleton shimmering.
   const why = "the locked quote costs USD 413.38, 1.00% above the market's current rate (USD 409.30); options: ask for a new quote later, pay in EUR on the due date, or approve the dearer quote as an exception";
+  const p = await poller({ events: () => ({ status: 200, body: { items: [], next: 0 } }), session: () => ({ status: 200, body: {} }),
+    other: (what) => what === "POST /v1/engine/invoices/AP-0001/pay" ? { status: 409, body: { error: why, code: "conflict" } } : what === "GET /v1/engine" ? { status: 200, body: { passkey: null } } : null });
+  p.release();
+  await settle(p.page);
+  await p.page.click(`text=${WORK.pay}`);
+  await p.page.waitForSelector(`button:has-text("${FX_HOLD.button}")`, { timeout: 10_000 });
+  const held = (await p.page.textContent(".screen.approve .why")) ?? "";
+  ok(await p.page.locator(".receipt.skel, .skl").count() === 0 && held.includes(FX_HOLD.head) && held.includes("USD 413.38 · 1.00% over") && held.includes("USD 409.30") && held.includes(FX_HOLD.rule.replace("{limit}", FX_HOLD.limitPct))
+    && (await p.page.locator(".screen.approve .why mark").textContent()) === "USD 413.38",
+    `Approve held for the FX quote (409): the hold first, the quote (marked) beside the market rate, the rule with the limit, Get a new quote, no skeleton (${held.slice(0, 60)})`);
+  // Any other refusal: the engine's sentence, capitalised, in the receipt's place, and File it again.
+  await p.ctx.close();
+}
+{
+  const why = "the invoice is held; a person looks at it first";
   const p = await poller({ events: () => ({ status: 200, body: { items: [], next: 0 } }), session: () => ({ status: 200, body: {} }),
     other: (what) => what === "POST /v1/engine/invoices/AP-0001/pay" ? { status: 409, body: { error: why, code: "conflict" } } : what === "GET /v1/engine" ? { status: 200, body: { passkey: null } } : null });
   p.release();
