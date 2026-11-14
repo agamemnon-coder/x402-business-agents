@@ -19,7 +19,7 @@
 // Then, apart: the full policy behind "Show all fields and what Purser sends" (#71: a stricter change holds at once, a
 // looser one is refused until signed, the panels follow); a stricter rule by its chip (applied at once, no signature);
 // the agent's sentence shown as text, never markup; and one timed visit, the opening to the closing card in at most 75 s.
-// CI runs it (.github/workflows/ci.yml, job judge). A test world only: nothing here reaches the runner, Airwallex or Metal.
+// CI runs it (.github/workflows/ci.yml, job judge). A test world only: nothing here reaches the runner, Airwallex or Alta.
 
 import { TRY_URL } from "../../src/redesign/ui.js";
 import { createHash } from "node:crypto";
@@ -325,7 +325,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(!(await page.locator("details.wr").evaluate((d: HTMLDetailsElement) => d.open)), `${tag}: "What's real?" is closed until asked`);
   await page.locator("details.wr > summary").click();
   const wr = await page.locator("details.wr").innerText();
-  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Metal call, and no money moves/.test(wr),
+  check([...WHATS_REAL.simulated, ...WHATS_REAL.real, ...WHATS_REAL.limits, ...WHATS_REAL.sources].every((l) => wr.includes(l)) && /No payment or conversion at Airwallex, no Alta call, and no money moves/.test(wr),
     `${tag}: "What's real?" opens to the honest lines (test world, stand-in executor, no payment or conversion, the FX quote read-only; the signature and its check real)`);
   await page.locator("details.wr > summary").click();
   check(await page.locator("summary", { hasText: "What's real?" }).count() === 1 && await page.locator("footer details").count() === 0 && await page.locator(".testband details.wr").count() === 1,
@@ -559,7 +559,7 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
     `${tag}: (a) Purser's policy: the floors that held at P-0005 (FX only for the shortfall), linked to the FX row on Proof`);
   check(locks[1]!.href.endsWith("/blob/main/docs/runs/visa-tap-live-2026-11-02.json") && /EUR 45\.00/.test(locks[1]!.text) && /LIMIT_EXCEEDED/.test(locks[1]!.text) && /Separate TAP run, 2 Nov/.test(locks[1]!.text),
     `${tag}: (a) Airwallex's card limit links the separate TAP run of 2 November (EUR 45.00, LIMIT_EXCEEDED)`);
-  check(/^0x[0-9a-f]{64}$/.test(METAL_TX) && locks[2]!.href === `https://testnet.metalntwx.com/tx/${METAL_TX}`, `${tag}: (a) Metal's mandate links the on-chain refusal on Metal's explorer (${METAL_TX.slice(0, 10)}…${METAL_TX.slice(-4)})`);
+  check(/^0x[0-9a-f]{64}$/.test(METAL_TX) && locks[2]!.href === `https://testnet.metalntwx.com/tx/${METAL_TX}`, `${tag}: (a) Alta's mandate links the on-chain refusal on Alta's explorer (${METAL_TX.slice(0, 10)}…${METAL_TX.slice(-4)})`);
   check(/simulation in your test world; the examples are real/.test(await blocked.innerText()), `${tag}: (a) says the blocked payment is simulated and the examples real`);
   await blocked.locator(".locks").scrollIntoViewIfNeeded();
   await shot(page, `${tag}-1d-locks.png`);
@@ -740,13 +740,13 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   check(JSON.stringify(chips) === JSON.stringify(["€500", "€2,000", "€5,000"]) && JSON.stringify(await labelsOf()) === JSON.stringify(["€500, in force", "€2,000", "€5,000"]) && await page.locator('#rule-chips .chip[data-alone="500.00"] .now svg').count() === 1,
     `${tag}: three amounts: ${chips.join(" · ")}, €500 marked in force (a tick, and its name)`);
   const rl = (await page.locator("#s4-locks li > span:last-child").allInnerTexts()).map((t: string) => t.trim());
-  // Each lock with its channel in front (Max's review): Purser the invoices, the Airwallex card the card spend, Metal on chain.
+  // Each lock with its channel in front (Max's review): Purser the invoices, the Airwallex card the card spend, Alta on chain.
   const channels = (await page.locator("#s4-locks li .ch").allInnerTexts()).map((t: string) => t.trim());
   check(JSON.stringify(channels) === JSON.stringify([LOCK_CHANNELS.purser.short, LOCK_CHANNELS.airwallex.short, LOCK_CHANNELS.metal.short]) && JSON.stringify(channels) === '["Invoices","Card spend","On-chain"]',
     `${tag}: each lock shows its channel: ${channels.join(" · ")}`);
   if (width >= 1024) check(JSON.stringify(await page.locator("#diagram .dlocks small.ch").allTextContents()) === JSON.stringify([LOCK_CHANNELS.purser.long, LOCK_CHANNELS.airwallex.long, LOCK_CHANNELS.metal.long]), `${tag}: the diagram names each lock's channel`);
   const eurOf = (h: string) => Number(/EUR ([\d,]+)/.exec(h)![1]!.replace(/,/g, ""));
-  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: up to €500 alone, ${ALONE_PER_DAY} a day`, "Airwallex card: €25 each, €50 a month", "Metal mandate: 25 test USD each"]),
+  check((await page.locator("#s4-worst").innerText()).trim() === `${W.rule.worst} €${eurOf(WORST.headline).toLocaleString("en-US")} a month` && JSON.stringify(rl) === JSON.stringify([`Purser: up to €500 alone, ${ALONE_PER_DAY} a day`, "Airwallex card: €25 each, €50 a month", "Alta mandate: 25 test USD each"]),
     `${tag}: one honest worst case (€${eurOf(WORST.headline).toLocaleString("en-US")} a month) and the three locks, Purser first: ${rl.join(" · ")}`);
   await page.locator("#s4-more > summary").click();
   check((await page.locator("#s4-full").innerText()).trim() === WORST.headline && (await page.locator("#s4-more").innerText()).includes(mainRunWorst()), `${tag}: behind "more": the full figure and why the main run's is EUR 300 (${mainRunWorst()})`);
@@ -782,8 +782,8 @@ for (const [width, scheme] of RUNS.filter(([w, s]) => !ONLY || ONLY === `${w}-${
   const next = page.locator("#s5-next");
   check(JSON.stringify(await dots(page)) === '["done","done","done","done","done","on"]' && (await page.locator("#s5-head").innerText()).trim() === W.alone.head, `${tag}: screen 6 of 6: "${W.alone.head}"`);
   await motionOk(page, tag, "paid alone: the payment moves through the three locks", ["fill", "stop"]);
-  check(JSON.stringify(await page.locator("#s5-next ol.flow li").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.stop}:${(l.textContent ?? "").trim()}`))) === JSON.stringify(["purser:Purser", "rail:Airwallex · Metal", "paid:Paid"]) && await page.locator('#s5-next ol.flow[data-state="alone"]').count() === 1,
-    `${tag}: screen 6: the payment goes Purser → Airwallex · Metal → Paid`);
+  check(JSON.stringify(await page.locator("#s5-next ol.flow li").evaluateAll((ls: Element[]) => ls.map((l) => `${(l as HTMLElement).dataset.stop}:${(l.textContent ?? "").trim()}`))) === JSON.stringify(["purser:Purser", "rail:Airwallex · Alta", "paid:Paid"]) && await page.locator('#s5-next ol.flow[data-state="alone"]').count() === 1,
+    `${tag}: screen 6: the payment goes Purser → Airwallex · Alta → Paid`);
   check(await next.getAttribute("data-proposal") === NEXT_INVOICE.id && await next.getAttribute("data-state") === "alone" && (await next.innerText()).includes("EUR 1,240.00")
     && (await next.innerText()).includes("Paid alone under your new policy (up to €2,000). No signature needed."), `${tag}: the next invoice (${NEXT_INVOICE.id}, EUR 1,240.00) "Paid alone under your new policy (up to €2,000). No signature needed."`);
   check(((await v.signCount())[0] ?? 0) === before + 1 && (await page.locator("#w-balance").textContent())?.trim() === "EUR 25,020.00",
@@ -861,9 +861,9 @@ if (!args.live && !ONLY) {
     let pn = await panels(page);
     check(pn.state === "in-force" && pn.pills.every((x) => x === TRY_POLICY.state.inForce) && panelsMatch(pn, expectedLocks(start, worldId)),
       `${tag}: the three panels, in force, are what Purser's own code makes of this policy (card body, mandate terms, settings)`);
-    check(JSON.stringify(pn.labels.slice(1)) === JSON.stringify([TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: Airwallex "${TRY_POLICY.notSent.airwallex}", Metal "${TRY_POLICY.notSent.metal}"`);
+    check(JSON.stringify(pn.labels.slice(1)) === JSON.stringify([TRY_POLICY.notSent.airwallex, TRY_POLICY.notSent.metal]), `${tag}: Airwallex "${TRY_POLICY.notSent.airwallex}", Alta "${TRY_POLICY.notSent.metal}"`);
     check(await page.locator("#pl-unit").isVisible() && (await page.locator("#pl-unit").innerText()).trim() === TRY_POLICY.metalUnit && JSON.stringify(await page.locator("#pl-metal dd").evaluateAll((ds: Element[]) => ds.slice(0, 2).map((d) => d.textContent))) === JSON.stringify(["25.00 *USDZ", "50.00 *USDZ"]),
-      `${tag}: the Metal panel says its unit plainly ("${TRY_POLICY.metalUnit}"), and cap and budget read 25.00 *USDZ and 50.00 *USDZ`);
+      `${tag}: the Alta panel says its unit plainly ("${TRY_POLICY.metalUnit}"), and cap and budget read 25.00 *USDZ and 50.00 *USDZ`);
     await page.locator("#policy").scrollIntoViewIfNeeded();
     await shot(page, `${tag}-1-all-fields.png`);
     // Stricter: the limit per purchase down. It holds at once, and the three panels follow it (and screen 4's line).

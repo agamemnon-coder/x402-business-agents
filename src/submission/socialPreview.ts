@@ -15,7 +15,7 @@ interface Flow { rail?: string; refused?: boolean; count?: number; proof?: { hre
 interface Record { snapshot: { flows: Flow[] } }
 
 /**
- * The main run's payments on Metal, each its own transaction on Metal testnet: the record's flows on the Metal rail that
+ * The main run's payments on Alta, each its own transaction on Alta testnet: the record's flows on the Alta rail that
  * went through and carry a testnet tx link, counted (`count` per row). The same count as the film's 06-metal card.
  */
 export function metalPaymentCount(r: Record): number {

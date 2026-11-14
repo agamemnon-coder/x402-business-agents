@@ -2,7 +2,7 @@
 
 Mermaid, so GitHub draws them from this text. Each names the file that does the step; the README's
 [How it works in 5 files](../README.md#how-it-works-in-5-files) links the exact lines. Test money only: the Airwallex
-sandbox and Metal testnet.
+sandbox and Alta (formerly Metal) testnet.
 
 ## 0. In one line
 
@@ -12,11 +12,11 @@ rail pays under its own limit, and the books and the audit log record it.
 ```mermaid
 flowchart LR
   A["Claude agent<br/>proposes a payment"] --> P["CFO policy<br/>Purser's code"]
-  P -- "within the limit" --> R["Airwallex · Metal · Visa via Airi<br/>each with its own limit"]
+  P -- "within the limit" --> R["Airwallex · Alta · Visa via Airi<br/>each with its own limit"]
   P -- "above it" --> F["CFO's passkey<br/>Face ID on iPhone<br/>signs the exact terms"]
   F --> R
   R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
-  B --> L["Hash-chained audit log"] --> N["Its head anchored on Metal testnet<br/>npm run verify-anchor"]
+  B --> L["Hash-chained audit log"] --> N["Its head anchored on Alta testnet<br/>npm run verify-anchor"]
 ```
 
 ## 1. Architecture: who holds which limit
@@ -40,7 +40,7 @@ flowchart LR
   F["CFO's phone<br/>passkey + Face ID"]
   subgraph Rails["Rails, own limits"]
     AW["Airwallex sandbox<br/>cards, FX, payouts"]
-    M["Metal testnet<br/>mandates, x402"]
+    M["Alta testnet<br/>mandates, x402"]
     V["Visa Intelligent Commerce<br/>via Airwallex's Airi"]
   end
   S & U & T --> P
@@ -62,7 +62,7 @@ sequenceDiagram
   participant Po as Purser policy (code)
   participant CFO as CFO's phone (Face ID)
   participant Ex as Executor
-  participant Rail as Airwallex or Metal
+  participant Rail as Airwallex or Alta
   participant Bk as Books and audit log
   Ag->>Po: propose: pay this invoice
   Po->>Po: check payee allowlist, caps, floors
@@ -75,7 +75,7 @@ sequenceDiagram
   Ex->>Bk: book it, append to the hash-chained log
 ```
 
-## 3. The mandate on Metal: bound, refused, raised, revoked
+## 3. The mandate on Alta: bound, refused, raised, revoked
 
 From the run of 12 November ([record](runs/2026-11-12-faceid-onchain.md)): a passkey account with two owners, the
 CFO's passkey and a labelled virtual test passkey, threshold 2.
@@ -84,7 +84,7 @@ CFO's passkey and a labelled virtual test passkey, threshold 2.
 sequenceDiagram
   autonumber
   participant O as Owners (2 of 2 passkeys)
-  participant Acc as Passkey account (Metal testnet)
+  participant Acc as Passkey account (Alta testnet)
   participant Ag as Sourcing agent (its own mandate key)
   participant Sup as Supplier
   O->>Acc: sign P-0001: bind a mandate (cap per payment, budget, one payee)
@@ -118,7 +118,7 @@ flowchart LR
   end
   AI["Your AI · any MCP client"] --> MCP
   API & MCP --> E --> D
-  RN --> AW["Airwallex sandbox"] & M["Metal testnet"] & V["Airi · Visa Intelligent Commerce"]
+  RN --> AW["Airwallex sandbox"] & M["Alta testnet"] & V["Airi · Visa Intelligent Commerce"]
   S -- "FX quote, read-only" --> AW
   S & E --> CL["Claude · Anthropic API"]
 ```

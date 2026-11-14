@@ -96,7 +96,7 @@ describe("the CFO's view holds nothing private (audit before linking it)", () =>
     });
   }
 
-  it("links only to public hosts: Metal's testnet explorer, the project's own site and repository, and the SVG namespace", () => {
+  it("links only to public hosts: Alta's testnet explorer, the project's own site and repository, and the SVG namespace", () => {
     const hosts = new Set([...SERVED.matchAll(/https?:\/\/([A-Za-z0-9.-]+)/g)].map((m) => m[1]!));
     // Purser Cloud under More is the project's own deployment (purser-try, 12 Nov); the Try tab is the site's /try (TRY_URL).
     expect([...hosts].filter((h) => !["testnet.metalntwx.com", "kit11.max-31b.workers.dev", "purser-try.max-31b.workers.dev", "www.w3.org", "github.com"].includes(h))).toEqual([]);

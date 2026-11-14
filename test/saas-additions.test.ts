@@ -315,7 +315,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     // Names: the four-eyes run, world, rule, check and test, their files and command, a link's own name.
     "four[- ]eyes (?:rule|run|world|check|approval|test)", "four-eyes and compliance runs", "four-eyes(?:-onchain)?\\.(?:md|test|json)", "npm run four-eyes", "cfo-policy\\.md, four eyes",
     // The glossary's heading, the list of what was built, a requirement's own text, a line kept off the site, a row's name.
-    "Mandate, x402, terms hash, four eyes", "Four eyes counts passkeys", "the video, four eyes, the open items", "four eyes\\), the agents' tools", "Four eyes on chain: a Metal account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
+    "Mandate, x402, terms hash, four eyes", "Four eyes counts passkeys", "the video, four eyes, the open items", "four eyes\\), the agents' tools", "Four eyes on chain: a Alta account with several owners", ", four eyes on chain, limits enforced", "\"Four eyes on the mandate change\"",
   ].join("|"), "i");
 
   /** The places a reader meets the short form: the README, llms.txt, the current docs and the submission texts. Run records and design specs are history. */
@@ -376,7 +376,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
       ["docs/controls-matrix.md", `the CFO and the controller together passed (${FOUR_EYES_ON_CHAIN_NOTE}) |`],
       ["docs/compliance.md", `30 October, with ${FOUR_EYES_ON_CHAIN_NOTE}; Northwind's recorded account has one owner`],
       ["docs/requirements-matrix.md", `two passed (${FOUR_EYES_ON_CHAIN_NOTE}).`],
-      ["docs/submission/long-description.md", `Four eyes on chain. A 2-of-2 Metal account: the CFO and a controller (${FOUR_EYES_ON_CHAIN_NOTE}).`],
+      ["docs/submission/long-description.md", `Four eyes on chain. A 2-of-2 Alta account: the CFO and a controller (${FOUR_EYES_ON_CHAIN_NOTE}).`],
       ["docs/metal-award.md", `Four eyes on chain (run log; ${FOUR_EYES_ON_CHAIN_NOTE}).`],
     ] as const) expect({ doc, said, found: flat(doc).replace(/\]\([^)]*\)/g, "").replace(/\[/g, "").includes(said) }).toEqual({ doc, said, found: true });
   });
@@ -387,7 +387,7 @@ describe("four eyes, worded exactly (the panel's review, 12 Nov)", () => {
     // /metal, folded under "Beyond the kit": the on-chain run with who signed (no words added in sight).
     // 12 Nov merge: main's /metal says "Two owners, both must sign" without the short form; where it says "four eyes",
     // the note goes with it.
-    // The feature list names Metal's "Four eyes on chain: Smart account" with Metal's docs: a feature, not a claim.
+    // The feature list names Alta's "Four eyes on chain: Smart account" with Alta's docs: a feature, not a claim.
     const metalClaims = text(pages.metal!).replace(/Four eyes on chain: Smart account/g, " ");
     if (/four eyes/i.test(metalClaims)) expect(metalClaims).toContain(FOUR_EYES_ON_CHAIN_NOTE);
     // Every page built on the site's frame says who the second approver was, in its "What's real?" lines.

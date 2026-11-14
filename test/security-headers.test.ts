@@ -51,7 +51,7 @@ describe("relay Worker: security headers on every answer", () => {
   const page = (path: string) => pageResponse(new Request(`${BASE}${path}`), pages)!;
 
   it("every page: its own strict CSP, HSTS, nosniff, no-referrer, same-origin opener, passkeys for this site only", () => {
-    for (const path of ["/", "/home", "/watch", "/proof", "/month", "/film", "/try", "/lab", "/metal", "/visa", "/airwallex", "/claude", "/metal/report", "/approve/P-0001", "/enrol", "/policy"]) {
+    for (const path of ["/", "/home", "/watch", "/proof", "/month", "/film", "/try", "/lab", "/alta", "/visa", "/airwallex", "/claude", "/metal/report", "/approve/P-0001", "/enrol", "/policy"]) {
       const res = page(path);
       expect(res, path).not.toBeNull();
       expectCommon(res, path);
@@ -190,7 +190,7 @@ describe("the runner's local pages: security headers", () => {
     await new Promise<void>((r) => server.once("listening", () => r()));
     const port = (server.address() as { port: number }).port;
     try {
-      const csp: Record<string, string> = { "/": CSP, "/month": MONTH_CSP, "/demo": DEMO_CSP, "/live": LIVE_CSP, "/film": FILM_CSP, "/try": TRY_CSP, "/metal": METAL_CSP, "/visa": VISA_CSP, "/metal/report": METAL_REPORT_CSP, "/system-health": SYSTEM_HEALTH_CSP };
+      const csp: Record<string, string> = { "/": CSP, "/month": MONTH_CSP, "/demo": DEMO_CSP, "/live": LIVE_CSP, "/film": FILM_CSP, "/try": TRY_CSP, "/alta": METAL_CSP, "/visa": VISA_CSP, "/metal/report": METAL_REPORT_CSP, "/system-health": SYSTEM_HEALTH_CSP };
       for (const [path, want] of Object.entries(csp)) {
         const res = await get(port, path);
         expect(res.status, path).toBe(200);

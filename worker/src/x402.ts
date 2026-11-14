@@ -1,5 +1,5 @@
 // GET /x402/proof: an x402 endpoint a juror can call (master-list line 107). Without a payment it answers HTTP 402 with
-// x402 payment requirements (version 2, scheme "exact" on Metal testnet, 0.01 test *USDZ), labelled as test money. The
+// x402 payment requirements (version 2, scheme "exact" on Alta testnet, 0.01 test *USDZ), labelled as test money. The
 // resource is the signed receipt of the Airwallex run awx-1 (docs/runs/2026-11-07-awx-1/receipt-P-0002.json).
 //
 // A payment comes in the PAYMENT-SIGNATURE header and is refused unless it accepts exactly these requirements (a wrong
@@ -7,7 +7,7 @@
 //   - a local stand-in payment ({"standIn": STAND_IN_LABEL, "nonce": …}): no money moves; the answer says so. It shows
 //     the protocol while testnet settlement is off, which is the default.
 //   - a signed payment: only with X402_TESTNET_SETTLE set to "on" (the owner's go, through the orchestrator). It is then
-//     verified and settled by Metal's facilitator (the @x402/core client Purser's sellers use), within a hard cap per
+//     verified and settled by Alta's facilitator (the @x402/core client Purser's sellers use), within a hard cap per
 //     request and per UTC day. With the switch off it is refused before anything is sent anywhere.
 
 import { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
@@ -22,10 +22,10 @@ export const PRICE_BASE_UNITS = "10000000000000000";
 export const PER_REQUEST_CAP_BASE_UNITS = 10_000_000_000_000_000n;
 export const DAILY_SETTLE_CAP = 20;
 export const STAND_IN_LABEL = "local stand-in payment, test money, nothing moves";
-export const MONEY_LABEL = "test money, Metal testnet (*USDZ); no real money";
-/** The token's EIP-712 domain as Metal's scheme names it (@metalntwx/metal-pay USDZ; test/x402-endpoint.test.ts holds them equal). */
+export const MONEY_LABEL = "test money, Alta testnet (*USDZ); no real money";
+/** The token's EIP-712 domain as Alta's scheme names it (@metalntwx/metal-pay USDZ; test/x402-endpoint.test.ts holds them equal). */
 export const USDZ_EXTRA = { name: "USD Zero", version: "1", primaryType: "TransferWithAuthorization" } as const;
-/** Northwind Outdoor's business account on Metal testnet (docs/demo/metal.json): the payee when no other is set. */
+/** Northwind Outdoor's business account on Alta testnet (docs/demo/metal.json): the payee when no other is set. */
 export const DEFAULT_PAY_TO = "0x828c7DE12cab8149AA516958433F6EEe23aEC875";
 
 export interface Sql { exec(query: string, ...bindings: unknown[]): { toArray(): unknown[] } }
@@ -33,14 +33,14 @@ export interface Sql { exec(query: string, ...bindings: unknown[]): { toArray():
 interface Requirements { scheme: string; network: string; asset: string; amount: string; payTo: string; maxTimeoutSeconds: number; extra: Record<string, unknown> }
 interface Payload { x402Version: number; resource?: unknown; accepted: Requirements; payload: Record<string, unknown> }
 
-/** What the endpoint needs of Metal's facilitator: verify, then settle (HTTPFacilitatorClient in @x402/core). */
+/** What the endpoint needs of Alta's facilitator: verify, then settle (HTTPFacilitatorClient in @x402/core). */
 export interface Facilitator {
   verify(p: Payload, r: Requirements): Promise<{ isValid: boolean; invalidReason?: string; payer?: string }>;
   settle(p: Payload, r: Requirements): Promise<{ success: boolean; errorReason?: string; transaction: string; network: string; payer?: string }>;
 }
 
 export interface X402Options {
-  /** "on" lets signed payments settle on Metal testnet; anything else (the default) keeps settlement off. */
+  /** "on" lets signed payments settle on Alta testnet; anything else (the default) keeps settlement off. */
   settle?: string | undefined;
   payTo?: string | undefined;
   facilitator?: () => Promise<Facilitator>;
@@ -51,7 +51,7 @@ const HEADERS = { "cache-control": "no-store", "x-content-type-options": "nosnif
 const json = (status: number, body: unknown, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body, null, 1), { status, headers: { ...HEADERS, "content-type": "application/json; charset=utf-8", ...extra } });
 
-/** Metal's facilitator through the client Purser's x402 sellers use; loaded only when settlement is on. */
+/** Alta's facilitator through the client Purser's x402 sellers use; loaded only when settlement is on. */
 async function metalFacilitator(): Promise<Facilitator> {
   const { HTTPFacilitatorClient } = await import("@x402/core/server");
   return new HTTPFacilitatorClient({ url: FACILITATOR_URL }) as unknown as Facilitator;
@@ -85,7 +85,7 @@ export class X402Desk {
 
   private ask(url: string, status: number, error?: string): Response {
     const pr = this.paymentRequired(url, error);
-    return json(status, { ...pr, money: MONEY_LABEL, settlement: this.on ? "on: a signed payment is verified and settled by Metal's facilitator, within the caps" : "off: a signed payment is refused and nothing is sent; a local stand-in payment shows the flow", stand_in: { payload: { standIn: STAND_IN_LABEL, nonce: "<a new random string>" } } },
+    return json(status, { ...pr, money: MONEY_LABEL, settlement: this.on ? "on: a signed payment is verified and settled by Alta's facilitator, within the caps" : "off: a signed payment is refused and nothing is sent; a local stand-in payment shows the flow", stand_in: { payload: { standIn: STAND_IN_LABEL, nonce: "<a new random string>" } } },
       { "PAYMENT-REQUIRED": encodePaymentRequiredHeader(pr as never) });
   }
 
@@ -138,17 +138,17 @@ export class X402Desk {
     const f = await this.facilitator();
     const fail = (why: string) => { this.sql.exec("UPDATE x402_payments SET status = 'refused' WHERE nonce = ?", nonce); return this.ask(resourceUrl, 402, why); };
     let v: Awaited<ReturnType<Facilitator["verify"]>>;
-    try { v = await f.verify(p, want); } catch (e) { return fail(`Metal's facilitator could not verify the payment: ${(e as Error).message.slice(0, 160)}`); }
-    if (!v.isValid) return fail(`Metal's facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
+    try { v = await f.verify(p, want); } catch (e) { return fail(`Alta's facilitator could not verify the payment: ${(e as Error).message.slice(0, 160)}`); }
+    if (!v.isValid) return fail(`Alta's facilitator refused the payment: ${v.invalidReason ?? "invalid"}`);
     let s: Awaited<ReturnType<Facilitator["settle"]>>;
     try { s = await f.settle(p, want); } catch (e) {
       // No answer is not a refusal: the settlement may have gone through. It stays on the day's cap, and is not served.
       this.sql.exec("UPDATE x402_payments SET status = 'unknown' WHERE nonce = ?", nonce);
-      return json(502, { error: `Metal's facilitator gave no answer on the settlement (${(e as Error).message.slice(0, 160)}): it may have settled, so it counts against the day's cap, and this payment's nonce is spent`, money: MONEY_LABEL });
+      return json(502, { error: `Alta's facilitator gave no answer on the settlement (${(e as Error).message.slice(0, 160)}): it may have settled, so it counts against the day's cap, and this payment's nonce is spent`, money: MONEY_LABEL });
     }
-    if (!s.success) return fail(`Metal's facilitator did not settle the payment: ${s.errorReason ?? "unknown"}`);
+    if (!s.success) return fail(`Alta's facilitator did not settle the payment: ${s.errorReason ?? "unknown"}`);
     this.sql.exec("UPDATE x402_payments SET status = 'settled', tx = ? WHERE nonce = ?", s.transaction.slice(0, 80), nonce);
-    return json(200, { paid_with: "Metal testnet, settled by Metal's facilitator", money: MONEY_LABEL, transaction: s.transaction, resource: receipt },
+    return json(200, { paid_with: "Alta testnet, settled by Alta's facilitator", money: MONEY_LABEL, transaction: s.transaction, resource: receipt },
       { "PAYMENT-RESPONSE": encodePaymentResponseHeader(s as never) });
   }
 }

@@ -5,7 +5,7 @@
 // What counts, per agent:
 //   card     (Airwallex, EUR): the card's monthly limit, card.<agent>.monthly. A card has a limit per purchase and per
 //            month, none per day, so the whole month can go in one day: per day = per month = the monthly limit.
-//   mandate  (Metal, *USDZ = test USD): the mandate's budget, over its whole life (MANDATE_EXPIRES_IN_SECONDS, 40 days).
+//   mandate  (Alta, *USDZ = test USD): the mandate's budget, over its whole life (MANDATE_EXPIRES_IN_SECONDS, 40 days).
 //            It can all go in one day: per day = per month = the budget.
 //   alone    (EUR): what Purser's policy lets the agent pay without a person beyond its card and mandate, as its
 //            profile lists it (src/agents/profiles.ts): for the Treasury agent, task cards issued without Face ID, each
@@ -170,7 +170,7 @@ export function exposureWords(x: Exposure, p: ExposurePolicy, rate: RecordedRate
           ? `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}: a card or a mandate can go in one day, payments alone ${p.invoicesAlonePerDay ?? 0} a day.`
           : `A day: ${moneyShort("EUR", day.eurCents)} + ${moneyShort("USD", day.usdCents)}, the same as a month: neither a card nor a mandate has a daily limit.`,
       ...(invoices ? [`Payments alone: up to each agent's limit, at most ${p.invoicesAlonePerDay ?? 0} a day per agent, ${MONTH_DAYS} days a month, counted above.`] : []),
-      `Counted: each card's monthly limit (card.*.monthly, EUR) and each Metal mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue on its own within the limit the CFO signed with Face ID: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day${counted ? ` (${moneyShort("EUR", tasks.dayEurCents)}), ${MONTH_DAYS} days a month (${moneyShort("EUR", tasks.monthEurCents)}), counted above` : ", not counted above"}.`,
+      `Counted: each card's monthly limit (card.*.monthly, EUR) and each Alta mandate's budget (test USD, *USDZ; it lasts 40 days and can all go at once). Task cards, which the Treasury agent may issue on its own within the limit the CFO signed with Face ID: up to ${moneyShort("EUR", p.taskCardEurCents)} each (approval.task_card_eur), ${p.taskCardsPerDay} a day${counted ? ` (${moneyShort("EUR", tasks.dayEurCents)}), ${MONTH_DAYS} days a month (${moneyShort("EUR", tasks.monthEurCents)}), counted above` : ", not counted above"}.`,
       approx,
       EXPOSURE_COMPARISON,
     ],

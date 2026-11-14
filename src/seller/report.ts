@@ -1,5 +1,5 @@
 // The evidence report the seller sends the customer: one self-contained HTML page (no script, no outside request)
-// with the decision, each payment's evidence and the links to check it on Metal's explorer. Everything on it comes
+// with the decision, each payment's evidence and the links to check it on Alta's explorer. Everything on it comes
 // from the stored case; nothing is recomputed or rephrased here.
 
 import { EXPLORER_TX } from "../metal/network.js";
@@ -25,7 +25,7 @@ export function disputeReportHtml(c: DisputeCase, seller = "Northwind Outdoor"):
       <td><b>${esc(p.sale_id)}</b><div class="sub">${esc(p.request)}</div><div class="sub">${esc(p.paid_at.replace("T", " ").slice(0, 19))} UTC</div></td>
       <td class="num">${esc(fromCents(p.charged_cents))}</td>
       <td>${yes(p.order.valid, `signed for ${fromCents(p.order.amount_cents ?? 0)}`, p.order.present ? "does not verify" : "none")}${p.order.first_use_sale && p.order.first_use_sale !== p.sale_id ? `<div class="sub bad">already used for ${esc(p.order.first_use_sale)}</div>` : ""}</td>
-      <td>${yes(p.mandate.within, "inside the bound mandate", p.mandate.detail)}<div class="sub">payment ${tx(p.tx)}</div>${p.finality ? `<div class="sub">${p.finality.status === "REPORTED" ? `Metal reported it final: block ${esc(p.finality.block_number)}, ${esc(p.finality.signers)} of ${esc(p.finality.participants)} validators (their signature not verified)` : p.finality.status === "NOT_KEPT" ? "finality certificate no longer kept by the node" : p.finality.status === "NOT_FOUND" ? "never showed as final" : "finality certificate FAILED a check"}</div>` : ""}</td>
+      <td>${yes(p.mandate.within, "inside the bound mandate", p.mandate.detail)}<div class="sub">payment ${tx(p.tx)}</div>${p.finality ? `<div class="sub">${p.finality.status === "REPORTED" ? `Alta reported it final: block ${esc(p.finality.block_number)}, ${esc(p.finality.signers)} of ${esc(p.finality.participants)} validators (their signature not verified)` : p.finality.status === "NOT_KEPT" ? "finality certificate no longer kept by the node" : p.finality.status === "NOT_FOUND" ? "never showed as final" : "finality certificate FAILED a check"}</div>` : ""}</td>
       <td>${yes(p.delivery.matches, "as we recorded it", "differs from our record")}<div class="sub mono">${esc(p.delivery.body_sha256.slice(0, 16))}…</div></td>
       <td><b>${d.refund_cents ? esc(fromCents(d.refund_cents)) : "0.00"}</b>${paid?.tx ? `<div class="sub">refund ${tx(paid.tx)}</div>` : ""}${p.refunded_cents ? `<div class="sub">${esc(fromCents(p.refunded_cents))} already refunded earlier</div>` : ""}<div class="sub">${esc(d.why)}</div></td>
     </tr>`;
@@ -52,7 +52,7 @@ td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top;
 @media (max-width: 640px) { thead { display: none; } tr { display: block; border-top: 1px solid var(--border); padding: 8px 0; } td { display: block; border: 0; padding: 3px 0; } td.num { text-align: left; } }
 </style></head>
 <body><main>
-<p class="sub">${esc(seller)} · Dispute desk · test money on Metal testnet</p>
+<p class="sub">${esc(seller)} · Dispute desk · test money on Alta testnet</p>
 <h1>Your dispute ${esc(c.case_id)}</h1>
 <p class="sub">Opened ${esc(c.opened_at.replace("T", " ").slice(0, 16))} UTC · ${esc(c.packs.length)} payment${c.packs.length === 1 ? "" : "s"} from ${esc(c.customer)}</p>
 <div class="box"><div class="sub">You said</div><div>${esc(CLAIM_WORDS[c.claim].charAt(0).toUpperCase() + CLAIM_WORDS[c.claim].slice(1))}.${c.text ? ` <span class="sub">"${esc(c.text)}"</span>` : ""}</div></div>
@@ -64,14 +64,14 @@ td { border-top: 1px solid var(--border); padding: 8px 6px; vertical-align: top;
 <tbody>${rows}</tbody></table></div>
 
 <h2>Who stood behind the purchase</h2>
-<div class="box">${m ? `Every payment above is checked on chain against the mandate bound on your account <span class="mono">${esc(m.principal)}</span> (bound in ${tx(m.bound_tx)}). Metal records that this mandate was bound by your account's owner key, with its limits and its only payee; the chain refuses any payment outside it.` : "No bound mandate was found for these payments."}
-<div class="sub gap">What the chain does not prove: that the owner key is held by a person. ${passkeys.length ? `Your owner also confirmed this mandate with a passkey (Face ID or similar) for ${passkeys.length} payment${passkeys.length === 1 ? "" : "s"}: ${passkeys.map((p) => (p.human.passkey!.verified ? "verified" : "did not verify")).join(", ")}. That confirmation is Purser's own addition, not enforced by Metal.` : "No passkey confirmation from your side is on file."}</div></div>
+<div class="box">${m ? `Every payment above is checked on chain against the mandate bound on your account <span class="mono">${esc(m.principal)}</span> (bound in ${tx(m.bound_tx)}). Alta records that this mandate was bound by your account's owner key, with its limits and its only payee; the chain refuses any payment outside it.` : "No bound mandate was found for these payments."}
+<div class="sub gap">What the chain does not prove: that the owner key is held by a person. ${passkeys.length ? `Your owner also confirmed this mandate with a passkey (Face ID or similar) for ${passkeys.length} payment${passkeys.length === 1 ? "" : "s"}: ${passkeys.map((p) => (p.human.passkey!.verified ? "verified" : "did not verify")).join(", ")}. That confirmation is Purser's own addition, not enforced by Alta.` : "No passkey confirmation from your side is on file."}</div></div>
 
 <h2>The decision, explained</h2>
 <div class="box">${c.packs.some((p) => p.refunded_cents) ? `<p><b>Already refunded before this claim:</b> orders ${esc(c.packs.filter((p) => p.refunded_cents).map((p) => p.sale_id).join(", "))}, ${esc(fromCents(c.packs.reduce((n, p) => n + (p.refunded_cents ?? 0), 0)))} test USD in all, for wrong data. This decision refunds ${esc(fromCents(c.decision.refund_cents))} more. Where the explanation below says no payment was refunded, it means by this decision. Where it says the data matches the expected hash, it means the hash recorded at delivery, not that the data was right.</p>` : ""}${esc(c.explanation)}<div class="sub gap">Explained by ${esc(c.explained_by)}. The decision and every amount were made by code from the evidence above; the explanation is advice.</div></div>
 
 <h2>Check it yourself</h2>
-<p class="sub">Each payment and refund links to Metal's explorer. The signed orders, the mandate and each payment can be checked with <span class="mono">verifyMandatePayment</span> from <span class="mono">@metalntwx/metal-pay</span> (step 4: the payment is your agent's per-payment mandate, inside the mandate at its block). The delivered data's SHA-256 is shown so you can compare it with what you received.</p>
+<p class="sub">Each payment and refund links to Alta's explorer. The signed orders, the mandate and each payment can be checked with <span class="mono">verifyMandatePayment</span> from <span class="mono">@metalntwx/metal-pay</span> (step 4: the payment is your agent's per-payment mandate, inside the mandate at its block). The delivered data's SHA-256 is shown so you can compare it with what you received.</p>
 </main></body></html>
 `;
 }

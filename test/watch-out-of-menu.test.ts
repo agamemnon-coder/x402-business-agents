@@ -4,7 +4,7 @@
 // says what it is: a replay of the main run of 3 November, the day read from the record. In sight it shows no proposal
 // number and no tool name; every step, with its tools and ids, is in a fold. And no served page links to a path the
 // site does not serve.
-import { FILM_LINK } from "../src/config/brand.js";
+import { FILM_LINK, TRAILER_LINK } from "../src/config/brand.js";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -68,8 +68,8 @@ describe("the menu: Home, Try, Proof, and no Watch", () => {
   it("Home does not name or link the replay, in either build", () => {
     for (const [build, html] of [["with /try/sign", ON.home!], ["without", OFF.home!]] as const) {
       expect({ build, link: /href="\/?(watch|replay|live|demo)\b[^"]*"/.exec(html)?.[0] ?? null }).toEqual({ build, link: null });
-      // The walkthrough on YouTube (FILM_LINK, 13 Nov) is not the replay; it is the only "Watch" Home says.
-      expect({ build, word: /\bWatch\b|\breplay/i.exec(text(noScript(html)).replace(FILM_LINK, " "))?.[0] ?? null }).toEqual({ build, word: null });
+      // The walkthrough on YouTube (FILM_LINK, 13 Nov) and the trailer (TRAILER_LINK, 14 Nov) are not the replay; they are the only "Watch" Home says.
+      expect({ build, word: /\bWatch\b|\breplay/i.exec(text(noScript(html)).replace(FILM_LINK, " ").replace(TRAILER_LINK, " "))?.[0] ?? null }).toEqual({ build, word: null });
     }
   });
 
@@ -199,7 +199,7 @@ describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
     dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
-    metal: "/metal", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
+    metal: "/alta", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
   /** The status a GET ends in, following redirects as a browser does; 404 for no page. */

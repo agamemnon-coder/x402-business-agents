@@ -40,7 +40,7 @@ describe("the transactions register", () => {
     // Out: two paid transfers (100 + 100) and one card charge (49); the failed transfer and the decline never count.
     expect(eur).toMatchObject({ in: "500.00", out: "261.00", internal_out: "100.00", fees: "12.50", moved: 6, not_moved: 2 });
     expect(totals.find((t) => t.currency === "USD")).toMatchObject({ internal_in: "110.02", internal_out: "0.00" });
-    // Metal: 0.05 in, 0.03 paid out and 0.05 refunded; the refused purchase and the aborted sale count nowhere.
+    // Alta: 0.05 in, 0.03 paid out and 0.05 refunded; the refused purchase and the aborted sale count nowhere.
     expect(totals.find((t) => t.currency === "USDZ")).toMatchObject({ in: "0.05", out: "0.08", internal_in: "0.03", internal_out: "0.05", not_moved: 2 });
   });
 

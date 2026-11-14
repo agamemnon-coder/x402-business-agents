@@ -125,7 +125,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
 <body>
 <script type="application/json" id="live-data">__LIVE_JSON__</script>
 <header class="top"><a class="brand" href="/"><i></i>Purser live</a><span class="chip" id="company"></span><span class="chip">Recorded runs · test money</span><span class="count" id="count"></span>
-  <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="metal">Metal</a><a href="live" aria-current="page">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
+  <nav aria-label="Pages"><a href="./">Overview</a><a href="try">Try it</a><a href="alta">Alta</a><a href="live" aria-current="page">Live</a><a href="film">Film</a><a href="demo">Recorded run</a><a href="month">Month</a><a href="lab">Lab</a><a href="./?recorded">CFO dashboard</a></nav></header>
 <main id="main"></main>
 <script>
 (function () {
@@ -173,15 +173,15 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
   }
   var L = {
     airwallex: lane("awx", "assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"),
-    metal: lane("mtl", "assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain"),
+    metal: lane("mtl", "", "Alta", 57, "Mandates, pay per request, receive policy: on chain"),
   };
   // A scene where nothing happens on either rail names the two rails, without empty boxes.
   function railName(src, alt, w, caption) { void src; void w; return el("div", "hd", [el("span", "lg", [alt]), txt("small", "", caption)]); }
-  var legend = el("div", "legend", [railName("assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"), railName("assets/logo-metal.svg", "Metal", 57, "Mandates, pay per request, receive policy: on chain")]);
+  var legend = el("div", "legend", [railName("assets/logo-airwallex.png", "Airwallex", 131, "Company cards, FX and SWIFT payouts"), railName("", "Alta", 57, "Mandates, pay per request, receive policy: on chain")]);
   var phoneAsk = el("div", "ask", ["", el("b", "", ["Face ID ✓"])]);
   var phone = el("div", "phone", [txt("div", "who-cfo", "CFO's phone"), txt("div", "idle", "Nothing to approve: the agents stay inside their limits."), phoneAsk]);
   var rig = el("section", "rig", [cast, el("div", "lanes", [L.airwallex.root, L.metal.root, legend]), phone]);
-  rig.setAttribute("aria-label", "Agents, the Airwallex and Metal rails, and the CFO's phone");
+  rig.setAttribute("aria-label", "Agents, the Airwallex and Alta rails, and the CFO's phone");
   var story = el("section", "story", []);
   story.setAttribute("aria-live", "polite");
   main.appendChild(el("div", "wrap", [rig, story]));
@@ -280,8 +280,8 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
     // "Powered by" and "Agents built on Claude" only for a run in which the agents really decided; the 30 October
     // recording predates the autonomous agents, so there Claude read the documents (T.claude, src/live/timeline.ts).
     if (s.kind === "end") side.push(T.claude === "decided"
-      ? el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), txt("span", "", "Powered by"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Agents built on Claude (Anthropic API)")])
-      : el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("assets/logo-metal.svg", "Metal"), logo("assets/logo-claude.png", "Claude", "dark"), txt("span", "", "Claude read the documents")]),
+      ? el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("", "Alta"), txt("span", "", "Powered by"), logo("assets/logo-claude-slate.svg", "Claude"), txt("span", "", "Agents built on Claude (Anthropic API)")])
+      : el("div", "logos", [txt("span", "", "Built on"), logo("assets/logo-airwallex.png", "Airwallex"), logo("", "Alta"), logo("assets/logo-claude-slate.svg", "Claude"), txt("span", "", "Claude read the documents")]),
       txt("p", "src", T.claude === "decided" ? "\"Built on\" and \"Powered by\" name the services Purser uses. They are not an endorsement." : "\"Built on\" names the services Purser uses; the Claude logo names the model that read the documents. Neither is an endorsement."));
     side.push(txt("p", "src", "Source: " + s.source));
     story.replaceChildren(el("div", "", words), el("div", "", side));
@@ -315,7 +315,7 @@ html.present .bar button, html.present .bar select, html.present .top nav { disp
   render();
 
   function footer() {
-    document.body.appendChild(txt("p", "honest", "Recorded runs with test money: Airwallex sandbox and Metal testnet. Card charges, the airline and the customer are sandbox simulations; every number is from a recorded run (" + T.run + "), and each scene names its source."));
+    document.body.appendChild(txt("p", "honest", "Recorded runs with test money: Airwallex sandbox and Alta testnet. Card charges, the airline and the customer are sandbox simulations; every number is from a recorded run (" + T.run + "), and each scene names its source."));
   }
 })();
 </script>

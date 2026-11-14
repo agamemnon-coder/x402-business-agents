@@ -9,7 +9,7 @@ import type { DB } from "../db/open.js";
 import type { EvidencePack } from "./disputeDesk.js";
 import { finalityOf } from "../metal/finality.js";
 
-/** Metal's check of each sale's payment against the customer's bound mandate and its signed order. */
+/** Alta's check of each sale's payment against the customer's bound mandate and its signed order. */
 export type VerifyPort = (sales: SaleRow[], customer: Address) => Promise<OrderEvidence[]>;
 export const liveVerify: VerifyPort = verifyOrders;
 

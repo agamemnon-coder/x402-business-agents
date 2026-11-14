@@ -135,7 +135,7 @@ describe("the partner pages", () => {
     // /books (owner, 12 Nov) sits with the product pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
     expect(MORE_LINKS.map((l) => l.key)).toEqual(["cloud", "security", "docs", "books", "airwallex", "metal", "visa", "claude"]);
-    expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Metal", "Visa", "Claude"]);
+    expect(MORE_LINKS.filter((l) => l.group === "partner").map((l) => l.label)).toEqual(["Airwallex", "Alta", "Visa", "Claude"]);
     // The template pages' navigation (src/ui/nav.ts): the four tabs as links with their keys, then More, a <details>
     // with the same links as the redesign's header (src/redesign/ui.ts), in the same order.
     const nav = navHtml("try");
@@ -143,7 +143,7 @@ describe("the partner pages", () => {
     expect([...nav.slice(0, more?.index).matchAll(/<a href="[^"]+" data-nav="([a-z]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(WATCH_IN_MENU ? [["home", "Home"], ["watch", "Watch"], ["try", "Try"], ["proof", "Proof"]] : [["home", "Home"], ["try", "Try"], ["proof", "Proof"]]);
     expect(more?.[1]).toBe("More");
     expect([...(more?.[2] ?? "").matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => [m[1], m[2]])).toEqual(moreLinks().map((l) => [l.href, l.label]));
-    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Security", "Airwallex", "Metal", "Visa", "Claude"]));
+    expect(moreLinks().map((l) => l.label)).toEqual(expect.arrayContaining(["Security", "Airwallex", "Alta", "Visa", "Claude"]));
     // The Try tab opens the hands-on demo (TRY_URL, the owner, 12 Nov).
     expect(nav).toContain(`<a href="${TRY_URL}" data-nav="try" class="on" aria-current="page">Try</a>`);
     const pages = buildPages();
@@ -160,7 +160,7 @@ describe("the partner pages", () => {
       const levels = [...String(html).matchAll(/<h([1-6])\b/g)].map((m) => Number(m[1]));
       expect({ name, skips: levels.filter((l, i) => i > 0 && l > levels[i - 1]! + 1) }).toEqual({ name, skips: [] });
     }
-    expect([...String(pages.proof).matchAll(/<a class="open" href="(metal|airwallex|claude)">More<span class="vh"> about ([A-Za-z]+)<\/span>/g)].map((m) => m[2]!.toLowerCase())).toEqual(["airwallex", "metal", "claude"]);
+    expect([...String(pages.proof).matchAll(/<a class="open" href="(alta|airwallex|claude)">More<span class="vh"> about ([A-Za-z]+)<\/span>/g)].map((m) => m[2]!.toLowerCase())).toEqual(["airwallex", "alta", "claude"]);
     // /metal since 12 Nov (jury panel): its table's and its cards' links are 44 px tall, as a phone's tap target.
     expect(String(pages.metal)).toContain(".mtab td a.pf, .mcov td a.pf { display: inline-flex; align-items: center; min-height: 44px; }");
     expect(String(pages.metal)).toContain(".mc .tx2 a.pf { display: inline-flex; align-items: center; min-height: 44px; }");

@@ -17,7 +17,7 @@ function wake(db: DB, agent: string, o: { latencyMs: number; costMicros: number;
   const runId = `run-${agent}-${++runN}`;
   const from = (db.prepare("SELECT COALESCE(MAX(seq), 0) AS n FROM audit_log").get() as { n: number }).n;
   for (let i = 0; i < (o.tools ?? 1); i++) {
-    audit(db, agent as never, "agent.tool", task, { agent, model: "claude-sonnet-5-5", request_id: `req_${runN}_${i}`, tool: "pay", input: {}, result: "ok", ms: 5, turn: 1, ...(i < (o.blocked ?? 0) ? { blocked_by: "the Metal mandate on chain" } : {}) }, at(o.s));
+    audit(db, agent as never, "agent.tool", task, { agent, model: "claude-sonnet-5-5", request_id: `req_${runN}_${i}`, tool: "pay", input: {}, result: "ok", ms: 5, turn: 1, ...(i < (o.blocked ?? 0) ? { blocked_by: "the Alta mandate on chain" } : {}) }, at(o.s));
   }
   audit(db, agent as never, "agent.run", task, {
     agent, model: "claude-sonnet-5-5", status: o.status ?? (o.source === "claude" ? "done" : "unavailable"), turns: 2, tools: [], blocked: [], said: "", cost_usd_micros: o.costMicros,

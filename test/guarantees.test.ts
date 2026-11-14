@@ -15,7 +15,7 @@ describe("What Purser guarantees", () => {
   });
 
   it("links each promise's evidence to a page of the site, the repository or the explorer", () => {
-    const pages = ["proof#faceid", "airwallex#awx-1-steps", "visa", "metal", "claude"];
+    const pages = ["proof#faceid", "airwallex#awx-1-steps", "visa", "alta", "claude"];
     for (const g of GUARANTEES) expect({ id: g.id, ok: pages.includes(g.evidence.href) || g.evidence.href.startsWith("https://github.com/agamemnon-coder/x402-business-agents/") }).toEqual({ id: g.id, ok: true });
   });
 

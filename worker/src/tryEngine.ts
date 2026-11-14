@@ -3,7 +3,7 @@
 // cloud/wrangler.try.jsonc), one database, one spend cap: the site passes /try and the paths its page calls to that
 // Worker through a service binding (TRY_ENGINE, worker/wrangler.jsonc), the request unchanged, so its URL keeps the
 // site's host and purser-try binds the passkey to it (cloud/src/hostOrigin.ts). Nothing else is passed: /try/sign and
-// every path under it, /api/*, /hooks/airwallex, /health, /go, the x402 and Metal paths and the site's /assets/* stay
+// every path under it, /api/*, /hooks/airwallex, /health, /go, the x402 and Alta paths and the site's /assets/* stay
 // the site's. /assets/inter.woff2, which the page loads, is the site's own: the same bytes (src/ui/inter.woff2, held
 // equal by test/relay-try-engine.test.ts). Without the binding (local tests, an older deploy) none of this applies and
 // the site answers /try with its own page, as before.

@@ -19,7 +19,7 @@ import { AGENT_RUN_FILE, type RunRecord } from "../redesign/run.js";
 import { chainLines, chains, countOf } from "../redesign/trace.js";
 import { T0_STATUS } from "../submission/deck.js";
 
-const RAIL_NAME: Record<string, string> = { metal: "Metal", airwallex_card: "Airwallex, card", airwallex_swift: "Airwallex, SWIFT" };
+const RAIL_NAME: Record<string, string> = { metal: "Alta", airwallex_card: "Airwallex, card", airwallex_swift: "Airwallex, SWIFT" };
 
 export const PACK_NAME = "purser-month-end-2026-11-03.zip";
 export const PACK_LINK = "Download the month-end pack";
@@ -121,19 +121,19 @@ ${summary.t0}
 
 ## Totals
 
-- Payments: ${c.line}. On Metal: ${c.metalParts}.
+- Payments: ${c.line}. On Alta: ${c.metalParts}.
 ${money.map((m) => `- ${RAIL_NAME[m.rail]} (${m.currency === "USDZ" ? "test USD" : m.currency}): in ${m.in}, out ${m.out}`).join("\n")}
 - The SWIFT transfer's fee is booked on its own line (account 6800) in journal.csv.
-- Reconcile (${s.reconciliation.at}): ${s.reconciliation.checked} flows checked against Airwallex and Metal, ${s.reconciliation.differences} differences. ${summary.reconcile.agrees ? `They are the ${c.n} payments in this pack.` : "They do NOT match this pack's payments."}
+- Reconcile (${s.reconciliation.at}): ${s.reconciliation.checked} flows checked against Airwallex and Alta, ${s.reconciliation.differences} differences. ${summary.reconcile.agrees ? `They are the ${c.n} payments in this pack.` : "They do NOT match this pack's payments."}
 - Books: ${postings.length} postings, ${summary.books.balanced ? "debits equal credits in every currency" : "NOT balanced"}.
 
 ## Files
 
 Each CSV starts with one line beginning with "#": this pack's label. Skip it; the column names are on the next line.
 
-- journal.csv: the GL export (\`npm run gl\`), one line per movement of money, with its GL account, cost centre, bank account, \`proof\` (the rail id: a Metal transaction, an Airwallex id) and \`approval\` (the proposal), plus \`approval_sha256\`, the hash of the terms the CFO signed for it.
+- journal.csv: the GL export (\`npm run gl\`), one line per movement of money, with its GL account, cost centre, bank account, \`proof\` (the rail id: a Alta transaction, an Airwallex id) and \`approval\` (the proposal), plus \`approval_sha256\`, the hash of the terms the CFO signed for it.
 - postings.csv: the same journal in double entry (\`npm run books -- --csv\`), opening balances first.
-- payments.csv: the ${c.n} payments, each with its rail id (and explorer link on Metal), approval hash, who decided it (agent, model, request id), the lock that held it or its proposal, its booking entries and its audit row. /trace shows the same, step by step.
+- payments.csv: the ${c.n} payments, each with its rail id (and explorer link on Alta), approval hash, who decided it (agent, model, request id), the lock that held it or its proposal, its booking entries and its audit row. /trace shows the same, step by step.
 - approvals.csv: every proposal of the run, the hash of its terms, and who decided it, how and when.
 - audit-chain.csv: the audit chain as published: seq, prev_hash and row_hash per row, nothing else from the rows.
 - verify.txt: the chain's check, recorded and rebuilt.
@@ -141,7 +141,7 @@ Each CSV starts with one line beginning with "#": this pack's label. Skip it; th
 
 ## How to check it
 
-1. A Metal payment: open its explorer link (payments.csv); the amount and the parties are on chain.
+1. A Alta payment: open its explorer link (payments.csv); the amount and the parties are on chain.
 2. The books: in postings.csv, debits equal credits per currency; the trial balance is in summary.json.
 3. The payments against reconcile: payments.csv has ${c.n} rows; reconcile checked ${s.reconciliation.checked} flows with ${s.reconciliation.differences} differences.
 4. The audit chain: in audit-chain.csv the first prev_hash is 64 zeros and each prev_hash is the row_hash of the row before; the last row_hash is the recorded head. That proves the linkage and the head; it does not prove what any row says, since the rows are not published (verify.txt).

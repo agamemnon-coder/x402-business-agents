@@ -1,4 +1,4 @@
-// Chaos per partner (master list 409 and 726), next to test/chaos.test.ts (Anthropic, the relay, Metal's RPC, Airwallex)
+// Chaos per partner (master list 409 and 726), next to test/chaos.test.ts (Anthropic, the relay, Alta's RPC, Airwallex)
 // and test/erp-hardening.test.ts (Business Central and Exact 429s): T:0 down and slow, Moneybird down and slow, Claude
 // slow on /try/sign, and the tokenisation RPC down in the middle of a flow. Each case asserts plain behaviour (a plain
 // message, a stop or a retry, a recorded row) and, after the partner is back, nothing paid, posted or sent twice.

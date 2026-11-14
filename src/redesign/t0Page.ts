@@ -148,7 +148,7 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
     li("One journal entry per entry of Purser's books, debits equal to credits, dated by the movement's day."),
     li("Each line's memo carries its proof: the transaction hash, the clearing receipt or the Airwallex id."),
     li("A stable id per entry (PUR- and a hash of its content) and an idempotency key: a second push posts nothing twice."),
-    li("Test money on Metal (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
+    li("Test money on Alta (*USDZ) is posted as USD, labelled in the memo; other currencies at the rate we give."),
     `<li>${link(T0_DOC, "How it works, and the account map")}</li>`,
   ];
   const ids = [j && !j.samples.some((x) => x.t0 === j.firstId) ? li(`First entry: ${j.firstId}.`) : "", ...(j?.samples ?? []).map((x) => li(`${x.ours} (${x.what}) is ${x.t0}.`)), ...(p ? [li(`Platform run: ${p.entries.join(", ")}.`)] : [])].filter(Boolean);

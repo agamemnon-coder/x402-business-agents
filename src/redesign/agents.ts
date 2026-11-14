@@ -1,5 +1,5 @@
 // /agents/<id>: one page per Kit 11 agent (Sourcing, Support, Treasury), from the main run of 3 Nov: its job and
-// models, its limits (the company card at Airwallex and the mandate on Metal), what Claude decided for it (each with its
+// models, its limits (the company card at Airwallex and the mandate on Alta), what Claude decided for it (each with its
 // Anthropic request id) and what it paid (each linking to its chain on /trace). Everything is read from the run's record
 // (docs/demo/main-run.json) and its trace companion (docs/demo/main-run-trace.json); nothing is typed in.
 // test/runs-page.test.ts holds the figures to the records.
@@ -128,7 +128,7 @@ ${v.models.length ? `<p class="models">${v.models.map((m) => `<span class="model
 ${tiles}
 <div class="grid">
 <section class="card" aria-label="Its company card"><h2>${icon("credit-card", 18)}Its card at Airwallex</h2>${card}</section>
-<section class="card" aria-label="Its mandate on Metal"><h2>${icon("database", 18)}Its mandate on Metal</h2>${mandate}</section>
+<section class="card" aria-label="Its mandate on Alta"><h2>${icon("database", 18)}Its mandate on Alta</h2>${mandate}</section>
 </div>
 <section class="card" aria-label="What Claude decided"><h2>${icon("sparkles", 18)}What Claude decided · ${v.decisions.length}</h2>
 ${v.decisions.length ? `<ol class="tl">${first.map(decision).join("")}</ol>${rest.length ? `<details class="morel"><summary>${rest.length} more decision${rest.length === 1 ? "" : "s"}</summary><ol class="tl">${rest.map(decision).join("")}</ol></details>` : ""}` : "<p>No decisions by Claude in this run.</p>"}
@@ -139,7 +139,7 @@ ${v.payments.length ? `<ul class="pays">${shownPays.map(pay).join("")}</ul>${mor
 <p class="others">Other agents: ${AGENT_IDS.filter((x) => x !== id).map((x) => `<a href="/agents/${x}">${esc(AGENT_DISPLAY[x].name)}</a>`).join("")}<a href="/runs">Every live run</a><a href="/trace">Trace any payment</a></p>
 </main>`;
   const html = page({
-    title: `${v.name} · Purser`, description: `${v.name}: its limits at Airwallex and on Metal, Claude's decisions and its payments in the main run of 3 November.`, tab: null, css: CSS, body,
+    title: `${v.name} · Purser`, description: `${v.name}: its limits at Airwallex and on Alta, Claude's decisions and its payments in the main run of 3 November.`, tab: null, css: CSS, body,
     source: "Source: docs/demo/main-run.json and docs/demo/main-run-trace.json (the main run, 3 Nov).",
   });
   // Served one level down (/agents/<id>): the page's own relative links and assets made absolute.

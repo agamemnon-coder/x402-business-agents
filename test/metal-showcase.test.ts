@@ -24,7 +24,7 @@ function world() {
   return db;
 }
 
-describe("How Purser uses Metal (/metal)", () => {
+describe("How Purser uses Alta (/metal)", () => {
   it("shows a mandate as the chain enforces it now: the latest limits, with the spend carried over", () => {
     const [m] = mandateViews(world());
     expect(m).toMatchObject({ role: "sourcing", agent: "Sourcing agent", cap: "0.04", budget: "12.00", used: "0.08", left: "11.92", count: 3 });
@@ -60,7 +60,7 @@ describe("How Purser uses Metal (/metal)", () => {
     }
   });
 
-  it("every proof link points at Metal's testnet explorer", () => {
+  it("every proof link points at Alta's testnet explorer", () => {
     for (const f of metalShowcase(world()).features) {
       for (const p of f.proofs) if (p.href && !p.href.startsWith("#")) expect(p.href).toMatch(/^https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}$/);
       for (const d of f.docs) expect(d.href).toMatch(/^https:\/\/docs\.metalntwx\.com\//);

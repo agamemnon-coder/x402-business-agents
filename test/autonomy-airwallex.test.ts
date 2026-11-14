@@ -89,7 +89,7 @@ describe("money into the Global Account becomes the Treasury agent's event (D22)
   });
 });
 
-describe("the rail choice: Ridgeline's one-off report on x402 (Metal) or an Airwallex task card (D22)", async () => {
+describe("the rail choice: Ridgeline's one-off report on x402 (Alta) or an Airwallex task card (D22)", async () => {
   const { sourcingProfile } = await import("../src/autonomy/sourcingProfile.js");
   const { publish } = await import("../src/autonomy/bus.js");
   const paid: string[] = [];
@@ -104,7 +104,7 @@ describe("the rail choice: Ridgeline's one-off report on x402 (Metal) or an Airw
     expect(await tool(world()).run({ rail: "metal_x402", reason: "x" } as never)).toMatchObject({ blocked: "no offer" });
   });
 
-  it("x402 is refused before anything is signed: 0.20 is over the mandate's cap, which Metal enforces on chain too", async () => {
+  it("x402 is refused before anything is signed: 0.20 is over the mandate's cap, which Alta enforces on chain too", async () => {
     const r = await tool(offered()).run({ rail: "metal_x402", reason: "cheapest" } as never);
     expect(r).toMatchObject({ blocked: "over the cap" });
     expect(r.text).toMatch(/0\.20 is over your mandate's cap of 0\.03/);

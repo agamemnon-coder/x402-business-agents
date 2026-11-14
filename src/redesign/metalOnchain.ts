@@ -1,15 +1,15 @@
 // Two sections for /metal (master list 585), each rendered only from a run record, with real transaction links only:
 //
-// 1. "Face ID signs on chain": the passkey account on Metal testnet (docs/runs/<date>-faceid-onchain.json, written by
+// 1. "Face ID signs on chain": the passkey account on Alta testnet (docs/runs/<date>-faceid-onchain.json, written by
 //    `npm run owners -- record`). The mandate changes ran only after both owner passkeys signed, and the account checked
 //    the signatures itself. Shown as six steps: bind, paid, refused on chain, raised, paid, revoked; each links its
 //    transaction. The second signer is a labelled virtual test passkey and says so; the CFO's device is as stated.
 // 2. "Invoice → token → pre-financing → settlement": the invoice-token prototype (docs/runs/<date>-tokenize.json, the
 //    record src/redesign/tokenizeRun.ts reads). Four steps, each from a transaction that landed.
 //
-// Without a record each section is one labelled line, "Built; the live run on Metal testnet has not happened yet", with
+// Without a record each section is one labelled line, "Built; the live run on Alta testnet has not happened yet", with
 // a link to its runbook. Never a placeholder hash: a link shows only when the record has the transaction and its link
-// is Metal's explorer for exactly that hash. test/metal-onchain.test.ts holds both states on fixture records.
+// is Alta's explorer for exactly that hash. test/metal-onchain.test.ts holds both states on fixture records.
 
 import { readdirSync, readFileSync } from "node:fs";
 import type { TokenizeRunRecord } from "../tokenize/runRecord.js";
@@ -23,7 +23,7 @@ const RUNS = new URL("../../docs/runs/", import.meta.url);
 export const FACEID_RUNBOOK = "docs/runs/driver/faceid-onchain-runbook.md";
 export const TOKENIZE_RUNBOOK = "docs/runs/driver/tokenize-runbook.md";
 /** The one line a section shows without its record. */
-export const NOT_RUN_YET = "Built; the live run on Metal testnet has not happened yet.";
+export const NOT_RUN_YET = "Built; the live run on Alta testnet has not happened yet.";
 // Review, 13 Nov: the chain verifies a passkey's P-256 signature; which device made it (the owner states an iPhone with
 // Face ID) the chain does not prove, so the title names the passkey.
 export const FACEID_TITLE = "Passkeys sign on chain (P-256)";
@@ -34,7 +34,7 @@ const load = <T>(file: string): T | null => { try { return JSON.parse(readFileSy
 const dayOf = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${iso.slice(0, 10)}T12:00:00Z`));
 const shortHash = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 const HASH = /^0x[0-9a-f]{64}$/;
-/** A transaction link only when the hash is a real-shaped hash and the link is Metal's explorer for exactly it. */
+/** A transaction link only when the hash is a real-shaped hash and the link is Alta's explorer for exactly it. */
 const txLink = (hash: string | null | undefined, explorer?: string | null) =>
   hash && HASH.test(hash) && (explorer === undefined || explorer === `${EXPLORER_TX}${hash}`) ? `${EXPLORER_TX}${hash}` : null;
 
@@ -54,7 +54,7 @@ export function ownersRunFile(names: string[] = readdirSync(RUNS)): string | nul
   return f ? `docs/runs/${f}` : null;
 }
 
-/** The record when this section may show it: Metal testnet, test money, at least one change the account ran. */
+/** The record when this section may show it: Alta testnet, test money, at least one change the account ran. */
 export function ownersRun(file: string | null = ownersRunFile()): OwnersRun | null {
   if (!file) return null;
   const rec = load<OwnersRecord>(file);
@@ -97,12 +97,13 @@ export function faceIdOnChainSection(run: OwnersRun | null = ownersRun()): strin
   const virtual = rec.owners.filter((o) => o.virtual).length;
   const cfo = rec.owners.find((o) => o.role === "CFO" && !o.virtual);
   const lead = `${dayOf(rec.ran_at)}: the agent's limit changed only with ${rec.threshold} passkeys, checked on chain.`;
-  const labels = [`${rec.network}`, "test money", ...(virtual ? [`${virtual === 1 ? "second signer" : `${virtual} signers`}: labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`CFO's device ${cfo.device_basis}`] : [])];
+  // The record names the network as it was then ("Metal testnet"); the page says Alta, its name since 14 Nov.
+  const labels = [rec.network.replace(/^Metal\b/, "Alta"), "test money", ...(virtual ? [`${virtual === 1 ? "second signer" : `${virtual} signers`}: labelled virtual test passkey`] : []), ...(cfo?.device_basis ? [`CFO's device ${cfo.device_basis}`] : [])];
   // data-rec: every figure here is the record's own (test/metal-onchain.test.ts); the hash of each step is its link's,
   // last, in its label for a screen reader, not in sight.
   return `<article class="moc" id="faceid-onchain" aria-labelledby="moc-faceid" data-rec="${esc(file)}"><h2 id="moc-faceid">${esc(FACEID_TITLE)}</h2>
 <p class="moc-lead">${esc(lead)}</p>
-<ol class="moc-steps">${steps.map((s) => `<li class="moc-${s.key}"><a href="${esc(s.href)}" target="_blank" rel="noopener" aria-label="${esc(`${s.label}: transaction ${s.hash} on Metal's explorer`)}"><span class="moc-ic">${stepIcon(s.key)}</span><span class="moc-l">${esc(s.label)}</span><span class="moc-x" aria-hidden="true">↗</span></a></li>`).join("")}</ol>
+<ol class="moc-steps">${steps.map((s) => `<li class="moc-${s.key}"><a href="${esc(s.href)}" target="_blank" rel="noopener" aria-label="${esc(`${s.label}: transaction ${s.hash} on Alta's explorer`)}"><span class="moc-ic">${stepIcon(s.key)}</span><span class="moc-l">${esc(s.label)}</span><span class="moc-x" aria-hidden="true">↗</span></a></li>`).join("")}</ol>
 <p class="moc-src">${esc(labels.join(" · "))} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></article>`;
 }
 
@@ -142,8 +143,8 @@ export function tokenFlowSection(run: TokenRun | null = tokenRun()): string {
   const { rec, file } = run;
   const nodes = tokenFlow(rec);
   return `<section class="moc" id="invoice-token-flow" aria-labelledby="moc-token"><h2 id="moc-token">${esc(TOKEN_TITLE)}</h2>
-<ol class="moc-flow">${nodes.map((n) => `<li class="${n.href || n.key === "invoice" ? "on" : "off"}"><b>${esc(n.label)}</b><span>${esc(n.note)}</span>${n.href && n.hash ? `<a class="pf" href="${esc(n.href)}" target="_blank" rel="noopener" aria-label="${esc(`${n.label}: transaction ${n.hash} on Metal's explorer`)}">${esc(shortHash(n.hash))} ↗</a>` : ""}</li>`).join("")}</ol>
-<p class="moc-src">${esc(`Prototype · ${rec.labels.network} · test money · financier simulated · amounts scaled down ${rec.labels.face_value_scaled_by}× for testnet · ${dayOf(rec.date)}`)} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></section>`;
+<ol class="moc-flow">${nodes.map((n) => `<li class="${n.href || n.key === "invoice" ? "on" : "off"}"><b>${esc(n.label)}</b><span>${esc(n.note)}</span>${n.href && n.hash ? `<a class="pf" href="${esc(n.href)}" target="_blank" rel="noopener" aria-label="${esc(`${n.label}: transaction ${n.hash} on Alta's explorer`)}">${esc(shortHash(n.hash))} ↗</a>` : ""}</li>`).join("")}</ol>
+<p class="moc-src">${esc(`Prototype · ${rec.labels.network.replace(/^Metal\b/, "Alta")} · test money · financier simulated · amounts scaled down ${rec.labels.face_value_scaled_by}× for testnet · ${dayOf(rec.date)}`)} · <a class="pf" href="${esc(`${REPO_BLOB}${file.replace(/\.json$/, ".md")}`)}" target="_blank" rel="noopener">run record ↗</a></p></section>`;
 }
 
 function notYet(title: string, runbook: string): string {

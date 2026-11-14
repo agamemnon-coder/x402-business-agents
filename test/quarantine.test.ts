@@ -1,5 +1,5 @@
 // B1 in Purser: the sweep wallet accepts *USDZ only from Northwind's business account. A payment from anyone else is
-// held by Metal's ReceivePolicy in quarantine; Purser records it, never bridges it, and the CFO decides with Face ID:
+// held by Alta's ReceivePolicy in quarantine; Purser records it, never bridges it, and the CFO decides with Face ID:
 // return it to the sender, or accept it.
 import { describe, expect, it } from "vitest";
 import { openDb, type DB } from "../src/db/open.js";
@@ -69,7 +69,7 @@ describe("a payment from an unknown sender", () => {
     ]);
   });
 
-  it("is not claimed again once it is no longer open at Metal", async () => {
+  it("is not claimed again once it is no longer open at Alta", async () => {
     const { db, rp } = world();
     await setupReceivePolicy(db, rp, KEY, now);
     rp.receive(X, W, 2n * UNIT);
@@ -93,8 +93,8 @@ describe("held payments on the dashboard and the phone", () => {
     const s = buildSnapshot(db, now);
     expect(s.treasury.metal.quarantine).toEqual([{ receipt_id: expect.stringMatching(/^0x/), from: X, amount: "0.02", reason: "sender not on the allowlist", status: "OPEN", tx: expect.stringMatching(/^0x/) }]);
     const texts = s.feed.map((f) => f.text);
-    expect(texts).toContain(`Metal held 0.02 test USD sent to the sweep wallet by an unknown sender ${X.slice(0, 6)}…${X.slice(-4)} (sender not on the allowlist); it waits for you`);
-    expect(texts).toContain("The sweep wallet now accepts test USD only from the business account; anything else is held by Metal in quarantine");
+    expect(texts).toContain(`Alta held 0.02 test USD sent to the sweep wallet by an unknown sender ${X.slice(0, 6)}…${X.slice(-4)} (sender not on the allowlist); it waits for you`);
+    expect(texts).toContain("The sweep wallet now accepts test USD only from the business account; anything else is held by Alta in quarantine");
     const terms = (id: string) => (db.prepare("SELECT terms_json FROM proposals WHERE proposal_id = ?").get(id) as { terms_json: string }).terms_json;
     expect(summarize("quarantine_release", terms("P-0001"))).toBe(`Return 0.02 test USD held in quarantine to its sender ${X}`);
     expect(describeTerms(JSON.parse(terms("P-0002")), {})).toMatchObject({ approvable: true, title: "Accept a held payment", big: "0.02", unit: "test USD" });

@@ -8,7 +8,7 @@
 // 2. Live runs: /runs' own count (src/redesign/runs.ts isLive: no rehearsal, control test or partial run).
 // 3. Airwallex sandbox API calls: the sum of the call logs the run records keep (an endpoint's count, a log's total, a
 //    purchase's own count); a record without a call log adds nothing, so this is a floor.
-// 4. Metal testnet transactions: distinct transaction hashes linked to Metal's testnet explorer from the run records and
+// 4. Alta testnet transactions: distinct transaction hashes linked to Alta's testnet explorer from the run records and
 //    run logs (docs/runs, docs/demo).
 // 5. Claude calls on record: distinct Anthropic request ids (req_011…) in the run and eval records under docs/.
 // 6. Refusals on record: audit rows of a refusal, a decline, a rejection or a fraud stop in the run records, each row
@@ -111,9 +111,9 @@ export const testsTitle = (t: TestSummary): string =>
 export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   const out: ScaleStat[] = [];
   if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
-  if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Metal's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
+  if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Alta's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
   if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: "Airwallex sandbox API calls logged", title: `Airwallex sandbox API calls in the call logs of ${f.airwallexCalls.records} run records; runs without a call log add none`, icon: "landmark", href: "airwallex" });
-  if (f.metalTx) out.push({ n: f.metalTx, label: "Metal testnet transactions", title: "Distinct transactions linked to Metal's testnet explorer from the run records and run logs", icon: "link-2", href: "metal" });
+  if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
   if (f.claudeCalls) out.push({ n: f.claudeCalls, label: "Claude calls with request ids", title: "Distinct Anthropic request ids in the run and eval records", icon: "bot", href: "claude" });
   if (f.refusals) out.push({ n: f.refusals, label: "refusals on record", title: "Audit rows of a refusal, a decline, a rejection or a fraud stop in the run records: over a limit, at the rail, on chain", icon: "ban", href: "proof#stops", tone: "bad" });
   return out;

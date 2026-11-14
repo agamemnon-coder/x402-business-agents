@@ -1,5 +1,5 @@
 // Customer payments left "being settled" (review of dashboard-chain, 2 November): resolved by the reconciliation and
-// the runner from the ledger and Metal's facilitator, never left lowering the customer's figures for good.
+// the runner from the ledger and Alta's facilitator, never left lowering the customer's figures for good.
 import Database from "better-sqlite3";
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -74,7 +74,7 @@ describe("resolving payments left being settled", () => {
     expect(r.resolved.map((x) => x.outcome)).toEqual(["CHARGED"]);
     expect(status(db, 2)).toMatchObject({ status: "CHARGED", tx_hash: tx(2), sale_id: null });
     expect(status(db, 2).detail).toMatch(/charged, no delivery recorded; owed back unless a person finds it was delivered/);
-    // No sale is written: whether the stock check reached the customer is not known. The mandate counts it, as Metal does.
+    // No sale is written: whether the stock check reached the customer is not known. The mandate counts it, as Alta does.
     expect(db.prepare("SELECT COUNT(*) AS n FROM sales").get()).toEqual({ n: 1 });
     expect(mandateAvailability(db, "customer")).toMatchObject({ paidCents: 10, pendingCents: 0 });
     expect(mandatePayments(db, "customer").at(-1)).toMatchObject({ cents: 5, tx: tx(2), nonce: nonce(2), state: "paid" });

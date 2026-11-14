@@ -60,14 +60,14 @@ CREATE TABLE IF NOT EXISTS sales (
   requirements_json TEXT,
   status TEXT NOT NULL CHECK (status IN ('DELIVERED', 'ABORTED_NO_CHARGE', 'SETTLE_FAILED')),
   created_at TEXT NOT NULL,
-  -- How the buyer paid: 'exact' (a transfer per query under its mandate) or 'bajillion' (Metal clearing, a receipt).
+  -- How the buyer paid: 'exact' (a transfer per query under its mandate) or 'bajillion' (Alta clearing, a receipt).
   scheme TEXT NOT NULL DEFAULT 'exact',
   -- For clearing: the service's receipt as the facilitator returned it.
   clearing_json TEXT
 );
 
 -- A customer's mandate payment on its way (night batch, 2 November): written before the facilitator settles it on
--- chain, closed when the sale is recorded (DONE) or the settle fails (FAILED). Between Metal's block and the sale's
+-- chain, closed when the sale is recorded (DONE) or the settle fails (FAILED). Between Alta's block and the sale's
 -- row the chain already counts the payment; this row is what lets the dashboard show it as pending instead of a spend
 -- that differs from the chain without a reason. Keyed by payer and ERC-3009 nonce, as the settlement id ends.
 -- CHARGED: the reconciliation found it settled with no sale behind it (charged, no delivery recorded): it counts as
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS dispute_decisions (
   -- the CFO as one recorded proposal, never paid around the limits.
   handover_json TEXT NOT NULL DEFAULT '[]',
   handover_proposal TEXT,
-  -- Refunds held at Metal: how often each was looked at again ({"seq": n}); after HANDOVER_AFTER looks it is "sent,
+  -- Refunds held at Alta: how often each was looked at again ({"seq": n}); after HANDOVER_AFTER looks it is "sent,
   -- unconfirmed" (sent_json): never counted as refunded; /health and the reconciliation keep following it.
   held_json TEXT NOT NULL DEFAULT '{}',
   sent_json TEXT NOT NULL DEFAULT '[]',
@@ -435,7 +435,7 @@ CREATE TABLE IF NOT EXISTS card_transactions (
   recorded_at TEXT NOT NULL
 );
 
--- Money moved into or out of Metal clearing, and balances read from the clearing service (prepaid budget).
+-- Money moved into or out of Alta clearing, and balances read from the clearing service (prepaid budget).
 CREATE TABLE IF NOT EXISTS clearing_ops (
   id INTEGER PRIMARY KEY,
   party TEXT NOT NULL CHECK (party IN ('customer', 'seller')),
@@ -474,7 +474,7 @@ CREATE TABLE IF NOT EXISTS cosignatures (
 );
 
 -- Velocity limits (security item 2): each payment an agent makes, as counted against its limits per minute and hour.
--- Metal payments are counted before they are signed; card charges as Airwallex reports them (declines included).
+-- Alta payments are counted before they are signed; card charges as Airwallex reports them (declines included).
 CREATE TABLE IF NOT EXISTS velocity_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   agent TEXT NOT NULL,
@@ -482,7 +482,7 @@ CREATE TABLE IF NOT EXISTS velocity_events (
   cents INTEGER NOT NULL CHECK (cents >= 0),
   approved INTEGER NOT NULL CHECK (approved IN (0, 1)),
   at TEXT NOT NULL,
-  -- A Metal payment's own id (a sweep or refund retried under it is counted once); null for card charges.
+  -- A Alta payment's own id (a sweep or refund retried under it is counted once); null for card charges.
   payment_id TEXT UNIQUE
 );
 CREATE INDEX IF NOT EXISTS velocity_by_agent ON velocity_events (agent, at);
@@ -502,8 +502,8 @@ CREATE TABLE IF NOT EXISTS task_cards (
   created_at TEXT NOT NULL
 );
 
--- B1: payments to the sweep wallet from anyone but the business account, held by Metal's ReceivePolicy in quarantine.
--- Kept with Metal's evidence reference (chain id, transaction, log index) and the full receipt needed to release it.
+-- B1: payments to the sweep wallet from anyone but the business account, held by Alta's ReceivePolicy in quarantine.
+-- Kept with Alta's evidence reference (chain id, transaction, log index) and the full receipt needed to release it.
 CREATE TABLE IF NOT EXISTS quarantines (
   receipt_id TEXT PRIMARY KEY,
   chain_id INTEGER NOT NULL,
@@ -620,7 +620,7 @@ CREATE TABLE IF NOT EXISTS airwallex_events (
   received_at TEXT NOT NULL
 );
 
--- Metal finality certificates (src/metal/finality.ts): one per block, as Metal's RPC returned it, with Purser's check
+-- Alta finality certificates (src/metal/finality.ts): one per block, as Alta's RPC returned it, with Purser's check
 -- of it (header hash and number, signer bitmap, quorum of the pinned validator count). The BLS signature is not
 -- checked, so a certificate is what the RPC reported, not a proof. ok 0 means it failed a check: never evidence.
 CREATE TABLE IF NOT EXISTS finality_certificates (

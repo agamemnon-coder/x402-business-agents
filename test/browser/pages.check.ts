@@ -326,17 +326,17 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       }
     }
 
-    // The CFO's dashboard as it stood at the end of a recorded live run: labelled as such, with Metal as visible as
+    // The CFO's dashboard as it stood at the end of a recorded live run: labelled as such, with Alta as visible as
     // the cards, chain money in test USD (never "$" or "USDZ"), and bank transfers told apart from card payments.
     await page.goto(`${base}/?recorded`, { waitUntil: "load" });
     await page.waitForTimeout(1500);
     await look(page, `/?recorded ${tag}`, w);
     if (await page.locator("#cfo-expo").isVisible()) fail(`/?recorded ${tag}: the CFO's view's worst case shows on the recorded run too`);
     // Claude's costs are real US dollars (list prices); chain money must read "test USD" everywhere else.
-    // The money flow (D23, Max 1 Nov) shows on purpose that Metal payments are the *USDZ stablecoin on chain: there,
+    // The money flow (D23, Max 1 Nov) shows on purpose that Alta payments are the *USDZ stablecoin on chain: there,
     // and only there, "*USDZ" is the unit, always with its star and the word "stablecoin" beside it (checked below).
     const rec = await page.evaluate(() => { let all = document.body.innerText; for (const id of ["claude-panel", "mf"]) { const c = document.getElementById(id); if (c) all = all.replace(c.innerText, ""); } return all; });
-    // Every movement's caption, one by one: a Metal payment says "*USDZ stablecoin on chain" beside its *USDZ amount,
+    // Every movement's caption, one by one: a Alta payment says "*USDZ stablecoin on chain" beside its *USDZ amount,
     // USDZ never appears without its star, never "$", and a refusal names the rail that refused it and marks that rail.
     const mfDots = await page.locator("#mf .mf-dots i").count();
     if (!mfDots) fail(`/?recorded ${tag}: no money flow`);
@@ -348,7 +348,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (/\$\s?\d/.test(c)) fail(`${where} shows dollars`);
       if (/\*USDZ/.test(c.split("\n")[0] ?? "") && !/\*USDZ stablecoin on chain/.test(c)) fail(`${where}: a *USDZ amount without "stablecoin on chain"`);
       if (!/Proof: /.test(c)) fail(`${where} has no proof`);
-      const refused = /^Refused by (Metal|Airwallex|Purser)/m.exec(c);
+      const refused = /^Refused by (Alta|Airwallex|Purser)/m.exec(c);
       // The rail is marked when the money reaches it (about 1.2 s into the movement; at once without motion).
       if (refused && !(await page.locator(`#mf .mf-n[data-x="${refused[1]} ✕"]`).waitFor({ timeout: 3000 }).then(() => true, () => false))) fail(`${where}: the refusal does not mark ${refused[1]}`);
     }
@@ -433,16 +433,16 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     if (!/Replay of the main run, 3 Nov \d\d:\d\d–\d\d:\d\d UTC · test money · real Claude decisions/.test(au)) fail(`/?autonomy ${tag}: not labelled as the main run`);
     if ((await page.locator(".agentchat li").count()) < 5) fail(`/?autonomy ${tag}: no agents' chat`);
     if (!/The agents decide/.test(au)) fail(`/?autonomy ${tag}: no per-agent table`);
-    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Metal's 2 (not 3:
+    // The main run's figures as Home, Watch and Proof count them (final review, 4 Nov; Max, 5 Nov): Alta's 2 (not 3:
     // #24 once, and #37), the stops in one sentence, "16 stops" in the pill, all Claude calls said as such, #24 refused
-    // by Metal itself.
-    const STOPS = /16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Metal refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
-    for (const want of [/Metal's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Metal/, /PAID in the sandbox, where the settlement is simulated/]) {
+    // by Alta itself.
+    const STOPS = /16 stops, nothing paid over a limit: one buy rule Claude set stopped 12 overpriced checks, Alta refused 2 purchases, the CFO rejected 1 proposal, and 1 planted instruction changed nothing\./;
+    for (const want of [/Alta's mandate check\s+2\b/, new RegExp(`In this run: ${STOPS.source}`), /Refused and blocked\s+16 stops/, /58 Claude calls in all, \$0\.38: the agents' own 50/, /let through on purpose, was refused by Alta/, /PAID in the sandbox, where the settlement is simulated/]) {
       if (!want.test(au)) fail(`/?autonomy ${tag}: missing ${want}`);
     }
     // The KPI's note (hidden on a phone, as every KPI note is) says the same sentence.
-    if (w >= 1000 && !new RegExp(`${STOPS.source} Metal's 2: [^.]*\\. The amount is what stayed out for good`).test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say the stops' sentence`);
-    for (const bad of [/all counted/, /stopped at a limit/i, /Metal's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/, /over its cap; the CFO rejected|\b1 \+ 1\b/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
+    if (w >= 1000 && !new RegExp(`${STOPS.source} Alta's 2: [^.]*\\. The amount is what stayed out for good`).test(au)) fail(`/?autonomy ${tag}: the KPI's note does not say the stops' sentence`);
+    for (const bad of [/all counted/, /stopped at a limit/i, /Alta's mandate check\s+3\b/, /refused before signing: mandate_cap_exceeded/, /A purchase from none/, /over its cap; the CFO rejected|\b1 \+ 1\b/]) if (bad.test(au)) fail(`/?autonomy ${tag}: still shows ${bad}`);
     if (!(await page.isVisible("#mf"))) fail(`/?autonomy ${tag}: no money flow`);
     // Somewhere in the run a movement was decided by an agent's own Claude call: its caption names the model.
     let named = false;
@@ -475,7 +475,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const hb = await page.locator("h1").first().boundingBox();
       if (!hb || hb.x < 15) fail(`/trace ${tag}: the heading sits outside the page's gutter (x = ${hb?.x})`);
       const t = await page.evaluate(() => document.body.innerText);
-      if (!/Pick any of the 88 payments \(86 on Metal \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
+      // 14 Nov: Alta's first mention on the page reads "Alta (formerly Metal)" (src/ui/formerly.ts).
+      if (!/Pick any of the 88 payments \(86 on Alta \(formerly Metal\) \+ 1 card charge \+ 1 SWIFT transfer\)\. Every step is shown; the audit rows themselves are summarised, not published\./.test(t)) fail(`/trace ${tag}: the header is not the computed one`);
       if (!/Derived from the main run's ledger \(3 Nov\), sanitized, generated \d{4}-\d\d-\d\d\. The main run's record is unchanged\./.test(t)) fail(`/trace ${tag}: no label`);
       const shown = async () => page.evaluate(() => Array.from(document.querySelectorAll(".pay")).filter((s) => (s as HTMLElement).offsetParent).map((s) => ({ id: s.id, steps: s.querySelectorAll("ol.steps > li").length })));
       const first = await shown();
@@ -577,17 +578,17 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // By keyboard: Tab reaches a filter, Enter applies it.
         await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
         let tabs = 0;
-        while (tabs++ < 60 && !(await page.evaluate(`!!document.activeElement && document.activeElement.matches('nav.flt a[href="#metal"]')`))) await page.keyboard.press("Tab");
-        if (tabs > 60) fail(`/runs ${tag}: the Metal filter is not reached by Tab`);
+        while (tabs++ < 60 && !(await page.evaluate(`!!document.activeElement && document.activeElement.matches('nav.flt a[href="#alta"]')`))) await page.keyboard.press("Tab");
+        if (tabs > 60) fail(`/runs ${tag}: the Alta filter is not reached by Tab`);
         else {
           await page.keyboard.press("Enter");
           await page.waitForTimeout(100);
           const seen = await rowsNow();
-          if (await page.evaluate(() => location.hash) !== "#metal" || seen.some((r) => r.shown !== r.cls.includes("f-metal"))) fail(`/runs ${tag}: Enter on the Metal filter does not filter`);
+          if (await page.evaluate(() => location.hash) !== "#alta" || seen.some((r) => r.shown !== r.cls.includes("f-alta"))) fail(`/runs ${tag}: Enter on the Alta filter does not filter`);
           // The next Tab goes on after the activated filter, not back to "All" (review 12 Nov, DC-6).
           await page.keyboard.press("Tab");
-          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#metal"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
-          if (!next.after) fail(`/runs ${tag}: after Enter on the Metal filter, Tab goes to "${next.what}", not on after it`);
+          const next = await page.evaluate(`(() => { const a = document.activeElement, m = document.querySelector('nav.flt a[href="#alta"]'); return { after: !!a && a !== m && !!(m.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING), what: a ? (a.getAttribute("href") || a.textContent || a.tagName).trim().slice(0, 30) : "nothing" }; })()`) as { after: boolean; what: string };
+          if (!next.after) fail(`/runs ${tag}: after Enter on the Alta filter, Tab goes to "${next.what}", not on after it`);
         }
         // The rehearsals open by their summary; a link to one of them opens the group with the run in view.
         await page.goto(`${base}/runs`, { waitUntil: "load" });
@@ -616,7 +617,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
           await p2.goto(`${base}/runs`, { waitUntil: "load" });
           await p2.click("#runs-all > summary");
           await p2.evaluate(`window.scrollTo(0, document.querySelector("nav.flt").getBoundingClientRect().top + scrollY - 90)`);
-          await p2.click('nav.flt a[href="#metal"]');
+          await p2.click('nav.flt a[href="#alta"]');
           await p2.waitForTimeout(150);
           const at2 = await p2.evaluate(`[document.querySelector("nav.flt").getBoundingClientRect().top, document.querySelector("header.top") ? document.querySelector("header.top").getBoundingClientRect().bottom : 0, innerHeight]`) as number[];
           if (at2[0]! < at2[1]! || at2[0]! > at2[2]! / 3) fail(`/runs ${tag}, JavaScript off: a filter tap puts the filter row at ${Math.round(at2[0]!)} px (the header ends at ${Math.round(at2[1]!)} px), not in view near where it was`);
@@ -721,7 +722,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // /claude: 225 since the merge of 12 Nov, the budget of test/site-v4.test.ts, for the hostile-model eval's line beside
       // the measured block; 240 with the measured block's line on the zero-trust report (the budget of test/site-v4.test.ts).
       // /visa + ICC_RUN_EXTRA_WORDS only while an ICC run record exists (12 Nov), as in test/site-v4.test.ts.
-      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 1080 /* +30, jury round 3, 14 Nov: the production sentence and "None in this run."; +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 495 : 445) /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 320 /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
+      const budget = path === "/airwallex" ? 480 /* +41, jury check 12 Nov: three tiles behind flags; +65, 13 Nov: the path, the charts and the meters (test/site-v4.test.ts) */ : path === "/visa" ? 1080 /* +30, jury round 3, 14 Nov: the production sentence and "None in this run."; +340, Visa judge 14 Nov: the story a to e, TAP shown openly (test/site-v4.test.ts) */ + (iccRecordIn() ? ICC_RUN_EXTRA_WORDS : 0) : path === "/metal" ? (tokenizeRun() ? 500 : 450) /* +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +15, the final review 13 Nov: the separate Face ID on chain run said as it was, the recorded snapshot labelled; +95 (owner's redesign, 13 Nov: one picture of a paid and a refused payment, three charts with their direct labels, four mandate cards and the replace in three steps; the table of the four mandates moved into a fold); +50 and +5, 12 Nov wire-in and jury check (test/site-v4.test.ts) */ : path === "/claude" ? 325 /* +5, 14 Nov: "Alta (formerly Metal)" (test/site-v4.test.ts) */ /* +40, jury review 13 Nov: the eval names and days, the line on how the counts relate (test/site-v4.test.ts); 280: +20, final jury 13 Nov: on phones the split is plain figures (the 106 total, three bars), as in test/site-v4.test.ts; was 260: */ /* +10, judge panel 13 Nov: the tiles say what each count is (test/site-v4.test.ts); +10, 13 Nov: the Haiku-as-Support tile says why it matters (test/site-v4.test.ts) */ : 150;
       if (words > budget + 26) fail(`${path} ${tag}: ${words} words on screen (header and footer included), budget ${budget} plus the frame`);
       // Each page is labelled with the run it shows: the main run; /visa with the Airi run's own label (the main run's
       // label is inside its closed TAP fold, with the main run's TAP-signed buy).
@@ -814,9 +815,9 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
             if (tl.keys.includes("Built, not yet switched on") !== tl.rings > 0) fail(`/airwallex ${tag}: the legend shows a mark no dot uses, or misses one (${JSON.stringify(tl.keys)}, ${tl.rings} ring(s))`);
           }
         }
-        // The first screen is about Airwallex's products: no Metal earnings and no simulated deposit before any scroll.
+        // The first screen is about Airwallex's products: no Alta earnings and no simulated deposit before any scroll.
         const first = await firstScreen(page);
-        if (/Metal earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Metal earnings or the simulated deposit, or no product tile`);
+        if (/Alta earnings|0\.69/.test(first) || !/Issuing/.test(first)) fail(`/airwallex ${tag}: the first screen shows Alta earnings or the simulated deposit, or no product tile`);
         // Transfer approvals: three states in a row, the third as the record has it today.
         const states = (await page.evaluate(`[...document.querySelectorAll("#p-approvals ol.aws li")].map((l) => l.textContent.trim())`)) as string[];
         if (states.length !== 3 || !/^Signed in Purser( \(test passkey\))?$/.test(states[0] ?? "") || !/ at Airwallex$|^Held by Airwallex/.test(states[1] ?? "") || !/^Now: [A-Z_]+/.test(states[2] ?? "")) fail(`/airwallex ${tag}: transfer approvals does not show its three states (${JSON.stringify(states)})`);
@@ -887,7 +888,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       const body = await page.locator("main").innerText();
       const words = body.split(/\s+/).filter((x) => /[\p{L}\p{N}]/u.test(x)).length;
       // The budgets of test/site-v4.test.ts, counted here as the browser shows the page's body (folds closed).
-      const budget = 585; // /security 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
+      const budget = 590; // /security 590 since 14 Nov: +5 for "Alta (formerly Metal)" at the first mention (587 as built); 585 since the merge of the final jury (13 Nov): main's 555 plus 30: the line under the heading names the three attack tests; 555 since 13 Nov evening: the optional second key's card (Max: MFA as an option); 530 since 13 Nov (the owner): the layers diagram and two charts, every figure a word; 265 since 12 Nov: nine controls (the owner), then the eval and zero-trust links; 280, jury check 12 Nov: two links (test/site-v4.test.ts)
       if (words > budget) fail(`${path} ${tag}: ${words} words in sight in the page's body, budget ${budget}`);
       const here = await page.evaluate(`(() => { const d = document.querySelector('nav[aria-label="Main"] > details.pmore'); const a = d && d.querySelector('.pmenu a[aria-current="page"]'); return { more: !!(d && d.querySelector(":scope > summary.on")), link: a ? a.getAttribute("href") : null, tabs: document.querySelectorAll('nav[aria-label="Main"] > a.on').length }; })()`) as { more: boolean; link: string | null; tabs: number };
       if (!here.more || here.link !== path.slice(1) || here.tabs) fail(`${path} ${tag}: "More" and the page's own link are not marked as where the reader is (${JSON.stringify(here)})`);
@@ -1035,7 +1036,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       if (words > 495 + 26) fail(`/metal with an invoice-token record ${tag}: ${words} words on screen, budget 495 plus the frame`);
       const block = page.locator("#invoice-token");
       const sight = await block.innerText().catch(() => "");
-      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Metal testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
+      if (!/^Invoice token \(prototype\)\s+\d{1,2} \w+, a separate Alta testnet run\. An invoice approved with a labelled test passkey(?: on \d{1,2} \w+)? became a token\. A simulated financier bought it for 2\.35 test USD; the debtor paid its holder 2\.40\. Amounts are scaled down 100× for testnet\.\s+Chain record verified\s+7 transactions$/.test(sight.trim())) fail(`/metal with an invoice-token record ${tag}: the block is not the title, one sentence, the badge and a closed fold (${JSON.stringify(sight)})`);
       if ((await page.locator("#invoice-token").count()) !== 1 || !(await page.evaluate(() => { const f = document.querySelector(".folds.card"), b = document.querySelector("#invoice-token"), a = document.querySelector("a.open"); return !!f && !!b && !!a && !!(f.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING); }))) fail(`/metal with an invoice-token record ${tag}: the block is not between the main run's proof and the link to all the proof`);
       await page.screenshot({ path: join(shots, `metal-token-${tag}.png`), fullPage: true });
       // The page's folds only: "More" in the menu is a <details> too (12 Nov) and stays closed, as a reader leaves it.

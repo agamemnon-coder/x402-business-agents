@@ -1,4 +1,4 @@
-// Contract tests for Metal's x402 facilitator as Purser meets it: every refusal reason Metal documents, classified the
+// Contract tests for Alta's x402 facilitator as Purser meets it: every refusal reason Alta documents, classified the
 // way the facilitator means it (refused: nothing moved, safe to try again; in doubt: maybe moved, looked up by its
 // nonce, never paid a second way), plus the facilitator's own errors (/supported, /settlements, 429, clearing pauses).
 // Offline: the seller is a stubbed fetch and the mandate scheme a fake signer, as in test/metal-pay.test.ts.
@@ -84,7 +84,7 @@ const MAY_HAVE_MOVED = [
   "invalid_clearing_payment", "payment_already_used", // clearing receipts: never a second payment
 ];
 
-describe("contract: Metal facilitator refusal reasons [FAC]", () => {
+describe("contract: Alta facilitator refusal reasons [FAC]", () => {
   for (const reason of NOTHING_MOVED) {
     it(`${reason}: refused, nothing moved, paid once at most`, async () => {
       const paid = settleFails(reason);
@@ -105,7 +105,7 @@ describe("contract: Metal facilitator refusal reasons [FAC]", () => {
 describe("contract: mandate refusals (mandate_*) [FAC, PAY, RUN-S1]", () => {
   const reasons = Object.values(REFUSALS).map((r) => r.reason);
 
-  it("Metal 0.3.4 names these eleven reasons", () => {
+  it("Alta 0.3.4 names these eleven reasons", () => {
     expect(reasons.sort()).toEqual([
       "mandate_bad_signature", "mandate_budget_spent", "mandate_cap_exceeded", "mandate_expired", "mandate_nonce_used", "mandate_not_bound",
       "mandate_occurrences_used", "mandate_outside_recurrence", "mandate_outside_window", "mandate_payee_not_listed", "mandate_revoked",

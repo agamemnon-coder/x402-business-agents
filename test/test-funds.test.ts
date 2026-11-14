@@ -1,4 +1,4 @@
-// Max, 1 November: test money is scarce (the Metal testnet faucet has a daily limit), so finished dry runs' spare test
+// Max, 1 November: test money is scarce (the Alta testnet faucet has a daily limit), so finished dry runs' spare test
 // money may fill new test worlds. Only from finished dry-N worlds, never from the reserve world or Thursday's, never
 // from the world being filled; each transfer logged with its tx; keys stay where they are; old ledgers untouched.
 import { describe, expect, it } from "vitest";

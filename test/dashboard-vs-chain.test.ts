@@ -1,4 +1,4 @@
-// Metal QA (1 November), exact since the night batch (2 November): the dashboard's mandate numbers, read against the
+// Alta QA (1 November), exact since the night batch (2 November): the dashboard's mandate numbers, read against the
 // chain. The comparison itself, without a chain; and the reading, with a chain that answers while the ledger moves.
 import { describe, expect, it } from "vitest";
 import { audit } from "../src/audit/log.js";
@@ -14,7 +14,7 @@ const tx = (n: number) => `0x${n.toString(16).padStart(64, "0")}`;
 const nonce = (n: number) => `0x${(n + 0xa000).toString(16).padStart(64, "0")}`;
 
 describe("the dashboard against the chain (running spend only, when the payments cannot be listed)", () => {
-  it("agrees when cap, budget and spend match what Metal has", () => {
+  it("agrees when cap, budget and spend match what Alta has", () => {
     expect(compareMandate(shown, chain).differences).toEqual([]);
   });
 
@@ -145,7 +145,7 @@ describe("the dashboard against the chain, payment by payment", () => {
 });
 
 describe("after a pause and a resume", () => {
-  it("the dashboard counts the resumed credential and compares its budget with what was left, as Metal bound it", () => {
+  it("the dashboard counts the resumed credential and compares its budget with what was left, as Alta bound it", () => {
     const db = openDb(":memory:");
     audit(db, "owner-signer", "mandate.bound", "support", { cap: "0.10", budget: "4.00", payee: "0x00000000000000000000000000000000000000c1" });
     audit(db, "owner-signer", "mandate.resumed", "support", { agent: "support", proposal_id: "P-0009", tx: tx(9), credential_hash: tx(10), spent_before: "0.30", budget: "3.70" });

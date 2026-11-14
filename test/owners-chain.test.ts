@@ -1,4 +1,4 @@
-// Metal testnet behind the owners call budget. Breaks if any request (a read, a send, a receipt poll, viem's or
+// Alta testnet behind the owners call budget. Breaks if any request (a read, a send, a receipt poll, viem's or
 // metal-ts's own) reaches the node without being in the log first; if the request over the budget is sent; if signing
 // makes a request; if a revert is reported as "unknown reason"; or if a refusal by the node is confused with a request
 // that got lost. The node is the in-process stand-in (test/support/fakeMetal.ts); no network.
@@ -83,7 +83,7 @@ describe("a transaction is signed here, with no request", () => {
     expect(logged()).toEqual([]);
   });
 
-  it("a *USDZ transfer (Metal's own transaction type, gas in *USDZ): the same, and it lands as a transfer", async () => {
+  it("a *USDZ transfer (Alta's own transaction type, gas in *USDZ): the same, and it lands as a transfer", async () => {
     const chain = world();
     node.balances.set(sponsor.address.toLowerCase(), centsToBaseUnits(500));
     const a = await chain.signTransfer(sponsor, ACCOUNT, centsToBaseUnits(60), { nonce: 0 });

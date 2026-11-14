@@ -1,5 +1,5 @@
 // The three locks on /try/sign (Max, 6 Nov): a payment can be stopped by Purser's policy (rules in code, before anything
-// is signed), by Airwallex's card limit, or by Metal's mandate on chain. The visitor's blocked payment is a simulation
+// is signed), by Airwallex's card limit, or by Alta's mandate on chain. The visitor's blocked payment is a simulation
 // in their test world; each lock links to a real example, taken here from the records, never typed in:
 //   Purser's policy  the main run (docs/demo/main-run.json): the floors that held at P-0005 (Max, 6 Nov). Purser's
 //                    invoice plan (code, the plan_invoice row) found EUR needed and EUR free, and the FX converted
@@ -7,8 +7,8 @@
 //                    it stayed above the USD floor (the treasury snapshot after P-0005 ran);
 //   Airwallex        the separate TAP run of 2 November (docs/runs/visa-tap-live-*.json): the card payment Airwallex's
 //                    sandbox declined over the card's limit (LIMIT_EXCEEDED);
-//   Metal            the main run: the purchase let through to Metal on purpose, refused on chain over the mandate's
-//                    cap (its transaction, on Metal's testnet explorer).
+//   Alta            the main run: the purchase let through to Alta on purpose, refused on chain over the mandate's
+//                    cap (its transaction, on Alta's testnet explorer).
 // And the approval sheet's model: the CFO's own approval in the main run (P-0005, the licence invoice), named under the
 // visitor's sheet. test/try-examples.test.ts checks each against its record.
 
@@ -19,7 +19,7 @@ import { letThroughOf, loadRecord, runName, tapRun, type RunRecord } from "../re
 export type LockId = "purser" | "airwallex" | "metal";
 export interface Lock {
   id: LockId;
-  /** "Purser's policy", "Airwallex's card limit", "Metal's mandate". */
+  /** "Purser's policy", "Airwallex's card limit", "Alta's mandate". */
   name: string;
   /** What the lock is, in one line. */
   what: string;
@@ -81,8 +81,8 @@ export function tryLocks(r: RunRecord = loadRecord().record): Lock[] {
   const tap = need(tapRun(), "TAP run (docs/runs/visa-tap-live-*.json)");
   const decline = need(tap.steps.find((s) => !s.approved && s.reason === "LIMIT_EXCEEDED"), "LIMIT_EXCEEDED decline in the TAP run");
 
-  // Metal's mandate: the purchase let through on purpose, refused on chain.
-  const lt = need(letThroughOf(r), "purchase let through to Metal");
+  // Alta's mandate: the purchase let through on purpose, refused on chain.
+  const lt = need(letThroughOf(r), "purchase let through to Alta");
   const tx = need(lt.tx, "on-chain refusal's transaction");
   if (!/^0x[0-9a-f]{64}$/.test(tx)) throw new Error(`/try/sign's locks: not a transaction hash: ${tx}`);
 
@@ -100,10 +100,10 @@ export function tryLocks(r: RunRecord = loadRecord().record): Lock[] {
       href: `${REPO_URL}/blob/main/${tap.file}`, link: "Open the run's record",
     },
     {
-      id: "metal", name: "Metal's mandate", what: "Each agent's limit is a mandate on chain; over its cap, Metal refuses the payment itself.",
+      id: "metal", name: "Alta's mandate", what: "Each agent's limit is a mandate on chain; over its cap, Alta refuses the payment itself.",
       run: `${run}, ${dayMonth(lt.at)}`,
-      example: `${lt.amount} test USD over the mandate's ${lt.cap} cap, let through on purpose: Metal refused it on chain; nothing moved (tx ${tx.slice(0, 10)}…${tx.slice(-4)}).`,
-      href: `${EXPLORER_TX}${tx}`, link: "Open the transaction on Metal's explorer",
+      example: `${lt.amount} test USD over the mandate's ${lt.cap} cap, let through on purpose: Alta refused it on chain; nothing moved (tx ${tx.slice(0, 10)}…${tx.slice(-4)}).`,
+      href: `${EXPLORER_TX}${tx}`, link: "Open the transaction on Alta's explorer",
     },
   ];
 }

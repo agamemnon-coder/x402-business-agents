@@ -35,7 +35,7 @@ describe("the agents in the CFO's feed", () => {
     const tools = feed.filter((f) => f.event === "agent.tool");
     expect(tools.map((t) => t.text)).toEqual([
       "Code refused the Support agent's refund: no evidence of wrong data",
-      "Metal refused the Sourcing agent's purchase against its on-chain mandate",
+      "Alta refused the Sourcing agent's purchase against its on-chain mandate",
     ]);
     expect(tools.every((t) => t.tone === "refusal")).toBe(true);
   });

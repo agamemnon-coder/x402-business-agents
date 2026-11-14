@@ -28,14 +28,14 @@ describe("Face ID signs on chain", () => {
   it("labels the stand-in, the network and the money next to it", () => {
     const t = text(html);
     expect(t).toContain(FACEID_TITLE);
-    expect(t).toMatch(/Metal testnet · test money · second signer: labelled virtual test passkey · CFO's device as stated by the owner/);
+    expect(t).toMatch(/Alta testnet · test money · second signer: labelled virtual test passkey · CFO's device as stated by the owner/);
   });
 
-  it("links only Metal's explorer and the run record", () => {
+  it("links only Alta's explorer and the run record", () => {
     for (const h of hrefs(html)) expect(h).toMatch(/^(https:\/\/testnet\.metalntwx\.com\/tx\/0x[0-9a-f]{64}|https:\/\/github\.com\/agamemnon-coder\/x402-business-agents\/blob\/main\/docs\/runs\/2026-11-12-faceid-onchain\.md)$/);
   });
 
-  it("drops a step whose link is not Metal's explorer for exactly its hash", () => {
+  it("drops a step whose link is not Alta's explorer for exactly its hash", () => {
     const odd: OwnersRecord = { ...owners, steps: owners.steps.map((s) => s.kind === "refusal" ? { ...s, explorer: `https://evil.test/tx/${s.tx}` } : s) };
     expect(ownersSteps(odd).map((s) => s.key)).not.toContain("refused");
   });
@@ -63,7 +63,7 @@ describe("Invoice → token → pre-financing → settlement", () => {
   });
 
   it("labels prototype, testnet, test money, simulated financier and the scaling", () => {
-    expect(text(html)).toMatch(new RegExp(`Prototype · Metal testnet · test money · financier simulated · amounts scaled down ${token.labels.face_value_scaled_by}× for testnet`));
+    expect(text(html)).toMatch(new RegExp(`Prototype · Alta testnet · test money · financier simulated · amounts scaled down ${token.labels.face_value_scaled_by}× for testnet`));
     expect(text(html)).toContain("approved with a labelled test passkey");
   });
 

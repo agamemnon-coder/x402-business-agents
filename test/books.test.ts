@@ -76,7 +76,7 @@ describe("the Books screen", () => {
 
 describe("opening balances (the money there before the run)", () => {
   // Seen 31 Oct: without them the bank accounts went below zero and revenue showed as -2.70 on the Books tab.
-  it("books the owner's funding of the Metal account and Airwallex's first known balances, so no bank account goes below zero", async () => {
+  it("books the owner's funding of the Alta account and Airwallex's first known balances, so no bank account goes below zero", async () => {
     const w = await redTeamWorld();
     const t0 = w.now();
     audit(w.db, "owner-signer", "business.funded", "0xb1", { amount: "20.00", tx: "0xfund" }, t0);

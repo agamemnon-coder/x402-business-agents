@@ -72,7 +72,9 @@ describe("the final review (13 Nov)", () => {
       expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
       expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
     }
-    expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set(shots)].sort());
+    // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
+    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg"];
+    expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set([...shots, ...handMade])].sort());
     // T:0: the run record's own figures.
     expect(read("docs/runs/2026-11-10-t0-journal-sandbox.md")).toContain("95 journal entries posted to T:0's shared sandbox entity");
     expect(readme).toContain("95 journal entries, debits equal to credits, matched line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md))");

@@ -1,4 +1,4 @@
-// npm run owners, the command itself. Every owners command calls Metal testnet, so every one refuses to run without the
+// npm run owners, the command itself. Every owners command calls Alta testnet, so every one refuses to run without the
 // owner's go, a call budget and a call log, before it opens a ledger or makes a call. Breaks if any command (the new
 // ones too) starts without them. Runs the real command in a child process; nothing is called (the suite has no network).
 import { execFile } from "node:child_process";

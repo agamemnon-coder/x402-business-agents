@@ -297,7 +297,7 @@ describe("\"may pay alone up to\": raised and signed, a payment within it runs w
     expect(PAID_ALONE).toBe("paid alone under your new policy");
     expect(t2.status).toBe("executed");
     expect(t2.execution).toMatchObject({ alone: true, label: PAID_ALONE, amount: "1850.00", balance_after: "25020.00", usd_after: "7017.18", terms_sha256: v.b.terms_sha256, policy_change_sha256: sha(first.out.canonical!), policy_version: "2" });
-    expect(t2.execution!.by).toMatch(/^stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Metal call$/);
+    expect(t2.execution!.by).toMatch(/^stand-in executor: recorded in this test world only; nothing paid or converted at Airwallex, no Alta call$/);
     expect(t2.execution!.terms_sha256).toBe(sha(v.b.canonical));
     expect(s.out.world.balance).toBe("25020.00");
     expect((s.out.locks.treasury as { purser: { payments: { proposal_id: string; check: string; alone?: boolean }[] } }).purser.payments.find((p) => p.proposal_id === "T-0002")).toMatchObject({ check: "executed", alone: true });

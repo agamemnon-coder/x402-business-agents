@@ -21,7 +21,7 @@ describe("the README's charts", () => {
     expect(m.total).toMatchObject({ decisions: 24, byClaude: 24 });
     expect(m.refusals.reduce((n, r) => n + r.value, 0)).toBe(16);
     const rails = runsPerRail(readFileSync(join(ROOT, "docs/runs/README.md"), "utf8"));
-    expect(rails.map((r) => r.label)).toEqual(expect.arrayContaining(["Airwallex sandbox", "Metal testnet"]));
+    expect(rails.map((r) => r.label)).toEqual(expect.arrayContaining(["Airwallex sandbox", "Alta testnet"]));
     expect(rails.every((r) => r.value > 0)).toBe(true);
   });
 
@@ -36,7 +36,7 @@ describe("the README's charts", () => {
 describe("the changelog", () => {
   const log = [
     "2026-11-13\tMerge pull request #234 from agamemnon-coder/fix-c43-1113\tHand-in film: claim C43 follows the new /books page",
-    "2026-11-12\tMerge pull request #158 from agamemnon-coder/tokenize-run-1112\tRun record: invoice token on Metal testnet, live (12 Nov)",
+    "2026-11-12\tMerge pull request #158 from agamemnon-coder/tokenize-run-1112\tRun record: invoice token on Alta testnet, live (12 Nov)",
     "2026-11-09\tMerge pull request #113 from agamemnon-coder/platform: Purser platform into main\tPayables, bookkeeping core",
     "2026-11-09\tnot a merge line",
   ].join("\n");
@@ -89,8 +89,8 @@ describe("the README's diagrams and media", () => {
     expect(docs).toHaveLength(5);
     expect(blocks(readme)).toEqual([docs[0], docs[2], docs[4]]);
     expect(readme).toContain("(docs/diagrams.md)"); // who holds which limit: in docs/diagrams.md, linked from Links (13 Nov)
-    // The mandate on Metal is linked from the Metal Award section since the award sections came in (13 Nov).
-    expect(readme).toContain("(docs/diagrams.md#3-the-mandate-on-metal-bound-refused-raised-revoked)");
+    // The mandate on Alta is linked from the Metal Award section since the award sections came in (13 Nov).
+    expect(readme).toContain("(docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)");
   });
 
   it("opens See it with the hands-on demo's GIF and the caption media.json gives it, the test passkey said", () => {

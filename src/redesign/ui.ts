@@ -3,6 +3,7 @@
 // <script> per page, so the pages keep the dashboard's hash-based CSP. Icons are Lucide (src/ui/icons.ts) plus a few
 // drawn here in the same style.
 
+import { formerlyMetal } from "../ui/formerly.js";
 import { MOTION_CSS, SITE_MOTION_CSS } from "../ui/motion.js";
 import { ICONS, type Icon } from "../ui/icons.js";
 import { NORTHWIND_LINE, SECOND_APPROVER, WORLD_SETUP } from "../config/brand.js";
@@ -274,7 +275,7 @@ export function header(current: PageKey | null, links?: HeaderLinks): string {
 /** What is real in the main run, the run the public pages play: test money, sandbox, what is simulated, the world set-up, the second approver. */
 export const MAIN_RUN_REAL = [
   `Northwind Outdoor is ${NORTHWIND_LINE}: the example company.`,
-  "Real Claude decisions, real Metal testnet and Airwallex sandbox calls. Test money only.",
+  "Real Claude decisions, real Alta testnet and Airwallex sandbox calls. Test money only.",
   // The full list behind Home's one caveat line (jury review, 6 Nov, #7: CAVEAT_LINE).
   "Simulated: the customer and its agent, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver.",
   WORLD_SETUP,
@@ -282,7 +283,7 @@ export const MAIN_RUN_REAL = [
 ];
 /**
  * "What's real?", opened from the footer: the main run's lines on the pages that play it, or a page's own (final review,
- * 4 Nov: /try/sign, which calls no Airwallex, Metal or Claude, carried the main run's), then the page's source. After it,
+ * 4 Nov: /try/sign, which calls no Airwallex, Alta or Claude, carried the main run's), then the page's source. After it,
  * the product pages under "More" (pricing, security, docs, status; src/ui/more.ts), then a page's own extra links.
  */
 /**
@@ -309,7 +310,7 @@ export function stageHtml(agents: { id: string; short: string; family: string }[
 <div class="st-agents">${agents.map((a) => `<div class="ag" data-agent="${esc(a.id)}">${avatarHtml(a.id)}<span class="nm">${esc(a.short)}</span><span class="model">${esc(a.family)}</span></div>`).join("")}</div>
 <div class="st-bubble idle noone" aria-live="polite"><div class="who"></div><p class="say">The agents wait for the world to change.</p></div>
 <div class="st-rails">
-  <div class="lane metal"><div class="ln">Metal <small>stablecoin per query · x402</small><span class="verdict"></span></div><div class="track"><i class="wall"></i></div></div>
+  <div class="lane metal"><div class="ln">Alta <small>stablecoin per query · x402</small><span class="verdict"></span></div><div class="track"><i class="wall"></i></div></div>
   <div class="lane awx"><div class="ln">Airwallex <small>card · FX · SWIFT</small><span class="verdict"></span></div><div class="track"><i class="wall"></i></div></div>
 </div>
 <div class="st-phone" role="img" aria-label="The CFO's phone">${icon("scan-face", 30).replace('class="i"', 'class="i fid"')}<b>CFO</b><small>Face ID</small><span class="sig"></span><span class="who2"></span></div>
@@ -351,7 +352,7 @@ function Stage(root, run) {
     var r = ev.refused;
     if (!r) return ev.dir === "in" ? "received" : /refund/i.test(ev.what) ? "refunded" : "paid";
     if (r.by === "recorded") return "refused before signing, and recorded on chain";
-    if (r.by === "metal") return "refused by Metal: " + r.reason;
+    if (r.by === "metal") return "refused by Alta: " + r.reason;
     if (r.by === "airwallex-sandbox") return (ev.earlier ? "earlier attempt, nothing paid: " : "not paid: ") + "Airwallex's sandbox could not price the fee (not a limit)";
     if (r.by === "airwallex") return "declined by Airwallex: " + r.reason;
     return "refused before signing";
@@ -360,7 +361,7 @@ function Stage(root, run) {
     var r = ev.refused;
     if (!r) return "✓ " + result(ev);
     if (r.by === "recorded") return "✕ Refused · recorded on chain" + (ev.proof && ev.proof.href ? " ↗" : "");
-    if (r.by === "metal") return "✕ Refused by Metal" + (ev.proof && ev.proof.href ? " · on chain ↗" : "");
+    if (r.by === "metal") return "✕ Refused by Alta" + (ev.proof && ev.proof.href ? " · on chain ↗" : "");
     if (r.by === "airwallex-sandbox") return ev.earlier ? "✕ Earlier attempt · nothing paid" : "✕ Not paid · fee not priced";
     if (r.by === "airwallex") return "✕ Declined by Airwallex";
     return "✕ Refused before signing";
@@ -368,7 +369,7 @@ function Stage(root, run) {
   function tooltip(ev) {
     var r = ev.refused;
     if (!r) return ev.proof && ev.proof.label || "";
-    return (r.by === "recorded" ? "Purser refused it before signing; Metal recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
+    return (r.by === "recorded" ? "Purser refused it before signing; Alta recorded the same refusal on chain" : r.reason) + (r.code ? " (" + r.code + ")" : "");
   }
   function speak(ev, sentences, instant) {
     focus(ev.agent);
@@ -452,12 +453,12 @@ function Stage(root, run) {
     if (ev.k === "shield") { setWorld(ev.text, true); caption("Blocked", ev.text, null); return 2400; }
     if (ev.k === "say" || ev.k === "msg") { speak(ev, sentences, instant); return Math.min(6500, 2600 + first(ev.text, sentences).length * 22); }
     if (ev.k === "money") {
-      var rail = (ev.rail === "metal" ? "Metal · " + ev.via : "Airwallex · " + ev.via) + (ev.run ? " · " + ev.run : "");
+      var rail = (ev.rail === "metal" ? "Alta · " + ev.via : "Airwallex · " + ev.via) + (ev.run ? " · " + ev.run : "");
       caption(rail, (amount(ev) ? amount(ev) + " · " : "") + ev.what + ": " + result(ev).replace(/[.]$/, "") + ".", ev.agent);
       move(ev, instant); return ev.refused ? 3200 : 2200;
     }
     if (ev.k === "mandate") {
-      caption("Metal · new mandate", "Mandate replaced on chain: " + (names[ev.agent] ? names[ev.agent].short : ev.agent) + " agent, cap " + ev.cap + ", budget " + ev.budget + ".", ev.agent);
+      caption("Alta · new mandate", "Mandate replaced on chain: " + (names[ev.agent] ? names[ev.agent].short : ev.agent) + " agent, cap " + ev.cap + ", budget " + ev.budget + ".", ev.agent);
       move({ k: "mandate", rail: "metal", dir: "out", label: (names[ev.agent] ? names[ev.agent].short : ev.agent) + " cap " + ev.cap, refused: null, proof: ev.proof, what: "" }, instant);
       return 2400;
     }
@@ -519,7 +520,7 @@ export const pageTitle = (t: string) => (/^Purser\b/.test(t) ? t : `Purser · ${
 export function page(o: { title: string; description: string; /** The page's one canonical address (Home, served at / and /home). */ canonical?: string; tab: PageKey | null; css: string; body: string; data?: unknown; js?: string; stage?: boolean; source: string; real?: string[]; links?: [string, string][]; /** The partner pages' "Built on" strip (src/redesign/partners.ts builtOnHtml). */ builtOn?: string }): string {
   const script = o.js === undefined ? "" : `${o.data === undefined ? "" : `<script type="application/json" id="run-data">${JSON.stringify(o.data).replace(/</g, "\\u003c")}</script>\n`}<script>${o.stage === false ? "" : STAGE_JS}
 ${o.js}</script>`;
-  return `<!doctype html>
+  return formerlyMetal(`<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -540,5 +541,5 @@ ${o.body}
 ${footer(o.source, o.real, o.links, o.builtOn)}
 ${script}
 </body>
-</html>`;
+</html>`);
 }

@@ -1,5 +1,5 @@
 // D23: the money flow for the control tower's animation, read from the ledger's audit log only. Each movement is one
-// recorded event (or a run of sales folded into one) with its own proof: a Metal transaction (a *USDZ stablecoin
+// recorded event (or a run of sales folded into one) with its own proof: an Alta transaction (a *USDZ stablecoin
 // payment on chain) or an Airwallex id. "Decided" is read from the origin recorded with the movement when it started
 // (D24: an agent's own Claude run, the CFO's approval, code's named rule, or an outside party), never from timing or a
 // decision nearby; without one it says "who decided is not recorded", which the origins check counts as an error.
@@ -112,9 +112,9 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
       case "sale.delivered": {
         const cents = (salePrice?.get(Number(r.subject)) as { price_cents: number } | undefined)?.price_cents;
         if (cents === undefined) break;
-        // A sale through clearing (D-clearing) has no transaction of its own: its batch settles later on Metal.
+        // A sale through clearing (D-clearing) has no transaction of its own: its batch settles later on Alta.
         const cleared = str("scheme") === "bajillion";
-        push({ at: r.ts, kind: "sale", from: "customer", to: "northwind", amount: fromCents(cents), unit: "*USDZ", rail: "metal", agent: null, ...who(p, () => ({ model: null, decided: "Summit's agent paid (the simulated customer)" })), what: cleared ? "stock checks sold, settled later by clearing" : "stock checks sold", proof: cleared ? { label: "settled later in a clearing batch on Metal", href: null, full: null } : txProof(str("tx")) });
+        push({ at: r.ts, kind: "sale", from: "customer", to: "northwind", amount: fromCents(cents), unit: "*USDZ", rail: "metal", agent: null, ...who(p, () => ({ model: null, decided: "Summit's agent paid (the simulated customer)" })), what: cleared ? "stock checks sold, settled later by clearing" : "stock checks sold", proof: cleared ? { label: "settled later in a clearing batch on Alta", href: null, full: null } : txProof(str("tx")) });
         break;
       }
       case "upstream.paid": {
@@ -126,17 +126,17 @@ export function flowEvents(db: DB, limit = 80): FlowEvent[] {
       case "upstream.refused": {
         const reason = str("reason") ?? "";
         if (!/^mandate_/.test(reason)) break; // an unavailable supplier is not a limit
-        // Who refused: refused_by when recorded; an older row has a bare code from Metal's facilitator (a 402, no
+        // Who refused: refused_by when recorded; an older row has a bare code from Alta's facilitator (a 402, no
         // transaction), while Purser's own refusal always carries its detail after a colon (the tower's rule).
         const metal = str("refused_by") === "metal" || (!str("refused_by") && !reason.includes(":"));
         const m = /(\d+\.\d{2}) is over/.exec(reason);
         push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: m?.[1] ?? "", unit: "*USDZ", rail: metal ? "metal" : "purser", agent: "sourcing", ...who(p, () => ({ model: null, decided: "code, following the buy policy" })), what: str("supplier") === "ridgeline" ? "Ridgeline Data" : "Stockline",
-          proof: metal ? { label: "Metal's facilitator refused it (a 402: nothing moves, so no transaction)", href: null, full: null } : { label: "Purser refused it before signing", href: null, full: null },
+          proof: metal ? { label: "Alta's facilitator refused it (a 402: nothing moves, so no transaction)", href: null, full: null } : { label: "Purser refused it before signing", href: null, full: null },
           refused: { by: metal ? "metal" : "purser", reason } });
         break;
       }
       case "upstream.refused_on_chain":
-        push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: str("amount") ?? "", unit: "*USDZ", rail: "metal", agent: "sourcing", ...who(p, () => ({ model: null, decided: "the same payment put to Metal" })), what: "Stockline", proof: txProof(str("tx")), refused: { by: "metal", reason: str("metal_reason") ?? "refused against the mandate" } });
+        push({ at: r.ts, kind: "upstream", from: "sourcing", to: "suppliers", amount: str("amount") ?? "", unit: "*USDZ", rail: "metal", agent: "sourcing", ...who(p, () => ({ model: null, decided: "the same payment put to Alta" })), what: "Stockline", proof: txProof(str("tx")), refused: { by: "metal", reason: str("metal_reason") ?? "refused against the mandate" } });
         break;
       case "refund.paid": {
         const amount = str("amount");

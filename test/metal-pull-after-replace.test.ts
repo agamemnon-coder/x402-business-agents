@@ -1,4 +1,4 @@
-// Metal review (6 November, docs/metal-review.md): metal-agent knows a pull's payment id only under the mandate it was
+// Alta review (6 November, docs/metal-review.md): metal-agent knows a pull's payment id only under the mandate it was
 // sent under, so "a retry ... under a credential that renewed or replaced it, signs a new payout" (metal-agent 0.3.3,
 // `mandate pull`). A refund or sweep retried after a mandate replace first asks the old credential how its pull ended,
 // and pays under the new one only when the old pull was refused.

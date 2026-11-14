@@ -1,7 +1,7 @@
 // Design 4.1 (Max, 1 Nov): the control tower. Money in on the left, the three agents with their live limits in the
-// middle, money out on the right, the P&L below, and beside it who enforced each refusal: Purser before signing, Metal
+// middle, money out on the right, the P&L below, and beside it who enforced each refusal: Purser before signing, Alta
 // on chain, Airwallex at the card. Every figure comes from the ledger and carries the proof of its newest entry (a
-// Metal transaction or an Airwallex id). Amounts on Metal are test dollars (*USDZ), on Airwallex euros: the two are
+// Alta transaction or an Airwallex id). Amounts on Alta are test dollars (*USDZ), on Airwallex euros: the two are
 // shown side by side, never converted into each other.
 
 import type { DB } from "../db/open.js";
@@ -17,7 +17,7 @@ const MANDATE_WORDS: Record<string, string> = {
   mandate_revoked: "The mandate was replaced",
   mandate_expired: "The mandate has expired",
   payee_not_allowed: "Not a payee of the mandate",
-  // Metal's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
+  // Alta's own names for the rest (@metalntwx/metal-pay REFUSALS; test/contract/metal-facilitator.test.ts).
   mandate_budget_spent: "Over the mandate's total budget",
   mandate_payee_not_listed: "Not a payee of the mandate",
   mandate_payee_not_allowed: "Not a payee of the mandate",
@@ -78,7 +78,7 @@ function flow(db: DB, label: string, rail: Flow["rail"], unit: Flow["unit"], sum
 export function towerView(db: DB, inp: TowerInputs): Tower {
   const money_in: Flow[] = [
     flow(db, "Stock checks sold", "metal", "USDZ", "SELECT SUM(price_cents) AS s, COUNT(*) AS c FROM sales WHERE status = 'DELIVERED'", "SELECT tx_hash FROM sales WHERE status = 'DELIVERED' AND tx_hash IS NOT NULL ORDER BY sale_id DESC LIMIT 1", "tx", "paid by customers' agents per query, over x402"),
-    flow(db, "Booked at Airwallex", "airwallex", "USDZ", "SELECT SUM(CAST(amount_base_units AS REAL) / 1e16) AS s, COUNT(*) AS c FROM chain_credits WHERE awx_deposit_id IS NOT NULL", "SELECT awx_deposit_id FROM chain_credits WHERE awx_deposit_id IS NOT NULL ORDER BY created_at DESC LIMIT 1", "awx", "earnings swept from Metal after finality, booked as a deposit (1 test USD = 1 USD, simulated deposit)"),
+    flow(db, "Booked at Airwallex", "airwallex", "USDZ", "SELECT SUM(CAST(amount_base_units AS REAL) / 1e16) AS s, COUNT(*) AS c FROM chain_credits WHERE awx_deposit_id IS NOT NULL", "SELECT awx_deposit_id FROM chain_credits WHERE awx_deposit_id IS NOT NULL ORDER BY created_at DESC LIMIT 1", "awx", "earnings swept from Alta after finality, booked as a deposit (1 test USD = 1 USD, simulated deposit)"),
   ];
   const money_out: Flow[] = [
     flow(db, "Stock data bought", "metal", "USDZ", "SELECT SUM(price_cents) AS s, COUNT(*) AS c FROM upstream_purchases WHERE outcome = 'PAID'", "SELECT tx_hash FROM upstream_purchases WHERE outcome = 'PAID' AND tx_hash IS NOT NULL ORDER BY id DESC LIMIT 1", "tx", "from the stock-data suppliers, under the Sourcing mandate"),
@@ -107,8 +107,8 @@ export function towerView(db: DB, inp: TowerInputs): Tower {
   });
 
   const purser = db.prepare("SELECT ts, json_extract(payload_json, '$.reason') AS reason FROM audit_log WHERE event = 'upstream.refused' AND json_extract(payload_json, '$.reason') LIKE 'mandate!_%' ESCAPE '!' AND (json_extract(payload_json, '$.refused_by') = 'purser' OR (json_extract(payload_json, '$.refused_by') IS NULL AND json_extract(payload_json, '$.reason') LIKE '%:%')) ORDER BY seq DESC").all() as { ts: string; reason: string }[];
-  // Metal's own refusals: recorded on chain (with a tx), or given by Metal's facilitator to a payment it saw. An older
-  // row has no refused_by: a bare code came from Metal; Purser's own refusal always carries its detail after a colon.
+  // Alta's own refusals: recorded on chain (with a tx), or given by Alta's facilitator to a payment it saw. An older
+  // row has no refused_by: a bare code came from Alta; Purser's own refusal always carries its detail after a colon.
   const metal = db.prepare(`SELECT ts, COALESCE(json_extract(payload_json, '$.metal_reason'), json_extract(payload_json, '$.reason')) AS reason, json_extract(payload_json, '$.tx') AS tx FROM audit_log
     WHERE event = 'upstream.refused_on_chain' OR (event = 'upstream.refused' AND (json_extract(payload_json, '$.refused_by') = 'metal'
       OR (json_extract(payload_json, '$.refused_by') IS NULL AND json_extract(payload_json, '$.reason') LIKE 'mandate!_%' ESCAPE '!' AND json_extract(payload_json, '$.reason') NOT LIKE '%:%'))) ORDER BY seq DESC`).all() as { ts: string; reason: string; tx: string | null }[];
