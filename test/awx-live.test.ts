@@ -125,6 +125,30 @@ describe("the read gateway (AwxReadDesk)", () => {
     expect(sb.calls.filter((c) => c.url.includes("/fx/rates/current")).length).toBe(3); // three pairs, once
   });
 
+  it("logs in once when every view refreshes at the same time (no login stampede)", async () => {
+    const { d, sb } = desk();
+    await Promise.all(AWX_VIEWS.filter((v) => v !== "calls").map((v) => d.read(v)));
+    expect(sb.calls.filter((c) => c.url.endsWith("/authentication/login")).length).toBe(1);
+  });
+
+  it("reads financial transactions in Airwallex's largest page and says when a window is cut", async () => {
+    const cut = sandbox();
+    const orig = cut.fetchImpl;
+    const fetchImpl = (async (input: string, init: RequestInit) => {
+      if (new URL(input).pathname === "/api/v1/financial_transactions") { await orig(input, init); return Response.json({ items: FT_ITEMS, has_more: true }); }
+      return orig(input, init);
+    }) as unknown as typeof fetch;
+    const d = new AwxReadDesk(sqlOver(new Database(":memory:")), { clientId: CLIENT, apiKey: KEY, fetchImpl, now: () => Date.parse("2026-11-14T10:00:00Z") });
+    const a = await d.read("financial");
+    const data = (a as Extract<AwxReadAnswer, { source: "airwallex-sandbox" }>).data as { recent_cut: boolean; run_complete: boolean };
+    expect(data).toMatchObject({ recent_cut: true, run_complete: false });
+    expect(cut.calls.filter((c) => c.url.includes("financial_transactions")).every((c) => new URL(c.url).searchParams.get("page_size") === "1000")).toBe(true);
+    // The reconciliation concludes nothing from part of a window.
+    const r = reconcileView(a as AwxLiveAnswer, new Date());
+    expect(r).toMatchObject({ view: "reconcile", source: "unavailable", reason: expect.stringMatching(/nothing is concluded/) });
+    expect(JSON.stringify(r)).not.toMatch(/differences/);
+  });
+
   it("counts every call by endpoint, without its query or any id", async () => {
     const { d } = desk();
     await d.read("rates");

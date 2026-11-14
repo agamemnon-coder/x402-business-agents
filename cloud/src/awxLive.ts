@@ -128,6 +128,8 @@ export function annotateIssuing(data: Record<string, unknown>): Record<string, u
  */
 export function reconcileView(fin: AwxLiveAnswer, now: Date): AwxLiveAnswer {
   if (fin.source !== "airwallex-sandbox") return { ...fin, view: "reconcile" };
+  // A window with more rows than one page was cut: nothing is concluded from part of it.
+  if (fin.data.run_complete === false) return unavailable("reconcile", "bad_answer", "the run's window holds more rows than one page; nothing is concluded from part of it", now);
   let rows;
   try {
     rows = list(fin.data, "run").map((r) => toFinancialTx({ id: String(r.id), source_id: (r.source_id as string | null) ?? null, source_type: String(r.source_type ?? ""), transaction_type: String(r.transaction_type ?? ""),

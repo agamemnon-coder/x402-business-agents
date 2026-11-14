@@ -63,8 +63,8 @@ const AWL_RENDER={
     const oos=Object.entries(d.out_of_scope||{});if(oos.length)extra.push(el('p','sub',t('cs.awl.out_scope',{list:oos.map(([k,v])=>k+' '+v).join(', ')})));
     return el('div','',[sum,el('p','sub',t('cs.awl.rec_rows',{rows:d.airwallex_rows,from:awlDay(d.window&&d.window.from)})),awlTable([[t('cs.awl.col.invoice')],[t('cs.awl.col.kind')],[t('cs.awl.col.awx_id')],[t('cs.awl.col.ledger')],[t('cs.awl.col.airwallex')],[t('cs.awl.col.result')],[t('cs.awl.col.reason')]],rows),...extra,el('p','links',[ext(d.ledger.url,t('cs.awl.ledger_record',{run:d.ledger.run}))])])},
   financial(d){const r=d.recent||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
-    return awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.type')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.status')],[t('cs.awl.col.source')],[t('cs.awl.col.date')]],
-      r.map((f)=>el('tr','',[awlTd(awlId(f.id)),awlTd(f.transaction_type||f.source_type),awlTd(awlAmt(f.currency,f.amount),'num r'),awlTd(f.status),awlTd(awlId(f.source_id)),awlTd(awlDay(f.created_at),'num')])))},
+    return el('div','',[d.recent_cut?el('p','sub',t('cs.awl.ft_cut',{n:d.recent_rows})):null,awlTable([[t('cs.awl.col.id')],[t('cs.awl.col.type')],[t('cs.awl.col.amount'),'r'],[t('cs.awl.col.status')],[t('cs.awl.col.source')],[t('cs.awl.col.date')]],
+      r.map((f)=>el('tr','',[awlTd(awlId(f.id)),awlTd(f.transaction_type||f.source_type),awlTd(awlAmt(f.currency,f.amount),'num r'),awlTd(f.status),awlTd(awlId(f.source_id)),awlTd(awlDay(f.created_at),'num')])))])},
   transfers(d){const r=d.transfers||[];if(!r.length)return el('p','sub',t('cs.awl.empty'));
     const hash=(x)=>{if(!x.approval_sha256)return el('span','sub',t('cs.awl.no_hash'));const w=el('div','awhash',[awlId(x.approval_sha256)]);
       if(x.recorded)w.append(el('span','obadge '+(x.recorded.matches?'ok':'bad'),[ic(x.recorded.matches?'circle-check':'ban'),t(x.recorded.matches?'cs.awl.hash_match':'cs.awl.hash_differs',{inv:x.recorded.invoice})]));return w};

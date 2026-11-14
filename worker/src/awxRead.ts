@@ -84,6 +84,8 @@ export const READ_DAILY_CEILING = 1500;
 const TIMEOUT_MS = 8_000;
 /** The newest active cards read one by one for their limits (the list has none). */
 export const CARD_DETAILS = 8;
+/** Financial transactions read in one page: Airwallex's largest page (page_size ≤ 1000). */
+export const FT_PAGE = 1000;
 const TOKEN_EARLY_MS = 60_000;
 const TOKEN_DEFAULT_MS = 25 * 60_000;
 
@@ -196,6 +198,7 @@ const timeOf = (v: unknown): number | null => {
 /** The read gateway's desk: one per Durable Object instance ("awx-read"), its cache and counters in that instance's SQL. */
 export class AwxReadDesk {
   private token: { value: string; expiresAt: number } | null = null;
+  private loggingIn: Promise<string> | null = null;
   private readonly inFlight = new Map<AwxView, Promise<AwxReadAnswer>>();
   private readonly fetchImpl: typeof fetch;
   private readonly now: () => number;
@@ -252,10 +255,13 @@ export class AwxReadDesk {
         // The newest movements (the last 30 days), and the recorded run's window for the reconciliation.
         const to = new Date(this.now()), from = new Date(this.now() - 30 * 86_400_000);
         const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "+0000");
-        const recent = financialOf(await this.get("/api/v1/financial_transactions", { from_created_at: iso(from), to_created_at: iso(to), page_num: "0", page_size: "50" }));
-        const run = financialOf(await this.get("/api/v1/financial_transactions", { from_created_at: RUN_WINDOW.from, to_created_at: RUN_WINDOW.to, page_num: "0", page_size: "200" }));
-        recent.sort((a, b) => (timeOf(b.created_at) ?? 0) - (timeOf(a.created_at) ?? 0));
-        return { recent: recent.slice(0, 25), run_window: RUN_WINDOW, run };
+        // One page of FT_PAGE (Airwallex's largest) each. has_more is kept: a window with more rows than one page is said
+        // to be cut, and the reconciliation then concludes nothing (cloud/src/awxLive.ts), never "0 differences".
+        const page = async (q: Record<string, string>) => { const j = await this.get("/api/v1/financial_transactions", { ...q, page_num: "0", page_size: String(FT_PAGE) }); return { rows: financialOf(j), more: obj(j)?.has_more === true }; };
+        const recent = await page({ from_created_at: iso(from), to_created_at: iso(to) });
+        const run = await page({ from_created_at: RUN_WINDOW.from, to_created_at: RUN_WINDOW.to });
+        recent.rows.sort((a, b) => (timeOf(b.created_at) ?? 0) - (timeOf(a.created_at) ?? 0));
+        return { recent: recent.rows.slice(0, 25), recent_cut: recent.more, recent_rows: recent.rows.length, run_window: RUN_WINDOW, run: run.rows, run_complete: !run.more };
       }
       case "rates": {
         const rates = [];
@@ -332,8 +338,13 @@ export class AwxReadDesk {
     return { status: res.status, json };
   }
 
-  private async bearer(): Promise<string> {
-    if (this.token && this.token.expiresAt - TOKEN_EARLY_MS > this.now()) return this.token.value;
+  /** The bearer token: one login at a time, shared by every view refreshing at once (9 views made up to 9 logins before). */
+  private bearer(): Promise<string> {
+    if (this.token && this.token.expiresAt - TOKEN_EARLY_MS > this.now()) return Promise.resolve(this.token.value);
+    return (this.loggingIn ??= this.login().finally(() => { this.loggingIn = null; }));
+  }
+
+  private async login(): Promise<string> {
     this.token = null;
     const r = await this.call("POST", "/api/v1/authentication/login", {}, { "x-client-id": this.cfg.clientId!, "x-api-key": this.cfg.apiKey! });
     const j = obj(r.json), token = j?.token;

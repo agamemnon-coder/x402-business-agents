@@ -93,7 +93,7 @@ try {
     ok((await page.textContent(".aw-balances .awtile b"))?.includes("9,970,627.00") === true, `${name}: the count-up ends on the real figure (${await page.textContent(".aw-balances .awtile b")})`);
     // Rates: in the pair's own terms, buy side named.
     const rates = await page.$$eval(".aw-rates .awtile", (n) => n.map((x) => [x.querySelector(".awtl")!.textContent, x.querySelector("b")!.textContent]));
-    ok(JSON.stringify(rates) === JSON.stringify([["Buy EUR with USD", "1 EUR = 1.116374 USD"], ["Buy EUR with GBP", "1 EUR = 0.844602 GBP"], ["Buy USD with EUR", "1 EUR = 1.08768 USD"]]), `${name}: the rates read the right way round (${JSON.stringify(rates)})`);
+    ok(JSON.stringify(rates) === JSON.stringify([["Sell USD, buy EUR", "1 EUR = 1.116374 USD"], ["Sell GBP, buy EUR", "1 EUR = 0.844602 GBP"], ["Sell EUR, buy USD", "1 EUR = 1.08768 USD"]]), `${name}: the rates read the right way round (${JSON.stringify(rates)})`);
     ok(await page.$eval(".awhead img.awlogo", (i) => (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth === 2435), `${name}: the official logo, its own size, in the header`);
     const rec = await page.textContent(".aw-reconcile .awrec");
     ok(/^0 differences: all \d+ movements match to the cent\.$/.test(rec?.trim() ?? ""), `${name}: the reconciliation says 0 differences as computed (${rec?.trim()})`);
