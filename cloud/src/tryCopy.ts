@@ -637,12 +637,14 @@ export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 7
  */
 export const LIVE = {
   allSteps: "All steps",
+  /** The panel's title: what Purser's code, the agents and Claude did, newest last, each with its time. */
+  title: "Activity",
   /**
    * Round 4 (14 Nov): a Claude call's row once its answer is in (the next row says what came of it), and, when Purser
    * had answered before any answer to that call came back, that fact in place of "asking…" (nothing keeps counting).
    */
-  asked: "asked.",
-  noAnswer: "asked; no answer had come back when Purser answered.",
+  asked: "Answered.",
+  noAnswer: "No answer had come back when Purser answered.",
   /** A row's time: seconds since the request started, as the browser measured it when the row arrived. */
   at: "+{s} s",
   reader: "Reader",
