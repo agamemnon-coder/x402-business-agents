@@ -243,7 +243,8 @@ describe("the copy", () => {
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "invoice 6", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "company 4", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "approve 6", "approve 7", "approve 8", "approve 16"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "work 2", "work 10", "invoice 6", "work 11", "work 12", "approve 6", "approve 7", "approve 8", "approve 16", "company 4"]);
+    // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs; Approve shows the hash's start.
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
@@ -275,7 +276,7 @@ describe("the copy", () => {
 
   it("says what the visitor uses in the band, and what reads the invoice from the start answer's mode", () => {
     expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
-    expect(COPY.BAND.claudeLive).toBe("Claude reads live");
+    expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
     expect(COPY.START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
     expect(COPY.START.button).toBe("Start with a test company");
@@ -483,8 +484,23 @@ interface Kit {
   changedFields(signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string[];
   verdict(W: typeof COPY.PAY, signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string;
   methodOf(M: typeof COPY.METHOD, ua: string): string;
+  rateLine(cv: unknown): string;
 }
 const kit = new Function(`${SIGN_JS}\nreturn signKit;`)() as Kit;
+
+describe("a conversion's rate with its units (rateLine)", () => {
+  it("Airwallex's EURUSD rate on a buy of EUR for USD reads as USD per EUR", () => {
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "413.38", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", buy_amount: "370.00", sell_amount: "401.45", client_rate: "1.0850" })).toBe("1 EUR = 1.0850 USD");
+  });
+  it("a rate stated the other way round (sell per buy below 1) names the sold currency first", () => {
+    expect(kit.rateLine({ buy_currency: "USD", sell_currency: "EUR", buy_amount: "413.38", sell_amount: "370.00", client_rate: "1.117256" })).toBe("1 EUR = 1.117256 USD");
+  });
+  it("no rate, nothing", () => {
+    expect(kit.rateLine(null)).toBe("");
+    expect(kit.rateLine({ buy_currency: "EUR", sell_currency: "USD", client_rate: "" })).toBe("");
+  });
+});
 const buf = (...b: number[]) => new Uint8Array(b).buffer;
 
 describe("signing and paying, in the page's own script", () => {
