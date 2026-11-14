@@ -2,7 +2,7 @@
 // so it holds no key and cannot approve or move money. "Review: approve or reject" hands over to the approval page.
 // The page uses relative URLs only, so the same file can later be served by another host unchanged.
 
-import { withMeta } from "../ui/meta.js";
+import { OG_FILE, withMeta } from "../ui/meta.js";
 import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
@@ -109,6 +109,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "apple-touch-icon.png": { type: "image/png", body: Buffer.from(ICON_PNG_180, "base64") },
   "icon.png": { type: "image/png", body: Buffer.from(ICON_PNG_512, "base64") },
   "og.png": { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
+  // The same file under its versioned name, the one the preview tags name (src/ui/meta.ts OG_FILE): a new address, so chat apps fetch it again.
+  [OG_FILE]: { type: "image/png", body: readFileSync(new URL("../ui/brand/og.png", import.meta.url)) },
   // The vault's folder tree on /proof (docs/media, computed from src/vault/layout.ts by npm run vault:tree).
   "vault-tree-light.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-light.svg", import.meta.url)) },
   "vault-tree-dark.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/media/vault-tree-dark.svg", import.meta.url)) },

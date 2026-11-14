@@ -1,5 +1,7 @@
 # Purser: the long description
 
+**Built on Airwallex.** Purser's agent cards and payments run on Airwallex's API (the sandbox, test money: [docs/airwallex.md](../airwallex.md)).
+
 **AI agents spend. You sign off.** Alta (formerly Metal) holds each agent's on-chain budget, Airwallex holds each card's
 limit, Purser's code holds the rest; the CFO approves anything beyond them, by signing the exact terms with a passkey.
 
