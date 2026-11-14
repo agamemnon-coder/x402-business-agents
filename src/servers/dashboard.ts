@@ -91,6 +91,8 @@ export const LOGOS: Record<string, { type: string; body: Buffer }> = {
   "logo-airwallex.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/airwallex.png", import.meta.url)) },
   "logo-metal.svg": { type: "image/svg+xml", body: readFileSync(new URL("../ui/logos/metal.svg", import.meta.url)) },
   "logo-claude.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/claude.png", import.meta.url)) },
+  // Claude's own variant for light grounds (Anthropic press kit, docs/assets/logos/SOURCES.md): Home's white tiles.
+  "logo-claude-slate.svg": { type: "image/svg+xml", body: readFileSync(new URL("../../docs/assets/logos/claude-logo-slate.svg", import.meta.url)) },
   // Added 12 Nov on the owner's stated permission (docs/evidence/logo-permissions.md); sources in src/ui/logos/README.md.
   "logo-visa.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/visa.png", import.meta.url)) },
   "logo-cloudflare.png": { type: "image/png", body: readFileSync(new URL("../ui/logos/cloudflare.png", import.meta.url)) },

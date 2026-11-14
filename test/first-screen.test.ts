@@ -50,7 +50,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
     expect(lines.slice(5, badges - 2)).toEqual(["", `**${README_WHAT}**`, "", DIFFERENTIATORS[0], ""]);
-    expect(lines[badges - 2]).toContain("Watch_the_walkthrough-4%3A58");
+    expect(lines[badges - 2]).toContain("Watch_the_walkthrough-YouTube");
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(13);
     expect(lines[badges + 2]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     expect(lines.slice(badges + 3, badges + 7)).toEqual(["", "</div>", "", "## Watch it"]);
@@ -59,9 +59,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.some((l) => l.startsWith("Test money only: Metal testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg"');
     // Jury round 2, 13 Nov: the film's own length (298.0 s), and the partners as text only, never a logo image.
-    expect(README).toContain("*4:58 walkthrough · AI voice and music: ElevenLabs*");
-    expect(README).not.toMatch(/5-minute walkthrough|<img[^>]*built-with\.png/);
-    expect(README).toContain("Built with Airwallex, Metal, Claude, Visa and Cloudflare (no endorsement implied).");
+    expect(README).toContain("*The walkthrough · AI voice and music: ElevenLabs*"); // no duration in the words since 14 Nov (owner)
+    expect(README).not.toMatch(/5-minute walkthrough/);
+    // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
+    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, each on its own white tile. No endorsement implied');
     expect(README).toContain("Text names only; no endorsement implied.");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
