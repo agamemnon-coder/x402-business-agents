@@ -125,10 +125,12 @@ function t0CloseCard(){
   const pg=el('a','',t('cs.books.t0_page'));pg.href=c.page;pg.rel='noopener';pg.target='_blank';
   return el('section','card panel t0close'+(c.agrees?'':' bad'),[
     el('h2','',[ic(c.agrees?'circle-check':'triangle-alert'),t('cs.books.t0_h')]),
+    // CFO review, 14 Nov: whose books the check is of comes first (not this company's 31-entry ledger).
+    el('p','sub t0lead',t('cs.books.t0_lead')),
     el('p','says',c.agrees?t('cs.books.t0_agrees',{n:c.entries}):t('cs.books.t0_differs',{n:c.differences})),
     !c.agrees&&c.first?el('p','sub mono',c.first):null,
     el('p','',t('cs.books.t0_rule')),
-    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})+' '+t('cs.books.t0_whose')),
+    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})),
     el('p','links',[dl,pg])])}
 // One currency's balance sheet: liabilities plus equity (capital and this year's result) against assets, in cents.
 const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0);return {left:v.assets_cents||0,right,balanced:(v.assets_cents||0)===right}};
@@ -164,13 +166,15 @@ async function booksView(){
     const tbl=el('table','table vat',[el('thead','',[el('tr','',[el('th','',t('cs.rubric')),el('th','sh',t('cs.vat.share')),el('th','r',t('cs.base')),el('th','r',t('dt.vat'))])])]);const tb=el('tbody','');
     const maxBase=Math.max(0,...Object.values(v.rubrics||{}).map(r=>Math.abs(r.base_cents||0)));
     const eur=(c)=>cur('EUR')+' '+cents(c);
+    // CFO review, 14 Nov: with lines still without a VAT code (sales among them), a nil 5a or 5c is not known to be nil.
+    const owedOr=(c)=>v.uncoded_lines&&!c?t('cs.vat.incomplete',{n:v.uncoded_lines}):eur(c);
     const lr=(v0,l)=>{const d=el('td','r',v0);d.dataset.l=l;return d};
     for(const [k,r] of Object.entries(v.rubrics||{})){if(!r.base_cents&&!r.vat_cents)continue;tb.append(el('tr','',[el('td','',RUBRIC(k)),el('td','sh',meter(Math.abs(r.base_cents||0),maxBase)),lr(eur(r.base_cents),t('cs.base')),lr(eur(r.vat_cents),t('dt.vat'))]))}
     // VAT a supplier abroad charged (13 Nov: German 19%): its own row, outside the Dutch return's boxes and not in 5b.
     const fv=v.foreign_vat;if(fv&&fv.lines)tb.append(el('tr','',[el('td','',t('cs.vat_foreign',{n:fv.lines})),el('td','sh'),lr(eur(fv.base_cents),t('cs.base')),lr(eur(fv.vat_cents),t('dt.vat'))]));
     // No rubric row: the quarter may still hold input VAT (5b), so "nothing" is said only when 5a and 5b are nil too.
     if(!tb.children.length)tb.append(el('tr','',[el('td','',t(v.owed_5a_cents||v.input_5b_cents?'cs.no_rubrics':'cs.nothing_quarter')),el('td',''),el('td',''),el('td','')]));
-    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',eur(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',eur(v.balance_5c_cents)))]));
+    tb.append(el('tr','tot',[el('td','',el('b','',t('cs.owed_5a'))),el('td','sh'),el('td','r'),el('td','r',owedOr(v.owed_5a_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.input_5b'))),el('td','sh'),el('td','r'),el('td','r',eur(v.input_5b_cents))]),el('tr','tot',[el('td','',el('b','',t('cs.balance_5c'))),el('td','sh'),el('td','r'),el('td','r',el('b','',owedOr(v.balance_5c_cents)))]));
     tbl.append(tb);
     vat.replaceChildren(el('h2','',t('cs.vat_overview')),el('div','form-row',[el('div','',[el('label','',t('cs.quarter')),pick])]),el('div','scroll',tbl),
       v.uncoded_lines?note(t('cs.uncoded',{n:v.uncoded_lines}),'warn'):null,note(NL?t('cs.vat_notice'):(v.notice||t('cs.vat_notice'))));

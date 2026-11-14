@@ -126,7 +126,9 @@ export function partnerTiles(groups = proofRuns()): PartnerTile[] {
 export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed = proofRuns().reduce((n, g) => n + g.runs.length, 0)): string {
   if (!tiles.length) return "";
   // One source (judge scan, 14 Nov): the tiles and the timeline count the same rows; the TAP run is told on /visa only.
-  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
+  // Jury scan, 14 Nov: the tiles add up to fewer than the list when it holds a run of no partner's own (the main run).
+  const byPartner = tiles.reduce((n, t) => n + t.runs, 0), other = listed - byPartner;
+  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${other > 0 ? ` (${byPartner} in the tiles, ${other === 1 ? "plus the main run" : `plus ${other} more`})` : ""}${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
   return `${note ? `<p class="ptnote">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
 }
 

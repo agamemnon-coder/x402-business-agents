@@ -3,6 +3,10 @@
 // phone script with its TypeScript types stripped, and the Inter font. npm run relay:deploy writes them to worker/src/pages.gen.ts.
 
 import { readFileSync } from "node:fs";
+import { previewTags, SITE_URL } from "../ui/meta.js";
+
+/** What /policy is, for a link preview: the CFO changes an agent's limits there, signed with a passkey. */
+const POLICY_DESCRIPTION = "Purser's policy page: the CFO changes an agent's limits there, and every change is signed with a passkey.";
 import { recordedRate, type RecordForExposure } from "../policy/exposureSources.js";
 import { loadRecord } from "../redesign/run.js";
 import { proofData, RECEIPT_SAMPLE_FILE } from "../redesign/agentData.js";
@@ -114,7 +118,8 @@ export function buildPages(env: NodeJS.ProcessEnv = process.env): Pages {
     // link-preview tags with an absolute image there.
     approve: read("../approve/page.html"),
     enrol: read("../approve/enrol.html"),
-    policy: read("../approve/policy.html"),
+    // Jury scan, 14 Nov: a link to /policy previews as every page of the site does (description, title, image).
+    policy: read("../approve/policy.html").replace("</title>", () => `</title><meta name="description" content="${POLICY_DESCRIPTION}">${previewTags({ url: `${SITE_URL}/policy` }).join("")}`),
     client,
     css: read("../approve/style.css"),
     font: FONT.toString("base64"),

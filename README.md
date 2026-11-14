@@ -18,6 +18,48 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 </div>
 
+## Verify it yourself in 3 commands
+
+The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
+
+```sh
+npm ci                       # under a minute: the exact versions in the lockfile
+npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
+npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
+```
+
+<details><summary>What you should see (abridged)</summary>
+
+```text
+ok    /  200  63106 bytes
+ok    /proof  200  138535 bytes
+…
+ok    signature          the ES256 signature verifies with the receipt's public key
+
+VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
+Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
+Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
+```
+
+</details>
+
+`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
+checks any receipt of the same format.
+
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6711 tests passing**, 4 skipped, in 599 files (the last full run, on commit `a2af453e`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+
+CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
+
+## Where things are
+
+| Folder | What it holds |
+|---|---|
+| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta, Visa via Airi), the ledger |
+| `cloud/` | Purser Cloud on Cloudflare Workers: the console, its API, /try and the engine |
+| `worker/` | The public site's Worker (kit11): the pages and the relay for the dashboard and passkey approvals |
+| `docs/runs/` | The record of every live run: ids, amounts, timestamps |
+| `test/` | The tests (`npm test`) and the browser checks (`test/browser/`) |
+
 ## Watch it
 
 | [The walkthrough](https://youtu.be/mp9fmOYfBWc) · AI voice and music: ElevenLabs | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |
@@ -67,36 +109,6 @@ No endorsement implied.
 
 *Home, light or dark as your GitHub is: one sample invoice from Read to Paid.*
 
-
-## Verify it yourself in 3 commands
-
-The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
-
-```sh
-npm ci                       # under a minute: the exact versions in the lockfile
-npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
-npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
-```
-
-What you should see (abridged):
-
-```text
-ok    /  200  63106 bytes
-ok    /proof  200  138535 bytes
-…
-ok    signature          the ES256 signature verifies with the receipt's public key
-
-VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
-Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
-Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
-```
-
-`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
-checks any receipt of the same format.
-
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6711 tests passing**, 4 skipped, in 599 files (the last full run, on commit `a2af453e`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
-
-CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
 ## How it works
 
