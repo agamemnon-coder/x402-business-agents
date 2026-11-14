@@ -1067,16 +1067,17 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         // then the guarantees and the one fold.
         const order = [];
         for (let e = h1; e; e = e.nextElementSibling) order.push(e.tagName.toLowerCase() + (e.className ? "." + e.className.split(" ")[0] : ""));
-        return { order: order.slice(0, 8).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
+        return { order: order.slice(0, 9).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
       // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
-      if (first.order !== "h1 p.plead p.pwatch p.ptnote ul.ptiles ol.pchain ul.scale aside.pverify" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
+      if (first.order !== "h1 p.plead p.pwatch p.ptnote ul.ptiles p.pawx ol.pchain ul.scale aside.pverify" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         // The partner tiles on the first screen; the chain and the band within the next (14 Nov, the tiles lead: the chain at
         // 9xx px and the band at 1,3xx px as built at 390; before, the chain under 400 px and the band under 1,300 px).
         const tiles = await page.evaluate(`(() => { const e = document.querySelector("main ul.ptiles"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
         if (tiles < 0 || tiles >= 400) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
-        if (first.chain < 0 || first.chain >= 1000) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,000 px`);
+        // 1,050 since 14 Nov (Max, Airwallex at the centre): the Airwallex line under the tiles (the chain at 1,007 px as built).
+        if (first.chain < 0 || first.chain >= 1050) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,050 px`);
         if (first.band < 0 || first.band > 1450) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,450 px`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);

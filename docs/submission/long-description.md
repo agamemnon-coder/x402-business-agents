@@ -20,6 +20,28 @@ The Kit 11 scenario, run live on 3 November.
 
 **Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award (Visa: the Airi run, Visa Intelligent Commerce, under "Other live tests"; Visa TAP is an extra: see the note under Visa).** Also entered for the Founder's Choice Award and the Judges' Choice Award.
 
+## Airwallex at the centre: new on 14 November
+
+Merged and live on 14 November, test money only.
+
+- **A live Airwallex FX quote inside the signed terms.** On /try, when a test company's payment needs EUR bought,
+  Purser asks the Airwallex sandbox for a quote. Its id, rate, amounts and expiry go into the terms the passkey signs.
+  The conversion and the payment still run on a simulated bank. If the quote is slow (over 3 s), capped or switched
+  off, /try uses the recorded rate and says so.
+- **T:0 gates the month close.** The month locks only when T:0's read-back matches Purser's journal; one cent apart and
+  it stays open, naming the entry ([read-back record](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-t0-readback.json)).
+- **The Visa card rail on /visa:** the recorded scene with Purser's three credential checks, ids from the 14 November run.
+- **Purser Cloud's books:** a balance sheet that adds up, every journal entry by date, and on /try the FX entry that
+  funded the payment.
+- **For the finals:** stage mode (the room signs on their own phones) and recording mode (`/try?present=1`).
+<!-- TODO(#338) live sandbox payout · TODO(#330) Cloud Airwallex tab · TODO(#332) Cloud Airwallex actions · TODO(#336) learning loop · TODO(#335) Built on Airwallex: fill each when it is merged and live. -->
+
+| Airwallex sandbox endpoint, called live | What for | Since |
+|---|---|---|
+| `POST /api/v1/authentication/login` | the token for the quote | 14 Nov, /try |
+| `POST /api/v1/fx/quotes/create` | the FX quote in the signed terms | 14 Nov, /try |
+<!-- TODO: add the endpoints of #338, #330 and #332 when they are live. -->
+
 ## How it works
 
 ```mermaid
@@ -234,7 +256,7 @@ company card whose limits Airwallex enforces.
 
 Visa: the Sourcing agent signs its card checkout with Visa's Trusted Agent Protocol (TAP), so a merchant can check which agent is buying. Visa's public reference verifier accepted the signatures in a separate test on 2 November; the merchant is ours.
 
-*Visa TAP: built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov).*
+*Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.*
 
 ### Where Claude is used
 

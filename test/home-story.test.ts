@@ -222,9 +222,10 @@ describe("Home, the enterprise pass", () => {
   // review of 13 Nov: the main run's line (its company, agents, figures and the film; 32 words) and which agents the
   // flow shows (9 words); 341 as built. 355 since the Visa judge (14 Nov): one line on the Visa outcome, to /visa's
   // reuse section (13 words; 354 as built). 360 since the partner scan (14 Nov): Visa in "Works with" named in full,
-  // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built).
-  it("A11: stays within 360 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(360);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(360);
+  // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built). 378 on
+  // 14 Nov (Max, Airwallex at the centre): one line on the live Airwallex sandbox FX quote in /try's signed terms (378 as built).
+  it("A11: stays within 378 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(378);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(378);
   });
 });

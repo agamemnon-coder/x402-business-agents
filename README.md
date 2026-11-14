@@ -30,6 +30,20 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 - **Above a limit, the CFO signs the exact terms** with a passkey (Face ID on iPhone); change one cent and the signature no longer verifies.
 - **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 25 live runs, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
 
+## Airwallex at the centre: new on 14 November (merged, live, test money)
+
+- **A live Airwallex FX quote inside the signed terms.** On [/try](https://kit11.max-31b.workers.dev/try), when a test company's payment needs EUR bought, Purser asks the Airwallex sandbox for a quote. Its id, rate, amounts and expiry go into the terms your passkey signs. The conversion and the payment still run on a simulated bank. Slow (over 3 s), capped or switched off: the recorded rate, labelled.
+- **T:0 gates the month close.** The month locks only when T:0's read-back matches Purser's journal; one cent apart and it stays open, naming the entry ([read-back record](docs/runs/2026-11-14-t0-readback.json)). /visa shows the card-rail scene with Purser's three credential checks, ids from the 14 November run.
+- **Purser Cloud's books:** a balance sheet that adds up, every journal entry by date, and on /try the FX entry that funded the payment.
+- **For the finals:** stage mode, where the room signs on their own phones ([docs/finals/stage-mode.md](docs/finals/stage-mode.md)), and recording mode, `/try?present=1` ([docs/finals/demo-recording.md](docs/finals/demo-recording.md)).
+<!-- TODO(#338) live sandbox payout · TODO(#330) Cloud Airwallex tab · TODO(#332) Cloud Airwallex actions · TODO(#336) learning loop · TODO(#335) Built on Airwallex: fill each when it is merged and live. -->
+
+| Airwallex sandbox endpoint, called live | What for | Since |
+|---|---|---|
+| `POST /api/v1/authentication/login` | the token for the quote | 14 Nov, /try |
+| `POST /api/v1/fx/quotes/create` | the FX quote in the signed terms | 14 Nov, /try |
+<!-- TODO: add the endpoints of #338, #330 and #332 when they are live. -->
+
 ## How it works in 3 steps
 
 | 1 · The agent asks | 2 · Code checks the limit | 3 · You sign the exact terms |
@@ -262,10 +276,6 @@ Task cards under a CFO-signed limit: EUR 900 a day. Everything above waits for t
 
 </details>
 
-## Architecture
-
-Where it runs: two Cloudflare Workers, their Durable Objects, D1, the MCP server and the relay, drawn in [docs/architecture.md](docs/architecture.md#where-it-runs).
-
 ## Proof in numbers
 
 <img src="docs/assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, from the run records" width="49%"> <img src="docs/assets/charts/main-run-claude.svg" alt="Main run: Claude's decisions and cost per agent, from its record" width="49%"> <img src="docs/assets/charts/main-run-refusals.svg" alt="Main run: what was refused, from its record" width="49%"> <img src="docs/assets/charts/tests-over-time.svg" alt="Tests in the suite over time, from the README's own history" width="49%">
@@ -334,6 +344,8 @@ contracts/  the Solidity contracts used on Alta testnet, with their ABIs
 examples/   the Dispute desk, reusable by any seller on Alta
 scripts/    charts, changelog and other generators
 ```
+
+Where it runs: two Cloudflare Workers, their Durable Objects, D1, the MCP server and the relay, drawn in [docs/architecture.md](docs/architecture.md#where-it-runs).
 
 ## Tests and quality
 

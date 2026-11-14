@@ -56,6 +56,15 @@ export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with
  * hackathon. Never "certified", "endorsed" or "confirmed by Visa". Partner scan, 14 Nov: no "(Visa, 5 Nov)" and no
  * "not eligible Visa tooling"; it says plainly that TAP is outside this entry.
  */
+/**
+ * Airwallex at the centre (Max, 14 Nov): what is new and live today, said the same on Home and /proof, linked to /try.
+ * Only what is merged and live (#333): the sandbox quote is real, the conversion and the payment are on a simulated bank.
+ * TODO(#338) live sandbox payout · TODO(#330) Cloud Airwallex tab · TODO(#332) Cloud Airwallex actions · TODO(#336)
+ * learning loop · TODO(#335) Built on Airwallex: add each here when it is merged and live.
+ */
+/** Home's shorter form: Home says "live" only on its button, "simulated" once, and no new date (test/home-story.test.ts). */
+export const AWX_HOME_LINE = "In /try, the Airwallex sandbox quotes the FX, and the quote is part of the terms you sign.";
+export const AWX_LIVE_LINE = "New on 14 Nov: in /try, the Airwallex sandbox quotes the FX live, and the quote is part of the terms you sign. The conversion and payment run on a simulated bank.";
 /** The one name /visa gives the card credential Airi hands out (partner scan, 14 Nov): what it is, and that it is a test card. */
 export const AIRI_CREDENTIAL = "Airi credential (test card)";
 export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.";
