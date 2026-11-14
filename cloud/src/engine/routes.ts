@@ -31,6 +31,8 @@ export interface EngineKit<C extends EngineCtx> {
   json(status: number, body: unknown): Response;
   err(status: number, error: string): Response;
   body<T>(c: C, schema: z.ZodType<T>, maxBytes?: number): Promise<T>;
+  /** Told of each approval's answer (stage mode's wall, cloud/src/try/stage.ts); never fails the request. */
+  approved?(c: C, answer: { status: string }): Promise<void>;
 }
 
 export interface EngineRoute<C extends EngineCtx> { method: "GET" | "POST"; path: string; summary: string; need: "read" | "admin"; run: (c: C) => Promise<Response> }
@@ -158,7 +160,9 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");
       const b = await kit.body(c, Approve, 64_000);
       // A visitor's test company (hands-on demo): the approval is stored and the payment held for the one pay route.
-      return json(200, await e.approve({ proposal_id: c.params[0]!, terms_sha256: b.terms_sha256, credential: b.credential, ...(c.caller!.tenantId.startsWith("t_try_") ? { hold: true } : {}) }));
+      const out = await e.approve({ proposal_id: c.params[0]!, terms_sha256: b.terms_sha256, credential: b.credential, ...(c.caller!.tenantId.startsWith("t_try_") ? { hold: true } : {}) });
+      if (kit.approved && c.caller!.tenantId.startsWith("t_try_")) await kit.approved(c, out).catch(() => undefined);
+      return json(200, out);
     }) },
     { method: "POST", path: "/v1/engine/proposals/{id}/retry", summary: "Try again: an approved payment whose execution failed (the bank was away, say) is run once more by the executor's own resume path, which never pays twice. Answers { status: retried, message, settled } with where things stand; 409 with the engine's reason when there is nothing to retry (paid, never approved, refused).", need: "admin", run: on(async (c, e) => {
       if (!(await e.proposal(c.params[0]!))) return err(404, "no proposal");

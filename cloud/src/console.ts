@@ -12,6 +12,7 @@ import { escAttr, ICON_SET, PAYABLES_CSS, svg } from "../../src/ui/payablesKit.j
 import { fromB64 } from "./crypto.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { tryPageResponse } from "./tryPage.js";
+import { stagePageResponse } from "./try/stagePage.js";
 import { SITE_HEADER_CSS, siteHeader } from "./siteHeader.js";
 import type { CloudEnv } from "./app.js";
 
@@ -1917,6 +1918,8 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     return new Response(consolePage(n, { origin: env.origin, rpId: env.rpId, mailDomain: env.mailDomain ?? "", engine: !!env.engine }), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
   }
   if (url.pathname === "/try") return tryPageResponse(req, url, env);
+  // Stage mode for the finals (cloud/src/try/stagePage.ts): the hands-on deployment only.
+  if (url.pathname === "/try/stage" && env.tryIt) return stagePageResponse(req);
   // The console's pages are routes after "#" (#/sign-in, #/start); a typed or bookmarked path (/sign-in, /login,
   // /console) went to a plain 404 (13 Nov). It goes to the console's own route instead.
   const route = CONSOLE_PATHS[url.pathname.replace(/\/+$/, "") || "/"];

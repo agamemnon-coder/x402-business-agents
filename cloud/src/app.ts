@@ -35,6 +35,7 @@ import { tryError, tryRoutes } from "./try/routes.js";
 import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
 import { noteRequest } from "./try/metrics.js";
+import { stageApproved } from "./try/stage.js";
 import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.js";
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
@@ -618,7 +619,7 @@ export const ROUTES: Route[] = [
   { method: "POST", path: "/v1/close", summary: "Close the company's account: access ends; records are kept until the retention day, then purged.", need: "admin", run: async (c) => json(200, await closeTenant(c.env.sql, c.caller!.tenantId, c.now)) },
 
   // The company's engine (cloud/src/engine/routes.ts): one block, the caller's own company only, 404 while no engine is wired.
-  ...engineRoutes<Ctx>({ json, err, body }),
+  ...engineRoutes<Ctx>({ json, err, body, approved: (c, out) => stageApproved(c.env.sql, c.caller!.tenantId, out, c.now) }),
   ...edgeRoutes<Ctx>({ json, err }),
 
   // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.

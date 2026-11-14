@@ -18,6 +18,7 @@ import type { EngineApi } from "../engine/api.js";
 import type { EngineCtx, EngineKit, EngineRoute } from "../engine/routes.js";
 import { tallyFiled, tallyPay } from "./counter.js";
 import { noteReader } from "./metrics.js";
+import { stageFiled, stagePay } from "./stage.js";
 import { normaliseAmount } from "./amount.js";
 import { isTryTenant, TryRefused } from "./start.js";
 
@@ -59,6 +60,7 @@ async function filed<T>(run: () => Promise<T>): Promise<T> {
 async function counted(c: TryEngineCtx, out: Awaited<ReturnType<EngineApi["compose"]>> | null): Promise<void> {
   await tallyFiled(c.env.sql, out, c.now);
   if (out && !("refused" in out)) await noteReader(c.env.sql, out.invoice?.read_by, c.now);
+  if (out && !("refused" in out)) await stageFiled(c.env.sql, c.caller!.tenantId, out.invoice?.read_by, c.now);
 }
 
 const field = (max: number) => z.string().max(max);
@@ -108,6 +110,7 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       await countFor(c, "trypay", PAYS_PER_COMPANY, `This test company has tried to pay ${PAYS_PER_COMPANY} times, its limit. Start a new one to try again.`);
       const out = await e.paySigned(c.params[0]!, b.terms, b.credential);
       await tallyPay(c.env.sql, out, c.now);
+      await stagePay(c.env.sql, c.caller!.tenantId, b.terms, out, c.now);
       if (!out) return err(404, "no proposal");
       if ("bad" in out) return json(400, { error: out.bad, code: "bad_terms", message: out.bad });
       return json(200, { ...out, sandbox_calls: await sandboxCalls(c.env.sql, c.caller!.tenantId, c.params[0]!, since), request_id: `req_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}` });
