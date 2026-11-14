@@ -17,6 +17,7 @@ import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
 import { resendEmail, type AlertProviders } from "./alerts.js";
 import { forRequest } from "./hostOrigin.js";
+import type { AwxReadBinding } from "./awxLive.js";
 
 export interface Bindings {
   DB: D1Like;
@@ -72,6 +73,8 @@ export interface Bindings {
   RESEND_API_KEY?: string;
   ALERT_EMAIL_FROM?: string;
   ALERTS_LIVE_MONEY?: string;
+  /** The site Worker's read-only Airwallex sandbox gateway (kit11's AwxRead entrypoint, a service binding): the live Airwallex tab. */
+  AWX_READ?: AwxReadBinding;
 }
 
 /** What approval alerts are sent with: Twilio for WhatsApp and Resend for e-mail, each only when all its settings are there. */
@@ -107,7 +110,7 @@ function envOf(b: Bindings): CloudEnv {
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}) } } : {}) } : {}),
-    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b) };
+    edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}) };
 }
 
 export default {
