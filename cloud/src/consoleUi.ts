@@ -127,10 +127,11 @@ async function booksView(){
   // With an engine, its archive is one link away from the books.
   const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
   const bal=el('div','card panel balance',[el('h2','',t('cs.books.balance')),el('p','sub',t('loading'))]);
-  // The books as one PDF (QA, 14 Nov): the balance sheet and profit and loss from this ledger (GET /v1/books/statement.pdf).
-  const pdfBtn=btn(t('cs.books.pdf'),'primary','download');const pdfSaid=el('div','');pdfSaid.setAttribute('role','status');
-  pdfBtn.onclick=async()=>{pdfBtn.disabled=true;pdfSaid.replaceChildren();try{await download('/v1/books/statement.pdf','books-'+today+'.pdf')}catch(e){if(!(e instanceof Expired))pdfSaid.replaceChildren(note(e.message,'bad'))}finally{pdfBtn.disabled=false}};
-  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),pdfSaid,el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
+  // The books as one PDF (QA, 14 Nov): this page, every journal entry in it, through the browser's own "Save as PDF"
+  // (print styles leave out the menus and buttons). No PDF code in the Worker: only the engine may carry it.
+  const pdfBtn=btn(t('cs.books.pdf'),'primary','download');
+  pdfBtn.onclick=()=>{if(typeof drawAll==='function')drawAll();setTimeout(()=>window.print(),50)};let drawAll=null;
+  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),[pdfBtn,arch].filter(Boolean)),el('p','fine printhint',t('cs.books.pdf_hint')),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
@@ -165,7 +166,8 @@ async function booksView(){
   const all=await everyPage('/v1/ledger/entries');const SHOWN=30;
   const drawJournal=(n)=>{const newest=byDateNewest(all);const more=newest.length>n?btn(t('cs.books.journal_all',{n:newest.length}),'linkbtn','chevron-down'):null;if(more)more.onclick=()=>drawJournal(newest.length);
     journal.replaceChildren(el('h2','',t('cs.journal')),el('p','sub',t('cs.books.journal_sub2',{n:Math.min(n,newest.length),total:newest.length})),journalTable(newest.slice(0,n),t('cs.no_entries'),true),more,note(t('cs.journal_note')))};
-  drawJournal(SHOWN);
+  drawJournal(SHOWN);drawAll=()=>drawJournal(all.length);
+  view().dataset.print=[ME&&ME.tenant?ME.tenant.name:'',ME&&ME.demo?t('cs.demo.ribbon'):t('cs.foot')].filter(Boolean).join(' · ');
   await drawVat();
 }
 
@@ -516,6 +518,14 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
   table.vat td.r { text-align: right; white-space: nowrap; grid-column: 2; } table.vat td.r:empty { display: none; }
   table.vat td.r[data-l]::before { content: attr(data-l) ' '; color: var(--faint); font-size: 12px; font-weight: 600; }
   table.vat tr.tot { grid-template-columns: minmax(0, 1fr) auto; } table.vat tr.tot td:first-child { grid-column: 1; }
+}
+/* Books printed or saved as PDF: the page's content only. */
+.printhint { margin: -6px 0 12px; color: var(--faint); font-size: 12.5px; }
+@media print {
+  header.top, .appbar, .demo-ribbon, #foot, .trust, .head .tools, .printhint, .btn.linkbtn, .exports .row2 { display: none !important; }
+  body { background: #fff; } main { padding: 0; } .card { box-shadow: none; break-inside: avoid; } .split2 { grid-template-columns: 1fr; }
+  #view::before { content: attr(data-print); display: block; font-size: 11px; color: #555; margin-bottom: 8px; }
+  table.jt tr { break-inside: avoid; }
 }
 /* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
