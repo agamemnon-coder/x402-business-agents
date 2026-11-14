@@ -32,13 +32,15 @@ describe("About Purser on Home", () => {
   });
 
   // Jury review, 13 Nov: the hero's logos were recoloured (brightness(0), opacity, invert in dark mode), against the
-  // "never altered" rule and Visa's brand rules. The partners are named in text, with no image and no filter.
-  it("names the partners in the hero as text, no logo and no recoloured image", () => {
+  // "never altered" rule and Visa's brand rules, so they went. 14 Nov (owner): the official files again, each unaltered
+  // on its own white tile in both themes (size only), alt the partner's name; never a filter.
+  it("shows the partners' official logos in the hero, unaltered on white tiles, alt their names, never recoloured", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
-    const trust = /<div class="trust">[\s\S]*?<\/div>/.exec(hero)![0];
-    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} Airwallex Visa Metal Claude ${NO_ENDORSEMENT}`);
-    expect(trust).not.toMatch(/<img/);
-    expect(ON).not.toMatch(/\.trust img|filter: brightness\(0\)/);
+    const trust = /<div class="trust">[\s\S]*?<\/small><\/div>/.exec(hero)![0];
+    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-airwallex.png", "Airwallex"], ["logo-visa.png", "Visa"], ["logo-metal.svg", "Metal"], ["logo-claude-slate.svg", "Claude"]]);
+    expect(text(trust).replace(/\s+/g, " ").trim()).toBe(`${WORKS_WITH} ${NO_ENDORSEMENT}`);
+    expect(ON).not.toMatch(/filter: (brightness|invert|grayscale)|mix-blend-mode/);
+    expect(ON).toMatch(/\.trust \.tile \{[^}]*background: #ffffff/);
     // The one exception: the footer's line that says the marks imply no endorsement (review, 13 Nov).
     expect(MARKS_NOTE).toBe("Partner names and marks only say which services Purser uses; no endorsement implied.");
     expect(ON).toContain(`<li>${MARKS_NOTE}</li>`);

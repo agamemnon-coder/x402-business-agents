@@ -172,11 +172,11 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
   { label: "Why Purser", text: "it builds on Airwallex's own card controls and Metal's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];
 /**
- * The walkthrough (film v10, 4:58, YouTube, 13 Nov; AI voice and music: ElevenLabs), linked from Home and Proof and in
+ * The walkthrough (film v10, YouTube, 13 Nov; AI voice and music: ElevenLabs), linked from Home and Proof and in
  * llms.txt. /film is the earlier animation.
  */
 export const FILM_URL = "https://youtu.be/mp9fmOYfBWc";
-export const FILM_LINK = "Watch the walkthrough (4:58)";
+export const FILM_LINK = "Watch the walkthrough";
 /** The Kit 11 moments, in one line, after the three sentences. */
 export const KIT11_RUN_LINE = "The Kit 11 scenario, run live on 3 November.";
 /**
