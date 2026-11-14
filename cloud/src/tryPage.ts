@@ -223,7 +223,7 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .awx dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0 0 6px; font-size: 14px; }
 .awx dt { color: var(--muted); }
 .awx dd { margin: 0; text-align: right; font-weight: 600; overflow-wrap: anywhere; }
-.awx dd.mono { font-weight: 500; font-size: 13px; }
+.awx dd.mono { font-weight: 500; font-size: 13px; user-select: all; -webkit-user-select: all; }
 .awx p { margin: 0; font-size: 13px; color: var(--muted); }
 .hashpill { display: inline-block; margin: 10px 0 0; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 12px; }
 .btn.asking { animation: ring 1.3s ease-out infinite; }
