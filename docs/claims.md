@@ -433,6 +433,8 @@ pay). On-chain refusals already recorded in the four-eyes world: see `docs/runs/
 The Tests row above holds the current count, written by `npm run test-count` from docs/assets/test-summary.json.
 Each earlier count, newest first, as it stood:
 
+- 6665 passing, 4 skipped (they run only on local D1, `npm run test:d1`), in 594 files, on commit `e5fa10a4` (docs/assets/test-summary.json).
+- 6664 passing, 4 skipped (they run only on local D1, `npm run test:d1`), in 594 files, on commit `abd11df2` (docs/assets/test-summary.json).
 - 6664 passing, 4 skipped (they run only on local D1, `npm run test:d1`), in 594 files, on commit `808ce247` (docs/assets/test-summary.json).
 - 6658 passing, 4 skipped (they run only on local D1, `npm run test:d1`), in 593 files, on commit `a4799412` (docs/assets/test-summary.json).
 - 6654 passing, 4 skipped (they run only on local D1, `npm run test:d1`), in 593 files, on commit `a7c1ad6f` (docs/assets/test-summary.json).
