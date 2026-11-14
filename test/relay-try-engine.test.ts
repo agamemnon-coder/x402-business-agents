@@ -51,7 +51,7 @@ describe("the paths the site passes to purser-try", () => {
     const html = tryPage("n", { origin: "https://x.test", rpId: "x.test" });
     const named = [...new Set([...html.matchAll(/['"`(](\/(?:v1|try|assets)\/?[A-Za-z0-9_./-]*)/g)].map((m) => m[1]!))].sort();
     expect(named).toEqual([
-      "/assets/inter.woff2", "/assets/logo-airwallex.png", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
+      "/assets/inter.woff2", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
       "/v1/engine/passkey/finish", "/v1/engine/passkey/start", "/v1/engine/proposals/", "/v1/engine/samples", "/v1/engine/samples/", "/v1/engine/suppliers",
       "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/session", "/v1/try/start",
     ]);
