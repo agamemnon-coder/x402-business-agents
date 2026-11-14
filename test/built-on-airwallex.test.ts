@@ -61,9 +61,9 @@ describe("the Built on Airwallex badge", () => {
     // On a phone, signed out (the landing), in the app bar's empty left, so the sign-in card keeps the first screen;
     expect(cloudConsole).toMatch(/<span class="awx-app"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
     expect(cloudConsole).toContain(".signed-out .awx-app { display: inline-flex; }");
-    // /try's start (cloud/src/try/run.ts, 14 Nov) is one column on a phone with no band: the line sits in the flow,
-    // above the start's eyebrow (test/browser/try.check.ts holds the button in view at 390 px).
-    expect(cloudTry).toContain('class="awx-badge"');
+    // /try's start (cloud/src/try/run.ts, 14 Nov) is one column on a phone with no band: the badge's line sits in the
+    // flow above the start's eyebrow (its header badges are checked above; test/browser/try.check.ts holds the button in
+    // view at 390 px).
     // The cloud's pages may load images from the site, for this logo; nothing else in the policy moved.
     expect(consoleCsp("N")).toContain(`img-src 'self' data: blob: ${SITE_ORIGIN};`);
     // The header is the site's own function, so every page draws it alike.
