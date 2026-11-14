@@ -50,7 +50,7 @@ export const PROOF_URL = new URL("/proof", RUNS_URL).href;
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 84px; } /* 14 Nov: a focus that scrolls keeps its control clear of the sticky nav */
 body { margin: 0; background: var(--bg); color: var(--text); font: 400 16px/1.5 Inter, system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 main { max-width: 560px; margin: 0 auto; padding: 0 var(--gut); }
 /* 12 Nov: the page's own brand line gave way to the site's header (cloud/src/siteHeader.ts, its style after this one). */
