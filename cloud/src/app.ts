@@ -41,7 +41,7 @@ import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.j
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
-import { CARD_ACTION_KINDS, CardRefused, cardsScope, cardsView, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
+import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
@@ -481,6 +481,7 @@ export const ROUTES: Route[] = [
     catch (e) { if (e instanceof CardRefused) return err(e.status, e.message); throw e; }
   } },
   { method: "POST", path: "/v1/cards/actions/{id}/sign", summary: "Sign a card action with your own passkey (a signed-in owner): { credential_id, assertion } over the action's challenge. The action then runs once at the Airwallex sandbox (test money); the same signed action again answers what it did. Answers { status: done | failed, card or tx, reason }.", need: "admin", run: async (c) => {
+    if (!(await cardActionExists(c.env.sql, c.caller!.tenantId, c.params[0]!))) return err(404, "no such card action");
     const b = await body(c, z.object({ credential_id: z.string().max(400),
       assertion: z.object({ authenticatorData: z.string().max(4000), clientDataJSON: z.string().max(8000), signature: z.string().max(400) }).strict() }).strict());
     try { return json(200, await signCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), id: c.params[0]!, credentialId: b.credential_id, assertion: b.assertion, rpId: c.env.rpId, origin: c.env.origin, now: c.now })); }

@@ -100,7 +100,9 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
     // variables an integrator sets. So the scan leaves it out, and the next test holds it to naming only.
     // 14 Nov: the live Airwallex tab's read gateway (worker/src/awxRead.ts) holds the key the same way, for read-only calls.
     expect(index).toMatch(/new AwxReadDesk\(this\.ctx\.storage\.sql, \{ clientId: this\.env\.AIRWALLEX_CLIENT_ID, apiKey: this\.env\.AIRWALLEX_API_KEY,/);
-    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$|awxRead\.ts$|pages\.gen\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
+    // 14 Nov: the agents' live cards (worker/src/awxCards.ts) hold it the same way, behind the card allow-list.
+    expect(index).toMatch(/new AwxCardsDesk\(\{ AIRWALLEX_CLIENT_ID: this\.env\.AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY: this\.env\.AIRWALLEX_API_KEY,/);
+    const others = files(join(root, "worker/src")).filter((f) => !/index\.ts$|fxQuote\.ts$|awxRead\.ts$|awxCards\.ts$|pages\.gen\.ts$/.test(f) && /AIRWALLEX_(CLIENT_ID|API_KEY)|apiKey/.test(readFileSync(f, "utf8")));
     expect(others.map((f) => f.slice(root.length))).toEqual([]);
   });
 

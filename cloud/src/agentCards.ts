@@ -254,6 +254,12 @@ export async function startCardAction(o: { sql: Sql; caller: Caller; gateway?: C
   return { action: actionOut(r, linesOf(o.kind, p.name, row, limits, amount)) };
 }
 
+/** Whether this company has a card action with this id (another company's is "no such action"). */
+export async function cardActionExists(sql: Sql, tenantId: string, id: string): Promise<boolean> {
+  await tables(sql);
+  return !!(await sql.first("SELECT 1 FROM card_actions WHERE tenant_id = ? AND id = ?", [tenantId, id]));
+}
+
 /** POST /v1/cards/actions/{id}/sign: the owner's passkey over the action's hash; then the action runs, once. */
 export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: CardsPort; id: string; credentialId: string; assertion: AssertionB64; rpId: string; origin: string; now: Date }) {
   await tables(o.sql);
