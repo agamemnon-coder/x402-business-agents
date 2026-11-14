@@ -217,7 +217,7 @@ const tour=(()=>{
 /** The start screen's look, the rail's clock and live link, the score and the tour card. Existing tokens only. */
 export const START_CSS = `
 /* 14 Nov (owner): the start, enterprise-grade. One column on a phone; at 1024 px and up the words left, the steps right. */
-body:has(.screen.start) { background:
+body:has(.screen.start) { min-height: 100vh; min-height: 100svh; background:
   radial-gradient(60% 420px at 85% 0, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%) no-repeat,
   radial-gradient(50% 360px at 0 100%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 70%) no-repeat,
   var(--bg); }
