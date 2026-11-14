@@ -342,7 +342,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   const rows = proofRows(run, awx);
   // The partners' official files (14 Nov, owner), served unaltered from src/ui/logos/ and docs/assets/logos/ as
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
-  const partners = [["logo-airwallex.png", "Airwallex", 2435, 334, ""], ["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  // Airwallex left this row on 14 Nov (owner): it is the platform, shown by the header's "Built on Airwallex" badge
+  // (src/ui/builtOn.ts); the others work with it.
+  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
   // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">

@@ -1,6 +1,7 @@
 // The files of the visual system under docs/assets/, by path: what `npm run visuals` writes and the test compares.
 
-import { architectureSvg, lifecycleSvg, refusalsSvg, socialSvg, type Layout } from "./svg.js";
+import { readFileSync } from "node:fs";
+import { SOCIAL_BUILT_ON, architectureSvg, lifecycleSvg, refusalsSvg, socialSvg, type Layout } from "./svg.js";
 import { railRefusals } from "./facts.js";
 import type { Theme } from "./tokens.js";
 import { REPO_BLOB } from "../redesign/metalStory.js";
@@ -19,6 +20,6 @@ export function visualFiles(): Record<string, string> {
       out[`${ASSETS}/rail-refusals-${layout}-${theme}.svg`] = refusalsSvg(rails, (p) => `${REPO_BLOB}${p}`, layout, theme);
     }
   }
-  out[`${ASSETS}/social-preview.svg`] = socialSvg(LIVE_SITE);
+  out[`${ASSETS}/social-preview.svg`] = socialSvg(LIVE_SITE, `data:image/png;base64,${readFileSync(new URL(`../../${SOCIAL_BUILT_ON.logo}`, import.meta.url)).toString("base64")}`);
   return out;
 }

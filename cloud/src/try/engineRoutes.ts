@@ -77,7 +77,7 @@ const Compose = z.object({ supplier_key: field(40), invoice_no: field(64), amoun
 
 /** This block's routes, by method and path (the engine's own block is cloud/src/engine/routes.ts). */
 export const TRY_ENGINE_ROUTES = ["GET /v1/engine/samples", "POST /v1/engine/samples/{key}", "GET /v1/engine/suppliers", "POST /v1/engine/compose",
-  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "GET /v1/engine/export", "GET /v1/engine/export.pdf"] as const;
+  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "POST /v1/engine/proposals/{id}/payout/simulate", "GET /v1/engine/export", "GET /v1/engine/export.pdf"] as const;
 
 const Pay = z.object({ terms: z.record(z.string(), z.unknown()), credential: z.record(z.string(), z.unknown()) }).strict();
 
@@ -110,7 +110,7 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       const t = await e.terms(c.params[0]!);
       return t ? json(200, t) : err(404, "no proposal");
     }) },
-    { method: "POST", path: "/v1/engine/proposals/{id}/pay", summary: "Pay with your signature (a test company of the hands-on demo only; at most 8 KB, 30 a company): { terms, credential } with the terms to pay (only amount, beneficiary_name and iban_last4 may differ from the signed ones) and the passkey's signature this browser made at the approval. Two layers answer, always both: the product's verifier on that signature over the sent terms, and the executor's own gate asked with the sent terms (inside a transaction that is always rolled back). Only when both say yes is the held payment run, from the stored terms, on the simulated bank (test money). Answers { outcome (paid, refused, paid_once, not_signed, expired, failed), layers, signed_sha256, sent_sha256, changed, transfers_before, transfers_after, sandbox_calls, settled, request_id }; 400 when the terms' shape does not fit.", need: "admin", run: on(async (c, e) => {
+    { method: "POST", path: "/v1/engine/proposals/{id}/pay", summary: "Pay with your signature (a test company of the hands-on demo only; at most 8 KB, 30 a company): { terms, credential } with the terms to pay (only amount, beneficiary_name and iban_last4 may differ from the signed ones) and the passkey's signature this browser made at the approval. Two layers answer, always both: the product's verifier on that signature over the sent terms, and the executor's own gate asked with the sent terms (inside a transaction that is always rolled back). Only when both say yes is the held payment run, from the stored terms, on the simulated bank (test money). Answers { outcome (paid, refused, paid_once, not_signed, expired, failed), layers, signed_sha256, sent_sha256, changed, transfers_before, transfers_after, sandbox_calls, settled, request_id, airwallex_payout? (when paid: the Airwallex sandbox transfer of the signed payment, or why the simulated bank alone paid) }; 400 when the terms' shape does not fit.", need: "admin", run: on(async (c, e) => {
       if (!isTryTenant(c.caller!.tenantId)) throw new AuthError(403, "only a test company of the hands-on demo pays through this route; approve pays at once elsewhere");
       const since = c.now.toISOString();
       const b = await kit.body(c, Pay, PAY_BODY_MAX_BYTES);
@@ -123,6 +123,10 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
       if (!out) return err(404, "no proposal");
       if ("bad" in out) return json(400, { error: out.bad, code: "bad_terms", message: out.bad });
       return json(200, { ...out, sandbox_calls: await sandboxCalls(c.env.sql, c.caller!.tenantId, c.params[0]!, since), request_id: `req_${randomToken(9).replace(/[^A-Za-z0-9]/g, "x")}` });
+    }) },
+    { method: "POST", path: "/v1/engine/proposals/{id}/payout/simulate", summary: "Sandbox: move to PAID (a test company of the hands-on demo only): the Airwallex sandbox transfer of this paid proposal moved by the sandbox's own simulation to SENT, then PAID; no money anywhere. Answers { ok, note (the transfer's id and status), reason? (in_approval: it waits for a person in Airwallex; switched_off; no_transfer; ...) }.", need: "admin", run: on(async (c, e) => {
+      if (!isTryTenant(c.caller!.tenantId)) throw new AuthError(403, "only a test company of the hands-on demo moves a sandbox transfer");
+      return json(200, await e.payoutSimulate(c.params[0]!));
     }) },
     { method: "GET", path: "/v1/engine/export", summary: "Download the company in the product's sync format (purser.cloud-sync/v1): { format, company, made_at, batches }, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log), as a file. No archive files. At most 5 MB; a test company may download it 5 times.", need: "read", run: on(async (c, e) => {
       if (isTryTenant(c.caller!.tenantId)) await countFor(c, "tryexport", EXPORTS_PER_COMPANY, `This test company was downloaded ${EXPORTS_PER_COMPANY} times, its limit.`);
