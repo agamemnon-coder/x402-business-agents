@@ -9,6 +9,8 @@
 //   tour           the 30-second skippable tour (src/try/tour.ts)
 //   feedback       the anonymous three-choice feedback on the end card (./feedback.ts)
 //   talk_round     /try/sign's "talk the agent round" step on the kit11 Worker (worker/src/talkRound.ts) and its counter
+//   awx_cards      the agents' live Airwallex sandbox cards: issue, freeze, unfreeze, limits, a test purchase, each signed
+//                  with the CFO's passkey (cloud/src/agentCards.ts); off: no card action reaches Airwallex
 //   awx_fx         the live Airwallex sandbox FX quote in the terms (cloud/src/engine/liveFx.ts); off: the recorded rate, labelled
-export const EXTRA_SWITCHES = ["bot_check", "counter", "end_card", "books_effect", "partner_lines", "scenarios", "tour", "feedback", "talk_round", "awx_fx"] as const;
+export const EXTRA_SWITCHES = ["bot_check", "counter", "end_card", "books_effect", "partner_lines", "scenarios", "tour", "feedback", "talk_round", "awx_fx", "awx_cards"] as const;
 export type ExtraSwitch = (typeof EXTRA_SWITCHES)[number];

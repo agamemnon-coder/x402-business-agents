@@ -51,6 +51,9 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "services.0.binding": [undefined, "AWX_FX"],
       "services.0.service": [undefined, "kit11"],
       "services.0.entrypoint": [undefined, "AwxFx"],
+      "services.1.binding": [undefined, "AWX_CARDS"],
+      "services.1.service": [undefined, "kit11"],
+      "services.1.entrypoint": [undefined, "AwxCards"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));

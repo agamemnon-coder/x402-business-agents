@@ -8,6 +8,8 @@ import { TryDesk } from "./try.js";
 import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./trySign.js";
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
+import { AwxCardsDesk } from "./awxCards.js";
+import type { CardsAnswer, CardsAsk } from "../../src/airwallex/cardGate.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
 import { talkSource } from "./talkRound.js";
 import { PAGES } from "./pages.gen.js";
@@ -68,6 +70,11 @@ export interface Env {
    * Airwallex from it; any other value, or none, leaves it on. Max sets it himself when needed; no script here does.
    */
   AWX_FX?: string;
+  /**
+   * The agents' live sandbox cards (./awxCards.ts, the AwxCards entrypoint): "on" lets card writes and the purchase
+   * simulation through (create a card, freeze or unfreeze it, set its limits). Off when missing; reads need only the key.
+   */
+  AWX_CARDS_WRITE?: string;
 }
 
 /** /try's live quote may take this long at Airwallex; the engine waits at most 3 s for the whole answer (cloud/src/engine/liveFx.ts). */
@@ -146,6 +153,19 @@ export class RelayObject extends DurableObject<Env> {
 export class AwxFx extends WorkerEntrypoint<Env> {
   async quote(a: AwxFxAsk): Promise<AwxFxAnswer> {
     return this.env.RELAY.get(this.env.RELAY.idFromName("awx-fx")).awxFxQuote(a);
+  }
+}
+
+/**
+ * The agents' live sandbox cards (14 Nov): the named entrypoint purser-try binds to (cloud/wrangler.try.jsonc,
+ * AWX_CARDS). No HTTP request reaches it. One method; every call to Airwallex on the card allow-list
+ * (src/airwallex/cardGate.ts); the answer carries the last four digits at most, never a key, a token or card data.
+ */
+let cardsDesk: AwxCardsDesk | undefined;
+export class AwxCards extends WorkerEntrypoint<Env> {
+  async ask(a: CardsAsk): Promise<CardsAnswer> {
+    cardsDesk ??= new AwxCardsDesk({ AIRWALLEX_CLIENT_ID: this.env.AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY: this.env.AIRWALLEX_API_KEY, AWX_CARDS_WRITE: this.env.AWX_CARDS_WRITE });
+    return cardsDesk.ask(a);
   }
 }
 

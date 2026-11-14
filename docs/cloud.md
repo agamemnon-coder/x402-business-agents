@@ -613,3 +613,29 @@ hands-on lane's.
   Cloudflare's current D1 Time Travel page for the retention window on the plan used, and rehearse one restore of a
   copy with `wrangler d1 time-travel` into a scratch database. R2 has no point-in-time restore of its own here: the
   documents are written once under their hash and never changed, and the export lists them.
+
+## The agents' live sandbox cards (Agents tab)
+
+Each agent can have its own virtual Visa card at the **Airwallex sandbox** (test money). The card's limits are the CFO
+policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with Face ID, on the Agents tab.
+
+- **No key in Purser Cloud.** The Cloud asks the kit11 Worker's `AwxCards` entrypoint (`worker/src/awxCards.ts`) over a
+  service binding (`AWX_CARDS` in `cloud/wrangler.try.jsonc`). No HTTP request reaches that entrypoint.
+- **Allow-list** (`src/airwallex/cardGate.ts`): read cards, one card, card transactions, cardholders; create a card;
+  update a card's status (ACTIVE or INACTIVE) or its limits, nothing else; a delegate cardholder for a new card; the
+  sandbox's purchase simulation. Every body shape is checked. Anything else is refused before it is sent.
+- **Never card data.** kit11 cuts every answer down to the last four digits. No full number, CVV or cardholder reaches
+  the Cloud, its database, its logs or the page.
+- **Every write is signed.** `POST /v1/cards/actions` writes the exact action down as canonical JSON. The passkey
+  challenge is its SHA-256. `POST /v1/cards/actions/{id}/sign` checks the owner's own passkey over that hash, then runs it
+  once. Signing the same action again answers the first result and sends nothing. A new card's `request_id` at Airwallex
+  is that hash too.
+- **Locks** (all off or zero unless set): the admin switch `awx_cards` (on/off, in `/v1/try/admin`), kit11's var
+  `AWX_CARDS_WRITE=on`, never a `/try` test company, one card an agent, 3 a company, 20 writes a company a UTC day (60 in all).
+- **Issuing check:** `GET /v1/cards/scope` answers `{ issuing: ok | forbidden | no_key | no_gateway | unavailable }`,
+  one Airwallex read a minute at most, no card data.
+- **Decline demo:** "Test: buy for …" has the agent try a purchase 5.00 EUR over its limit, through Airwallex's own
+  purchase simulation, signed like any write. Airwallex declines it (`LIMIT_EXCEEDED`) and the decline shows with its id.
+- Checked on this machine with a stand-in sandbox: `npx tsx test/browser/agent-cards.check.ts docs/assets/cloud`.
+
+![The Sourcing agent's live card, frozen, with a declined over-limit purchase](assets/cloud/cloud-agents-card-1440.png)

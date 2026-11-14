@@ -43,7 +43,12 @@
   "durable_objects": { "bindings": [{ "name": "ENGINE", "class_name": "CompanyEngine" }] },
   // /try's live FX quote (cloud/src/engine/liveFx.ts): the kit11 Worker's named entrypoint AwxFx, which holds the
   // Airwallex sandbox key and the caps (worker/src/awxFx.ts). No key here. Deploy kit11 with AwxFx first.
-  "services": [{ "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" }],
+  // The agents' live sandbox cards (cloud/src/agentCards.ts): kit11's named entrypoint AwxCards, which holds the key and
+  // the card allow-list (worker/src/awxCards.ts). No key here. Deploy kit11 with AwxCards first.
+  "services": [
+    { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
+    { "binding": "AWX_CARDS", "service": "kit11", "entrypoint": "AwxCards" }
+  ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],
   // The engine's modules read import.meta.url, dirname and filename when they load; a Worker's bundle has none.
   "define": { "import.meta.url": "\"file:///purser-cloud/worker.js\"", "import.meta.dirname": "\"/purser-cloud\"", "import.meta.filename": "\"/purser-cloud/worker.js\"" },
