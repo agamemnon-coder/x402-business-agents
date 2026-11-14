@@ -226,7 +226,7 @@ export const SCENARIOS: Scenario[] = [
       return { happened: `first copy: ${first ?? "may be paid"}; second copy: ${second ?? "may be paid"}`, passed: first === null && second !== null, evidence: [`invoice ${inv.invoice_no}`] };
     },
   },
-  { id: "velocity-stop", title: "An agent pays too often: stopped by itself", expected: "Past its speed limit the agent is stopped automatically; only the CFO's Face ID lifts the stop.", offline: "Metal is a stand-in; live: docs/runs/2026-10-29-rehearsal-6.md", run: viaAttack("velocity-burst") },
+  { id: "velocity-stop", title: "An agent pays too often: stopped by itself", expected: "Past its speed limit the agent is stopped automatically; only the CFO's Face ID lifts the stop.", offline: "Alta is a stand-in; live: docs/runs/2026-10-29-rehearsal-6.md", run: viaAttack("velocity-burst") },
   {
     id: "emergency-stop",
     title: "The emergency stop",
@@ -290,8 +290,8 @@ export const SCENARIOS: Scenario[] = [
   {
     id: "unknown-sender",
     title: "Money from an unknown sender",
-    expected: "A payment into the sweep wallet from anyone but the business account is held by Metal in quarantine, shown to the CFO, and never reaches the bank on its own.",
-    offline: "Metal's ReceivePolicy is a stand-in; live: docs/metal-award.md, section 5",
+    expected: "A payment into the sweep wallet from anyone but the business account is held by Alta in quarantine, shown to the CFO, and never reaches the bank on its own.",
+    offline: "Alta's ReceivePolicy is a stand-in; live: docs/metal-award.md, section 5",
     run: async (w) => {
       w.db.prepare("INSERT OR IGNORE INTO metal_accounts (address, role) VALUES ('0x00000000000000000000000000000000000000b1', 'business'), ('0x00000000000000000000000000000000000000e1', 'sweep')").run();
       const rp = new FakeReceivePolicy();

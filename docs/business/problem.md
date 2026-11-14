@@ -79,13 +79,13 @@ no new claim. The proof for every claim is in [claims.md](../claims.md).
 | The problem | What Purser does | Where it is documented |
 |---|---|---|
 | A shared card, no idea which agent bought what | Each agent has its own virtual Airwallex card; the CFO policy sets its per-purchase and monthly limits and Airwallex enforces them | [airwallex.md, Issuing](../airwallex.md#issuing), [cfo-policy.md](../cfo-policy.md) |
-| A limit written in a prompt | On-chain payments go through a Metal mandate per agent (cap per payment, budget, one payee); the limit lives in the rails, not in the prompt | [metal-award.md, mandates](../metal-award.md#2-mandates-each-agents-limits-enforced-by-the-account), [cfo-policy.md](../cfo-policy.md) |
+| A limit written in a prompt | On-chain payments go through an Alta (formerly Metal) mandate per agent (cap per payment, budget, one payee); the limit lives in the rails, not in the prompt | [metal-award.md, mandates](../metal-award.md#2-mandates-each-agents-limits-enforced-by-the-account), [cfo-policy.md](../cfo-policy.md) |
 | Anything beyond the limits | The CFO approves the SHA-256 hash of the exact terms with a passkey (Face ID); any change after signing makes the signature worthless. Above a threshold, four eyes (two people) can be required; in the demo the second approver is a labelled test passkey | [phone-approval.md](../phone-approval.md#approving-on-a-phone-with-a-passkey), [cfo-policy.md, four eyes](../cfo-policy.md#four-eyes-two-people-above-a-threshold) |
 | Prompt injection and changed bank details | Documents are screened by code before a model reads them; an invoice with new bank details or a lookalike supplier is blocked by code, and a new IBAN needs a person's check and Face ID | [fraud-and-injection.md](../fraud-and-injection.md), [cfo-policy.md, changed bank details](../cfo-policy.md#emergency-stop-and-changed-bank-details) |
 | An agent in a loop | Speed limits per agent; a breach stops the agent and freezes its card; an emergency stop freezes every card (tested against stand-ins, not yet pulled live) | [controls.md](../controls.md), [cfo-policy.md, emergency stop](../cfo-policy.md#emergency-stop-and-changed-bank-details) |
 | Finding out after the fact | A hash-chained, append-only audit log of every decision, with who approved it and how | [audit/README.md](../audit/README.md) |
 
-Everything above ran on Metal testnet and in the Airwallex sandbox. What is not in place yet is listed in
+Everything above ran on Alta testnet and in the Airwallex sandbox. What is not in place yet is listed in
 [controls.md](../controls.md#not-in-place-summary) and [compliance.md](../compliance.md#what-a-real-launch-would-add).
 
 ## Sources

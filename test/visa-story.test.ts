@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { VISA_TAP_STATUS } from "../src/config/brand.js";
 import { visaPage } from "../src/redesign/partners.js";
+import { shortId } from "../src/redesign/proofRuns.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { homePage } from "../src/redesign/home.js";
 import { liveRuns } from "../src/redesign/runs.js";
@@ -116,8 +117,12 @@ describe("jury round 3, the Visa findings", () => {
   it("/proof's 7 Nov Visa card, named for the purchase above the limit, leads with that purchase's PaymentIntent", () => {
     const b = (airi as unknown as { purchases: { step: string; approved_at?: string; payment_intent_id?: string; amount: string }[] }).purchases.find((p) => p.approved_at)!;
     expect([b.step, b.amount, b.payment_intent_id]).toEqual(["B", "45.00", "int_sgpvzc9hjhnxvxc26ie"]);
+    // Max, 14 Nov: ids are short in sight on /proof, whole on hover and in the copy button.
     const p = proofPage().replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-    expect(p).toContain(`Payment intent, EUR ${b.amount}, after Face ID ${b.payment_intent_id}`);
+    expect(p).toContain(`Payment intent, EUR ${b.amount}, after Face ID ${shortId(b.payment_intent_id!)}`);
+    const row = /<li id="run-vic-1"[\s\S]*?<\/li>/.exec(proofPage())![0];
+    expect(row).toContain(`title="${b.payment_intent_id}"`);
+    expect(row).toContain(`data-copy="${b.payment_intent_id}"`);
     expect(liveRuns().find((r) => r.key === "vic-1")?.ids[0]?.value).toBe(b.payment_intent_id);
   });
 
