@@ -85,10 +85,12 @@ describe("the page", () => {
     for (const group of Object.values(COPY)) expect(JSON.stringify(group)).not.toMatch(/stand-in/i);
   });
 
-  it("uses a timer only for polling, the session's renewal and the running time of an open Claude call", () => {
+  // 14 Nov (in-app browsers): also the passkey prompt's 30 s limit and Copy link's 1.5 s wait for the clipboard.
+  it("uses a timer only for polling, the session's renewal, the running time of an open Claude call, the passkey's limit and Copy link", () => {
     const uses = [...script.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
     expect(uses.length).toBeGreaterThanOrEqual(3);
-    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer)$/);
+    for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer)$/);
+    expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},30000\)/);
     expect(script).toMatch(/pollTimer=setTimeout\(/);
     expect(script).toMatch(/renewTimer=setTimeout\(/);
     expect(script).toMatch(/askTimer=setInterval\(/);
@@ -239,7 +241,7 @@ describe("the copy", () => {
     }
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "invoice 4", "invoice 5", "pay 4", "pay 6", "books 0", "books 1", "work 4", "books 3", "books 4", "books 5", "company 3", "start 4", "start 5", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14"]);
   });
 
   it("holds screens 3 and 4 to the words of lanes/page.md B2", () => {
