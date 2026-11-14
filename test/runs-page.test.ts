@@ -1,3 +1,4 @@
+import { altaLabel } from "../src/ui/formerly.js";
 // /runs and /agents/<id> (competitor gap list, 10 Nov): every live run in one list with its ids, checks and records,
 // and one page per Kit 11 agent, every figure read from the records. docs/runs/README.md is the same list, generated.
 import { countOf } from "../src/redesign/ui.js";
@@ -572,7 +573,8 @@ describe("/runs as a timeline", () => {
       // Review 12 Nov (DC-2): the chip in sight may be cut on a phone; the fold lists every id, the first one included,
       // under its full label, so each can be read in full without JavaScript.
       const foldIds = [...fold.matchAll(/<span class="idc"><span class="k">([^<]+)<\/span><(?:a|code) class="v"[^>]*>([^<]+?)(?: ↗)?<\/(?:a|code)>/g)].map((m) => [m[1], m[2]]);
-      expect(foldIds, r.key).toEqual(r.ids.map((i) => [escAttr(i.label), escAttr(i.value)]));
+      // Judge scan, 14 Nov: a record's label shows Alta's name (altaLabel); the record keeps "Metal".
+      expect(foldIds, r.key).toEqual(r.ids.map((i) => [escAttr(altaLabel(i.label)), escAttr(i.value)]));
       // A link relative to docs/runs/README.md opens the file on GitHub from the page.
       for (const f of r.files) expect(seen, r.key).toContain(`href="${f.href.replace(/^\.\.\/\.\.\//, REPO_BLOB)}"`);
       // A recorded "2,000 of 2,000" reads "all 2,000" on the page (no N/N fraction, 13 Nov).

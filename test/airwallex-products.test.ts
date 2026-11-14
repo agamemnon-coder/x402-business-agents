@@ -430,7 +430,8 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     expect(acceptanceRun(md.replace(/200, `SUCCEEDED`, card ending/, "200, `REQUIRES_PAYMENT_METHOD`, card ending"))).toBeNull();
   });
 
-  it("names the kit as the reason for SWIFT, in the kit's own words, and links the SEPA payout with its fee", () => {
+  // Partner scan, 14 Nov: the "Why SWIFT" sentence (the kit's fee rule) is gone; the SEPA payout and its fee stay.
+  it("links the SEPA payout with its fee, with no \"Why SWIFT\" sentence", () => {
     const k = kitSwift(read(KIT_FILE))!;
     expect(read(KIT_FILE)).toContain(`"${k}"`);
     expect(k).toMatch(/SWIFT payout/);
@@ -439,9 +440,9 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     const p = platformRun(JSON.parse(read(PLATFORM_FACTS_FILE)) as PlatformFact[], read(PLATFORM_RUN_FILE))!;
     // The kit gives a fee rule for each SWIFT payout; the line says that much and no more, with the kit's own figure.
     const fee = /EUR (\d+\.\d{2})/.exec(k)![1]!;
-    expect(text(line)).toMatch(new RegExp(`^Why SWIFT: the hackathon kit's fee rule is for a SWIFT payout, EUR ${fee.replace(".", "\\.")} each\\.`));
-    expect(text(line)).not.toMatch(/asks for/);
-    expect(line).toContain(KIT_FILE);
+    expect(fee).toMatch(/^\d+\.\d{2}$/);
+    expect(text(line)).toMatch(/^The platform run paid by local SEPA transfer/);
+    expect(text(main(awx))).not.toMatch(/Why SWIFT|fee rule/);
     expect(text(line)).toContain(`Airwallex fee ${p.paid.airwallexFee}`);
     expect(line).toMatch(/<a [^>]*href="#platform-run"[^>]*>[^<]*SEPA/);
     expect(read(PLATFORM_RUN_FILE)).toMatch(/SEPA, LOCAL/);
@@ -468,11 +469,13 @@ describe("/airwallex: payment acceptance, the SWIFT line, the docs and the folds
     // The tiles come first: before the hash block and before any fold.
     expect(awx.indexOf('<section class="awp"')).toBeLessThan(awx.indexOf('id="awx-hash"'));
     expect(awx.indexOf('<section class="awp"')).toBeLessThan(awx.indexOf("<details", awx.indexOf("<main")));
-    // The first screen is Airwallex's products: Metal earnings and the simulated deposit are in a fold.
-    expect(open).not.toMatch(/Metal earnings/);
+    // The first screen is Airwallex's products: Alta earnings and the simulated deposit are in a fold.
+    expect(open).not.toMatch(/(Metal|Alta) earnings/);
     expect(open).not.toMatch(/0\.69/);
     const metal = /<details class="fold" id="main-run"[\s\S]*?<\/details>/.exec(awx)![0];
-    expect(text(metal)).toMatch(/Metal earnings booked at Airwallex/);
+    // Partner scan, 14 Nov: the record's label shows under Alta's name.
+    expect(text(metal)).toMatch(/Alta earnings booked at Airwallex/);
+    expect(text(metal)).not.toMatch(/Metal earnings/);
     expect(text(metal)).toMatch(/0\.69 USD booked\s+simulated deposit/);
   });
 

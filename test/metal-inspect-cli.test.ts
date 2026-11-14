@@ -38,7 +38,8 @@ describe("npm run metal-inspect", () => {
   it("reads live through a stand-in RPC within its ceiling, and never prints the URL", async () => {
     const rpc = standIn();
     const r = await metalInspect([], { rpcUrl: URL_WITH_KEY, fetcher: rpc.fetcher, now: () => new Date("2026-11-13T09:00:00.000Z") });
-    expect(r.out[0]).toBe(`Read live from Metal testnet at 09:00:00 UTC, block ${0x18cc66a}.`);
+    // Partner scan, 14 Nov: the answer's network label is Alta testnet (the route keeps its path).
+    expect(r.out[0]).toBe(`Read live from Alta testnet at 09:00:00 UTC, block ${0x18cc66a}.`);
     expect(rpc.calls).toEqual(["eth_blockNumber", "eth_call", "eth_call", "eth_call"]);
     expect(rpc.calls.length).toBeLessThanOrEqual(CLI_CEILING);
     expect(r.out.join("\n")).not.toMatch(/FAKE0|rpc\.example/);

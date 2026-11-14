@@ -30,10 +30,10 @@ describe("the site after the rename", () => {
     // (/runs is left out here: its rows quote the runs' own records, which keep the name Metal had.)
     for (const k of ["home", "proof", "metal", "security", "claude", "docs", "airwallex"]) {
       const h = html(pages[k]);
-      // Two proof labels (on /proof and /metal) are the main run's record's own words (docs/demo/main-run.json), quoted as recorded.
-      const main = visible(/<main[\s\S]*<\/main>/.exec(h)![0]).replace(ALTA_FIRST, "").replace("Metal earnings booked at Airwallex", "").replace("settled by Metal's facilitator", "")
-        // Claude's own words in the main run's record, on /claude, quoted as it wrote them.
-        .replace("so Metal refused the last purchase", "");
+      // Partner scan, 14 Nov: the record's own labels ("Metal earnings…", "settled by Metal's facilitator") now show as Alta.
+      const main = visible(/<main[\s\S]*<\/main>/.exec(h)![0]).replace(ALTA_FIRST, "")
+        // Claude's own words in the main run's record, on /claude, quoted as it wrote them, with the note that says so.
+        .replace("so Metal refused the last purchase", "").replace(/ \(quoted from \d+ \w+; Metal is now Alta\)/g, "");
       expect({ k, metal: main.match(/\bMetal\b(?! Award)/g) ?? [] }).toEqual({ k, metal: [] });
     }
   });

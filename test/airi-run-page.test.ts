@@ -1,3 +1,4 @@
+import { VISA_TAP_STATUS } from "../src/config/brand.js";
 // The Airi run on the site (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, a separate world, shows on /airwallex
 // (in full), on /visa (in full, under the page's VIC heading, drawing and overview, above the TAP section; 12 Nov) and on
 // /proof under the partners (short), dated and
@@ -24,7 +25,8 @@ const inSight = (html: string) => text(block(html).replace(/<details[\s\S]*?<\/d
 const PAGES = ["airwallex", "visa", "proof"] as const;
 /** The owner's copy (7 Nov), word for word; the summary since 12 Nov (jury panel): the run was scripted, and within the limit it is "with no Purser approval". */
 const HEADING = "Visa Intelligent Commerce via Airwallex's Airi: a live run (7 Nov)";
-const SUMMARY = "A scripted run, no Claude call: paid with a Visa (VIC) credential from Airi that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
+// Partner scan, 14 Nov: one name for the credential on /visa, "Airi credential (test card)".
+const SUMMARY = "A scripted run, no Claude call: paid with an Airi credential (test card) that Purser binds to one purchase, each purchase confirmed by the cardholder's passkey: within Purser's limit with no Purser approval, above it only after the CFO's Face ID; a disallowed merchant was refused by Purser first.";
 const A_SENTENCE = "Within Purser's limit, no Purser approval is needed. Airi itself asks the cardholder to confirm each purchase with a passkey.";
 const BADGES = ["✓ Within the limit", "✓ Paid after Face ID", "✕ Refused by Purser"];
 const CHECKS_URL = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md#checks-the-records-checks";
@@ -88,8 +90,9 @@ describe("the Airi run on the site", () => {
     expect(visa.indexOf('id="airi-run"')).toBeLessThan(visa.indexOf('class="flow card'));
     expect(block(visa)).toMatch(/<h2 class="airi-h">/);
     expect(block(pages.airwallex!)).toMatch(/<h3 class="airi-h">/);
-    // /visa keeps the TAP status word for word.
-    expect(text(visa)).toContain("not eligible Visa tooling for this hackathon (Visa, 5 Nov)");
+    // /visa keeps the TAP status word for word (partner scan, 14 Nov: "not part of this entry", no "(Visa, 5 Nov)").
+    expect(text(visa)).toContain(VISA_TAP_STATUS);
+    expect(text(visa)).not.toMatch(/not eligible Visa tooling|\(Visa, 5 Nov\)/);
     // /proof: after the partner cards, before the folds; no longer inside "Airwallex, read back".
     const proof = pages.proof!;
     expect(proof.indexOf('id="airi-run"')).toBeGreaterThan(proof.lastIndexOf('class="pcard'));
