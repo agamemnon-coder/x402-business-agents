@@ -129,8 +129,12 @@ Mapping to their structure (scaled to 2:45):
 
 ## Switches on the day of recording
 
-The recording uses the hosted demo (purser-try, through kit11). The owner sets these with `POST /v1/try/admin` (see
-[stage-mode.md](stage-mode.md) for the `op` helper). No cap or ceiling changes here.
+The recording uses the hosted demo (purser-try, through kit11). The owner sets these with `POST /v1/try/admin` on purser-try, with the platform admin's token:
+
+```sh
+op() { curl -sS https://purser-try.max-31b.workers.dev/v1/try/admin -H "Authorization: Bearer $PURSER_TRY_ADMIN_TOKEN" -H 'content-type: application/json' -d "$1"; echo; }
+```
+ No cap or ceiling changes here.
 
 | What | Why |
 | --- | --- |
