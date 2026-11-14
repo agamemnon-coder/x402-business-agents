@@ -98,7 +98,11 @@ export function openingLines(db: DB, moved: JournalLine[]): JournalLine[] {
       const before = moved.filter((m) => m.bank_account === bank && m.currency === cur && Date.parse(m.date) < Date.parse(first.taken_at)).reduce((s, m) => s + cents(m.amount), 0);
       const opening = available - before;
       if (opening <= 0) continue;
-      out.push(line({ date: first.taken_at, ref: `balance:${first.label}`, description: `Airwallex ${cur} balance before the run (sandbox test money)`, bank_account: bank, currency: cur, cents: opening, proof: `Airwallex balance read ${first.taken_at}`, rule: "opening balance" }));
+      // Dated before the run's first movement (judge scan, 14 Nov: a balance read after Purser's first card charges was
+      // dated after them in the journal): the end of the day before that movement, else the read itself.
+      const earliest = moved.reduce((d, m) => (Date.parse(m.date) < Date.parse(d) ? m.date : d), first.taken_at);
+      const date = Date.parse(earliest) < Date.parse(first.taken_at) ? new Date(Date.parse(`${earliest.slice(0, 10)}T00:00:00Z`) - 1).toISOString() : first.taken_at;
+      out.push(line({ date, ref: `balance:${first.label}`, description: `Airwallex ${cur} balance before the run (sandbox test money)`, bank_account: bank, currency: cur, cents: opening, proof: `Airwallex balance read ${first.taken_at}`, rule: "opening balance" }));
     }
   }
   return out;
