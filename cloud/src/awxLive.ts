@@ -16,7 +16,7 @@ import { AWX_RUN_RECORDED, PAYEE_CHECKS_RECORDED } from "./awxRecorded.js";
 import { ledgerMovementsFromRunRecord, reconcileFinancialTransactions, toFinancialTx } from "../../src/finance/awxReconcile.js";
 
 /** The service binding's one method used here (worker/src/index.ts, AwxRead). */
-export interface AwxReadBinding { read(view: string): Promise<unknown> }
+export interface AwxReadBinding { read(view: string): Promise<unknown>; events?(): Promise<unknown> }
 
 export const AWX_SANDBOX_HOST = "api.sandbox.airwallex.com";
 /** The views the page reads: the gateway's own, and the reconciliation made here from its financial transactions. */
@@ -134,4 +134,44 @@ export async function awxLiveView(gw: AwxReadBinding | undefined, view: AwxLiveV
   if (view === "beneficiaries") return { ...a, data: annotateBeneficiaries(a.data) };
   if (view === "issuing") return { ...a, data: annotateIssuing(a.data) };
   return a;
+}
+
+// --- The live events feed (14 Nov) ---------------------------------------------------------------------------------
+// What Airwallex sent the site's webhook (worker/src/awxEvents.ts): only events whose signature verified, four fields
+// each. Read through the same binding; each row is checked again here, and anything else in it is dropped.
+
+export interface AwxEventOut { event_id: string; type: string; topic: string; object_id: string | null; occurred_at: string | null; received_at: string; signature_verified: true }
+export type AwxEventsView =
+  | { view: "events"; source: "airwallex-webhooks"; read_at: string; receiving: boolean; kept: number; last_event_at: string | null; events: AwxEventOut[] }
+  | { view: "events"; source: "unavailable"; code: string; reason: string; checked_at: string };
+
+const EV_ID = /^[A-Za-z0-9_-]{1,80}$/;
+const EV_TYPE = /^[a-z][a-z0-9_]{0,40}(\.[a-z0-9_]{1,40}){0,5}$/;
+const EV_TOPIC = /^[A-Za-z ]{1,20}$/;
+const isoOr = (v: unknown): string | null => (typeof v === "string" && v.length <= 40 && !Number.isNaN(Date.parse(v)) ? new Date(Date.parse(v)).toISOString() : null);
+
+/** One row as the feed may show it, or null: the four fields, the topic, and that the signature verified. */
+export function checkEventRow(raw: unknown): AwxEventOut | null {
+  const r = raw as Record<string, unknown> | null;
+  if (!r || typeof r !== "object" || r.signature_verified !== true) return null;
+  if (typeof r.event_id !== "string" || !EV_ID.test(r.event_id) || typeof r.type !== "string" || !EV_TYPE.test(r.type)) return null;
+  const received = isoOr(r.received_at);
+  if (!received) return null;
+  return { event_id: r.event_id, type: r.type, topic: typeof r.topic === "string" && EV_TOPIC.test(r.topic) ? r.topic : "Other",
+    object_id: typeof r.object_id === "string" && EV_ID.test(r.object_id) ? r.object_id : null, occurred_at: isoOr(r.occurred_at), received_at: received, signature_verified: true };
+}
+
+/** The feed for the console, checked; never throws. */
+export async function awxEventsView(gw: AwxReadBinding | undefined, now: Date): Promise<AwxEventsView> {
+  const down = (code: string, reason: string): AwxEventsView => ({ view: "events", source: "unavailable", code, reason, checked_at: now.toISOString() });
+  if (!gw?.events) return down("no_gateway", "this deployment has no link to the site's Airwallex webhook");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const raw = await Promise.race([gw.events(), new Promise<never>((_, no) => { timer = setTimeout(() => no(new Error("timeout")), AWX_GATEWAY_TIMEOUT_MS); })]) as Record<string, unknown> | null;
+    if (!raw || raw.source !== "airwallex-webhooks" || !Array.isArray(raw.events)) return down("bad_answer", "the site gave no usable list of Airwallex events");
+    const events = raw.events.map(checkEventRow).filter((e): e is AwxEventOut => !!e).slice(0, 50);
+    return { view: "events", source: "airwallex-webhooks", read_at: isoOr(raw.read_at) ?? now.toISOString(), receiving: raw.receiving === true, kept: 50, last_event_at: events[0]?.received_at ?? null, events };
+  } catch {
+    return down("no_answer", "the site did not answer in time");
+  } finally { if (timer) clearTimeout(timer); }
 }

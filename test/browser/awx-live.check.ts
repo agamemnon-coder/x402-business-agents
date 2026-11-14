@@ -4,6 +4,7 @@
 // docs/runs/2026-11-12-airwallex-financial-transactions.json, docs/demo/airwallex-run.json, the payee check's record).
 // Views no record holds (balances, rates, receiving accounts, cards) answer HTTP 503 here, so the page shows its
 // "Airwallex sandbox unavailable" state for them: nothing is made up. The live page is read after the deploy.
+// The events card replays the webhooks of the recorded run of 7 Nov (docs/demo/airwallex-run.json) through the relay.
 // It checks: every card ends live or unavailable (never stuck loading), the reconciliation says "0 differences" only as
 // computed, ids are in full with a copy button, no console or CSP errors, nothing wider than the phone.
 // npx tsx test/browser/awx-live.check.ts [screenshot dir]
@@ -18,6 +19,7 @@ import { handle, type CloudEnv } from "../../cloud/src/app.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { sqlOver } from "../../src/relay/local.js";
 import { AwxReadDesk, type AwxView } from "../../worker/src/awxRead.js";
+import { replayedRelay } from "./awxReplay.js";
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -48,7 +50,10 @@ const desk = new AwxReadDesk(sqlOver(new Database(":memory:")), { clientId: "sta
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "awx-live-check-"));
 const env: CloudEnv = { sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update("x").digest("hex"),
   rpId: "localhost", origin: ORIGIN, mailDomain: "", rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
-  awxRead: { read: (v: string) => desk.read(v as AwxView) } };
+  // The events feed: the webhooks Airwallex sent during the recorded run of 7 Nov, replayed with a test secret through the
+  // relay's own signature check (./awxReplay.ts): their event ids, types, object ids and times as recorded.
+  awxRead: { read: (v: string) => desk.read(v as AwxView), events: async () => (await (await relay.fetch(new Request("https://relay.internal/awx-live/events.json"))).json()) } };
+const relay = await replayedRelay();
 const server = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
@@ -70,12 +75,16 @@ try {
     await page.waitForFunction(() => location.hash === "#/overview" && document.body.classList.contains("signed-in"));
     // The tab, as a person reaches it (on a phone the menu wraps to a second row).
     await page.click("#tabs a[data-tab='airwallex']");
-    await page.waitForFunction(() => document.querySelectorAll(".awcard").length === 9 && [...document.querySelectorAll(".awcard .awstamp")].every((s) => s.textContent!.trim() !== ""), null, { timeout: 15_000 });
+    await page.waitForFunction(() => document.querySelectorAll(".awcard").length === 10 && [...document.querySelectorAll(".awcard .awstamp")].every((s) => s.textContent!.trim() !== ""), null, { timeout: 15_000 });
     const states = await page.$$eval(".awcard", (cs) => cs.map((c) => [(c as HTMLElement).dataset.view, c.querySelector(".awlive") ? "live" : c.querySelector(".awbad") ? "unavailable" : "loading"]));
     const st = Object.fromEntries(states);
     ok(Object.values(st).every((s) => s !== "loading"), `${name}: every card ends live or unavailable (${JSON.stringify(st)})`);
     ok(["reconcile", "financial", "transfers", "beneficiaries", "calls"].every((k) => st[k] === "live"), `${name}: the views the records hold read through the gateway`);
     ok(["balances", "rates", "accounts", "issuing"].every((k) => st[k] === "unavailable"), `${name}: views no record holds say "Airwallex sandbox unavailable", nothing made up`);
+    ok(st.events === "live", `${name}: the events feed shows the replayed webhooks`);
+    const evIds = await page.$$eval(".aw-events code.awid", (cs) => cs.map((c) => c.textContent));
+    ok(evIds.includes("4140dee2-6373-4eb4-a71f-bf69130f96a7"), `${name}: each event's Airwallex object id in full`);
+    ok((await page.$$eval(".aw-events .obadge.ok", (b) => b.length)) === evIds.length, `${name}: every event says its signature verified`);
     const rec = await page.textContent(".aw-reconcile .awrec");
     ok(/^0 differences: all \d+ movements match to the cent\.$/.test(rec?.trim() ?? ""), `${name}: the reconciliation says 0 differences as computed (${rec?.trim()})`);
     const ids = await page.$$eval(".aw-transfers code.awid", (cs) => cs.map((c) => c.textContent));
@@ -93,6 +102,7 @@ try {
     ok(!(await page.content()).includes("stand-in-token"), `${name}: no token on the page`);
     ok(errors.length === 0, `${name}: no console or CSP errors${errors.length ? ": " + errors.join(" | ") : ""}`);
     if (shots) await page.screenshot({ path: join(shots, `console-airwallex-recorded-${name}.png`), fullPage: true });
+    if (shots) await page.locator(".aw-events").screenshot({ path: join(shots, `console-awx-events-recorded-${name}.png`) });
     // The Agents tab links here.
     await page.goto(`${ORIGIN}/#/agents`);
     await page.waitForSelector("a[href='#/airwallex']:not([data-tab])");

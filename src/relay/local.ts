@@ -2,6 +2,7 @@
 // http://localhost:<port>. For trying the phone pages on a laptop (localhost counts as a secure context for
 // passkeys), for judges without a Cloudflare account, and for the browser check. The real relay runs on Cloudflare.
 
+import { offlineAwxLive } from "./awxLiveOffline.js";
 import { mfaOn } from "./config.js";
 import Database from "better-sqlite3";
 import { createServer, type Server } from "node:http";
@@ -36,6 +37,8 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
   const trySign = pages.trySign ? new TrySignDesk(sqlOver(new Database(":memory:")), { fx: opts.trySignFx ?? null, reader: opts.trySignReader ?? null, advisor: opts.trySignAdvisor ?? null, recorded: opts.trySignRecorded === undefined ? pages.tryAgentsRecorded ?? null : opts.trySignRecorded, rate: pages.exposureRate ?? null }) : null;
   // /metal's inspector, as a local copy answers it: the bundle's recorded read, no chain call (the Worker reads the chain).
   const metal = localInspector(pages.metalRecorded ?? null);
+  // Live with Airwallex: no key and no webhook here, so the badge is grey and the feed empty (./awxLiveOffline.ts).
+  const awxLive = offlineAwxLive();
   let base = "";
   const server = createServer((req, res) => {
     const chunks: Buffer[] = [];
@@ -51,6 +54,7 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
             ?? (path === METAL_INSPECTOR_PATH ? await metal.fetch(request) : null)
+            ?? (awxLive.paths.includes(path) ? await awxLive.fetch(request) : null)
             ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : notFoundResponse(pages));
           res.writeHead(response.status, Object.fromEntries(response.headers));
           res.end(Buffer.from(await response.arrayBuffer()));

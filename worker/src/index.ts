@@ -15,6 +15,9 @@ import { X402Desk, X402_PATH } from "./x402.js";
 import { METAL_INSPECTOR_PATH, MetalInspector, inspectorOff } from "./metalInspector.js";
 import { tryEngineResponse } from "./tryEngine.js";
 import { AWX_READ_PATH, AwxReadDesk, isAwxView, type AwxReadAnswer } from "./awxRead.js";
+import { AWX_EVENTS_PATH, type AwxEventsAnswer } from "./awxEvents.js";
+import { awxBooksResponse, booksCache, isAwxBooksPath } from "./awxBooks.js";
+import type { AwxBadgeCache } from "../../src/finance/awxBadge.js";
 
 export interface Env {
   RELAY: DurableObjectNamespace<RelayObject>;
@@ -89,6 +92,7 @@ export class RelayObject extends DurableObject<Env> {
   private x402?: X402Desk;
   private metal?: MetalInspector;
   private awxRead?: AwxReadDesk;
+  private awxBooks?: AwxBadgeCache;
   private awxFx?: AwxFxDesk;
 
   /**
@@ -102,6 +106,11 @@ export class RelayObject extends DurableObject<Env> {
       off: (this.env.AWX_FX ?? "").trim().toLowerCase() === "off",
     });
     return this.awxFx.quote(a);
+  }
+
+  /** The awx-read instance's gateway to the Airwallex sandbox (./awxRead.ts), made on its first request. */
+  private awxReadDesk(): AwxReadDesk {
+    return (this.awxRead ??= new AwxReadDesk(this.ctx.storage.sql, { clientId: this.env.AIRWALLEX_CLIENT_ID, apiKey: this.env.AIRWALLEX_API_KEY, off: (this.env.AWX_READ ?? "").trim().toLowerCase() === "off" }));
   }
 
   /** The try-sign instance's desk, made on its first request (it holds only its own tables). */
@@ -132,7 +141,9 @@ export class RelayObject extends DurableObject<Env> {
     // The mandate inspector's own instance holds only the RPC URL and the switch, inside the desk.
     if (path === METAL_INSPECTOR_PATH) return (this.metal ??= new MetalInspector(this.ctx.storage.sql, { rpcUrl: this.env.METAL_RPC_URL, off: inspectorOff(this.env.METAL_INSPECTOR) ? "switched off" : null, recorded: PAGES.metalRecorded ?? null })).fetch(req);
     // Purser Cloud's live Airwallex reads (./awxRead.ts): their own instance, reached only through the AwxRead entrypoint.
-    if (path === AWX_READ_PATH) return (this.awxRead ??= new AwxReadDesk(this.ctx.storage.sql, { clientId: this.env.AIRWALLEX_CLIENT_ID, apiKey: this.env.AIRWALLEX_API_KEY, off: (this.env.AWX_READ ?? "").trim().toLowerCase() === "off" })).fetch(req);
+    if (path === AWX_READ_PATH) return this.awxReadDesk().fetch(req);
+    // The reconciliation badge on /proof and Home (./awxBooks.ts): the same instance's reads, kept 5 minutes.
+    if (isAwxBooksPath(path)) return awxBooksResponse(req, (this.awxBooks ??= booksCache(() => this.awxReadDesk().read("financial"))));
     if (path === "/api/try") return (this.tryDesk ??= new TryDesk(this.ctx.storage.sql, { anthropicKey: this.env.ANTHROPIC_API_KEY })).fetch(req);
     return (this.relay ??= new Relay(this.ctx.storage.sql, {
       relayToken: this.env.RELAY_TOKEN, webhookSecret: this.env.AIRWALLEX_WEBHOOK_SECRET, mfa: this.env.MFA_SESSIONS === "on", liveRun: this.env.LIVE_RUN === "on",
@@ -155,6 +166,12 @@ export class AwxRead extends WorkerEntrypoint<Env> {
     if (!isAwxView(view)) return { error: "no such view" };
     const r = await this.env.RELAY.get(this.env.RELAY.idFromName("awx-read")).fetch(`https://relay.internal${AWX_READ_PATH}?view=${view}`);
     return (await r.json()) as AwxReadAnswer;
+  }
+
+  /** The live Airwallex events feed (./awxEvents.ts): the same public answer /awx-live/events.json gives. */
+  async events(): Promise<AwxEventsAnswer | { error: string }> {
+    const r = await this.env.RELAY.get(this.env.RELAY.idFromName("relay")).fetch(`https://relay.internal${AWX_EVENTS_PATH}`);
+    return r.ok ? ((await r.json()) as AwxEventsAnswer) : { error: "no answer" };
   }
 }
 
@@ -189,7 +206,9 @@ export default {
     // Try Purser runs in its own instance: its storage and its load stay apart from the approvals.
     if (path === "/api/try") return env.RELAY.get(env.RELAY.idFromName("try")).fetch(req);
     // /health and /health/live are the relay's too: it knows when the runner last synced (B7).
-    if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === "/health" || path === "/health/live") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
+    // The live Airwallex badge: the awx-read instance, where the sandbox reads and their caps are (./awxBooks.ts).
+    if (isAwxBooksPath(path)) return env.RELAY.get(env.RELAY.idFromName("awx-read")).fetch(req);
+    if (path.startsWith("/api/") || path === "/hooks/airwallex" || path === AWX_EVENTS_PATH || path === "/health" || path === "/health/live") return env.RELAY.get(env.RELAY.idFromName("relay")).fetch(req);
     return notFoundResponse(PAGES);
   },
 } satisfies ExportedHandler<Env>;

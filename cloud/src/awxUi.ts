@@ -73,16 +73,28 @@ async function awlLoad(key,slot){
   if(!a||a.source!=='airwallex-sandbox'){awlUnavailable(slot,a,()=>awlLoad(key,slot));return a}
   awlLive(slot,a);try{slot.body.replaceChildren(AWL_RENDER[key](a.data||{}))}catch(e){awlUnavailable(slot,{reason:t('cs.awl.no_answer')},()=>awlLoad(key,slot))}
   return a}
+// The live events feed: what Airwallex sent the site's webhook, signature verified, newest first (worker/src/awxEvents.ts).
+const awlWhen=(iso)=>iso?awlDay(iso)+' '+awlTime(iso):'—';
+async function awlEvents(slot){
+  slot.body.replaceChildren(el('p','sub',t('cs.awl.loading')));slot.stamp.replaceChildren();
+  let a;try{a=await api('/v1/airwallex-live/events')}catch(e){if(e instanceof Expired)throw e;a={source:'unavailable',reason:e.message}}
+  if(!a||a.source!=='airwallex-webhooks'){awlUnavailable(slot,a,()=>awlEvents(slot));return}
+  const ev=a.events||[];
+  slot.stamp.replaceChildren(ev.length?el('span','awlive',[el('i',''),t('cs.awl.ev_last',{time:awlWhen(a.last_event_at)})]):el('span','sub',t('cs.awl.ev_none')));
+  if(!ev.length){slot.body.replaceChildren(el('p','sub',a.receiving?t('cs.awl.ev_none'):t('cs.awl.ev_off')));return}
+  slot.body.replaceChildren(awlTable([[t('cs.awl.col.event')],[t('cs.awl.col.object')],[t('cs.awl.col.received')],[t('cs.awl.ev_verified')]],
+    ev.map((x)=>el('tr','',[awlTd(el('span','awev',[el('b','',x.topic),el('code','',x.type)])),awlTd(awlId(x.object_id||x.event_id)),awlTd(awlWhen(x.received_at),'num'),awlTd(el('span','obadge ok',[ic('circle-check'),t('cs.awl.ev_verified')]))]))))}
 async function airwallexView(){
   title(t('cs.nav.awx'));
   const m=await me();shell();
   const badges=el('div','awbadges',[el('span','awb',[ic('landmark'),t('cs.awl.b_sandbox')]),el('span','awb',[ic('flask'),t('cs.awl.b_test')]),el('span','awb',[ic('lock'),t('cs.awl.b_read')]),el('span','awb',t('cs.awl.b_built'))]);
   const slots={};for(const k of AWL_VIEWS){const [i,h,s]=AWL_META[k];slots[k]=awlCard(k,i,h,t(s))}
+  const evSlot=awlCard('events','inbox','cs.awl.events',t('cs.awl.events_sub'));
   const grid=(ks,cls)=>el('div','awgrid '+(cls||''),ks.map((k)=>slots[k].card));
   view().replaceChildren(head(t('cs.nav.awx'),t('cs.awl.lede')),badges,m.demo?note(t('cs.awl.demo_note')):null,
-    grid(['balances','rates'],'two'),slots.reconcile.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card);
+    grid(['balances','rates'],'two'),slots.reconcile.card,evSlot.card,slots.transfers.card,slots.financial.card,slots.beneficiaries.card,slots.accounts.card,slots.issuing.card,slots.calls.card);
   // The calls panel last, so it counts this visit's reads.
-  await Promise.all(AWL_VIEWS.filter((k)=>k!=='calls').map((k)=>awlLoad(k,slots[k]).catch((e)=>{if(e instanceof Expired)throw e})));
+  await Promise.all([...AWL_VIEWS.filter((k)=>k!=='calls').map((k)=>awlLoad(k,slots[k]).catch((e)=>{if(e instanceof Expired)throw e})),awlEvents(evSlot).catch((e)=>{if(e instanceof Expired)throw e})]);
   await awlLoad('calls',slots.calls);
 }
 `;
@@ -128,6 +140,10 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .awaccts { display: grid; gap: 12px; }
 .awacct { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
 .awah { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+/* The feed keeps 50: the card scrolls inside itself, its header row stays in sight. */
+.aw-events .awscroll { max-height: 460px; overflow-y: auto; }
+.aw-events .awt thead th { position: sticky; top: 0; z-index: 1; }
+.awev { display: inline-grid; gap: 2px; } .awev code { font-size: 12px; color: var(--muted); }
 .awcalls { margin: 4px 0 0; font-size: 15px; } .awcalls b { font-size: 22px; }
 @media (max-width: 900px) { .awgrid.two { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { .awt { min-width: 560px; } code.awid { font-size: 11px; } }
