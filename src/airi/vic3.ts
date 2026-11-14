@@ -69,6 +69,9 @@ export const PLANTED_F2 = "our own planted misuse: the vic-3 conductor, not Purs
 /** vic-4: F1 and F2 go to Purser's credential check (src/airi/credentialGuard.ts) instead of the checkout. */
 export const GUARD_F1 = "vic-4: A's credential (a 12.00 EUR mandate, already used) presented for a 40.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
 export const GUARD_F2 = "vic-4: B's credential, already used once, presented again for a new 45.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
+/** vic-5's F1/F2: both on B's credential (B is the one paid purchase). */
+export const GUARD_F1_V5 = "vic-5: B's credential (a 45.00 EUR mandate) presented for a 40.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
+export const GUARD_F2_V5 = "vic-5: B's credential, already used once, presented again for a new 45.00 EUR PaymentIntent; Purser's credential check decides before any Airwallex call";
 
 export const STAND_IN_MODEL = "stand-in-model-not-claude";
 
@@ -190,7 +193,8 @@ export interface Vic3Deps {
   /** Budgets other than the defaults (tests only; the CLI uses BUDGETS). */
   budgets?: Partial<Record<Budgeted, number>>;
   /** "vic-4": a third paid purchase (G), and F1/F2 refused by Purser's credential check with 0 calls. Default "vic-3". */
-  variant?: "vic-3" | "vic-4";
+  /** vic-5 (14 Nov): B alone end to end (Face ID, Airi, the sandbox), C and D, then F1/F2 on B's credential. */
+  variant?: "vic-3" | "vic-4" | "vic-5";
   /** Before each tap step (A, B after its Face ID, G): waits until the wallet owner says the phone is ready. */
   ready?: (step: Step, what: string) => Promise<void>;
 }
@@ -394,8 +398,11 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
   const claude = d.claude ? budgetedClaude(d.claude, b.anthropic) : null;
   const model = d.model ?? MODELS.classify;
   const tmpRoot = d.tmpRoot ?? tmpdir();
-  const vic4 = d.variant === "vic-4";
-  const run = vic4 ? "vic-4" : RUN;
+  // vic-5 runs as vic-4 does (Purser's credential check for F1/F2, the ready check before each tap), with one paid
+  // purchase only, B: the whole VIC story in one record (Visa judge, 14 Nov).
+  const vic5 = d.variant === "vic-5";
+  const vic4 = d.variant === "vic-4" || vic5;
+  const run = vic5 ? "vic-5" : vic4 ? "vic-4" : RUN;
   const rail = (co: Checkout): AiriDeps => ({ airi, checkout: co, showPasskeyUrl: d.showPasskeyUrl, ...(d.clearPasskeyUrl ? { clearPasskeyUrl: d.clearPasskeyUrl } : {}), say: d.log, tmpRoot, ...(d.sleep ? { sleep: d.sleep } : {}) });
   const keep = { file: null as string | null, dir: mkdtempSync(join(tmpRoot, "purser-vic3-keep-")) };
   chmodSync(keep.dir, CREDENTIAL_DIR_MODE);
@@ -458,7 +465,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       say(p, `${o ? o.status : "not paid"}${o && "code" in o && o.code ? ` (${o.code})` : ""}; rail chosen by ${r.choice.by}${r.choice.request_id ? `, request ${r.choice.request_id}` : ""}`);
       stopIfSpent();
     };
-    await within("A", AMOUNTS.A, "Trail map pack");
+    if (!vic5) await within("A", AMOUNTS.A, "Trail map pack");
 
     // ---- B: above the limit; Face ID; hash in mandate and PaymentIntent, both read back --------------------------
     {
@@ -503,7 +510,7 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       say(p, `${JSON.stringify(p.outcome && typeof p.outcome === "object" && "status" in p.outcome ? p.outcome.status : p.outcome)}; mandate read back ${p.read_back.mandate ? (p.read_back.mandate.equal ? "equal" : "NOT equal") : "—"}; PaymentIntent read back ${p.read_back.payment_intent ? (p.read_back.payment_intent.equal ? "equal" : "NOT equal") : "—"}`);
     }
 
-    if (vic4) await within("G", AMOUNTS.G, "Map case");
+    if (vic4 && !vic5) await within("G", AMOUNTS.G, "Map case");
 
     // ---- C, D: refused by Purser, straight to requestAiriPurchase, 0 rail calls ----------------------------------
     for (const [step, what, req] of [
@@ -520,8 +527,8 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
       say(p, `${o.status}${"code" in o ? ` (${o.code})` : ""}; calls: Airi ${p.calls.airi}, Airwallex ${p.calls.airwallex}, Anthropic ${p.calls.anthropic}`);
     }
 
-    // ---- E: terms changed after the Face ID; the executor's hash check refuses, 0 rail calls ---------------------
-    {
+    // ---- E: terms changed after the Face ID; the executor's hash check refuses, 0 rail calls (not in vic-5) ------
+    if (!vic5) {
       const p = blank("E", "terms changed after the Face ID (our own planted change): refused by the executor's hash check", { amount: AMOUNTS.E, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
       purchases.push(p);
       const from = counts();
@@ -565,8 +572,10 @@ export async function runVic3(d: Vic3Deps): Promise<Vic3Record> {
     // ---- vic-4 F1, F2: the credential misuse of vic-3, now refused by Purser's credential check, 0 calls ---------
     if (vic4) {
       for (const [step, what, src, amount, label] of [
-        ["F1", "A's credential presented for another amount (40.00 EUR): refused by Purser's credential check", "A", AMOUNTS.F1_INTENT, GUARD_F1],
-        ["F2", "B's credential presented a second time: refused by Purser's credential check", "B", AMOUNTS.B, GUARD_F2],
+        vic5
+          ? ["F1", "B's credential presented for another amount (40.00 EUR): refused by Purser's credential check", "B", AMOUNTS.F1_INTENT, GUARD_F1_V5] as const
+          : ["F1", "A's credential presented for another amount (40.00 EUR): refused by Purser's credential check", "A", AMOUNTS.F1_INTENT, GUARD_F1] as const,
+        ["F2", "B's credential presented a second time: refused by Purser's credential check", "B", AMOUNTS.B, vic5 ? GUARD_F2_V5 : GUARD_F2] as const,
       ] as const) {
         const p = blank(step, what, { amount, currency: AIRI_CURRENCY, merchant: MERCHANT.name });
         purchases.push(p);
@@ -783,11 +792,12 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
   const by = (s: Step) => r.purchases.find((p) => p.step === s);
   const zero = (p: Vic3Purchase | undefined) => !!p && p.calls.airi === 0 && p.calls.airwallex === 0 && p.calls.anthropic === 0;
   const st = (p: Vic3Purchase | undefined) => (p?.outcome && typeof p.outcome === "object" && !Array.isArray(p.outcome) ? (p.outcome as Record<string, Json>) : {});
-  const vic4 = d.variant === "vic-4";
+  const vic5 = d.variant === "vic-5";
+  const vic4 = d.variant === "vic-4" || vic5;
   const G = by("G");
   const A = by("A"), B = by("B"), C = by("C"), D = by("D"), E = by("E"), F1 = by("F1"), F2 = by("F2");
   const chose = (p: Vic3Purchase | undefined) => !!p?.rail_choice && p.rail_choice.chosen === AIRI_RAIL && p.rail_choice.by === (d.mode === "dry" ? "stand-in" : "claude");
-  const checks: Vic3Record["checks"] = {
+  const all: Vic3Record["checks"] = {
     a_rail_chosen_by_the_agent: { ok: chose(A), detail: `A: rail ${A?.rail_choice?.chosen ?? "none"} chosen by ${A?.rail_choice?.by ?? "nobody"} from ${A?.rail_choice?.menu.length ?? 0}` },
     a_paid: { ok: st(A).status === "succeeded", detail: `A: ${String(st(A).status ?? "not run")}` },
     b_rail_chosen_by_the_agent: { ok: chose(B), detail: `B: rail ${B?.rail_choice?.chosen ?? "none"} chosen by ${B?.rail_choice?.by ?? "nobody"}` },
@@ -810,13 +820,15 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
     credential_deleted: { ok: r.credentialDeleted, detail: r.credentialDeleted ? "B's kept credential and its directory are deleted" : "B's kept credential is still on disk" },
     within_budgets: { ok: !r.stopped, detail: r.stopped ?? `Anthropic ${r.b.anthropic.n}/${r.b.anthropic.max}, Airwallex ${r.b.airwallex.n}/${r.b.airwallex.max}, airi-cli ${r.b.airi.n}/${r.b.airi.max}` },
   };
+  // vic-5 runs B, C, D, F1 and F2 only: no check stands for a step it does not run.
+  const checks: Vic3Record["checks"] = vic5 ? Object.fromEntries(Object.entries(all).filter(([k]) => !/^(a|e|g)_/.test(k))) : all;
   const subjects = r.purchases.flatMap((p) => [p.proposal_id]).filter((x): x is string => !!x);
   const auditRows = (d.db.prepare(`SELECT seq, ts, actor, event, subject, payload_json FROM audit_log WHERE event LIKE 'airi.%' OR event LIKE 'vic3.%' OR (event LIKE 'proposal.%' AND subject IN (${subjects.map(() => "?").join(", ") || "''"})) ORDER BY seq`).all(...subjects) as { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string }[])
     // A dry run's rail choices were made by the stand-in model: its ledger rows say "claude" (the executor reads the
     // origin of the call), the record says what it was.
     .map((x) => ({ seq: x.seq, ts: x.ts, actor: x.actor, event: x.event, subject: x.subject, payload: JSON.parse(d.mode === "dry" ? x.payload_json.replaceAll('"by":"claude"', '"by":"stand-in (not Claude)"') : x.payload_json) as Json }));
   return {
-    run: vic4 ? "vic-4" : RUN, mode: d.mode,
+    run: vic5 ? "vic-5" : vic4 ? "vic-4" : RUN, mode: d.mode,
     label: d.mode === "dry" ? DRY_LABEL : `live: airi-cli and the Airwallex sandbox (test money, Airi's test card); checkout: ${d.checkout.label}`,
     started_at: r.started.toISOString(), ended_at: r.ended.toISOString(),
     budgets: { anthropic: { max: r.b.anthropic.max, used: r.b.anthropic.n }, airwallex: { max: r.b.airwallex.max, used: r.b.airwallex.n }, airi: { max: r.b.airi.max, used: r.b.airi.n } },
@@ -826,13 +838,14 @@ function buildRecord(d: Vic3Deps, r: { started: Date; ended: Date; b: Record<Bud
 
 /** Why a live vic-3 command may not start (empty: it may). Nothing is called before this is empty. Values are never read
  *  out, only whether they are set (and the call budget's number). */
-export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<string, string | undefined>, run: "vic-3" | "vic-4" = "vic-3"): string[] {
-  if (run === "vic-4") {
-    // The same refusals, for vic-4's own go, ledger and keys folder.
-    const mapped = { ...env, VIC3_GO: env.VIC4_GO, KIT11_DB: (env.KIT11_DB ?? "").replace(/vic-4([^/]*\.sqlite)$/, "vic-3$1"), KIT11_KEYS_DIR: (env.KIT11_KEYS_DIR ?? "").replace(/\/vic-4([^/]*)$/, "/vic-3$1") };
-    if (!/vic-4[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) mapped.KIT11_DB = "";
-    if (!/\/vic-4[^/]*$/.test(env.KIT11_KEYS_DIR ?? "")) mapped.KIT11_KEYS_DIR = "";
-    return vic3LiveRefusals(cmd, mapped).map((w) => w.replaceAll("VIC3_GO", "VIC4_GO").replaceAll("vic-3", "vic-4"));
+export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<string, string | undefined>, run: "vic-3" | "vic-4" | "vic-5" = "vic-3"): string[] {
+  if (run === "vic-4" || run === "vic-5") {
+    // The same refusals, for vic-4's (or vic-5's) own go, ledger and keys folder.
+    const n = run.slice(-1), go = `VIC${n}_GO`;
+    const mapped = { ...env, VIC3_GO: env[go], KIT11_DB: (env.KIT11_DB ?? "").replace(new RegExp(`${run}([^/]*\\.sqlite)$`), "vic-3$1"), KIT11_KEYS_DIR: (env.KIT11_KEYS_DIR ?? "").replace(new RegExp(`/${run}([^/]*)$`), "/vic-3$1") };
+    if (!new RegExp(`${run}[^/]*\\.sqlite$`).test(env.KIT11_DB ?? "")) mapped.KIT11_DB = "";
+    if (!new RegExp(`/${run}[^/]*$`).test(env.KIT11_KEYS_DIR ?? "")) mapped.KIT11_KEYS_DIR = "";
+    return vic3LiveRefusals(cmd, mapped).map((w) => w.replaceAll("VIC3_GO", go).replaceAll("vic-3", run));
   }
   const why: string[] = [];
   if (!["preflight", "live", "recover"].includes(cmd)) why.push(`unknown command ${JSON.stringify(cmd.slice(0, 20))}`);
