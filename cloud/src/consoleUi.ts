@@ -213,8 +213,8 @@ async function invoiceView(id){
   const doc=el('div','card docv',[el('div','bar2',[ic('file-text'),el('span','fn',t('cs.as_received')),getDoc]),pages]);
   // The payment card where the person acts, or the proof once paid, first; then the checks, the entries it produced; the
   // panel "At work" last; without an engine, the note that the phone approves. On a phone this column comes first.
-  stack=el('div','stack',[pay,proof,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
-  view().replaceChildren(back,top,trail,el('div','split inv',[el('div','stack',[paper,doc]),stack]));
+  stack=el('div','stack'+(pay||proof?'':' later'),[pay,proof,checks,jr,pay||proof?workPanel():note(t('cs.approved_on_phone'))]);
+  view().replaceChildren(back,top,trail,el('div','split inv',[el('div','docs',[paper,doc]),stack]));
   readJournal();
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
   drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages,t('cs.invoice_drawn'));
@@ -357,8 +357,11 @@ ol.trail li.done + li.done::before, ol.trail li.done + li.now::before, ol.trail 
   .paper table.lines td.r { text-align: left; } .paper table.lines td[data-l]::before { content: attr(data-l); display: block; font-size: 12px; color: var(--faint); font-weight: 600; }
   table.jt thead { display: none; } table.jt, table.jt tbody { display: block; }
   table.jt tr.en { display: grid; grid-template-columns: minmax(0, 1fr); padding-top: 10px; } table.jt tr.en td { padding: 0; border: 0; } table.jt tr.en td:first-child { font-size: 12.5px; color: var(--faint); } table.jt tr.en td:nth-child(n+3) { display: none; }
-  table.jt tr.ln { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; } table.jt tr.ln td { padding: 2px 0; border: 0; } table.jt tr.ln td:first-child { display: none; }
+  table.jt tr.ln { display: grid; grid-template-columns: minmax(0, 1fr) 96px 96px; gap: 8px; } table.jt tr.ln td { padding: 2px 0; border: 0; } table.jt tr.ln td:first-child { display: none; }
 }
+/* An invoice: the document and its PDF on the left; on a phone the column where the CFO acts comes first, else the document. */
+.split.inv > .docs { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 980px) { .split.inv > .stack.later { order: 0; } }
 /* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
 /* Tokenisation: three steps side by side, the hashes in a fold; the Visa runs with their outcome. */
