@@ -13,7 +13,8 @@ import { agentOf, feedLine } from "./dashboard.js";
 import type { TenantDb } from "./tenant.js";
 import TOKENIZE from "../../docs/runs/2026-11-12-tokenize.json" with { type: "json" };
 import CARDS from "../../docs/runs/airwallex-cards-2026-11-06.json" with { type: "json" };
-import VIC from "../../docs/runs/2026-11-13-vic-4.json" with { type: "json" };
+// The latest Visa credential run via Airi (vic-5, 14 Nov; vic-4 of 13 Nov before it): the panel shows the latest.
+import VIC from "../../docs/runs/2026-11-14-vic-5.json" with { type: "json" };
 
 type Json = Record<string, unknown>;
 interface Audit { seq: number; ts: string; actor: string; event: string; subject: string | null; payload_json: string; row_hash: string }
@@ -132,7 +133,7 @@ export function tokenisation(): Json {
     visa_credential: {
       label: v.label, run: v.run, mode: v.mode, at: v.started_at, credential_deleted: v.credential_deleted,
       purchases: v.purchases.map((p) => ({ step: p.step, what: p.what, amount: `${p.request.currency} ${p.request.amount}`, outcome: p.outcome?.status ?? null, reason: p.outcome?.reason ?? p.outcome?.refusal ?? null, mandate: p.mandate_id, payment_intent: p.payment_intent_id })),
-      record: `${REPO}docs/runs/2026-11-13-vic-4.json`, story: `${REPO}docs/runs/2026-11-13-vic-4.md`,
+      record: `${REPO}docs/runs/2026-11-14-vic-5.json`, story: `${REPO}docs/runs/2026-11-14-vic-5.md`,
     },
   };
 }
