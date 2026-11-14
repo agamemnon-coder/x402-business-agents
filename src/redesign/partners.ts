@@ -475,7 +475,7 @@ export const T0_REAL = [
 /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger, from the run records alone (src/redesign/t0Page.ts). */
 export function t0Page(run: AgentRun = agentRun()): string {
   const body = t0Body(t0Data(), { logo: T0_LOGO, pill: T0_LABEL });
-  return page({ title: "T:0", description: "How Purser uses T:0: its double-entry books posted to T:0's general ledger as journal entries, then read back line by line.", tab: "proof", css: `${CSS}\n${T0_CSS}`, body,
+  return page({ title: "T:0", description: "How Purser uses T:0: its double-entry books posted to T:0's general ledger as journal entries, then read back line by line.", tab: "proof", css: `${CSS}\n${STATS_CSS}\n${T0_CSS}`, body,
     source: `Source: ${T0_JOURNAL_RECORD}, ${PLATFORM_RUN_FILE}, ${T0_FIRST_RECORD} and ${T0_SECOND_RECORD}.`, real: T0_REAL, builtOn: builtOnHtml(run) });
 }
 

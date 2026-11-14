@@ -12,7 +12,7 @@ import { airiRun } from "../src/redesign/airiRun.js";
 import { REPO_BLOB, metalStory } from "../src/redesign/metalStory.js";
 import { ICC_LINE, builtOnHtml, builtOnItems } from "../src/redesign/partners.js";
 import { agentRun } from "../src/redesign/run.js";
-import { T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, t0Data, t0Journal, t0Platform, t0Refusals } from "../src/redesign/t0Page.js";
+import { T0_CSS, T0_FIRST_RECORD, T0_JOURNAL_RECORD, T0_LABEL, T0_SECOND_RECORD, balances, ownerFunding, t0Data, t0Journal, t0Platform, t0Refusals, t0Rows } from "../src/redesign/t0Page.js";
 import { buildPages } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, HOME_PAGE, METAL_PAGE, PROOF_PAGE, T0_CSP, T0_PAGE, VISA_PAGE, WATCH_PAGE } from "../src/servers/dashboard.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
@@ -32,6 +32,9 @@ describe("/t0 reads every figure from the T:0 run records", () => {
     expect(j).toMatchObject({ posted: 95, day: "10 Nov", firstId: "je_prod_z7kTCuZ1iiwad01q", differences: 0, built: 95, debits: "21,141,221.86", secondPush: { posted: 0, skipped: 95 } });
     expect(j.accounts).toHaveLength(9);
     for (const a of j.accounts) expect(a.ours).toBe(a.t0);
+    expect(j.accounts[0]).toMatchObject({ account: "11120 (1200)", code: "11120", name: "Operating Checking Account #2", ours: "11,144,700.05", t0: "11,144,700.05" });
+    expect(j.samples).toHaveLength(4);
+    expect(j.samples[0]).toEqual({ ours: "PUR-8264fd976b2da0702aaf01ae", what: "owner funding on Metal, test USD", t0: "je_prod_z7kTCuZ1iiwad01q" });
     expect(j.statements).toEqual({ assets: "26,447,805.98", liabilities: "3,807,739.87", equity: "22,640,066.11", difference: "0.00", financing: "21,140,636.23" });
     expect(t0Journal(null)).toBeNull();
     expect(t0Journal("# nothing posted")).toBeNull();
@@ -50,14 +53,61 @@ describe("/t0 reads every figure from the T:0 run records", () => {
 });
 
 describe("/t0", () => {
-  it("says what ran live and what is not done, labelled as the T:0 sandbox with test data, within 150 words", () => {
+  // Owner, 14 Nov ("also upgrade the T:0 page"): one story, result first. Three figures from the record, a calm flow,
+  // the accounts ours against T:0's, the balance sheet card; the refusals and the platform run folded as history.
+  it("leads with three figures from the record, each with its record link, labelled as the T:0 sandbox, within 150 words", () => {
     expect(T0_PAGE).toContain(`<span class="pill run">${T0_LABEL}</span>`);
     expect(T0_LABEL).toBe("T:0 sandbox, test data");
     expect(inSight(main).length).toBeLessThanOrEqual(150);
+    const stats = /<ul class="stats t0s">([\s\S]*?)<\/ul>/.exec(main)![1]!;
+    const figs = [...stats.matchAll(/<b>([\s\S]*?)<\/b>/g)].map((m) => text(m[1]!).trim());
+    const j = t0Journal(journalMd)!;
+    expect(figs).toEqual([String(j.posted), String(j.differences), `${j.debits} USD`]);
+    expect(figs).toEqual(["95", "0", "21,141,221.86 USD"]);
+    expect([...stats.matchAll(/href="([^"]+)"/g)]).toHaveLength(3);
+    expect(text(main)).toContain("Our books, in a real ledger");
+  });
+
+  it("draws the flow in CSS only, still under reduced motion", () => {
+    expect(main).toMatch(/<div class="flow card t0flow" role="img" aria-label="[^"]+">/);
+    expect(text(/<div class="flow card t0flow"[\s\S]*?<\/div><\/div>/.exec(main)![0])).toMatch(/Purser's books .*T:0's ledger .*Read back .*Match/);
+    expect(T0_CSS).toMatch(/@media \(prefers-reduced-motion: no-preference\) \{[^}]*\.t0flow/);
+  });
+
+  it("shows the accounts ours against T:0's, five in sight and the rest behind Show all, a check only where they match", () => {
+    const j = t0Journal(journalMd)!;
+    expect(j.accounts.map((a) => a.name)).toEqual(["Operating Checking Account #2", "Savings Account #1", "Payment Processor #1", "Money in Transit", "Common Stock", "Services Revenue", "Third-Party Services & Licenses", "Software Subscriptions", "Bank Charges & Fees"]);
+    const lead = /<table class="t0a t0lead">([\s\S]*?)<\/table>/.exec(main)![1]!;
+    expect([...lead.matchAll(/<tbody>[\s\S]*?<\/tbody>/g)].join("").match(/<tr>/g)).toHaveLength(5);
+    expect(lead.match(/✓/g)).toHaveLength(5);
+    expect(lead.match(/<th scope="row">/g)).toHaveLength(5);
+    const all = /<details class="fold"><summary>Show all accounts<\/summary>([\s\S]*?)<\/details>/.exec(main)![1]!;
+    expect(all.match(/<tr>/g)!.length - 1).toBe(j.accounts.length);
+    expect(all).toContain("ours: 1200 Airwallex EUR");
+    expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).not.toContain("✓");
+    expect(t0Rows([{ code: "1", name: "A", ours: "1.00", t0: "2.00" }])).toContain("differs");
+    expect(text(main)).toContain("Net debit; credits show as minus.");
+  });
+
+  it("shows T:0's balance sheet, its sum checked by code, and the owner funding explained when it matches", () => {
+    const j = t0Journal(journalMd)!;
+    expect(balances(j.statements!)).toBe(true);
+    expect(balances({ ...j.statements!, equity: "1.00" })).toBe(false);
+    expect(ownerFunding(j)).toBe(true);
     const t = text(main);
-    for (const line of ["10 Nov: 95 journal entries posted", "the main run's books, read back with 0 differences.", "10 Nov: T:0's balance sheet balances to the cent; its financing line is our owner funding.",
-      "10 Nov: the platform run booked 2 entries.", "3 Nov: refused, 403: the shared key could read, not post.", "5 Nov: refused, 401: the new key was not accepted.",
-      "Accounts are made in T:0's app; its API cannot create them.", "One rate per currency, given by us; no daily rate source yet.", "A supplier bill on T:0's payables account needs a T:0 vendor (refused, 400)."]) expect(t).toContain(line);
+    expect(t).toContain("Assets 26,447,805.98 = liabilities 3,807,739.87 + equity 22,640,066.11 USD");
+    expect(t).toContain("Shared entity: these totals include other teams.");
+    expect(t).toContain("Financing, 21,140,636.23 USD, is only our owner funding.");
+  });
+
+  it("keeps the history and what is not done folded, and says what T:0 is", () => {
+    const t = text(main);
+    for (const line of ["10 Nov: the platform run booked 2 entries.", "3 Nov: refused, 403: the shared key could read, not post.", "5 Nov: refused, 401: the new key was not accepted.",
+      "Accounts are made in T:0's app; its API cannot create them.", "One rate per currency, given by us; no daily rate source yet.", "A supplier bill on T:0's payables account needs a T:0 vendor (refused, 400).",
+      "A second push posted 0 and skipped 95: re-running is safe."]) expect(t).toContain(line);
+    const history = /<details class="fold"><summary>How it got there<\/summary>[\s\S]*?<\/details>/.exec(main)![0];
+    expect(text(history)).toContain("3 Nov: refused, 403");
+    expect(t).toContain("T:0 is an outside ledger.");
     // Every record it links is in the repository.
     for (const href of [...main.matchAll(/href="([^"]+)"/g)].map((m) => decode(m[1]!)).filter((h) => h.startsWith(REPO_BLOB))) {
       expect(existsSync(new URL(`../${href.slice(REPO_BLOB.length).replace(/#.*$/, "")}`, import.meta.url)), href).toBe(true);
