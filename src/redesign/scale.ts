@@ -100,10 +100,17 @@ export interface ScaleStat { n: number; label: string; title: string; icon: stri
 
 const CI_URL = "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain";
 
+/**
+ * The tests figure's title: what passed, then what failed or was skipped, never "N of M" (14 Nov: "6,606 of 6,610"
+ * read as 4 failed, when the 4 were skipped).
+ */
+export const testsTitle = (t: TestSummary): string =>
+  `${fmt(t.passed)} tests passed${t.failed ? `, ${fmt(t.failed)} failed` : ""}${t.skipped ? `, ${fmt(t.skipped)} skipped` : ""}, in the last full run, on commit ${t.commit} (${TEST_SUMMARY}); CI runs them on every push`;
+
 /** The band's figures, each with its words and its link; a figure whose source is missing drops out. */
 export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   const out: ScaleStat[] = [];
-  if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: `${fmt(f.tests.passed)} of ${fmt(f.tests.total)} tests passed in the last full run, on commit ${f.tests.commit} (${TEST_SUMMARY}); CI runs them on every push`, icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
+  if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
   if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Metal's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
   if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: "Airwallex sandbox API calls logged", title: `Airwallex sandbox API calls in the call logs of ${f.airwallexCalls.records} run records; runs without a call log add none`, icon: "landmark", href: "airwallex" });
   if (f.metalTx) out.push({ n: f.metalTx, label: "Metal testnet transactions", title: "Distinct transactions linked to Metal's testnet explorer from the run records and run logs", icon: "link-2", href: "metal" });

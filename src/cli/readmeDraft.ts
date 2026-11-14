@@ -69,7 +69,7 @@ const pic = (name: string, alt: string) => `<picture>
 const proofCards = refusals.map((x) => `| **${x.name}**<br>${x.code ? `\`${x.code}\`` : x.held} | ${x.what}${x.note ? `<br>_${x.note}_` : ""} | ${day(`${x.date}T12:00:00Z`)}, ${x.label}.<br>[Run record](${x.record.replace(/^docs\//, "")})${x.proof ? ` · [${x.proof.label}](${x.proof.href})` : ""} |`);
 
 const testsLine = summary
-  ? `**${summary.passed} of ${summary.total} tests passed** in ${summary.files} files${summary.failed ? `, ${summary.failed} failed` : ""}${summary.skipped ? `, ${summary.skipped} skipped` : ""}, on commit \`${summary.commit}\` ([summary](assets/test-summary.json)); CI runs them on every push.`
+  ? `**${summary.passed} tests passed**${summary.failed ? `, ${summary.failed} failed` : ""}${summary.skipped ? `, ${summary.skipped} skipped` : ""}, in ${summary.files} files, on commit \`${summary.commit}\` ([summary](assets/test-summary.json)); CI runs them on every push.`
   : `The test count is not in this build: run \`npx vitest run --reporter=json --outputFile.json=vitest.json\`, then \`npm run readme-draft -- --tests vitest.json\`.`;
 
 const body = `<!-- Draft of the README's next structure (12 Nov), written by \`npm run readme-draft\` (src/cli/readmeDraft.ts).
