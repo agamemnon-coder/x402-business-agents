@@ -349,6 +349,64 @@ table.lines .side { display: none; color: var(--muted); font-size: 12px; font-we
 }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 520px) { .btn.big { width: 100%; } h1 { font-size: 26px; } }
+/* try-steps, 14 Nov (owner: "tighter, more enterprise"). The step screens on one scale: spacing 4/8/12/16/24, radius 16
+   for the screen and 12 inside it, one hairline border, no shadow inside a card; one H1 per step, one sentence under
+   it, secondary text small and muted; amounts in tabular figures, right-aligned; colour only for status. */
+body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spacing: -.02em; margin: 16px 0 16px; }
+.screen:not(.start) { padding: 24px; }
+.screen:not(.start) .card, .receipt, .why .cmp div, a.file, .confirm, .note { border-radius: 12px; }
+.screen:not(.start) .card { border-color: var(--border); }
+.screen:not(.start) p.muted, .screen:not(.start) .hint { font-size: 14px; line-height: 1.5; }
+.result .big { font-size: 20px; line-height: 1.3; letter-spacing: -.01em; margin: 0 0 4px; }
+.result .sub { margin: 0 0 4px; color: var(--muted); font-size: 15px; }
+.meta { margin: 0 0 16px; color: var(--faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.inv .rows dd, .receipt dl.read dd, dl.read dd { font-variant-numeric: tabular-nums; }
+.btn.big { border-radius: 12px; }
+/* The band under the rail: one quiet line, not a box. */
+.band { margin: 0 0 4px; padding: 0; border: 0; border-radius: 0; background: none; font-size: 12.5px; color: var(--faint); }
+.band .mode { color: var(--muted); }
+@media (min-width: 521px) { .band .mode::before { content: "· "; color: var(--faint); } }
+/* The rail: done steps ticked, the current one ringed and named in the text colour, the rest quiet; never backward. */
+.progw { margin: 8px 0 28px; }
+.prog li { height: 18px; }
+.prog li::before { width: 10px; height: 10px; box-sizing: border-box; }
+.prog li.done::before { width: 16px; height: 16px; }
+.prog li.done::after { content: ""; position: absolute; top: 50%; left: 50%; width: 6px; height: 3px; margin: -3px 0 0 -3px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
+.prog li.on::before { width: 16px; height: 16px; background: var(--surface); border: 4px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.prog li .lbl { top: 22px; font-size: 11.5px; font-weight: 500; }
+.prog li.done .lbl { color: var(--muted); }
+.prog li:not(.done):not(.on) .lbl { color: var(--faint); }
+.prog li.on .lbl { color: var(--text); font-weight: 650; }
+@media (max-width: 420px) { .prog li .lbl { font-size: 10.5px; } .prog li:not(.on) .lbl { letter-spacing: -.01em; } }
+/* The activity panel: a titled list, a status dot per row by who acted, the time right-aligned in tabular figures. */
+.card.activity { padding: 14px 16px 12px; }
+.activity .ah { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
+.activity .ah .i { color: var(--faint); }
+.activity .live li { grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 0; border-top: 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.activity .live li:last-child { border-bottom: 0; }
+.activity .live li::before { content: ""; grid-column: 1; grid-row: 1; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
+.activity .live li.claude::before { background: var(--claude); }
+.activity .live li.money::before { background: var(--ok); }
+.activity .live li.sign::before { background: var(--accent); }
+.activity .live .who { grid-column: 2; font-size: 13px; }
+.activity .live .what, .activity .live .enf { grid-column: 2; }
+.activity .live .t { grid-column: 3; grid-row: 1; font-size: 12px; text-align: right; min-width: 3.5em; }
+.activity .steps { margin-top: 8px; font-size: 13px; }
+/* Approve: the receipt's skeleton while the terms are filed (no jump when they come). */
+.receipt.skel { display: grid; gap: 14px; }
+.receipt.skel .sk { display: block; height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--sunken) 0%, var(--border) 50%, var(--sunken) 100%) 0 0 / 200% 100%; animation: shimmer 1.3s linear infinite; }
+.receipt.skel .sk.amt { width: 60%; height: 40px; margin: 4px 0 6px; }
+.receipt.skel .skr { display: flex; justify-content: space-between; gap: 24px; }
+.receipt.skel .skr .sk { width: 30%; } .receipt.skel .skr .sk + .sk { width: 40%; }
+.receipt .hashpill { margin-top: 12px; }
+.screen.approve .limit { margin-top: 16px; }
+/* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
+.slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
+@media (max-width: 520px) {
+  .screen:not(.start) { padding: 16px; }
+  body:not(:has(.screen.start)) h1 { font-size: 24px; margin: 12px 0 12px; }
+  .receipt .amount, .blk .amount { font-size: 34px; }
+}
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
 `;
 
@@ -498,6 +556,8 @@ const el=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className
 const btn=(label,main)=>{const b=el('button','btn'+(main?' primary big':''),label);b.type='button';return b};
 const fill=(s,v)=>s.replace(/\{(\w+)\}/g,(_,k)=>String(v[k]??''));
 const secs=(ms)=>(Math.max(0,ms)/1000).toFixed(1);
+// A row's time, or nothing when it rounds to 0.0 s (a step and its answer in the same instant: no "+0.0 s").
+const atOf=(ms)=>ms<50?'':fill(C.live.at,{s:secs(ms)});
 // Dates and amounts as the whole page writes them (try-fixes, 13 Nov): 30 Nov 2026, EUR 1,850.00.
 const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const dateOf=(v)=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m&&+m[2]>=1&&+m[2]<=12?Number(m[3])+' '+MON[+m[2]-1]+' '+m[1]:String(v||'')};
@@ -805,11 +865,11 @@ function livePanel(){
   const list=el('ol','live');list.setAttribute('aria-live','off');
   const more=el('button','link steps',C.live.allSteps);more.type='button';more.hidden=true;more.setAttribute('aria-expanded','false');
   more.addEventListener('click',()=>{const open=!list.classList.contains('open');list.classList.toggle('open',open);more.setAttribute('aria-expanded',String(open))});
-  const node=el('div','card',[list,more]);node.hidden=true;
+  const node=el('div','card activity',[el('p','ah',[icon('clock',16),el('span','',C.live.title)]),list,more]);node.hidden=true;
   // One clock (try-fixes, 13 Nov): once the answer is in, each row's time is the engine's own spacing between rows,
   // anchored at the answer's round trip as the browser measured it, so the last row and "Answered in" agree.
   // Round 4 (14 Nov): every Claude call's row is its own (two calls of one reader no longer share a timer); a row's
-  // call is answered by the next row of the same reader or agent ("asked."); once the answer is in, a call with no answer
+  // call is answered by the next row of the same reader or agent ("Answered."); once the answer is in, a call with no answer
   // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
   const rows=[];const shown=new Set();const asks=[];let done=null,n=0;
   function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);a.what.textContent=W.asked}
@@ -823,7 +883,7 @@ function livePanel(){
     for(const a of asks)if(!a.answered){askClose(a.id);a.what.textContent=W.noAnswer}
     order();
     const ts=rows.map((r)=>r.ts).filter((x)=>x!==null);if(ts.length){const last=Math.max(...ts);
-      for(const r of rows)if(r.ts!==null)r.t.textContent=fill(W.at,{s:secs(Math.max(0,ms-(last-r.ts)))})}
+      for(const r of rows)if(r.ts!==null)r.t.textContent=atOf(ms-(last-r.ts))}
     past();
   }
   function past(){
@@ -839,7 +899,7 @@ function livePanel(){
       // A row that says nothing ("Purser recorded a step.") or the same words again is not shown.
       if(!l.lead&&l.text===W.step)continue;
       const k=keyOf(e)+'|'+l.who+'|'+(l.lead?l.lead+'|'+l.own+'|'+l.enforced:l.text);if(shown.has(k)&&!l.asking)continue;shown.add(k);
-      const t=el('span','t',t0===undefined?'':fill(W.at,{s:secs(performance.now()-t0)}));
+      const t=el('span','t',t0===undefined?'':atOf(performance.now()-t0));
       const what=l.lead?el('span','what',[l.lead,...(l.own?[' ',el('q','own',l.own),' ',el('span','ownw','('+W.ownWords+')')]:[])]):el('span','what',l.text);
       const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[el('span','who',l.who),what,l.enforced?el('span','enf',l.enforced):null,t]);
       list.append(li);
@@ -891,7 +951,7 @@ function whyNode(w,folded){
   return n;
 }
 function drawResult(box,r,ms){
-  const took=ms===null?null:el('p','muted',fill(C.work.took,{s:secs(ms)}));
+  const took=ms===null?null:el('p','meta',fill(C.work.took,{s:ms<50?'<0.1':secs(ms)}));
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
@@ -905,7 +965,7 @@ function drawResult(box,r,ms){
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    box.append(el('p','big ok',C.work.ready),el('p','muted',C.work.readySub));
+    box.append(el('p','big ok',C.work.ready),el('p','sub',C.work.readySub));
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
@@ -1052,6 +1112,8 @@ function termsFold(p,terms){
       if(r.status===200&&r.json.terms&&typeof r.json.terms==='object')pre.textContent=JSON.stringify(r.json.terms,null,2);else{asked=false;pre.replaceWith(note(words(r.json,C.approve.failed)))}})});
   return f;
 }
+// The receipt's skeleton while the terms are filed: the amount's and three rows' shapes, no value (nothing before its answer).
+function receiptSkel(){const d=el('div','receipt skel');d.setAttribute('aria-busy','true');d.append(el('span','sk amt'));for(let i=0;i<3;i++)d.append(el('div','skr',[el('span','sk'),el('span','sk')]));return d}
 screen('approve',{heading:C.approve.heading,draw(box,arg){
   const A=C.approve;const inv=arg&&arg.invoice||null;
   const top=el('div','');const said=el('div','');said.setAttribute('role','status');
@@ -1072,6 +1134,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   const idle=()=>main.node.classList.remove('asking');
   async function file(){
     said.replaceChildren();main.off(filing);
+    if(!top.children.length)top.append(receiptSkel());
     const ready=inv&&inv.proposal&&inv.proposal.status==='PENDING_APPROVAL'&&!arg.again?inv.proposal:null;
     // Terms already being prepared from screen 2: that request's answer, not a second one.
     const pre=!ready&&!arg.again&&inv&&inv.id&&PREP.has(inv.id)?PREP.get(inv.id):null;if(inv&&inv.id)PREP.delete(inv.id);
@@ -1092,7 +1155,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const terms=tr.status===200&&tr.json.terms&&typeof tr.json.terms==='object'?tr.json.terms:null;
     const f=factRows(p,inv,terms);const awx=fxCard(tr.status===200?tr.json.fx_quote:null,terms);
     top.replaceChildren(el('div','receipt',[el('p','amount',f.amount),f.list,el('p','short mono hashpill',String(p.terms_sha256||'').slice(0,12)+'…')]),
-      ...(awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
+      el('div','slot quote',awx?[awx]:[]),el('p','limit muted',A.limit),termsFold(p,terms),el('p','muted',[A.signs,saves]));
     stage();
   }
   // again: after a failure the button says Try again; it is never hidden, so there is always a way on.
@@ -1356,7 +1419,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // under three grey skeletons): until then the blocks hold the screen alone.
   const tail=el('div','tail',[el('div','acts',[another,what]),...(cheat?[el('p','',cheat)]:[]),el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
   const awxPaid=payoutCard(S.awx,sha);
-  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),...(awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
+  box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),el('div','slot payout',awxPaid?[awxPaid]:[]),paid,booked,filed,tail);
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
   // read ends: call() answers status 0 when the network fails, it never throws.

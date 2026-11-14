@@ -7,7 +7,7 @@ function world() {
   const now = "2026-11-13T06:00:00.000Z";
   const add = (id: string, mandate: string, cents: number, status: string) =>
     db.prepare("INSERT INTO airi_purchases (action_id, agent, route, order_sha256, terms_json, cents, day, status, mandate_id, created_at, updated_at) VALUES (?, 'sourcing', 'alone', 'x', ?, ?, '2026-11-13', ?, ?, ?, ?)")
-      .run(id, JSON.stringify({ amount: (cents / 100).toFixed(2), currency: "EUR" }), cents, status, mandate, now, now);
+      .run(id, JSON.stringify({ amount: (cents / 100).toFixed(2), currency: "EUR", merchant: { name: "Test shop", url: "https://shop.test/checkout", country: "NL" } }), cents, status, mandate, now, now);
   add("A", "mdt_a", 1200, "SETTLED");
   add("B", "mdt_b", 4500, "WAITING_FOR_TAP");
   return db;
@@ -23,5 +23,27 @@ describe("Purser's credential check: one credential, one order, its amount, once
     expect(credentialUseRefusal(db, { mandateId: "mdt_a", amount: "12.00", currency: "EUR" })?.code).toBe("PURSER_CREDENTIAL_ALREADY_USED");
     expect(credentialUseRefusal(db, { mandateId: "mdt_a", actionId: "B", amount: "45.00", currency: "EUR" })?.code).toBe("PURSER_CREDENTIAL_OTHER_PURCHASE");
     expect(credentialUseRefusal(db, { mandateId: "mdt_x", amount: "1.00", currency: "EUR" })?.code).toBe("PURSER_CREDENTIAL_UNKNOWN_MANDATE");
+  });
+
+  it("refuses another merchant than the signed terms name, before the amount and reuse checks pass it", () => {
+    const db = world();
+    expect(credentialUseRefusal(db, { mandateId: "mdt_b", actionId: "B", amount: "45.00", currency: "EUR", merchantUrl: "https://shop.test/other-page" })).toBeNull();
+    const other = credentialUseRefusal(db, { mandateId: "mdt_b", actionId: "B", amount: "45.00", currency: "EUR", merchantUrl: "https://shop.example/checkout" });
+    expect(other?.code).toBe("PURSER_CREDENTIAL_MERCHANT_MISMATCH");
+    expect(other?.reason).toBe("mandate mdt_b is for https://shop.test, not https://shop.example");
+    for (const bad of ["http://shop.test/checkout", "https://user:pw@shop.test/", "not a url", ""]) {
+      expect(credentialUseRefusal(db, { mandateId: "mdt_b", actionId: "B", amount: "45.00", currency: "EUR", merchantUrl: bad })?.code).toBe("PURSER_CREDENTIAL_MERCHANT_MISMATCH");
+    }
+  });
+  it("the three checks Purser adds per credential, each on its own: one purchase, its amount and merchant, once", () => {
+    const db = world();
+    const ok = { mandateId: "mdt_b", actionId: "B", amount: "45.00", currency: "EUR", merchantUrl: "https://shop.test/checkout" };
+    expect(credentialUseRefusal(db, ok)).toBeNull();
+    expect(credentialUseRefusal(db, { ...ok, actionId: "A" })?.code).toBe("PURSER_CREDENTIAL_OTHER_PURCHASE");
+    expect(credentialUseRefusal(db, { ...ok, amount: "45.01" })?.code).toBe("PURSER_CREDENTIAL_AMOUNT_MISMATCH");
+    expect(credentialUseRefusal(db, { ...ok, currency: "USD" })?.code).toBe("PURSER_CREDENTIAL_AMOUNT_MISMATCH");
+    expect(credentialUseRefusal(db, { ...ok, merchantUrl: "https://elsewhere.test/" })?.code).toBe("PURSER_CREDENTIAL_MERCHANT_MISMATCH");
+    db.prepare("UPDATE airi_purchases SET status = 'SETTLED' WHERE action_id = 'B'").run();
+    expect(credentialUseRefusal(db, ok)?.code).toBe("PURSER_CREDENTIAL_ALREADY_USED");
   });
 });

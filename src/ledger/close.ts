@@ -9,9 +9,25 @@ import type { DB } from "../db/open.js";
 import { isProfitAndLoss, RETAINED_EARNINGS } from "./accounts.js";
 import { LedgerRefused, lockMonth, postClosingEntry, type LineInput } from "./core.js";
 import { CLOSING_KEY_PREFIX } from "./reports.js";
+import { closeCheckText, type CloseCheck } from "../accounting/closeGate.js";
 
 export function closeMonth(db: DB, month: string, by: string, now = new Date()): { month: string; locked: boolean } {
   return { month, locked: lockMonth(db, month, by, now, "month") };
+}
+
+/** Thrown when a close is refused because T:0 does not agree (src/accounting/closeGate.ts). */
+export class CloseRefused extends LedgerRefused {
+  constructor(readonly check: CloseCheck) { super(`${check.month} not closed: ${closeCheckText(check)}`); this.name = "CloseRefused"; }
+}
+
+/**
+ * The month close with the independent ledger check (partner review, 14 Nov): the month is locked only when T:0's
+ * read-back agrees with Purser's books (closeCheck). Any difference refuses the close (CloseRefused); nothing is locked.
+ */
+export function closeMonthWhenT0Agrees(db: DB, check: CloseCheck, by: string, now = new Date()): { month: string; locked: boolean; check: CloseCheck } {
+  if (!/^\d{4}-\d{2}$/.test(check.month)) throw new LedgerRefused(`not a month: ${check.month}`);
+  if (!check.agrees) throw new CloseRefused(check);
+  return { ...closeMonth(db, check.month, by, now), check };
 }
 
 export function closeYear(db: DB, year: number, by: string, now = new Date()): { entry_id: number | null; locked_months: string[] } {
