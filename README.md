@@ -20,7 +20,7 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 <a href="https://youtu.be/mp9fmOYfBWc"><img src="https://i.ytimg.com/vi/mp9fmOYfBWc/maxresdefault.jpg" alt="Purser: the walkthrough on YouTube, 4:58" width="100%"></a>
 
-*5-minute walkthrough · AI voice and music: ElevenLabs* · [youtu.be/mp9fmOYfBWc](https://youtu.be/mp9fmOYfBWc) · test money only
+*4:58 walkthrough · AI voice and music: ElevenLabs* · [youtu.be/mp9fmOYfBWc](https://youtu.be/mp9fmOYfBWc) · test money only
 
 ## How it works in 3 steps
 
@@ -87,7 +87,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format.
 
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6590 tests passing**, 4 skipped, in 590 files (the last full run, on commit `d00eee80`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6592 tests passing**, 4 skipped, in 590 files (the last full run, on commit `717dd1bf`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Metal and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
@@ -152,7 +152,7 @@ Each row from its run record; test money throughout. Every run, newest first: [d
 
 ## Visa Award
 
-Visa Intelligent Commerce through Airwallex's Airi: an agent pays with a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md)); within the CFO's limit on its own and above it only after the CFO's passkey. Live in the Airwallex sandbox with a test card on 7 November (a scripted run, no Claude call; [first run](docs/runs/2026-11-07-vic-1.md)) and 13 November: 2 paid in the 13 Nov run (5 paid across 3 Visa runs); 1 after Face ID, 5 refused by Purser incl. reused credentials, 1 not tapped: nothing charged ([latest run](docs/runs/2026-11-13-vic-4.md)). Visa TAP is an extra, not part of the entry. [/visa](https://kit11.max-31b.workers.dev/visa)
+Visa Intelligent Commerce through Airwallex's Airi: an agent pays with a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md)); within the CFO's limit on its own and above it only after the CFO's passkey. Live in the Airwallex sandbox with a test card on 7 November (a scripted run, no Claude call; [first run](docs/runs/2026-11-07-vic-1.md)) and 13 November: 2 paid in the 13 Nov run (5 paid across 3 Visa runs); 1 after Face ID, 5 refused by Purser incl. reused credentials, 1 not confirmed in Airi: nothing charged ([latest run](docs/runs/2026-11-13-vic-4.md)). Visa TAP is an extra, not part of the entry. [/visa](https://kit11.max-31b.workers.dev/visa)
 
 ## Metal Award
 
@@ -323,7 +323,7 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 
 ## Who does what
 
-<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Metal, Claude, Visa and Cloudflare" height="40"> official files, unmodified, no endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+Built with Airwallex, Metal, Claude, Visa and Cloudflare (no endorsement implied).
 
 - **Built by Max Geurtsen** (Claude by Anthropic as the developer, directed and reviewed by Max): Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.

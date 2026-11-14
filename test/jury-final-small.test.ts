@@ -34,7 +34,9 @@ describe("/try's first screen", () => {
     const { START } = await import("../cloud/src/tryCopy.js");
     expect(START.what).toBe("About 2 minutes: read an invoice, sign it with your passkey, see it booked.");
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
-    // Then the walkthrough on YouTube (13 Nov, owner): one small link, its address FILM_URL.
-    expect(html).toContain("box.append(text,b,el('p','fine',C.start.what),el('p','fine',C.start.fine),el('p','walkl',walk));");
+    // The walkthrough on YouTube (13 Nov, owner): one small link, its address FILM_URL; since jury round 2 right under
+    // the button, "Or watch the walkthrough (4:58)", then what the visit is.
+    expect(html).toContain("box.append(text,b,el('p','walkl',walk),el('p','fine',C.start.what),el('p','fine',C.start.fine));");
+    expect(START.walk).toBe("Or watch the walkthrough (4:58)");
   });
 });
