@@ -7,6 +7,7 @@ import { VISA_TAP_STATUS } from "../src/config/brand.js";
 import { visaPage } from "../src/redesign/partners.js";
 import { proofPage } from "../src/redesign/proof.js";
 import { homePage } from "../src/redesign/home.js";
+import { liveRuns } from "../src/redesign/runs.js";
 import { VISA_ASKS, VISA_ASKS_ID, VISA_MEETS_ID, VISA_NOT_YET, VISA_NOT_YET_ID, VISA_PLAN_FILE, VISA_REUSE_ID, VISA_RUNS3_ID, visaStoryFacts } from "../src/redesign/visaStory.js";
 
 const html = visaPage();
@@ -107,5 +108,39 @@ describe("the Visa outcome on Home and /proof", () => {
   it("links each to the new sections", () => {
     expect(homePage()).toContain('href="visa#visa-reuse"');
     expect(proofPage()).toContain(`visa#${VISA_MEETS_ID}`);
+  });
+});
+
+// Jury round 3, 14 Nov: each finding checked against the records before the fix.
+describe("jury round 3, the Visa findings", () => {
+  it("/proof's 7 Nov Visa card, named for the purchase above the limit, leads with that purchase's PaymentIntent", () => {
+    const b = (airi as unknown as { purchases: { step: string; approved_at?: string; payment_intent_id?: string; amount: string }[] }).purchases.find((p) => p.approved_at)!;
+    expect([b.step, b.amount, b.payment_intent_id]).toEqual(["B", "45.00", "int_sgpvzc9hjhnxvxc26ie"]);
+    const p = proofPage().replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    expect(p).toContain(`Payment intent, EUR ${b.amount}, after Face ID ${b.payment_intent_id}`);
+    expect(liveRuns().find((r) => r.key === "vic-1")?.ids[0]?.value).toBe(b.payment_intent_id);
+  });
+
+  it("the flow's lane no purchase reached says so (vic-5 has none within the limit)", () => {
+    const lane = /<div class="vh-lane vh-l-ok[^"]*">[\s\S]*?<\/div>/.exec(main)![0];
+    expect(v4.purchases.some((p) => p.outcome?.status === "succeeded" && !(p as unknown as { approved_at?: string }).approved_at && p.step !== "B")).toBe(false);
+    expect(lane).toContain("vh-empty");
+    expect(text(lane)).toMatch(/None in this run\.$/);
+  });
+
+  it("says of production only what the sources say", () => {
+    const s = text(main);
+    expect(s).toContain("Airi's instructions give the agent a tokenised card number, expiry and CVV for one checkout; how a production checkout differs is not documented in what we could read.");
+    expect(readFileSync(new URL("../docs/plans/vic-airi.md", import.meta.url), "utf8")).toContain('"A tokenized PAN, expiry, and CVV for one checkout"');
+    expect(s).not.toMatch(/never sees card data/);
+  });
+
+  it("llms.txt has no N of N fractions and names the latest Visa run with its record", () => {
+    const t = readFileSync(new URL("../llms.txt", import.meta.url), "utf8");
+    expect(t).not.toMatch(/\b(\d+) of \1 checks\b/);
+    expect(t).toContain("all seven checks passed");
+    expect(t).toContain("all five checks passed");
+    expect(t).toContain("docs/runs/2026-11-14-vic-5.md");
+    expect(t).toContain(`(${step(v4, "F1").outcome?.code}, ${step(v4, "F2").outcome?.code}) before any call`);
   });
 });

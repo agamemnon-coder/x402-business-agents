@@ -56,7 +56,10 @@ export function vicAttemptCount(rec: AiriRunRecord): { all: number; paid: number
  * filled by the agent like a shopper). Shown right under the purchase flow on /visa (partner review, 13 Nov: it sat
  * further down, away from purchase B).
  */
-export const HEADLESS_LINE = "Sandbox only: a headless browser in the agent's process typed the test card into Airwallex's hosted page; the sandbox refuses a direct confirm.";
+// Jury round 3, 14 Nov: why production differs, only as far as the sources go (docs/plans/vic-airi.md, "What the credential
+// holds"; docs/plans/visa-1114.md, "What is not proven yet"): Airi's instructions give the agent a tokenised card number,
+// expiry and CVV for one checkout, to fill in "like a normal card"; a production checkout is not documented in either.
+export const HEADLESS_LINE = "Sandbox only: a headless browser in the agent's process typed the test card into Airwallex's hosted page; the sandbox refuses a direct confirm. Airi's instructions give the agent a tokenised card number, expiry and CVV for one checkout; how a production checkout differs is not documented in what we could read.";
 
 export function vicFacts(rec: AiriRunRecord): string[] {
   const paid = rec.purchases.filter((p) => p.outcome === "SUCCEEDED");

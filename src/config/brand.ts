@@ -34,7 +34,7 @@ export const TAGLINE = "Give every AI agent its own company card, with limits th
  * 7 Nov, as reported by the builder) said the VIC run counts, so since 7 Nov Purser is entered for the Metal Award and
  * the Visa Award, on the Airi run, never on TAP (docs/decisions.md D28, docs/evidence/README.md). This switch was
  * VISA_AWARD_ON (off: it would have put "Visa TAP" in "Built on"); TAP is never in "Built on", and its work sits in
- * one closed fold at the foot of /visa, outside the entry (VISA_TAP_STATUS).
+ * its own open section near the foot of /visa (since 14 Nov), outside the entry (VISA_TAP_STATUS).
  */
 export const VISA_VIC_BUILT_ON = true;
 export const VISA_BUILT_ON = "Visa (VIC via Airi)";
