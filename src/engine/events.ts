@@ -170,6 +170,10 @@ const EVENTS: Record<string, Pick> = {
   "invoice.escalated": NONE,
   "invoice.fraud_suspected": NONE,
   "fx.rate_checked": NONE,
+  // /try's live FX quote (cloud/src/engine/liveFx.ts): the Airwallex sandbox's quote the terms carry, or why the
+  // recorded rate was used instead (a fixed code).
+  "airwallex.quote": copy("quote_id", "client_rate", "valid_to"),
+  "airwallex.unavailable": (p) => ({ reason: typeof p.reason === "string" && /^[a-z_]{1,20}$/.test(p.reason) ? p.reason : undefined, client_rate: p.client_rate }),
   "fx.converted": conversion,
   "fx.adopted": conversion,
   "transfer.created": transfer,
