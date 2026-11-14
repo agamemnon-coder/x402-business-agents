@@ -277,6 +277,30 @@ export const FX_CARD = {
   } as Record<string, string>,
 };
 
+/**
+ * 14 Nov (step 2): the Paid step's Airwallex line: the sandbox transfer of the signed payment (id, status), or why the
+ * simulated bank alone paid. Outside the word budget, as the terms' labels are. {why}: one of `why`.
+ */
+export const PAYOUT_CARD = {
+  live: "Airwallex · sandbox transfer", simulated: "Simulated bank only",
+  transfer: "Transfer", status: "Status", amount: "Amount", hash: "approval_sha256",
+  liveNote: "Test money. Airwallex keeps the hash of the terms you signed in this transfer's metadata.",
+  /** The labelled step: the sandbox's own simulation moves the transfer on; no money anywhere. */
+  simulate: "Sandbox: move to PAID", simulating: "Asking the sandbox…", simulateNote: "Airwallex's sandbox simulation, not a payment.",
+  simWhy: {
+    in_approval: "It waits for a person to approve it in Airwallex first", switched_off: "Sandbox transfers are switched off", no_transfer: "There is no sandbox transfer for this payment",
+    refused: "The sandbox did not move it", unavailable: "Airwallex did not answer", timeout: "Airwallex took too long", no_binding: "Sandbox transfers are not set up here",
+    no_key: "No Airwallex key is set", bad_answer: "Airwallex's answer did not match", bad_request: "It could not be asked for",
+  } as Record<string, string>,
+  simulatedNote: "{why}. The payment was made on the simulated bank only.",
+  why: {
+    switched_off: "Sandbox transfers are switched off", no_binding: "Sandbox transfers are not set up here", no_key: "No Airwallex payout key is set",
+    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its one sandbox transfer", over_max: "The amount is above the demo's limit",
+    not_eur: "Only EUR is sent to the sandbox", balance_low: "The sandbox balance does not cover it", unavailable: "Airwallex did not answer", refused: "Airwallex refused the transfer",
+    ambiguous: "Airwallex's answer was unclear; it is asked again, never paid twice", timeout: "Airwallex took too long", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The transfer could not be asked for",
+  } as Record<string, string>,
+};
+
 /** The device's word for its passkey ({method} of APPROVE.approve), by a simple guess from the platform. */
 export const METHOD = { ios: "Face ID", mac: "Touch ID", android: "fingerprint", windows: "Windows Hello", other: "your passkey" };
 
@@ -720,6 +744,11 @@ export const LIVE = {
     "invoice.fraud_suspected": "The invoice looks like fraud. It was blocked before anything was paid.",
     "airwallex.quote": "Airwallex sandbox: quote {quote_id} at {rate}.",
     "airwallex.quote_plain": "Airwallex sandbox: a live quote.",
+    "airwallex.transfer": "Airwallex sandbox: transfer {transfer_id}, {status}.",
+    "airwallex.transfer_plain": "Airwallex sandbox: a transfer of the signed payment.",
+    "airwallex.payout_skipped": "No Airwallex sandbox transfer: the simulated bank alone paid.",
+    "airwallex.simulated": "Airwallex sandbox simulation: transfer {transfer_id} is now {status}.",
+    "airwallex.simulated_plain": "Airwallex sandbox simulation moved the transfer on.",
     "airwallex.unavailable": "Airwallex unavailable, recorded rate used ({rate}).",
     "airwallex.unavailable_plain": "Airwallex unavailable, recorded rate used.",
     "fx.rate_checked": "The exchange rate was compared with the market rate.",
