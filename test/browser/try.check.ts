@@ -25,6 +25,7 @@ import { SyncBatch } from "../../cloud/src/sync.js";
 import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
+import { recordsPdf } from "../../src/engine/recordsPdf.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
@@ -201,6 +202,14 @@ const server = createServer(async (req, res) => {
   if (req.method === "POST" && url.pathname === "/v1/engine/passkey/finish" && stand.finishDelay) await new Promise((r) => setTimeout(r, stand.finishDelay));
   if (req.method === "GET" && url.pathname === "/v1/engine" && stand.statusDelay) await new Promise((r) => setTimeout(r, stand.statusDelay));
   if (await laneC(req.method ?? "GET", url.pathname, session, body ? JSON.parse(body.toString()) as Record<string, unknown> : {}, res)) return;
+  if (req.method === "GET" && url.pathname === "/v1/engine/export.pdf") {
+    // The records as a PDF (14 Nov), built by the engine's own renderer from the same batches.
+    const db = dbOf.get(session);
+    if (!db) return send(res, 404, { error: "no company" });
+    const pdf = await recordsPdf({ format: "purser.cloud-sync/v1", company: "Try check company (test)", made_at: new Date().toISOString(), batches: batchesFor(db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }) }, `${ORIGIN}/try`);
+    res.writeHead(200, { "content-type": "application/pdf", "content-disposition": 'attachment; filename="purser-test-company-records.pdf"' });
+    return res.end(pdf);
+  }
   if (req.method === "GET" && url.pathname === "/v1/engine/export") {
     // Lane C's export, stood in for here: the company in the product's sync format (src/cloudsync/client.ts batchesFor,
     // what the engine feeds the read model with), every batch in one, as a JSON file.
@@ -743,11 +752,20 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // Screen 6: the export as a file, the recorded runs, start again.
   await page.waitForSelector(`h1:text-is("${COMPANY.heading}")`);
   await screenChecks(page, `${tag} screen 6`, width);
-  const dl = page.waitForEvent("download");
+  // 14 Nov (owner): the main button downloads the records as a PDF; the JSON is a quiet link under the button row.
+  const dlPdf = page.waitForEvent("download");
   await page.click(`.btn.primary:has-text("${COMPANY.download}")`);
+  const pdfDl = await dlPdf;
+  const pdfBytes = readFileSync(await pdfDl.path());
+  ok(pdfDl.suggestedFilename() === "purser-test-company-records.pdf" && pdfBytes.subarray(0, 5).toString() === "%PDF-" && pdfBytes.length < 150_000, `${tag}: the main button downloads the records as a PDF (${pdfBytes.length} bytes)`);
+  const jsonLink = page.getByRole("button", { name: COMPANY.json });
+  const [main6, link6] = [await page.locator(".btn.primary", { hasText: COMPANY.download }).boundingBox(), await jsonLink.boundingBox()];
+  ok(!!main6 && !!link6 && link6.y >= main6.y + main6.height && link6.x + link6.width <= width, `${tag}: "${COMPANY.json}" is a quiet link under the button row`);
+  const dl = page.waitForEvent("download");
+  await jsonLink.click();
   const file = await (await dl).path();
   const batch = JSON.parse(readFileSync(file, "utf8")) as { invoices: { id: string }[]; ledger_entries: unknown[] };
-  ok(SyncBatch.safeParse(batch).success && batch.invoices.some((i) => i.id === invId) && batch.ledger_entries.length === entries.length, `${tag}: the export downloads the company as JSON in the sync format`);
+  ok(SyncBatch.safeParse(batch).success && batch.invoices.some((i) => i.id === invId) && batch.ledger_entries.length === entries.length, `${tag}: the JSON link downloads the company as JSON in the sync format`);
   await page.click(`summary:has-text("${COMPANY.runs}")`);
   const runs = liveRuns();
   const links = await page.locator("ul.runs a").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent ?? ""]));

@@ -7,7 +7,8 @@
 //   POST /v1/engine/compose         "write your own" (a test company only)
 //   GET  /v1/engine/proposals/{id}/terms   the signed terms, their canonical text and hash
 //   POST /v1/engine/proposals/{id}/pay     the one pay route: the visitor's terms with the visitor's own signature (a test company only)
-//   GET  /v1/engine/export          the company in the product's sync format, as a file
+//   GET  /v1/engine/export          the company in the product's sync format, as a file (pretty JSON, a readme first)
+//   GET  /v1/engine/export.pdf      the same records as an A4 PDF a person reads (14 Nov, owner)
 // Only the engine's interface is imported (types): nothing of the engine reaches the Worker's bundle through this file.
 import { z } from "zod";
 import { AuthError, bump } from "../auth.js";
@@ -27,6 +28,14 @@ export interface TryEngineCtx extends EngineCtx { env: EngineCtx["env"] & { sql:
 /** Per test company, over its whole life: pay attempts and exports. */
 export const PAYS_PER_COMPANY = 30;
 export const EXPORTS_PER_COMPANY = 5;
+/**
+ * The JSON download's first field (14 Nov, owner: the one-line file was "ugly and poor"): what the file is, in a few
+ * plain sentences, so a developer who opens it knows how to read it. The file is printed with a 2-space indent.
+ */
+export const EXPORT_README = "Purser's sync format, purser.cloud-sync/v1: this test company's records as a runner's push would send them to an empty Purser Cloud. "
+  + "'company' names it and 'made_at' is when this file was made (UTC). 'batches' holds, in order, the documents (each invoice's file in base64, with its SHA-256), "
+  + "then the suppliers, invoices, payments, transactions, the ledger's entries and the audit log; each ledger entry and each audit row is chained to the one before it by its hash. "
+  + "Test company: made-up data, test money, a simulated bank; nothing real moved. The same records as a PDF a person reads: GET /v1/engine/export.pdf.";
 export const PAY_BODY_MAX_BYTES = 8_000;
 export const CREDENTIAL_MAX_BYTES = 4_096;
 export const EXPORT_MAX_BYTES = 5_000_000;
@@ -66,7 +75,7 @@ const Compose = z.object({ supplier_key: field(40), invoice_no: field(64), amoun
 
 /** This block's routes, by method and path (the engine's own block is cloud/src/engine/routes.ts). */
 export const TRY_ENGINE_ROUTES = ["GET /v1/engine/samples", "POST /v1/engine/samples/{key}", "GET /v1/engine/suppliers", "POST /v1/engine/compose",
-  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "GET /v1/engine/export"] as const;
+  "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay", "GET /v1/engine/export", "GET /v1/engine/export.pdf"] as const;
 
 const Pay = z.object({ terms: z.record(z.string(), z.unknown()), credential: z.record(z.string(), z.unknown()) }).strict();
 
@@ -114,9 +123,15 @@ export function tryEngineRoutes<C extends TryEngineCtx>(kit: EngineKit<C>): Engi
     }) },
     { method: "GET", path: "/v1/engine/export", summary: "Download the company in the product's sync format (purser.cloud-sync/v1): { format, company, made_at, batches }, the batches a runner's push sends (the invoices with their documents, payments, transactions, the ledger and the audit log), as a file. No archive files. At most 5 MB; a test company may download it 5 times.", need: "read", run: on(async (c, e) => {
       if (isTryTenant(c.caller!.tenantId)) await countFor(c, "tryexport", EXPORTS_PER_COMPANY, `This test company was downloaded ${EXPORTS_PER_COMPANY} times, its limit.`);
-      const text = JSON.stringify(await e.exportBatch());
+      const text = `${JSON.stringify({ readme: EXPORT_README, ...(await e.exportBatch()) }, null, 2)}\n`;
       if (new TextEncoder().encode(text).byteLength > EXPORT_MAX_BYTES) return err(413, `the company's export is larger than ${EXPORT_MAX_BYTES / 1_000_000} MB`);
       return new Response(text, { status: 200, headers: { "content-type": "application/json; charset=utf-8", "content-disposition": 'attachment; filename="purser-test-company.json"', "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    }) },
+    { method: "GET", path: "/v1/engine/export.pdf", summary: "Download the company's records as an A4 PDF a person reads: a cover with the totals, each invoice with its trail (read, checked, signed with the passkey, paid, booked), the journal, the audit log and the documents' and terms' fingerprints, built from the same records as /v1/engine/export. A test company may download it 5 times.", need: "read", run: on(async (c, e) => {
+      if (isTryTenant(c.caller!.tenantId)) await countFor(c, "tryexportpdf", EXPORTS_PER_COMPANY, `This test company's records were downloaded as a PDF ${EXPORTS_PER_COMPANY} times, its limit.`);
+      const bytes = await e.exportPdf();
+      if (bytes.byteLength > EXPORT_MAX_BYTES) return err(413, `the company's records are larger than ${EXPORT_MAX_BYTES / 1_000_000} MB`);
+      return new Response(bytes.slice().buffer as ArrayBuffer, { status: 200, headers: { "content-type": "application/pdf", "content-disposition": 'attachment; filename="purser-test-company-records.pdf"', "cache-control": "no-store", "x-content-type-options": "nosniff" } });
     }) },
   ];
 }

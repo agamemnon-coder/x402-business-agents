@@ -295,7 +295,9 @@ describe("the copy", () => {
     expect(COPY.BOOKS.another).toBe("File another invoice");
     expect(COPY.BOOKS.what).toBe("What Purser did");
     expect(COPY.COMPANY.download).toBe("Download your test company's records");
-    expect(COPY.COMPANY.line).toBe("One JSON file: your invoices with their documents, payments, ledger and audit log.");
+    // 14 Nov (owner): the records as a PDF a person reads; the JSON a quiet link for developers.
+    expect(COPY.COMPANY.line).toBe("A PDF: each invoice's trail, the journal, the audit log.");
+    expect(COPY.COMPANY.json).toBe("Download as JSON (for developers)");
     expect(COPY.COMPANY.again).toBe("Start again");
     expect(COPY.COMPANY.runs).toBe("Recorded real runs");
     expect(COPY.COMPANY.recorded).toBe("recorded {date}");

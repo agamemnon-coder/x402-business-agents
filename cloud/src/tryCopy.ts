@@ -368,7 +368,9 @@ export const BOOKS = {
 export const COMPANY = {
   heading: "Your company.",
   download: "Download your test company's records",
-  line: "One JSON file: your invoices with their documents, payments, ledger and audit log.",
+  /** 14 Nov (owner): the main download is a PDF a person reads (GET /v1/engine/export.pdf); the JSON is a quiet link. */
+  line: "A PDF: each invoice's trail, the journal, the audit log.",
+  json: "Download as JSON (for developers)",
   downloading: "Downloading…",
   /** In the line's place when the export did not come back. */
   failed: "Purser could not export your company.",
@@ -507,11 +509,11 @@ export const VISIBLE = {
     [BOOKS.headingError, BOOKS.retry, BOOKS.what],
   ],
   company: [
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.runs],
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.proof, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
     // Start again asks first: the question and its two answers in place of the button.
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.proof, COMPANY.runs],
+    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.proof, COMPANY.json, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -535,6 +537,7 @@ export const VISIBLE = {
 // invoice", the ledger's Dr/Cr on a phone, and says under the Cloud link that it is a sample company (the review's
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
+// 14 Nov (owner): screen 6 downloads a PDF and offers the JSON as a quiet link ("company 3" 58 to 60).
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
 // and +5 for the walkthrough link (on YouTube; 13 Nov, owner; "Or watch the walkthrough", +4 since 14 Nov: no duration).
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
@@ -545,7 +548,7 @@ export const VISIBLE = {
 // {placeholders}, data, counted as words), the rule and the fold: "work 3" the same file again, "work 4" the paid invoice
 // under a new number, "work 5" new bank details, "work 6" a new supplier; the round trip moved into the fold. Screen 4's
 // refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 60, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

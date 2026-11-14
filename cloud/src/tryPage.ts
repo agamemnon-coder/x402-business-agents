@@ -292,6 +292,7 @@ ul.runs .rd { font-size: 13px; color: var(--muted); }
 .blk.sk-blk .w1 { width: 55%; } .blk.sk-blk .w2 { width: 80%; height: 1.8em; } .blk.sk-blk .w3 { width: 40%; }
 .cloudl { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
 .cloudl .hint { margin-top: 6px; font-size: 13px; }
+.jsonl { margin: 10px 0 0; font-size: 14px; }
 .confirm { margin-top: 12px; padding: 12px 14px; border-radius: 12px; background: var(--sunken); }
 .confirm .acts { margin-top: 8px; }
 /* The ledger: amounts right-aligned in tabular figures; the side's word only on a phone, where each line stacks. */
@@ -1380,15 +1381,18 @@ screen('company',{heading:C.company.heading,draw(box){
   // What this visit did: filed, signed, paid (three icons, named for screen readers as one list).
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const proof=el('a','proofl',[el('span','',Y.proof),icon('external-link',14)]);proof.href=PROOF;proof.rel='noopener';proof.target='_blank';
-  box.append(did,line,el('div','acts',[main.node,again,proof]),ask,el('details','',[el('summary','',Y.runs),runs]));
-  async function download(){
-    main.off(Y.downloading);
-    const g=await fetchFile('/v1/engine/export');
+  // 14 Nov (owner): the records as a PDF a person reads; the same records as JSON, for developers, a quiet link under it.
+  const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
+  box.append(did,line,el('div','acts',[main.node,again,proof]),el('p','jsonl',json),ask,el('details','',[el('summary','',Y.runs),runs]));
+  async function download(asJson){
+    asJson=asJson===true;
+    if(asJson)json.disabled=true;else main.off(Y.downloading);
+    const g=await fetchFile(asJson?'/v1/engine/export':'/v1/engine/export.pdf');
     if(S.screen!=='company')return;
-    main.set(Y.download,download);
+    json.disabled=false;main.set(Y.download,download);
     if(g.status!==200||!g.blob){line.replaceChildren(el('span','note',words(g.json||{},Y.failed)));return}
     line.textContent=Y.line;
-    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company.json';a.hidden=true;box.append(a);a.click();a.remove();
+    const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||(asJson?'purser-test-company.json':'purser-test-company-records.pdf');a.hidden=true;box.append(a);a.click();a.remove();
   }
 }});
 
