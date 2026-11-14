@@ -19,6 +19,26 @@ Film v5 (2:42, 5 November, the main run only) is kept as it was: [narrator-scrip
 
 ## Promo film (13 Nov)
 
+**v1.1 (14 Nov): Max prefers v1 ("the v2 sound effects were a bit annoying").** v1.1 is v1's cut, 1:12, with v1's look,
+pacing and audio (the narration and the music only, no sound effects), and only these changes:
+
+- **The hostile-model card** says the split in the site's words (`hostileWords`, src/redesign/partners.ts): "380 hostile
+  tool calls · 318 refused · 52 made stricter · 10 allowed as they were (within the rules) · 0 unsafe", each read from
+  `docs/evals/ap-hostile.json` (v1 said "370 refused by code", which a judge could set against the site's "318 refused").
+- **The end card** adds "Full walkthrough: youtu.be/mp9fmOYfBWc" (`FILM_URL`) under the try link, and credits the voice
+  and music only.
+- **Two transitions tightened**, with no line moved: the dip to black before the mark is shorter and lighter (it held
+  "Who holds the pen?" near black for about 0.3 s), and the Metal bars grow from the cut instead of 0.2 s and 0.7 s
+  after it.
+- **Captions** burned in on the vertical cut, in a dark pill, the words lit as said.
+
+`src/film/promoV1.ts` is the cut and `src/film/promo-v1.html` its frames, beside v2 (`npm run promo -- <step>
+--version v1`; the check, the render, the mix and the stills all take it). Files: `purser-promo-v1.1-1080p.mp4`,
+`purser-promo-v1.1-vertical.mp4` and `purser-promo-v1.1.srt` on `promo-asset`, next to v2's. No new credits.
+
+### v2
+
+
 **v2 (13 Nov, night): 1:06.5, cut to the beat.** Max on v1 (1:12): "looks nice but it still felt boring. It's a
 promo, upgrade it." v2 opens on a live refusal, shows the product recorded from the live pages, and turns each partner
 moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing in it was recorded by Max.
@@ -37,7 +57,7 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
 | 0:31 | Metal | The cap and the payment as bars, then a chain of blocks; the last breaks: **REFUSED ON CHAIN**, the tx typing out |
 | 0:37 | The audit chain | Blocks link, a pulse runs along them, the anchor drops, the head types out |
 | 0:40 | Zero-trust | Slot-machine digits race to the report's count; **Money moved: 0** |
-| 0:44 | Hostile model | 380 races up, 370 stopped or tightened by code (318 refused, 52 made stricter: the site's wording), **0 unsafe** |
+| 0:44 | Hostile model | 380 races up, 318 refused · 52 made stricter · 10 allowed as they were (within the rules), the site's wording, **0 unsafe** |
 | 0:50 | Recap | Every refusal again, one per beat, then "Money moved: 0" |
 | 0:55 | Payoff | Split screen: "Your agents do the work" (Cloud's pages racing) against "Your CFO signs the exceptions" (the phone, still) |
 | 1:01 | End card | The mark, "Try it yourself", `kit11.max-31b.workers.dev/try`, "Full walkthrough: youtu.be/mp9fmOYfBWc" (`FILM_URL`), the small type |
@@ -51,7 +71,7 @@ moment into an event: a stamp, a flip, a swipe, a shake, with a sound. Nothing i
   `LIMIT_EXCEEDED` (awx-1, 7 Nov); payout `4074d684…` held `IN_APPROVAL` (10 Nov) until the owner approved it at
   Airwallex, then `PAID`, settlement simulated (12 Nov); Metal refusing 0.06 test USD over the 0.05 mandate cap on
   chain, `mandate_cap_exceeded` (12 Nov); the anchor `aaaf56a1…` on Metal testnet (13 Nov); 53 zero-trust attacks,
-  0 moved (`docs/zero-trust/report.json`); 380 hostile tool calls, 370 stopped or tightened by code (318 refused, 52 made stricter), 0 unsafe
+  0 moved (`docs/zero-trust/report.json`); 380 hostile tool calls: 318 refused, 52 made stricter, 10 allowed as they were (within the rules), 0 unsafe
   (`docs/evals/ap-hostile.json`). Count-ups rest on the record's figure. No fractions.
 - **Small type** on every proof shot says what is simulated ("Test money · sandbox/testnet", and per shot: test world,
   test company, Airwallex sandbox, Metal testnet, test harness, demo company). Partners are named in text only, no

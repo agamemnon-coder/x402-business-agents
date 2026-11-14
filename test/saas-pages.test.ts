@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHECK_PATHS } from "../src/cli/judge.js";
 import { repoHref } from "../src/redesign/productPage.js";
-import { hostileClaimText } from "../src/redesign/partners.js";
+import { hostileClaimText, hostileSplit } from "../src/redesign/partners.js";
 import { ANCHOR_RUN, HARNESS_LINE, SECURITY_VIZ_CSS, ZT_NAMES, anchorRun, hostileEval, securityViz, zeroTrust, AUDIT_COMMAND, AUDIT_LOG, CHAIN_LINES, OVERVIEW_DOC, existingDoc, NOT_YET_LINE, NOT_YET_SOURCES, docLine, publishedAudit, redTeamRound, securityCards, securityLead, securityPage, REDTEAM_NIGHT, REDTEAM_NIGHT_RECORD, REDTEAM_OCT31, REDTEAM_REPORT } from "../src/redesign/security.js";
 import { buildPages, flowLinks } from "../src/relay/assets.js";
 import { AIRWALLEX_PAGE, CLAUDE_PAGE, METAL_PAGE, PROOF_PAGE, RUNS_PAGE, SECURITY_CSP, SECURITY_PAGE, VISA_PAGE } from "../src/servers/dashboard.js";
@@ -110,8 +110,11 @@ describe("/security: security and trust", () => {
     expect(inSight("s-code")).toBe("Agents propose, code enforces Agents hold no keys; code checks what they propose before anything moves. Least privilege ↗ Hostile-model eval ↗ How");
     // The hostile-model eval (12 Nov): the record's own line, as /claude says it.
     expect(folded("s-code")).toContain(hostileClaimText());
+    // Max (14 Nov): every call accounted for; the three parts of the split add up to the record's calls.
+    const hs = hostileSplit()!;
+    expect(hs.tool + hs.enforce + hs.stood).toBe(hs.calls);
     // The final review (13 Nov): one wording of the split everywhere (hostileWords, src/redesign/partners.ts).
-    expect(hostileClaimText()).toBe("In CI, a script in place of the payables agents, on 62 test invoices: 380 hostile tool calls; 318 refused and 52 made stricter: 370 stopped or tightened by code; 10 stood (safe).");
+    expect(hostileClaimText()).toBe("In CI, a script in place of the payables agents, on 62 test invoices: 380 hostile tool calls; 318 refused, 52 made stricter, 10 allowed as they were (within the rules): 0 unsafe.");
     expect(folded("s-code")).toContain("“Models: no key, URL, credential or tool. They read text and return typed data that code checks");
     expect(inSight("s-secrets")).toBe("Secrets Only the runner holds payment keys; Purser Cloud keeps each company's connected-account OAuth tokens sealed (AES-GCM, per company). Trust boundaries ↗ How");
     // What the line says of the cloud is what its code does: AES-GCM, each value bound to its company (cloud/src/sealed.ts).
@@ -304,7 +307,9 @@ describe("/security: security and trust", () => {
       expect(h.refused + h.stood).toBe(h.calls);
       const t = inSightOf(section("hostile"));
       expect(h.unsafe).toBe(0);
-      expect(t).toContain(`${h.calls} calls · ${h.refused} stopped or tightened by code ${h.blocked_by_tool} refused ${h.overridden_at_enforce} made stricter ${h.stood} stood (safe)`);
+      // Max (14 Nov): every call accounted for, in the one wording (hostileWords).
+      expect(t).toContain(`${h.calls} calls · ${h.unsafe} unsafe ${h.blocked_by_tool} refused ${h.overridden_at_enforce} made stricter ${h.stood} allowed as they were (within the rules)`);
+      expect(h.blocked_by_tool + h.overridden_at_enforce + h.stood).toBe(h.calls);
       const widths = [...section("hostile").matchAll(/<rect class="f-[abc]" x="[\d.]+" width="([\d.]+)"/g)].map((m) => Number(m[1]));
       expect(widths.map((w) => Math.round(w))).toEqual([h.blocked_by_tool, h.overridden_at_enforce, h.stood].map((n) => Math.round((n / h.calls) * 1000)));
       expect(() => hostileEval(JSON.stringify({ ...h, stood: h.stood + 1 }))).toThrow(/do not add up/);
