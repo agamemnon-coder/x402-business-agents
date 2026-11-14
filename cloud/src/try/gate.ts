@@ -45,6 +45,7 @@ export const TRY_ROUTES: readonly string[] = [
   "GET /v1/engine/proposals/{id}/terms",
   "POST /v1/engine/proposals/{id}/pay",
   "GET /v1/engine/export",
+  "GET /v1/engine/export.pdf",
 ];
 /** In the list only while the switch own_upload is on. */
 export const UPLOAD_ROUTE = "POST /v1/engine/documents";

@@ -102,6 +102,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       terms: async (id) => (await host()).terms(id),
       paySigned: async (id, sent, credential) => (await host()).paySigned(id, sent, credential),
       exportBatch: async () => (await host()).exportBatch(),
+      exportPdf: async () => (await host()).exportPdf(),
       wipe: async () => {
         const e = engines.get(tenantId);
         engines.delete(tenantId);

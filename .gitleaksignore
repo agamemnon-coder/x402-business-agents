@@ -143,7 +143,11 @@ abf9363ed400a078d68c86dc91847990885f1254:docs/runs/README.md:generic-api-key:18
 bf1ca2db17b90c08d407948b4471f20cca59a96f:docs/runs/README.md:generic-api-key:18
 # docs/runs/README.md:19 in b32a5c7 (Alta rename): public Alta testnet addresses and tx hashes, no secret.
 b32a5c7f877ba8b9f35c5737104a8a79bad17feb:docs/runs/README.md:generic-api-key:19
+# docs/runs/README.md:19 in d880524 (#314 squashed, Alta rename): public Alta testnet addresses and tx hashes, no secret.
+d88052471f03172b11026dc9d0add000cfcd9c33:docs/runs/README.md:generic-api-key:19
 # The same line in d880524, #314's squash on main (14 Nov): public Alta testnet addresses and tx hashes, no secret.
 d88052471f03172b11026dc9d0add000cfcd9c33:docs/runs/README.md:generic-api-key:19
 # docs/submission/long-description.md:89 in 0ca6ac0 (the long description's run table, 14 Nov): a public Alta testnet passkey-account address, no secret.
 0ca6ac0ca10e513f81f278e37d01f4c507e744a7:docs/submission/long-description.md:generic-api-key:89
+# docs/submission/long-description.md:89 in c35d36c (#316 squashed): public Alta testnet address, no secret.
+c35d36c909d2eff3bdd8dc250389905bc3d07924:docs/submission/long-description.md:generic-api-key:89
