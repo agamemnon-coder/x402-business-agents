@@ -14,6 +14,7 @@ import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
 import { tryPageResponse } from "./tryPage.js";
+import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
@@ -1068,8 +1069,8 @@ async function transactionsView(){
   const q=new URLSearchParams();
   const sel=(opts,key)=>{const s=el('select','field');for(const [v,l] of opts){const o=el('option','',l);o.value=v;s.append(o)}s.onchange=()=>{if(s.value)q.set(key,s.value);else q.delete(key);load()};return s};
   const curIn=el('input','field');curIn.placeholder='EUR';curIn.maxLength=4;curIn.onchange=()=>{const v=curIn.value.trim().toUpperCase();if(/^[A-Z]{3,4}$/.test(v))q.set('currency',v);else q.delete('currency');load()};
-  const from=el('input','field');from.type='date';from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
-  const to=el('input','field');to.type='date';to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
+  const from=el('input','field');from.type='date';from.setAttribute('aria-label','From date');from.onchange=()=>{if(from.value)q.set('from',from.value);else q.delete('from');load()};
+  const to=el('input','field');to.type='date';to.setAttribute('aria-label','To date');to.onchange=()=>{if(to.value)q.set('to',to.value);else q.delete('to');load()};
   const csv=btn('CSV','','download');csv.onclick=()=>download('/v1/transactions/export.csv?'+q.toString(),'transactions.csv').catch(e=>{if(!(e instanceof Expired))list.before(note(e.message,'bad'))});
   const tiles=el('div','tiles');const list=el('div','card list');
   const filters=el('div','form-row',[el('div','',[el('label','',t('rail')),sel(RAILS,'rail')]),el('div','',[el('label','',t('tx.state')),sel(RECS,'reconciliation')]),el('div','',[el('label','',t('tx.currency')),curIn]),el('div','',[el('label','',t('cs.from')),from]),el('div','',[el('label','',t('cs.to')),to])]);
@@ -1557,7 +1558,7 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .demo-ribbon { background: #fff7e6; border-bottom: 1px solid #f3dfb5; color: #7a4a00; font-size: 13.5px; }
 .demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
 .demo-ribbon span { flex: 1; line-height: 1.4; }
-.demo-ribbon a { font-weight: 650; color: #7a4a00; white-space: nowrap; }
+.demo-ribbon a { font-weight: 650; color: #7a4a00; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 .signed-out .demo-ribbon { display: none; }
 /* The start screen's dashboard (GET /v1/dashboard). */
 .dash { display: grid; gap: 16px; margin: 4px 0 32px; }
@@ -1579,7 +1580,7 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 svg.chart { display: block; max-width: 100%; height: auto; overflow: visible; }
 svg.chart .grid { stroke: var(--border); stroke-width: 1; }
 svg.chart .zero { stroke: #c9ced6; stroke-width: 1; stroke-dasharray: 3 3; }
-svg.chart .ax { font: 500 11.5px Inter, system-ui, sans-serif; fill: var(--faint); }
+svg.chart .ax { font: 500 12px Inter, system-ui, sans-serif; fill: var(--faint); }
 svg.chart .val { font: 650 12px Inter, system-ui, sans-serif; fill: var(--text); }
 svg.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
 svg.chart .end { fill: #fff; stroke: var(--accent); stroke-width: 2.5; }
@@ -1713,7 +1714,7 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
 <html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
-<title>Purser Cloud</title>
+<title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
 <style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
 ${BODY}
 <script type="module" nonce="${n}">${script}</script>
@@ -1765,7 +1766,7 @@ export const consoleCsp = (n: string) =>
 
 const PAGE_HEADERS = {
   "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=()",
+  "cross-origin-opener-policy": "same-origin", "permissions-policy": "publickey-credentials-get=(self), publickey-credentials-create=(self), camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY",
 };
 
@@ -1787,7 +1788,7 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   // The console's pages are routes after "#" (#/sign-in, #/start); a typed or bookmarked path (/sign-in, /login,
   // /console) went to a plain 404 (13 Nov). It goes to the console's own route instead.
   const route = CONSOLE_PATHS[url.pathname.replace(/\/+$/, "") || "/"];
-  if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  if (route !== undefined) return new Response(null, { status: 302, headers: { location: `/${route}`, "cache-control": "no-store", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
   if (url.pathname === "/pdfview") {
     const n = nonce();
     return new Response(pdfViewPage(n, env.origin), { status: 200, headers: { ...PAGE_HEADERS, "x-frame-options": "SAMEORIGIN", "content-security-policy": pdfViewCsp(n, env.origin) } });
@@ -1796,6 +1797,10 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
     font ??= fromB64(INTER_WOFF2_B64);
     return new Response(new Uint8Array(font), { status: 200, headers: { "content-type": "font/woff2", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   }
+  // The partners' official logos for /try's start screen (cloud/src/try/logos.gen.ts, the files unaltered): the paths and
+  // bytes the site serves, so the page shows them on kit11 (the site's own /assets) and on purser-try alike.
+  const logo = LOGO_FILES[url.pathname];
+  if (logo) return new Response(fromB64(logo.b64), { status: 200, headers: { "content-type": logo.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   // pdf.js, to draw a supplier's PDF on a canvas in the invoice's page (eval off; the PDF is data, never a page). Only this
   // one path is asked of the assets, whatever the bundle holds.
   if (url.pathname === "/assets/pdfjs.mjs" && env.asset) {
@@ -1804,5 +1809,5 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
       // Loaded by the sandboxed PDF frame (an opaque origin) and its worker, so it is a CORS fetch: the library is public.
       "access-control-allow-origin": "*", "cross-origin-resource-policy": "cross-origin" } });
   }
-  return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff" } });
+  return new Response("not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8", "x-content-type-options": "nosniff", "strict-transport-security": "max-age=31536000; includeSubDomains" } });
 }

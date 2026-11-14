@@ -126,7 +126,9 @@ export function partnerTiles(groups = proofRuns()): PartnerTile[] {
 export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed = proofRuns().reduce((n, g) => n + g.runs.length, 0)): string {
   if (!tiles.length) return "";
   // One source (judge scan, 14 Nov): the tiles and the timeline count the same rows; the TAP run is told on /visa only.
-  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
+  // Jury scan, 14 Nov: the tiles add up to fewer than the list when it holds a run of no partner's own (the main run).
+  const byPartner = tiles.reduce((n, t) => n + t.runs, 0), other = listed - byPartner;
+  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${other > 0 ? ` (${byPartner} in the tiles, ${other === 1 ? "plus the main run" : `plus ${other} more`})` : ""}${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
   return `${note ? `<p class="ptnote">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
 }
 
@@ -227,7 +229,7 @@ ul.prl li:first-child { border-top: 0; }
 .pr-id .k { display: block; }
 .pr-id code, .pr-id .mono { font: 500 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
 .pr-id a.mono { color: var(--accent); text-decoration: none; }
-.pr-v a { color: var(--accent); font-weight: 650; text-decoration: none; white-space: nowrap; }
+.pr-v a { color: var(--accent); font-weight: 650; text-decoration: none; white-space: nowrap; display: inline-block; padding: 4px 0; }
 .pr-v code.cmd { display: inline-block; margin-top: 4px; white-space: nowrap; font: 500 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 1px 6px; border-radius: 6px; background: var(--sunken); border: 1px solid var(--border); }
 @media (max-width: 1000px) { ul.prl li { grid-template-columns: 64px minmax(0, 1fr); row-gap: 4px; } .pr-c, .pr-id, .pr-v { grid-column: 2; } }
 @media (max-width: 520px) {

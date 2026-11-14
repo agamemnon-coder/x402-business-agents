@@ -39,9 +39,9 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       // Its own database, created on 12 November: wrangler d1 create purser-try.
       "d1_databases.0.database_id": [base.get("d1_databases.0.database_id"), expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)],
       // 14 Nov: Purser Cloud's Airwallex actions, through kit11's named entrypoint (no key in this Worker).
-      "services.2.binding": [undefined, "AWX_GATEWAY"],
-      "services.2.service": [undefined, "kit11"],
-      "services.2.entrypoint": [undefined, "AwxGateway"],
+      "services.3.binding": [undefined, "AWX_GATEWAY"],
+      "services.3.service": [undefined, "kit11"],
+      "services.3.entrypoint": [undefined, "AwxGateway"],
       "vars.ENGINE_MODE": [undefined, "test_money"],
       // Capabilities only: lane C's switches decide at run time, and a missing switch is off.
       "vars.HANDS_ON": [undefined, "on"],
@@ -59,6 +59,10 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "services.1.binding": [undefined, "AWX_READ"],
       "services.1.service": [undefined, "kit11"],
       "services.1.entrypoint": [undefined, "AwxRead"],
+      // The agents' live sandbox cards (14 Nov): kit11's AwxCards entrypoint, which holds the key and the card allow-list.
+      "services.2.binding": [undefined, "AWX_CARDS"],
+      "services.2.service": [undefined, "kit11"],
+      "services.2.entrypoint": [undefined, "AwxCards"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));

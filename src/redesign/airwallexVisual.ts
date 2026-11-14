@@ -47,7 +47,12 @@ export function pathHtml(inUse: ProductTile[], flagged: ProductTile[]): string {
     return [{ ...s, days, on, href: `#p-${hit[0]!.t.key}` }];
   });
   if (stops.length < 2) return "";
-  return `<ol class="awpath" aria-label="A payment's path through Airwallex: each stop ran live">${stops.map((s) => `<li class="${s.on ? "on" : "off"}"><a href="${s.href}"><span class="pi">${icon(s.icon, 18)}</span><span class="pt"><b>${esc(s.label)}</b><span class="ps"><span class="dot" aria-hidden="true"></span>${esc(`Live ${s.days.join(", ")}`)}</span>${s.on ? "" : `<span class="pn">${esc("not yet switched on")}</span>`}</span></a></li>`).join("")}</ol>`;
+  // Jury scan, 14 Nov: the heading counts every feature, the path fewer; the path says how many it shows and which
+  // features run outside one supplier payment (they are in the timeline below), so the counts read together.
+  const onPath = new Set(PATH_STOPS.flatMap((s) => s.keys));
+  const outside = all.filter((x) => !onPath.has(x.t.key)).map((x) => x.t.name);
+  const caption = `<p class="awcap">${esc(`One supplier payment's path: ${stops.length} stops${outside.length ? `. Not on this path, in the timeline below: ${outside.join(" and ")}` : ""}.`)}</p>`;
+  return `${caption}<ol class="awpath" aria-label="A payment's path through Airwallex: each stop ran live">${stops.map((s) => `<li class="${s.on ? "on" : "off"}"><a href="${s.href}"><span class="pi">${icon(s.icon, 18)}</span><span class="pt"><b>${esc(s.label)}</b><span class="ps"><span class="dot" aria-hidden="true"></span>${esc(`Live ${s.days.join(", ")}`)}</span>${s.on ? "" : `<span class="pn">${esc("not yet switched on")}</span>`}</span></a></li>`).join("")}</ol>`;
 }
 
 /** The runs on one time axis: a row per product, a dot on the day it ran live (filled: in use; ring: not yet switched on). */
@@ -178,6 +183,7 @@ ${meters ? `<article class="awv card" data-rec="${esc(files(["ledger", "payee-ch
 }
 
 export const VISUAL_CSS = `
+.awcap { margin: 18px 0 0; color: var(--muted); font-size: 14.5px; }
 /* The path: a connected line of stops; down the page on a phone, across it from 900 px. */
 .awpath { list-style: none; margin: 18px 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); }
 .awpath li { position: relative; }

@@ -12,6 +12,8 @@
 // host is made over it, so no file is ever written.
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
+import { payableAccount } from "../ap/checkerCore.js";
+import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
 import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
@@ -108,6 +110,11 @@ export interface EngineDeps {
    * "stand-in, test world: no bank was asked" wherever its answer is shown.
    */
   payeeVerifier?: () => PayeeNameVerifier;
+  /**
+   * This company's FX limit (basis points over the market's current rate a locked quote may cost), written by the seed
+   * as its setting fx.max_markup_bps. Absent: FX_QUOTE_MAX_MARKUP_BPS. Only a try company sets it (TRY_FX_QUOTE_MAX_MARKUP_BPS).
+   */
+  fxMarkupBps?: number;
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -150,8 +157,23 @@ export interface InvoiceView {
   /** When it came in (14 Nov: /try's finish says how long from upload to paid, from these two). */
   received_at?: string;
   findings: FindingView[];
+  /**
+   * 14 Nov (jury): the checks code ran on this invoice that left no finding, so a page lists what was checked, never a
+   * fixed list. not_paid_before: a supplier and a number were read and no copy was found; bank_on_file and
+   * known_supplier: bank details were read, matched the supplier on file and raised no fraud signal.
+   */
+  checks_passed?: ("not_paid_before" | "bank_on_file" | "known_supplier")[];
   doc_sha256: string;
   proposal: ProposalView | null;
+}
+
+/** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
+function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
+  const codes = new Set(inv.findings.map((f) => f.code));
+  const out: NonNullable<InvoiceView["checks_passed"]> = [];
+  if (inv.vendor && inv.invoice_no && !["duplicate", "possible_duplicate", "rejected_before"].some((c) => codes.has(c))) out.push("not_paid_before");
+  if (inv.vendor && payableAccount(inv.reading) !== null && !codes.has("possible_fraud") && !codes.has("new_supplier")) out.push("bank_on_file", "known_supplier");
+  return out;
 }
 
 /** Where things stand after the payments were followed, booked, archived and fed. */
@@ -217,7 +239,11 @@ function plainRefusal(message: string): string {
 }
 
 /** A proposal's terms as the hands-on demo's pay route shows them. */
-export interface TermsView { proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null }
+export interface TermsView {
+  proposal_id: string; status: string; terms: Terms; canonical: string; terms_sha256: string; approved: boolean; expires_at: string | null;
+  /** Terms that convert: this company's FX limit (basis points over the market's current rate), as its checks applied it. */
+  fx_limit_bps?: number;
+}
 
 /** What the one pay route answers; a layer that did not run says so (null). */
 export interface PaySignedResult {
@@ -379,6 +405,8 @@ export class EngineHost {
   seed(): Promise<void> {
     return this.act(async () => {
       const { db, rails } = this.deps;
+      const fx = this.deps.fxMarkupBps;
+      if (fx !== undefined && getSetting(db, "fx.max_markup_bps", "") !== String(fx)) setSetting(db, "system", "fx.max_markup_bps", String(fx), this.now());
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
       if (this.deps.seedPaid) await this.seedPaidOriginal();
     });
@@ -443,6 +471,7 @@ export class EngineHost {
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
       issue_date: inv.issue_date, paid_at: inv.paid_at, received_at: inv.received_at,
       findings: inv.findings.map((f) => this.findingView(f)),
+      checks_passed: checksPassed(inv),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,
     };
@@ -731,8 +760,9 @@ export class EngineHost {
   }
 
   /** The sample invoices, in the tray's order: what the visitor does, never what the engine will answer. */
-  samples(): { key: string; title: string; filename: string }[] {
-    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename }));
+  samples(): { key: string; title: string; filename: string; expect?: Sample["expect"]; row?: Sample["row"] }[] {
+    // 14 Nov (inbox table): each sample's row (what its document says) and the engine's measured outcome for it.
+    return (this.deps.samples ?? []).map((s) => ({ key: s.key, title: s.title, filename: s.filename, ...(s.expect ? { expect: s.expect } : {}), ...(s.row ? { row: s.row } : {}) }));
   }
 
   /**
@@ -835,7 +865,8 @@ export class EngineHost {
     const terms = JSON.parse(p.terms_json) as Terms;
     const approved = !!db.prepare("SELECT 1 FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId);
     // The hash as stored with the proposal (what the passkey signs), never one recomputed from the instruction's text.
-    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at };
+    const converts = !!(terms as { conversion?: unknown }).conversion;
+    return { proposal_id: p.proposal_id, status: p.status, terms, canonical: canonicalTerms(terms), terms_sha256: p.terms_sha256, approved, expires_at: p.expires_at, ...(converts ? { fx_limit_bps: fxMarkupLimitBps(db) } : {}) };
   }
 
   /**

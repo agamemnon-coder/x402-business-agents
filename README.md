@@ -20,6 +20,48 @@ An approval is usually a button. In Purser it's a signature over the exact terms
 
 </div>
 
+## Verify it yourself in 3 commands
+
+The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
+
+```sh
+npm ci                       # under a minute: the exact versions in the lockfile
+npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
+npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
+```
+
+<details><summary>What you should see (abridged)</summary>
+
+```text
+ok    /  200  63106 bytes
+ok    /proof  200  138535 bytes
+…
+ok    signature          the ES256 signature verifies with the receipt's public key
+
+VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
+Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
+Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
+```
+
+</details>
+
+`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
+checks any receipt of the same format.
+
+The full suite, `npm test` (about 8 to 9 min on a laptop): **6711 tests passing**, 4 skipped, in 599 files (the last full run, on commit `a2af453e`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+
+CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
+
+## Where things are
+
+| Folder | What it holds |
+|---|---|
+| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta, Visa via Airi), the ledger |
+| `cloud/` | Purser Cloud on Cloudflare Workers: the console, its API, /try and the engine |
+| `worker/` | The public site's Worker (kit11): the pages and the relay for the dashboard and passkey approvals |
+| `docs/runs/` | The record of every live run: ids, amounts, timestamps |
+| `test/` | The tests (`npm test`) and the browser checks (`test/browser/`) |
+
 ## Watch it
 
 | [The walkthrough](https://youtu.be/mp9fmOYfBWc) · AI voice and music: ElevenLabs | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |
@@ -54,7 +96,7 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 | **Alta** (testnet) | a mandate per agent, x402 payments, limits changed only by two passkeys, the audit anchor | Testnet, live transactions, test money | [main run](docs/runs/2026-11-03-main-run.md), [two passkeys](docs/runs/2026-11-12-faceid-onchain.md), [anchor](docs/runs/2026-11-13-anchor.md) |
 | **Visa** Intelligent Commerce via Airwallex's Airi (sandbox, test card) | a Visa credential bound to one purchase; above the limit only after Face ID | Airwallex sandbox, live calls, test card; a headless browser typed the card into Airwallex's hosted page | [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md) |
 | **Claude** by Anthropic | the agents' decisions (Haiku, Sonnet, Opus) and the invoice reader; code checks each | Live calls | [main run](docs/runs/2026-11-03-main-run.md), [/claude](https://kit11.max-31b.workers.dev/claude) |
-| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, matched line by line | Shared sandbox ledger, live calls | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
+| **T:0** (shared sandbox entity) | an outside ledger: the main run's 95 journal entries, checked against our books: every account to the cent, plus the entry count | Shared sandbox ledger, live calls | [record](docs/runs/2026-11-10-t0-journal-sandbox.md) |
 
 No endorsement implied.
 
@@ -69,36 +111,6 @@ No endorsement implied.
 
 *Home, light or dark as your GitHub is: one sample invoice from Read to Paid.*
 
-
-## Verify it yourself in 3 commands
-
-The quick start: under 2 minutes, no keys. Needs Node.js 22.13 or later and git. `npm ci` downloads packages from npm; after that, no network and no keys.
-
-```sh
-npm ci                       # under a minute: the exact versions in the lockfile
-npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
-npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
-```
-
-What you should see (abridged):
-
-```text
-ok    /  200  63106 bytes
-ok    /proof  200  138535 bytes
-…
-ok    signature          the ES256 signature verifies with the receipt's public key
-
-VALID: docs/runs/2026-11-07-awx-1/receipt-P-0002.json
-Proves: the holder of this public key signed exactly these terms, with the authenticator reporting user verification, on this site.
-Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test world's terms: nothing real moved.
-```
-
-`npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
-checks any receipt of the same format.
-
-The full suite, `npm test` (about 8 to 9 min on a laptop): **6711 tests passing**, 4 skipped, in 599 files (the last full run, on commit `a2af453e`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
-
-CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
 ## How it works
 
@@ -321,7 +333,7 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 - **Visa Intelligent Commerce via Airwallex's Airi (sandbox, test card):** an agent pays with a Visa credential Purser binds to one purchase (the sandbox did not refuse a reuse or a higher amount, Purser did: [vic-3](docs/runs/2026-11-12-vic-3.md), [vic-4](docs/runs/2026-11-13-vic-4.md)). This is
   the work entered for the Visa Award (Visa confirmed on 7 Nov that the VIC run counts). The Visa TAP work is an extra:
   Visa said on 5 Nov that TAP is not eligible tooling for this hackathon ([rules](docs/rules.md)). [/visa](https://kit11.max-31b.workers.dev/visa)
-- **T:0 (shared sandbox entity):** a general ledger outside Purser. On 10 Nov the main run's books went in as 95 journal entries, debits equal to credits, matched line by line ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)). [/t0](https://kit11.max-31b.workers.dev/t0)
+- **T:0 (shared sandbox entity):** a general ledger outside Purser. On 10 Nov the main run's books went in as 95 journal entries, debits equal to credits ([record](docs/runs/2026-11-10-t0-journal-sandbox.md)); read back on 14 Nov, T:0 agrees: every account to the cent, plus the entry count. [/t0](https://kit11.max-31b.workers.dev/t0)
 - **Cloudflare:** Workers and Durable Objects run the relay, the site and Purser Cloud's engine (one object per company).
 
 ## Repository map

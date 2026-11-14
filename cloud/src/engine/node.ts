@@ -5,6 +5,7 @@
 // every ledger; the Durable Object (one per company, on its own SQLite) is what keeps one.
 //
 // This file loads the whole engine. The Worker's entry point never imports it (test/cloud-engine.test.ts holds that).
+import { TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
 import { useDocStore, type DocStore } from "../../../src/ap/docStore.js";
 import { openDb, type DB } from "../../../src/db/open.js";
 import { feedCloud } from "../../../src/engine/feed.js";
@@ -80,7 +81,7 @@ async function start(env: NodeEngineEnv, tenantId: string): Promise<Engine> {
     db, reader: parserOnly, rails: awx.rails, payeeVerifier: awx.verifier, afterMoney: () => { kept.text = bankToText(bank); },
     rp: { rpId: env.rpId, origin: env.origin }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
     vault: blobVault(env.blobs, tenantId), feed: (d, now) => feedCloud(d, target, now),
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true } : {}),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: TRY_MAX_DOCUMENTS, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS } : {}),
   });
   await host.seed();
   return { db, host, acts: airwallexActions({ host, db, rail: awx.routed, guard, store, caps: () => guard.caps() }), fxNote: (terms) => (fx ? fx.noteFor(terms) : null), payoutNotes: new Map() };

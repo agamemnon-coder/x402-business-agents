@@ -49,9 +49,12 @@
   // Purser Cloud's Airwallex actions (14 Nov): the kit11 Worker's named entrypoint AwxGateway (worker/src/index.ts), the
   // one holder of the sandbox key. Not an HTTP route: only a Worker bound to it can call it. Off until the admin's
   // switch awx_act and the daily caps are set (cloud/src/engine/awxGuard.ts) and kit11 has AWX_GATEWAY_WRITE=on.
+  // The agents' live sandbox cards (cloud/src/agentCards.ts): kit11's named entrypoint AwxCards, which holds the key and
+  // the card allow-list (worker/src/awxCards.ts). No key here. Deploy kit11 with AwxCards first.
   "services": [
     { "binding": "AWX_FX", "service": "kit11", "entrypoint": "AwxFx" },
     { "binding": "AWX_READ", "service": "kit11", "entrypoint": "AwxRead" },
+    { "binding": "AWX_CARDS", "service": "kit11", "entrypoint": "AwxCards" },
     { "binding": "AWX_GATEWAY", "service": "kit11", "entrypoint": "AwxGateway" }
   ],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["CompanyEngine"] }],

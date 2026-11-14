@@ -109,6 +109,10 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/reports/{name}` | read | trial, pnl, balance, vat (?quarter=2026Q4), payables, receivables: computed from the ledger. |
 | `GET /v1/agents` | read | The company's agents from its own records: job, Claude model as its runs recorded it, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only. |
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
+| `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
+| `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
+| `POST /v1/cards/actions` | admin | A signed-in owner asks for a card action (`issue`, `freeze`, `unfreeze`, `limits`, `test`): the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing is sent yet. |
+| `POST /v1/cards/actions/{id}/sign` | admin | The owner's own passkey over the action's hash; the action then runs once at the Airwallex sandbox. The same signed action again answers its first result. |
 | `GET /v1/airwallex-live/{view}` | read | The live Airwallex tab, read-only, from the Airwallex sandbox (test money). Purser Cloud holds no Airwallex key: it asks the site Worker's gateway (`AWX_READ`, a service binding to kit11's `AwxRead` entrypoint; `worker/src/awxRead.ts`), which alone calls `api.sandbox.airwallex.com`, by a fixed list of GETs (and the login). Views: `balances`, `accounts`, `financial`, `rates`, `transfers`, `beneficiaries`, `issuing`, `calls`, `reconcile` (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions, to the cent). Each answer says when Airwallex was read, or why the sandbox is unavailable. Kept 45 s for everyone; capped per visitor here and for all visitors in the gateway. |
 | `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
 | `GET /v1/books/invoices/{id}/journal` | read | The ledger entries that book one supplier invoice, with their lines. |
@@ -636,7 +640,7 @@ the invoice says so.
   `metadata.approval_sha256`; the sandbox simulation moves the transfer to PAID. The transfer id is on the invoice in full.
 - **Pay all ready:** one batch proposal, one signature over its totals and lines; at Airwallex one batch transfer.
 - **Money in:** a deposit simulation into the USD global account, booked (held in suspense until named).
-- **Not built:** agent cards from Cloud (Issuing). The key's Issuing scope was not checked from here.
+- **Agent cards:** not part of these actions; they have their own gateway (`AwxCards`, below).
 
 Locks, all off by default: the admin switches `awx_act` (and `awx_act_try` for /try companies), the daily caps
 `awx_act_company_cents_day` (at most 1,000.00) and `awx_act_global_cents_day` (at most 5,000.00), and on the kit11
@@ -647,3 +651,29 @@ name that bank's ids, so a failed payment stays failed with its reason and Pay p
 
 The screenshots `docs/assets/cloud/console-airwallex-*.png` are from a local run with an in-memory stand-in in
 Airwallex's place (ids start `local-standin-`), not from the sandbox.
+
+## The agents' live sandbox cards (Agents tab)
+
+Each agent can have its own virtual Visa card at the **Airwallex sandbox** (test money). The card's limits are the CFO
+policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with Face ID, on the Agents tab.
+
+- **No key in Purser Cloud.** The Cloud asks the kit11 Worker's `AwxCards` entrypoint (`worker/src/awxCards.ts`) over a
+  service binding (`AWX_CARDS` in `cloud/wrangler.try.jsonc`). No HTTP request reaches that entrypoint.
+- **Allow-list** (`src/airwallex/cardGate.ts`): read cards, one card, card transactions, cardholders; create a card;
+  update a card's status (ACTIVE or INACTIVE) or its limits, nothing else; a delegate cardholder for a new card; the
+  sandbox's purchase simulation. Every body shape is checked. Anything else is refused before it is sent.
+- **Never card data.** kit11 cuts every answer down to the last four digits. No full number, CVV or cardholder reaches
+  the Cloud, its database, its logs or the page.
+- **Every write is signed.** `POST /v1/cards/actions` writes the exact action down as canonical JSON. The passkey
+  challenge is its SHA-256. `POST /v1/cards/actions/{id}/sign` checks the owner's own passkey over that hash, then runs it
+  once. Signing the same action again answers the first result and sends nothing. A new card's `request_id` at Airwallex
+  is that hash too.
+- **Locks** (all off or zero unless set): the admin switch `awx_cards` (on/off, in `/v1/try/admin`), kit11's var
+  `AWX_CARDS_WRITE=on`, never a `/try` test company, one card an agent, 3 a company, 20 writes a company a UTC day (60 in all).
+- **Issuing check:** `GET /v1/cards/scope` answers `{ issuing: ok | forbidden | no_key | no_gateway | unavailable }`,
+  one Airwallex read a minute at most, no card data.
+- **Decline demo:** "Test: buy for …" has the agent try a purchase 5.00 EUR over its limit, through Airwallex's own
+  purchase simulation, signed like any write. Airwallex declines it (`LIMIT_EXCEEDED`) and the decline shows with its id.
+- Checked on this machine with a stand-in sandbox: `npx tsx test/browser/agent-cards.check.ts docs/assets/cloud`.
+
+![The Sourcing agent's live card, frozen, with a declined over-limit purchase](assets/cloud/cloud-agents-card-1440.png)

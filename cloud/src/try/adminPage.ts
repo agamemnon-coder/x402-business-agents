@@ -116,5 +116,8 @@ export function adminPageHeaders(nonce: string): Record<string, string> {
     "content-type": "text/html; charset=utf-8",
     "content-security-policy": `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     "cache-control": "no-store", "referrer-policy": "no-referrer", "x-content-type-options": "nosniff", "x-robots-tag": "noindex",
+    // Security scan, 14 Nov: the same frame as the other pages.
+    "strict-transport-security": "max-age=31536000; includeSubDomains", "x-frame-options": "DENY", "cross-origin-opener-policy": "same-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   };
 }
