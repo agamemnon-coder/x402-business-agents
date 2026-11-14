@@ -37,6 +37,7 @@ import { cloudTarget } from "./target.js";
 import { blobVault } from "./vaultR2.js";
 import { rpAllowed } from "../hostOrigin.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
+import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
 
 /** What the host needs of the object: its storage. */
@@ -53,10 +54,11 @@ export interface HostEnv {
    * /try's live FX quote (./liveFx.ts): a service binding to the kit11 Worker's AwxFx entrypoint, which holds the
    * Airwallex sandbox key (cloud/wrangler.try.jsonc). purser-try only; never the product's deployment.
    */
-  AWX_FX?: LiveFxSource;
+  AWX_FX?: LiveFxSource & PayoutSource;
 }
 
 const FX_NOTES = "CREATE TABLE IF NOT EXISTS awx_fx_notes (quote_id TEXT PRIMARY KEY, note TEXT NOT NULL)";
+const PAYOUT_NOTES = "CREATE TABLE IF NOT EXISTS awx_payout_notes (proposal_id TEXT PRIMARY KEY, note TEXT NOT NULL)";
 
 let runtimeReady = false;
 /**
@@ -106,6 +108,19 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     })
     : null;
   const rail = fx ? fx.rail : bank;
+  storage.sql.exec(PAYOUT_NOTES);
+  const payoutOn = !!env.AWX_FX && tenantId.startsWith("t_try_");
+  const payoutKit = {
+    company: tenantId, source: env.AWX_FX ?? null, db,
+    allowed: async () => on(await readSwitches(sql), "awx_payout"),
+    keep: {
+      get: (pid: string) => (storage.sql.exec("SELECT note FROM awx_payout_notes WHERE proposal_id = ?", pid).toArray()[0]?.note as string | undefined) ?? null,
+      set: (pid: string, note: string) => { storage.sql.exec("INSERT INTO awx_payout_notes (proposal_id, note) VALUES (?, ?) ON CONFLICT(proposal_id) DO UPDATE SET note = excluded.note", pid, note); },
+    },
+  };
+  const payoutFor = payoutOn
+    ? (proposalId: string, termsSha256: string, terms: Record<string, unknown>) => sandboxPayout({ ...payoutKit, proposalId, termsSha256, terms })
+    : null;
   const host = new EngineHost({
     db, reader: parserOnly, rails: { rail, sim: bank }, afterMoney: keepBank,
     rp: { rpId: env.RP_ID, origin: env.ORIGIN }, company: { name: company.name, lang: company.language === "en" ? "en" : "nl" },
@@ -158,7 +173,17 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
       const note = t && fx ? fx.noteFor(t.terms) : null;
       return t && note ? { ...t, fx_quote: note } : t;
     },
-    paySigned: async (id, sent, credential) => kept(host.paySigned(id, sent, credential)),
+    // Step 2 (./livePayout.ts): a paid test payment, once its signature was verified, also asked of the Airwallex sandbox
+    // as one transfer (test money), under the switch awx_payout; the note on it comes with the answer.
+    paySigned: async (id, sent, credential) => {
+      const out = await kept(host.paySigned(id, sent, credential));
+      if (!payoutFor || !out || "bad" in out || (out.outcome !== "paid" && out.outcome !== "paid_once")) return out;
+      const t = host.terms(id);
+      if (!t) return out;
+      const note = await payoutFor(id, t.terms_sha256, t.terms as unknown as Record<string, unknown>);
+      return { ...out, airwallex_payout: note };
+    },
+    payoutSimulate: async (proposalId) => payoutOn ? simulatePayout({ ...payoutKit, proposalId }) : { ok: false as const, reason: "no_binding" as const, note: null },
     exportBatch: async () => host.exportBatch(),
     exportPdf: async () => host.exportPdf(),
     // The object does this itself (it must also forget this host); here for the interface's sake.

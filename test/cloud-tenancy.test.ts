@@ -102,7 +102,9 @@ describe("two companies", () => {
       // The hands-on demo's (cloud/src/try/engineRoutes.ts): the signed terms, and the one pay route (a test company's only).
       // 14 Nov: the sandbox override of a possible duplicate, and Reject (a test company's only).
       "POST /v1/engine/invoices/{id}/clear", "POST /v1/engine/invoices/{id}/reject",
-      "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay"]);
+      "GET /v1/engine/proposals/{id}/terms", "POST /v1/engine/proposals/{id}/pay",
+      // 14 Nov (step 2): Sandbox: move to PAID, a test company's only, like pay.
+      "POST /v1/engine/proposals/{id}/payout/simulate"]);
     for (const r of withId) {
       const engine = r.path.startsWith("/v1/engine/");
       const id = r.path.includes("/keys/") ? bIds.key : r.path.includes("/users/") ? bIds.user : r.path.includes("/mail/") ? bIds.mail
@@ -116,7 +118,7 @@ describe("two companies", () => {
       // proposal are not there for A either, exactly like ones that do not exist.
       const signedIn = await c.req(r.method, path, { key: A.session, ...(r.method === "POST" ? { body: { terms_sha256: "0".repeat(64), credential: {} } } : {}) });
       // The pay route is a test company's only: A (a product company) is turned away before any proposal is looked up.
-      expect(signedIn.status, `${r.method} ${path} with A's session: ${JSON.stringify(signedIn.json)}`).toBe(r.path.endsWith("/pay") && r.path.includes("/proposals/") ? 403 : 404);
+      expect(signedIn.status, `${r.method} ${path} with A's session: ${JSON.stringify(signedIn.json)}`).toBe((r.path.endsWith("/pay") || r.path.endsWith("/payout/simulate")) && r.path.includes("/proposals/") ? 403 : 404);
       expect(JSON.stringify(signedIn.json)).not.toContain("Bergtex");
     }
     // A report or the insight never mixes in the other company's ledger or invoices.

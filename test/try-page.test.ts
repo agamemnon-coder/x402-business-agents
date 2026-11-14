@@ -193,8 +193,8 @@ describe("the frame and the start", () => {
     expect(COPY.START.text).toContain("Purser's real engine");
     // 13 Nov: the trust line names Visa as the README and the site do ("via Airwallex Airi"); VIC is said where a VIC run is shown.
     // 14 Nov: Metal is now Alta; the first mention says so.
-    // Partner scan, 14 Nov: "No endorsement implied." beside the partners' names.
-    expect(COPY.START.trust).toBe("Works with Airwallex · Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.");
+    // 14 Nov (owner): Airwallex is the platform ("Built on Airwallex", the header's badge); the others work with it.
+    expect(COPY.START.trust).toBe("Works with Alta (formerly Metal) · Visa via Airwallex Airi · Claude (sandbox and testnet runs). No endorsement implied.");
     expect(COPY.VISIBLE.start.every((state) => state.includes(COPY.START.fine) && state.includes(COPY.START.trust))).toBe(true);
   });
 });

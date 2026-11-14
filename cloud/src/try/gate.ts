@@ -47,6 +47,7 @@ export const TRY_ROUTES: readonly string[] = [
   "POST /v1/try/scenarios/{seed}",
   "GET /v1/engine/proposals/{id}/terms",
   "POST /v1/engine/proposals/{id}/pay",
+  "POST /v1/engine/proposals/{id}/payout/simulate",
   "GET /v1/engine/export",
   "GET /v1/engine/export.pdf",
 ];
