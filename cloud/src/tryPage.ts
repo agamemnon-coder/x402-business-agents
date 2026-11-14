@@ -40,6 +40,7 @@ import { MORE } from "../../src/ui/payablesKit.js";
 import type { CloudEnv } from "./app.js";
 import { FILM_URL, TRAILER_LINK, TRAILER_URL } from "../../src/config/brand.js";
 import { presentExtra } from "./try/presentMode.js";
+import { VIS_CSS, visScript } from "./try/visuals.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -1649,13 +1650,14 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}${extra ? extra.css : ""}</style></head><body>
+<style nonce="${n}">${CSS}${SCENE_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${extra ? extra.css : ""}</style></head><body>
 ${siteHeader("try")}
 <div class="hero">${sceneSvg()}</div>
 <main id="main"></main>
 <p class="trust">${escAttr(START.trust)}</p>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 ${extra ? `<script type="module" nonce="${n}">${extra.script}</script>\n` : ""}<script type="module" nonce="${n}">${script}</script>
+<script type="module" nonce="${n}">${visScript(json)}</script>
 </body></html>`;
 }
 
