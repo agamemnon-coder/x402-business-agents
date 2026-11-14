@@ -413,6 +413,15 @@ describe("this invoice's payment, lines and files, in the page's own script", ()
       entry(3, "pay:1", [line("1600", 185000, 0), line("1200", 0, 185000)]), entry(4, "pay:2", [line("1600", 185000, 0), line("1200", 0, 185000)])];
     expect(books.entriesOf(a, books.paymentOf(a, ps, txs), txs, es).map((e) => e.entry_id)).toEqual([1, 3]);
     expect(books.entriesOf(b, books.paymentOf(b, ps, txs), txs, es).map((e) => e.entry_id)).toEqual([2, 4]);
+    // 14 Nov (judge scan): the conversion that funded a payment is shown with it, by the same signed terms' hash only.
+    const signed = (t: Record<string, unknown>, sha: string | null) => ({ ...t, approval: { terms_sha256: sha } });
+    const fxLeg = (sha: string | null, ids: number[]) => ({ id: `fx:c:${ids[0]}`, rail: "airwallex_fx", approval: { terms_sha256: sha }, booking: { entry_ids: ids } });
+    const withFx = [signed(tx("req-1", "AP-0001", [3]), "s1"), tx("req-2", "AP-0002", [4]), fxLeg("s1", [5]), fxLeg("s1", [6]), fxLeg("other", [7])];
+    const esFx = [...es, 5, 6, 7].map((e) => (typeof e === "number" ? entry(e, `fx|c|${e}`, [line("1590", 100, 0), line("1200", 0, 100)]) : e));
+    expect(books.entriesOf(a, books.paymentOf(a, ps, withFx), withFx, esFx).map((e) => e.entry_id)).toEqual([1, 3, 5, 6]);
+    // A payment with no signed hash takes no conversion, even one that has none either.
+    const noSha = [tx("req-1", "AP-0001", [3]), fxLeg(null, [5])];
+    expect(books.entriesOf(a, books.paymentOf(a, ps, noSha), noSha, esFx).map((e) => e.entry_id)).toEqual([1, 3]);
     // The archive names the second receipt with the invoice's own id beside it.
     const dir = "Test company/2026/2026-Q4/Betalingen/";
     const files = [{ path: `${dir}2026-11-12 Bergtex Textil GmbH BTX-1.pdf`, kind: "receipt", sha256: "r1" }, { path: `${dir}2026-11-12 Bergtex Textil GmbH BTX-1 (AP-0002).pdf`, kind: "receipt", sha256: "r2" },
