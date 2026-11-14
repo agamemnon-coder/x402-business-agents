@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { accrualEntries, AP_ACCOUNTS, type ApEntry } from "../src/ap/books.js";
+import { accrualEntries, AP_ACCOUNTS, dutchVat, foreignVat, type ApEntry } from "../src/ap/books.js";
 import { codeInvoice } from "../src/ap/coderAgent.js";
 import { codingHolds, enforceCoding, fallbackCoding, REVERSE_CODES, vatAt, type CodingCase, type EnforcedCoding } from "../src/ap/coderCore.js";
 import { EXPENSE_ACCOUNTS } from "../src/ap/read.js";
@@ -131,11 +131,12 @@ describe("a wrong coder never causes a wrong booking", () => {
         expect(debit, what).toBe(credit);
         expect(new Set(es.map((e) => e.currency)), what).toEqual(new Set([inv.currency]));
         expect(sumOf(es, AP_ACCOUNTS.payable, "credit"), what).toBe(total);
-        // The invoice's VAT: on input VAT (net of a reverse charge owed), or a German supplier's 19% on 1515 (final-polish,
-        // 13 Nov: the books code it from the supplier's German VAT id), and 1515 only ever under PF_DE19.
+        // The invoice's VAT: on input VAT (net of a reverse charge owed), or on 1515 when it is not Dutch VAT: a German
+        // supplier's 19% (PF_DE19), and any uncoded VAT at no Dutch rate (the CFO review, 14 Nov: never 1510, box 5b).
         const abroad = sumOf(es, AP_ACCOUNTS.foreignVat, "debit");
         expect(sumOf(es, AP_ACCOUNTS.inputVat, "debit") - sumOf(es, "2210", "credit") + abroad, what).toBe(tax);
-        expect(abroad, what).toBe(es.filter((e) => e.vat_code === "PF_DE19").reduce((n, e) => n + (e.vat_cents ?? 0), 0));
+        const notDutch = row.coding!.lines.filter((l) => l.vat_code === null && l.vat_cents > 0 && l.net_cents > 0 && !dutchVat(l.net_cents, l.vat_cents) && !foreignVat(l.net_cents, l.vat_cents, row.reading?.vat_id)).reduce((n, l) => n + l.vat_cents, 0);
+        expect(abroad, what).toBe(es.filter((e) => e.vat_code === "PF_DE19").reduce((n, e) => n + (e.vat_cents ?? 0), 0) + notDutch);
         const expense = es.filter((e) => ![AP_ACCOUNTS.inputVat, AP_ACCOUNTS.foreignVat, AP_ACCOUNTS.payable, "2210"].includes(e.account));
         for (const e of expense) expect(Object.hasOwn(EXPENSE_ACCOUNTS, e.account), `${what}: booked to ${e.account}`).toBe(true);
         expect(expense.reduce((s, e) => s + toCents(e.debit), 0), what).toBe(total - tax);
