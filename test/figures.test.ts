@@ -111,8 +111,8 @@ function expected(): Record<string, string | string[]> {
   };
 }
 function separateCards(): Record<string, string> {
-  // 13 Nov: the latest live Visa run, vic-4 (docs/runs/2026-11-13-vic-4.json); a purchase not tapped is not a refusal.
-  const v = JSON.parse(readFileSync(new URL("../docs/runs/2026-11-13-vic-4.json", import.meta.url), "utf8")) as { purchases: { step: string; request?: { amount: string; currency: string }; outcome?: { status?: string; by?: string; code?: string } }[] };
+  // 14 Nov: the latest live Visa run, vic-5 (docs/runs/2026-11-14-vic-5.json); a purchase not tapped is not a refusal.
+  const v = JSON.parse(readFileSync(new URL("../docs/runs/2026-11-14-vic-5.json", import.meta.url), "utf8")) as { purchases: { step: string; request?: { amount: string; currency: string }; outcome?: { status?: string; by?: string; code?: string } }[] };
   const b = v.purchases.find((x) => x.step === "B")!;
   const refused = v.purchases.filter((x) => x.outcome?.code !== "PURSER_NO_TAP" && x.outcome?.status === "refused" && /^purser/.test(x.outcome.by ?? "")).length;
   const t0 = readFileSync(new URL("../docs/runs/2026-11-10-t0-journal-sandbox.md", import.meta.url), "utf8");

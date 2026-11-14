@@ -139,7 +139,8 @@ describe("Home, the enterprise pass", () => {
     expect(rows.map((r) => [r.partner, r.title, r.text])).toEqual([
       ["Airwallex", "Airwallex declined the card", "EUR 45.00 over a 30.00 limit."],
       ["Metal", "Metal refused it on chain", "Over its cap."],
-      ["Visa", "Visa: hash read back", "Equal at Airi and Airwallex."],
+      // Visa judge, 14 Nov: the outcome the judge found buried, to /visa#visa-reuse (vic-4 F2, vic-3).
+      ["Visa", "Visa: reused credential refused", "By Purser; the sandbox had accepted it."],
     ]);
     // The rows' figures stay held to their records (Airwallex's decline over its card's limit, the Visa read-backs).
     const decline = AWX.card_transactions.find((t) => !t.approved && t.decline_code === "LIMIT_EXCEEDED")!;
@@ -217,9 +218,10 @@ describe("Home, the enterprise pass", () => {
 
   // The enterprise pass (owner, 12 Nov) adds four features and a stat row: the budget is 300 visible words. 345 since the
   // review of 13 Nov: the main run's line (its company, agents, figures and the film; 32 words) and which agents the
-  // flow shows (9 words); 341 as built.
-  it("A11: stays within 345 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(345);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(345);
+  // flow shows (9 words); 341 as built. 355 since the Visa judge (14 Nov): one line on the Visa outcome, to /visa's
+  // reuse section (13 words; 354 as built).
+  it("A11: stays within 355 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(355);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(355);
   });
 });

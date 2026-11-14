@@ -340,3 +340,36 @@ describe("vic-3 page cells", () => {
     expect(cell(null)).toBe("—");
   });
 });
+
+// vic-5 (14 Nov, Visa judge): the whole VIC story in one record. B alone is paid end to end (the agent asks, Purser
+// waits for the CFO's Face ID, Airi's mandate carries the signed hash, the tap, the sandbox pays); C and D are refused by
+// Purser with 0 calls; F1 (another amount) and F2 (a second use) on B's own credential are refused by Purser's
+// credential check before any Airwallex call. No A, G or E: no check stands for a step it does not run.
+describe("vic-5 on the stand-ins", () => {
+  it("runs B, C, D, F1 and F2 in order, every check passes, F1/F2 on B's credential", async () => {
+    const w = world({ variant: "vic-5" });
+    const r = await runVic3(w.deps);
+    expect(r.run).toBe("vic-5");
+    expect(r.purchases.map((p) => p.step)).toEqual(["B", "C", "D", "F1", "F2"]);
+    expect(Object.entries(r.checks).filter(([, c]) => !c.ok)).toEqual([]);
+    expect(Object.keys(r.checks).filter((k) => /^(a|e|g)_/.test(k))).toEqual([]);
+    const b = step(r, "B");
+    expect(b.outcome).toMatchObject({ status: "succeeded" });
+    expect(b.read_back.mandate).toMatchObject({ equal: true, before_credential: true });
+    expect(b.read_back.payment_intent).toMatchObject({ equal: true });
+    for (const [s, code] of [["F1", "PURSER_CREDENTIAL_AMOUNT_MISMATCH"], ["F2", "PURSER_CREDENTIAL_ALREADY_USED"]] as const) {
+      expect(step(r, s).mandate_id).toBe(b.mandate_id);
+      expect(step(r, s).outcome).toMatchObject({ status: "refused", code });
+      expect(step(r, s).calls).toEqual({ anthropic: 0, airwallex: 0, airi: 0 });
+    }
+    expect(r.credential_deleted).toBe(true);
+    expect(leftovers(w.tmpRoot)).toEqual([]);
+  });
+
+  it("has its own go, ledger and keys folder", () => {
+    const env = { KIT11_AIRI_RAIL: "on", VIC5_GO: "yes", KIT11_DB: "data/vic-5.sqlite", KIT11_KEYS_DIR: "../keys/vic-5", AIRWALLEX_CLIENT_ID: "x", AIRWALLEX_API_KEY: "x", AIRWALLEX_CALL_BUDGET: "20", AIRWALLEX_CALL_LOG: "../keys/vic-5/calls.jsonl", KIT11_ANTHROPIC_API_KEY: "x" };
+    expect(vic3LiveRefusals("live", env, "vic-5")).toEqual([]);
+    expect(vic3LiveRefusals("live", { ...env, VIC5_GO: undefined, VIC4_GO: "yes" }, "vic-5")).toEqual(["VIC5_GO=yes (the owner's go)"]);
+    expect(vic3LiveRefusals("live", { ...env, KIT11_DB: "data/vic-4.sqlite" }, "vic-5").join(" ")).toMatch(/vic-5/);
+  });
+});

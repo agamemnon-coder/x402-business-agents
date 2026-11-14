@@ -45,6 +45,13 @@ export const mfaOn = (env: NodeJS.ProcessEnv = process.env) => env.KIT11_MFA ===
 /** The link that hands the phone its viewer key and pins the runner's display key (src/relay/sign.ts). */
 export const viewerLink = (cfg: RelayConfig, runnerSpki?: string, env: NodeJS.ProcessEnv = process.env, now = new Date()): string =>
   `${cfg.url}/#view=${mfaOn(env) ? viewKeyWeekly(cfg.token, now) : viewKey(cfg.token)}${runnerSpki ? `&runner=${runnerSpki}` : ""}`;
+/**
+ * The enrolment page with the same key and pin in its fragment (14 Nov: the owner hit "this device needs the viewer
+ * link" on /enrol, which needs the viewer key like every /api/ call): one link does both, so no separate viewer link has
+ * to be opened first. The fragment never reaches the relay; the page keeps the key and clears it from the address bar.
+ */
+export const enrolLink = (cfg: RelayConfig, runnerSpki?: string, env: NodeJS.ProcessEnv = process.env, now = new Date()): string =>
+  viewerLink(cfg, runnerSpki, env, now).replace(`${cfg.url}/#`, `${cfg.url}/enrol#`);
 
 async function workersDevUrl(env: Env, fetchImpl: typeof fetch): Promise<string> {
   const account = env.CLOUDFLARE_ACCOUNT_ID;

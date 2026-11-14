@@ -128,7 +128,7 @@ describe("/visa: one summary of the paid run", () => {
   });
 });
 
-describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => {
+describe("/visa is one Visa Intelligent Commerce story; TAP openly outside the entry", () => {
   const html = visaPage(), main = mainOf(html);
   const rec = raw("docs/demo/airi-run.json");
 
@@ -147,14 +147,16 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     const head = main.slice(0, main.indexOf("</h1>"));
     // Since the review at 390 px (12 Nov) the latest live run leads, so the label beside the heading is its date, marked latest.
     expect(text(head)).toContain(visaLatestLabel(airiRun()!, vic3Run()!.started_at));
-    expect(visaLatestLabel(airiRun()!, vic3Run()!.started_at)).toBe(`13 Nov (latest) · ${String(rec.label).split(", ").join(" · ")}`);
+    expect(visaLatestLabel(airiRun()!, vic3Run()!.started_at)).toBe(`14 Nov (latest) · ${String(rec.label).split(", ").join(" · ")}`);
     // 12 Nov (wire-in): the mark is Visa's official file (docs/evidence/logo-permissions.md), its name in alt.
     expect(head).toContain('<span class="logo"><img src="assets/logo-visa.png" alt="Visa" width="46" height="15"></span>');
     // The order: heading, the story, the basis, the drawing, the five facts, purchase B's table, the summary, the run,
     // the control test, the folded rows, and last the TAP fold.
     // Redesign, 13 Nov: the latest run's line, its flow, every purchase's outcome and the signed hash read back; the entry
     // and ICC lines; then the fold, which opens with the story (the four cards went: the hero says what they said).
-    const order = ["</h1>", 'class="vlead"', 'id="visa-flow"', 'id="visa-outcomes"', 'id="visa-hash"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-details"', esc(VISA_LEAD), 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`].map((x) => ({ x, at: main.indexOf(x) }));
+    // Visa judge, 14 Nov: the story a to e: what Visa asks, how Purser meets it, the reuse finding, the flow, the three
+    // runs, the entry and ICC lines; the fold (now opening with the outcome strip and the hash); TAP openly; not proven yet.
+    const order = ["</h1>", 'class="vlead"', 'id="visa-asks"', 'id="visa-meets"', 'id="visa-reuse"', 'id="visa-flow"', 'id="visa-three-runs"', esc(VISA_ENTRY_LINE), esc(VISA_ICC_LINE), 'id="visa-details"', esc(VISA_LEAD), 'id="visa-outcomes"', 'id="visa-hash"', 'id="vic-flow"', 'id="vic-facts"', 'id="vic-compare"', `id="${VISA_OVERVIEW_ID}"`, 'id="airi-run"', 'id="airi-run-2"', 'id="vic-more"', `id="${VISA_TAP_ID}"`, 'id="visa-not-yet"'].map((x) => ({ x, at: main.indexOf(x) }));
     for (const o of order) expect({ x: o.x, found: o.at >= 0 }).toEqual({ x: o.x, found: true });
     expect(order.map((o) => o.at)).toEqual([...order.map((o) => o.at)].sort((a, b) => a - b));
     // The drawing's five beats, in order, each with the record's own value: the CFO's limit, the Airi mandate, the
@@ -212,30 +214,33 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(readFileSync(new URL("../README.md", import.meta.url), "utf8")).not.toMatch(/Intelligent Commerce Connect|\bICC\b/);
   });
 
-  it("names TAP only inside one closed fold, the last thing on the page, labelled as outside the entry", () => {
-    const tapAt = main.indexOf(`<details class="fold" id="${VISA_TAP_ID}">`);
+  // Visa judge, 14 Nov: TAP was hidden in a closed fold and judges missed it. It is now its own open section, after the
+  // VIC story, headed as outside the entry and opening with its status (Visa, 5 Nov); its full run is a fold inside it.
+  it("shows TAP openly in its own section after the VIC story, headed as outside the entry", () => {
+    const tapAt = main.indexOf(`<section class="card vs vs-tap" id="${VISA_TAP_ID}">`);
     expect(tapAt).toBeGreaterThan(-1);
-    expect(text(main.slice(0, tapAt))).not.toMatch(TAP);
-    // Closed, and one fold: nothing inside it is folded again.
-    const fold = main.slice(tapAt, main.lastIndexOf("</details>") + "</details>".length);
-    expect(fold.match(/<details\b/g)).toHaveLength(1);
-    expect(fold).not.toMatch(/<details\b[^>]*\bopen\b/);
-    expect(text(main.slice(tapAt + fold.length))).toBe("");
-    // Its line, then at once the status, word for word (Visa, 5 Nov), then the TAP run's card and picture.
+    const before = main.slice(0, tapAt);
+    // In no fold: every fold opened before it is closed before it.
+    expect((before.match(/<details\b/g) ?? []).length).toBe((before.match(/<\/details>/g) ?? []).length);
+    // Above it TAP is named only in the agent identity row, which points to it.
+    expect(text(before.replace(/<li class="vs-row [^"]*"><span class="vs-k">Agent identity<\/span>[\s\S]*?<\/li>/, " "))).not.toMatch(TAP);
+    const section = main.slice(tapAt, main.indexOf('id="visa-not-yet"'));
     expect(VISA_TAP_HEADING).toBe("Outside the entry: Visa TAP");
-    expect(/<summary>([^<]*)<\/summary>/.exec(fold)![1]).toBe(VISA_TAP_HEADING);
-    expect(text(fold).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)).toBe(true);
+    expect(/<h2>([^<]*)<\/h2>/.exec(section)![1]).toBe(VISA_TAP_HEADING);
+    expect(text(section).startsWith(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`)).toBe(true);
     expect(VISA_TAP_STATUS).toContain("not eligible Visa tooling for this hackathon (Visa, 5 Nov)");
-    expect(fold.indexOf('class="vo-run tap"')).toBeGreaterThan(fold.indexOf(esc(VISA_TAP_STATUS)));
-    expect(fold.indexOf('class="flow card"')).toBeGreaterThan(fold.indexOf('class="vo-run tap"'));
+    expect(text(section)).toMatch(/commit 16d59bd/);
+    // What it does not prove, said in the section itself.
+    expect(text(section)).toMatch(/self-hosted, with a test key; not Visa's directory/);
+    // The full run, a fold inside the section: the card after the status, then the picture.
+    expect(section.indexOf('class="vo-run tap"')).toBeGreaterThan(section.indexOf(esc(VISA_TAP_STATUS)));
+    expect(section.indexOf('class="flow card"')).toBeGreaterThan(section.indexOf('class="vo-run tap"'));
     expect(main.match(/class="vo-run tap"/g)).toHaveLength(1);
-    expect(text(fold)).toMatch(/commit 16d59bd/);
-    // With every fold shut, the only TAP on the whole page (footer included) is that fold's own line.
-    const shut = text(unfolded(html));
-    expect(shut.match(/\bTAP\b/g)).toHaveLength(1);
-    expect(shut).toContain(VISA_TAP_HEADING);
-    // Every VIC block is above it.
-    for (const id of ["vic-flow", "vic-facts", "vic-compare", VISA_OVERVIEW_ID, "airi-run", "airi-run-2", "vic-more"]) expect({ id, above: main.indexOf(`id="${id}"`) < tapAt && main.indexOf(`id="${id}"`) >= 0 }).toEqual({ id, above: true });
+    // With every fold shut its heading and status are in sight.
+    expect(text(unfolded(html))).toContain(`${VISA_TAP_HEADING} ${VISA_TAP_STATUS}`);
+    // Every VIC block is above it, and what is not proven yet comes after it.
+    for (const id of ["visa-asks", "visa-meets", "visa-reuse", "visa-three-runs", "vic-flow", "vic-facts", "vic-compare", VISA_OVERVIEW_ID, "airi-run", "airi-run-2", "vic-more"]) expect({ id, above: main.indexOf(`id="${id}"`) < tapAt && main.indexOf(`id="${id}"`) >= 0 }).toEqual({ id, above: true });
+    expect(main.indexOf('id="visa-not-yet"')).toBeGreaterThan(tapAt);
   });
 
   it("cites docs/demo/airi-run.json in its footer, with no main-run paragraph", () => {
@@ -248,18 +253,19 @@ describe("/visa is one Visa Intelligent Commerce story; TAP folded away", () => 
     expect(foot).not.toMatch(TAP);
   });
 
-  it("fails the page build when the story is lost: TAP above or open, the status dropped, the old heading, the basis or the Connect line gone, a second run counted", () => {
+  it("fails the page build when the story is lost: TAP moved up or folded away, the status dropped, the old heading, the basis or the Connect line gone, a second run counted", () => {
     expect(() => assertVicFirst(html)).not.toThrow();
-    const fold = main.slice(main.indexOf(`<details class="fold" id="${VISA_TAP_ID}">`), main.lastIndexOf("</details>") + "</details>".length);
-    expect(fold.length).toBeGreaterThan(200);
-    // The TAP fold moved above the Airi run.
-    const moved = html.replace(fold, "").replace('<div class="awrb"><div class="card airi" id="airi-run">', `${fold}<div class="awrb"><div class="card airi" id="airi-run">`);
+    const open = `<section class="card vs vs-tap" id="${VISA_TAP_ID}">`;
+    const section = main.slice(main.indexOf(open), main.indexOf('<section class="card vs" id="visa-not-yet">'));
+    expect(section.length).toBeGreaterThan(200);
+    // The TAP section moved to the top, above what Visa asks for.
+    const moved = html.replace(section, "").replace('<section class="card vs" id="visa-asks">', `${section}<section class="card vs" id="visa-asks">`);
     expect(moved).not.toBe(html);
-    expect(() => assertVicFirst(moved)).toThrow(/last thing|TAP/);
-    // The fold open on arrival.
-    expect(() => assertVicFirst(html.replace(`<details class="fold" id="${VISA_TAP_ID}">`, `<details class="fold" id="${VISA_TAP_ID}" open>`))).toThrow(/TAP/);
+    expect(() => assertVicFirst(moved)).toThrow(/asks for is not above/);
+    // The section folded away again.
+    expect(() => assertVicFirst(html.replace(open, `<details class="fold"><summary>TAP</summary>${open}`).replace('<section class="card vs" id="visa-not-yet">', '</details><section class="card vs" id="visa-not-yet">'))).toThrow(/inside a fold|TAP/);
     // A TAP word in the top, or in the footer.
-    expect(() => assertVicFirst(html.replace(esc(VISA_LEAD), `${esc(VISA_LEAD)} Signed with TAP.`))).toThrow(/TAP is named above/);
+    expect(() => assertVicFirst(html.replace(esc(VISA_LEAD), `${esc(VISA_LEAD)} Signed with TAP.`))).toThrow(/TAP is named/);
     expect(() => assertVicFirst(html.replace("<li>Source: ", "<li>The TAP extra. Source: "))).toThrow(/footer/);
     // The status dropped from the head of the fold.
     expect(() => assertVicFirst(html.replace(`<p class="claim">${esc(VISA_TAP_STATUS)}</p>`, ""))).toThrow(/status/);

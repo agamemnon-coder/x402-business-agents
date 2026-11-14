@@ -66,18 +66,18 @@ Expect: `READY            nothing was sent`
 
 **2 The owner's passkey.** `npm run relay -- --enrol`. Keep it running: it is the runner for the whole run.
 
-Expect: `ENROL    on the phone open <address>/enrol and type <code> (valid until <time> UTC, five tries)`
+Expect: `ENROL    on the phone open <enrol link> and type <code> (valid until <time> UTC, five tries)`
 Expect: `owners   relays behind the call budget: <used> of <budget> lines in the call log used in this world`
 
-The viewer link is on the runner's `viewer` line. After Face ID the screen shows "Confirm on the runner" and "Fingerprint XXXX-XXXX-XXXX-XXXX"; the owner reads the fingerprint aloud. Then `npm run passkey -- confirm <fingerprint>`.
+The viewer link is on the runner's `viewer` line. The enrol link carries the viewer key itself (since 14 Nov): open it exactly as printed. After Face ID the screen shows "Confirm on the runner" and "Fingerprint XXXX-XXXX-XXXX-XXXX"; the owner reads the fingerprint aloud. Then `npm run passkey -- confirm <fingerprint>`.
 
 Expect: `confirmed  passkey <id> (fingerprint <fingerprint>); approvals now need it`
 
 **3 The second approver.** The account needs two different approvers. One of two ways:
 
-- A second real device: `npm run passkey -- add <name>`. That person opens the same viewer link and the enrol page on their own device, a moment after the command, and reads their fingerprint aloud. Confirm it as in step 2.
+- A second real device: `npm run passkey -- add <name>`. That person opens the enrol link it prints on their own device, a moment after the command, and reads their fingerprint aloud. Confirm it as in step 2.
 
-  Expect: `ENROL    <name>: on their phone open <address>/enrol and type <code> (valid until <time> UTC, five tries); the runner must be running`
+  Expect: `ENROL    <name>: on their phone open <enrol link> and type <code> (valid until <time> UTC, five tries); the runner must be running`
 - The owner has one device: `npx tsx docs/runs/driver/test-controller.ts enrol`, with the settings of The world and The relay; it needs Playwright with Chromium on the runner's machine. This is a virtual test passkey (test-controller): not a person and not a device. It keeps its key in the keys folder and does not confirm itself: on the owner's go, the operator runs the confirm line it prints. The record labels this owner as virtual.
 
   Expect: `CONFIRM          virtual test passkey (test-controller): it counts only once the operator confirms it on the runner, on the owner's go:`

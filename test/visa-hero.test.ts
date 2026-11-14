@@ -14,12 +14,14 @@ const text = (h: string) => h.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").re
 const section = (id: string) => new RegExp(`<section[^>]*id="${id}"[\\s\\S]*?</section>`).exec(html)?.[0] ?? "";
 
 describe("/visa's hero, from the vic-4 record", () => {
-  it("comes first under the run's line, before anything folded", () => {
+  // Visa judge, 14 Nov: the flow stays in the story, above the fold; the outcome strip and the hash, which the story's
+  // rows and the three runs now say, open the details fold.
+  it("puts the flow in the story under the run's line, and the strip and the hash first in the details fold", () => {
     const at = (s: string) => html.indexOf(s);
     expect(at('class="vlead"')).toBeLessThan(at(`id="${VISA_FLOW_ID}"`));
-    expect(at(`id="${VISA_FLOW_ID}"`)).toBeLessThan(at(`id="${VISA_OUTCOMES_ID}"`));
+    expect(at(`id="${VISA_FLOW_ID}"`)).toBeLessThan(at('id="visa-details"'));
+    expect(at('id="visa-details"')).toBeLessThan(at(`id="${VISA_OUTCOMES_ID}"`));
     expect(at(`id="${VISA_OUTCOMES_ID}"`)).toBeLessThan(at(`id="${VISA_HASH_ID}"`));
-    expect(at(`id="${VISA_HASH_ID}"`)).toBeLessThan(at('id="visa-details"'));
   });
 
   it("puts each purchase where it ended: paid alone, paid after Face ID, not tapped at the tap, refused before any call", () => {
