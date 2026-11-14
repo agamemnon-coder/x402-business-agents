@@ -91,7 +91,7 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
     expect(up).toMatchObject({ kind: "invoice", sha256: sha256(bytes) });
     expect(up.invoice).toEqual({
       id: "AP-0001", status: "ready", status_words: "Ready to pay", payable: true, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-2026-21", currency: "EUR", total: "1850.00",
-      due_date: "2026-11-16", read_by: "parser", findings: [], doc_sha256: sha256(bytes), proposal: null,
+      due_date: "2026-11-16", read_by: "parser", issue_date: "2026-11-02", paid_at: null, findings: [], doc_sha256: sha256(bytes), proposal: null,
     });
 
     // The passkey: created against the engine's own challenge, and confirmed by the host itself.

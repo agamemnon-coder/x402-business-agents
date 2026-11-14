@@ -11,6 +11,9 @@ export interface FraudSignal {
   /** A blocking signal stops payment; the others are evidence for the person who verifies. */
   blocks: boolean;
   detail: string;
+  /** What the invoice says and what is on file, side by side (14 Nov: /try shows the evidence, not only the sentence). */
+  asked?: string;
+  on_file?: string;
 }
 
 export interface Beneficiary {
@@ -114,7 +117,7 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
   }
   const look = matched ? null : lookalikeOf(inv.vendor, all);
   if (look) {
-    signals.push({ code: "lookalike_vendor", blocks: true, detail: `"${inv.vendor}" is not the allowlisted "${look.b.name}" but looks like it (${look.how})` });
+    signals.push({ code: "lookalike_vendor", blocks: true, detail: `"${inv.vendor}" is not the allowlisted "${look.b.name}" but looks like it (${look.how})`, asked: inv.vendor, on_file: look.b.name });
   } else if (!matched) {
     signals.push({ code: "unknown_vendor", blocks: true, detail: `${inv.vendor} is not an allowlisted beneficiary` });
   }
@@ -126,12 +129,13 @@ export function assessAgainst(all: Beneficiary[], inv: { vendor: string; iban: s
     signals.push({
       code: "bank_details_changed", blocks: true,
       detail: `the invoice asks for ${accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic)}; on file: ${accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic)}`,
+      asked: accountWords(iban.slice(-4), iban.slice(0, 2), inv.bic), on_file: accountWords(onFile.iban_last4, onFile.bic.slice(4, 6), onFile.bic),
     });
   }
   const holder = /^Account name:\s*(.+)$/m.exec(text)?.[1]?.trim();
   const expectedHolder = matched?.name ?? inv.vendor;
   if (holder && skeleton(holder) !== skeleton(expectedHolder)) {
-    signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}` });
+    signals.push({ code: "account_name_mismatch", blocks: true, detail: `the account holder on the invoice is "${holder}", not ${expectedHolder}`, asked: holder, on_file: expectedHolder });
   }
   const line = (re: RegExp) => text.split("\n").find((l) => re.test(l))?.trim();
   const change = line(BANK_CHANGE);

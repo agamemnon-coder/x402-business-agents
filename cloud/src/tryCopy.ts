@@ -3,6 +3,8 @@
 // page's script reads them from here; it has no words of its own. This page does not use the shared catalogue
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
+import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
+
 /**
  * The page's frame: the brand mark.
  *
@@ -84,11 +86,7 @@ export const WORK = {
   readingCode: "Purser's code is reading…",
   ready: "Ready to pay.",
   readySub: "Nothing is paid until you sign the exact terms.",
-  /** Above the engine's own words when the invoice cannot be paid as it is. */
-  notReady: "Not ready to pay:",
-  duplicate: "Caught: a copy of a filed invoice.",
-  /** Under it: the original as the engine holds it ({no}: its number; {status}: its status in words). */
-  duplicateOf: "Filed before as {no}, now {status}. Nothing added or paid.",
+  /** 14 Nov: an invoice that cannot be paid as it is says why (WHY, below), in place of "Not ready to pay:" and the list. */
   noInvoice: "No invoice was found in it.",
   failed: "Purser could not file this invoice.",
   /** The request's round trip, measured in the browser ({s}: seconds). */
@@ -98,6 +96,85 @@ export const WORK = {
   claudeChip: "Claude",
   pay: "Pay this invoice",
   another: "Try another invoice",
+};
+
+/**
+ * Why Purser holds or refuses (14 Nov, owner and a tester): every hold says why, big and first, before any detail. One
+ * entry per finding code the engine can return (src/ap/checkerCore.ts and the inbox's own), and nowhere else: `head` is
+ * the headline, `rule` the check in one line, as the code does it (its numbers are the code's own constants). The
+ * evidence beside it is data: the invoice's fields, the earlier invoice it matches, what is on file. The engine's own
+ * sentence stays in the fold. test/try-why.test.ts holds one test per code.
+ */
+export const WHY = {
+  /** The fold under the reason: the engine's own words, then the invoice. */
+  more: "Show the details",
+  /** The side-by-side's labels. */
+  thisOne: "This invoice",
+  earlier: "Filed before",
+  earlierPaid: "Paid before",
+  onInvoice: "On the invoice",
+  onFile: "On file",
+  notOnFile: "Not among your suppliers",
+  /** An invoice's line: {vendor} its supplier, {no} its number, {money} its total, {date} the day it was paid or dated. */
+  paidOn: "{vendor} · {no} · {money} · paid {date}",
+  issuedOn: "{vendor} · {no} · {money} · dated {date}",
+  /** The same file again: {sha} the start of its SHA-256, the fingerprint it was known by. */
+  sameFile: "The same file, fingerprint {sha}…",
+  /** The same file again (the upload's kind duplicate_document): matched by its SHA-256 before it is read. */
+  again: { head: "Held: this invoice was already paid.", headFiled: "Held: this invoice was already filed.", rule: "The same file again is known by its fingerprint: a second copy is never paid." },
+  /** A finding whose code is not below: the engine's words are the reason. */
+  other: { head: "Held: a person must look." },
+  codes: {
+    duplicate: { head: "Held: this invoice was already filed.", headPaid: "Held: this invoice was already paid.", rule: "The same supplier and the same invoice number: a second copy is never paid." },
+    possible_duplicate: {
+      head: "Held: this may be an invoice already filed.", headPaid: "Held: this may be an invoice already paid.",
+      rule: `The same supplier and the same total within ${TWIN_DAYS} days: likely the same invoice under another number, so a person must look.`,
+      ruleLoose: "The same supplier and the invoice number written differently: a person checks it is not the same invoice.",
+    },
+    rejected_before: { head: "Held: a person rejected this invoice before.", rule: "A copy of a rejected invoice goes back to a person." },
+    possible_fraud: { head: "Held: the payee does not match the supplier on file.", rule: "Nothing is paid until a person checks with the supplier on a number already on file." },
+    bank_details_changed: { head: "Held: the bank details changed." },
+    account_name_mismatch: { head: "Held: the account holder is not the supplier." },
+    lookalike_vendor: { head: "Held: the name only looks like a supplier on file." },
+    mixed_scripts: { head: "Held: the supplier's name mixes alphabets." },
+    new_supplier: { head: "Held: this supplier is not on file yet.", rule: "A new supplier is paid only after a person verifies its bank details with the supplier and the CFO approves it." },
+    sum_mismatch: { head: "Held: the total is not its lines.", rule: "The subtotal plus tax must equal the total, to the cent." },
+    iban_invalid: { head: "Refused: the IBAN is not valid.", rule: "An IBAN that fails its checksum is never paid to." },
+    bank_details_invalid: { head: "Refused: the bank details are not valid.", rule: "Bank details that fail their checks are never paid to." },
+    no_bank_details: { head: "Held: no account to pay to.", rule: "Without an IBAN or account number, a person checks how this supplier is paid." },
+    payee_blocked: { head: "Refused: this supplier is blocked.", rule: "A supplier the CFO's policy blocks is never paid." },
+    account_currency: { head: "Held: the currency is not the account's.", rule: "A supplier's account on file receives one currency; a person checks which to pay." },
+    currency_not_paid: { head: "Held: Purser does not pay this currency.", rule: "Purser pays two-decimal currencies that SWIFT carries; a person pays this one by hand." },
+    unusual_amount: { head: "Flagged: an unusual amount.", rule: `More than ${UNUSUAL_FACTOR} times the median of this supplier's earlier invoices is flagged.` },
+    overdue: { head: "Flagged: the due date has passed.", rule: "The due date is checked against today." },
+    bank_change_language: { head: "Flagged: the invoice announces a new bank.", rule: "Such words are evidence for the person who verifies; they never speed up a payment." },
+    pressure_language: { head: "Flagged: the invoice pushes for speed.", rule: "Such words are evidence for the person who verifies; they never speed up a payment." },
+    missing_fields: { head: "Held: something on the invoice could not be read.", rule: "An invoice is paid only when every field it needs is read." },
+    no_text: { head: "Held: no text could be read.", rule: "A document Purser cannot read goes to a person." },
+    ambiguous_total: { head: "Held: the total is not clear.", rule: "When the page shows more than one total, a person decides." },
+    credit_note: { head: "Held: this is a credit note.", rule: "A credit note is never paid; a person sets it against the supplier's invoices." },
+    reminder: { head: "Held: this is a payment reminder.", rule: "A reminder is never paid on its own." },
+    receipt: { head: "Held: this is a receipt.", rule: "A receipt is for a payment already made: nothing to pay." },
+    not_an_invoice: { head: "Held: this is not an invoice.", rule: "Only invoices are paid; a person looks at anything else." },
+    read_from_scan: { head: "Held: read from a scan.", rule: "A scan is paid only when two independent readings agree on every field." },
+    checker_hold: { head: "Held: the Checker agent asks a person to look.", rule: "An agent may hold an invoice; it can never let through what the code stops." },
+    checker_reject: { head: "Held: the Checker agent says not as it is.", rule: "An agent may stop an invoice; a person makes the final call." },
+    payment_not_planned: { head: "Held: the payment could not be planned.", rule: "A payment is filed for approval only when it can be planned." },
+    payment_planned_later: { head: "Planned for later.", rule: "The payment is planned for its due day." },
+  } as Record<string, { head: string; headPaid?: string; rule?: string; ruleLoose?: string }>,
+};
+
+/**
+ * The tampered payment's answer on screen 4 (14 Nov): the reason first, then what was signed beside what was asked,
+ * the changed field marked, one plain line, and the fingerprints and each layer's words folded under "Show the proof".
+ */
+export const TAMPER = {
+  head: "Refused: the terms changed after you signed.",
+  signed: "You signed",
+  asked: "Payment asked",
+  /** {method}: the device's word for its passkey (METHOD). */
+  line: "{method} signs the exact terms. Change one cent and the signature no longer matches, so nothing is paid.",
+  proof: "Show the proof",
 };
 
 /** The invoice's fields in its fold (the invoice itself: outside the word budget). */
@@ -360,8 +437,15 @@ export const VISIBLE = {
     [WORK.heading, WORK.reading, WORK.invoiceFold],
     [WORK.heading, WORK.readingCode, WORK.invoiceFold],
     [WORK.heading, WORK.ready, WORK.readySub, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
-    [WORK.heading, WORK.notReady, WORK.took, WORK.invoiceFold, WORK.another],
-    [WORK.heading, WORK.duplicate, WORK.duplicateOf, WORK.took, WORK.invoiceFold, WORK.another],
+    // 14 Nov (owner): held or refused, the reason first. The values beside the labels are data (the invoice, the earlier
+    // one, what is on file), and so is the engine's own sentence; the fold (WHY.more) is closed. The five samples' answers:
+    // the same file again; the paid invoice under a new number; new bank details; a new supplier; and a check with no
+    // side by side (its engine sentence in its place), e.g. a total that is not its lines.
+    [WORK.heading, WHY.again.head, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.sameFile, WHY.again.rule, WHY.more, WORK.another],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.another],
+    [WORK.heading, WHY.codes.bank_details_changed!.head, WHY.onInvoice, WHY.onFile, WHY.codes.possible_fraud!.rule!, WHY.more, WORK.another],
+    [WORK.heading, WHY.codes.new_supplier!.head, WHY.onInvoice, WHY.onFile, WHY.notOnFile, WHY.codes.new_supplier!.rule!, WHY.more, WORK.another],
+    [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.another],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
   ],
@@ -398,8 +482,14 @@ export const VISIBLE = {
     [PAY.heading, PAY.line, PAY.already, PAY.fileAgain, PAY.back],
     [PAY.heading, PAY.line, PAY.already, PAY.failed, PAY.retry, PAY.back],
     // Refused: the fields stay (edits can be repeated); the line and the deadline give way to the answer.
-    [PAY.heading, PAY.button, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
-      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.transfers, PAY.raw, PAY.putBack, PAY.back],
+    // 14 Nov (owner): the reason first, signed beside asked, one plain line, the transfers; the stamp, the layers, the
+    // fingerprints, the verdict, the round trip and the raw answer are in the closed fold (TAMPER.proof).
+    [PAY.heading, PAY.button, TAMPER.head, TAMPER.signed, PROPOSAL_FIELDS.amount, TAMPER.asked, PROPOSAL_FIELDS.amount,
+      TAMPER.line.replace("{method}", METHOD.ios), PAY.transfers, TAMPER.proof, PAY.putBack, PAY.back],
+    // The same, its fold open: the stamp, one row per layer, both fingerprints, the verdict, the round trip, the raw answer.
+    [PAY.heading, PAY.button, TAMPER.head, TAMPER.signed, PROPOSAL_FIELDS.amount, TAMPER.asked, PROPOSAL_FIELDS.amount,
+      TAMPER.line.replace("{method}", METHOD.ios), PAY.transfers, TAMPER.proof, PAY.stamp, PAY.signature, PAY.signatureOff, PAY.executor, PAY.executorFold,
+      PAY.signed, PAY.sent, PAY.vAmountCent, PAY.vCover, PAY.roundTrip, PAY.raw, PAY.putBack, PAY.back],
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
@@ -450,7 +540,12 @@ export const VISIBLE = {
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
 // 14 Nov (a tester's questions): the approval says the limit plainly ("Every invoice waits for your signature here,
 // whatever its amount.", +10 words), so its states with the terms are pinned at their counts.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 81, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 4": 49, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov (owner, after a tester's run): a hold or a refusal says why, big and first, with the evidence and the rule from
+// the code (WHY, TAMPER). Screen 2's held answers carry the headline, the side by side's labels and lines (their
+// {placeholders}, data, counted as words), the rule and the fold: "work 3" the same file again, "work 4" the paid invoice
+// under a new number, "work 5" new bank details, "work 6" a new supplier; the round trip moved into the fold. Screen 4's
+// refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 63, "start 1": 59, "start 2": 59, "start 3": 53, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 58, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
