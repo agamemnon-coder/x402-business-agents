@@ -44,6 +44,8 @@ for (const scheme of schemes) for (const width of widths) {
   for (const r of routes) {
     await page.goto(`${ORIGIN}/#/${r}`);
     await page.waitForTimeout(700);
+    // Tokenisation: one stage opened, to show its transactions (and that a tap reveals them).
+    if (r === "tokenisation" && process.env.OPEN_STAGE) { await page.locator(".tnode").nth(Number(process.env.OPEN_STAGE)).click(); if (!(await page.locator("#tpanel ul.thash li").count())) errors.push("tokenisation: a tapped stage shows no transaction"); }
     if (r.startsWith("invoices/")) await page.frameLocator("iframe.pdfframe").locator("canvas").first().waitFor({ timeout: 15000 }).catch(() => { errors.push(`${r}: no PDF drawn`); });
     await page.waitForLoadState("networkidle", { timeout: 4000 }).catch(() => {});
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) errors.push(`${r} ${width} ${scheme}: wider than the screen`);

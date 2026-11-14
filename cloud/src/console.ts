@@ -18,7 +18,7 @@ import type { CloudEnv } from "./app.js";
 
 const ICONS = ["wallet", "calendar-range", "clock", "inbox", "octagon-x", "chevron-right", "circle-check", "triangle-alert", "circle-minus", "file-text",
   "download", "mail", "scan-face", "users", "key-round", "log-out", "arrow-left", "flask", "x", "arrow-down-left", "arrow-up-right", "shield-check", "copy",
-  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down"];
+  "bot", "credit-card", "link-2", "external-link", "receipt", "ban", "snowflake", "landmark", "check", "lock", "circle-dot", "chevron-down", "sparkles", "arrow-right", "zap"];
 
 const EXTRA_CSS = `
 .pdfframe { display: block; width: 100%; max-width: 820px; height: 600px; border: 0; background: #fff; border-radius: 6px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 8px 24px -8px rgba(16,24,40,.18); }
@@ -1133,30 +1133,6 @@ const shortHash=(h)=>String(h||'').slice(0,10)+'…'+String(h||'').slice(-6);
 // --- Agents (13 Nov) -------------------------------------------------------------------------------------------------
 
 // --- Tokenisation (13 Nov) -------------------------------------------------------------------------------------------
-async function tokensView(){
-  title(t('cs.nav.tokens'));
-  const [m,r]=await Promise.all([me(),api('/v1/tokenisation')]);shell();
-  const lbl=(s)=>el('span','rlabel',s);
-  const tok=r.invoice_token;const it=tok.invoice;
-  // 14 Nov: the three steps side by side, each with what happened in words; the transactions' hashes stay last, in a fold.
-  const okAll=(st)=>st.txs.length&&st.txs.every((x)=>x.status==='success');
-  const steps=el('ol','tsteps3',tok.steps.map((s,k)=>el('li',okAll(s)?'done':'',[el('span','tdot',okAll(s)?ic('check'):String(k+1)),el('div','',[el('b','',tk('cs.tok.step.'+s.step,s.step)),el('p','sub',s.label),el('ul','txw',s.txs.map((x)=>el('li','',[ic(x.status==='success'?'circle-check':'triangle-alert'),el('span','',x.what)])))])])));
-  const hashes=el('details','tokdet',[el('summary','',t('cs.tok.ids')),dl([[t('cs.tok.contract'),el('code','',tok.contract),'mono'],[t('cs.tok.token_id'),el('code','',shortHash(tok.token_id)),'mono']]),
-    el('ul','txs',tok.steps.flatMap((s)=>s.txs).map((x)=>el('li','',[el('span','',x.what+' · '+day(x.at)+' · '),x.explorer?ext(x.explorer,el('code','',shortHash(x.hash))):el('code','',shortHash(x.hash))])))]);
-  const invoice=el('section','card panel tok',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
-    el('p','',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),
-    steps,dl([[t('cs.tok.face_value'),tok.face_value],[t('cs.tok.discount'),tok.discount]]),
-    tok.verified?note(t('cs.tok.verified'),'ok'):null,hashes,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
-  const c=r.agent_cards;
-  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
-    el('div','scroll',el('table','table',[el('thead','',el('tr','',[el('th','',t('cs.tok.card')),el('th','',t('cs.tok.holder')),el('th','',t('cs.tok.limits')),el('th','',t('cs.tok.status'))])),el('tbody','',c.cards.map((x)=>el('tr','',[el('td','',[el('b','',x.brand+' ••'+x.last4),el('span','sub',' '+x.form.toLowerCase())]),el('td','',x.holder),el('td','',x.limits.join(' · ')),el('td','',[el('span','ast '+(x.status==='ACTIVE'?'active':'paused'),x.status.charAt(0)+x.status.slice(1).toLowerCase()),x.merchant_categories.length?el('span','sub',' '+t('cs.tok.categories',{list:x.merchant_categories.join(', ')})):null])])))])),
-    el('p','links',[ext(c.record,t('cs.tok.record'))])]);
-  const v=r.visa_credential;
-  const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
-    el('ul','viclist',v.purchases.map((p)=>el('li','',[el('span','vstep',p.step),el('div','',[el('span','vw',p.what),p.reason?el('span','sub vr',p.reason):null]),el('b','num',p.amount),p.outcome?el('span','obadge '+(p.outcome==='succeeded'?'ok':'bad'),p.outcome):null]))),
-    v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
-  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
-}
 
 // --- Settings ------------------------------------------------------------------------------------------------------
 // Connect Claude (docs/connect-claude.md): the company's own Claude account reads its books through /mcp and, with a

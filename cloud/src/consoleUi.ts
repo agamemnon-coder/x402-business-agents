@@ -224,6 +224,66 @@ async function invoiceView(id){
   if(pay||proof)WORK.onEvents=(evs)=>{if(evs.some((e)=>e.event==='vault.filed'||(e.event==='ap.status'&&e.fields&&e.fields.status==='paid')))again().catch(()=>{})};
   drawPdf('/v1/invoices/'+encodeURIComponent(id)+'/document',pages,t('cs.invoice_drawn'));
 }
+
+// --- Tokenisation (14 Nov, Max: "an intensive upgrade") ---------------------------------------------------------------
+// The invoice token's life as five stages (each the record's own transactions; a stage opens to its hashes, with copy and
+// the explorer), its key facts, where the money went, and the sandbox cards as card tiles. Every value from the records.
+const TOK_IC={minted:'sparkles',offered:'arrow-right',financed:'wallet',approved:'circle-check',settled:'zap'};
+const copyBtn=(text)=>{const b=btn(t('cs.claude.copy'),'mini','copy');b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.replaceChildren(ic('circle-check'),t('cs.copied'))}catch(x){}};return b};
+function tokLife(tok){
+  const panel=el('div','tpanel');panel.hidden=true;
+  const nodes=tok.stages.map((s,k)=>{const b=el('button','tnode'+(s.on_chain?' on':''),[el('span','tni',ic(TOK_IC[s.key]||'circle-dot')),el('b','',tk('cs.tok.stage.'+s.key,s.label)),s.at?el('span','sub',stamp(s.at)):null,s.on_chain?el('span','tchain',[ic('check'),t('cs.tok.on_chain')]):null]);
+    b.type='button';b.setAttribute('aria-expanded','false');b.setAttribute('aria-controls','tpanel');b.style.setProperty('--i',String(k));
+    b.onclick=()=>{const open=b.getAttribute('aria-expanded')!=='true';for(const x of row.querySelectorAll('.tnode'))x.setAttribute('aria-expanded','false');
+      if(!open){panel.hidden=true;return}b.setAttribute('aria-expanded','true');
+      panel.replaceChildren(el('h3','',tk('cs.tok.stage.'+s.key,s.label)),el('ul','thash',s.txs.map((x)=>el('li','',[el('span',x.status==='success'?'ok':'bad',ic(x.status==='success'?'circle-check':'triangle-alert')),el('span','tw',[x.what,el('span','sub',stamp(x.at))]),el('code','',shortHash(x.hash)),copyBtn(x.hash),x.explorer?ext(x.explorer,t('cs.tok.explorer')):null]))));panel.hidden=false};
+    return b});
+  panel.id='tpanel';
+  const row=el('div','tlife',[el('span','tprog'),...nodes]);
+  const done=tok.stages.filter((s)=>s.on_chain).length;row.style.setProperty('--done',String(done/Math.max(1,tok.stages.length)));
+  return el('div','',[row,el('p','fine thint',t('cs.tok.tap_hint')),panel])}
+function tokFlow(tok){
+  const F=tok.facts,u=F.face_value.unit;
+  const party=(icon,name)=>el('span','tparty',[ic(icon),name]);
+  const arrow=(what)=>el('span','tarrow',[el('span','ta-l',what),el('span','ta-h')]);
+  return el('div','tflow',[
+    el('div','tfr',[party('landmark',t('cs.tok.p.financier')),arrow(t('cs.tok.f.advance',{amt:F.discount.price+' '+u})),party('receipt',t('cs.tok.p.creditor'))]),
+    el('div','tfr',[party('wallet',t('cs.tok.p.debtor')),arrow(t('cs.tok.f.face',{amt:F.face_value.amount+' '+u})),party('landmark',t('cs.tok.p.holder'))]),
+    el('div','tfr burn',[party('sparkles',t('cs.tok.p.token')),arrow(t('cs.tok.f.burn')),el('span','tparty gone',[ic('zap'),t('cs.tok.p.burned')])])])}
+// A sandbox card from the card record, as a card tile: brand, last four, holder, status; its limits and its category.
+function sandboxCard(x){
+  const lv=x.limit_values||{},C=lv.currency?cur(lv.currency)+' ':'';
+  const share=lv.per_purchase&&lv.monthly?Math.round(toCents(lv.per_purchase)/toCents(lv.monthly)*100):null;
+  const bar=share===null?null:(()=>{const m=el('span','lbar');const f=el('span','');f.style.width=Math.min(100,share)+'%';m.append(f);m.setAttribute('role','img');m.setAttribute('aria-label',t('cs.tok.share',{n:share}));return m})();
+  const active=x.status==='ACTIVE';
+  return el('div','sbc',[el('div','bcard'+(active?'':' frozen'),[el('div','bct',[el('span','bcb','Airwallex'),el('span','bcs',[ic(active?'circle-check':'snowflake'),x.status.charAt(0)+x.status.slice(1).toLowerCase()])]),
+      el('span','bcchip'),el('div','bcn num',[el('span','bcd','•••• •••• •••• '),x.last4]),el('div','bcf',[el('span','',x.holder),el('span','bcbr',x.brand)])]),
+    el('div','lims',[lv.per_purchase?limitRow('credit-card',t('cs.agents.lim_purchase'),C+amount(lv.per_purchase)):null,
+      lv.monthly?limitRow('calendar-range',t('cs.agents.lim_month'),C+amount(lv.monthly),bar?el('div','limm',[bar,el('span','sub',t('cs.tok.share',{n:share}))]):null):null,
+      x.merchant_categories.length?el('div','lim cats',[el('span','limic',ic('receipt')),el('div','limb',[el('span','liml',t('cs.tok.mcc')),el('div','chips',x.merchant_categories.map((m)=>el('span','mchip','MCC '+m))),el('span','sub',t('cs.tok.mcc_sub'))])]):null])])}
+async function tokensView(){
+  title(t('cs.nav.tokens'));
+  const [m,r]=await Promise.all([me(),api('/v1/tokenisation')]);shell();
+  const lbl=(s)=>el('span','rlabel',s);
+  const tok=r.invoice_token;const it=tok.invoice;const F=tok.facts;
+  const fact=(label,value,sub,tone)=>el('div','tfact'+(tone?' '+tone:''),[el('span','tfl',label),el('b','num',value),sub?el('span','sub',sub):null]);
+  const facts=el('div','tfacts',[fact(t('cs.tok.k.invoice'),it.invoice_no,cur(it.currency)+' '+amount(it.amount)),
+    fact(t('cs.tok.face_value'),F.face_value.amount+' '+F.face_value.unit,F.face_value.scaled_by?t('cs.tok.scaled',{n:F.face_value.scaled_by}):null),
+    fact(t('cs.tok.discount'),F.discount.percent+'%',t('cs.tok.price',{price:F.discount.price+' '+F.face_value.unit})),
+    fact(t('cs.tok.k.status'),tok.verified?t('cs.tok.settled'):t('cs.tok.not_settled'),tok.verified?t('cs.tok.read_back'):null,tok.verified?'ok':'')]);
+  const hashes=el('details','tokdet',[el('summary','',t('cs.tok.ids')),dl([[t('cs.tok.contract'),el('code','',tok.contract),'mono'],[t('cs.tok.token_id'),el('code','',shortHash(tok.token_id)),'mono']])]);
+  const invoice=el('section','card panel tok tokhero',[el('div','th',[el('h2','',[ic('receipt'),' '+t('cs.tok.invoice')]),lbl(tok.label)]),
+    el('p','sub',t('cs.tok.invoice_sub',{no:it.invoice_no,amount:cur(it.currency)+' '+it.amount,pid:it.proposal_id})),facts,
+    el('h3','tsec',t('cs.tok.life')),tokLife(tok),el('h3','tsec',t('cs.tok.flow')),tokFlow(tok),hashes,el('p','links',[ext(tok.record,t('cs.tok.record')),' ',ext(tok.story,t('cs.tok.story'))])]);
+  const c=r.agent_cards;
+  const cards=el('section','card panel tok',[el('div','th',[el('h2','',[ic('credit-card'),' '+t('cs.tok.cards')]),lbl(c.label)]),el('p','',el('b','',t('cs.tok.cards_note'))),el('p','sub',t('cs.tok.cards_sub',{day:day(c.read_at)})),
+    el('div','sbcs',c.cards.map(sandboxCard)),el('p','links',[ext(c.record,t('cs.tok.record'))])]);
+  const v=r.visa_credential;
+  const vic=el('section','card panel tok',[el('div','th',[el('h2','',[ic('shield-check'),' '+t('cs.tok.vic')]),lbl(v.label)]),el('p','sub',t('cs.tok.vic_sub',{run:v.run})),
+    el('ul','viclist',v.purchases.map((p)=>el('li','',[el('span','vstep',p.step),el('div','',[el('span','vw',p.what),p.reason?el('span','sub vr',p.reason):null]),el('b','num',p.amount),p.outcome?el('span','obadge '+(p.outcome==='succeeded'?'ok':'bad'),p.outcome):null]))),
+    v.credential_deleted?note(t('cs.tok.deleted')):null,el('p','links',[ext(v.record,t('cs.tok.record')),' ',ext(v.story,t('cs.tok.story'))])]);
+  view().replaceChildren(head(t('cs.nav.tokens'),t('cs.tok.lede')),invoice,cards,vic);
+}
 `;
 
 export const UI_CSS = `
@@ -370,6 +430,59 @@ ol.trail li.done + li.done::before, ol.trail li.done + li.now::before, ol.trail 
 /* An invoice: the document and its PDF on the left; on a phone the column where the CFO acts comes first, else the document. */
 .split.inv > .docs { display: grid; gap: 16px; min-width: 0; }
 @media (max-width: 980px) { .split.inv > .stack.later { order: 0; } }
+/* Tokenisation (14 Nov): facts, the token's life, where the money went, the sandbox cards as card tiles. */
+.tfacts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 6px; }
+.tfact { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: grid; gap: 3px; align-content: start; }
+.tfact .tfl { font-size: 12px; font-weight: 650; color: var(--muted); } .tfact b { font-size: 19px; letter-spacing: -.01em; } .tfact .sub { font-size: 12.5px; line-height: 1.35; }
+.tfact.ok { background: var(--ok-soft); border-color: transparent; } .tfact.ok b { color: var(--ok); }
+h3.tsec { margin: 20px 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tlife { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; --done: 1; }
+.tlife::before, .tlife .tprog { content: ""; position: absolute; left: 10%; right: 10%; top: 26px; height: 3px; border-radius: 3px; background: var(--border); }
+.tlife .tprog { right: auto; width: calc(80% * var(--done)); background: var(--ok); transform-origin: left; }
+.tnode { position: relative; display: grid; justify-items: center; gap: 4px; padding: 6px 4px 10px; border: 0; background: none; border-radius: 12px; cursor: pointer; font: inherit; color: var(--text); text-align: center; }
+.tnode:hover, .tnode[aria-expanded="true"] { background: var(--sunken); }
+.tnode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tnode .tni { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--border); color: var(--muted); position: relative; z-index: 1; }
+.tnode.on .tni { border-color: var(--ok); color: var(--ok); }
+.tnode[aria-expanded="true"] .tni { background: var(--ok); color: #fff; }
+.tnode b { font-size: 14px; } .tnode .sub { font-size: 12px; }
+.tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 11.5px; font-weight: 650; }
+.tchain svg { width: 12px; height: 12px; }
+.thint { margin: 6px 0 0; color: var(--faint); font-size: 12.5px; text-align: center; }
+.tpanel { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; background: var(--sunken); }
+.tpanel h3 { margin: 0 0 6px; font-size: 14px; }
+ul.thash { list-style: none; margin: 0; padding: 0; display: grid; }
+ul.thash li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13.5px; }
+ul.thash li:first-child { border-top: 0; } ul.thash .ok { color: var(--ok); } ul.thash .bad { color: var(--bad); } ul.thash svg { width: 15px; height: 15px; }
+ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash code { font-size: 12.5px; }
+.btn.mini { min-height: 32px; padding: 4px 10px; font-size: 12.5px; }
+.tflow { display: grid; gap: 10px; }
+.tfr { display: grid; grid-template-columns: 170px minmax(0, 1fr) 170px; gap: 10px; align-items: center; }
+.tparty { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-weight: 650; font-size: 14px; background: #fff; }
+.tparty svg { width: 16px; height: 16px; color: var(--accent); } .tparty.gone { color: var(--muted); border-style: dashed; } .tparty.gone svg { color: var(--muted); }
+.tarrow { position: relative; display: grid; justify-items: center; padding-bottom: 10px; }
+.tarrow .ta-l { font-size: 13px; color: var(--text); background: var(--accent-soft); color: var(--accent); font-weight: 650; padding: 3px 10px; border-radius: 999px; position: relative; z-index: 1; }
+.tarrow .ta-h { position: absolute; left: 0; right: 8px; bottom: 3px; height: 2px; background: var(--accent); opacity: .55; }
+.tarrow .ta-h::after { content: ""; position: absolute; right: -8px; top: -4px; border: 5px solid transparent; border-left: 8px solid var(--accent); }
+.tfr.burn .tarrow .ta-h { background: repeating-linear-gradient(90deg, var(--muted) 0 6px, transparent 6px 10px); } .tfr.burn .tarrow .ta-h::after { border-left-color: var(--muted); } .tfr.burn .ta-l { background: var(--sunken); color: var(--muted); }
+.sbcs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 14px 0 8px; }
+.sbc { display: grid; gap: 10px; align-content: start; } .sbc .bcard { max-width: none; } .sbc .lim { padding: 8px 0; } .sbc .lim.cats .sub { font-size: 12px; }
+@media (max-width: 980px) { .tfacts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .sbcs { grid-template-columns: minmax(0, 1fr); } .sbc .bcard { max-width: 340px; } }
+@media (max-width: 760px) {
+  .tlife { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .tlife::before, .tlife .tprog { left: 26px; right: auto; top: 30px; bottom: 30px; width: 3px; height: auto; }
+  .tlife .tprog { height: calc((100% - 60px) * var(--done)); bottom: auto; }
+  .tnode { grid-template-columns: 42px minmax(0, 1fr) auto; justify-items: start; text-align: left; align-items: center; column-gap: 12px; padding: 6px; }
+  .tnode .tni { grid-row: span 2; } .tnode .tchain { grid-row: 1 / span 2; grid-column: 3; }
+  .tfr { grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: start; } .tarrow { justify-items: start; padding: 0 0 8px 14px; } .tarrow .ta-h { display: none; }
+  ul.thash li { grid-template-columns: 18px minmax(0, 1fr) auto; } ul.thash code { grid-column: 2; } ul.thash .btn.mini, ul.thash .ext { grid-column: 3; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tlife .tprog { animation: grow 1.2s cubic-bezier(.2, .7, .2, 1) .2s both; }
+  .tnode .tni { animation: rise-in .4s ease both; animation-delay: calc(var(--i, 0) * 120ms + .15s); }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 760px) { .tlife .tprog { animation-name: growy; transform-origin: top; } }
+@keyframes growy { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 /* Transactions: a long status (a rail's decline and its reason) wraps inside its pill instead of being cut off. */
 .trow > .stx { white-space: normal; } .trow > .stx .pill { white-space: normal; overflow-wrap: anywhere; line-height: 1.3; height: auto; padding-top: 3px; padding-bottom: 3px; }
 /* Tokenisation: three steps side by side, the hashes in a fold; the Visa runs with their outcome. */

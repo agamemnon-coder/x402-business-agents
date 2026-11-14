@@ -73,6 +73,21 @@ describe("GET /v1/tokenisation", () => {
     expect(tok.record).toMatch(/docs\/runs\/2026-11-12-tokenize\.json$/);
   });
 
+  // 14 Nov (Max: "an intensive upgrade"): the token's life in five stages and its key facts, all from the record.
+  it("gives the token's five stages, each with the record's own transactions, and the face value and discount as numbers", async () => {
+    const tok = (await get("/v1/tokenisation")).json.invoice_token;
+    expect((tok.stages as J[]).map((s) => [s.key, (s.txs as J[]).map((x) => x.key), s.on_chain])).toEqual([
+      ["minted", ["deploy", "mint"], true], ["offered", ["offer"], true], ["financed", ["financier-approve", "accept"], true], ["approved", ["payer-approve"], true], ["settled", ["settle"], true]]);
+    expect(tok.stages[4].at).toBe("2026-11-12T14:09:13.843Z");
+    expect(tok.facts).toEqual({ face_value: { amount: "2.40", unit: "*USDZ", scaled_by: 100 }, discount: { percent: 2, price: "2.35" } });
+    expect(tok.invoice).toMatchObject({ invoice_no: "SLL-2026-11", amount: "240.00", currency: "EUR" });
+    expect(tok.verified).toBe(true);
+  });
+  it("gives each sandbox card's limits as numbers, as Airwallex's controls hold them", async () => {
+    const cards = (await get("/v1/tokenisation")).json.agent_cards.cards as J[];
+    expect(cards.map((c) => c.limit_values)).toEqual([{ currency: "EUR", per_purchase: "46.00", monthly: "100.00" }, { currency: "EUR", per_purchase: "60.00", monthly: "150.00" }, { currency: "EUR", per_purchase: "25.00", monthly: "50.00" }]);
+  });
+
   it("labels the cards and the Visa credential as their records do, and keeps each refusal's own reason", async () => {
     const r = (await get("/v1/tokenisation")).json;
     expect(r.agent_cards.label).toBe("Airwallex sandbox · test money");
