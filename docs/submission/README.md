@@ -135,9 +135,17 @@ the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 charac
   money): <https://kit11.max-31b.workers.dev/visa>; the latest, 14 November:
   <https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-vic-5.md>
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.1-submission`)
+- New on 14 November (merged, live, test money): /try puts a live Airwallex sandbox FX quote in the terms the
+  passkey signs, within the company's FX limit; after the passkey, one Airwallex sandbox transfer of the signed payment
+  (off by default); Purser Cloud has a read-only Airwallex tab, a signed events feed and each agent's sandbox card
+  (card actions off by default); the agents get the CFO's past decisions as precedent; a "Built on Airwallex" badge on
+  every page. Not run live: Purser Cloud can also run payables at the Airwallex sandbox (new supplier, pay, pay all
+  ready, money in), each step behind the CFO's passkey over the exact terms; switched off by default (admin switches
+  awx_act / awx_act_try, daily caps 0). Also: T:0 gates the month close, /visa shows the card rail, Purser Cloud's books add up, stage and
+  recording modes for the finals.
 - Outside the entry: Visa TAP, in its own section near the foot of <https://kit11.max-31b.workers.dev/visa>. The
   Sourcing agent signed its card checkout with Visa's Trusted Agent Protocol (TAP) in its own run; Visa TAP: built and
-  verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon (Visa, 5 Nov). The Visa Award entry is the Airi runs above (Visa
+  verified against Visa's public reference verifier; not part of this entry. The Visa Award entry is the Airi runs above (Visa
   Intelligent Commerce).
 
 ## Screenshots

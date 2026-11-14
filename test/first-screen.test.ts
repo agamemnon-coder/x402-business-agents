@@ -81,7 +81,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(170); // after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(180); // 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with what Purser is, the hands-on demo as the one primary button, the proof second, one reassurance line", () => {

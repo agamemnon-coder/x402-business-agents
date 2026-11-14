@@ -9,7 +9,7 @@
 
 import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { FILM_LINK, FILM_URL, TRAILER_LINK, TRAILER_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { AWX_HOME_LINE, FILM_LINK, FILM_URL, TRAILER_LINK, TRAILER_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -376,6 +376,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ${scaleBandHtml(homeScaleStats(), "What ran, in numbers")}
   <p class="statnote">${esc(STAT_NOTE)}</p>
   ${visaLineHtml(rows)}
+  <p class="statnote visal"><a href="${tryHref}">${esc(AWX_HOME_LINE)}</a></p>
   ${kit11Html(run)}
   <div class="e-more"><a class="btn big primary" href="proof">${esc(PROOF_BUTTON)}${icon("arrow-right", 18)}</a>${booksCardHtml()}</div>
   ${nextHtml(opts.smallCompanyUrl ?? SMALL_COMPANY_DEMO_URL)}

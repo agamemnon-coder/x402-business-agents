@@ -70,7 +70,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 135 lines since the README upgrade (13 Nov, evening): Watch it, the 3 steps, Built with, the gallery and the
     // quick start come before the judges' 3 minutes.
     // 14 Nov (Max): the "Built on Airwallex" line right under the title (test/first-screen.test.ts), then the pitch.
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 135).filter((l) => !l.startsWith("**Built on Airwallex.**")).join("\n"));
+    // 150 since 14 Nov (Max, Airwallex at the centre): the new section after "In 30 seconds" moves the judges' 3 minutes down;
+    // 160 once it lists every live Airwallex upgrade of 14 Nov and its calls (the Kit 11 line at 155 as built).
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 160).filter((l) => !l.startsWith("**Built on Airwallex.**")).join("\n"));
     // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS.
     expect(top.startsWith(`${README_WHAT} ${DIFFERENTIATORS[0]}`)).toBe(true);
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try

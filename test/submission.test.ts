@@ -86,9 +86,11 @@ describe("the submission pack", () => {
     expect(synopsis.startsWith(DIFFERENTIATORS[0])).toBe(false);
     for (const t of [pack, long]) {
       expect(t.match(/Trusted Agent Protocol/g)).toHaveLength(1);
-      // Visa, 5 Nov: TAP is not eligible Visa tooling for this hackathon; Max's wording, once, with no "Metal Award only"
-      // tail since Visa said on 7 Nov that the VIC run counts: the entry is the Metal Award and the Visa Award.
-      expect(t.match(/built and verified against Visa's public reference verifier; not eligible Visa tooling for this hackathon \(Visa, 5 Nov\)/g)).toHaveLength(1);
+      // Visa, 5 Nov: TAP is outside the entry; said once, with no "Metal Award only" tail since Visa said on 7 Nov that the
+      // VIC run counts: the entry is the Metal Award and the Visa Award. 14 Nov (partner scan): the site's wording, "not
+      // part of this entry", no "(Visa, 5 Nov)" and no "not eligible Visa tooling".
+      expect(t.match(/built and verified against Visa's public reference verifier; not part of this entry\./g)).toHaveLength(1);
+      expect(t).not.toMatch(/not eligible Visa tooling|\(Visa, 5 Nov\)/);
       expect(t).not.toMatch(/still being confirmed with Visa|\+ Visa Award|Metal Award only|TAP counts as Visa tooling|Visa Award (with|on|for) (Visa )?TAP/i);
       expect(t).toContain("Starter Kit 11 (x402 Business Agents), entered for the Metal Award and the Visa Award");
       expect(t).not.toMatch(/open[- ]source/i);
