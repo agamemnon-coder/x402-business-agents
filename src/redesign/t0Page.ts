@@ -98,9 +98,9 @@ table.t0a thead th { font-size: 13px; color: var(--muted); font-weight: 600; } t
 table.t0a tbody th { overflow-wrap: break-word; }
 table.t0a td.ok { color: var(--ok); white-space: nowrap; }
 table.t0a .n { text-align: right; white-space: nowrap; overflow-wrap: normal; } table.t0a th.c, table.t0a td.c { width: 2em; text-align: center; }
-.t0bs { display: grid; gap: 4px; }
+.t0bs > p { margin: 0 0 4px; } .t0bs > p:last-child { margin-bottom: 8px; } details.t0acc > table { margin-bottom: 6px; }
 .t0bs .eq { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.t0bs p { margin: 0; font-size: 15.5px; line-height: 1.45; }
+.t0bs p { font-size: 15.5px; line-height: 1.45; }
 .t0p .folds { min-width: 0; }
 @media (prefers-reduced-motion: no-preference) {
   .t0flow .node { animation: t0-lit 6s ease-in-out infinite; }
@@ -125,11 +125,14 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   const j = d.journal, p = d.platform, s = j?.statements ?? null;
   const rec = `${T0_JOURNAL_RECORD}#read-back-and-second-push-10-nov-2-more-t0-calls`;
   const stat = (n: string, label: string, ic: string, href: string) => `<li class="ok"><span class="st-ic">${icon(ic, 20)}</span><b>${esc(n)}</b><small>${esc(label)} ${link(href, "record")}</small></li>`;
-  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}${stat(`${j.debits} USD`, "debits, equal to credits", "landmark", rec)}</ul>` : "";
+  const stats = j ? `<ul class="stats t0s">${stat(String(j.posted), `journal entries posted, ${j.day}`, "file-check", T0_JOURNAL_RECORD)}${stat(String(j.differences), "differences on read-back", "circle-check", rec)}</ul>` : "";
+  // Jury round 3 (14 Nov): the books' amounts are the Airwallex sandbox's test balances, millions, where every other page
+  // shows tens of euros. One plain line says so; the amounts themselves are folded.
+  const funding = j?.accounts.find((a) => a.code === "32000");
+  const sandbox = j && funding ? `<p class="vbasis">${esc(`Sandbox amounts: the books open with the Airwallex sandbox's test balances, ${funding.ours.replace(/^-/, "")} USD of owner funding. No real money. What counts is ${j.differences} differences.`)}</p>` : "";
   const flow = j ? `<div class="flow card t0flow" role="img" aria-label="${esc("Purser's books are posted to T:0's general ledger, read back line by line, and match")}">${[node("file-check", "Purser's books", "double-entry"), arrow, node("database", "T:0's ledger", "posted"), arrow, node("arrow-left-right", "Read back", "every line"), arrow, node("circle-check", "Match", "to the cent", "ok")].join("")}</div>` : "";
-  const lead = j?.accounts.length ? `<section class="t0r card" aria-labelledby="t0-acc"><h2 id="t0-acc">${esc("Per account, USD")}</h2><table class="t0a t0lead">${head}<tbody>${t0Rows(j.accounts.slice(0, 5))}</tbody></table>
-  <p class="vbasis">${esc("Net debit; credits show as minus.")}</p>${j.accounts.length > 5 ? `<details class="fold"><summary>${esc("Show all accounts")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table></details>` : ""}</section>` : "";
-  const bs = j && s && balances(s) ? `<section class="t0r card t0bs" aria-labelledby="t0-bs"><h2 id="t0-bs">${esc(`T:0's balance sheet, ${j.day}`)}</h2><p class="eq">${esc(`Assets ${s.assets} = liabilities ${s.liabilities} + equity ${s.equity} USD`)}</p><p>${esc("Shared entity: these totals include other teams.")}</p>${ownerFunding(j) ? `<p>${esc(`Financing, ${s.financing} USD, is only our owner funding.`)}</p>` : ""} ${link(`${T0_JOURNAL_RECORD}#t0s-own-statements-10-nov-0900-utc`, "record")}</section>` : "";
+  const lead = j?.accounts.length ? `<details class="fold t0acc"><summary>${esc("Show the accounts, USD")}</summary><table class="t0a">${head}<tbody>${t0Rows(j.accounts, true)}</tbody></table><ul class="pl">${li("Net debit per account; credits show as minus. Sandbox test money.")}${li(`Debits and credits: ${j.debits} USD each, the same as our books.`)}</ul></details>` : "";
+  const bs = j && s && balances(s) ? `<details class="fold t0bs"><summary>${esc(`T:0's balance sheet, ${j.day}`)}</summary><p class="eq">${esc(`Assets ${s.assets} = liabilities ${s.liabilities} + equity ${s.equity} USD`)}</p><p>${esc("Shared entity: these totals include other teams.")}</p>${ownerFunding(j) ? `<p>${esc(`Financing, ${s.financing} USD, is only our owner funding.`)}</p>` : ""}<p>${link(`${T0_JOURNAL_RECORD}#t0s-own-statements-10-nov-0900-utc`, "record")}</p></details>` : "";
   const history = [
     ...d.refusals.map((r) => `<li>${esc(`${r.day}: refused, ${r.code}: ${r.why}.`)} ${link(r.record, "record")}</li>`),
     j ? `<li>${esc(`${j.day}: all ${j.posted} entries posted, one at a time, each with an idempotency key.`)} ${link(T0_JOURNAL_RECORD, "record")}</li>` : "",
@@ -153,11 +156,10 @@ export function t0Body(d: T0Data, o: { logo: string; pill: string; proofHash?: s
   return `<main class="pp t0p"><div class="wrap">
   <div class="phd">${o.logo}<span class="pill run">${esc(o.pill)}</span><h1>${esc("Our books, in a real ledger")}</h1></div>
   ${stats}
+  ${sandbox}
   ${flow}
-  ${lead}
-  ${bs}
   <p class="vbasis">${esc("T:0 is an outside ledger. It must agree with ours to the cent, so the CFO need not take our word.")}</p>
-  <div class="folds card">${fold("How it got there", history)}${fold("Not done", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
+  <div class="folds card">${lead}${bs}${fold("How it got there", history)}${fold("Not done", notDone.map(li))}${fold("What Purser sends", sends)}${fold("The ids in T:0", ids)}</div>
   <a class="open" href="proof">All the proof</a>
 </div></main>`;
 }
