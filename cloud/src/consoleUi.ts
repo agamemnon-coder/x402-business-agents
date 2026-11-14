@@ -112,6 +112,19 @@ async function agentsView(){
 }
 
 // --- Books --------------------------------------------------------------------------------------------------------
+// The independent ledger check (partner review, 14 Nov): books close only when T:0 agrees. The numbers come from the
+// page's config (cloud/src/t0Close.ts computes them from the recorded read-back); the words from the catalogue.
+function t0CloseCard(){
+  const c=CFG.t0Close;if(!c)return null;
+  const dl=el('a','',t('cs.books.t0_download',{n:c.entries}));dl.href=c.download;dl.rel='noopener';dl.target='_blank';
+  const pg=el('a','',t('cs.books.t0_page'));pg.href=c.page;pg.rel='noopener';pg.target='_blank';
+  return el('section','card panel t0close'+(c.agrees?'':' bad'),[
+    el('h2','',[ic(c.agrees?'circle-check':'triangle-alert'),t('cs.books.t0_h')]),
+    el('p','says',c.agrees?t('cs.books.t0_agrees',{n:c.entries}):t('cs.books.t0_differs',{n:c.differences})),
+    !c.agrees&&c.first?el('p','sub mono',c.first):null,
+    el('p','',t('cs.books.t0_rule')),
+    el('p','sub',t('cs.books.t0_src',{day:day(c.read_at)})),
+    el('p','links',[dl,pg])])}
 async function booksView(){
   title(t('cs.nav.ledger'));
   const now=new Date();const qs=[];for(let k=0;k<6;k++){const d=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()-3*k,1));qs.push(d.getUTCFullYear()+'Q'+(Math.floor(d.getUTCMonth()/3)+1))}
@@ -120,7 +133,7 @@ async function booksView(){
   // With an engine, its archive is one link away from the books.
   const arch=(await engineStatus())?(()=>{const a=el('a','btn',[ic('file-text'),t('cs.eng.open_archive')]);a.href='#/archive';return a})():null;
   const bal=el('div','card panel balance',[el('h2','',t('cs.books.balance')),el('p','sub',t('loading'))]);
-  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),arch?[arch]:null),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
+  view().replaceChildren(head(t('cs.nav.ledger'),ME&&ME.demo?t('cs.books.demo_lede2'):t('cs.books.lede2'),arch?[arch]:null),t0CloseCard(),el('div','split2',[el('div','stack',[bal,vat]),journal]),exportsCard());
   // The balance sheet from the ledger (GET /v1/reports/balance), one block per currency: what the company owns, owes
   // and is worth, and whether it balances. A block, not a table row, so nothing wraps on a phone (14 Nov).
   api('/v1/reports/balance').then((b)=>{const blocks=[];for(const [c,v] of Object.entries(b.by_currency||{})){
@@ -287,6 +300,13 @@ async function tokensView(){
 `;
 
 export const UI_CSS = `
+.t0close { border-left: 4px solid var(--ok, #067647); display: grid; gap: 6px; margin-bottom: 16px; }
+.t0close.bad { border-left-color: var(--bad, #b42318); }
+.t0close h2 { display: flex; align-items: center; gap: 8px; }
+.t0close .says { font-weight: 650; font-size: 16px; margin: 0; }
+.t0close p { margin: 0; }
+.t0close .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.t0close .links a { display: inline-flex; align-items: center; min-height: 44px; }
 /* The CFO's pass (14 Nov): calm cards, one accent, numbers that settle, motion only when the person allows it. */
 .card.next.hero { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 20px; margin: 4px 0 16px; text-decoration: none; color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, #fff), #fff); }
 .card.next.hero:not(.act) { border-color: var(--border); background: #fff; }
