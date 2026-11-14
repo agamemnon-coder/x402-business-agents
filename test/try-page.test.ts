@@ -279,7 +279,7 @@ describe("the copy", () => {
     expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
     expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
-    expect(COPY.START.heading).toBe("Run a company's payables with Purser.");
+    expect(COPY.START.heading).toBe("Pay a supplier invoice with Purser.");
     expect(COPY.START.button).toBe("Start with a test company");
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");

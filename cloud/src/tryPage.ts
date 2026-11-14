@@ -377,11 +377,11 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 .prog li.done::before { width: 16px; height: 16px; }
 .prog li.done::after { content: ""; position: absolute; top: 50%; left: 50%; width: 6px; height: 3px; margin: -3px 0 0 -3px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
 .prog li.on::before { width: 16px; height: 16px; background: var(--surface); border: 4px solid var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
-.prog li .lbl { top: 22px; font-size: 11.5px; font-weight: 500; }
+.prog li .lbl { top: 22px; font-size: 12px; font-weight: 500; }
 .prog li.done .lbl { color: var(--muted); }
 .prog li:not(.done):not(.on) .lbl { color: var(--faint); }
 .prog li.on .lbl { color: var(--text); font-weight: 650; }
-@media (max-width: 420px) { .prog li .lbl { font-size: 10.5px; } .prog li:not(.on) .lbl { letter-spacing: -.01em; } }
+@media (max-width: 420px) { .prog li .lbl { font-size: 12px; letter-spacing: -.02em; } } /* a11y scan, 14 Nov: 12 px at least */
 /* The activity panel: a titled list, a status dot per row by who acted, the time right-aligned in tabular figures. */
 .card.activity { padding: 14px 16px 12px; }
 .activity .ah { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
@@ -432,6 +432,11 @@ ul.checks li.ok .i { color: var(--ok); }
 ul.checks li.next { color: var(--muted); }
 ul.checks li.next .i { color: var(--accent); }
 .sha { font-size: 12.5px; color: var(--muted); }
+/* a11y scan (14 Nov): in dark mode the primary button's white text on the light accent was 3.0:1: dark text (6.4:1);
+   "All steps" a 44 px target everywhere. */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color: #0a0c11; } }
+:root[data-theme="dark"] .btn.primary { color: #0a0c11; }
+.activity .steps { display: inline-flex; align-items: center; min-height: 44px; }
 /* Slots for what another change adds (a live quote on Approve, the payout on Paid): nothing until filled. */
 .slot.quote:not(:empty), .slot.payout:not(:empty) { display: block; margin: 12px 0 0; }
 @media (max-width: 520px) {

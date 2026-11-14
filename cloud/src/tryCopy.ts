@@ -30,7 +30,7 @@ export const BAND = {
  * under the card the trust line: what the product ran with in recorded sandbox and testnet runs (docs/claims.md).
  */
 export const START = {
-  heading: "Run a company's payables with Purser.",
+  heading: "Pay a supplier invoice with Purser.",
   text: "AI agents check each invoice on Purser's real engine. You sign the exact terms.",
   button: "Start with a test company",
   /**
