@@ -120,6 +120,44 @@ describe("Invoices & books: bookings and an invoice's journal", () => {
   });
 });
 
+// Judge scan, 14 Nov: "Balanced" said of figures that did not add up (this year's result was left out).
+describe("the demo company's balance sheet", () => {
+  const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
+  it("balances: assets equal liabilities plus equity plus this year's result, per currency", async () => {
+    const b = (await get("/v1/reports/balance")).json.by_currency as Record<string, { assets_cents: number; liabilities_cents: number; equity_cents: number; result_cents: number; balanced: boolean }>;
+    expect(Object.keys(b).length).toBeGreaterThan(0);
+    for (const v of Object.values(b)) {
+      expect(v.assets_cents).toBe(v.liabilities_cents + v.equity_cents + v.result_cents);
+      expect(v.balanced).toBe(true);
+    }
+    expect(b.EUR!.result_cents).not.toBe(0);
+  });
+  it("is shown with the result, and 'Balanced' only when the shown figures add up", () => {
+    expect(html).toContain("row('cs.books.result',v.result_cents)");
+    expect(html).toContain("sides.balanced&&v.balanced?");
+    expect(html).toContain("const sheetSides=(v)=>{const right=(v.liabilities_cents||0)+(v.equity_cents||0)+(v.result_cents||0)");
+  });
+  it("dates the opening balances before the run's first entry", async () => {
+    const es = [] as { posting_date: string; source_key: string | null }[];
+    let cursor = "";
+    for (let n = 0; n < 20; n++) { const r = (await get(`/v1/ledger/entries?limit=200${cursor ? `&cursor=${cursor}` : ""}`)).json; es.push(...(r.items as typeof es)); cursor = (r.next_cursor as string | null) ?? ""; if (!cursor) break; }
+    const opening = es.filter((e) => String(e.source_key).startsWith("opening|")), rest = es.filter((e) => !String(e.source_key).startsWith("opening|"));
+    expect(opening.length).toBeGreaterThan(0);
+    const firstMove = rest.map((e) => e.posting_date).sort()[0]!;
+    for (const o of opening) expect(o.posting_date < firstMove).toBe(true);
+  });
+  // QA, 14 Nov: the Books tab offers the books as one PDF, through the browser's print (no PDF code in the Worker).
+  it("offers the books as a PDF through the browser's print, with every journal entry", () => {
+    expect(html).toContain("pdfBtn.onclick=()=>{if(typeof drawAll==='function')drawAll();setTimeout(()=>window.print(),50)}");
+    expect(html).toContain("drawAll=()=>drawJournal(all.length)");
+    expect(html).not.toContain("/v1/books/statement.pdf");
+  });
+  it("lists every ledger entry in the journal, by date, newest first", () => {
+    expect(html).toContain("const all=await everyPage('/v1/ledger/entries')");
+    expect(html).toContain("const byDateNewest=(es)=>es.slice().sort((a,b)=>String(b.posting_date).localeCompare(String(a.posting_date))||b.entry_id-a.entry_id)");
+  });
+});
+
 describe("the console", () => {
   const html = consolePage("n0nce", { origin: "https://cloud.test", rpId: "cloud.test", mailDomain: "" });
   // 14 Nov (Max: "make it just Invoices"): Invoices has its own tab again and the books have theirs.
@@ -153,7 +191,8 @@ describe("the console", () => {
   });
   it("labels the demo's fallback decisions as a simulated month, from its own count (jury, 13 Nov)", async () => {
     expect((await get("/v1/dashboard")).json.agents).toEqual({ decisions: 33, by_fallback: 8 });
-    expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).toBe("{a} by the agents · {n} by code when no model answered (simulated month)");
+    // 14 Nov (judge scan): it names whose month it is, so it is not read against the 3 Nov main run's 24 of 24 by Claude.
+    expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).toBe("{a} by the agents · {n} by code when no model answered, in the demo company's simulated month (not the 3 Nov main run)");
     expect(MESSAGES.en["cs.dash.decisions_fallback_demo"]).not.toMatch(/Claude/);
     expect(html).toContain("t(ME&&ME.demo?'cs.dash.decisions_fallback_demo':'cs.dash.decisions_fallback',{n:D.agents.by_fallback,a:D.agents.decisions-D.agents.by_fallback})");
     // 14 Nov: it is the Decisions timeline's subtitle now; each row has an icon for who acted (the rail is Airwallex).

@@ -30,6 +30,14 @@ export const FLOW_STEPS = ["Invoice", "Read", "Check", "Sign", "Paid"] as const;
 // Jury, 13 Nov: whose run it is (a test company in /try, not the main run's Northwind Outdoor); its day is in "What's real?".
 // Partner scan, 14 Nov: "test money" moved up to the line under the buttons (REASSURE), still said once on Home.
 export const FLOW_NOTE = "One /try run, a test company's sample invoice.";
+/**
+ * Judge scan, 14 Nov: the recorded run booked the German supplier's 19% to 1510 (input VAT); later on 13 Nov Purser's
+ * code began booking a German supplier's 19% to 1515, VAT to reclaim from Germany (src/ap/books.ts foreignVat), as /try
+ * and Purser Cloud do now. The record stays as it was; the line says so wherever the hero shows a 1510 line.
+ */
+export const VAT_THEN = rec.booked.some((l) => l.account === "1510")
+  ? "Its VAT line is as that run booked it: Dutch input VAT. Since later that day Purser books a German supplier's 19% as VAT to reclaim from Germany, as /try and Purser Cloud do now."
+  : "";
 
 const LOOP = 12;
 
@@ -57,7 +65,7 @@ export function heroFlowHtml(): string {
       </div>
       <div class="hf-paid">
         <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank</small></p>
-        <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
+        <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td${l.code === "1510" && VAT_THEN ? ` title="${esc(VAT_THEN)}"` : ""}>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
       </div>
     </div>
   </div>
