@@ -24,8 +24,9 @@ import type { Sql } from "./core.js";
 export const AWX_READ_PATH = "/internal/awx-read";
 
 type Method = "GET" | "POST";
-/** Every call this module may make: method, path (a fixed string) and the query keys it may carry. Nothing else. */
-export const AWX_READ_ALLOWED: readonly { method: Method; path: string; query: readonly string[] }[] = [
+/** Every call this module may make: method, path (a fixed string, or one id-shaped pattern) and the query keys it may
+ *  carry. Nothing else. A patterned row is counted under its path ("{id}"), never with the id itself. */
+export const AWX_READ_ALLOWED: readonly { method: Method; path: string; pattern?: RegExp; query: readonly string[] }[] = [
   { method: "POST", path: "/api/v1/authentication/login", query: [] },
   { method: "GET", path: "/api/v1/balances/current", query: [] },
   { method: "GET", path: "/api/v1/global_accounts", query: ["page_num", "page_size"] },
@@ -35,7 +36,13 @@ export const AWX_READ_ALLOWED: readonly { method: Method; path: string; query: r
   { method: "GET", path: "/api/v1/beneficiaries", query: ["page_num", "page_size"] },
   { method: "GET", path: "/api/v1/issuing/cards", query: ["page_num", "page_size"] },
   { method: "GET", path: "/api/v1/issuing/transactions", query: ["page_num", "page_size"] },
+  // One card, by its id: the list carries no spending limits, the card's own record does (live, 14 Nov). Only the card
+  // itself: never /details (the card number), never a write. The pattern is anchored: a UUID and nothing after it.
+  { method: "GET", path: "/api/v1/issuing/cards/{id}", pattern: /^\/api\/v1\/issuing\/cards\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, query: [] },
 ];
+
+/** The table's row for a call, by exact path or by its anchored pattern; none when the call is not listed. */
+const rowFor = (method: string, pathname: string) => AWX_READ_ALLOWED.find((a) => a.method === method && (a.pattern ? a.pattern.test(pathname) : a.path === pathname));
 
 /** A call outside the table: refused before anything is sent. */
 export class AwxReadNotAllowed extends Error {
@@ -53,7 +60,7 @@ const QUERY_VALUE = /^[A-Za-z0-9:+.\-]{1,40}$/;
 export function readAllowedUrl(method: string, url: string): URL {
   let u: URL;
   try { u = new URL(url); } catch { throw new AwxReadNotAllowed(method, "(not a URL)"); }
-  const row = AWX_READ_ALLOWED.find((a) => a.method === method && a.path === u.pathname);
+  const row = rowFor(method, u.pathname);
   const queryOk = !!row && [...u.searchParams].every(([k, v]) => row.query.includes(k) && QUERY_VALUE.test(v)) && new Set([...u.searchParams.keys()]).size === [...u.searchParams.keys()].length;
   if (u.protocol !== "https:" || u.host !== AWX_SANDBOX_HOST || u.port || u.username || u.password || u.hash || !row || !queryOk) throw new AwxReadNotAllowed(method, url);
   return u;
@@ -75,6 +82,8 @@ export const READ_TTL_SECONDS = 45;
 export const READ_PER_MINUTE = 40;
 export const READ_DAILY_CEILING = 1500;
 const TIMEOUT_MS = 8_000;
+/** The newest active cards read one by one for their limits (the list has none). */
+export const CARD_DETAILS = 8;
 const TOKEN_EARLY_MS = 60_000;
 const TOKEN_DEFAULT_MS = 25 * 60_000;
 
@@ -141,7 +150,8 @@ export function transfersOf(raw: unknown) {
 export function beneficiariesOf(raw: unknown) {
   return items(raw).map((b) => {
     const ben = obj(b.beneficiary), bank = obj(ben?.bank_details);
-    const name = str(ben?.company_name) ?? [str(ben?.first_name), str(ben?.last_name)].filter(Boolean).join(" ");
+    // The sandbox's beneficiaries carry the payee's name on the bank account (live, 14 Nov), not always company_name.
+    const name = str(ben?.company_name) ?? str(bank?.account_name) ?? [str(ben?.first_name), str(ben?.last_name)].filter(Boolean).join(" ");
     return {
       id: str(b.id, 64), nickname: str(b.nickname), name: name || null, entity_type: str(ben?.entity_type, 20), country: str(bank?.bank_country_code, 2), currency: str(bank?.account_currency, 3),
       bank: str(bank?.bank_name), iban_last4: last4(bank?.iban), account_number_last4: last4(bank?.account_number), methods: (Array.isArray(b.transfer_methods) ? b.transfer_methods : Array.isArray(b.payment_methods) ? b.payment_methods : []).filter((m): m is string => typeof m === "string").slice(0, 4),
@@ -260,8 +270,20 @@ export class AwxReadDesk {
       case "beneficiaries": return { beneficiaries: beneficiariesOf(await this.get("/api/v1/beneficiaries", { page_num: "0", page_size: "20" })) };
       case "issuing": {
         // Issuing needs its own scope on the key. Without it Airwallex answers 401/403: said so, not hidden.
-        const cards = cardsOf(await this.get("/api/v1/issuing/cards", { page_num: "0", page_size: "20" }, true));
-        const transactions = cardTransactionsOf(await this.get("/api/v1/issuing/transactions", { page_num: "0", page_size: "20" }, true));
+        // Airwallex lists the oldest first (live, 14 Nov): a page of 100, the newest shown. The list carries no spending
+        // limits, so the newest active cards are read one by one (GET /issuing/cards/{id}, at most CARD_DETAILS).
+        const newest = <T>(rows: T[], at: (r: T) => unknown) => [...rows].sort((a, b) => (timeOf(at(b)) ?? 0) - (timeOf(at(a)) ?? 0));
+        const listed = newest(cardsOf(await this.get("/api/v1/issuing/cards", { page_num: "0", page_size: "100" }, true)), (c) => c.created_at).slice(0, 12);
+        const cards = [];
+        let details = 0;
+        for (const c of listed) {
+          if (c.status === "ACTIVE" && details < CARD_DETAILS && c.id && /^[0-9a-f-]{36}$/.test(c.id)) {
+            details++;
+            const full = cardsOf({ items: [await this.get(`/api/v1/issuing/cards/${c.id}`, {}, true)] })[0];
+            cards.push(full ? { ...c, ...Object.fromEntries(Object.entries(full).filter(([, v]) => v !== null && !(Array.isArray(v) && !v.length))) } : c);
+          } else cards.push(c);
+        }
+        const transactions = newest(cardTransactionsOf(await this.get("/api/v1/issuing/transactions", { page_num: "0", page_size: "100" }, true)), (t) => t.at).slice(0, 20);
         return { cards, transactions };
       }
     }
@@ -296,7 +318,8 @@ export class AwxReadDesk {
     const u = new URL(`https://${AWX_SANDBOX_HOST}${path}`);
     for (const [k, v] of Object.entries(query)) u.searchParams.set(k, v);
     const url = readAllowedUrl(method, u.toString());
-    const endpoint = `${method} ${path}`;
+    // Counted by the table's own path: a card's id never reaches the calls panel.
+    const endpoint = `${method} ${rowFor(method, url.pathname)!.path}`;
     this.admit(endpoint);
     let res: Response;
     try {

@@ -92,7 +92,7 @@ try {
     ok(/\d+ calls to the Airwallex sandbox/.test(callsText ?? ""), `${name}: the calls panel counts the calls (${callsText?.trim()})`);
     ok(!(await page.content()).includes("stand-in-token"), `${name}: no token on the page`);
     ok(errors.length === 0, `${name}: no console or CSP errors${errors.length ? ": " + errors.join(" | ") : ""}`);
-    if (shots) await page.screenshot({ path: join(shots, `console-airwallex-recorded-${name}.png`), fullPage: true });
+    if (shots) await page.screenshot({ path: join(shots, `console-airwallex-standin-${name}.png`), fullPage: true });
     // The Agents tab links here.
     await page.goto(`${ORIGIN}/#/agents`);
     await page.waitForSelector("a[href='#/airwallex']:not([data-tab])");

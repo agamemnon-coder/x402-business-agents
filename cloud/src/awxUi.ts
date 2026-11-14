@@ -27,8 +27,11 @@ function awlUnavailable(slot,a,retry){slot.stamp.replaceChildren(el('span','awba
   slot.body.replaceChildren(el('div','awdown',[el('b','',t('cs.awl.unavailable')),el('p','sub',a&&a.reason?String(a.reason):t('cs.awl.no_answer')),again]))}
 function awlLive(slot,a){slot.stamp.replaceChildren(el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(a.read_at)})]))}
 const AWL_RENDER={
-  balances(d){const b=d.balances||[];if(!b.length)return el('p','sub',t('cs.awl.empty'));
-    return el('div','awtiles',b.map((x)=>el('div','awtile',[el('span','awtl',x.currency),el('b','num',awlAmt(x.currency,x.available)),el('span','sub',t('cs.awl.bal_detail',{total:awlAmt('',x.total),pending:awlAmt('',x.pending)}))])))},
+  balances(d){const all=d.balances||[];if(!all.length)return el('p','sub',t('cs.awl.empty'));
+    // The sandbox holds a balance row for every currency it offers (46 live, 14 Nov); the ones at 0 are counted, not shown.
+    const zero=(x)=>!(Number(x.total)||Number(x.available)||Number(x.pending)||Number(x.reserved));const b=all.filter((x)=>!zero(x)),nz=all.length-b.length;
+    if(!b.length)return el('p','sub',t('cs.awl.bal_zero',{n:nz}));
+    return el('div','',[el('div','awtiles',b.map((x)=>el('div','awtile',[el('span','awtl',x.currency),el('b','num',awlAmt(x.currency,x.available)),el('span','sub',t('cs.awl.bal_detail',{total:awlAmt('',x.total),pending:awlAmt('',x.pending)}))]))),nz?el('p','sub',t('cs.awl.bal_zero',{n:nz})):null])},
   rates(d){return el('div','awtiles',(d.rates||[]).map((r)=>el('div','awtile',[el('span','awtl',r.sell_currency+' → '+r.buy_currency),el('b','num',String(r.rate)),el('span','sub',t('cs.awl.rate_detail',{sell:r.sell_currency,rate:String(r.rate),buy:r.buy_currency}))])))},
   reconcile(d){
     const ok=d.computed&&d.differences===0&&d.checked>0;

@@ -88,7 +88,8 @@ export function annotateTransfers(data: Record<string, unknown>): Record<string,
 export function annotateBeneficiaries(data: Record<string, unknown>): Record<string, unknown> {
   const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
   const beneficiaries = list(data, "beneficiaries").map((b) => {
-    const checks = PAYEE.filter((p) => norm(p.name) === norm(b.name));
+    // By the payee's name, or by the nickname Purser gave the beneficiary ("Stockline Data GmbH EUR SWIFT").
+    const checks = PAYEE.filter((p) => norm(p.name) === norm(b.name) || (norm(p.name).length > 3 && norm(b.nickname).startsWith(norm(p.name) + " ")));
     const last = checks[checks.length - 1];
     return { ...b, payee_check: last ? { match: last.match, label: last.label, at: last.at, source: "recorded" } : null };
   });
