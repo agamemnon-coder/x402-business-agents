@@ -298,7 +298,11 @@ export const APPROVE = {
    * Tester, 14 Nov: "is the limit per transaction or a total?" Here, every supplier invoice waits for the CFO: the
    * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
    */
-  limit: "Every invoice waits for your signature here, whatever its amount.",
+  /**
+   * 14 Nov (judges: this read as if agents never pay alone, against the headline): in this demo the limit is zero, so
+   * every invoice waits; with a CFO's limit set, an agent pays alone below it (the main run on /proof, run live).
+   */
+  limit: "Demo limit: zero, so every invoice waits for you. Below a CFO's limit, agents pay alone.",
   fileAgain: "File it again",
   failed: "Purser could not file this payment.",
 };
@@ -647,7 +651,9 @@ export const VISIBLE = {
 // "company 4" is the score before the one-cent change, its link in the refusal's place. Each pinned at its count.
 // 14 Nov (judges): screen 4 has no "already paid" line during the one-cent test ("pay 4" and "pay 6" are back under 45);
 // screen 5's test is its main button, "Now change one cent" ("books 0" to "books 5", one word fewer).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+// 14 Nov (judges: "every invoice waits" read against the headline): the approval says the demo's limit is zero and
+// that agents pay alone below a CFO's limit (+6 on each state with it, "approve 2" to "approve 16").
+export const OVER_BUDGET: Record<string, number> = { "start 0": 79, "start 1": 75, "start 2": 80, "start 3": 74, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "company 4": 79, "approve 2": 61, "approve 4": 61, "approve 9": 59, "approve 10": 54, "approve 11": 60, "approve 12": 59, "approve 13": 54, "approve 14": 53, "approve 15": 63, "approve 5": 51, "approve 6": 49, "approve 7": 47, "approve 8": 50, "approve 16": 49 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
