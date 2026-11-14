@@ -136,6 +136,8 @@ export interface InvoiceView {
   id: string; status: string; status_words: string; payable: boolean; vendor: string; invoice_no: string; currency: string; total: string; due_date: string; read_by: string;
   /** The invoice's own date and, once paid, when (14 Nov: /try's held answer shows when the earlier copy was paid). */
   issue_date?: string; paid_at?: string | null;
+  /** When it came in (14 Nov: /try's finish says how long from upload to paid, from these two). */
+  received_at?: string;
   findings: FindingView[];
   doc_sha256: string;
   proposal: ProposalView | null;
@@ -425,7 +427,7 @@ export class EngineHost {
     return {
       id: inv.id, status: inv.status, status_words: t(this.deps.company.lang, `status.${inv.status}`), payable: actionsFor(inv).pay.allowed,
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
-      issue_date: inv.issue_date, paid_at: inv.paid_at,
+      issue_date: inv.issue_date, paid_at: inv.paid_at, received_at: inv.received_at,
       findings: inv.findings.map((f) => this.findingView(f)),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,

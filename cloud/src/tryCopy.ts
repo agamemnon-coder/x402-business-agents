@@ -3,6 +3,7 @@
 // page's script reads them from here; it has no words of its own. This page does not use the shared catalogue
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
+import { TRAILER_LINK } from "../../src/config/brand.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
 
 /**
@@ -367,9 +368,19 @@ export const BOOKS = {
  */
 export const COMPANY = {
   heading: "Your company.",
+  /**
+   * 14 Nov (owner: "add a CTA, now it just ends"): the finish says what the run did, from its own record: the paid
+   * invoice's amount and the time from its upload to paid (received_at to paid_at, the engine's). {money}, {time}.
+   */
+  done: "Done: {money} read, checked, signed and paid in {time}. Nothing real moved.",
+  /** Without the figures (a reload that cannot read them): the same sentence without them. */
+  donePlain: "Done: read, checked, signed and paid. Nothing real moved.",
+  /** The next steps, one primary and three quiet links; no form, nothing collected. */
+  rails: "See it on real rails",
+  cloud: "Open Purser Cloud as a guest",
+  star: "Star the code on GitHub",
   download: "Download your test company's records",
-  /** 14 Nov (owner): the main download is a PDF a person reads (GET /v1/engine/export.pdf); the JSON is a quiet link. */
-  line: "A PDF: each invoice's trail, the journal, the audit log.",
+  /** 14 Nov (owner): the download is a PDF a person reads (GET /v1/engine/export.pdf); the JSON is a quiet link beside it. */
   json: "Download as JSON (for developers)",
   downloading: "Downloading…",
   /** In the line's place when the export did not come back. */
@@ -386,9 +397,9 @@ export const COMPANY = {
   didFiled: "Filed",
   didSigned: "Signed",
   didPaid: "Paid",
-  /** The site's proof page (PROOF_URL). */
-  proof: "Proof",
 };
+/** Where screen 6's quiet links go (14 Nov): Purser Cloud's own front page, and the code. */
+export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
 
 /**
  * The recorded real runs screen 6 links to (kit11 /runs#<key>): each key and its date as src/redesign/runs.ts gives them
@@ -509,11 +520,13 @@ export const VISIBLE = {
     [BOOKS.headingError, BOOKS.retry, BOOKS.what],
   ],
   company: [
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.downloading, COMPANY.line, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.failed, COMPANY.again, COMPANY.proof, COMPANY.json, COMPANY.runs],
-    // Start again asks first: the question and its two answers in place of the button.
-    [COMPANY.heading, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.download, COMPANY.line, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.proof, COMPANY.json, COMPANY.runs],
+    // 14 Nov (owner): the finish. The result (its figures are data), the three steps, the way on and its quiet links,
+    // the records (the PDF, the JSON link), Start again, the recorded runs' fold.
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    // Start again asks first: the question and its two answers in place of the link.
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, COMPANY.rails, TRAILER_LINK, COMPANY.cloud, COMPANY.star, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -537,7 +550,9 @@ export const VISIBLE = {
 // invoice", the ledger's Dr/Cr on a phone, and says under the Cloud link that it is a sample company (the review's
 // finding 2): every state of screen 5 but the loading one is over 45 ("books 0" to "books 5"); screen 6's Start again
 // asks first ("company 3"). Each pinned at its exact count, for the lead to decide.
-// 14 Nov (owner): screen 6 downloads a PDF and offers the JSON as a quiet link ("company 3" 58 to 60).
+// 14 Nov (owner: "add a CTA, now it just ends"): screen 6 is a finish: the result from the run's own figures, the way on
+// ("See it on real rails", and the trailer, Purser Cloud and the code as quiet links), then the records (the PDF, the
+// JSON link) and Start again; every state is over 45 ("company 0" to "company 3"), each pinned at its count.
 // The start screen: +14 words for START.what (jury review, 13 Nov: what the visit is and how long, under the button),
 // and +5 for the walkthrough link (on YouTube; 13 Nov, owner; "Or watch the walkthrough", +4 since 14 Nov: no duration).
 // Screen 4 (final-polish, 13 Nov): its lead line is shorter, so "pay 4" and "pay 6" are lower.
@@ -549,7 +564,7 @@ export const VISIBLE = {
 // under a new number, "work 5" new bank details, "work 6" a new supplier; the round trip moved into the fold. Screen 4's
 // refusal leads with the reason and folds the proof ("pay 7" is lower, 81 to 66); "pay 8" is that fold open.
 // 14 Nov: +2 on each start state, the trust line's "Alta (formerly Metal)" (Metal renamed itself).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 65, "start 1": 61, "start 2": 61, "start 3": 55, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 3": 60, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 65, "start 1": 61, "start 2": 61, "start 3": 55, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "pay 4": 49, "pay 6": 48, "books 0": 77, "books 1": 75, "work 3": 60, "work 4": 69, "work 5": 51, "work 6": 63, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 65, "company 1": 58, "company 2": 71, "company 3": 81, "approve 2": 55, "approve 4": 55, "approve 9": 53, "approve 10": 48, "approve 11": 54, "approve 12": 53, "approve 13": 48, "approve 14": 47, "approve 15": 57 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

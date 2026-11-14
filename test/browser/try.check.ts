@@ -26,6 +26,7 @@ import { APPROVE, BAND, BOOKS, COMPANY, ENDED, GONE, INVOICE, LIVE, PAY, START, 
 import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
+import { TRAILER_URL } from "../../src/config/brand.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
@@ -754,13 +755,13 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await screenChecks(page, `${tag} screen 6`, width);
   // 14 Nov (owner): the main button downloads the records as a PDF; the JSON is a quiet link under the button row.
   const dlPdf = page.waitForEvent("download");
-  await page.click(`.btn.primary:has-text("${COMPANY.download}")`);
+  await page.getByRole("button", { name: COMPANY.download, exact: true }).click();
   const pdfDl = await dlPdf;
   const pdfBytes = readFileSync(await pdfDl.path());
   ok(pdfDl.suggestedFilename() === "purser-test-company-records.pdf" && pdfBytes.subarray(0, 5).toString() === "%PDF-" && pdfBytes.length < 150_000, `${tag}: the main button downloads the records as a PDF (${pdfBytes.length} bytes)`);
   const jsonLink = page.getByRole("button", { name: COMPANY.json });
-  const [main6, link6] = [await page.locator(".btn.primary", { hasText: COMPANY.download }).boundingBox(), await jsonLink.boundingBox()];
-  ok(!!main6 && !!link6 && link6.y >= main6.y + main6.height && link6.x + link6.width <= width, `${tag}: "${COMPANY.json}" is a quiet link under the button row`);
+  const [main6, link6] = [await page.getByRole("button", { name: COMPANY.download, exact: true }).boundingBox(), await jsonLink.boundingBox()];
+  ok(!!main6 && !!link6 && link6.y >= main6.y - 4 && link6.x + link6.width <= width, `${tag}: "${COMPANY.json}" is a quiet link beside or under the records' button`);
   const dl = page.waitForEvent("download");
   await jsonLink.click();
   const file = await (await dl).path();
@@ -775,6 +776,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   if (shots) await page.screenshot({ path: join(shots, `b3-6-company-${width}-${scheme}.png`), fullPage: true });
   ok(await page.locator("ul.did li").count() === 3 && await page.getAttribute("a.proofl", "href") === PROOF_URL, `${tag}: screen 6: what you just did in three icons, and the site's proof page`);
   await design("6-company", { full: true });
+  // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
+  const done6 = (await page.locator("p.done").textContent()) ?? "";
+  ok(/^Done: EUR 1,850\.00 read, checked, signed and paid in (\d+ s|\d+ min( \d+ s)?)\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
+  const outs = await page.locator(".more a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
+  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/" && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
