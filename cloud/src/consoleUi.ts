@@ -167,7 +167,9 @@ async function agentsView(){
   // their limits read as the demo cards' own). Each section says which run its figures come from.
   const live=tk0?sandboxSections(tk0):[];
   view().replaceChildren(...[head(t('cs.nav.agents'),t('cs.agents.lede2')+(m.demo?' '+t('cs.agents.read_only'):'')),
-    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls')),...live]);
+    cards.length?el('div','agents',cards):el('div','card empty',[el('b','',t('cs.agents.none'))]),note(t('cs.agents.controls')),...live,
+    // 14 Nov: the agents' cards as the Airwallex sandbox holds them now, with their limits and authorizations.
+    el('p','links',[(()=>{const a=el('a','ext',[ic('credit-card'),' '+t('cs.awl.agents_link'),' ',ic('chevron-right')]);a.href='#/airwallex';return a})()])]);
   requestAnimationFrame(()=>{for(const n of view().querySelectorAll('.rise'))n.classList.add('in')});
 }
 

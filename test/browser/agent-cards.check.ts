@@ -17,6 +17,7 @@ import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { TenantDb } from "../../cloud/src/tenant.js";
 import { AwxCardsDesk } from "../../worker/src/awxCards.js";
 import { CVV, fakeSandbox, PAN } from "../support/awxCardsFake.js";
+const CVV_SEEN = new RegExp(`\\b${CVV}\\b`);
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -107,7 +108,7 @@ await sourcing.locator(".lcard").scrollIntoViewIfNeeded();
 await shot("cloud-agents-card-1440");
 
 const all = await page.content();
-ok(!all.includes(PAN) && !/\b737\b/.test(await text()) && !all.includes("ch_secret_holder"), "the page never holds the full card number, the CVV or the cardholder");
+ok(!all.includes(PAN) && !CVV_SEEN.test(await text()) && !all.includes("ch_secret_holder"), "the page never holds the full card number, the CVV or the cardholder");
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.reload();

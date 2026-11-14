@@ -51,9 +51,14 @@ describe("the engine's deployment of its own on test money (cloud/wrangler.try.j
       "services.0.binding": [undefined, "AWX_FX"],
       "services.0.service": [undefined, "kit11"],
       "services.0.entrypoint": [undefined, "AwxFx"],
-      "services.1.binding": [undefined, "AWX_CARDS"],
+      // The live Airwallex tab (14 Nov): the site Worker's read-only sandbox gateway, a named entrypoint; no key here.
+      "services.1.binding": [undefined, "AWX_READ"],
       "services.1.service": [undefined, "kit11"],
-      "services.1.entrypoint": [undefined, "AwxCards"],
+      "services.1.entrypoint": [undefined, "AwxRead"],
+      // The agents' live sandbox cards (14 Nov): kit11's AwxCards entrypoint, which holds the key and the card allow-list.
+      "services.2.binding": [undefined, "AWX_CARDS"],
+      "services.2.service": [undefined, "kit11"],
+      "services.2.entrypoint": [undefined, "AwxCards"],
     });
     // Its own database, never the product's, and no bucket at all.
     expect(mine.get("d1_databases.0.database_id")).not.toBe(base.get("d1_databases.0.database_id"));
