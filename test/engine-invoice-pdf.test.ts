@@ -81,10 +81,12 @@ describe("a written invoice, paid on the engine", () => {
     expect(pdfNet + pdfVat).toBe(32_100);
     expect(inv).toContain("Tulip Tiles (test) · Purser demo");
 
-    // The ledger's accrual for it: expense = the PDF's net, input VAT = the PDF's VAT line, creditors = the total.
+    // The ledger's accrual for it: expense = the PDF's net, the PDF's VAT line on 1515 (19% is no Dutch rate, so never
+    // Dutch input VAT 1510: the CFO review, 14 Nov), creditors = the total.
     const lines = db.prepare(`SELECT l.account, l.debit_cents AS d, l.credit_cents AS c FROM ledger_lines l JOIN ledger_entries e ON e.entry_id = l.entry_id WHERE e.description LIKE '%INV-6543%(received)%'`).all() as { account: string; d: number; c: number }[];
-    expect(lines.find((l) => l.account === "1510")?.d).toBe(pdfVat);
-    expect(lines.filter((l) => l.d > 0 && l.account !== "1510").reduce((n, l) => n + l.d, 0)).toBe(pdfNet);
+    expect(lines.find((l) => l.account === "1515")?.d).toBe(pdfVat);
+    expect(lines.some((l) => l.account === "1510")).toBe(false);
+    expect(lines.filter((l) => l.d > 0 && l.account !== "1515").reduce((n, l) => n + l.d, 0)).toBe(pdfNet);
     expect(lines.find((l) => l.account === "2100")?.c).toBe(32_100);
 
     // The receipt: the company's block, the title, the paid amount, and the demo's footer.
