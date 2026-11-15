@@ -617,7 +617,10 @@ const booksKit=(()=>{
     const mine=all.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
     const have=new Set(mine.map((e)=>e.entry_id));
     for(const e of all)if(e.reverses!==null&&e.reverses!==undefined&&have.has(e.reverses)&&!have.has(e.entry_id)){mine.push(e);have.add(e.entry_id)}
-    return mine.sort((a,b)=>a.entry_id-b.entry_id);
+    // 15 Nov (live measurement): the invoice received first, then what paid it, in booking order (the accrual is
+    // booked when the payment settles, so its id is the later one).
+    const acc=(e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id?0:1;
+    return mine.sort((a,b)=>acc(a)-acc(b)||a.entry_id-b.entry_id);
   };
   const balance=(es)=>{const dr={},cr={};let lines=0;
     for(const e of es||[])for(const l of e.lines||[]){lines++;dr[l.currency]=(dr[l.currency]||0)+(Number(l.debit_cents)||0);cr[l.currency]=(cr[l.currency]||0)+(Number(l.credit_cents)||0)}
@@ -1278,7 +1281,7 @@ function fxCard(note,terms,limitBps){
   if(live){
     const left=el('dd','');d.append(el('dt','',X.valid),left);
     const end=Date.parse(String(cv.valid_to||''));
-    const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
+    const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:(Math.floor(s/60)?Math.floor(s/60)+' min ':'')+(s%60)+' s'});return true};
     if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
     if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));

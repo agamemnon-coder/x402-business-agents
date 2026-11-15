@@ -81,7 +81,7 @@ export const PROOF_BAND = {
 export const RUN = {
   clock: "Your run time",
   head: "Your run",
-  time: "start to finish",
+  time: "your run, start to finish",
   steps: "steps passed",
   refused: "one-cent change refused",
   tryCent: "Try the one-cent change",
@@ -597,7 +597,7 @@ export const COMPANY = {
    * 14 Nov (owner: "add a CTA, now it just ends"): the finish says what the run did, from its own record: the paid
    * invoice's amount and the time from its upload to paid (received_at to paid_at, the engine's). {money}, {time}.
    */
-  done: "Done: {money} read, checked, signed and paid in {time}. Nothing real moved.",
+  done: "Done: {money} read, checked, signed and paid, {time} from upload to paid. Nothing real moved.",
   /** Without the figures (a reload that cannot read them): the same sentence without them. */
   donePlain: "Done: read, checked, signed and paid. Nothing real moved.",
   /**
@@ -856,7 +856,7 @@ export const VISIBLE = {
 // that held and the signature line, and two ways on ("pay 1" to "pay 10"); the finish has one primary way on and three
 // secondary ones ("company 0" to "company 4"); screen 2's progress line and the flagged line ("work 13" to "work 15").
 // Each pinned at its count, for the lead to decide.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 110, "company 1": 103, "company 2": 116, "company 3": 126, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 111, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 122 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 115, "company 1": 105, "company 2": 121, "company 3": 131, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 116, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 127 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

@@ -569,7 +569,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov: the Airwallex card: the quote the terms carry, its id and rate, and a countdown to its valid-to.
   const cv = (L0.terms as unknown as { conversion: { quote_id: string; client_rate: string } | null }).conversion;
   const awx = (await page.locator("section.awx").count()) ? await page.innerText("section.awx") : "";
-  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(`1 EUR = ${cv.client_rate} USD`) && /\b1[45]:\d\d\b/.test(awx)
+  ok(cv?.quote_id === REC_FX.quote_id && (await page.getAttribute("section.awx", "data-awx")) === "live" && awx.includes(FX_CARD.live) && awx.includes(REC_FX.quote_id) && awx.includes(`1 EUR = ${cv.client_rate} USD`) && /\b1[45] min \d{1,2} s\b/.test(awx)
     && awx.includes(FX_CARD.validTo) && awx.includes(FX_CARD.limitLine.replace("{pct}", "0.50")),
     // This server's companies are not t_try_ tenants: the default 0.50%; a try company's 1.50% is test/try-fx-limit.test.ts.
     `${tag}: the Airwallex card shows the quote the terms carry: its id, its rate, the time left, its valid-to and the company's FX limit (${awx.replace(/\s+/g, " ").slice(0, 400)})`);
@@ -876,7 +876,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await design("6-company", { full: true });
   // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
   const done6 = (await page.locator("p.done").textContent()) ?? "";
-  ok(/^Done: EUR 1,850\.00 read, checked, signed and paid in (\d+ s|\d+ min( \d+ s)?)\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
+  ok(/^Done: EUR 1,850\.00 read, checked, signed and paid, (\d+ s|\d+ min( \d+ s)?) from upload to paid\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
   // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs; the 5-min film, Purser Cloud and
   // the code as secondary buttons; the proof band.
   const outs = await page.locator(".acts.more a.btn").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent]));

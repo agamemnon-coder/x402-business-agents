@@ -299,7 +299,7 @@ describe("the copy", () => {
     expect(COPY.BOOKS.what).toBe("What Purser did");
     expect(COPY.COMPANY.download).toBe("Download your test company's records");
     // 14 Nov (owner): the records as a PDF a person reads; the JSON a quiet link for developers.
-    expect(COPY.COMPANY.done).toBe("Done: {money} read, checked, signed and paid in {time}. Nothing real moved.");
+    expect(COPY.COMPANY.done).toBe("Done: {money} read, checked, signed and paid, {time} from upload to paid. Nothing real moved.");
     expect(COPY.COMPANY.json).toBe("Download as JSON (for developers)");
     expect(COPY.COMPANY.again).toBe("Start again");
     expect(COPY.COMPANY.runs).toBe("Recorded real runs");
