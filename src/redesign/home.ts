@@ -9,7 +9,7 @@
 
 import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
-import { AWX_HOME_LINE, FILM_LINK, FILM_URL, TRAILER_LINK, TRAILER_URL, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
+import { AWX_HOME_LINE, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
 import { agentRun, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
@@ -19,7 +19,7 @@ import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml, VAT_THEN } from "./heroFlow.js"
 import { vic3Run, type Vic3Record } from "./vic3Run.js";
 import { countOf, esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
-import { homeScaleStats, SCALE_CSS, scaleBandHtml } from "./scale.js";
+import { homeScaleStats, SCALE_CSS } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
@@ -41,9 +41,12 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .btn.ghost { background: transparent; }
 .btn.ghost:hover { border-color: var(--text); }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
-.walk { margin: 4px 0 0; font-size: 15px; }
-.walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
-.walk a.film + a.film { margin-left: 14px; }
+/* The proof line (15 Nov): what it runs on and three measured figures, under the idea. */
+.proofl { margin: 14px 0 0; font-size: 15px; line-height: 1.6; color: var(--muted); max-width: 36em; }
+.proofl a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); white-space: nowrap; }
+.proofl a:hover, .proofl a:focus-visible { color: var(--accent); border-color: var(--accent); }
+.proofl b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.proofl .sep { color: var(--faint); }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 /* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;
@@ -170,16 +173,33 @@ export function homeHeadingHtml(): string {
  * Home's first button, word for word: the hands-on demo, where the Try tab goes (TRY_URL). 13 Nov (owner): the product
  * tour is gone, so the first button is the demo again, as before it; the second is the proof (PROOF_BUTTON).
  */
-export const START = "Try it live";
-/** The hero's one sentence under the heading (the owner, 12 Nov: one sentence). WHAT_IT_IS stays the README's and the form's. */
-export const HOME_SUB = "Over its limit, an agent asks; you sign the exact terms with Face ID.";
+export const START = "Try it in 2 minutes";
+/**
+ * The idea in one sentence (15 Nov, Founder's and Judges' Choice: one sharp idea, understood in 10 seconds). The same
+ * sentence opens the README (test/first-screen.test.ts holds the two equal).
+ */
+export const HOME_SUB = IDEA;
+/** The hero's secondary buttons: the film; then "Verify a payment yourself" once the site serves /verify (opts.verifyUrl). */
+export const FILM_BUTTON = "Watch the film";
+export const VERIFY_BUTTON = "Verify a payment yourself";
+/** The proof line's first words; its figures are Home's three measured ones (src/redesign/scale.ts homeScaleStats). */
+export const PROOF_LEAD = ["Built on Airwallex", "test money"] as const;
+/** The proof line: what it runs on, then three figures, each a link to its source; none without its record. */
+// 15 Nov: these three figures used to sit in a band in the records section; they lead the hero now, and /proof keeps
+// the full strip (src/redesign/scale.ts).
+export function proofLineHtml(stats = homeScaleStats()): string {
+  const fmt = (n: number) => n.toLocaleString("en-GB");
+  const figs = stats.map((s) => `<a href="${esc(s.href)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(fmt(s.n))}</b> ${esc(s.label)}</a>`);
+  return `<p class="proofl">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="sep" aria-hidden="true"> · </span>')}</p>`;
+}
 /**
  * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL), a
  * test company of your own on test money, deleted after 24 hours (its start page says "Test money · deleted after
  * 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
 // Partner scan, 14 Nov: Visa named in full in "Works with" takes a row on a phone, so "test money" moves up into this line.
-export const REASSURE = { sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." } as const;
+// 15 Nov: "test money" is said once outside the fold, in the hero's proof line, so this line no longer repeats it.
+export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
@@ -336,7 +356,7 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  * opts.trySign: the bundle also carries /try/sign (TRY_SIGN_ENABLED); the button opens the hands-on demo (/try) either way.
  * opts.receipt: another receipt for the hero (a file of the repository, or a parsed one); the committed one by default.
  */
-export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object } = {}): string {
+export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object; /** /verify, once the site serves it: the hero's third button. */ verifyUrl?: string } = {}): string {
   // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
   const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
@@ -352,10 +372,9 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <div class="copy">
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
-    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost" href="proof">${esc(PROOF_BUTTON)}</a></div>
+    ${proofLineHtml()}
+    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${opts.verifyUrl ? `<a class="btn big ghost" href="${esc(opts.verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
-    <p class="walk"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
-    ${awxHomeBadgeHtml()}
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}
@@ -373,8 +392,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">On record</p>
   <h2 class="e-h reveal" id="h-locks">${esc(LOCKS_HEAD)}</h2>
   <article class="e-statrec" data-rec="${esc(STAT_RECORDS)}">${statsHtml(homeStats(run, rows))}</article>
-  ${scaleBandHtml(homeScaleStats(), "What ran, in numbers")}
-  <p class="statnote">${esc(STAT_NOTE)}</p>
+  ${awxHomeBadgeHtml()}
   ${visaLineHtml(rows)}
   <p class="statnote visal"><a href="${tryHref}">${esc(AWX_HOME_LINE)}</a></p>
   ${kit11Html(run)}

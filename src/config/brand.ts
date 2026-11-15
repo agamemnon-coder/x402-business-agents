@@ -143,7 +143,12 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * The README's one sentence on what Purser is (the owner, 13 Nov: the enterprise README), bold under its title and
  * package.json's description. The form's synopsis and the deck keep WHAT_IT_IS.
  */
-export const README_WHAT = "Purser is the control layer between a company's AI agents and its money: an agent pays on its own within the limits the CFO set, and anything above them waits for the CFO's Face ID or passkey on the exact terms.";
+/**
+ * The idea in one sentence (15 Nov, Founder's and Judges' Choice: one sharp idea, understood in 10 seconds): Home's
+ * sentence under its heading, the README's bold line under its title, package.json's description.
+ */
+export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with Face ID, and one changed cent breaks the signature.";
+export const README_WHAT = IDEA;
 export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**
  * The first screen, in this order, on the README and in the form's synopsis: what Purser is, the three sentences, then

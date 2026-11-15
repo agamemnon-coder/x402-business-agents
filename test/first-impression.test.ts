@@ -49,7 +49,9 @@ describe("/ for a guest", () => {
     expect(textOutsideTags(homeHeadingHtml()).replace(/\s+/g, " ").trim()).toBe(HERO);
     // The enterprise pass (owner, 12 Nov): the heading, Home's one sentence, then the two buttons, the first to the hands-on
     // demo (again since the product tour went, 13 Nov, evening), the second the proof.
-    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(HOME_SUB)}</p>\n    <div class="ctas"><a class="btn primary big start" href="/try">`);
+    // 15 Nov (clarity): the idea's proof line between the sentence and the buttons.
+    expect(pages.home).toContain(`${homeHeadingHtml()}\n    <p class="what">${esc(HOME_SUB)}</p>\n    <p class="proofl">`);
+    expect(pages.home).toMatch(/<p class="proofl">[\s\S]*?<\/p>\n {4}<div class="ctas"><a class="btn primary big start" href="\/try">/);
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(DIFFERENTIATORS.length).toBe(3);
     // The core sentence stays the page's description.
