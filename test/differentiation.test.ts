@@ -90,7 +90,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 13 Nov, final pass: /try/sign answers 301 to /try (#283); the README links /try, never /try/sign.
     expect(readme).not.toContain("kit11.max-31b.workers.dev/try/sign");
     expect(readme).toContain("(https://kit11.max-31b.workers.dev/try)");
-    expect(readme.indexOf("[![CI]")).toBeGreaterThan(readme.indexOf(DIFFERENTIATORS[0]));
+    expect(readme.indexOf("[![CI]")).toBeLessThan(readme.indexOf(DIFFERENTIATORS[0])); // 15 Nov (Max): the badges at the top
     expect(readme.indexOf(KIT11_RUN_LINE.replace(/\.$/, ""))).toBeGreaterThan(readme.indexOf("[![CI]"));
   });
 
