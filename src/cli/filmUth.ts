@@ -6,7 +6,7 @@
 //      record-uth) and its cards shown for the time left, with short fades;
 //   4. the captions: the narration's words as subtitles, burned in and written as docs/film/under-the-hood/captions.srt;
 //   5. the mix: the voice, and with --music a quiet instrumental bed (ElevenLabs music), loudness-normalised.
-// Writes out/video/uth/under-the-hood.mp4 (1920x1080, 30 fps, H.264 + AAC), docs/film/under-the-hood/script.md and the
+// The short cut (3:29, ORDER in src/film/uth.ts; the 4:38 voiced film is kept as committed in 9dcba896). Writes out/video/uth/under-the-hood-short.mp4 (1920x1080, 30 fps, H.264 + AAC), docs/film/under-the-hood/script.md and the
 // .srt. Test money only; the film says so on screen.
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -139,7 +139,7 @@ async function main(): Promise<void> {
   writeFileSync(resolve(out, "film.txt"), all.map((s) => `file '${resolve(out, "scenes", `${s.id}.mp4`)}'`).join("\n") + "\n");
   const picture = resolve(out, "picture.mp4");
   ff(["-f", "concat", "-safe", "0", "-i", resolve(out, "film.txt"), "-c", "copy", picture]);
-  writeFileSync(resolve(docs, "captions.srt"), srt.join("\n"));
+  writeFileSync(resolve(docs, "captions-short.srt"), srt.join("\n"));
   // 4 and 5. Subtitles burned in; the voice placed at each scene's start, a bed under it with --music.
   const placed = parts.map((p) => JSON.parse(p) as { id: string; at: number; vo: string | null });
   const inputs: string[] = ["-i", picture];
@@ -156,8 +156,8 @@ async function main(): Promise<void> {
     filters.push(`[${k}:a]volume=0.10,afade=t=in:st=0:d=2,afade=t=out:st=${(total - 3).toFixed(2)}:d=3,atrim=0:${total.toFixed(2)}[bed]`); mixes.push("[bed]");
   }
   const style = "FontName=Inter,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H22000000,BackColour=&H22000000,BorderStyle=3,Outline=6,Shadow=0,MarginV=36,Alignment=2";
-  const subs = `subtitles=${resolve(docs, "captions.srt")}:fontsdir=${resolve(root, "src/ui")}:force_style='${style}'`;
-  const film = resolve(out, "under-the-hood.mp4");
+  const subs = `subtitles=${resolve(docs, "captions-short.srt")}:fontsdir=${resolve(root, "src/ui")}:force_style='${style}'`;
+  const film = resolve(out, "under-the-hood-short.mp4");
   if (mixes.length) {
     filters.push(`${mixes.join("")}amix=inputs=${mixes.length}:normalize=0:duration=longest,atrim=0:${total.toFixed(2)},loudnorm=I=${silent ? -26 : -16}:TP=-1.5:LRA=11[a]`); // without a voice the bed alone stays quiet
     ff([...inputs, "-filter_complex", `[0:v]${subs}[v];${filters.join(";")}`, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", film]);
@@ -165,16 +165,16 @@ async function main(): Promise<void> {
     ff(["-i", picture, "-vf", subs, "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", film]);
   }
   // The script, with its sources.
-  const md = [`# Purser, under the hood (${clock(total)})`, "", `Built by \`npm run film-uth\` from \`src/film/uth.ts\`; every figure on screen is read from its record at build time. Test money only. ${silent ? `This build has no voice (captions only); the narrator for the voiced build: ${VOICE_10.name} (an AI voice).` : `Narrator: ${VOICE_10.name} (an AI voice).`}${argv.includes("--music") ? ` Music: an AI-generated instrumental (ElevenLabs)${argv.includes("--bed") ? `, ${argv[argv.indexOf("--bed") + 1]}` : ""}.` : ""}`, "", "| At | Scene | Narration (and the captions) | On screen |", "|---|---|---|---|", ...rows, "", "## Sources", "",
+  const md = [`# Purser, under the hood, short cut (${clock(total)})`, "", `Built by \`npm run film-uth\` from \`src/film/uth.ts\`; every figure on screen is read from its record at build time. Test money only. ${silent ? `This build has no voice (captions only); the narrator for the voiced build: ${VOICE_10.name} (an AI voice).` : `Narrator: ${VOICE_10.name} (an AI voice).`}${argv.includes("--music") ? ` Music: an AI-generated instrumental (ElevenLabs)${argv.includes("--bed") ? `, ${argv[argv.indexOf("--bed") + 1]}` : ""}.` : ""}`, "", "| At | Scene | Narration (and the captions) | On screen |", "|---|---|---|---|", ...rows, "", "## Sources", "",
     `- The live /try walk, ${f.rec.recorded_at}: \`docs/film/under-the-hood/record.json\` (npm run record-uth): the terms' SHA-256 \`${f.rec.terms.terms_sha256}\`, the passkey's assertion (challenge = that hash, flags ${f.rec.assertion.authenticator_data.flags_byte}), the one-cent refusal (\`${f.refused.sent_sha256}\`), the replay (paid once). Recorded with a virtual test passkey, not a person's Face ID.`,
     `- The Airwallex transfer of the main run (3 Nov), read back with GET only on ${f.xferReadAt.slice(0, 10)}: \`docs/runs/airwallex-transfer-approval-2026-11-06.json\`; P-0005's passkey approval with the same hash: \`docs/demo/main-run.json\`.`,
     `- The reconciliation (${f.reconFlows} money flows, no differences) and the main-run figures (${f.decisions} decisions by Claude, ${f.alta} Alta payments within the limits, ${f.faceId} Face ID signatures, ${f.stops} stops and nothing paid over a limit): \`docs/demo/main-run.json\`, \`docs/claims.md\`.`,
     "- The card decline (recorded, awx-1, 7 Nov): `docs/demo/airwallex-run.json`, card transaction `01a1b5e8-6dc2-7000-95bf-c8fc5e6e2f38`.",
     `- The anchor: \`${f.anchorFile}\`, checked live by \`npm run verify-anchor\` (output in \`docs/film/under-the-hood/verify-anchor.txt\`).`,
     `- The test count (${f.tests}): README.md.`, "- The Purser Cloud clip: the demo company's Agents tab as a guest (made-up data, read only).", ""].join("\n");
-  writeFileSync(resolve(docs, "script.md"), md);
+  writeFileSync(resolve(docs, "script-short.md"), md);
   if (snapped.length) console.log(`captions: ${snapped.filter((x) => x.snapped).length} of ${snapped.length} cue changes on a pause in the voice; largest move ${Math.max(...snapped.map((x) => Math.abs(x.moved))).toFixed(2)} s`);
-  console.log(`under-the-hood.mp4: ${clock(total)} (${total.toFixed(1)} s), ${(Number(execFileSync("stat", ["-c%s", film], { encoding: "utf8" })) / 1e6).toFixed(1)} MB`);
+  console.log(`under-the-hood-short.mp4: ${clock(total)} (${total.toFixed(1)} s), ${(Number(execFileSync("stat", ["-c%s", film], { encoding: "utf8" })) / 1e6).toFixed(1)} MB`);
 }
 
 main().catch((e: unknown) => { console.error((e as Error).message); process.exit(1); });
