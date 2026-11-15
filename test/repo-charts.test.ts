@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { changelog, groupOf, parseMerges } from "../scripts/changelog.js";
 import { CHART_DIR, mainRun, recordCharts, runsPerRail } from "../scripts/repo-charts.js";
+import { readmeFull } from "./readmeFull.js";
 
 const ROOT = join(import.meta.dirname, "..");
 
@@ -26,7 +27,7 @@ describe("the README's charts", () => {
   });
 
   it("has the git-history chart, saying its source, and every chart is linked from the README", () => {
-    const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+    const readme = readmeFull();
     expect(existsSync(join(CHART_DIR, "tests-over-time.svg"))).toBe(true);
     expect(readFileSync(join(CHART_DIR, "tests-over-time.svg"), "utf8")).toContain("From git history");
     for (const name of [...Object.keys(recordCharts(ROOT)), "tests-over-time.svg"]) expect(readme).toContain(`docs/assets/charts/${name}`);
@@ -79,7 +80,7 @@ describe("the changelog", () => {
 });
 
 describe("the README's diagrams and media", () => {
-  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  const readme = readmeFull();
   const blocks = (md: string) => [...md.matchAll(/```mermaid\n[\s\S]*?```/g)].map((m) => m[0]);
 
   // Since 13 Nov (the README upgrade): five diagrams in docs/diagrams.md; the README inlines four of them, word for word
@@ -122,7 +123,7 @@ describe("the README's diagrams and media", () => {
 });
 
 describe("the README against the site (jury findings, 13 Nov)", () => {
-  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  const readme = readmeFull();
 
   it("calls the guest console public, names purser-try and the connector, and has the 2-minute block", () => {
     // The public guest console on purser-try is said; the product's own console deployment stays private, and is said so.

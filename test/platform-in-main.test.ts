@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { reviewLabel } from "../src/approve/client.js";
 import { NEXT_NEXT } from "../src/redesign/home.js";
 import { runTrick } from "../worker/src/trick.js";
+import { readmeFull } from "./readmeFull.js";
 
 const root = (p: string) => new URL(`../${p}`, import.meta.url);
 const read = (p: string) => readFileSync(root(p), "utf8");
@@ -26,7 +27,7 @@ const flat = (t: string) => t.replace(/\*\*/g, "").replace(/\s+/g, " ");
 /** Code as read: the comment marker at the start of each line gone too, so a sentence wrapped over comment lines is one. */
 const flatCode = (t: string) => flat(t.replace(/^[ \t]*(?:\/\/+|\*+|--|#)[ \t]?/gm, ""));
 
-const README_SECTION = section(read("README.md"), /^## Built after the kit/);
+const README_SECTION = section(readmeFull(), /^## Built after the kit/);
 const LLMS_LINE = read("llms.txt").split("\n").find((l) => l.startsWith("- After the kit:")) ?? "";
 const AFTER_KIT = read("docs/after-the-kit.md");
 const CLAIMS_SECTION = section(read("docs/claims.md"), /^## Built after the kit/);
