@@ -27,6 +27,7 @@ import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, TRAILER_LINK, TRAILER_URL, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
+import { centHtml, centRecord } from "./cardCent.js";
 import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
@@ -436,7 +437,7 @@ export function readBack(run: AgentRun): string {
   const awx1 = awxRunBlock(undefined, { short: true });
   if (!h && !rows.length && !awx1) return "";
   return `<h2 class="sec" id="airwallex-readback">Airwallex, read back</h2>
-  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>${awx1 ? `
+  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}${centHtml(centRecord())}</div>${awx1 ? `
   <div class="awrb">${awx1}</div>` : ""}`;
 }
 

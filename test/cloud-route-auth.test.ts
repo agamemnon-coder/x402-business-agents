@@ -28,6 +28,7 @@ const PUBLIC: Record<string, string> = {
   "POST /v1/auth/guest": "the demo company's read-only guest session: made-up data",
   "GET /v1/export/download/{id}/{part}": "a 15-minute signed link is the credential",
   "GET /v1/stats": "the cloud's own counters: no company's id or amount",
+  "GET /v1/cards/edge/latest": "the newest one-cent-over test at the Airwallex sandbox: test money, a card's last four digits and Airwallex's answers; no company's id or data",
   "GET /v1/cards/scope": "whether the sandbox key may use Airwallex Issuing: ok or forbidden, read at most once a minute for everyone; no company's data, no card data",
   "POST /v1/try/start": "the hands-on demo's own test company (test money, 24 hours)",
   "POST /v1/try/challenge": "the hands-on demo's bot check",

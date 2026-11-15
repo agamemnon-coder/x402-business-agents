@@ -14,6 +14,7 @@
 
 import { AWX_RUN_RECORDED, PAYEE_CHECKS_RECORDED } from "./awxRecorded.js";
 import { ledgerMovementsFromRunRecord, reconcileFinancialTransactions, toFinancialTx } from "../../src/finance/awxReconcile.js";
+import { looksLikePerson, publicNickname, publicPayeeName } from "../../src/airwallex/personName.js";
 
 /** The service binding's one method used here (worker/src/index.ts, AwxRead). */
 export interface AwxReadBinding { read(view: string): Promise<unknown>; events?(): Promise<unknown> }
@@ -93,10 +94,14 @@ export function annotateTransfers(data: Record<string, unknown>): Record<string,
 /** Beneficiaries with the recorded payee check whose name matches (recorded on 12 Nov, not live). */
 export function annotateBeneficiaries(data: Record<string, unknown>): Record<string, unknown> {
   const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
-  const beneficiaries = list(data, "beneficiaries").map((b) => {
+  const beneficiaries = list(data, "beneficiaries").map((b0) => {
+    let b = b0;
     // By the payee's name, or by the nickname Purser gave the beneficiary ("Stockline Data GmbH EUR SWIFT").
     const checks = PAYEE.filter((p) => norm(p.name) === norm(b.name) || (norm(p.name).length > 3 && norm(b.nickname).startsWith(norm(p.name) + " ")));
     const last = checks[checks.length - 1];
+    // Privacy (15 Nov): a person's name as initials only, here too, whatever the gateway sent (src/airwallex/personName.ts).
+    const person = looksLikePerson(typeof b.name === "string" ? b.name : null, typeof b.entity_type === "string" ? b.entity_type : null);
+    b = { ...b, name: publicPayeeName(typeof b.name === "string" ? b.name : null, typeof b.entity_type === "string" ? b.entity_type : null), nickname: publicNickname(typeof b.nickname === "string" ? b.nickname : null, person) };
     return { ...b, payee_check: last ? { match: last.match, label: last.label, at: last.at, source: "recorded" } : null };
   });
   return { beneficiaries, payee_check_record: `${REPO}docs/runs/2026-11-12-airwallex-payee-check.json` };

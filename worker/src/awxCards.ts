@@ -12,6 +12,7 @@ import {
   CARD_ID, CARDS_SANDBOX_BASE, cardCallCheck, safeCard, safeTx, SHA256_HEX,
   type CardsAnswer, type CardsAsk, type CardsRefusal, type SafeCard, type SafeTx,
 } from "../../src/airwallex/cardGate.js";
+import { agentOfCard } from "../../src/airwallex/agentCardSet.js";
 
 export interface CardsEnv {
   AIRWALLEX_CLIENT_ID?: string;
@@ -25,6 +26,9 @@ const TOKEN_EARLY_MS = 60_000;
 const TOKEN_MS = 25 * 60_000;
 /** Reads a minute, for this isolate: a runaway page cannot hammer the sandbox. */
 const READS_PER_MINUTE = 60;
+/** The card list: pages of 100 read, and cards read one by one for their limits. */
+const LIST_PAGES = 5;
+const LIST_DETAILS = 15;
 const plainId = (v: string | null) => (v && /^[A-Za-z0-9._:-]{1,128}$/.test(v) ? v : null);
 const codeOf = (j: unknown) => {
   const c = (j as { code?: unknown } | null)?.code;
@@ -120,7 +124,7 @@ export class AwxCardsDesk {
   private async answer(a: CardsAsk): Promise<CardsAnswer> {
     if (!a || typeof a !== "object") return no("refused", "not a request");
     if ("card_id" in a && (typeof a.card_id !== "string" || !CARD_ID.test(a.card_id))) return no("refused", "not a card id");
-    if (a.op !== "scope" && a.op !== "card" && a.op !== "transactions" && !SHA256_HEX.test(String((a as { action_sha256?: unknown }).action_sha256 ?? ""))) {
+    if (a.op !== "scope" && a.op !== "card" && a.op !== "transactions" && a.op !== "list" && !SHA256_HEX.test(String((a as { action_sha256?: unknown }).action_sha256 ?? ""))) {
       return no("refused", "a card write carries the hash of the action the CFO signed");
     }
     switch (a.op) {
@@ -128,6 +132,31 @@ export class AwxCardsDesk {
         // page_size 10: Airwallex's list endpoints refuse a page smaller than 10 (HTTP 400); the read gateway uses 100.
         const r = await this.raw("GET", "/issuing/cards", undefined, { page_num: "0", page_size: "10" });
         return r.ok ? { ok: true, op: "scope", issuing: "ok" } : r;
+      }
+      case "list": {
+        // Airwallex lists the oldest first, so every page is read (at most LIST_PAGES of 100). The list carries no limits:
+        // each agent card that is not closed is read on its own (at most LIST_DETAILS).
+        const rows: unknown[] = [];
+        let cut = false;
+        for (let page = 0; page < LIST_PAGES; page++) {
+          const r = await this.raw("GET", "/issuing/cards", undefined, { page_num: String(page), page_size: "100" });
+          if (!r.ok) return r;
+          const j = r.json as { items?: unknown[]; has_more?: unknown } | null;
+          rows.push(...(Array.isArray(j?.items) ? j.items : []));
+          cut = j?.has_more === true;
+          if (!cut) break;
+        }
+        const listed = rows.map(safeCard).filter((c): c is SafeCard => !!c && agentOfCard(c.nickname) !== null && c.status !== "CLOSED");
+        const cards: SafeCard[] = [];
+        let details = 0;
+        for (const c of listed) {
+          if (!c.limits && details < LIST_DETAILS) {
+            details++;
+            const full = await this.card(c.card_id);
+            cards.push(full.ok ? { ...c, ...full.card, nickname: full.card.nickname ?? c.nickname, created_at: full.card.created_at ?? c.created_at } : c);
+          } else cards.push(c);
+        }
+        return { ok: true, op: "list", cards, cut };
       }
       case "card": {
         const r = await this.card(a.card_id);

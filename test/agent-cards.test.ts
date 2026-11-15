@@ -12,6 +12,8 @@ import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./suppor
 import { CVV, fakeSandbox, PAN } from "./support/awxCardsFake.js";
 
 const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
+/** The calls that change something at Airwallex: every POST but the login. Reads (the card list) may happen before a signature. */
+const writes = (calls: string[]) => calls.filter((x) => x.startsWith("POST ") && x !== "POST /authentication/login");
 
 describe("the card allow-list (src/airwallex/cardGate.ts)", () => {
   const lim = { currency: "EUR", limits: [{ amount: 30, interval: "PER_TRANSACTION" }, { amount: 100, interval: "MONTHLY" }] };
@@ -99,7 +101,7 @@ describe("live cards in Purser Cloud (cloud/src/agentCards.ts)", () => {
     expect(r.json.error).toContain("awx_cards");
     const v = await c.req("GET", "/v1/cards", { key: t.session });
     expect(v.json).toMatchObject({ on: false, can_act: false });
-    expect(s.calls).toEqual([]);
+    expect(writes(s.calls)).toEqual([]);
   });
 
   it("issues a card with the policy's limits only after the owner's passkey signs the exact action, once", async () => {
@@ -108,11 +110,11 @@ describe("live cards in Purser Cloud (cloud/src/agentCards.ts)", () => {
     const action = a.json.action as { id: string; challenge: string; sha256: string; signed_text: string; lines: string[] };
     expect(action.challenge).toBe(Buffer.from(action.sha256, "hex").toString("base64url"));
     expect(JSON.parse(action.signed_text)).toMatchObject({ kind: "issue", agent: "sourcing", limits: { per_tx_cents: 3000, monthly_cents: 10000 }, sandbox: true });
-    expect(s.calls).toEqual([]);
+    expect(writes(s.calls)).toEqual([]);
     // A signature over anything else is refused, and nothing is sent.
     const wrong = await sign(action.id, Buffer.from("b".repeat(64), "hex").toString("base64url"));
     expect(wrong.status).toBe(401);
-    expect(s.calls).toEqual([]);
+    expect(writes(s.calls)).toEqual([]);
     const ok = await sign(action.id, action.challenge);
     expect(ok.json).toMatchObject({ status: "done", kind: "issue", card: { last4: "1902", status: "ACTIVE", per_tx_cents: 3000, monthly_cents: 10000 } });
     // Idempotent by the signed hash: the same signature again answers the first result and sends nothing.
@@ -174,7 +176,7 @@ describe("live cards in Purser Cloud (cloud/src/agentCards.ts)", () => {
     expect(await cardsBlocked(c.env.sql, "t_try_abc", c.env.awxCards)).toContain("/try");
     expect(await cardsBlocked(c.env.sql, t.id, undefined)).toContain("no card gateway");
     expect(await cardsBlocked(c.env.sql, t.id, c.env.awxCards)).toBeNull();
-    expect(s.calls).toEqual([]);
+    expect(writes(s.calls)).toEqual([]);
   });
 
   it("answers the Issuing scope check as ok or forbidden, without card data", async () => {
