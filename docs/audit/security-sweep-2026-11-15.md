@@ -1,6 +1,6 @@
 # Security and bug sweep, 15 November 2026
 
-This sweep covers main at `c431a468`, before the hand-in. Fixes are on branch `security-1115`.
+This sweep covers main at `c431a468`, before the hand-in. Fixes are on branch `security-1115` (#360, S1–S3) and `security-2-1115` (sweep 2: N1, and the decisions on N2 and N3).
 
 - **Hosts probed live:** purser-try.max-31b.workers.dev and kit11.max-31b.workers.dev. Probing was gentle: about 30 requests in total, and 4 /try test companies.
 - **Money and keys:** test money only. No card, account or key was used. No secret appears in code, logs or here.
@@ -12,9 +12,9 @@ This sweep covers main at `c431a468`, before the hand-in. Fixes are on branch `s
 | S1 | Medium | A payout could leave the daily Airwallex caps uncounted. | Fixed |
 | S2 | Low (fails closed) | The card gate refused valid limits such as EUR 19.99. | Fixed |
 | S3 | Low (UI) | /try's money-flow strip stopped at "Your passkey" after "paid once". | Fixed |
-| N1 | Low–medium (availability) | The /try start limit is keyed per IPv6 /64. | Not fixed: owner decision |
+| N1 | Low–medium (availability) | /try starts could rotate through the /64s of one IPv6 /48. | Fixed (sweep 2) |
 | N2 | Low (by design) | Event-pool starts skip the per-address limits. | Not fixed: by design |
-| N3 | Low | Wrong platform-admin tokens are not counted or rate-limited. | Not fixed: hardening |
+| N3 | Low | Wrong platform-admin tokens are not counted or rate-limited. | Not changed, on purpose; owner action |
 | N4 | Low (latent) | `awx_act_spend` does not compare the amount on a repeat request_id. | Not fixed: no path reaches it |
 | N5 | Low | `normaliseAmount("1.500")` reads 1500.00, not 1.50. | Not fixed: documented |
 | N6 | Low | A lost answer on "issue card" can orphan a sandbox card. | Not fixed: capped |
@@ -54,23 +54,48 @@ The check was `Math.round(v * 100) === v * 100`. Because of float error it refus
 - `flowOf` (`cloud/src/try/visuals.ts`) marks every step done when it sees that line, on both the approve and the pay screen.
 - The test runs `flowOf` from the page's own script.
 
+### N1: /try starts rotating through one IPv6 /48 (low–medium, fixed in sweep 2)
+
+**Where:** `cloud/src/try/start.ts` `startCompany`.
+
+The per-address start limit (`starts_per_address_hour`) already keyed an IPv6 address by its /64 and an IPv4 address whole. A /48, the usual allocation to one site, holds 65,536 /64s. Someone holding one could rotate through them, each start passing its own /64's limit, until `starts_per_day_public` was used up. Real visitors would then get 429 for the rest of the UTC day.
+
+**Fix:**
+- A /48's public starts in an hour now also count together, under a new switch `starts_per_48_hour` (default 20, ceiling 200).
+- The /48 is kept only as a salted hash with the day's salt, like the /64; the address itself is never stored.
+- IPv4 is counted whole, as before.
+- A visitor's first start from another /48 or from IPv4 is unaffected.
+- `test/security-sweep-2-2026-11-15.test.ts` covers the address keys, the limit, the next hour and the hashed bucket. It failed before the fix.
+
+**Still per /64:** the per-address Claude cap (`cap_addr_micros`). Claude spend stays inside the pool's daily and all-time caps (at most USD 30 a day, USD 78 in all).
+
+**Not reproduced live:** that would mean a flood of starts.
+
 ### Not fixed: written down for the owner
 
-**N1. IPv6 /64 rotation (availability).**
-- `cloud/src/try/start.ts` keys the per-address start limit and the per-address Claude cap on the IPv6 /64.
-- Someone holding a /48 can rotate through /64s. That uses up `starts_per_day_public`, so real visitors get 429 for the rest of the UTC day.
-- Claude spend stays inside the pool's daily and all-time caps (at most USD 30 a day, USD 78 in all).
-- Not reproduced live: that would mean a flood.
-- Options for the owner: also count per /48, or lower `starts_per_day_public` with the switch and watch `/v1/try/admin {op:get}`.
+**N2. Event-pool token visible on the stage QR (by design).**
+- Event-pool starts skip the per-address limits on purpose: one room shares one network, and per-address limits would turn the room away.
+- The token is in the stage QR's URL fragment, so anyone who sees the screen, in the room or on a stream or photo, can start companies in the event pool until the token's `until`.
+- **What bounds it:**
+  - `starts_per_day_event` (default 300, ceiling 2,000);
+  - the event pool's Claude day cap (`cap_day_micros_event`, at most USD 30);
+  - the all-time cap.
+  - The public and jury pools are unaffected.
+- **Owner action:**
+  - Issue the event token (`/v1/try/admin {op: "token", pool: "event", until}`) with `until` at the end of the event; there is no revoke, a token ends at its `until`.
+  - Set `starts_per_day_event` to about the room's size.
+  - If it is abused, set `starts_per_day_event` to 0 or `starts` off.
 
-**N2. Event-pool token visible on the stage QR.**
-- Event-pool starts skip the per-address limits by design.
-- The token is in the stage QR fragment, so anyone who sees the screen can use up that pool's day.
-- Owner switch: rotate the event token after the event.
-
-**N3. Platform-admin token failures are not counted.**
-- A wrong platform-admin token on `/v1/try/admin` and `/v1/try/ops` is not counted or rate-limited.
-- This is safe only with a high-entropy token. That is the owner's secret, so it was not checked here.
+**N3. Wrong platform-admin tokens are not counted or rate-limited (on purpose).**
+- A wrong token on `/v1/try/admin` and `/v1/try/ops` gets 401 and is not counted.
+- **Why no lockout:**
+  - These routes are the kill switch (`starts`, `claude`, `awx_act` off).
+  - A lockout per address or for everyone would give an attacker a way to block the kill switch: 200 junk tokens every 15 minutes would keep the owner out.
+  - A limit that still lets the right token through does not slow guessing, since 200 vs 429 tells a guesser which token is right.
+  - Two existing red-team tests pin this: `test/cloud-try.test.ts` ("a flood of 100 wrong tokens never locks out the right one") and `test/try-redteam.test.ts` ("answers the right token after a parallel flood of 100 wrong ones from one address").
+  - A lockout was written and tested in sweep 2 and left out by decision (option A).
+- **What makes guessing infeasible:** a long random token. The Worker keeps only its SHA-256 (`adminTokenSha256`) and compares in constant time.
+- **Owner action (Max):** the admin token must be at least 32 random bytes (or a v4 UUID at minimum), set as a Worker secret with `wrangler secret`. Its entropy cannot be checked from here, since only its hash is deployed.
 
 **N4. Repeat request_id with another amount.**
 - `cloudGuard.spend()` lets a repeat request_id through without comparing amount or currency.
@@ -189,7 +214,7 @@ Approvals come only from WebAuthn `processAssertion`. `paySigned` pays from the 
 - The address comes from `cf-connecting-ip` only; X-Forwarded-For is never trusted.
 - Claude spend is reserved atomically under per-company, per-address, per-pool-day and all-time caps.
 - Each call's worst case is checked first.
-- N1 and N2 are the availability gaps.
+- N1 (fixed) and N2 (by design) were the availability gaps.
 
 ### XSS
 
@@ -237,7 +262,13 @@ The red-team runs rewrite their report files with new timestamps. Those changes 
 
 ## What was not checked
 
-- **gitleaks:** not run. Downloading the binary was refused in this environment. Run `gitleaks git .` before the hand-in.
+- **gitleaks:** not run in this environment (downloading the binary was refused). CI's `secrets` job runs it on every pull request and push to main, over the commit's whole history, and it passed on #360's head (`12cda92`). To repeat it locally from the repo root, with Docker (the same pinned image and flags as CI):
+
+  ```bash
+  docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055 git /repo --redact --verbose --no-banner --gitleaks-ignore-path /repo/.gitleaksignore --log-opts=HEAD
+  ```
+
+  With gitleaks installed instead (v8.19 or later): `gitleaks git . --redact --verbose --gitleaks-ignore-path .gitleaksignore --log-opts=HEAD`. Exit code 0 and "no leaks found" means clean.
 - **try-evals:** there is no `try-evals` script in package.json. The /try behaviour is covered by vitest.
 - **Real Airwallex actions:** the sandbox actions with `awx_act` on, and the card writes with `AWX_CARDS_WRITE` on. Both are off live and need the owner's switch and keys. Covered by code review and the in-memory tests only.
 - **N1 live:** not reproduced, because that needs a flood of starts.
