@@ -150,3 +150,7 @@ d88052471f03172b11026dc9d0add000cfcd9c33:docs/runs/README.md:generic-api-key:19
 c35d36c909d2eff3bdd8dc250389905bc3d07924:docs/submission/long-description.md:generic-api-key:89
 # 14 Nov, PR #332: a made-up bearer token in a test of kit11's Airwallex gateway (never a real one); replaced since.
 87e9ada499983bfb27707d939eb5bb0aaafc7df8:test/cloud-awx-act.test.ts:generic-api-key:73
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+b1742c57d99da0934be4321f4203ca1139735294:docs/proof/try-paid.json:generic-api-key:65
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+b1742c57d99da0934be4321f4203ca1139735294:docs/proof/try-refused.json:generic-api-key:65
