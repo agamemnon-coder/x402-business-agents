@@ -138,7 +138,8 @@ describe("the start's partners", () => {
     const html = tryPage("n", { origin: ORIGIN, rpId: RP });
     expect(html).toContain(JSON.stringify(START_LOGOS));
     // Airwallex is the header's "Built on Airwallex" badge, not a logo in this row (14 Nov, owner).
-    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta", "Claude"]);
+    // Judge panel, 15 Nov: Alta's logo's alt names it as Alta (formerly Metal).
+    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta (formerly Metal)", "Claude"]);
   });
 });
 

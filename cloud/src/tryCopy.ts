@@ -584,7 +584,7 @@ export const COMPANY = {
   didPaid: "Paid",
 };
 /** Where screen 6's quiet links go (14 Nov): Purser Cloud's own front page, and the code. */
-export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
+export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
 
 /**
  * The recorded real runs screen 6 links to (kit11 /runs#<key>): each key and its date as src/redesign/runs.ts gives them

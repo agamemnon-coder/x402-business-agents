@@ -159,7 +159,7 @@ ${groups.map((g) => `<h3 id="${groupId(g.group)}">${esc(g.group)}</h3><ul class=
 // ── 3. The receipt you check offline ───────────────────────────────────────────────────────────────────────────────
 export const VERIFY_COMMAND = "npm run verify-approval";
 /** The receipt the command checks, as package.json names it. */
-const RECEIPT = /\s(docs\/\S+\.json)$/.exec(pkgScripts["verify-approval"] ?? "")?.[1] ?? "";
+export const RECEIPT = /\s(docs\/\S+\.json)$/.exec(pkgScripts["verify-approval"] ?? "")?.[1] ?? "";
 export function verifyCalloutHtml(): string {
   if (!pkgScripts["verify-approval"]) return "";
   return `<aside class="pverify" aria-labelledby="h-pverify">${icon("shield-check", 22)}<div><h2 id="h-pverify">${esc("Check a real approval yourself, offline")}</h2>

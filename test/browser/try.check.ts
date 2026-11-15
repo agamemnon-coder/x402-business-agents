@@ -845,7 +845,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await design("6-company", { full: true });
   // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
   const done6 = (await page.locator("p.done").textContent()) ?? "";
-  ok(/^Done: EUR 1,850\.00 read, checked, signed and paid in (\d+ s|\d+ min( \d+ s)?)\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
+  // Judge scan, 15 Nov: the time is the engine's upload to paid, and says so.
+  ok(/^Done: EUR 1,850\.00 read, checked, signed and paid, (\d+ s|\d+ min( \d+ s)?) from upload to paid\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
   const outs = await page.locator(".more a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
   ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/" && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
   await page.click(`button:has-text("${COMPANY.again}")`);

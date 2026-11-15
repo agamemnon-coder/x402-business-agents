@@ -243,7 +243,8 @@ describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went
     expect(html).not.toContain('class="septest"');
     // (The red team's night batch of 2 November stays: it is not the TAP run.) Since 13 Nov the live-runs list ends with
     // one link, "Visa TAP run → /visa" (src/redesign/proofRuns.ts), the only TAP on the page; the fold stays off /proof.
-    expect(words(dropBlocks(html)).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    // Judge panel, 15 Nov: the first of the three facts is Airwallex's own LIMIT_EXCEEDED decline of 7 Nov (awx-1, not TAP).
+    expect(words(dropBlocks(html.replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, ""))).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
   // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its
@@ -266,7 +267,8 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
     // Max, 14 Nov: the walkthrough and the strip of partners, under the lead; Live with Airwallex after the live runs, above the guarantees. 14 Nov (Max, Airwallex at the centre): one line under the partner tiles, to /try.
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <p class="pwatch">[\s\S]*?<\/p> <p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul> <p class="pawx"><a href="try">[^<]+<\/a><\/p> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
+    // Judge panel, 15 Nov: three facts first (ol.pfirst); the chain, the band, the offline check and the live runs in one fold (#more).
+    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <ol class="pfirst"[\s\S]*?<\/ol> <p class="pwatch">[\s\S]*?<\/p> <p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul> <p class="pawx"><a href="try">[^<]+<\/a><\/p> <details class="sumd" id="more"><summary>[^<]+<\/summary><ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section><\/details> <section class="axl"[\s\S]*<\/section> $/);
     expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
     expect(main.slice(0, g)).not.toContain('<span class="pill run">');
   });

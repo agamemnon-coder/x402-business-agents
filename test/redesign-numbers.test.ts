@@ -128,6 +128,9 @@ const visibleText = (html: string) => html
   // (src/ap/books.ts AP_ACCOUNTS.foreignVat, a constant of the chart, not a figure of the run); test/home-story.test.ts
   // holds it to the engine's own accrual of that invoice.
   .replace(/\b1515 Foreign VAT\b/g, " ")
+  // Judge panel, 15 Nov: /visa's three facts of the vic-5 run (amounts, ids, the step), read from
+  // docs/runs/2026-11-14-vic-5.json and checked against it in test/proof-first-facts.test.ts.
+  .replace(/Paid after Face ID: [A-Z]{3} [\s\S]*?vic-\d+, step [A-Z]\d?/g, " ")
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
   .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ")
   // Home's "About Purser" fold (the owner, 12 Nov): how many runs /runs lists, and the payout and fee of the run of 10

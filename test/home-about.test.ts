@@ -37,7 +37,7 @@ describe("About Purser on Home", () => {
   it("shows the partners' official logos in the hero, unaltered on white tiles, alt their names, never recoloured", () => {
     const hero = /<section class="e-hero">[\s\S]*?<\/section>/.exec(ON)![0];
     const trust = /<div class="trust">[\s\S]*?<\/small><\/div>/.exec(hero)![0];
-    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-alta.svg", "Alta"], ["logo-claude-slate.svg", "Claude"]]);
+    expect([...trust.matchAll(/<img src="assets\/(logo-[\w-]+\.(?:png|svg))" alt="([^"]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["logo-alta.svg", "Alta (formerly Metal)"], ["logo-claude-slate.svg", "Claude"]]); // alt, judge panel 15 Nov
     // 14 Nov (owner): Airwallex left the "Works with" row: it is the platform, the header's "Built on Airwallex" badge.
     expect(trust).not.toContain("logo-airwallex");
     // 14 Nov: Metal is now Alta, its wordmark shown with the Alta team's OK (docs/evidence/logo-permissions.md); Visa as

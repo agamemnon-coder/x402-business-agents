@@ -19,6 +19,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { AIRI_CREDENTIAL, SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
+import { PROOF_FIRST_CSS, proofFirstHtml, visaFirstFacts, visaLimitsLine } from "./proofFirst.js";
+import { VISA_REUSE_ID } from "./visaStory.js";
 import { ENDORSE_NOTE, LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
@@ -332,7 +334,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // TAP work, outside the entry, last inside it (its own closed fold), so it is never on the first screen at any width.
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
-  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
+  <p class="vlimits" data-rec="${VIC3_RUN_FILE}">${esc(visaLimitsLine(vic3 as never))}</p>
+  ${proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`))}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   ${visaCardSceneHtml()}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
@@ -367,7 +371,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     ...(sceneData ? { data: sceneData } : {}),
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.

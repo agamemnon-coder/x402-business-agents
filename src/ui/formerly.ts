@@ -38,7 +38,8 @@ export function formerlyMetal(html: string): string {
   const open = html.search(/<main\b/i);
   const close = html.search(/<\/main>/i);
   if (open < 0 || close < 0 || close < open) return html;
-  if (html.slice(open, close).includes(ALTA_FIRST)) return html;
+  // In the text, not in an attribute (judge panel, 15 Nov: Alta's logo's alt reads "Alta (formerly Metal)").
+  if (html.slice(open, close).replace(/<[^>]*>/g, "").includes(ALTA_FIRST)) return html;
   const stack: { tag: string; cls: string }[] = [];
   const re = /<\/?([a-zA-Z][\w-]*)([^>]*)>|([^<]+)/g;
   re.lastIndex = open;

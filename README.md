@@ -333,7 +333,7 @@ On [/try](https://kit11.max-31b.workers.dev/try) Claude reads a test company's i
 
 ## Who does what
 
-<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
+<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta (formerly Metal) and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied ([sources](docs/assets/logos/SOURCES.md))
 
 - **Built by Max Geurtsen** (Claude by Anthropic as the developer, directed and reviewed by Max): Purser itself: the CFO's policy and limits, the approval flow (Face ID on the exact terms,
   four eyes), the agents' tools and prompts, the relay and the site, the hash-chained audit log, the books, the tests.

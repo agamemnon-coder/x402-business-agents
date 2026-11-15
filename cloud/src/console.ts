@@ -1448,9 +1448,11 @@ function platformView(){
   view().replaceChildren(el('div','head',[el('div','',[el('h1','',t('cs.pf.title')),el('p','lede',t('cs.pf.lede'))]),el('div','tools',[gate])]),out);
 }
 
-/** Try as guest: a read-only session for the demo company (POST /v1/auth/guest), then its overview. From a link, a failure is said on the sign-in. */
+/** Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval (the Invoices tab, Waits for Face ID), not on the overview or the sign-in. */
+const GUEST_LANDING='#/invoices?f=waiting_cfo';
+/** Try as guest: a read-only session for the demo company (POST /v1/auth/guest), then its pending approvals. From a link, a failure is said on the sign-in. */
 async function guestIn(fromButton){
-  try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go('#/overview')}
+  try{const r=await api('/v1/auth/guest',{method:'POST',token:'-'});S={token:r.session,exp:Date.now()+r.expires_in*1000-5000,slug:r.tenant,guest:true};save(S);ME=null;go(GUEST_LANDING)}
   catch(e){if(fromButton)throw e;notice=t('cs.guest.failed',{error:e.message});go('#/sign-in')}
 }
 __UI__
@@ -1466,7 +1468,7 @@ async function route(){
     if(open[path])return open[path]();
     // Try as guest from a link (the hands-on demo's last step, 13 Nov): the demo company opens read only, as the sign-in's
     // button does; a session already open is kept.
-    if(path==='/guest'){if(S)return go('#/overview');view().replaceChildren(el('p','lede',t('cs.guest.opening')));return guestIn()}
+    if(path==='/guest'){if(S)return go(S.guest?GUEST_LANDING:'#/overview');view().replaceChildren(el('p','lede',t('cs.guest.opening')));return guestIn()}
     // A provider's code in the address is spent or useless without a session: it leaves the browser's history at once.
     if(path==='/connect'&&!S){history.replaceState(null,'','#/settings');return go('#/sign-in')}
     if(!S)return go('#/sign-in');

@@ -34,7 +34,7 @@ export const STEP_PROOF: Record<string, string> = {
  * Airwallex logo here; Airwallex is the platform, shown as the site header's "Built on Airwallex" badge.
  */
 export const START_LOGOS: { src: string; alt: string; w: number; h: number; key: string }[] = [
-  { src: "/assets/logo-alta.svg", alt: "Alta", w: 475, h: 250, key: "alta" },
+  { src: "/assets/logo-alta.svg", alt: "Alta (formerly Metal)", w: 475, h: 250, key: "alta" },
   { src: "/assets/logo-claude-slate.svg", alt: "Claude", w: 9156, h: 2000, key: "claude" },
 ];
 
