@@ -40,7 +40,8 @@ describe("What Purser guarantees", () => {
     // Judge panel, 15 Nov: three facts first (ol.pfirst); the chain, the band, the offline check and the live runs in one fold (#more); Live with Airwallex after it.
     expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<ol class="pfirst"[\s\S]*?<\/ol>\s*<p class="pwatch">[\s\S]*?<\/p>\s*<p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul>\s*<p class="pawx">[\s\S]*?<\/p>\s*<details class="sumd" id="more"><summary>[^<]+<\/summary><ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section><\/details>\s*<section class="axl"[\s\S]*<\/section>$/);
     expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
-  });
+    // Its body builds every page (buildPages): 30 s, as other tests that build or run whole artifacts (CI, 15 Nov: 5 s ran out on a loaded runner).
+  }, 30_000);
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {
     const html = guaranteesHtml();
