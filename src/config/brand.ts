@@ -187,11 +187,14 @@ export const WHY_COMPANY: readonly { label: string; text: string; page: string }
   { label: "Why Purser", text: "it builds on Airwallex's own card controls and Alta's mandates, and adds what sits on top: one CFO policy for card and chain, approvals signed over the exact terms, a hash-chained audit log.", page: "model.md#risks-and-what-we-do-not-know" },
 ];
 /**
- * The walkthrough (film v10, YouTube, 13 Nov; AI voice and music: ElevenLabs), linked from Home and Proof and in
- * llms.txt. /film is the earlier animation.
+ * The film, "Purser, under the hood" (YouTube, 15 Nov, 3:29): the hashes, the passkey signature, the one-cent refusal,
+ * /verify, the Airwallex metadata and the anchor. Linked from Home, Proof, /try and in llms.txt. /film is the earlier
+ * animation.
  */
-export const FILM_URL = "https://youtu.be/mp9fmOYfBWc";
-export const FILM_LINK = "Watch the walkthrough";
+export const FILM_URL = "https://youtu.be/PNLuqhRzVfE";
+export const FILM_LINK = "Watch the film";
+/** The walkthrough (film v10, YouTube, 13 Nov; AI voice and music: ElevenLabs): kept as the longer tour. */
+export const WALKTHROUGH_URL = "https://youtu.be/mp9fmOYfBWc";
 /** The trailer (14 Nov, Max: 1:30, 4K; AI voice and music: ElevenLabs): a second, shorter option beside the walkthrough. */
 export const TRAILER_URL = "https://youtu.be/n3HLVGROJc4";
 export const TRAILER_LINK = "Watch the trailer (1:30)";

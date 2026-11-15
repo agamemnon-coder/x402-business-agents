@@ -10,6 +10,7 @@ Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's p
 
 Hands-on on Purser's real engine, a test company of your own on test money: https://kit11.max-31b.workers.dev/try
 
+The film, "Purser, under the hood" (3:29): https://youtu.be/PNLuqhRzVfE
 The walkthrough (AI voice and music: ElevenLabs): https://youtu.be/mp9fmOYfBWc
 The trailer, 1:30 (AI voice and music: ElevenLabs): https://youtu.be/n3HLVGROJc4
 
@@ -60,6 +61,8 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 - src/airi/purchase.ts: Visa Intelligent Commerce through Airwallex's Airi
 - Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md
 - src/audit/log.ts: the hash-chained audit log
+
+After the hackathon, the roadmap to real customer money (nothing on it is built yet): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/roadmap-v2.md
 
 ## For agents
 
