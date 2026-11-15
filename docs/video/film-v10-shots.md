@@ -1,4 +1,4 @@
-# Purser: the enterprise hand-in (film v10): the shot list (4:58)
+# Purser: the enterprise hand-in (film v10.1): the shot list (4:50)
 
 Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/shots.ts. Who records: **Max (iPhone)** or **Max (screen)** for his own footage; **capture** for a page shot (`npm run capture -- <id>`: Playwright, dark, 1440x900, frame by frame, GETs only).
 
@@ -32,7 +32,7 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Where: https://purser-try.max-31b.workers.dev/
   - Do: click "Try as guest", then go to #/tokenisation, then hold 2 s, then scroll to "Invoice token on Metal testnet" (2 s), then hold 5 s (9 s)
   - Must show: "Try as guest"
-  - On screen: caption "Tokenisation · Metal testnet"; badge "Demo company · made-up data · test money"
+  - On screen: caption "Tokenisation · Alta testnet"; badge "Demo company · made-up data · test money"
 
 ## 0:47–1:06 · Approval alerts (x03)
 
@@ -104,23 +104,23 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Must show: "The payee's bank checks the name before the CFO is asked", "FULL_MATCH"
   - On screen: caption "Payee check · the bank checks the name"; badge "Airwallex sandbox · test money"
 
-## 3:17–3:44 · Metal (x10)
+## 3:17–3:44 · Alta (formerly Metal) (x10)
 
 - **X-faceid-chain**, 9 s · **capture** · /runs: passkeys sign on chain, two owners
   - Where: https://kit11.max-31b.workers.dev/runs
   - Do: hold 0.5 s, then scroll to "Passkeys sign on chain (P-256)" (2 s), then highlight "Passkeys sign on chain (P-256)", then hold 7 s (9.5 s)
   - Must show: "Passkeys sign on chain (P-256)"
-  - On screen: caption "Two passkeys · checked on chain · 12 Nov"; badge "Metal testnet · test USD"
+  - On screen: caption "Two passkeys · checked on chain · 12 Nov"; badge "Alta (formerly Metal) testnet · test USD"
 - **X-refused**, 8 s · **capture** · The explorer page of the refused payment, tx 0xe6d9c7ea…585df4
   - Where: https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4
   - Do: hold 8 s (8 s)
   - Must show: "0xe6d9"
-  - On screen: caption "0.06 over the 0.05 cap · refused on chain"; badge "Metal testnet · test USD"
+  - On screen: caption "0.06 over the 0.05 cap · refused on chain"; badge "Alta (formerly Metal) testnet · test USD"
 - **X-anchor**, 10 s · **capture** · The anchor record on GitHub: the chain head on Metal testnet, height 701
   - Where: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-anchor.md
   - Do: hold 0.5 s, then scroll to "Purser's chain head anchored" (1.5 s), then highlight "Height: 701", then hold 8 s (10 s)
   - Must show: "Height: 701"
-  - On screen: caption "Audit chain anchored · 13 Nov"; badge "Metal testnet · test USD"
+  - On screen: caption "Audit chain anchored · 13 Nov"; badge "Alta (formerly Metal) testnet · test USD"
 
 ## 3:44–4:01 · Visa via Airi (x11)
 
@@ -145,18 +145,14 @@ Made by `npm run cut -- --docs handin-10` from src/film/cuts.ts and src/film/sho
   - Do: hold 3 s, then scroll to "What Purser guarantees" (2 s), then hold 7 s (12 s)
   - Must show: "What Purser guarantees"
 
-## 4:22–4:39 · What is not done (x14)
+## 4:22–4:31 · What is not done (x14)
 
-- **X-visa-n**, 17 s · **capture** · The vic-3 record: the negative tests, only Purser enforces the binding
-  - Where: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-vic-3.md
-  - Do: hold 0.5 s, then scroll to "Negative test (F1, F2)" (1.5 s), then highlight "only Purser enforces the binding here", then hold 15 s (17 s)
-  - Must show: "only Purser enforces the binding here"
-  - On screen: caption "Sandbox did not refuse · only Purser held"; badge "Airi test card · test money"
+- Title card, 9 s: “What is not done / Alerts: live once Twilio keys are set / Sandbox settlement: simulated” (drawn by the cut)
 
-## 4:39–4:52 · Close (x15)
+## 4:31–4:44 · Close (x15)
 
 - Title card, 13 s: “Agents do the work. / The CFO signs only the exceptions. / Purser · Kit 11” (drawn by the cut)
 
-## 4:52–4:58 · End card (x16)
+## 4:44–4:50 · End card (x16)
 
 - End card, 6 s: kit11.max-31b.workers.dev · Try it yourself · Test money only: Airwallex sandbox · Alta testnet (formerly Metal) · Airi test card · simulated bank. Voice-over and music: AI-generated (ElevenLabs). (drawn by the cut)
