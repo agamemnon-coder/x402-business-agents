@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { REPO_BLOB } from "./metalStory.js";
 import { isLive, liveRuns, partnerNamesOf, type RunId, type RunRow } from "./runs.js";
 import { esc, icon } from "./ui.js";
+import { PROOF_SAMPLES, proofSamplePath } from "../proof/bundle.js";
 import { VISA_TAP_ID } from "./visaOverview.js";
 
 const ROOT = new URL("../../", import.meta.url);
@@ -165,7 +166,7 @@ export function verifyCalloutHtml(): string {
   return `<aside class="pverify" aria-labelledby="h-pverify">${icon("shield-check", 22)}<div><h2 id="h-pverify">${esc("Check a real approval yourself, offline")}</h2>
 <p data-rec="${esc(RECEIPT)}">${esc("The owner's own passkey approval of 7 Nov, published on 12 Nov: the passkey signed exactly those terms. Change one cent and it says NOT VALID. No network, no keys.")}</p>
 <p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p>
-<p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call.")}</p></div></aside>`;
+<p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call. No file yet? ")}<a href="${proofSamplePath("paid").slice(1)}" download="${PROOF_SAMPLES.paid}">${esc("A paid sample")}</a>${esc(" · ")}<a href="${proofSamplePath("refused").slice(1)}" download="${PROOF_SAMPLES.refused}">${esc("the refused sample")}</a></p></div></aside>`;
 }
 
 /** The chain's own rules, shared with /docs' diagram (14 Nov). */
