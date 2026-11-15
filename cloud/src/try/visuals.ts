@@ -102,7 +102,8 @@ function flowOf(name,box){
   // Already paid ("paid once"): every step done, as on the books screen (sweep, 15 Nov: it stopped at the passkey).
   if((name==='approve'||name==='pay')&&box.querySelector('.paidonce'))return [6,-1,-1];
   if(name==='approve')return [3,3,-1];
-  if(name==='pay'){if(box.querySelector('.refusal'))return [3,-1,3];return [3,3,-1]}
+  // A refusal: the passkey's step is done (the approval stands), the bank's is where it stopped (review, 15 Nov).
+  if(name==='pay'){if(box.querySelector('.refusal'))return [4,-1,4];return [3,3,-1]}
   if(name==='books'){if(box.querySelector('.paidstamp'))return [6,-1,-1];return [4,-1,4]}
   return null;
 }
