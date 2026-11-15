@@ -6,7 +6,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
-import { FILM_BUTTON, HOME_SUB, REASSURE, START, homePage } from "../src/redesign/home.js";
+import { FILM_BUTTON, HOME_SUB, REASSURE, START, VERIFY_BUTTON, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
@@ -102,8 +102,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // minutes, then the film; "See the proof" stays at the end of Home.
     expect([START, FILM_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film"]);
     expect(t.startsWith(`${HERO} ${HOME_SUB} Built on Airwallex · test money · `)).toBe(true);
-    expect(t).toContain(` ${START} ${FILM_BUTTON} ${REASSURE.sign}`);
-    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"']);
+    expect(t).toContain(` ${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.sign}`);
+    expect(hero(HOME).match(/class="btn[^"]*"/g)).toEqual(['class="btn primary big start"', 'class="btn big ghost film"', 'class="btn big ghost"']);
     // Every Try call to action opens the hands-on demo (TRY_URL), with /try/sign in the bundle or not.
     expect(hero(HOME)).toContain('<a class="btn primary big start" href="/try">');
     expect(hero(HOME)).toContain(`<a class="btn big ghost film" href="${FILM_URL}" target="_blank" rel="noopener">`);
@@ -113,7 +113,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Without /try/sign in the bundle the button leads to /try, never to a dead link, and the line under it says what /try is.
     expect(homePage()).not.toContain('href="try/sign"');
     expect(hero(homePage())).toContain('<a class="btn primary big start" href="/try">');
-    expect(words(hero(homePage()))).toContain(`${START} ${FILM_BUTTON} ${REASSURE.world}`);
+    expect(words(hero(homePage()))).toContain(`${START} ${FILM_BUTTON} ${VERIFY_BUTTON} ${REASSURE.world}`);
     // No link to the product tour or to Pricing, both gone (13 Nov, evening).
     expect(homePage()).not.toMatch(/href="\/?(tour|pricing)"/);
     expect(homePage()).not.toMatch(/href="\/?judge"/);

@@ -62,9 +62,10 @@ describe("Home, the enterprise pass", () => {
   it("has Try it in 2 minutes (primary) and Watch the film in the hero, the proof button with Books at the end", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film", "See the proof"]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
-    expect(homePage(undefined, { verifyUrl: "/verify" })).toContain(`<a class="btn big ghost" href="/verify">${VERIFY_BUTTON}</a></div>`);
-    for (const html of [ON, OFF]) expect(html).not.toContain(VERIFY_BUTTON);
+    // 15 Nov: /verify is live (#364), so "Verify a payment yourself" is the hero's third button; "" hides it.
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    for (const html of [ON, OFF]) expect(html).toContain(`<a class="btn big ghost" href="/verify">${VERIFY_BUTTON}</a></div>`);
+    expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(OFF).not.toContain('href="try/sign"');
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
@@ -75,9 +76,9 @@ describe("Home, the enterprise pass", () => {
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
     // 15 Nov: "test money" is said once outside the fold, in the hero's proof line.
-    expect(REASSURE).toEqual({ sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." });
+    expect(REASSURE).toEqual({ sign: "Your test company, deleted after 24 hours.", world: "Your test company, deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
-    expect(ON).toMatch(new RegExp(`${FILM_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
+    expect(ON).toMatch(new RegExp(`${VERIFY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
 
   it("A1: no heading says live; outside the fold, live is said only by the button to the hands-on demo, which runs live", () => {

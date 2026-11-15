@@ -182,9 +182,10 @@ export const START = "Try it in 2 minutes";
  * sentence opens the README (test/first-screen.test.ts holds the two equal).
  */
 export const HOME_SUB = IDEA;
-/** The hero's secondary buttons: the film; then "Verify a payment yourself" once the site serves /verify (opts.verifyUrl). */
+/** The hero's secondary buttons: the film, then "Verify a payment yourself" (/verify, live since #364; opts.verifyUrl "" hides it). */
 export const FILM_BUTTON = "Watch the film";
 export const VERIFY_BUTTON = "Verify a payment yourself";
+export const VERIFY_URL = "/verify";
 /** The proof line's first words; its figures are Home's three measured ones (src/redesign/scale.ts homeScaleStats). */
 export const PROOF_LEAD = ["Built on Airwallex", "test money"] as const;
 /** The proof line: what it runs on, then three figures, each a link to its source; none without its record. */
@@ -203,8 +204,9 @@ export function proofLineHtml(stats = homeScaleStats()): string {
  * 24 h"). The same line with /try/sign in the bundle or not; both keys kept for the callers.
  */
 // Partner scan, 14 Nov: Visa named in full in "Works with" takes a row on a phone, so "test money" moves up into this line.
-// 15 Nov: "test money" is said once outside the fold, in the hero's proof line, so this line no longer repeats it.
-export const REASSURE = { sign: "Your own test company, deleted after 24 hours.", world: "Your own test company, deleted after 24 hours." } as const;
+// 15 Nov: "test money" is said once outside the fold, in the hero's proof line, so this line no longer repeats it; "own"
+// went with the Verify button, to keep Home within its 378 words.
+export const REASSURE = { sign: "Your test company, deleted after 24 hours.", world: "Your test company, deleted after 24 hours." } as const;
 /** The link in the provenance line: it opens the footer's fold of the same name. */
 export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
@@ -362,6 +364,7 @@ const dayMonth = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numer
  * opts.receipt: another receipt for the hero (a file of the repository, or a parsed one); the committed one by default.
  */
 export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; partnerUrl?: string; smallCompanyUrl?: string; receipt?: string | object; /** /verify, once the site serves it: the hero's third button. */ verifyUrl?: string } = {}): string {
+  const verifyUrl = opts.verifyUrl ?? VERIFY_URL;
   // The owner, 12 Nov: the button opens the hands-on demo on Purser Cloud (TRY_URL), with /try/sign in the bundle or not.
   const tryHref = TRY_URL;
   const awx = awxRun(), facts = heroDemoFacts(awx);
@@ -378,7 +381,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ${homeHeadingHtml()}
     <p class="what">${esc(HOME_SUB)}</p>
     ${proofLineHtml()}
-    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${opts.verifyUrl ? `<a class="btn big ghost" href="${esc(opts.verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
+    <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${verifyUrl ? `<a class="btn big ghost" href="${esc(verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>

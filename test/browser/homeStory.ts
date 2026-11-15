@@ -14,7 +14,7 @@
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { FILM_BUTTON, homeStats, START, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_BUTTON, homeStats, START, VERIFY_BUTTON, VERIFY_URL, WHATS_REAL } from "../../src/redesign/home.js";
 import { FILM_URL } from "../../src/config/brand.js";
 import { agentRun } from "../../src/redesign/run.js";
 import { homeScaleStats } from "../../src/redesign/scale.js";
@@ -45,9 +45,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
   // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  // 15 Nov (clarity): Try it in 2 minutes, then the film ("Verify a payment yourself" joins them once the site serves /verify).
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref} and the film`);
-  if (ctas[0]?.text !== START || ctas[1]?.text !== FILM_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${FILM_BUTTON}"`);
+  // 15 Nov (clarity): Try it in 2 minutes, then the film and "Verify a payment yourself" (/verify, live since #364).
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, VERIFY_URL])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, the film and ${VERIFY_URL}`);
+  if (ctas[0]?.text !== START || ctas[1]?.text !== FILM_BUTTON || ctas[2]?.text !== VERIFY_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${FILM_BUTTON}" and "${VERIFY_BUTTON}"`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");

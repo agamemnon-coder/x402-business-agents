@@ -105,7 +105,7 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
     // 15 Nov (clarity): the idea, its proof line, Try it in 2 minutes and the film, then the reassurance line.
     expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · test money · `)).toBe(true);
-    expect(t).toContain(" Try it in 2 minutes Watch the film Your own test company, deleted after 24 hours.");
+    expect(t).toContain(" Try it in 2 minutes Watch the film Verify a payment yourself Your test company, deleted after 24 hours.");
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
