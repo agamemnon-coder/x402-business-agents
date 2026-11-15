@@ -984,13 +984,19 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     await page.waitForSelector(".result .negcard", { timeout: 5_000 });
     ok(true, `${tag}: the negotiation card under "Ready to pay"`);
   };
-  for (const [width, scheme] of [[390, "light"], [1440, "light"]] as const) {
+  // Max (15 Nov): at 390, 1024 and 1440 px the chat, the meter, the rail chips and Activity never overlap, in every
+  // state: running, the refused turn, agreed, signed.
+  const noOverlap = async (page: Page, what: string) => { const hits = await overlaps(page); ok(hits.length === 0, `${what}: no two blocks overlap${hits.length ? ` (${hits.slice(0, 3).join(" | ")})` : ""}`); };
+  for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "light"]] as const) {
     const tag = `negotiation ${width}`;
     const ctx = await passkeyContext(width, scheme);
     const page = await ctx.newPage();
     const errors: string[] = [];
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
+    const vcdp = await ctx.newCDPSession(page);
+    await vcdp.send("WebAuthn.enable");
+    await vcdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
     const shot = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `try-negotiate-${n}-${width}.png`), fullPage: true }); };
     await toReady(page, tag);
     const card = await page.innerText(".result .negcard");
@@ -1007,6 +1013,13 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     ok(quick < 600, `${tag}: the spinner and Purser's thinking row at once (${quick} ms, the click's round trip included)`);
     await page.locator(".negcard li.typing.supplier").waitFor({ timeout: 15_000 });
     ok(true, `${tag}: the supplier's side types while its call runs`);
+    await noOverlap(page, `${tag} running`);
+    await page.locator(".negcard li.turn.refused").waitFor({ timeout: 15_000 });
+    await noOverlap(page, `${tag} the refused turn`);
+    if (width === 390) {
+      const col = await page.evaluate(() => { const m = document.querySelector(".negcard #meter")!.getBoundingClientRect(), t = document.querySelector(".negcard ol.turns")!.getBoundingClientRect(); const ls = [...document.querySelectorAll(".negcard ol.turns > li.turn .bubble")].map((b) => Math.round(b.getBoundingClientRect().left)); return { above: m.bottom <= t.top + 1, ls }; });
+      ok(col.above && col.ls.every((l) => Math.abs(l - col.ls[0]!) <= 2), `${tag}: one column, the meter above the chat (bubble left edges ${col.ls.join(", ")})`);
+    }
     await page.getByRole("heading", { name: NEG_COPY.agreedHead }).waitFor({ timeout: 30_000 });
     await page.locator(".negcard .sha.done").waitFor({ timeout: 10_000 });
     const turns = page.locator(".negcard ol.turns > li.turn");
@@ -1020,6 +1033,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     ok(/[0-9a-f]{64}/.test(await page.innerText(".negcard .negagreed")), `${tag}: the agreed terms' SHA-256`);
     ok(await page.locator("#main .btn.primary:visible").count() === 1 && (await page.textContent("#negsign")) === I.signAgreed, `${tag}: one main button, "${I.signAgreed}"`);
     ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (agreed)`);
+    await noOverlap(page, `${tag} agreed`);
     await shot("2-agreed");
     await page.click("#negsign");
     await page.waitForSelector(`h1:text-is("${APPROVE.heading}")`, { timeout: 20_000 });
@@ -1029,6 +1043,15 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     ok(true, `${tag}: the payee's IBAN on file, unchanged, among the signed terms`);
     await screenChecks(page, `${tag} approve`, width, 1, false);
     await shot("3-approve");
+    // Signed: the passkey made, the agreed terms approved with it and paid on the test bank, in /try's own flow.
+    await page.click(`.btn.primary:has-text("${APPROVE.create}")`);
+    await page.waitForSelector(`.btn.primary:has-text("Approve EUR 1,813.00 with your passkey")`, { timeout: 20_000 });
+    await page.click(`.btn.primary:has-text("Approve EUR 1,813.00 with your passkey")`);
+    await page.waitForSelector(".paidstamp", { timeout: 30_000 });
+    ok((await page.innerText("#main")).includes("1,813.00"), `${tag}: signed with the passkey and paid: EUR 1,813.00`);
+    await noOverlap(page, `${tag} signed`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (signed)`);
+    await shot("4-signed");
     ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
     await ctx.close();
   }

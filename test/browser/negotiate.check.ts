@@ -23,6 +23,10 @@ import { NEGOTIATE_COPY as C } from "../../cloud/src/try/negotiatePage.js";
 import { FINISH_LINKS } from "../../cloud/src/tryCopy.js";
 import { CHANGED_IBAN, type AgentAnswer } from "../../src/negotiate/negotiate.js";
 import { RULES } from "../../src/negotiate/rails.js";
+import { verifyProofBundle } from "../../src/proof/bundle.js";
+import { VERIFY_BUNDLE_VERDICT } from "../../src/proof/verifyPage.js";
+// The site's own /verify page and its policy (src/servers/dashboard.ts), served here as the site serves it.
+const { VERIFY_BUNDLE_PAGE, VERIFY_BUNDLE_CSP } = await import("../../src/servers/dashboard.js");
 
 const shots = process.argv[2] ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
@@ -64,6 +68,7 @@ for (const [key, value] of [["starts", "on"], ["starts_per_address_hour", 50], [
 const server = createServer(async (req, res) => {
   const chunks: Buffer[] = [];
   for await (const ch of req) chunks.push(ch as Buffer);
+  if (req.method === "GET" && req.url === "/verify") { res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": VERIFY_BUNDLE_CSP }); return res.end(VERIFY_BUNDLE_PAGE); }
   const headers = new Headers();
   for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
   const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
@@ -128,7 +133,10 @@ async function sane(page: Page, what: string): Promise<void> {
   ok((await turns.nth(1).locator(".stamp").innerText()).trim().toLowerCase() === C.stamp.toLowerCase(), `the IBAN swap's bubble carries the "${C.stamp}" stamp`);
   ok(await turns.nth(1).evaluate((n) => n.classList.contains("supplier") && n.querySelector(".pill.sim") !== null), "the supplier's bubble is on its side, with the simulated-supplier badge");
   const sides = await page.$$eval("ol.turns > li.turn .bubble", (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); return Math.round(r.left + r.width / 2); }));
-  ok(sides[0]! < sides[1]! && sides[2]! < sides[3]!, `Purser on the left, the supplier on the right (bubble centres ${sides.join(", ")})`);
+  // At phone width the chat is one column (Max, 15 Nov): every bubble starts at the same place; the two sides are told
+  // apart by name, avatar and the simulated-supplier badge. At 1440 (part 2) Purser is left, the supplier right.
+  const lefts = await page.$$eval("ol.turns > li.turn .bubble", (bs) => bs.map((b) => Math.round(b.getBoundingClientRect().left)));
+  ok(lefts.every((l) => Math.abs(l - lefts[0]!) <= 2), `390 px: the chat is one column (bubble left edges ${lefts.join(", ")}; centres ${sides.join(", ")})`);
   const chipsNow = await page.$$eval("#railchips li", (ls) => ls.map((l) => l.className));
   ok(chipsNow.length === 4 && chipsNow.every((c) => c.includes("ok")), "the four rail chips, green after the last turn");
   const meter = await page.locator("#meter").innerText();
@@ -160,6 +168,43 @@ async function sane(page: Page, what: string): Promise<void> {
   const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: C.download }).click()]);
   const proof = JSON.parse(readFileSync(await dl.path(), "utf8")) as Record<string, unknown>;
   ok(dl.suggestedFilename() === "purser-proof.json" && JSON.stringify(proof).includes("1813.00"), `the proof bundle downloads (${dl.suggestedFilename()})`);
+  // End to end (Max, 15 Nov): the amount the agents agreed is the amount in the terms the passkey signed. The agreement's
+  // hash names the agreed invoice (its reference); the terms' canonical JSON hashes to the WebAuthn challenge; the proof
+  // file verifies with the /verify page's own code (src/proof/bundle.ts) in Node and on /verify itself in the browser;
+  // an edited proof file does not.
+  const agreedSha = /[0-9a-f]{64}/.exec(deal)![0];
+  const terms = proof.terms as Record<string, unknown>;
+  ok(terms.amount === "1813.00" && terms.currency === "EUR" && terms.reference === `BTX-2026-25-${agreedSha.slice(0, 8)}`,
+    `the signed terms carry the agreed amount, EUR 1813.00, and the agreement's hash in their reference (${String(terms.amount)}, ${String(terms.reference)})`);
+  const node = await verifyProofBundle(proof);
+  const failedChecks = node.checks.filter((x) => !x.ok).map((x) => x.check);
+  const challenge = node.checks.find((x) => x.check === "challenge");
+  ok(node.ok && failedChecks.length === 0 && !!challenge?.ok && createHash("sha256").update(proof.canonical as string).digest("hex") === proof.terms_sha256,
+    `the proof file verifies (Node, the /verify code): the terms' canonical JSON hashes to the passkey's challenge (${node.checks.length} checks${failedChecks.length ? `; failed: ${failedChecks.join(", ")}` : ""})`);
+  const edited = JSON.parse(JSON.stringify(proof)) as { terms: Record<string, unknown> };
+  edited.terms.amount = "1813.01";
+  const bad = await verifyProofBundle(edited);
+  ok(!bad.ok && bad.checks.some((x) => x.check === "terms hash" && !x.ok), "the same file with one cent more: NOT VALID (the terms hash no longer matches)");
+  // /verify in the browser: paste the file; then the edited one.
+  const vp = await ctx.newPage();
+  const verifyAsked: string[] = [];
+  vp.on("request", (q) => { const u = new URL(q.url()); if (u.pathname !== "/verify" && !u.pathname.startsWith("/assets/")) verifyAsked.push(u.pathname); });
+  await vp.goto(`${ORIGIN}/verify`);
+  const verdict = async (text: string) => {
+    await vp.fill("#v-paste", text);
+    await vp.click("#v-check");
+    await vp.locator("#v-verdict:not([hidden])").waitFor({ timeout: 10_000 });
+    await vp.waitForFunction((t) => (document.getElementById("v-paste") as HTMLTextAreaElement).value === t && document.querySelectorAll("#v-checks li").length > 0, text);
+    return vp.evaluate(() => ({ ok: document.getElementById("v-verdict")?.getAttribute("data-ok"), text: document.getElementById("v-verdict")?.textContent ?? "", lines: document.querySelectorAll("#v-checks li").length, pass: document.querySelectorAll("#v-checks li.ok").length, page: document.querySelector("main")?.textContent ?? "" }));
+  };
+  const good = await verdict(JSON.stringify(proof));
+  ok(good.ok === "true" && good.pass === good.lines && good.lines >= 10 && /1,?813\.00/.test(good.page), `/verify: VALID, every line passes (${good.pass}/${good.lines}), with EUR 1,813.00 in the terms`);
+  if (shots) await vp.screenshot({ path: join(shots, "verify-valid-390.png"), fullPage: true });
+  const worse = await verdict(JSON.stringify(edited));
+  ok(worse.ok === "false" && worse.text.includes(VERIFY_BUNDLE_VERDICT.invalid), `/verify: the edited file is NOT VALID ("${worse.text.trim().slice(0, 60)}")`);
+  if (shots) await vp.screenshot({ path: join(shots, "verify-edited-390.png"), fullPage: true });
+  ok(verifyAsked.length === 0, `/verify asked no server (${verifyAsked.join(", ") || "none"})`);
+  await vp.close();
   await sane(page, "live, paid");
   await shot("3-paid");
   await ctx.close();
@@ -193,6 +238,8 @@ async function sane(page: Page, what: string): Promise<void> {
   ok((await page.evaluate(() => (window as unknown as { typed: number }).typed)) === 0, "a recorded negotiation never shows a typing indicator");
   ok(started === 0, "the company /try started in this tab is used, no new start");
   ok(talk.includes(RULES.payee_unchanged), "the rails still refuse the bank change");
+  const sides2 = await page.$$eval("ol.turns > li.turn .bubble", (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); return Math.round(r.left + r.width / 2); }));
+  ok(sides2[0]! < sides2[1]! && sides2[2]! < sides2[3]!, `1440 px: Purser on the left, the supplier on the right (bubble centres ${sides2.join(", ")})`);
   await sane(page, "recorded");
   if (shots) await page.screenshot({ path: join(shots, "recorded.png"), fullPage: true });
   await ctx.close();

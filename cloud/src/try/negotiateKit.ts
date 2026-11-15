@@ -121,6 +121,12 @@ export const NEG_CSS = `
 .negcard .negacts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .negcard .negbox:not(:empty) { margin-top: 14px; }
 .neg-err { border: 1px solid var(--bad); background: var(--bad-soft); border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
+/* Phone width (Max, 15 Nov): one column, the meter and the rail chips above the chat, every bubble full width. */
+@media (max-width: 560px) {
+  .neg .turn.sourcing, .neg .turn.supplier { margin: 0; flex-direction: row; }
+  .neg .av { flex-basis: 28px; width: 28px; height: 28px; font-size: 12px; }
+  .neg .bubble { padding: 10px 12px; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .negspin { animation: negspin .8s linear infinite; }
   @keyframes negspin { to { transform: rotate(360deg); } }
@@ -131,7 +137,7 @@ export const NEG_CSS = `
   @keyframes negblink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
   .neg .track .fill, .neg .track .mk { transition: width .6s ease, left .6s ease; }
   .neg .railchips li.flash { animation: negflash .9s ease-out; }
-  @keyframes negflash { 0% { transform: scale(1.08); } 100% { transform: none; } }
+  @keyframes negflash { 0% { box-shadow: 0 0 0 4px currentColor; } 100% { box-shadow: 0 0 0 0 transparent; } }
   .neg .stamp { animation: negstamp .45s cubic-bezier(.2, 1.6, .4, 1) both; }
   @keyframes negstamp { from { opacity: 0; transform: rotate(-3deg) scale(1.8); } to { opacity: 1; transform: rotate(-3deg) scale(1); } }
   .negshake { animation: negshake .45s ease-in-out; }
