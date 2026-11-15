@@ -697,7 +697,9 @@ export const COMPANY = {
  */
 export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json" };
 
-export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
+export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents",
+  // 15 Nov: the agents' negotiation (cloud/src/try/negotiatePage.ts), a page of its own; same tab, so it finds this company.
+  negotiate: { href: "/try/negotiate", label: "Watch agents negotiate" } };
 
 /**
  * The recorded real runs screen 6 links to (kit11 /runs#<key>): each key and its date as src/redesign/runs.ts gives them

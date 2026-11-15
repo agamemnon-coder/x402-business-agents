@@ -33,6 +33,7 @@ import { edgeRoutes } from "./edge/routes.js";
 import { signedTrySession, tryGate } from "./try/gate.js";
 import { tryEngineRoutes } from "./try/engineRoutes.js";
 import { tryExtraEngineRoutes } from "./try/extraEngineRoutes.js";
+import { tryNegotiateRoutes, type NegotiateClaude } from "./try/negotiateRoutes.js";
 import { tryError, tryRoutes } from "./try/routes.js";
 import { DEAD_SESSIONS_PER_MINUTE, isTryTenant, noteTryFail, TryRefused, type TryConfig } from "./try/start.js";
 import { SwitchRefused } from "./try/switches.js";
@@ -108,6 +109,11 @@ export interface CloudEnv {
    * on the engine. Absent (the default): the /v1/try routes answer 404. Needs `engine`.
    */
   tryIt?: TryConfig;
+  /**
+   * /try/negotiate's two Claude agents (cloud/src/try/negotiateRoutes.ts): Claude for a test company under /try's caps
+   * and kill switch. Absent, or undefined for a company: the recorded negotiation, labelled.
+   */
+  negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined;
   /**
    * A company connects accounts it already has by OAuth (cloud/src/connect.ts, docs/real-customers.md): its Airwallex
    * account and its Moneybird administration. Absent (the default): the /v1/connect routes answer 404.
@@ -669,6 +675,7 @@ export const ROUTES: Route[] = [
   // The hands-on demo's engine routes (cloud/src/try/engineRoutes.ts): one block, the caller's own company only.
   ...tryEngineRoutes<Ctx>({ json, err, body }),
   ...tryExtraEngineRoutes<Ctx>({ json, err, body }),
+  ...tryNegotiateRoutes<Ctx>({ json, err, body }),
 
   // The hands-on deployment (cloud/src/try/routes.ts): one block, 404 unless the deployment runs the hands-on demo.
   ...tryRoutes<Ctx>({ json, err, body }),

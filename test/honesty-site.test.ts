@@ -305,8 +305,9 @@ describe("7. copy slips", () => {
   it("leaves the separate TAP run of 2 November out of Home, Proof and the deck: it is on /visa (Max, 5 Nov; Proof since his last round, item 2; Home since 7 Nov)", () => {
     expect(deckHtml(packFacts(), shots, "")).not.toMatch(/TAP run|2 November|LIMIT_EXCEEDED/);
     // Since 13 Nov /proof links the TAP run to /visa under its live-runs list ("Visa TAP run → /visa"); the run stays there.
-    // Judge panel, 15 Nov: /proof opens with Airwallex's own LIMIT_EXCEEDED decline of 7 Nov (awx-1, not the TAP run).
-    expect(proofPage().replace(/<p class="pr-more">[\s\S]*?<\/p>/, "").replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, "")).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
+    // Judge panel, 15 Nov: /proof opens with Airwallex's own LIMIT_EXCEEDED decline of 7 Nov (awx-1, not the TAP run); and
+    // since 15 Nov it shows the one-cent-over card test's LIMIT_EXCEEDED in its own block (test/card-cent.test.ts). Neither is TAP.
+    expect(proofPage().replace(/<p class="pr-more">[\s\S]*?<\/p>/, "").replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, "").replace(/<div class="card" id="awx-cent">[\s\S]*?<\/div>/, "")).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
     expect(homePage()).not.toMatch(/class="(?:septest|sep)"|TAP run|LIMIT_EXCEEDED/);
     for (const [name, html] of Object.entries({} as Record<string, string>)) {
       expect({ name, label: /Separate test, 2 November/.test(html) }).toEqual({ name, label: false });

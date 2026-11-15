@@ -16,6 +16,10 @@ const ID = "[^/]+";
 export const TRY_ENGINE_PATHS: readonly (readonly [methods: readonly string[], path: RegExp])[] = [
   [["GET", "HEAD"], /^\/try$/],
   [["POST"], /^\/v1\/try\/(start|session)$/],
+  // /try/negotiate (15 Nov, cloud/src/try/negotiatePage.ts): the agents' negotiation, its route, and the start's bot
+  // check for a visitor who opens it without a /try company in the tab.
+  [["GET", "HEAD"], /^\/try\/negotiate$/],
+  [["POST"], /^\/v1\/try\/(negotiate|challenge)$/],
   // Stage mode for the finals (cloud/src/try/stagePage.ts): the presenter's page, its counts and its QR code.
   [["GET", "HEAD"], /^\/try\/stage$/],
   [["GET"], /^\/v1\/try\/stage\/stats$/],
