@@ -9,7 +9,7 @@ export interface Logo { name: string; file: string; alt: string; height: number 
 export const BUILT_WITH: Logo[] = [
   { name: "Airwallex", file: "src/ui/logos/airwallex.png", alt: "Airwallex", height: 30 },
   // Alta (formerly Metal), 14 Nov: shown with the Alta team's OK in the hackathon Slack (docs/evidence/logo-permissions.md).
-  { name: "Alta", file: "src/ui/logos/alta.svg", alt: "Alta", height: 30 },
+  { name: "Alta", file: "src/ui/logos/alta.svg", alt: "Alta (formerly Metal)", height: 30 },
   { name: "Claude", file: "docs/assets/logos/claude-logo-slate.svg", alt: "Claude", height: 30 },
 ];
 export const BUILT_WITH_PNG = "docs/assets/logos/built-with.png";

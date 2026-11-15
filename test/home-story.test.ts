@@ -8,7 +8,8 @@ import { FILM_URL } from "../src/config/brand.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
-import { FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
+import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
+import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import { homeScaleStats, scaleStats } from "../src/redesign/scale.js";
 import { FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
@@ -120,6 +121,14 @@ describe("Home, the enterprise pass", () => {
     expect(ON).toContain('document.querySelectorAll("[data-real]")');
   });
 
+  it("the product card books the VAT as the engine books that invoice now (judge scan, 15 Nov): 1515, not the record's 1510", () => {
+    const [net, vat] = [SAMPLE.booked[0]!.debit!, SAMPLE.booked[1]!.debit!].map((a) => Math.round(Number(a) * 100));
+    expect(dutchVat(net!, vat!)).toBeNull();
+    expect(SAMPLE.booked.map((b) => b.account)).toEqual(["6200", AP_ACCOUNTS.inputVat, "2100"]);
+    expect(BOOKED.map((b) => b.account)).toEqual(["6200", AP_ACCOUNTS.foreignVat, "2100"]);
+    expect(BOOKED.map((b) => b.debit ?? b.credit)).toEqual(SAMPLE.booked.map((b) => b.debit ?? b.credit));
+  });
+
   it("the product card shows one /try run as its record holds it, names it, and says Claude read that run's invoice", () => {
     expect([SAMPLE.mode.reader, SAMPLE.mode.bank, SAMPLE.mode.money]).toEqual(["claude", "simulated", "test"]);
     const money = (a: string) => `${SAMPLE.invoice.currency} ${Number(a).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
@@ -129,7 +138,7 @@ describe("Home, the enterprise pass", () => {
       const card = /<figure class="hf"[\s\S]*?<\/figure>/.exec(mainOf(html))![0];
       expect(card).toContain(`data-rec="${TRY_SAMPLE_RECORD}"`);
       const t = text(card);
-      for (const v of [SAMPLE.invoice.supplier, `Invoice ${SAMPLE.invoice.number}`, money(SAMPLE.invoice.total), SAMPLE.invoice.due, `…${SAMPLE.invoice.account_ending}`, ...SAMPLE.booked.map((b) => `${b.account}`), ...SAMPLE.booked.map((b) => money((b.debit ?? b.credit)!))]) expect({ v, found: t.includes(v) }).toEqual({ v, found: true });
+      for (const v of [SAMPLE.invoice.supplier, `Invoice ${SAMPLE.invoice.number}`, money(SAMPLE.invoice.total), SAMPLE.invoice.due, `…${SAMPLE.invoice.account_ending}`, ...BOOKED.map((b) => `${b.account}`), ...SAMPLE.booked.map((b) => money((b.debit ?? b.credit)!))]) expect({ v, found: t.includes(v) }).toEqual({ v, found: true });
       // Jury review, 13 Nov: plain words for a CFO; the hash stays in the tooltip. The sample was signed with a virtual test
       // passkey (its record's mode), so the card says "a passkey", not Face ID.
       expect(t).toContain("Signed with a passkey · fingerprint of the terms");

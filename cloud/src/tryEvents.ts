@@ -84,7 +84,8 @@ const eventLineOf=(W)=>{
     const v={money:amount(f),status:status(f.status),why:found(f.findings),method:code(f.method)&&own(W.method,f.method)?W.method[f.method]:'',pages:num(f.pages),files:num(f.files),paid:num(f.paid),of:num(f.of),
       action:said2(W.actions,f.action),outcome:said2(W.actions,f.outcome),reason:said(f.reason),enforced:said(f.enforced)||said(f.refused)||(abroad?W.booksVat:open?fill(W.uncodedVat,{pct:open}):''),
       account:code(f.account),vat:/^P\d{1,2}$/.test(code(f.vat_code))?code(f.vat_code).slice(1)+'%':own(W.vat,code(f.vat_code))?W.vat[code(f.vat_code)]:code(f.vat_code)||(abroad?W.vat.PF_DE19:W.noVat),rail:said2(W.rails,f.rail),pay_on:day(f.pay_on)||code(f.pay_on),currency:/^[A-Z]{3}$/.test(String(f.pay_currency))?f.pay_currency:'',quote_id:/^[A-Za-z0-9-]{1,64}$/.test(String(f.quote_id))?String(f.quote_id):'',transfer_id:/^[A-Za-z0-9-]{1,64}$/.test(String(f.transfer_id))?String(f.transfer_id):'',rate:/^\d{1,6}(\.\d{1,12})?$/.test(String(f.client_rate))?String(f.client_rate):'',cap:code(f.reason)&&own(W.caps,f.reason)?W.caps[f.reason]:''};
-    let text=null;
+    // Judge scan, 15 Nov: "Waiting for your signature.", not "The invoice is now: waits for a signature."
+    let text=name==='ap.status'&&f.status==='waiting_cfo'?W.ev['ap.status_waiting']:null;
     for(const k of [name+'_why',name,name+'_plain'])if(text===null&&own(W.ev,k))text=fill(W.ev[k],v);
     if(text===null)text=W.step;
     if(tag==='money')text=text.replace(/\.$/,'')+' · '+W.money;

@@ -50,8 +50,9 @@ describe("the scene", () => {
     expect(page).not.toContain(svg);
     expect(page).not.toContain(SCENE_CSS);
     expect(page).toMatch(/<div class="hero"><div class="side"><h2 data-t="cs.side.title">Purser Cloud<\/h2>/);
-    expect(page).toContain('<html lang="en" data-theme="light">');
-    expect(page).toContain('<meta name="color-scheme" content="light">');
+    // 15 Nov (live measurement): the console follows a dark colour scheme, as /try does.
+    expect(page).toContain('<html lang="en">');
+    expect(page).toContain('<meta name="color-scheme" content="light dark">');
     expect(page).not.toMatch(/class="mk">P</);
   });
 });

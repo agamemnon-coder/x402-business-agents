@@ -60,7 +60,7 @@ CI runs these checks on every push; the CI badge at the top shows the result of 
 
 | Folder | What it holds |
 |---|---|
-| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta (formerly Metal), Visa via Airi), the ledger |
+| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta, Visa via Airi), the ledger |
 | `cloud/` | Purser Cloud on Cloudflare Workers: the console, its API, /try and the engine |
 | `worker/` | The public site's Worker (kit11): the pages and the relay for the dashboard and passkey approvals |
 | `docs/runs/` | The record of every live run: ids, amounts, timestamps |
@@ -86,7 +86,7 @@ The live FX quote in the signed terms, the sandbox transfer, the Cloud's Airwall
 
 | 1 · The agent asks | 2 · Code checks the limit | 3 · You sign the exact terms |
 |---|---|---|
-| A Claude agent proposes a payment: an invoice, a card charge, an x402 purchase. | Within the CFO's limits it pays alone; Airwallex and Alta (formerly Metal) hold the limit again. | Above them, the CFO's passkey (Face ID on iPhone) signs the SHA-256 of the exact terms. |
+| A Claude agent proposes a payment: an invoice, a card charge, an x402 purchase. | Within the CFO's limits it pays alone; Airwallex and Alta hold the limit again. | Above them, the CFO's passkey (Face ID on iPhone) signs the SHA-256 of the exact terms. |
 
 **Not signed is never paid.**
 
@@ -148,7 +148,7 @@ Purser's Visa Award entry: [docs/visa-award.md](docs/visa-award.md).
 
 ## Metal Award
 
-Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/metal](https://kit11.max-31b.workers.dev/alta) · [docs/metal-award.md](docs/metal-award.md)
+Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/alta](https://kit11.max-31b.workers.dev/alta) · [docs/metal-award.md](docs/metal-award.md)
 
 ## The business hypothesis
 

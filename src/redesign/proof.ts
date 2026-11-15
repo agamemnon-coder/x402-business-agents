@@ -89,6 +89,7 @@ h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 24px 0 1
 .pcard .ph .logo { height: 30px; padding: 0 10px; }
 .pcard .ph .logo + h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pcard .ph h3 { font-size: 19px; }
+.noend { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 0; }
 /* The card's main claim reads as a link, the same on all three cards (review 12 Nov): the accent colour, an accent underline. */
 .pcard > ul.lead a.c { font-size: 16.5px; color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .pcard > ul.lead a.c:hover { text-decoration-color: var(--accent); }
@@ -217,9 +218,11 @@ const mark = (file: string, name: string, w: number, dark = false) => `<span cla
 const CARD_MARK: Record<string, string> = {
   airwallex: mark("logo-airwallex.png", "", 109), visa: `<span class="logo tname">Visa</span>`, metal: mark("logo-alta.svg", "", 29), claude: mark("logo-claude-slate.svg", "", 69),
 };
+/** Judge scan, 15 Nov: "No endorsement implied" visibly beside the marks on /proof and the partner pages (it was only in "What's real?"). */
+export const ENDORSE_NOTE = `<small class="noend">No endorsement implied</small>`;
 export const LOGO = {
   // Alta (formerly Metal): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
-  metal: mark("logo-alta.svg", "Alta", 29),
+  metal: mark("logo-alta.svg", "Alta (formerly Metal)", 29),
   airwallex: mark("logo-airwallex.png", "Airwallex", 109),
   // 14 Nov (owner): Claude's press-kit SVG (docs/assets/logos/SOURCES.md); Visa as text, no logo image.
   claude: mark("logo-claude-slate.svg", "Claude", 69),
@@ -300,7 +303,7 @@ function t0CardParts(): { lead: Lead[]; what: string; facts: string; items: stri
   const j = t0Journal(md);
   if (!j) return null;
   return {
-    lead: [{ text: `${j.posted} journal entries in T:0's ledger, ${j.differences} differences`, href: "t0" }],
+    lead: [{ text: `${j.posted} journal entries in T:0, an outside accounting ledger: ${j.differences} differences`, href: "t0" }],
     what: `Purser's books of the main run, posted to T:0's shared sandbox entity on ${j.day} and read back line by line. Test data.`,
     facts: fact(String(j.posted), "entries posted") + fact(String(j.differences), "differences") + fact(`${j.debits} USD`, "debits equal credits"),
     items: [
@@ -338,7 +341,8 @@ ${visa ? card("visa", "Visa", visa.what, visa.facts, visa.items) : ""}
 ${card("metal", "Alta", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Alta at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Alta because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${t0 ? card("t0", "T:0", t0.what, t0.facts, t0.items) : ""}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(String(sp.byClaude), "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
-</div>`;
+</div>
+${ENDORSE_NOTE}`;
 }
 
 function moreCards(run: AgentRun): string {
@@ -372,12 +376,13 @@ function moreCards(run: AgentRun): string {
   const checked = t ? new Set(t.steps.filter((x) => x.tool === "verify_order").map((x) => JSON.stringify(x.input))).size : 0;
   const refunded = money.filter((e) => e.agent === "support" && /refund/i.test(e.what) && !e.refused).length;
   const box = (id: string, ic: string, h: string, n: string, p: string, inner: string, link?: [string, string]) => `<div class="card" id="${id}"><h3>${icon(ic, 18)}${n ? `<span class="n">${esc(n)}</span>` : ""}${esc(h)}</h3><p>${plain(p)}</p>${inner}${link ? `<a class="open" href="${esc(link[1])}">${esc(link[0])} ${icon("arrow-right", 14)}</a>` : ""}</div>`;
+  // Jury panel, 15 Nov: "37 of 39", never "N/N"; the two not stopped named from the same record (red.results, caught "after").
   return `<div class="more">
 ${box("stops", "ban", stopSub(story), stopFigure(story), `${stopsLine(story)}${story.metal && metalDetail(story) ? ` Alta's ${story.metal}: ${metalDetail(story)}.` : ""}`, fold("Show each one", stopItems))}
 ${box("faceid", "scan-face", faceIdLine(faceIdDecisions(r), faces.length).label, String(faceIdDecisions(r)), `Proposals the CFO decided on the phone${faces.some((f) => f.status === "COSIGNED") ? "; the mandate change needed a second signature too" : ""}. ${SECOND_APPROVER}`, fold(`Show the ${faces.length} signatures: ${faceIdDecisions(r)} decisions + ${faces.length - faceIdDecisions(r)} co-signature${faces.length - faceIdDecisions(r) === 1 ? "" : "s"}`, faceItems))}
 ${earlier.length ? box("earlier", "rotate-ccw", "earlier attempt, nothing paid", String(earlier.length), "The sandbox could not price the fee: nothing paid, not a limit.", fold("Show what followed", earlier.map((e) => li(earlierLine(e), "no", { label: e.proof.label, href: null })))) : ""}
 ${box("dispute", "users", "orders disputed", String(checked), `${checked - refunded} proven valid · ${refunded} wrong data, refunded.`, "", ["Watch the dispute", "watch?scene=2"])}
-${box("redteam", "shield-check", "attacks stopped", `${stoppedBefore}/${red.attempts}`, `${after.length ? `${after.length} more detected afterwards, not prevented (${after.join("; ")}). ` : ""}${dayLong(red.ran_at)}, a test world on simulated rails.`, fold("Later runs", [
+${box("redteam", "shield-check", "attacks stopped", `${stoppedBefore} of ${red.attempts}`, `${after.length ? `The other ${after.length} were detected afterwards, not prevented: ${after.join("; ")}. ` : ""}${dayLong(red.ran_at)}, a test world on simulated rails.`, fold("Later runs", [
   li(`${dayLong(rt.ran_at)}, against the agent loop: ${countOf(rt.summary.held, rt.summary.runs, true)} runs held (${new Set(rt.results.map((x) => x.id)).size} attacks, ${rt.runs_per_case} runs each; the Sourcing agent on ${family(rt.model)}, simulated rails).`, rt.summary.held === rt.summary.runs ? "ok" : "no"),
   `<li>${esc(`${dayLong(night.ran_at)}, Claude ${family(night.model)} as the attacker:`)} <a class="pf" href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md#5-red-team-opus-as-the-attacker" target="_blank" rel="noopener">the night batch's report, with what got through ↗</a></li>`,
 ]))}
