@@ -142,6 +142,7 @@ export const READBACK_CSS = `.awrb { display: grid; gap: 12px; }
 ul.awc { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 ul.awc li { font-size: 15px; line-height: 1.45; border-left: 3px solid var(--ok); padding-left: 11px; overflow-wrap: anywhere; }
 ul.awc li.no { border-left-color: var(--bad); }
+#awx-cent p.src a { display: inline-flex; align-items: center; min-height: 44px; }
 .awcards { display: grid; gap: 10px; }
 .awrb details.fold > div, .awrb details.fold > p { margin-bottom: 10px; }
 .awcard { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--sunken); min-width: 0; scroll-margin-top: 80px; }
