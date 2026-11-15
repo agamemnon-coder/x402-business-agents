@@ -666,7 +666,7 @@ describe("docs/video/ holds what the code writes", () => {
     expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere, v8: ${published.words} words in ${published.length} (`);
     // Since 13 Nov (the enterprise README) the walkthrough (film v10) is the link on the live demo's line at the top; no
     // duration in its words since 14 Nov (owner).
-    expect(README).toContain("[the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs)");
+    expect(README).not.toContain("https://youtu.be/mp9fmOYfBWc"); // 15 Nov: the walkthrough is off YouTube
     expect(read("docs/archive/internal/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
