@@ -159,53 +159,49 @@ In the main run: 24 decisions by Claude, 86 payments on Alta within the limits,
 And 6,932 tests pass.
 
 41
-00:03:28,633 --> 00:03:33,882
-A scorecard: 50 hostile and clean invoices, run twice with real Claude.
+00:03:28,633 --> 00:03:34,093
+The worst-case test: Purser's AI replaced by a script that always says pay,
 
 42
-00:03:33,882 --> 00:03:37,504
-No wrong payment by Claude alone, or with Purser.
+00:03:34,093 --> 00:03:37,297
+on 50 hostile and clean invoices, run twice.
 
 43
-00:03:37,504 --> 00:03:44,009
-But invoices that had to be held went to the CFO to sign: eleven a run for Claude alone,
+00:03:37,297 --> 00:03:40,791
+No wrong payment, and nothing paid past the CFO.
 
 44
-00:03:44,009 --> 00:03:45,266
-none with Purser.
+00:03:40,791 --> 00:03:44,504
+A payer with no rules made 35 wrong payments a run.
 
 45
-00:03:45,266 --> 00:03:48,519
-A naive script made 35 wrong payments a run.
+00:03:44,504 --> 00:03:49,018
+Even an AI that always says pay can't make Purser pay wrongly.
 
 46
-00:03:48,519 --> 00:03:55,172
-And with a script that always says pay in the model's place, Purser made no wrong payment.
-
-47
-00:03:56,967 --> 00:04:02,328
+00:03:50,833 --> 00:03:56,195
 A second use: each agent has its own card for the software it buys,
 
-48
-00:04:02,328 --> 00:04:04,329
+47
+00:03:56,195 --> 00:03:58,195
 with limits the CFO sets.
 
-49
-00:04:04,329 --> 00:04:08,890
+48
+00:03:58,195 --> 00:04:02,756
 The CFO can freeze a card with Face ID from Purser Cloud.
 
-50
-00:04:14,967 --> 00:04:19,288
+49
+00:04:08,833 --> 00:04:13,154
 Purser: AI agents pay the bills, the CFO signs the exceptions,
 
-51
-00:04:19,288 --> 00:04:21,379
+50
+00:04:13,154 --> 00:04:15,245
 and every step can be checked.
 
-52
-00:04:21,379 --> 00:04:24,236
+51
+00:04:15,245 --> 00:04:18,103
 Built on Airwallex, with test money only.
 
-53
-00:04:24,236 --> 00:04:25,351
+52
+00:04:18,103 --> 00:04:19,218
 Try it yourself.
