@@ -14,6 +14,7 @@ import { existingDoc, foldHtml, outLink, productPage, repoHref, repoText, siteLi
 
 export { existingDoc };
 import { esc, icon, TRY_URL } from "./ui.js";
+import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
 import { SECOND_KEY_COPY } from "../policy/secondKey.js";
 
 const day = (iso: string) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(iso));
@@ -497,8 +498,8 @@ export function securityPage(): string {
     key: "security", title: "Security and trust", h1: "Security and trust", label: "Sandbox and testnet only",
     lead: securityLead(),
     description: "How Purser protects company money: signatures over the exact terms, no customer money held, limits outside the prompt, a hash-chained audit log, the red team's results, and what is not in place yet. Sandbox and testnet only.",
-    css: SECURITY_VIZ_CSS,
-    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>`,
+    css: SECURITY_VIZ_CSS + CI_CSS,
+    body: `<div class="links">${outLink(repoHref(CONTROLS_MATRIX), "Every risk, its control and its test")}</div>\n${securityViz()}\n<div class="cols c3">\n  ${cards.map(cardHtml).join("\n  ")}\n</div>\n${ciChecksHtml()}`,
     source: `Source: ${ZERO_TRUST_REPORT}, ${HOSTILE_RECORD_FILE}, ${ANCHOR_RUN}, ${REDTEAM_REPORT} and the later red-team records, ${AUDIT_LOG}, and the docs each fold names.`,
     real: [
       "Sandbox and testnet only: Airwallex's sandbox, Alta's testnet, test money.",
