@@ -1293,6 +1293,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.goto(`${base}/airwallex`, { waitUntil: "load" });
       if (await page.evaluate(`document.getElementById("controls").open`)) fail(`/airwallex ${tag}: the cards' fold is open without a link into it`);
     }
+    // /airwallex/calls (15 Nov): every Airwallex API call in the run records; the hash lines in words, every link absolute.
+    {
+      const res = await page.goto(`${base}/airwallex/calls`, { waitUntil: "load" });
+      if (res?.status() !== 200) fail(`/airwallex/calls ${tag}: answered ${res?.status()}`);
+      await look(page, `/airwallex/calls ${tag}`, w);
+      const c = (await page.evaluate(`(() => ({ hash: /\\d+ of \\d+ transfers carry the signed hash/.test(document.body.innerText), runs: document.querySelectorAll("details.awc-run").length,
+        rel: [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")).filter((h) => !/^(https?:|#|\\/)/.test(h)).length }))()`)) as { hash: boolean; runs: number; rel: number };
+      if (!c.hash || c.runs < 1 || c.rel) fail(`/airwallex/calls ${tag}: ${JSON.stringify(c)}`);
+    }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);
     // Any other address: the clean 404 page, with the four tabs.
@@ -1373,4 +1382,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
