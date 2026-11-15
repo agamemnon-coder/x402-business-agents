@@ -23,7 +23,8 @@ import type { Hex } from "viem";
 import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
-import { airwallexCallsIn } from "../redesign/scale.js";
+import { AWX_CALLS_LABEL } from "../redesign/scale.js";
+import { apiTrail } from "../airwallex/apiTrail.js";
 import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
 const ROOT = resolve(import.meta.dirname, "../..");
@@ -209,9 +210,8 @@ function figures(pages: Record<string, string>) {
   add(G, ts.failed === 0 ? "pass" : "FAIL", "the last full test run had no failure", `failed ${ts.failed}`, "docs/assets/test-summary.json");
   const records = [...filesIn("docs/runs", /\.json$/), ...filesIn("docs/demo", /\.json$/)];
   cmp("/proof: sandbox and testnet runs", liveRunCount(), proofBand.get("sandbox and testnet runs"), "/runs' rows (src/redesign/runs.ts liveRunCount)");
-  let calls = 0;
-  for (const f of records) { try { calls += airwallexCallsIn(json(f)); } catch { /* not JSON */ } }
-  cmp("/proof: Airwallex sandbox API calls logged", calls, proofBand.get("Airwallex sandbox API calls logged"), "the call logs in docs/runs and docs/demo (src/redesign/scale.ts airwallexCallsIn)");
+  // 15 Nov: one Airwallex count on /proof, the trail's (the page's own code: /airwallex/calls lists the same calls).
+  cmp(`/proof: ${AWX_CALLS_LABEL}`, apiTrail().calls, proofBand.get(AWX_CALLS_LABEL), "the Airwallex API trail of the run records (src/airwallex/apiTrail.ts, listed on /airwallex/calls)");
   const tx = new Set<string>();
   for (const f of [...records, ...filesIn("docs/runs", /\.md$/)]) for (const m of read(f).matchAll(/testnet\.metalntwx\.com\/tx\/(0x[0-9a-f]{64})/g)) tx.add(m[1]!);
   cmp("/proof: Alta testnet transactions", tx.size, proofBand.get("Alta testnet transactions"), "distinct explorer links in docs/runs and docs/demo, counted here");
