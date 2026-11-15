@@ -132,7 +132,8 @@ try {
   await frame(page, "06-paid");
   // One cent: → opens screen 5's own link; the presenter types the cent; → pays.
   await next(page);
-  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00", null, { timeout: 20_000 });
+  // The panel opens with the one-cent change filled in (15 Nov); the presenter types it anyway, as a person would.
+  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01", null, { timeout: 20_000 });
   await page.fill("#p-amt", "1850.01");
   await frame(page, "07-change");
   await page.locator("#p-amt").blur();

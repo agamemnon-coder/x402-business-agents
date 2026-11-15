@@ -138,22 +138,26 @@ describe("the start's partners", () => {
     const html = tryPage("n", { origin: ORIGIN, rpId: RP });
     expect(html).toContain(JSON.stringify(START_LOGOS));
     // Airwallex is the header's "Built on Airwallex" badge, not a logo in this row (14 Nov, owner).
-    // Judge panel, 15 Nov: Alta's logo's alt names it as Alta (formerly Metal).
     expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta (formerly Metal)", "Claude"]);
   });
 });
 
-describe("what's real here (the start's proof strip)", () => {
-  it("has four chips, says the suite's count from its last full run, and invents no number", async () => {
+describe("proof in numbers (the start's and the finish's band)", () => {
+  it("shows only the records' figures, each linked, and the suite's count from its last full run; never a fraction", async () => {
     const { testsPassing } = await import("../cloud/src/tryPage.js");
+    const { PROOF_FIGURES } = await import("../cloud/src/try/proof.gen.js");
+    const { PROOF_BAND } = await import("../cloud/src/tryCopy.js");
     const suite = JSON.parse(readFileSync("docs/assets/test-summary.json", "utf8")) as { passed: number; failed: number };
-    expect(START.real).toHaveLength(4);
     expect(testsPassing()).toBe(suite.passed.toLocaleString("en-US"));
-    // "all passing" holds only while the last full run failed nothing.
+    // "passing" holds only while the last full run failed nothing.
     expect(suite.failed).toBe(0);
     const html = tryPage("n", { origin: ORIGIN, rpId: RP });
     expect(html).toContain(`const TESTS_PASSING=${JSON.stringify(testsPassing())};`);
-    for (const r of START.real) expect(r.replace("{n}", "1")).not.toMatch(/\d+\s*\/\s*\d+/);
-    expect(START.real.filter((r) => /\d/.test(r.replace("{n}", "")) && !/SHA-256/.test(r))).toEqual([]);
+    expect(html).toContain(`const PROOF_FIGS=${JSON.stringify(PROOF_FIGURES)};`);
+    // Every figure has its label, and no label carries a number of its own or a fraction.
+    for (const f of PROOF_FIGURES) expect(PROOF_BAND.labels[f.key], f.key).toBeTruthy();
+    for (const l of Object.values(PROOF_BAND.labels)) { expect(l).not.toMatch(/\d/); expect(l).not.toMatch(/\//); }
+    // The start and the finish both draw it.
+    expect(html.match(/proofBand\(\)/g)!.length).toBeGreaterThanOrEqual(3);
   });
 });

@@ -23,8 +23,8 @@ export const VIS = {
   charts: "Your test company in numbers",
   source: "From this test company's own records. Test money.",
   cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "Opening + FX", now: "Now", note: "Opening + FX is the opening balance plus the FX conversion into this currency. Now is the simulated bank's balance; each step is the ledger's bank lines." },
-  spend: { head: "Spend by account", note: "Debits on expense accounts in the ledger, including the sample already on file." },
-  checks: { head: "Invoices checked", passed: "Passed", held: "Held", of: "invoices", note: "Including the sample already on file." },
+  spend: { head: "Spend by account", note: "Debits on expense accounts in the ledger, including the sample invoice already on file." },
+  checks: { head: "Invoices checked", passed: "Passed", held: "Held", of: "invoices", note: "Including the sample invoice already on file." },
 } as const;
 
 /** Expense accounts' names, by number (the chart in src/ledger/accounts.ts): the bar chart's labels. */

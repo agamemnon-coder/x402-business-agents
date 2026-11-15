@@ -244,7 +244,7 @@ describe("the copy", () => {
     // 14 Nov (owner): holds and refusals say why first ("work 3" to "work 6", "pay 8" the refusal's proof unfolded).
     // 12 Nov (one-tap pay): screen 4 comes after paid; its paid-once and failed states are pinned at their own counts.
     // Jury review, 13 Nov: the start screen's four states carry the line on what the visit is (START.what).
-    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 3", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "work 2", "work 10", "invoice 6", "work 11", "work 12", "approve 6", "approve 7", "approve 8", "approve 16", "company 4", "approve 3"]);
+    expect(Object.keys(COPY.OVER_BUDGET)).toEqual(["start 0", "start 1", "start 2", "start 3", "pay 7", "pay 8", "invoice 4", "invoice 5", "books 0", "books 1", "work 4", "work 5", "work 6", "books 3", "books 4", "books 5", "company 0", "company 1", "company 2", "company 3", "approve 2", "approve 4", "approve 9", "approve 10", "approve 11", "approve 12", "approve 13", "approve 14", "approve 15", "approve 5", "invoice 6", "approve 6", "approve 7", "approve 8", "approve 16", "company 4", "approve 3", "invoice 2", "invoice 3", "work 15", "pay 1", "pay 2", "pay 3", "pay 4", "pay 5", "pay 6", "pay 9", "work 2", "work 3", "work 10", "work 11", "work 12", "invoice 7", "pay 10", "company 5"]);
     // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs; Approve shows the hash's start.
   });
 
@@ -258,8 +258,8 @@ describe("the copy", () => {
     expect(COPY.APPROVE.fileAgain).toBe("File it again");
     expect(COPY.APPROVE.terms).toBe("Show the exact terms");
     expect(Object.values(COPY.METHOD)).toEqual(["Face ID", "Touch ID", "fingerprint", "Windows Hello", "your passkey"]);
-    expect(COPY.PAY.heading).toBe("Pay it with your signature.");
-    expect(COPY.PAY.line).toBe("These are the terms you signed. Change one and press Pay.");
+    expect(COPY.PAY.heading).toBe("Try to change it.");
+    expect(COPY.PAY.line).toBe("These are the terms you signed. Change any field and press Pay: Purser's real check answers.");
     expect(COPY.PAY.button).toBe("Pay with my signature");
     expect(COPY.PAY.stamp).toBe("Refused by Purser");
     expect(COPY.PAY.executor).toBe("Purser's payment check: refused (the terms do not match what was approved)");
@@ -267,8 +267,8 @@ describe("the copy", () => {
     expect(COPY.PAY.roundTrip).toBe("Round trip {n} ms, measured in your browser");
     expect(COPY.PAY.transfers).toBe("Transfers made: {n}");
     expect(COPY.PAY.raw).toBe("Raw answer");
-    expect(COPY.PAY.putBack).toBe("Put back what you signed");
-    expect(COPY.PAY.paidOnce).toBe("These are the terms you signed. They were paid once.");
+    expect([COPY.PAY.seeResult, COPY.PAY.another]).toEqual(["See your result", "Try another change"]);
+    expect(COPY.APPROVE.paidOnce).toBe("These are the terms you signed. They were paid once.");
     expect(COPY.PAY.retry).toBe("Try the payment again");
     expect(`${COPY.PAY.vAmountCent} ${COPY.PAY.vCover}`).toBe("You changed the amount by one cent. Your signature does not cover that.");
     // The page never says the server proved Face ID: the method is only ever the device's word in the button.
@@ -299,7 +299,6 @@ describe("the copy", () => {
     expect(COPY.BOOKS.what).toBe("What Purser did");
     expect(COPY.COMPANY.download).toBe("Download your test company's records");
     // 14 Nov (owner): the records as a PDF a person reads; the JSON a quiet link for developers.
-    // Judge scan, 15 Nov: the time is the engine's upload to paid, and says so beside the run clock's "start to finish".
     expect(COPY.COMPANY.done).toBe("Done: {money} read, checked, signed and paid, {time} from upload to paid. Nothing real moved.");
     expect(COPY.COMPANY.json).toBe("Download as JSON (for developers)");
     expect(COPY.COMPANY.again).toBe("Start again");
@@ -482,7 +481,7 @@ interface Kit {
   signedOf(c: unknown): unknown;
   hashDiff(a: string, b: string): { a: [string, boolean][]; b: [string, boolean][] };
   normAmount(raw: string, like?: string): string | null;
-  payBody(terms: Record<string, unknown>, v: { amount: string; beneficiary_name: string; iban_last4: string }, credential: unknown): unknown;
+  payBody(terms: Record<string, unknown>, v: Record<string, string>, credential: unknown): unknown;
   changedFields(signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string[];
   verdict(W: typeof COPY.PAY, signed: Record<string, unknown>, sent: Record<string, unknown>, changed: unknown): string;
   methodOf(M: typeof COPY.METHOD, ua: string): string;
@@ -572,10 +571,10 @@ describe("signing and paying, in the page's own script", () => {
       expect(kit.normAmount(raw), raw).toBeNull();
   });
 
-  it("sends the pay route exactly the stored terms with the three fields' values written in, and the kept credential: nothing else", () => {
-    const terms = { schema: "kit11.approval-terms/v1", amount: "1850.00", beneficiary_name: "Bergtex Textil GmbH", iban_last4: "3000", currency: "EUR", nested: { a: "1" } };
+  it("sends the pay route exactly the stored terms with the six fields' values written in, and the kept credential: nothing else", () => {
+    const terms = { schema: "kit11.approval-terms/v1", amount: "1850.00", beneficiary_name: "Bergtex Textil GmbH", iban_last4: "3000", currency: "EUR", bic: "COBADEFFXXX", invoice_no: "BTX-2026-21", nested: { a: "1" } };
     const cred = { id: "AQID", response: {} };
-    const body = kit.payBody(terms, { amount: "1850.01", beneficiary_name: "Bergtex Textil GmbH", iban_last4: "3000" }, cred) as Record<string, unknown>;
+    const body = kit.payBody(terms, { amount: "1850.01", currency: "EUR", beneficiary_name: "Bergtex Textil GmbH", iban_last4: "3000", bic: "COBADEFFXXX", invoice_no: "BTX-2026-21" }, cred) as Record<string, unknown>;
     expect(Object.keys(body)).toEqual(["terms", "credential"]);
     expect(body).toEqual({ terms: { ...terms, amount: "1850.01" }, credential: cred });
     expect(terms.amount).toBe("1850.00");

@@ -70,6 +70,8 @@ export interface Pages {
   proof?: string;
   /** /verify: a /try proof bundle checked in the browser (src/proof/verifyPage.ts). */
   verify?: string;
+  /** /verify/samples/<file>: the committed sample proof bundles, byte for byte (docs/proof/), as downloads. */
+  proofSamples?: Record<string, string>;
   /** /trace: any payment of the main run, step by step (no script); absent in a bundle built before it. */
   trace?: string;
   /** /runs: every live run, newest first (no script); absent in a bundle built before it. */
@@ -213,6 +215,9 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/llms.txt" && pages.llms) return new Response(pages.llms, { headers: { ...COMMON_HEADERS, "content-type": "text/plain; charset=utf-8" } });
   if (path === "/proof.json" && pages.proofJson) return new Response(pages.proofJson, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
   if (path === "/receipt-sample.json" && pages.receiptSample) return new Response(pages.receiptSample, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" } });
+  // The sample proof bundles, for a visitor with no file of their own to drop on /verify. Only the names the build carries.
+  const sample = path.startsWith("/verify/samples/") ? path.slice("/verify/samples/".length) : "";
+  if (sample && pages.proofSamples && Object.hasOwn(pages.proofSamples, sample)) return new Response(pages.proofSamples[sample]!, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "content-disposition": `attachment; filename="${sample}"` } });
   if (path === "/t0-readback.json" && pages.t0Readback) return new Response(pages.t0Readback, { headers: { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8", "content-disposition": 'attachment; filename="t0-readback.json"' } });
   if (path === "/assets/approve.js") return new Response(pages.client, { headers: { ...COMMON_HEADERS, "content-type": "text/javascript; charset=utf-8" } });
   if (path === "/assets/inter.woff2") {

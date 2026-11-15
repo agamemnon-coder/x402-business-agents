@@ -71,7 +71,9 @@ describe("S3: /try's money-flow strip after a payment that was already made (pai
 
   it("the page marks its paid-once line with the class the strip reads", () => {
     const html = tryPage("N0NCE", { origin: "https://x.test", rpId: "x.test" });
-    expect(html.match(/el\('p','big paidonce',Y\.paidOnce\)/g)?.length).toBe(2);
-    expect(html).not.toContain("el('p','big',Y.paidOnce)");
+    // The approval's line, and screen 4's "pay it twice" card (15 Nov, round 7), both carry the class.
+    expect(html).toContain("el('p','big paidonce',C.approve.paidOnce)");
+    expect(html).toContain("el('section','why card once paidonce',");
+    expect(html).not.toContain("el('p','big',C.approve.paidOnce)");
   });
 });

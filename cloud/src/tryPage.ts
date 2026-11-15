@@ -28,7 +28,7 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
-import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROOF_BAND, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { VERIFY_YOURSELF } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
@@ -36,6 +36,8 @@ import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
 import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
+import { PROOF_FIGURES } from "./try/proof.gen.js";
+import { WORST_CASE_DOC, WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -101,6 +103,13 @@ form { display: grid; gap: 12px; }
 .f { display: grid; gap: 4px; min-width: 0; align-content: start; }
 .f label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two > .f { min-width: 0; }
+/* The currency beside the amount, one control (15 Nov). */
+.amtrow { display: flex; gap: 6px; min-width: 0; }
+.amtrow select { flex: none; width: 84px; padding: 0 8px; }
+.amtrow input { flex: 1; }
+.writeh { margin-top: 10px; }
+.trick { font-size: 14px; }
 input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 400 16px/1.2 Inter, system-ui, sans-serif; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .02em; }
 .hint { font-size: 14px; color: var(--muted); margin: 0; }
@@ -123,6 +132,9 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .result { margin-top: 20px; }
 .card[hidden]:first-child + .result { margin-top: 0; }
 .result .big { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+/* A line aimed at the AI, flagged by the engine (15 Nov): calm, under the answer. */
+.result .flagged { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--sunken); border: 1px solid var(--border); font-size: 14px; line-height: 1.45; }
+.result .flagged .i { flex: none; margin-top: 1px; color: var(--accent); }
 .result .ok { color: var(--ok); }
 .result .bad { color: var(--bad); }
 .result ul { margin: 0 0 12px; padding-left: 20px; }
@@ -175,7 +187,6 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes litrow { 0% { opacity: .01; background: transparent; } 35% { opacity: 1; background: var(--accent-soft); } 100% { background: transparent; } }
 @keyframes ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); } 100% { box-shadow: 0 0 0 16px transparent; } }
 @keyframes shake { 0%, 100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
-@keyframes glow { from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 14%, transparent); } to { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 24%, transparent); } }
 @keyframes stampin { 0% { opacity: .01; transform: scale(1.18) rotate(-4deg); } 100% { opacity: 1; transform: none; } }
 @keyframes slidein { from { opacity: .01; transform: translateX(-10px); } }
 /* Screen 2: the invoice as the engine's answer has it, its rows lit one by one once the answer is in. */
@@ -223,9 +234,28 @@ main > h1 { animation: slide .34s cubic-bezier(.2,.7,.2,1) both; }
 .btn.asking { animation: ring 1.3s ease-out infinite; }
 .tick { display: flex; align-items: center; gap: 8px; color: var(--ok); font-weight: 700; }
 .tick .i { animation: pop .5s ease-out both; }
-/* Screen 4: a field that differs from the signed value glows; the refusal shakes once and says the transfers in big type. */
-.f.changed input { border-color: var(--bad); animation: glow 1.2s ease-in-out infinite alternate; }
-.refusal.shake { animation: shake .5s ease-in-out both; }
+/* Screen 4 (15 Nov, owner: "it glows red when you change something"): a changed field says so in one small word; the
+   refusal is a calm, precise diff: what was signed struck through, what was asked marked, one red word "Refused". */
+.f .fh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.f .fh label { margin: 0; }
+.f .chg { font-size: 12px; font-weight: 600; color: var(--muted); }
+.f.changed input { border-color: var(--text); }
+.screen.pay .why.refusal .head, .screen.pay .why.once .head { color: var(--text); font-size: 20px; }
+.why .head .no { color: var(--bad); }
+.why.once .head .i { color: var(--ok); }
+ul.diff { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+ul.diff li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 9px 12px; border-radius: 12px; background: var(--sunken); border: 1px solid var(--border); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+ul.diff .dk { flex-basis: 100%; font-size: 13px; font-weight: 600; color: var(--muted); }
+ul.diff s.old { color: var(--muted); }
+ul.diff .arr { color: var(--faint); }
+ul.diff mark.new { background: none; color: var(--text); font-weight: 700; text-decoration: underline 2px var(--accent); text-underline-offset: 3px; }
+.why .sigl { margin: 0 0 8px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.attacks { margin-top: 14px; }
+.attacks .ah { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.attacks .acts { margin-top: 0; }
+.btn.atk { font-size: 14px; min-height: 40px; padding: 0 14px; }
+.btn.atk .i { color: var(--muted); }
+.acts.end { margin-top: 14px; }
 .proof.xfer { margin: 6px 0 4px; font-size: 26px; line-height: 1.2; font-weight: 750; color: var(--text); font-variant-numeric: tabular-nums; }
 /* Screen 5: a calm stamp, the terms' hash, the books' lines sliding in. */
 .paidstamp { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 2px 0 6px; }
@@ -254,6 +284,7 @@ pre.terms { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var
 .outcome { margin-top: 16px; }
 .stamp { display: inline-block; margin: 0 0 10px; padding: 2px 10px; border: 2px solid var(--bad); border-radius: 8px; color: var(--bad); font-weight: 750; font-size: 17px; letter-spacing: .02em; }
 .layer { margin: 0 0 6px; font-size: 15px; }
+.why .hashes { margin: 0 0 12px; display: grid; gap: 2px; }
 .hash { margin: 0; font-size: 12px; line-height: 1.6; color: var(--faint); overflow-wrap: anywhere; }
 .hash .hl { display: inline-block; min-width: 52px; color: var(--muted); font-family: Inter, system-ui, sans-serif; font-weight: 600; }
 .hash mark { background: none; color: var(--text); font-weight: 600; }
@@ -303,9 +334,9 @@ ul.did .dic svg { animation: pop .5s ease-out both; animation-delay: .25s; }
 ul.did li:nth-child(2) .dic svg { animation-delay: .37s; } ul.did li:nth-child(3) .dic svg { animation-delay: .49s; }
 .acts.next { margin-top: 18px; }
 .btn.proofl { gap: 8px; }
-.more { margin: 12px 0 0; font-size: 14px; color: var(--muted); line-height: 1.8; }
-.more a { font-weight: 600; }
-.more .sep { color: var(--faint); }
+.acts.more { margin: 12px 0 0; }
+.acts.more .btn { font-size: 14px; min-height: 40px; padding: 0 14px; }
+.acts.more .btn .i { color: var(--muted); }
 .records { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--border); }
 .records .muted { margin: 0; font-size: 14px; }
 .records .acts { margin-top: 10px; }
@@ -400,10 +431,10 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
    skeleton as tall as the receipt and the lines under it. */
 @media (max-width: 1023px), (pointer: coarse) {
   main .tabs button { min-height: 44px; }
-  .screen:not(.start) .link, .more a, a.proofl:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; }
+  .screen:not(.start) .link, a.proofl:not(.btn) { display: inline-flex; align-items: center; min-height: 44px; }
+  .acts.more .btn, .btn.atk { min-height: 44px; }
   .hint .link, p .link { vertical-align: middle; }
   .screen:not(.start) details > summary { min-height: 44px; padding: 12px 0; box-sizing: border-box; }
-  .more { line-height: 1.4; }
 }
 .screen:not(.start) details > summary:focus-visible { outline-offset: 0; border-radius: 6px; }
 .receipt.skel .sk.pill { width: 112px; height: 22px; border-radius: 999px; margin-top: 4px; }
@@ -489,7 +520,7 @@ body.present p.ids, body.present .acts.pdfl, body.present .xfer { display: none;
  * - normAmount(raw, like?): an amount as people write it (10k, 10.000, € 10.000,00, 1850,01 ...), in like's format,
  *   or null: normaliseAmount, cloud/src/try/amount.ts, embedded by its own source (one implementation for screens 1
  *   and 4 and the compose route).
- * - payBody(terms, values, credential): the pay route's body: the stored terms with the three fields' values written in,
+ * - payBody(terms, values, credential): the pay route's body: the stored terms with the six fields' values written in,
  *   and the kept credential; nothing else.
  * - changedFields, verdict: what changed, from the signed and the sent values (the route's `changed` is lane C's: an
  *   array of field names or of {field, from, to}; only its field names are read, the values are the page's own).
@@ -508,7 +539,7 @@ const signKit=(()=>{
   };
   ${AMOUNT_JS}
   const normAmount=normaliseAmount;
-  const FIELDS=['amount','beneficiary_name','iban_last4'];
+  const FIELDS=['amount','currency','beneficiary_name','iban_last4','bic','invoice_no'];
   const payBody=(terms,v,credential)=>{const t=Object.assign({},terms);for(const k of FIELDS)t[k]=v[k];return {terms:t,credential:credential}};
   const changedFields=(signed,sent,changed)=>{
     const named=Array.isArray(changed)?changed.map((x)=>typeof x==='string'?x:x&&typeof x.field==='string'?x.field:'').filter(Boolean):null;
@@ -520,7 +551,7 @@ const signKit=(()=>{
     const out=[];
     for(const k of changedFields(signed,sent,changed)){
       if(k==='amount'){const a=cents(signed.amount),b=cents(sent.amount);out.push(a!==null&&b!==null&&Math.abs(a-b)===1?W.vAmountCent:W.vAmount.replace('{from}',String(signed.amount)).replace('{to}',String(sent.amount)))}
-      else if(k==='beneficiary_name')out.push(W.vPayee);else out.push(W.vAccount);
+      else if(k==='beneficiary_name')out.push(W.vPayee);else if(k==='iban_last4')out.push(W.vAccount);else if(k==='currency')out.push(W.vCurrency);else if(k==='bic')out.push(W.vBic);else out.push(W.vInvoice);
     }
     if(!out.length)out.push(W.vOther);
     return out.join(' ')+' '+W.vCover;
@@ -590,7 +621,10 @@ const booksKit=(()=>{
     const mine=all.filter((e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id||ids.has(e.entry_id));
     const have=new Set(mine.map((e)=>e.entry_id));
     for(const e of all)if(e.reverses!==null&&e.reverses!==undefined&&have.has(e.reverses)&&!have.has(e.entry_id)){mine.push(e);have.add(e.entry_id)}
-    return mine.sort((a,b)=>a.entry_id-b.entry_id);
+    // 15 Nov (live measurement): the invoice received first, then what paid it, in booking order (the accrual is
+    // booked when the payment settles, so its id is the later one).
+    const acc=(e)=>String(e.source_key||'').split('@')[0]==='ap-accrual|'+i.id?0:1;
+    return mine.sort((a,b)=>acc(a)-acc(b)||a.entry_id-b.entry_id);
   };
   const balance=(es)=>{const dr={},cr={};let lines=0;
     for(const e of es||[])for(const l of e.lines||[]){lines++;dr[l.currency]=(dr[l.currency]||0)+(Number(l.debit_cents)||0);cr[l.currency]=(cr[l.currency]||0)+(Number(l.credit_cents)||0)}
@@ -663,7 +697,7 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','proof'];
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','cost','proof'];
 const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
@@ -709,6 +743,14 @@ function pollLater(ms){clearTimeout(pollTimer);pollTimer=setTimeout(pollTick,ms)
 function pollStart(onEvents,onSlow){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;P.onSlow=onSlow||null;P.t0=performance.now();pollLater(1000)}
 function pollDone(){P.inflight=false;P.final=true;if(P.on&&!P.busy&&!P.waiting)pollLater(1000)}
 function pollStop(){P.on=false;P.waiting=false;clearTimeout(pollTimer);pollTimer=null}
+// 15 Nov (owner: "cost per invoice"): what Claude cost for this invoice, measured: the engine's own events for its calls
+// (claude.read, agent.run: cost_usd_micros and the model) while this invoice is filed and approved. Never estimated: no
+// event with a cost, no figure.
+const modelName=(m)=>{const mm=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(typeof m==='string'?m:'');return mm?'Claude '+mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2]+(mm[3]?'.'+mm[3]:''):''};
+function costSeen(items){if(!S.cost||typeof S.cost!=='object')return;let moved=false;
+  for(const e of items){const f=e&&e.fields;if(!f||(e.event!=='claude.read'&&e.event!=='agent.run'))continue;const c=Number(f.cost_usd_micros);if(!(isFinite(c)&&c>0))continue;
+    S.cost.micros=(Number(S.cost.micros)||0)+c;const n=modelName(f.model);if(n&&S.cost.models.indexOf(n)<0)S.cost.models.push(n);moved=true}
+  if(moved)save()}
 async function pollTick(){
   pollTimer=null;
   if(!P.on)return;
@@ -733,7 +775,7 @@ async function pollTick(){
     const items=r.json.items.filter((e)=>e&&typeof e.seq==='number'&&e.seq>(S.after||0));
     if(typeof r.json.next==='number'&&r.json.next>=(S.after||0))S.after=r.json.next;else if(items.length)S.after=items[items.length-1].seq;
     save();
-    if(items.length&&P.onEvents)P.onEvents(items);
+    if(items.length){costSeen(items);if(P.onEvents)P.onEvents(items)}
   }
   if(P.inflight||P.final)pollLater(1000);else if(last)pollStop();
 }
@@ -862,7 +904,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
         list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
-      pick.replaceChildren(...(items.some((x)=>x&&x.row)?[head]:[]),list);samplesIn=true;gate();
+      // 15 Nov (owner: "it feels staged"): under the samples, the other tab said for what it lets you set.
+      const go=el('button','link',C.invoice.tabWrite);go.type='button';go.addEventListener('click',()=>{choose(true);sup.focus()});
+      pick.replaceChildren(...(items.some((x)=>x&&x.row)?[head]:[]),list,el('p','hint writeh',[C.invoice.writeHint,' ',go]));samplesIn=true;gate();
       if(queued){queued=false;gate();file()}
     });
   };
@@ -879,21 +923,33 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
     const ok=v!==null&&!out;amtHint.hidden=ok;amt.setAttribute('aria-invalid',String(!ok));return ok?v:null};
   const iss=input('date',today(0)),dueOn=input('date',today(14));iss.required=true;dueOn.required=true;
   const iban=input('text');iban.className='mono';iban.required=true;iban.autocomplete='off';iban.spellcheck=false;iban.setAttribute('autocapitalize','characters');
+  // 15 Nov (owner): the payee's name as printed (the supplier's on file until the visitor writes another), the currency
+  // and a note, each written onto the invoice the engine then reads.
+  const payee=input('text');payee.required=true;payee.maxLength=70;payee.autocomplete='off';let payeeOwn=false;
+  payee.addEventListener('input',()=>{payeeOwn=true});
+  const cur=el('select');for(const c of ['EUR','USD']){const o=el('option','',c);o.value=c;cur.append(o)}
+  const noteIn=input('text');noteIn.maxLength=240;noteIn.autocomplete='off';
+  const trick=el('button','link trick',C.invoice.trick);trick.type='button';trick.addEventListener('click',()=>{noteIn.value=C.invoice.trickNote;noteIn.focus()});
   const msg=el('div','');
   const amtField=field(C.invoice.amount,amt,'f-amt');amtField.append(amtHint);
+  // The currency beside the amount, in one control (its own name for screen readers).
+  cur.id='f-cur';cur.setAttribute('aria-label',C.invoice.currency);{const row=el('div','amtrow');amt.before(row);row.append(cur,amt)}
   const said=el('p','hint calm');said.setAttribute('role','status');said.hidden=true;
-  const supField=field(C.invoice.supplier,sup,'f-sup'),ibanField=field(C.invoice.iban,iban,'f-iban');gateFields=[supField,ibanField];
-  const form=el('form','',[supField,el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
-    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),ibanField,el('p','hint',C.invoice.ibanHint),said,msg]);
+  const supField=field(C.invoice.supplier,sup,'f-sup'),ibanField=field(C.invoice.iban,iban,'f-iban'),payeeField=field(C.invoice.payee,payee,'f-payee');gateFields=[supField,ibanField,payeeField];
+  const noteField=field(C.invoice.note,noteIn,'f-note');noteField.append(el('p','hint',trick));
+  const form=el('form','',[el('div','two',[supField,payeeField]),el('div','two',[field(C.invoice.invoiceNo,no,'f-no'),amtField]),
+    el('div','two',[field(C.invoice.issued,iss,'f-iss'),field(C.invoice.due,dueOn,'f-due')]),ibanField,el('p','hint',C.invoice.ibanHint),noteField,said,msg]);
   write.append(form);gate();
   if(draft){
     // Back from a refused compose: the form as it was sent, and the server's words, calmly, under it.
-    for(const [i,k] of [[no,'invoice_no'],[amt,'amount'],[iss,'issue_date'],[dueOn,'due_date'],[iban,'iban']])if(typeof draft[k]==='string')i.value=draft[k];
+    for(const [i,k] of [[no,'invoice_no'],[amt,'amount'],[iss,'issue_date'],[dueOn,'due_date'],[iban,'iban'],[noteIn,'note']])if(typeof draft[k]==='string')i.value=draft[k];
+    if(typeof draft.currency==='string')cur.value=draft.currency;
+    if(typeof draft.payee_name==='string'){payee.value=draft.payee_name;payeeOwn=true}
     if(typeof arg.said==='string'&&arg.said){said.textContent=arg.said;said.hidden=false}
     choose(true);
   }
   let suppliers=[];
-  sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s)iban.value=String(s.iban??'')});
+  sup.addEventListener('change',()=>{const s=suppliers.find((x)=>x.key===sup.value);if(s){iban.value=String(s.iban??'');if(!payeeOwn)payee.value=String(s.name??'')}});
   amt.addEventListener('input',()=>{amtHint.hidden=true;amt.removeAttribute('aria-invalid')});
   amt.addEventListener('blur',()=>{if(amt.value.trim())amtRead()});
   const loadSuppliers=()=>api('GET','/v1/engine/suppliers').then((r)=>{
@@ -907,7 +963,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
     ready=suppliers.length>0;gate();
     sup.replaceChildren(...suppliers.map((s)=>{const o=el('option','',String(s.name??s.key));o.value=s.key;return o}));
     if(draft&&suppliers.some((s)=>s.key===draft.supplier_key))sup.value=draft.supplier_key;
-    else if(suppliers[0])iban.value=String(suppliers[0].iban??'');
+    else if(suppliers[0]){if(!(draft&&typeof draft.iban==='string'))iban.value=String(suppliers[0].iban??'')}
+    const on=suppliers.find((x)=>x.key===sup.value);if(on&&!payeeOwn)payee.value=String(on.name??'');
   });
   loadSuppliers();
   function file(){
@@ -918,7 +975,10 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
     const v=amtRead();
     if(v===null){amt.focus();return}
     if(!form.reportValidity())return;
-    show('work',{kind:'compose',body:{supplier_key:sup.value,invoice_no:no.value.trim(),amount:v,issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase()}});
+    // The payee's name and the note go only when they say something (the supplier's own name is the default either way).
+    const body={supplier_key:sup.value,invoice_no:no.value.trim(),amount:v,issue_date:iss.value,due_date:dueOn.value,iban:iban.value.replace(/\s/g,'').toUpperCase(),currency:cur.value};
+    const pn=payee.value.trim(),nt=noteIn.value.trim();if(pn)body.payee_name=pn;if(nt)body.note=nt;
+    show('work',{kind:'compose',body});
   }
   send.addEventListener('click',file);
   form.addEventListener('submit',(ev)=>{ev.preventDefault();file()});
@@ -1009,7 +1069,13 @@ function skeleton(){
   const d=el('dl','rows');
   for(const k of [C.fields.vendor,C.fields.number,C.fields.total,C.fields.due,C.fields.status])d.append(el('div','',[el('dt','',k),el('dd','',[el('span','sk')])]));
   const card=el('section','card inv skel',[el('p','ih',[icon('file-text',18),el('span','',C.work.invoiceFold)]),d]);card.setAttribute('aria-busy','true');
-  const see=(items)=>{if(!live)return;for(const e of items){if(agentRow(e))askClose('skeleton');if(lineOf(e).asking)askOpen('skeleton',n)}};
+  // 15 Nov (owner: "a progress line during the waits"): the line moves on with the engine's own events, never on a timer.
+  const said=line.children[1];let stage=0;
+  const CHECK=/^(ap\.received|ap\.status|ap\.scan_read|claude\.read|claude\.fallback)$/,LIMIT=/^(ap\.checker_decided|ap\.coded|ap\.payer_proposed|fx\.rate_checked|airwallex\.quote|invoice\.escalated|invoice\.fraud_suspected)$/;
+  const see=(items)=>{for(const e of items){
+    const st=e&&typeof e.event==='string'?LIMIT.test(e.event)?2:CHECK.test(e.event)?1:0:0;
+    if(st>stage){stage=st;said.textContent=st===2?C.work.limit:C.work.checking;askClose('skeleton');n.remove()}
+    if(live&&stage===0){if(agentRow(e))askClose('skeleton');if(lineOf(e).asking)askOpen('skeleton',n)}}};
   return {node:el('div','',[line,card]),see};
 }
 // Whether this request's events say Claude read the invoice, and that call's request id.
@@ -1108,8 +1174,14 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     return;
   }
   const sk=skeleton();result.append(sk.node);
+  S.cost={micros:0,models:[],invoice:null};save();
   const t0=performance.now();
-  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items)});
+  // A line aimed at the AI that the engine flagged while it filed this invoice (its own event, read by the poller):
+  // said under the answer once both are in. The answer is the engine's as for any invoice (the line changed nothing).
+  let flagged=false,drawn=false;
+  const flag=()=>{if(!flagged||!drawn||S.screen!=='work'||result.querySelector('.flagged'))return;
+    const p=el('p','flagged',[icon('shield-check',18),el('span','',C.work.injected)]);const at=result.querySelector('.acts');if(at)at.before(p);else result.append(p)};
+  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
@@ -1117,9 +1189,9 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     if(S.screen!=='work')return;
     // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
-    result.replaceChildren();drawResult(result,r,ms);
+    result.replaceChildren();drawResult(result,r,ms);drawn=r.status===200;flag();
     // Back from the next step returns to this answer, never files the invoice again.
-    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
+    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed&&S.cost){S.cost.invoice=filed.id;save()}if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
 }});
@@ -1213,7 +1285,7 @@ function fxCard(note,terms,limitBps){
   if(live){
     const left=el('dd','');d.append(el('dt','',X.valid),left);
     const end=Date.parse(String(cv.valid_to||''));
-    const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:Math.floor(s/60)+':'+String(s%60).padStart(2,'0')});return true};
+    const tick=()=>{const ms=end-Date.now();if(!(ms>0)){left.textContent=X.expired;return false}const s=Math.floor(ms/1000);left.textContent=fill(X.left,{left:(Math.floor(s/60)?Math.floor(s/60)+' min ':'')+(s%60)+' s'});return true};
     if(tick()){const quoteTimer=setInterval(()=>{if(!box.isConnected||!tick())clearInterval(quoteTimer)},1000)}
     if(isFinite(end))row(X.validTo,whenOf(String(cv.valid_to)));
     box.append(el('p','',X.liveNote));
@@ -1392,7 +1464,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   // route. "Paying…" with the ring and the rail on Pay while it runs; nothing of the outcome before its answer.
   async function pay(cred){
     const Y=C.pay;
-    busy(Y.paying);rail('pay');
+    busy(Y.paying);
     const t=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
     if(t.status!==200||!t.json.terms||typeof t.json.terms!=='object'){idle();said.append(note(words(t.json,Y.failed)));main.set(Y.retry,()=>pay(cred));return}
@@ -1405,7 +1477,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
     const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
-    if(o==='paid_once'){said.replaceChildren(el('p','big paidonce',Y.paidOnce));main.set(C.books.next,()=>show('did'));return}
+    if(o==='paid_once'){said.replaceChildren(el('p','big paidonce',C.approve.paidOnce));main.set(C.books.next,()=>show('did'));return}
     if(o==='expired'){said.replaceChildren(note(words(j,Y.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     if(o==='failed'){said.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
     if(o==='not_signed'||o==='refused'){if(o==='not_signed'){S.cred=null;save()}said.replaceChildren(note(words(j,sig||Y.failed)));stage();return}
@@ -1420,39 +1492,64 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   file();
 }});
 
-// 4 Pay with your signature, reached after paid from screen 5's quiet link: the signed terms in three fields; the one
-// button sends the fields' terms with the kept signature to the one pay route, and only the answer, once back, is drawn.
+// 4 Try to change it (15 Nov, owner: "it feels staged"), reached after paid from screen 5's main button: every signed
+// field a person reads on the approval sheet is the visitor's to change (the amount and its currency, the payee, the
+// account ending, the BIC, the invoice number), and three attacks to try. Each attempt is the one pay route with the kept
+// signature: Purser's real check answers, and only its answer, once back, is drawn. Every end state has a way on.
 screen('pay',{heading:C.pay.heading,draw(box){
-  const Y=C.pay;const pid=S.proposal&&S.proposal.id;
+  const Y=C.pay,X=C.tamper;const pid=S.proposal&&S.proposal.id;
   const top=el('div','',[el('p','muted',Y.loading)]);const out=el('div','outcome');out.setAttribute('role','status');
   const main=mainButton();main.off(Y.button);main.node.classList.add('asking');
   const live=livePanel();
   // Back to screen 5, a quiet link (the payment is already made).
   const back=el('button','link',Y.back);back.type='button';back.addEventListener('click',()=>show('books',{settled:S.settled}));
-  box.append(top,main.node,out,el('p','',back),live.node);
+  const attacks=el('div','attacks');attacks.hidden=true;
+  box.append(top,main.node,attacks,out,el('p','',back),live.node);
   if(!pid){top.replaceChildren(note(Y.failed));return}
-  let T=null;const F={};
-  const field4=(label,key,cls)=>{const i=input('text');i.autocomplete='off';i.spellcheck=false;F[key]=i;return el('div','f'+(cls?' '+cls:''),[el('label','',label),i])};
-  // A field that differs from the signed value glows (compared as the pay route would send it).
-  const mark=()=>{for(const k of ['amount','beneficiary_name','iban_last4']){const v=k==='amount'?normAmount(F.amount.value,T.terms.amount):F[k].value.trim();F[k].parentNode.classList.toggle('changed',String(v)!==String(T.terms[k]))}};
-  const reset=()=>{F.amount.value=String(T.terms.amount);F.beneficiary_name.value=String(T.terms.beneficiary_name);F.iban_last4.value=String(T.terms.iban_last4);F.amount.setCustomValidity('');mark()};
-  const values=()=>({amount:normAmount(F.amount.value,T.terms.amount),beneficiary_name:F.beneficiary_name.value.trim(),iban_last4:F.iban_last4.value.trim()});
+  let T=null,intro=null;const F={};
+  const KEYS=['amount','currency','beneficiary_name','iban_last4','bic','invoice_no'];
+  const LABELS={amount:C.proposal.amount,currency:C.invoice.currency,beneficiary_name:C.proposal.payee,iban_last4:C.proposal.account,bic:C.proposal.bic,invoice_no:C.proposal.invoiceNo};
+  const IDS={amount:'p-amt',currency:'p-cur',beneficiary_name:'p-payee',iban_last4:'p-acct',bic:'p-bic',invoice_no:'p-no'};
+  const fieldOf=(key,cls)=>{const i=input('text');i.autocomplete='off';i.spellcheck=false;i.id=IDS[key];F[key]=i;
+    const l=el('label','',LABELS[key]);l.htmlFor=i.id;const tag=el('span','chg',Y.changed);tag.hidden=true;
+    return el('div','f'+(cls?' '+cls:''),[el('div','fh',[l,tag]),i])};
+  const valueOf=(k)=>k==='amount'?normAmount(F.amount.value,T.terms.amount):k==='currency'||k==='bic'?F[k].value.trim().toUpperCase():F[k].value.trim();
+  // A field that differs from the signed value says so in one small word (15 Nov, owner: no red glow), compared as the
+  // pay route would send it.
+  const mark=()=>{for(const k of KEYS){const d=String(valueOf(k))!==String(T.terms[k]);const f=F[k].closest('.f');f.classList.toggle('changed',d);f.querySelector('.chg').hidden=!d}};
+  const reset=()=>{for(const k of KEYS)F[k].value=String(T.terms[k]??'');F.amount.setCustomValidity('');mark()};
+  const values=()=>{const v={};for(const k of KEYS)v[k]=valueOf(k);return v};
+  // The way on from every answer: the finish, or another try with the signed terms back in the fields.
+  // While an answer with its own way on is shown, "See your result" is the one main button and Pay a quiet one.
+  const endActs=()=>{const see=btn(Y.seeResult,true);see.classList.add('see');see.addEventListener('click',()=>show('company'));
+    const again=btn(Y.another);again.classList.add('again');again.addEventListener('click',()=>{out.replaceChildren();main.node.classList.add('primary');if(intro)intro.hidden=false;reset();F.amount.focus();inView(top)});
+    main.node.classList.remove('primary');
+    return el('div','acts end',[see,again])};
   api('GET','/v1/engine/proposals/'+encodeURIComponent(pid)+'/terms').then((r)=>{
     if(S.screen!=='pay')return;
     if(r.status!==200||!r.json.terms||typeof r.json.terms!=='object'){top.replaceChildren(note(words(r.json,Y.failed)));return}
     T=r.json;
-    const form=el('form','',[field4(C.proposal.amount,'amount','big'),field4(C.proposal.payee,'beneficiary_name'),field4(C.proposal.account,'iban_last4')]);
-    for(const [k,id] of [['amount','p-amt'],['beneficiary_name','p-payee'],['iban_last4','p-acct']]){F[k].id=id;F[k].parentNode.firstChild.htmlFor=id}
-    F.amount.inputMode='decimal';F.amount.classList.add('mono');F.iban_last4.classList.add('mono');F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
-    for(const k of ['amount','beneficiary_name','iban_last4'])F[k].addEventListener('input',mark);
+    const form=el('form','tryform',[fieldOf('amount','big'),el('div','two',[fieldOf('currency','cur'),fieldOf('iban_last4')]),fieldOf('beneficiary_name'),el('div','two',[fieldOf('bic'),fieldOf('invoice_no')])]);
+    F.amount.inputMode='decimal';for(const k of ['amount','currency','iban_last4','bic','invoice_no'])F[k].classList.add('mono');
+    F.amount.addEventListener('input',()=>F.amount.setCustomValidity(''));
+    for(const k of KEYS)F[k].addEventListener('input',mark);
     form.addEventListener('submit',(ev)=>{ev.preventDefault();if(!main.node.disabled)main.node.click()});
-    // What to do first, then the fields, then the paid state as a quiet line (final-polish, 13 Nov).
-    const intro=el('div','',[el('p','',Y.line)]);
-    // 14 Nov (judges): no "already paid" note here, which read like a duplicate check; the test is the signature's.
+    // What to do first, then the fields.
+    intro=el('div','',[el('p','',Y.line)]);
     top.replaceChildren(intro,form);reset();
-    main.node.classList.remove('asking');main.set(Y.button,()=>send(intro));
+    // 15 Nov (judges): the first attempt is the one-cent change, filled in: one cent more than the signed amount.
+    const up=(a)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(a));if(!m)return null;const c=Number(m[1])*100+Number(m[2])+1;return Math.floor(c/100)+'.'+String(c%100).padStart(2,'0')};
+    const plus=up(T.terms.amount);if(plus){F.amount.value=plus;mark()}
+    // Three attacks, each the same pay route (or, for a planted instruction, a new invoice): what Purser did, and why.
+    const atk=(label,glyph,run)=>{const b=el('button','btn quiet atk',[icon(glyph,15),el('span','',label)]);b.type='button';b.addEventListener('click',()=>{if(!main.node.disabled)run()});return b};
+    attacks.replaceChildren(el('p','ah',Y.attacks),el('div','acts',[
+      atk(Y.twice,'circle-check',()=>{reset();send()}),
+      atk(Y.bank,'landmark',()=>{reset();F.iban_last4.value=String(T.terms.iban_last4)==='4931'?'0000':'4931';mark();send()}),
+      atk(Y.inject,'file-text',()=>show('invoice',{draft:{note:C.invoice.trickNote}}))]));
+    attacks.hidden=false;
+    main.node.classList.remove('asking');main.set(Y.button,()=>send());
   });
-  async function send(intro){
+  async function send(){
     const v=values();
     if(v.amount===null){F.amount.setCustomValidity(Y.amountBad);F.amount.reportValidity();return}
     let cred=S.cred;
@@ -1460,7 +1557,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
       // After a reload without the kept signature: the passkey again, for the same terms (the challenge is their hash).
       const st=await api('GET','/v1/engine');
       main.node.textContent=C.approve.waiting;
-      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){main.set(Y.button,()=>send(intro));out.replaceChildren(note(C.approve.cancelled));return}
+      try{cred=await signTerms(S.proposal.challenge,st.json.passkey&&st.json.passkey.credential_id)}catch(e){main.set(Y.button,()=>send());out.replaceChildren(note(C.approve.cancelled));return}
       S.cred=cred;save();
     }
     // While the request runs: "Paying…" with the ring; the answer is drawn the moment it is in (paid: screen 5's stamp).
@@ -1473,10 +1570,10 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const ms=performance.now()-t0;
     pollDone();live.settle(ms);main.node.classList.remove('asking');slow.remove();
     if(S.screen!=='pay')return;
-    main.set(Y.button,()=>send(intro));
-    outcome(r,ms,body.terms,intro);
+    main.set(Y.button,()=>send());
+    outcome(r,ms,body.terms);
   }
-  function outcome(r,ms,sent,intro){
+  function outcome(r,ms,sent){
     const j=r.json,o=r.status===200?j.outcome:null;
     if(o==='paid'&&j.proof){S.proof=j.proof;save()}
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
@@ -1484,10 +1581,13 @@ screen('pay',{heading:C.pay.heading,draw(box){
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
     // The score's "one-cent change refused" only when the amount alone moved by one cent (review, 14 Nov).
     if(o==='refused'){intro.hidden=true;if(runKit.oneCent(T.terms,sent)){S.passed=runKit.mark(S.passed,'refuse');save()}const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
-    if(o==='paid_once'){out.replaceChildren(el('p','big paidonce',Y.paidOnce));return}
+    // Pay it twice: the signed terms again answer paid once, and the transfers made say nothing moved.
+    if(o==='paid_once'){const made=Number(j.transfers_after)-Number(j.transfers_before);
+      const card=el('section','why card once paidonce',[el('p','head',[icon('circle-check',20),el('span','',Y.twiceHead)]),el('p','rule',Y.twiceRule),isFinite(made)?el('p','proof xfer',fill(Y.transfers,{n:made})):null,endActs()]);
+      card.setAttribute('role','status');out.replaceChildren(card);inView(card);return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
-    out.replaceChildren(note(words(j,Y.failed)));
+    out.replaceChildren(note(words(j,Y.failed)),endActs());
   }
   async function retry(){
     const r=await retryCall(pid);
@@ -1497,21 +1597,25 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
   function refused(r,ms,sent){
     const j=r.json,L=j.layers&&typeof j.layers==='object'?j.layers:{};const sig=L.signature||{},ex=L.executor||{};
-    // 14 Nov (owner): the reason first, what was signed beside what was asked (the changed value marked), one plain line;
+    // 15 Nov (owner: "it glows red when you change something"): a calm, precise diff: each changed field, what was
+    // signed struck through, what was asked marked, one red word "Refused"; the rule that held and the signature line;
     // the stamp, each layer's words, the fingerprints, the round trip and the raw answer under "Show the proof".
-    const X=C.tamper,labels={amount:C.proposal.amount,beneficiary_name:C.proposal.payee,iban_last4:C.proposal.account};
-    const rows=whyKit.tamperRows(T.terms,sent,j.changed,labels,{money:cash});
-    const d=el('dl','cmp');
-    for(const [k,a,b] of rows)d.append(el('div','',[el('dt','',X.signed+' · '+k),el('dd','',a)]),el('div','',[el('dt','',X.asked+' · '+k),el('dd','',marked(b,b))]));
-    const card=el('section','why refuse card refusal shake',[el('p','head',[icon('triangle-alert',22),el('span','',X.head)]),d,el('p','rule',cap1(fill(X.line,{method:method()})))]);
+    const rows=whyKit.tamperRows(T.terms,sent,j.changed,LABELS,{money:cash});
+    const diff=el('ul','diff');
+    for(const [k,a,b] of rows){const li=el('li','',[el('span','dk',k),el('s','old',a),el('span','arr',' → '),el('mark','new',b)]);li.setAttribute('aria-label',k+': '+X.signed+' '+a+', '+X.asked+' '+b);diff.append(li)}
+    // The signature line says what is so for this payment: the hash in the Airwallex sandbox transfer's metadata only when
+    // this payment made one (its note names the same signed hash), else the simulated bank's own check.
+    const awx=!!(S.awx&&S.awx.source==='airwallex-sandbox'&&S.proposal&&S.awx.terms_sha256===S.proposal.terms_sha256);
+    const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),': '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);
     card.setAttribute('role','status');
     const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);
     if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;proof.append(el('p','layer',fill(Y.signature,{reason:why})))}
     if(ex.accepted===false){proof.append(el('p','layer',Y.executor));
       if(typeof ex.said==='string'&&ex.said)proof.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
+    // 15 Nov (judges): the two hashes in view, signed above asked, every differing character marked.
     const h=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
     const line=(label,runs)=>el('p','hash mono',[el('span','hl',label),...runs.map((x)=>x[1]?el('mark','',x[0]):x[0])]);
-    proof.append(line(Y.signed,h.a),line(Y.sent,h.b));
+    diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));
     proof.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
     proof.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
     const made=Number(j.transfers_after)-Number(j.transfers_before);
@@ -1521,8 +1625,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     proof.append(el('details','',[el('summary','',Y.raw),raw]));
     card.append(proof);
     const pdl=proofDl(j.proof);if(pdl)card.append(el('p','',pdl));
-    const back=el('button','link',Y.putBack);back.type='button';back.addEventListener('click',()=>{reset();F.amount.focus()});
-    card.append(el('p','',back));
+    card.append(endActs());
     return card;
   }
 }});
@@ -1706,11 +1809,14 @@ screen('company',{heading:C.company.heading,draw(box){
     const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
     if(inv&&isFinite(ms)&&ms>=0){done.removeAttribute('aria-busy');done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)})}else plain();
   });
+  // What Claude cost for this invoice, measured from this visit's own events; nothing when none was recorded.
+  const want0=S.proposal&&S.proposal.invoice;const cm=S.cost&&S.cost.invoice&&S.cost.invoice===want0?Number(S.cost.micros):0;
+  const costLine=cm>0?el('p','muted cost',fill(Y.cost,{usd:(cm/1e6).toFixed(4),models:(S.cost.models||[]).join(', ')||'Claude'})):null;
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
+  // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs on /proof; three secondary ones.
   const rails=out('btn primary big proofl',[el('span','',Y.rails),icon('arrow-right',18)],PROOF);
-  const more=el('p','more',[out('',C.trailer.label,C.trailer.url),el('span','sep',' · '),out('',Y.cloud,C.finish.cloud),el('span','sep',' · '),out('',Y.star,C.finish.repo)]);
-  more.prepend(out('verifyl',C.verifyYourself.verify,C.verifyYourself.url),el('span','sep',' · '));
+  const more=el('div','acts more',[out('btn quiet verifyl',[el('span','',C.verifyYourself.verify),icon('external-link',14)],C.verifyYourself.url),out('btn quiet',[icon('play',14),el('span','',Y.film)],C.film),out('btn quiet',[el('span','',Y.cloud),icon('external-link',14)],C.finish.cloud),out('btn quiet',[el('span','',Y.star),icon('external-link',14)],C.finish.repo)]);
   // The records: the PDF a person reads, the JSON for developers.
   const dl=btn(Y.download);const line=el('p','muted');line.hidden=true;
   const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
@@ -1725,7 +1831,7 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  box.append(done,did,runScore(),el('div','acts next',[rails]),more,el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
+  box.append(done,...(costLine?[costLine]:[]),did,runScore(),el('div','acts next',[rails]),more,proofBand(),el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
   // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
   // "more", never a form, and nothing collected on this page.
   async function download(asJson){
@@ -1790,11 +1896,18 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The suite's count from its last full run (docs/assets/test-summary.json, written by npm run test-count), as words. */
 export const testsPassing = (): string => (SUITE as { passed: number }).passed.toLocaleString("en-US");
+/**
+ * One more line across the proof band, from a record and linked to it: the worst-case AI test (#368), its headline and
+ * the line its own record wrote (src/evals/worstCase.ts, docs/worst-case-ai.md). No words of the page's own.
+ */
+const BAND_LINE: { head: string; line: string; href: string } | null = { head: WORST_CASE_HEADLINE, line: WORST_CASE_LINE, href: `https://github.com/agamemnon-coder/x402-business-agents/blob/main/${WORST_CASE_DOC}` };
+/** The suite's record, which the band's test figure links to. */
+const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json";
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
+  const copy = { run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
@@ -1802,7 +1915,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
-    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

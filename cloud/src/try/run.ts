@@ -59,7 +59,7 @@ const runKit=(()=>{
   // Whether a refused payment differed from the signed terms only by one cent of the amount.
   const cents=(v)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(v));return m?Number(m[1])*100+Number(m[2]):null};
   const oneCent=(signed,sent)=>{if(!signed||!sent)return false;const a=cents(signed.amount),b=cents(sent.amount);
-    return a!==null&&b!==null&&Math.abs(a-b)===1&&String(signed.beneficiary_name)===String(sent.beneficiary_name)&&String(signed.iban_last4)===String(sent.iban_last4)};
+    return a!==null&&b!==null&&Math.abs(a-b)===1&&['currency','beneficiary_name','iban_last4','bic','invoice_no'].every((k)=>String(signed[k])===String(sent[k]))};
   const shareText=(R,sc)=>[R.shareText,sc.ms===null?'':R.shareTime.replace('{time}',clock(sc.ms)),sc.refused?R.shareCent:''].filter(Boolean).join(' ');
   const proofHref=(base,map,screen)=>Object.prototype.hasOwnProperty.call(map,screen)?base+'#'+map[screen]:null;
   const tipOf=(G,screen,refused)=>screen==='pay'&&refused?G.tips.refused:Object.prototype.hasOwnProperty.call(G.tips,screen)?G.tips[screen]:null;
@@ -86,15 +86,15 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const logos=el('ul','logos');
   for(const l of LOGOS){
     const img=el('img');img.src=l.src;img.alt=l.alt;img.width=l.w;img.height=l.h;img.decoding='async';img.className='lg lg-'+l.key;
-    logos.append(el('li','tile'+(l.key==='alta'?' alta':''),l.key==='alta'?[img,el('span','was',T.formerly)]:img));
+    // 15 Nov (judges: the strip read "(formerly Metal)" alone): the logo's alt names it, "Alta (formerly Metal)"; the
+    // visible "(formerly Metal)" beside it is the same words for the eye, so screen readers hear them once.
+    const was=el('span','was',T.formerly);was.setAttribute('aria-hidden','true');
+    logos.append(el('li','tile'+(l.key==='alta'?' alta':''),l.key==='alta'?[img,was]:img));
     if(l.key==='alta')logos.append(el('li','tile tname',T.visa));
   }
   const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
-  // What in this demo is real (14 Nov, owner): four chips, the test count from the suite's own last full run.
-  const glyphs2=['landmark','sparkles','key-round','shield-check'];
-  const real=el('section','real',[el('p','rh',T.realHead),el('ul','rl',T.real.map((r,i)=>el('li','',[icon(glyphs2[i],15),el('span','',r.replace('{n}',TESTS_PASSING))])))]);
-  real.setAttribute('aria-label',T.realHead);
-  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,real);
+  // Proof in numbers (15 Nov, owner): the recorded runs' figures, each linked to its record, and the suite's count.
+  box.append(eyebrow,text,flow,el('div','cta',[b,trailer]),el('p','fine',T.fine),partners,proofBand());
   b.addEventListener('click',async()=>{
     b.disabled=true;label(T.starting,false);
     const r=await call('POST','/v1/try/start',TOKEN?{token:TOKEN}:{});
@@ -143,6 +143,17 @@ function runMark(name,arg){
   if(name==='company'&&S.t0&&!S.t1){S.t1=Date.now();runTick()}
 }
 // The finish's score: the time, the steps passed, the one-cent change (refused, or a way to try it), and Share.
+// "Proof in numbers" (15 Nov, owner): only figures measured in a recorded run, each a link to its record (PROOF_FIGS,
+// cloud/src/try/proof.gen.ts), and the suite's count from its last full run (TESTS_PASSING). Never a fraction.
+function proofBand(){
+  const P=C.proofBand;const ul=el('ul','rl');
+  const item=(n,label,href)=>{const a=el('a','',[el('span','pv',n),el('span','pk',label)]);a.href=href;a.target='_blank';a.rel='noopener';ul.append(el('li','',a))};
+  for(const f of PROOF_FIGS)if(P.labels[f.key])item(String(f.n),P.labels[f.key],f.href);
+  if(TESTS_PASSING)item(TESTS_PASSING,P.labels.tests,TESTS_HREF);
+  // One more line from a record, across the band, when there is one (BAND_LINE: a slot, empty until it lands).
+  if(BAND_LINE){const a=el('a','',[el('span','ph2',BAND_LINE.head),el('span','pk',BAND_LINE.line)]);a.href=BAND_LINE.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
+  const s=el('section','real proofband',[el('p','rh',P.head),ul]);s.setAttribute('aria-label',P.head);return s;
+}
 function runScore(){
   const R=C.run,sc=runKit.score(S.passed,S.t0,S.t1,Date.now());
   if(!sc.steps&&sc.ms===null)return null;
@@ -212,7 +223,8 @@ const tour=(()=>{
     if(s==='pay'&&refusedNow()){show('company');return}
     if(s==='pay'&&t){
       // One cent less than what was signed, as a person would type it, then Pay.
-      const f=$('#main .screen.pay input');const v=f&&runKit.oneCentLess(normAmount(f.value));
+      // The panel opens with the one-cent change filled in (15 Nov); only a field put back is changed here.
+      const f=$('#main .screen.pay input');const v=f&&!f.closest('.f.changed')&&runKit.oneCentLess(normAmount(f.value));
       if(f&&v){f.value=v;f.dispatchEvent(new Event('input',{bubbles:true}))}
     }
     let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
@@ -298,13 +310,20 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 @media (max-width: 420px) { .score .tile { padding: 9px 10px; } .score .tile .v { font-size: 21px; } }
 @media (min-width: 1024px) and (max-height: 820px) { body:has(.screen.start) main > h1 { font-size: 46px; } .start .partners { margin-top: 26px; } }
 
-/* What's real here (14 Nov, owner): a slim strip of four proof chips under the partners. */
-.start .real { grid-area: real; margin: 18px 0 0; animation: rise .6s cubic-bezier(.2,.7,.2,1) .4s both; }
-.start .real .rh { margin: 0 0 8px; color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
-.start .real .rl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.start .real li { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 12.5px; font-weight: 600; line-height: 1.3; }
-.start .real li .i { flex: none; color: var(--accent); }
-@media (min-width: 1024px) { .start .real { margin-top: 22px; } .start .real .rl { grid-template-columns: repeat(4, minmax(0, 1fr)); } .start .real li { font-size: 13px; padding: 11px 14px; } }
+/* Proof in numbers (15 Nov, owner): one band of measured figures under the partners (and on the finish), each a link. */
+.start .real { grid-area: real; }
+.proofband { margin: 18px 0 0; animation: rise .6s cubic-bezier(.2,.7,.2,1) .4s both; }
+.proofband .rh { margin: 0 0 8px; color: var(--faint); font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; text-align: center; }
+.proofband .rl { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.proofband li a { display: flex; flex-direction: column; gap: 2px; height: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); color: var(--text); text-decoration: none; }
+.proofband li a:hover { border-color: var(--accent); }
+.proofband li a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.proofband .pv { font-size: 22px; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.proofband .pk { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.3; }
+.proofband li:last-child:nth-child(odd), .proofband li.wide { grid-column: 1 / -1; }
+.proofband li.wide .ph2 { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.proofband li.wide .pk { font-size: 12.5px; }
+@media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
 /* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
 .start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }
 .start .fs2 .fi { animation-delay: 1.2s; } .start .fs3 .fi { animation-delay: 2.4s; } .start .fs.fend .fi { animation: none; }

@@ -10,7 +10,11 @@ export const supplierKey = (name: string): string => name.split(/\s+/)[0]!.toLow
 /** The seeded payees, with the street and city the composed invoice's letterhead shows. */
 export const SEEDED_SUPPLIERS = ALLOWLISTED_PAYEES.map((p) => ({ key: supplierKey(p.name), name: p.name, iban: p.iban, bic: p.bic, street: p.address.street, city: `${p.address.postcode} ${p.address.city}` }));
 
-export interface InvoiceFields { supplier: { name: string; street: string; city: string; bic: string }; invoiceNo: string; amountCents: number; issueDate: string; dueDate: string; iban: string }
+export interface InvoiceFields {
+  supplier: { name: string; street: string; city: string; bic: string }; invoiceNo: string; amountCents: number; issueDate: string; dueDate: string; iban: string;
+  /** "Write your own" (15 Nov): the invoice's currency (EUR when absent) and a free-text note the visitor typed, printed as written. */
+  currency?: "EUR" | "USD"; note?: string;
+}
 
 const BERGTEX = SEEDED_SUPPLIERS.find((s) => s.key === "bergtex")!;
 /** The clean sample, on file and payable; the others are variations of it, so each tells one thing. The pages'

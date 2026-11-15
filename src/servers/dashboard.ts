@@ -33,6 +33,7 @@ import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
 import { verifyBundlePage } from "../proof/verifyPage.js";
+import { PROOF_SAMPLES } from "../proof/bundle.js";
 import { watchPage } from "../redesign/watch.js";
 import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
 import { filmId } from "../config/film.js";
@@ -340,8 +341,9 @@ export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
 export const TRY_VERIFY_PAGE = tryVerifyPage();
 export const TRY_VERIFY_CSP = cspFor(TRY_VERIFY_PAGE).replace("connect-src 'self'", "connect-src 'none'");
 /** /verify checks a /try proof bundle in the browser and calls no server; its two samples (docs/proof/, from a /try run) are in the page. */
-const PROOF_SAMPLE = (name: string): unknown => JSON.parse(readFileSync(new URL(`../../docs/proof/${name}.json`, import.meta.url), "utf8"));
-export const VERIFY_BUNDLE_PAGE = verifyBundlePage({ paid: PROOF_SAMPLE("try-paid"), refused: PROOF_SAMPLE("try-refused") });
+/** The samples' own text, byte for byte: in the page, and served as downloads at /verify/samples/<file> (one source). */
+export const PROOF_SAMPLE_TEXT: Record<string, string> = Object.fromEntries(Object.values(PROOF_SAMPLES).map((f) => [f, readFileSync(new URL(`../../docs/proof/${f}`, import.meta.url), "utf8")]));
+export const VERIFY_BUNDLE_PAGE = verifyBundlePage({ paid: JSON.parse(PROOF_SAMPLE_TEXT[PROOF_SAMPLES.paid]!), refused: JSON.parse(PROOF_SAMPLE_TEXT[PROOF_SAMPLES.refused]!) });
 export const VERIFY_BUNDLE_CSP = cspFor(VERIFY_BUNDLE_PAGE).replace("connect-src 'self'", "connect-src 'none'");
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
