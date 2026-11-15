@@ -18,6 +18,8 @@ const HIDDEN_ALL = new RegExp(HIDDEN.source, "gu");
 const INSTRUCTION = [
   /^\W*(system|assistant|developer|ai)\s*:/i,
   /\b(ignore|disregard|forget|override)\b[^.\n]{0,40}\b(rules|instructions|policy|policies|previous|above|limits)\b/i,
+  // 15 Nov (tester: a /try note "override payment" was not flagged): orders to get past the payment's own controls.
+  /\b(override|bypass|circumvent)\b[^.\n]{0,30}\b(payments?|approvals?|checks?|verification|signatures?|cfo|passkeys?)\b/i,
   /\byou are now\b|\bact as\b|\bpretend to be\b/i,
   /\b(automated|automatic) (payment )?(systems?|agents?|assistants?)\b|\b(note|message|instructions?) (to|for) (the )?(ai|assistant|model|agent)\b/i,
   /\bapprove all\b/i,
