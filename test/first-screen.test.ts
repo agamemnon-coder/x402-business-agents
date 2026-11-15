@@ -61,20 +61,19 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(5, kit)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", "</div>", ""]);
     expect(README_WHAT).toBe(HOME_SUB);
     expect(kit).toBeLessThan(25);
-    expect(lines.indexOf("## At a glance")).toBeGreaterThan(kit);
-    expect(lines.slice(lines.indexOf("## At a glance") + 1, badges - 2)).toEqual(["", DIFFERENTIATORS[0], ""]);
+    // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
+    // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
+    expect(badges).toBeGreaterThan(kit);
+    expect(lines.slice(badges - 3, badges)).toEqual(["", DIFFERENTIATORS[0], ""]);
     expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
-    // 14 Nov (Max, the README and repo upgrade): four buttons, the trailer first; five project badges, then the partners' row.
-    expect(lines[badges - 2]).toContain("Watch_the_walkthrough-5_min");
-    expect(lines[badges - 2]).toMatch(/^<a href="https:\/\/youtu\.be\/n3HLVGROJc4">/);
+    // Five project badges, then the partners' row.
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 4]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.
     expect(lines.slice(badges + 5, badges + 7)).toEqual(["", "## Verify it yourself in 3 commands"]);
-    expect(badges).toBeGreaterThan(kit);
     const order = ["## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Enterprise"].map((h) => lines.indexOf(h));
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
@@ -93,7 +92,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(200); // 200 since 15 Nov, the clarity pass ("At a glance" under the Kit 11 table; 197 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(200); // 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with the idea, its proof line, the hands-on demo as the one primary button, the film second, one reassurance line", () => {

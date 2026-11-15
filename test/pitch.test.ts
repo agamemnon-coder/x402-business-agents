@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
-import { DIFFERENTIATORS, PROOF_SENTENCES } from "../src/config/brand.js";
+import { DIFFERENTIATORS, IDEA, PROOF_SENTENCES } from "../src/config/brand.js";
 import { faceIdDecisions, loadRecord, payments, split, stopStory, stopsLine, timings } from "../src/redesign/run.js";
 import { CORE_LINE, METAL_LINE, QR_URL, REFUSAL_LINE, RULE_LINE, T0_SHORT, T0_STATUS, TWO_LOCKS_LINE, deckHtml, type DeckShots } from "../src/submission/deck.js";
 import { packFacts } from "../src/submission/facts.js";
@@ -126,7 +126,10 @@ describe("the core line", () => {
     // The owner's centred top (13 Nov): the logo, the title, the pitch, the first sentence, the links, the badges, all in
     // the first 16 lines.
     const top = words(SOURCES.README!.split("\n").slice(0, 16).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
-    expect(top).toContain(DIFFERENTIATORS[0]);
+    // 15 Nov (clarity): the README opens with the idea in one sentence (IDEA: "one changed cent breaks the signature");
+    // the first of the three sentences follows the Kit 11 table.
+    expect(top).toContain(IDEA);
+    expect(SOURCES.README!).toContain(DIFFERENTIATORS[0]);
     // Since 13 Nov, evening (owner), the product tour is gone; the README's top links Try and Proof.
     expect(SOURCES.README!).not.toContain("https://kit11.max-31b.workers.dev/tour");
     expect(SOURCES.README!).toContain("(https://kit11.max-31b.workers.dev/try)"); // /try since 13 Nov (/try/sign answers 301 to it)

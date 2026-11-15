@@ -19,7 +19,7 @@ import { FLOW_NOTE, HERO_FLOW_CSS, heroFlowHtml, VAT_THEN } from "./heroFlow.js"
 import { vic3Run, type Vic3Record } from "./vic3Run.js";
 import { countOf, esc, icon, MAIN_RUN_REAL, page, TRY_URL } from "./ui.js";
 import { COUNT_JS, STATS_CSS, statsHtml, type Stat } from "./stats.js";
-import { homeScaleStats, SCALE_CSS } from "./scale.js";
+import { homeScaleStats, SCALE_CSS, SCALE_SOURCES } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
@@ -46,7 +46,7 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .proofl a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); white-space: nowrap; }
 .proofl a:hover, .proofl a:focus-visible { color: var(--accent); border-color: var(--accent); }
 .proofl b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
-.proofl .sep { color: var(--faint); }
+.proofl .dot { color: var(--faint); }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 /* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;
@@ -189,8 +189,10 @@ export const PROOF_LEAD = ["Built on Airwallex", "test money"] as const;
 // the full strip (src/redesign/scale.ts).
 export function proofLineHtml(stats = homeScaleStats()): string {
   const fmt = (n: number) => n.toLocaleString("en-GB");
-  const figs = stats.map((s) => `<a href="${esc(s.href)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(fmt(s.n))}</b> ${esc(s.label)}</a>`);
-  return `<p class="proofl">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="sep" aria-hidden="true"> · </span>')}</p>`;
+  // Each figure with its source's own title (the tests' "passed, skipped" wording, test/tests-title.test.ts); the line
+  // names its records (data-rec), as the band did: test/home-story.test.ts holds the figures to them.
+  const figs = stats.map((s) => `<a href="${esc(s.href)}" title="${esc(s.title)}"${s.external ? ' target="_blank" rel="noopener"' : ""}><b>${esc(fmt(s.n))}</b> ${esc(s.label)}</a>`);
+  return `<p class="proofl" data-rec="${esc(SCALE_SOURCES)}">${[...PROOF_LEAD.map((w) => esc(w)), ...figs].join('<span class="dot" aria-hidden="true"> · </span>')}</p>`;
 }
 /**
  * The one line under the buttons, saying only what the page behind the first one does: the hands-on demo (TRY_URL), a

@@ -46,7 +46,7 @@ describe("Home, the enterprise pass", () => {
       const main = mainOf(html);
       const at = [
         // 15 Nov (clarity): the idea, then its proof line, then Try (primary) and the film (secondary).
-        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl">', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, '<p class="reassure">', '<div class="trust">',
+        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl"', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, '<p class="reassure">', '<div class="trust">',
         '<figure class="hf"', '<p class="hf-note">', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
@@ -164,10 +164,10 @@ describe("Home, the enterprise pass", () => {
     expect(homeStats(run, [], null)).toEqual([]);
     // The three measured figures (src/redesign/scale.ts), each computed from the records and a link to its source. Since
     // 15 Nov (clarity) they lead the hero, in its proof line under the idea, and the band under the stat row is gone.
-    const line = /<p class="proofl">[\s\S]*?<\/p>/.exec(mainOf(ON))?.[0] ?? "";
+    const line = /<p class="proofl"[\s\S]*?<\/p>/.exec(mainOf(ON))?.[0] ?? "";
     expect(line).not.toBe("");
     expect(mainOf(ON)).not.toContain('<ul class="scale"');
-    expect(mainOf(ON).indexOf('<p class="proofl">')).toBeLessThan(mainOf(ON).indexOf('<div class="ctas">'));
+    expect(mainOf(ON).indexOf('<p class="proofl"')).toBeLessThan(mainOf(ON).indexOf('<div class="ctas">'));
     expect(text(line).startsWith("Built on Airwallex · test money · ")).toBe(true);
     // Judge panel, 13 Nov: six figures read as number soup; Home keeps three, each with its link (/proof keeps them all).
     expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals on record"]);
