@@ -25,7 +25,7 @@ import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
 import { APPROVE, BAND, BOOKS, INBOX, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
-import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
+import { PROOF_URL, RUNS_URL, VERIFY_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
@@ -848,7 +848,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // Judge scan, 15 Nov: the time is the engine's upload to paid, and says so.
   ok(/^Done: EUR 1,850\.00 read, checked, signed and paid, (\d+ s|\d+ min( \d+ s)?) from upload to paid\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
   const outs = await page.locator(".more a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
-  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/#/guest" /* judge panel 15 Nov: the guest route */ && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
+  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 4 && outs[0] === VERIFY_URL && outs[1] === TRAILER_URL && outs[2] === "https://purser-try.max-31b.workers.dev/#/guest" /* judge panel 15 Nov: the guest route */ && outs[3] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, four quiet links ("Verify this payment yourself" first), no form`);
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);

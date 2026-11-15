@@ -166,7 +166,8 @@ export function verifyCalloutHtml(): string {
   if (!pkgScripts["verify-approval"]) return "";
   return `<aside class="pverify" aria-labelledby="h-pverify">${icon("shield-check", 22)}<div><h2 id="h-pverify">${esc("Check a real approval yourself, offline")}</h2>
 <p data-rec="${esc(RECEIPT)}">${esc("The owner's own passkey approval of 7 Nov, published on 12 Nov: the passkey signed exactly those terms. Change one cent and it says NOT VALID. No network, no keys.")}</p>
-<p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p></div></aside>`;
+<p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p>
+<p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call.")}</p></div></aside>`;
 }
 
 /** The chain's own rules, shared with /docs' diagram (14 Nov). */

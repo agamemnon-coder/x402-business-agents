@@ -99,6 +99,8 @@ const CHECK='M5 12.5 10 17 19 7';
 function flowOf(name,box){
   // [done up to (exclusive), current, red]
   if(name==='work'){const b=box.querySelector('.result .big');if(!b)return [1,1,-1];if(b.classList.contains('bad'))return [2,-1,2];return [3,3,-1]}
+  // Already paid ("paid once"): every step done, as on the books screen (sweep, 15 Nov: it stopped at the passkey).
+  if((name==='approve'||name==='pay')&&box.querySelector('.paidonce'))return [6,-1,-1];
   if(name==='approve')return [3,3,-1];
   if(name==='pay'){if(box.querySelector('.refusal'))return [3,-1,3];return [3,3,-1]}
   if(name==='books'){if(box.querySelector('.paidstamp'))return [6,-1,-1];return [4,-1,4]}
