@@ -938,6 +938,25 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // no text under 14 px in a card. /docs lists the agent API's tools as the code defines them, every description
     // folded. /status: the judge's copy says it has no live status and asks for nothing (it has no /health); a hosted
     // relay's page reads its own /health and ends in a state it read, never in "could not be read".
+    // /verify (15 Nov): drop or paste a /try proof bundle; its script checks it with WebCrypto and asks no server.
+    // The sample bundle passes every line; the page makes no request beyond its own assets.
+    {
+      const asked: string[] = [];
+      const onReq = (r: { url(): string }) => { const u = new URL(r.url()); if (u.pathname !== "/verify" && !u.pathname.startsWith("/assets/") && !u.protocol.startsWith("data")) asked.push(u.pathname); };
+      page.on("request", onReq);
+      const res = await page.goto(`${base}/verify`, { waitUntil: "load" });
+      if (!res || res.status() !== 200) fail(`/verify ${tag}: status ${res?.status()}`);
+      else {
+        await look(page, `/verify ${tag}`, w);
+        await page.click("#v-sample");
+        await page.locator("#v-verdict:not([hidden])").waitFor({ timeout: 10_000 }).catch(() => fail(`/verify ${tag}: no verdict after "Load a sample bundle"`));
+        const v = await page.evaluate(() => ({ ok: document.getElementById("v-verdict")?.getAttribute("data-ok"), lines: document.querySelectorAll("#v-checks li").length, pass: document.querySelectorAll("#v-checks li.ok").length }));
+        if (v.ok !== "true" || v.lines < 10 || v.pass !== v.lines) fail(`/verify ${tag}: the sample bundle does not pass every line (${JSON.stringify(v)})`);
+        if ((await page.evaluate(() => document.documentElement.scrollWidth)) > w) fail(`/verify ${tag}: wider than ${w} px with the checks shown`);
+        if (asked.length) fail(`/verify ${tag}: the page asked a server for ${asked.join(", ")}`);
+      }
+      page.off("request", onReq);
+    }
     for (const path of ["/docs", "/status"]) {
       const healthAsked: string[] = [];
       const onHealth = (r: { url(): string }) => { if (new URL(r.url()).pathname === "/health") healthAsked.push(r.url()); };
@@ -1349,4 +1368,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /security (folds open), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

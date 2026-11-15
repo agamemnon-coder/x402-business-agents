@@ -32,6 +32,7 @@ import { loadRecord, replayRecord, runLabel } from "../redesign/run.js";
 import { homePage } from "../redesign/home.js";
 import { trySignPage } from "../try/sign.js";
 import { tryVerifyPage } from "../try/verify.js";
+import { verifyBundlePage } from "../proof/verifyPage.js";
 import { watchPage } from "../redesign/watch.js";
 import { filmWatchCsp, filmWatchPage } from "../redesign/filmWatch.js";
 import { filmId } from "../config/film.js";
@@ -338,6 +339,10 @@ export const TRY_SIGN_CSP = cspFor(TRY_SIGN_PAGE);
 /** /try/verify checks a receipt in the browser and calls no server: its CSP allows no connection at all. */
 export const TRY_VERIFY_PAGE = tryVerifyPage();
 export const TRY_VERIFY_CSP = cspFor(TRY_VERIFY_PAGE).replace("connect-src 'self'", "connect-src 'none'");
+/** /verify checks a /try proof bundle in the browser and calls no server; its two samples (docs/proof/, from a /try run) are in the page. */
+const PROOF_SAMPLE = (name: string): unknown => JSON.parse(readFileSync(new URL(`../../docs/proof/${name}.json`, import.meta.url), "utf8"));
+export const VERIFY_BUNDLE_PAGE = verifyBundlePage({ paid: PROOF_SAMPLE("try-paid"), refused: PROOF_SAMPLE("try-refused") });
+export const VERIFY_BUNDLE_CSP = cspFor(VERIFY_BUNDLE_PAGE).replace("connect-src 'self'", "connect-src 'none'");
 /** Home with its "Sign with your own Face ID" button: only in a bundle that also carries /try/sign. */
 export function homeWithTrySign(): { page: string; csp: string } {
   const page = homePage(undefined, { trySign: true });
