@@ -54,8 +54,11 @@ describe("README badges", () => {
   // the three proofs, each with its record, and "test money only".
   it("puts the live demo's line under the badges, then three proofs with their records, and says test money only", () => {
     const lines = readme.split("\n");
-    const at = lines.indexOf(badgeLine);
-    expect(lines[at + 4]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    // 15 Nov (Max: "the tags on top of the readme"): the two badge rows moved up under the links line; the live demo's
+    // line follows the Kit 11 table's closing sentence.
+    const at = lines.findIndex((l) => l.startsWith("**Live demo: "));
+    expect(at).toBeGreaterThan(lines.indexOf(badgeLine));
+    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     // 14 Nov (Max): "In 30 seconds" (three bullets) now comes first; the three proofs follow it.
     // 14 Nov: "Airwallex at the centre" sits between; the three proofs open "How it works in 3 steps".
     const proofs = lines.slice(lines.indexOf("## How it works in 3 steps")).filter((l) => l.startsWith("- **")).slice(0, 3);

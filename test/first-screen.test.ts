@@ -58,22 +58,27 @@ describe("the first screen (section D, 6 Nov)", () => {
     // sentence, word for word), "Built on Airwallex" (14 Nov, factual, no partnership implied), the three links (Try,
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.
     const kit = lines.indexOf("## Kit 11, step by step");
-    expect(lines.slice(5, kit)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", "</div>", ""]);
+    // 15 Nov (Max: "the tags on top of the readme"): the two badge rows sit under the links, inside the centred top.
+    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: sandbox]"));
+    expect(lines.slice(5, kit)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
     expect(README_WHAT).toBe(HOME_SUB);
     expect(kit).toBeLessThan(25);
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
-    expect(badges).toBeGreaterThan(kit);
-    expect(lines.slice(badges - 3, badges)).toEqual(["", DIFFERENTIATORS[0], ""]);
+    // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
+    // the live demo's line.
+    expect(badges).toBeLessThan(kit);
+    const live = lines.findIndex((l) => l.startsWith("**Live demo: "));
+    expect(lines.slice(live - 3, live)).toEqual(["", DIFFERENTIATORS[0], ""]);
     expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // Five project badges, then the partners' row.
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(5);
-    expect(lines[badges + 4]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
+    expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.
-    expect(lines.slice(badges + 5, badges + 7)).toEqual(["", "## Verify it yourself in 3 commands"]);
+    expect(lines.slice(live + 1, live + 3)).toEqual(["", "## Verify it yourself in 3 commands"]);
     const order = ["## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Enterprise"].map((h) => lines.indexOf(h));
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
