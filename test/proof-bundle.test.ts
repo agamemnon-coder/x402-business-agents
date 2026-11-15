@@ -152,7 +152,7 @@ describe("/verify, and the links to it", () => {
   it("is served at /verify under its own hash CSP that allows no connection, with no inline handler", async () => {
     const { VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE } = await import("../src/servers/dashboard.js");
     const { pageResponse } = await import("../worker/src/core.js");
-    const script = /<script>([\s\S]*?)<\/script>/.exec(VERIFY_BUNDLE_PAGE)![1]!;
+    const script = /<script>([\s\S]*?)<\/script>/i.exec(VERIFY_BUNDLE_PAGE)![1]!;
     expect(VERIFY_BUNDLE_CSP).toContain(`script-src 'sha256-${createHash("sha256").update(script, "utf8").digest("base64")}'`);
     expect(VERIFY_BUNDLE_CSP).toContain("connect-src 'none'");
     expect(VERIFY_BUNDLE_CSP).not.toMatch(/unsafe-inline|unsafe-eval/);

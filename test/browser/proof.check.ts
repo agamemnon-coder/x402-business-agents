@@ -41,7 +41,7 @@ for (const [key, value] of [["starts", "on"], ["starts_per_address_hour", 50]] a
 
 // /verify as the site serves it: the page and a CSP made as src/servers/dashboard.ts makes VERIFY_BUNDLE_CSP.
 const bundles: { paid?: ProofBundle; refused?: ProofBundle } = {};
-const inlineHash = (page: string, tag: "script" | "style") => `'sha256-${createHash("sha256").update(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(page)![1]!, "utf8").digest("base64")}'`;
+const inlineHash = (page: string, tag: "script" | "style") => `'sha256-${createHash("sha256").update(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i").exec(page)![1]!, "utf8").digest("base64")}'`;
 const verifyPage = () => {
   const html = verifyBundlePage({ paid: bundles.paid, refused: bundles.refused });
   const csp = ["default-src 'none'", `script-src ${inlineHash(html, "script")}`, `style-src ${inlineHash(html, "style")}`, "connect-src 'none'", "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
