@@ -1,0 +1,1890 @@
+{
+ "what": "Live measurement of the public Purser hosts, 15 Nov 2026. Lighthouse 12.8.2 (headless Chromium), /try timed end to end with a virtual passkey at bot speed (no reading pauses), console/CSP sweep at 390 and 1440 px in light and dark, link check. Test company and test money only.",
+ "measured_from": "a cloud sandbox in US-East; purser-try runs in Frankfurt",
+ "lighthouse": [
+  {
+   "run": "console-desktop",
+   "url": "https://purser-try.max-31b.workers.dev/#/sign-in",
+   "fetchTime": "2026-11-15T04:08:37.277Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 97,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  {
+   "run": "console-mobile",
+   "url": "https://purser-try.max-31b.workers.dev/#/sign-in",
+   "fetchTime": "2026-11-15T04:08:23.129Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 97,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  {
+   "run": "extra-airwallex",
+   "url": "https://kit11.max-31b.workers.dev/airwallex",
+   "fetchTime": "2026-11-15T04:14:21.829Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-alta",
+   "url": "https://kit11.max-31b.workers.dev/alta",
+   "fetchTime": "2026-11-15T04:14:33.285Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-books",
+   "url": "https://kit11.max-31b.workers.dev/books",
+   "fetchTime": "2026-11-15T04:15:45.312Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-claude",
+   "url": "https://kit11.max-31b.workers.dev/claude",
+   "fetchTime": "2026-11-15T04:14:56.425Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-docs",
+   "url": "https://kit11.max-31b.workers.dev/docs",
+   "fetchTime": "2026-11-15T04:15:33.922Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-home",
+   "url": "https://kit11.max-31b.workers.dev/home",
+   "fetchTime": "2026-11-15T04:15:19.659Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-security",
+   "url": "https://kit11.max-31b.workers.dev/security",
+   "fetchTime": "2026-11-15T04:15:08.098Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "extra-visa",
+   "url": "https://kit11.max-31b.workers.dev/visa",
+   "fetchTime": "2026-11-15T04:14:44.853Z",
+   "version": "12.8.2",
+   "scores": {
+    "accessibility": 100,
+    "best-practices": 100
+   }
+  },
+  {
+   "run": "home-desktop",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "fetchTime": "2026-11-15T04:07:09.275Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 61
+   }
+  },
+  {
+   "run": "home-mobile",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "fetchTime": "2026-11-15T04:06:52.386Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 61
+   }
+  },
+  {
+   "run": "proof-desktop",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "fetchTime": "2026-11-15T04:08:10.101Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 66
+   }
+  },
+  {
+   "run": "proof-mobile",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "fetchTime": "2026-11-15T04:07:52.902Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 100,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 66
+   }
+  },
+  {
+   "run": "try-desktop",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "fetchTime": "2026-11-15T04:07:37.868Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 99,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  },
+  {
+   "run": "try-mobile",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "fetchTime": "2026-11-15T04:07:22.021Z",
+   "version": "12.8.2",
+   "scores": {
+    "performance": 98,
+    "accessibility": 100,
+    "best-practices": 100,
+    "seo": 100
+   }
+  }
+ ],
+ "try_runs": [
+  {
+   "run": 1,
+   "t": {
+    "load": 638,
+    "samples": 2402,
+    "reading": 5940,
+    "approve_sheet": 6541,
+    "passkey_to_paid": 8117,
+    "create_passkey": 2763,
+    "one_cent_refusal": 1678,
+    "company": 3035
+   },
+   "total": 28351,
+   "failedAt": null,
+   "errs": [],
+   "http": [],
+   "extra": {
+    "nav": {
+     "ttfb": 208,
+     "dcl": 329,
+     "load": 594,
+     "fcp": 408,
+     "bytes": 76947
+    },
+    "reader": "Claude, live",
+    "refusal": "Transfers made: 0",
+    "done": "Done: EUR 1,850.00 read, checked, signed and paid in 18 s. Nothing real moved.",
+    "score": "Your run Share 0:29 start to finish 4 steps passed one-cent change refused",
+    "clock": "0:29"
+   }
+  },
+  {
+   "run": 2,
+   "t": {
+    "load": 1389,
+    "samples": 3095,
+    "reading": 6872,
+    "approve_sheet": 7891,
+    "passkey_to_paid": 8176,
+    "create_passkey": 3333,
+    "one_cent_refusal": 1672,
+    "company": 2122
+   },
+   "total": 31217,
+   "failedAt": null,
+   "errs": [],
+   "http": [],
+   "extra": {
+    "nav": {
+     "ttfb": 595,
+     "dcl": 816,
+     "load": 1340,
+     "fcp": 748,
+     "bytes": 77220
+    },
+    "reader": "Claude, live",
+    "refusal": "Transfers made: 0",
+    "done": "Done: EUR 1,850.00 read, checked, signed and paid in 20 s. Nothing real moved.",
+    "score": "Your run Share 0:31 start to finish 4 steps passed one-cent change refused",
+    "clock": "0:31"
+   }
+  },
+  {
+   "run": 3,
+   "t": {
+    "load": 1001,
+    "samples": 4719,
+    "reading": 6856,
+    "approve_sheet": 7375,
+    "passkey_to_paid": 7696,
+    "create_passkey": 2344,
+    "one_cent_refusal": 1669,
+    "company": 2653
+   },
+   "total": 31969,
+   "failedAt": null,
+   "errs": [],
+   "http": [],
+   "extra": {
+    "nav": {
+     "ttfb": 226,
+     "dcl": 456,
+     "load": 970,
+     "fcp": 364,
+     "bytes": 76947
+    },
+    "reader": "Claude, live",
+    "refusal": "Transfers made: 0",
+    "done": "Done: EUR 1,850.00 read, checked, signed and paid in 19 s. Nothing real moved.",
+    "score": "Your run Share 0:31 start to finish 4 steps passed one-cent change refused",
+    "clock": "0:31"
+   }
+  },
+  {
+   "run": 4,
+   "t": {
+    "load": 858,
+    "samples": 2744,
+    "reading": 5856,
+    "approve_sheet": 5862,
+    "passkey_to_paid": 7192,
+    "create_passkey": 2341,
+    "one_cent_refusal": 1668,
+    "company": 1583
+   },
+   "total": 25763,
+   "failedAt": null,
+   "errs": [],
+   "http": [],
+   "extra": {
+    "nav": {
+     "ttfb": 491,
+     "dcl": 582,
+     "load": 803,
+     "fcp": 592,
+     "bytes": 76961
+    },
+    "reader": "Claude, live",
+    "refusal": "Transfers made: 0",
+    "done": "Done: EUR 1,850.00 read, checked, signed and paid in 17 s. Nothing real moved.",
+    "score": "Your run Share 0:25 start to finish 4 steps passed one-cent change refused",
+    "clock": "0:25"
+   }
+  },
+  {
+   "run": 5,
+   "t": {
+    "load": 931,
+    "samples": 3201,
+    "reading": 6906,
+    "approve_sheet": 6865,
+    "passkey_to_paid": 7180,
+    "create_passkey": 826,
+    "one_cent_refusal": 1659,
+    "company": 2669
+   },
+   "total": 29411,
+   "failedAt": null,
+   "errs": [],
+   "http": [],
+   "extra": {
+    "nav": {
+     "ttfb": 206,
+     "dcl": 448,
+     "load": 899,
+     "fcp": 344,
+     "bytes": 77050
+    },
+    "reader": "Claude, live",
+    "refusal": "Transfers made: 0",
+    "done": "Done: EUR 1,850.00 read, checked, signed and paid in 18 s. Nothing real moved.",
+    "score": "Your run Share 0:29 start to finish 4 steps passed one-cent change refused",
+    "clock": "0:29"
+   }
+  }
+ ],
+ "api_latency": {
+  "GET /try (HTML)": {
+   "n": 20,
+   "p50": 423,
+   "p95": 806,
+   "min": 248,
+   "max": 807,
+   "status": {
+    "200": 20
+   },
+   "raw": [
+    423,
+    379,
+    806,
+    807,
+    717,
+    410,
+    406,
+    428,
+    442,
+    431,
+    373,
+    425,
+    444,
+    630,
+    248,
+    366,
+    368,
+    372,
+    449,
+    307
+   ]
+  },
+  "GET /v1/airwallex-live/rates (guest)": {
+   "n": 20,
+   "p50": 437,
+   "p95": 1840,
+   "min": 258,
+   "max": 3276,
+   "status": {
+    "200": 20
+   },
+   "sample": "{\"view\":\"rates\",\"source\":\"airwallex-sandbox\",\"host\":\"api.sandbox.airwallex.com\",\"read_at\":\"2026-11-15T04:04:08.554Z\",\"cache_seconds\":45,\"data\":{\"rates\":[{\"sell_currency\":\"USD\",\"buy_currency\":\"EUR\",\"rate\":\"1.116374\",\"pair\":\"EURUSD\",\"created_at\":\"2026-11-15T04:04:09+0000\",\"conversion_date\":\"2026-11-15",
+   "raw": [
+    3276,
+    474,
+    1840,
+    381,
+    289,
+    466,
+    258,
+    469,
+    272,
+    277,
+    437,
+    449,
+    287,
+    373,
+    451,
+    1619,
+    283,
+    279,
+    1393,
+    1305
+   ]
+  },
+  "GET kit11 / (HTML)": {
+   "n": 20,
+   "p50": 31,
+   "p95": 66,
+   "min": 25,
+   "max": 547,
+   "status": {
+    "200": 20
+   },
+   "raw": [
+    547,
+    48,
+    29,
+    44,
+    49,
+    29,
+    30,
+    66,
+    41,
+    29,
+    30,
+    31,
+    33,
+    33,
+    26,
+    25,
+    43,
+    27,
+    56,
+    29
+   ]
+  }
+ },
+ "sweep": [
+  {
+   "tag": "kit11_-390-light",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/"
+  },
+  {
+   "tag": "kit11_home-390-light",
+   "url": "https://kit11.max-31b.workers.dev/home",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/home"
+  },
+  {
+   "tag": "kit11_proof-390-light",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "status": 200,
+   "title": "Purser \u00b7 Proof",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H3:",
+    "SPAN:",
+    "H3:",
+    "SPAN:",
+    "H3:"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/proof"
+  },
+  {
+   "tag": "kit11_airwallex-390-light",
+   "url": "https://kit11.max-31b.workers.dev/airwallex",
+   "status": 200,
+   "title": "Purser \u00b7 Airwallex",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Airwallex, read back"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/airwallex"
+  },
+  {
+   "tag": "kit11_alta-390-light",
+   "url": "https://kit11.max-31b.workers.dev/alta",
+   "status": 200,
+   "title": "Purser \u00b7 Alta",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Prototype"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/alta"
+  },
+  {
+   "tag": "kit11_visa-390-light",
+   "url": "https://kit11.max-31b.workers.dev/visa",
+   "status": 200,
+   "title": "Purser \u00b7 Visa Intelligent Commerce via Airwallex Airi (sandbox)",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/visa"
+  },
+  {
+   "tag": "kit11_claude-390-light",
+   "url": "https://kit11.max-31b.workers.dev/claude",
+   "status": 200,
+   "title": "Purser \u00b7 Claude",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/claude"
+  },
+  {
+   "tag": "kit11_security-390-light",
+   "url": "https://kit11.max-31b.workers.dev/security",
+   "status": 200,
+   "title": "Purser \u00b7 Security and trust",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Target"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/security"
+  },
+  {
+   "tag": "kit11_docs-390-light",
+   "url": "https://kit11.max-31b.workers.dev/docs",
+   "status": 200,
+   "title": "Purser \u00b7 Docs and API",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/docs"
+  },
+  {
+   "tag": "kit11_books-390-light",
+   "url": "https://kit11.max-31b.workers.dev/books",
+   "status": 200,
+   "title": "Purser \u00b7 Books",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/books"
+  },
+  {
+   "tag": "try_try-390-light",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "status": 200,
+   "title": "Purser \u00b7 hands-on",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/try"
+  },
+  {
+   "tag": "try_console-390-light",
+   "url": "https://purser-try.max-31b.workers.dev/console",
+   "status": 200,
+   "title": "Purser Cloud \u00b7 Overview",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/#/overview"
+  },
+  {
+   "tag": "kit11_-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/"
+  },
+  {
+   "tag": "kit11_home-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/home",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/home"
+  },
+  {
+   "tag": "kit11_proof-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "status": 200,
+   "title": "Purser \u00b7 Proof",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H3:",
+    "SPAN:",
+    "H3:",
+    "SPAN:",
+    "H3:"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/proof"
+  },
+  {
+   "tag": "kit11_airwallex-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/airwallex",
+   "status": 200,
+   "title": "Purser \u00b7 Airwallex",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Airwallex, read back"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/airwallex"
+  },
+  {
+   "tag": "kit11_alta-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/alta",
+   "status": 200,
+   "title": "Purser \u00b7 Alta",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Prototype"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/alta"
+  },
+  {
+   "tag": "kit11_visa-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/visa",
+   "status": 200,
+   "title": "Purser \u00b7 Visa Intelligent Commerce via Airwallex Airi (sandbox)",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/visa"
+  },
+  {
+   "tag": "kit11_claude-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/claude",
+   "status": 200,
+   "title": "Purser \u00b7 Claude",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/claude"
+  },
+  {
+   "tag": "kit11_security-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/security",
+   "status": 200,
+   "title": "Purser \u00b7 Security and trust",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Target"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/security"
+  },
+  {
+   "tag": "kit11_docs-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/docs",
+   "status": 200,
+   "title": "Purser \u00b7 Docs and API",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/docs"
+  },
+  {
+   "tag": "kit11_books-390-dark",
+   "url": "https://kit11.max-31b.workers.dev/books",
+   "status": 200,
+   "title": "Purser \u00b7 Books",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/books"
+  },
+  {
+   "tag": "try_try-390-dark",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "status": 200,
+   "title": "Purser \u00b7 hands-on",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/try"
+  },
+  {
+   "tag": "try_console-390-dark",
+   "url": "https://purser-try.max-31b.workers.dev/console",
+   "status": 200,
+   "title": "Purser Cloud \u00b7 Overview",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/#/overview"
+  },
+  {
+   "tag": "kit11_-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/"
+  },
+  {
+   "tag": "kit11_home-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/home",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/home"
+  },
+  {
+   "tag": "kit11_proof-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "status": 200,
+   "title": "Purser \u00b7 Proof",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H3:",
+    "SPAN:",
+    "H3:",
+    "SPAN:",
+    "H3:"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/proof"
+  },
+  {
+   "tag": "kit11_airwallex-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/airwallex",
+   "status": 200,
+   "title": "Purser \u00b7 Airwallex",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Airwallex, read back"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/airwallex"
+  },
+  {
+   "tag": "kit11_alta-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/alta",
+   "status": 200,
+   "title": "Purser \u00b7 Alta",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Prototype"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/alta"
+  },
+  {
+   "tag": "kit11_visa-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/visa",
+   "status": 200,
+   "title": "Purser \u00b7 Visa Intelligent Commerce via Airwallex Airi (sandbox)",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/visa"
+  },
+  {
+   "tag": "kit11_claude-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/claude",
+   "status": 200,
+   "title": "Purser \u00b7 Claude",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/claude"
+  },
+  {
+   "tag": "kit11_security-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/security",
+   "status": 200,
+   "title": "Purser \u00b7 Security and trust",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Target"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/security"
+  },
+  {
+   "tag": "kit11_docs-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/docs",
+   "status": 200,
+   "title": "Purser \u00b7 Docs and API",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/docs"
+  },
+  {
+   "tag": "kit11_books-1440-light",
+   "url": "https://kit11.max-31b.workers.dev/books",
+   "status": 200,
+   "title": "Purser \u00b7 Books",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/books"
+  },
+  {
+   "tag": "try_try-1440-light",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "status": 200,
+   "title": "Purser \u00b7 hands-on",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/try"
+  },
+  {
+   "tag": "try_console-1440-light",
+   "url": "https://purser-try.max-31b.workers.dev/console",
+   "status": 200,
+   "title": "Purser Cloud \u00b7 Overview",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Northwind Outdoor (demo company)"
+   ],
+   "final": "https://purser-try.max-31b.workers.dev/#/overview"
+  },
+  {
+   "tag": "kit11_-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/"
+  },
+  {
+   "tag": "kit11_home-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/home",
+   "status": 200,
+   "title": "Purser",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/home"
+  },
+  {
+   "tag": "kit11_proof-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/proof",
+   "status": 200,
+   "title": "Purser \u00b7 Proof",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H3:",
+    "SPAN:",
+    "H3:",
+    "SPAN:",
+    "H3:"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/proof"
+  },
+  {
+   "tag": "kit11_airwallex-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/airwallex",
+   "status": 200,
+   "title": "Purser \u00b7 Airwallex",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Airwallex, read back"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/airwallex"
+  },
+  {
+   "tag": "kit11_alta-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/alta",
+   "status": 200,
+   "title": "Purser \u00b7 Alta",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "H2:Prototype"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/alta"
+  },
+  {
+   "tag": "kit11_visa-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/visa",
+   "status": 200,
+   "title": "Purser \u00b7 Visa Intelligent Commerce via Airwallex Airi (sandbox)",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/visa"
+  },
+  {
+   "tag": "kit11_claude-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/claude",
+   "status": 200,
+   "title": "Purser \u00b7 Claude",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/claude"
+  },
+  {
+   "tag": "kit11_security-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/security",
+   "status": 200,
+   "title": "Purser \u00b7 Security and trust",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Target"
+   ],
+   "final": "https://kit11.max-31b.workers.dev/security"
+  },
+  {
+   "tag": "kit11_docs-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/docs",
+   "status": 200,
+   "title": "Purser \u00b7 Docs and API",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/docs"
+  },
+  {
+   "tag": "kit11_books-1440-dark",
+   "url": "https://kit11.max-31b.workers.dev/books",
+   "status": 200,
+   "title": "Purser \u00b7 Books",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://kit11.max-31b.workers.dev/books"
+  },
+  {
+   "tag": "try_try-1440-dark",
+   "url": "https://purser-try.max-31b.workers.dev/try",
+   "status": 200,
+   "title": "Purser \u00b7 hands-on",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [],
+   "final": "https://purser-try.max-31b.workers.dev/try"
+  },
+  {
+   "tag": "try_console-1440-dark",
+   "url": "https://purser-try.max-31b.workers.dev/console",
+   "status": 200,
+   "title": "Purser Cloud \u00b7 Overview",
+   "errs": [],
+   "warns": [],
+   "http": [],
+   "csp": [],
+   "overflowX": 0,
+   "wide": [],
+   "clipped": [
+    "SPAN:Northwind Outdoor (demo company)"
+   ],
+   "final": "https://purser-try.max-31b.workers.dev/#/overview"
+  }
+ ],
+ "linkcheck": [
+  {
+   "u": "https://developer.visa.com/docs/visa-intelligent-commerce/workflows",
+   "st": 404
+  },
+  {
+   "u": "https://developer.visa.com/docs/visa-intelligent-commerce/concepts",
+   "st": 404
+  },
+  {
+   "u": "https://docs.metalntwx.com/agents/facilitator",
+   "st": 200
+  },
+  {
+   "u": "https://docs.metalntwx.com/agents/mandates",
+   "st": 200
+  },
+  {
+   "u": "https://docs.metalntwx.com/agents/payouts",
+   "st": 200
+  },
+  {
+   "u": "https://developer.visa.com/capabilities/visa-intelligent-commerce",
+   "st": 200
+  },
+  {
+   "u": "https://docs.metalntwx.com/build/controls/create-and-manage-a-smart-account",
+   "st": 200
+  },
+  {
+   "u": "https://docs.metalntwx.com/agents/x402-on-metal",
+   "st": 200
+  },
+  {
+   "u": "https://docs.metalntwx.com/reference/network-fundamentals/settlement",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/README.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/cloud/src/app.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/agent-api.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/agent-evals.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/airwallex.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/archive/overview.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/audit/README.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/claims.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/cloud.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/compliance.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connections.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/connect-claude.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/controls-matrix.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/demo/airi-run.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/controls.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/agents.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evals/ap-hostile.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/metal-award.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/plans/visa-1114.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/redteam/report.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-29-clearing.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-clearing-load.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-compliance-policy.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-10-30-four-eyes.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-02-night-batch.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run-data-qa.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run-metal-transactions.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-03-main-run.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-awx-1.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-2.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-07-vic-1.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-connected-accounts-sandbox.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-metal-extra.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-payment-acceptance-sandbox.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-platform-e2e.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-batch-transfer.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-10-t0-journal-sandbox.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-financial-transactions.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-payee-check.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-airwallex-two-locks-paid.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-faceid-onchain.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-mcp-transcript.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-metal-inspector.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-moneybird-sandbox.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-tokenize.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-vic-3.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-vic-3.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-airwallex-faceid.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-anchor.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-books-month.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-vic-4.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-vic-4.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-vic-5.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-14-vic-5.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-vic-payment-intents-2026-11-12.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/redteam-2026-10-31/README.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/holdouts/2026-11-03-blind/results.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/reliability-2026-11.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/visa-tap-live-2026-11-02.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/scorecard.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/security.md",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/zero-trust/report.json",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/agents/euroBill.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/airi/credential.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/airi/credentialGuard.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/airi/hostedCheckout.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/airi/purchase.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/audit/log.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/claude/tools.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/policy/approvals.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/policy/cards.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/policy/mandates.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/src/policy/secondKey.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/adversarial.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/airi-card-data.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/airi-credential-guard.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/airi-purchase.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/approvals.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/audit.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/invoice-duplicate-key.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/executors-mandate.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/cards.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/tree/main/docs/business",
+   "st": 200
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents/blob/main/test/second-key.test.ts",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/?autonomy",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/airwallex",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/?recorded",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/alta",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/assets/books-month-2026-11-13.pdf",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/books",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/assets/purser-month-end-2026-11-03.zip",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/docs",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/claude",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/film",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/home",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/lab",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/month",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/metal/report",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/proof",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/replay",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/runs",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/security",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/t0",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/trace",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/visa",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/watch?scene=2",
+   "st": 200
+  },
+  {
+   "u": "https://kit11.max-31b.workers.dev/try",
+   "st": 200
+  },
+  {
+   "u": "https://purser-try.max-31b.workers.dev/",
+   "st": 200
+  },
+  {
+   "u": "https://purser-try.max-31b.workers.dev/try",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/address/0x6e621D0f1ff6a03cAF1dbFE9747eCEc4513Efefc",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x053d2b7ce158a197e83d5c2ee143e3d9195ea4c6e7f1c5c194aba4130cd7c861",
+   "st": 200
+  },
+  {
+   "u": "https://purser-try.max-31b.workers.dev/connect-ai",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x870e0c20f626494109eb47cc7399662aca4d7cddca92cf08c1c5ffd81f3ebc8f",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x96850ad4562ae5abb370aead62e7ccd5d926d7b5d1a61b6a7aabbbbc78f17d5b",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xc27764bec045d4c8a573672b68b5e222098c8f9f07ada65bd06ca4ed19726fad",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xcf02673efcad2326c0bb8603be23d3972f744a11c7b99ecf7156b69b0fe4ab4e",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xc3ac51e43f02dcb234a854358a6b74116091e61684c783be07bebb1e4da656cf",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xd4c40c277410d5c2769db1b316b40a222b4e32081bed6300815ff643d2ff9b91",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xebd682c7b7f15a87193b2fee145337c0118b6ef0b7e948c48bd9983ffbcf8ae0",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xefc6831934784df1ae4b65a0d03d5f2e9e08c1d009ef4bd73d07844b5559b575",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xef3c845b00bd7066638ff2acbe97f9e8ef0cb786bed240bc3a4c1263c78f32be",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37",
+   "st": 200
+  },
+  {
+   "u": "https://testnet.metalntwx.com/tx/0xf97bcade4a83d7a23198660bee37e1c84d72d6da153eaf6d49f39cd8f542f98d",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/finance/financial_transactions",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/issuing/cards",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/accounts/receive-funds/receive-bank-transfers-to-global-accounts/simulate-deposits-to-your-global-account",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/issuing/transactions",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/payments/payment_intents/create",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/payments/payment_intents/confirm",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/payouts/transfers",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/transactional_fx/conversion",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/scale/accounts/create",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/api/transactional_fx/quotes",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/connected-accounts/about/platform-relationships",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/connected-accounts/about/about-connected-accounts",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payments/integration-options/web-checkout/hosted-payment-page",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/issuing/get-started/create-cards/create-commercial-cards",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/issuing/card-controls/authorization-controls/transaction-limits",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payments/payment-methods/global/airi",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payouts/batch-transfers/create-a-batch-transfer",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payouts/beneficiaries/create-beneficiaries",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payouts/beneficiaries/verify-a-beneficiary-account",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses",
+   "st": 200
+  },
+  {
+   "u": "https://www.airwallex.com/docs/payouts/transfers/manage-transfers/manage-approvals-for-transfers",
+   "st": 200
+  },
+  {
+   "u": "https://youtu.be/mp9fmOYfBWc",
+   "st": 204
+  },
+  {
+   "u": "https://youtu.be/n3HLVGROJc4",
+   "st": 204
+  },
+  {
+   "u": "https://github.com/agamemnon-coder/x402-business-agents",
+   "st": 200
+  }
+ ]
+}
