@@ -231,7 +231,7 @@ body.present:has(.screen.approve) .pv-lane, body.present:has(.screen.pay) .pv-la
 body.pv-noneg .negcard { display: none !important; }
 body.pv-noneg .payrow { justify-content: flex-start; gap: 16px; }
 @media (min-width: 1200px) {
-  body.pv-shell .pv-side { display: flex; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 252px; flex-direction: column; gap: 18px; padding: 22px 16px; background: color-mix(in srgb, var(--bg) 82%, #000); border-right: 1px solid var(--border); font: 500 14px/1.35 Inter, system-ui, sans-serif; color: var(--text); }
+  body.pv-shell .pv-side { display: flex; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 252px; flex-direction: column; gap: 18px; padding: 22px 16px; background: var(--surface); border-right: 1px solid var(--border); font: 500 14px/1.35 Inter, system-ui, sans-serif; color: var(--text); }
 }
 .pv-side .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 19px; color: var(--text); text-decoration: none; }
 .pv-side .brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--text); color: var(--bg); }
@@ -311,7 +311,7 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pv-stages { display: none; }
 @media (min-width: 1200px) {
   body.pv-shell.pv-staged { padding-top: 64px; }
-  body.pv-shell.pv-staged .pv-stages { display: flex; position: fixed; z-index: 35; top: 0; left: 252px; right: 0; height: 58px; align-items: center; gap: 6px; margin: 0; padding: 0 24px; list-style: none; background: color-mix(in srgb, var(--bg) 88%, #000); border-bottom: 1px solid var(--border); }
+  body.pv-shell.pv-staged .pv-stages { display: flex; position: fixed; z-index: 35; top: 0; left: 252px; right: 0; height: 58px; align-items: center; gap: 6px; margin: 0; padding: 0 24px; list-style: none; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
   body.present.pv-shell.pv-staged .pv-money { top: 12px; }
 }
 .pv-stages li { display: flex; align-items: center; gap: 9px; padding: 7px 14px 7px 8px; border-radius: 999px; color: var(--faint); font: 650 14px/1 Inter, system-ui, sans-serif; }
@@ -357,7 +357,7 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 /* v2 polish (round 2): one step bar, the pill in it, the refusal framed in red, the partners across the page. */
 @media (min-width: 1200px) {
   body.pv-shell:not(.pv-staged):not(.present) > .pv-money { display: none; }
-  body.pv-shell.pv-staged > .pv-money { top: 12px; right: 20px; }
+  body.pv-shell.pv-staged > .pv-money { top: 12px; right: 20px; z-index: 45; }
   body.pv-shell.pv-staged #main .vflow { display: none !important; }
 }
 body.pv-shell .band .same { display: none; }
