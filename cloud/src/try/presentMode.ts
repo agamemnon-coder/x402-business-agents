@@ -18,7 +18,7 @@
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
 
-import { INVOICE, PAY } from "../tryCopy.js";
+import { INVOICE } from "../tryCopy.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
 import { LOGO_FILES } from "./logos.gen.js";
 import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
@@ -39,19 +39,19 @@ export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact 
 /** "How Purser works": plain words, for someone who has never seen a payment system (Max, 15 Nov). */
 export const PRESENT_HOW = {
   eyebrow: "How Purser works",
-  heading: "AI agents pay the invoices. You approve the exceptions with Face ID.",
+  heading: "AI agents prepare the payments. You approve the exceptions with Face ID.",
   tabFlow: "One payment", tabMap: "The whole system", tabProof: "Partner proof", close: "Close",
   steps: [
     { h: "An invoice comes in", p: "A supplier sends it, by email or as an upload." },
     { h: "AI agents read and check it", p: "Claude reads it. The agents check the supplier, the bank account and whether it was paid before.", logo: "claude" },
     { h: "Your rules decide", p: "Below your limit, an agent pays it on its own. Above it, the agent asks you." },
     { h: "You approve with Face ID", p: "You sign the exact amount, supplier and bank account, with Face ID, Touch ID or Windows Hello." },
-    { h: "The money is sent", p: "Through Airwallex, then booked and filed for you.", logo: "airwallex" },
+    { h: "The money is sent", p: "Through Airwallex (sandbox), then booked and filed for you.", logo: "airwallex" },
   ],
   cut: { h: "Changed by one cent after you approved?", p: "Refused. Your approval no longer matches, so nothing is sent." },
   mapAlt: "The whole Purser system: who uses it, the screens, the Claude agents, the rules in code, the money rails (Airwallex sandbox, Alta testnet) and the proof anyone can check.",
   built: "Built with",
-  foot: "Test money only · Airwallex sandbox · Alta testnet · no endorsement implied",
+  foot: "Alta (formerly Metal) · Visa Intelligent Commerce via Airwallex Airi · test money only · no endorsement implied",
 } as const;
 
 /**
@@ -70,7 +70,7 @@ export const V2_COPY = {
     ],
     flowEnd: "Changed by one cent: blocked",
     button: "Launch the live transfer demo",
-    fine: "The real product · test money · Airwallex sandbox · deleted after 24 hours",
+    fine: "Purser's real engine · test money · Airwallex sandbox · deleted after 24 hours",
   },
   approve: {
     heading: "Approve the transfer.",
@@ -80,26 +80,31 @@ export const V2_COPY = {
     approve: "Approve & sign {amount} with {method}",
   },
   books: { heading: "Transfer executed." },
-  work: { heading: "The AI agent prepares the transfer." },
+  work: { heading: "The AI agent prepares the transfer.", ready: "Checks passed. Waiting for your approval.", readySub: "Agents can't raise their own limit or pay above it.", pay: "Send to CFO for approval →", took: "Purser's checks answered in {s} s, measured in your browser." },
+  invoice: { send: "Give it to the AI agent →" },
   company: { heading: "Your run, start to finish." },
   pay: {
     heading: "Test the lock.",
-    line: "This is the payment you approved, with one cent added. Press Pay and watch what happens.",
+    line: "This is the payment you approved, with one cent added. Try to pay it with your earlier approval.",
+    button: "Try to pay with my earlier approval",
   },
 } as const;
 
 /** The partners' proof, each from a run record, each a link to it (Metal and Visa awards; test networks only). */
 export const PRESENT_PARTNERS = {
-  heading: "Live on real payment rails",
-  sub: "Three refusals and one fingerprint, each from a recorded run you can open. Test networks and sandboxes only.",
+  heading: "Tested on partner sandboxes and testnet",
+  sub: "The same controls, on each partner's own rails, each from a recorded run you can open. Test money only.",
   cards: [
-    { logo: "alta", label: "Alta (formerly Metal) · testnet", h: "Refused on chain", p: "An agent tried to spend over its mandate. Alta refused purchase #24 on chain and recorded why: over the per-payment cap.", link: "See the transaction", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
-    { logo: "airwallex", label: "Airwallex · sandbox", h: "The approval travels with the money", p: "A EUR 240.00 SWIFT payment: Airwallex's own record carries the fingerprint the CFO signed with Face ID, 797d4483…", link: "See it on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
-    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi", h: "A reused card credential, blocked", p: "The sandbox accepted the same agent credential a second time and for another amount. Purser refused both before any payment.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
+    { logo: "airwallex", label: "Airwallex · sandbox", h: "The CFO's approval travels with the money", p: "Purser writes the hash the CFO signed into the transfer's metadata (approval_sha256 797d4483…) on a EUR 240.00 SWIFT test transfer. Card limits enforced by Airwallex itself: EUR 30.00 approved, 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "The agent's mandate holds on chain", p: "86 x402 payments on Alta testnet in the main run. When an agent went over its per-payment cap, Alta refused purchase #24 on chain: MandateRefused, OverPerPaymentCap.", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
+    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own credential, bound to the exact amount. When a credential was used again, Purser refused it before any Airwallex call. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
   ],
   all: "View live partner proof & architecture",
   allHref: "https://kit11.max-31b.workers.dev/proof",
-  foot: "No endorsement implied.",
+  foot: "Alta (formerly Metal), Visa Intelligent Commerce via Airwallex Airi, Airwallex: no endorsement implied.",
+  chain: "The same rule on chain: Alta (formerly Metal) refused an agent's purchase #24 over its cap, MandateRefused · OverPerPaymentCap.",
+  chainLink: "See the transaction →",
+  chainHref: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
 } as const;
 
 /** The four stages on top of the workspace (v2). */
@@ -116,6 +121,7 @@ export const PRESENT_SHELL = {
   userSub: "Signs with a passkey",
   reader: "Reader",
   how: "How it works",
+  guide: "Guided demo · follow the highlighted button",
 } as const;
 /** The figures of the outcome card, by name; each is filled from an answer or says NOT_IN_RUN. */
 export const PRESENT_OUTCOME = {
@@ -318,6 +324,8 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pp-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface); min-width: 0; }
 .pp-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .pp-l { color: var(--faint); font: 600 12px/1.3 Inter, system-ui, sans-serif; }
+.pv-chain { margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; border: 1px dashed color-mix(in srgb, var(--bad) 45%, var(--border)); color: var(--muted); font: 500 14px/1.45 Inter, system-ui, sans-serif; }
+.pv-chain a { color: var(--accent); font-weight: 650; text-decoration: none; }
 .pp-visa { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); color: var(--text); font: 700 15px/1 Inter, system-ui, sans-serif; } /* Visa named in text, never a drawn mark */
 .pp-card b { font: 750 18px/1.25 Inter, system-ui, sans-serif; color: var(--text); }
 .pp-card p { margin: 0; color: var(--muted); font: 500 14.5px/1.5 Inter, system-ui, sans-serif; flex: 1; }
@@ -347,6 +355,19 @@ body.pv-shell .screen.start .pp { grid-column: 1 / -1; width: 100%; }
 body.pv-shell .screen.start li.wide { display: none; }
 .screen.books .blk.booked .v2fold > summary { cursor: pointer; color: var(--accent); font: 600 14px/1.3 Inter, system-ui, sans-serif; margin-top: 6px; }
 .screen .card .pv-tag.amber { margin-bottom: 14px; }
+
+/* Jury round (15 Nov): no stray dot, one even stage bar, the finish readable, the proof large in recording mode. */
+.hw-flow::after { display: none !important; }
+.pv-stages li { height: 40px; margin: 0; }
+.pv-guide { margin: -6px 0 0; padding: 0 4px; color: var(--faint); font: 600 11.5px/1.35 Inter, system-ui, sans-serif; }
+.pv-nav li { cursor: default; }
+.screen.company .pp-cards, .screen.did .pp-cards { grid-template-columns: 1fr; }
+.screen .hw-logo.hw-airwallex { margin: 0 4px; }
+body.present .card.refusal .hashes .hash { margin: 0; font-size: 15px; line-height: 1.5; word-break: break-all; }
+body.present .card.refusal .hashes .hl { margin-right: 10px; font-family: Inter, system-ui, sans-serif; font-weight: 700; }
+body.present .card.refusal .hashes { margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
+body.present .card.refusal .hashes .hash + .hash { color: var(--bad); }
+body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; font-weight: 800; }
 `;
 
 const SHARED = String.raw`
@@ -365,7 +386,7 @@ const SH=PC.shell;let useBox=null;
 // The partners' proof (Metal and Visa awards): three cards from recorded runs, each a link; and the way to all of it.
 function partners(withHead){
   const P=PC.partners;const a=(href,text,cls)=>{const l=mk('a',cls||'',text);l.href=href;l.target='_blank';l.rel='noopener';return l};
-  const cards=mk('div','pp-cards',P.cards.map((c)=>mk('article','pp-card',[mk('div','pp-top',[c.logo?logoChip(c.logo):mk('span','pp-visa','Visa'),mk('span','pp-l',c.label)]),mk('b','',c.h),mk('p','',c.p),a(c.href,c.link+' →','pp-a')])));
+  const cards=mk('div','pp-cards',P.cards.map((c)=>mk('article','pp-card',[mk('div','pp-top',[c.logo?logoChip(c.logo):null,mk('span','pp-l',c.label)].filter(Boolean)),mk('b','',c.h),mk('p','',c.p),a(c.href,c.link+' →','pp-a')])));
   const foot=mk('div','pp-foot',[a(P.allHref,P.all+' →','btn primary pp-all'),mk('span','pp-note',P.foot)]);
   return mk('section','pp',(withHead?[mk('h2','',P.heading),mk('p','pp-sub',P.sub)]:[]).concat([cards,foot]));
 }
@@ -406,14 +427,20 @@ function v2(){
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
-  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Verified digital fingerprint'}
-  const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & settled'));
-  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Verified digital fingerprint'}
+  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Terms sealed · any change breaks the seal'}
+  const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
+  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Terms sealed · any change breaks the seal'}
   const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
   if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
   if(document.body.classList.contains('pv-noneg'))for(const a of m.querySelectorAll('.screen.company a, .screen.company button, .screen.did a, .screen.did button'))if(/negotiat/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;
-  const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'))}
+  // The finish: one main way on, the rest quiet; nothing repeated from the landing.
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did')){for(const a of sc.querySelectorAll('a, button'))if(/star on github|open purser cloud|download as json|watch agents negotiate/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;for(const x of sc.querySelectorAll('li.wide'))x.hidden=true}
+  // Works with: the host's own rail too (its official logo, unaltered).
+  const ww=[...m.querySelectorAll('.screen.start *')].find((e)=>e.childElementCount===0&&/^works with$/i.test((e.textContent||'').trim()));if(ww&&!ww.parentElement.querySelector('.hw-airwallex'))ww.after(logoChip('airwallex'));
+  // Recording mode: the refusal's proof open, the two fingerprints large.
+  if(document.body.classList.contains('present')){const rc=m.querySelector('.card.refusal');const hs=rc&&rc.querySelector('details .hashes');const df=rc&&rc.querySelector(':scope > .diff');if(hs&&df)df.after(hs)}
+  const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'));const ch=mk('p','pv-chain',[PC.partners.chain+' ']);const l=mk('a','',PC.partners.chainLink);l.href=PC.partners.chainHref;l.target='_blank';l.rel='noopener';ch.append(l);const x2=rf.querySelector('.proof.xfer');(x2||rf.querySelector('.rule')||rf.lastChild).after(ch)}
 }
 let v2t=0;new MutationObserver(()=>{if(!v2t)v2t=requestAnimationFrame(()=>{v2t=0;v2()})}).observe(document.body,{childList:true,subtree:true});v2();
 const showHow=()=>{how.classList.remove('on');void how.offsetWidth;how.classList.add('on')};
@@ -423,7 +450,7 @@ if(SHELL){
   const hb=document.querySelector('header.top .brand');const brand=hb?hb.cloneNode(true):mk('span','brand','Purser');
   useBox=mk('section','pv-use');
   const howBtn=mk('button','pv-howbtn',[mk('span','dot',''),SH.how]);howBtn.type='button';howBtn.addEventListener('click',showHow);
-  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
+  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('p','pv-guide',SH.guide),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
 }
 function drawUse(){
   if(!useBox)return;
@@ -588,7 +615,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, payButton: PAY.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };

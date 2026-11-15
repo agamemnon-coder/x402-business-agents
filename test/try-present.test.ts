@@ -59,7 +59,7 @@ describe("recording mode", () => {
 
   it("explains Purser in plain words with the partners' own logos and the README's system map, byte for byte", () => {
     const { script } = presentExtra("public");
-    for (const w of ["AI agents pay the invoices. You approve the exceptions with Face ID.", "Changed by one cent after you approved?", "The whole system"]) expect(script).toContain(w);
+    for (const w of ["AI agents prepare the payments. You approve the exceptions with Face ID.", "Changed by one cent after you approved?", "The whole system"]) expect(script).toContain(w);
     expect(SYSTEM_MAP_DATA_URL).toBe("data:image/svg+xml;base64," + readFileSync("docs/assets/readme/system-map-dark.svg").toString("base64"));
     expect(script).not.toContain("document.body.classList.add('present');");
   });
@@ -69,7 +69,7 @@ describe("recording mode", () => {
     expect(script).toContain("https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(script).toContain("797d4483");
     expect(script).toContain("Visa Intelligent Commerce · via Airwallex Airi");
-    expect(script).toContain("No endorsement implied.");
+    expect(script).toContain("no endorsement implied");
   });
 
   it("is served by /try?present=1 and only then", async () => {
