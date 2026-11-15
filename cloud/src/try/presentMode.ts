@@ -108,6 +108,17 @@ export const PRESENT_PARTNERS = {
 } as const;
 
 /** The four stages on top of the workspace (v2). */
+/** One plain sentence per moment, above the screen (15 Nov, Max: "people need to understand what's happening"). */
+export const PRESENT_GUIDE = {
+  invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. An AI agent will read it and check it for you." },
+  work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
+  approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
+  books: { k: "Step 3 of 4", t: "Approved, so the money went out.", d: "Paid with test money, booked in the accounts and filed. Next: try to cheat." },
+  pay: { k: "Step 4 of 4", t: "Now play the fraudster: change one cent.", d: "Try to pay a slightly different amount with the CFO's earlier approval." },
+  refused: { k: "Step 4 of 4", t: "Blocked. Not a cent moved.", d: "The approval only fits the exact payment the CFO saw. Change anything and it no longer fits." },
+  done: { k: "Done", t: "That's Purser.", d: "AI agents do the work. You approve the exceptions. Nobody can change what you approved." },
+} as const;
+
 export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
 
 export const PRESENT_SHELL = {
@@ -440,6 +451,25 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 @keyframes mvMark { 0% { background: color-mix(in srgb, var(--bad) 45%, transparent); } 100% { background: transparent; } }
 @keyframes mvBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 @keyframes mvAurora { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-4vw,3vh,0) scale(1.08); } }
+
+/* The guide: one plain sentence above every step, in the visitor's words. */
+.pv-cap { display: none; }
+.pv-cap.on { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; align-items: baseline; margin: 6px 0 18px; padding: 16px 20px; border-radius: 16px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface) 70%); box-shadow: 0 18px 40px -28px color-mix(in srgb, var(--accent) 70%, transparent); }
+.pv-cap .k { grid-row: 1 / span 2; align-self: start; padding: 5px 10px; border-radius: 999px; background: var(--accent); color: #fff; font: 750 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.pv-cap b { font: 760 21px/1.25 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
+.pv-cap .d { grid-column: 2; margin-top: 3px; color: var(--muted); font: 500 15.5px/1.45 Inter, system-ui, sans-serif; }
+.pv-cap.refused { border-color: color-mix(in srgb, var(--bad) 55%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--bad) 16%, var(--surface)), var(--surface) 70%); }
+.pv-cap.refused .k { background: var(--bad); }
+.pv-cap.books .k, .pv-cap.done .k { background: var(--ok); color: #04130d; }
+.pv-cap.books { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
+.pv-cap.approve .k { background: #f5b544; color: #241500; }
+.pv-cap.approve { border-color: color-mix(in srgb, #f5b544 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, #f5b544 12%, var(--surface)), var(--surface) 70%); }
+@media (min-width: 1200px) { body.pv-shell .pv-cap.on { position: sticky; top: 66px; z-index: 30; backdrop-filter: blur(10px); } }
+@media (prefers-reduced-motion: no-preference) { .pv-cap.in { animation: mvUp .5s cubic-bezier(.2,.8,.2,1) both; } }
+@media (max-width: 700px) { .pv-cap.on { grid-template-columns: 1fr; } .pv-cap .k { grid-row: auto; justify-self: start; margin-bottom: 8px; } .pv-cap .d { grid-column: 1; } .pv-cap b { font-size: 18px; } }
+body.pv-shell #main > .band { opacity: .7; }
+/* The guide says what the heading said, in the visitor's words: the heading stays for screen readers only. */
+body.pv-shell #main:has(> .pv-cap.on) > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 `;
 
 const SHARED = String.raw`
@@ -493,7 +523,13 @@ document.body.append(stages);
 document.body.prepend(mk('div','pv-aurora',''));
 function stageOf(){const m=document.getElementById('main');if(!m)return -1;const has=(c)=>!!m.querySelector('.screen.'+c);
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
+const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
+function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
+  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?'work':'';if(has('approve'))return 'approve';if(has('books'))return 'books';
+  if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 function v2(){
+  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g;void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
+   if(m0&&cap.parentElement!==m0&&g)m0.prepend(cap);else if(m0&&cap.parentElement===m0&&m0.firstElementChild!==cap)m0.prepend(cap)}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
   [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
   const m=document.getElementById('main');if(!m)return;
@@ -690,7 +726,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, guide: PRESENT_GUIDE, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
