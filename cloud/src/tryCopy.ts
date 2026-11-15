@@ -512,6 +512,8 @@ export const BOOKS = {
   account: "Account",
   debit: "Debit",
   credit: "Credit",
+  /** Judge scan, 15 Nov: money in transit (1590) carries a conversion in two currencies, one line each; the row under them says so. */
+  conv: "1590: one conversion, {out} for {in}.",
   even: "Debits equal credits.",
   uneven: "Debits and credits differ.",
   /** The fold with the ledger chain's head (the newest entry's own hash). */
@@ -555,7 +557,7 @@ export const COMPANY = {
    * 14 Nov (owner: "add a CTA, now it just ends"): the finish says what the run did, from its own record: the paid
    * invoice's amount and the time from its upload to paid (received_at to paid_at, the engine's). {money}, {time}.
    */
-  done: "Done: {money} read, checked, signed and paid in {time}. Nothing real moved.",
+  done: "Done: {money} read, checked, signed and paid, {time} from upload to paid. Nothing real moved.",
   /** Without the figures (a reload that cannot read them): the same sentence without them. */
   donePlain: "Done: read, checked, signed and paid. Nothing real moved.",
   /** The next steps, one primary and three quiet links; no form, nothing collected. */
@@ -591,7 +593,7 @@ export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", 
 export const RECORDED: { key: string; date: string; title: string }[] = [
   { key: "awx-1", date: "7 Nov 2026", title: "An agent's overspend, declined by Airwallex" },
   { key: "connected-1", date: "10 Nov 2026", title: "A connected-account payout" },
-  { key: "t0-1", date: "10 Nov 2026", title: "The books posted to T:0" },
+  { key: "t0-1", date: "10 Nov 2026", title: "The books posted to T:0, an outside ledger" },
 ];
 
 /** The session's renewal answered that the company is gone (410). */
@@ -698,7 +700,7 @@ export const VISIBLE = {
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.conv, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     // While the blocks' reads run: a skeleton each, named for screen readers.
     [BOOKS.heading, BOOKS.loading, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
@@ -774,7 +776,9 @@ export const VISIBLE = {
 // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs ("work 2"; "work 12" read by Claude).
 // The integration of 14 Nov (try-integ-1114) re-pinned every state at its count. The start adds "What's real here"
 // (owner: "fill and lift it"), four proof chips: "start 0" to "start 3", +37 each.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 76, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 78, "company 1": 71, "company 2": 84, "company 3": 94, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 79, "approve 3": 48 };
+// Judge scan, 15 Nov: the finish says its time runs from upload to paid ("company 0", "company 2" to "company 4", +3);
+// the books say the two money-in-transit lines are one conversion ("books 0", +6). Each pinned at its count.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 116, "start 1": 112, "start 2": 117, "start 3": 111, "pay 7": 66, "pay 8": 116, "invoice 4": 49, "invoice 5": 50, "books 0": 82, "books 1": 74, "work 3": 60, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 59, "books 4": 57, "books 5": 54, "company 0": 81, "company 1": 71, "company 2": 87, "company 3": 97, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "work 2": 75, "work 10": 91, "invoice 6": 60, "work 11": 73, "work 12": 78, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 82, "approve 3": 48 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -847,14 +851,15 @@ export const LIVE = {
   } as Record<string, string>,
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
-    blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
+    blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waiting for your signature",
     ready: "ready to pay", paid: "paid", rejected: "rejected", received: "received",
   } as Record<string, string>,
   ev: {
     "ap.received_why": "An invoice of {money} came in and was checked: {status}. Found: {why}.",
     "ap.received": "An invoice of {money} came in and was checked: {status}.",
     "ap.received_plain": "A document came in and was read and checked.",
-    "ap.status": "The invoice is now: {status}.",
+    "ap.status": "The invoice is now {status}.",
+    "ap.status_waiting": "Waiting for your signature.",
     "ap.status_plain": "The invoice changed status.",
     "ap.duplicate_document": "The same file came in again. It was already filed, so nothing was added.",
     "ap.duplicate_cleared": "You confirmed the invoice is not a duplicate.",

@@ -137,7 +137,7 @@ the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 charac
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.1-submission`)
 - New on 14 November (merged, live, test money): /try puts a live Airwallex sandbox FX quote in the terms the
   passkey signs, within the company's FX limit; after the passkey, one Airwallex sandbox transfer of the signed payment
-  (off by default); Purser Cloud has a read-only Airwallex tab, a signed events feed and each agent's sandbox card
+  (off by default); Purser Cloud has a read-only Airwallex tab, a signed events feed (switched on; no event yet) and each agent's sandbox card
   (card actions off by default); the agents get the CFO's past decisions as precedent; a "Built on Airwallex" badge on
   every page. Not run live: Purser Cloud can also run payables at the Airwallex sandbox (new supplier, pay, pay all
   ready, money in), each step behind the CFO's passkey over the exact terms; switched off by default (admin switches

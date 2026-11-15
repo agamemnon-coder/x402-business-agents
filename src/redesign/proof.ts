@@ -85,6 +85,7 @@ h2.sec { font-size: clamp(22px, 2.2vw, 28px); font-weight: 750; margin: 24px 0 1
 .pcard .ph .logo { height: 30px; padding: 0 10px; }
 .pcard .ph .logo + h3 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .pcard .ph h3 { font-size: 19px; }
+.noend { display: block; font-size: 13px; color: var(--muted); margin: 6px 0 0; }
 /* The card's main claim reads as a link, the same on all three cards (review 12 Nov): the accent colour, an accent underline. */
 .pcard > ul.lead a.c { font-size: 16.5px; color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 .pcard > ul.lead a.c:hover { text-decoration-color: var(--accent); }
@@ -213,6 +214,8 @@ const mark = (file: string, name: string, w: number, dark = false) => `<span cla
 const CARD_MARK: Record<string, string> = {
   airwallex: mark("logo-airwallex.png", "", 109), visa: `<span class="logo tname">Visa</span>`, metal: mark("logo-alta.svg", "", 29), claude: mark("logo-claude-slate.svg", "", 69),
 };
+/** Judge scan, 15 Nov: "No endorsement implied" visibly beside the marks on /proof and the partner pages (it was only in "What's real?"). */
+export const ENDORSE_NOTE = `<small class="noend">No endorsement implied</small>`;
 export const LOGO = {
   // Alta (formerly Metal): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   metal: mark("logo-alta.svg", "Alta", 29),
@@ -296,7 +299,7 @@ function t0CardParts(): { lead: Lead[]; what: string; facts: string; items: stri
   const j = t0Journal(md);
   if (!j) return null;
   return {
-    lead: [{ text: `${j.posted} journal entries in T:0's ledger, ${j.differences} differences`, href: "t0" }],
+    lead: [{ text: `${j.posted} journal entries in T:0, an outside accounting ledger: ${j.differences} differences`, href: "t0" }],
     what: `Purser's books of the main run, posted to T:0's shared sandbox entity on ${j.day} and read back line by line. Test data.`,
     facts: fact(String(j.posted), "entries posted") + fact(String(j.differences), "differences") + fact(`${j.debits} USD`, "debits equal credits"),
     items: [
@@ -334,7 +337,8 @@ ${visa ? card("visa", "Visa", visa.what, visa.facts, visa.items) : ""}
 ${card("metal", "Alta", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Alta at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Alta because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${t0 ? card("t0", "T:0", t0.what, t0.facts, t0.items) : ""}
 ${card("claude", "Claude", `The agents decide with Claude: ${run.agents.map((a) => `${a.short} on ${a.family}`).join(", ")}.`, fact(String(sp.byClaude), "decisions by Claude") + fact(String(s.agent_stats.reduce((n, a) => n + a.claude_calls, 0)), "calls to Claude, each logged"), p.claude)}
-</div>`;
+</div>
+${ENDORSE_NOTE}`;
 }
 
 function moreCards(run: AgentRun): string {

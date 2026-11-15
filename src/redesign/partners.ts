@@ -19,7 +19,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { AIRI_CREDENTIAL, SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
-import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
+import { ENDORSE_NOTE, LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
@@ -51,6 +51,7 @@ import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
 .phd { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.phd .noend { font-size: 13px; color: var(--muted); }
 .phd h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 780; letter-spacing: -.03em; flex: 1 1 100%; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex: none; }
 .logo.dark { background: #191919; border-color: #191919; } .logo img { display: block; height: 15px; width: auto; }
@@ -155,7 +156,7 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
     + fold("What is simulated", [plainLi("Test money on Alta testnet only (*USDZ)."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions."),
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
-  const body = metalBody(run.record, { logo: LOGO.metal, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
+  const body = metalBody(run.record, { logo: LOGO.metal + ENDORSE_NOTE, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
   return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
@@ -172,7 +173,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // (Alta earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
   // and /visa show. Proof's "Policy and card side by side" opens the cards' fold (#controls, or #card-<agent>).
   const body = airwallexBody(run, {
-    logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : "",
+    logo: LOGO.airwallex + ENDORSE_NOTE, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : "",
     awx1: awxRunBlock(), airi: airiRunBlock() + vic2RunBlock(undefined, { short: true }),
     picture: [node("zap", "Alta earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
@@ -417,7 +418,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   // as a bar chart; the folds below as details.
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   const body = claudeMain({
-    logo: LOGO.claude, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
+    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
     split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     folds: sweepFold(ev, used) + failureFold(ev)

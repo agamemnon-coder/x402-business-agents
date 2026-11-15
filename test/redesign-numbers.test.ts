@@ -124,6 +124,10 @@ const visibleText = (html: string) => html
   // docs/demo/airwallex-run.json, the published receipt (docs/runs/2026-11-07-awx-1/receipt-P-0002.json) and
   // docs/demo/main-run.json in test/hero-demo.test.ts and test/home-story.test.ts. The same run's and the receipt's own
   // notes in Home's "What's real?" fold likewise.
+  // Judge scan, 15 Nov: the hero's VAT line names the account Purser's engine books a German supplier's 19% to now
+  // (src/ap/books.ts AP_ACCOUNTS.foreignVat, a constant of the chart, not a figure of the run); test/home-story.test.ts
+  // holds it to the engine's own accrual of that invoice.
+  .replace(/\b1515 Foreign VAT\b/g, " ")
   .replace(/\b1\s+Ask\s+2\s+Face ID[\s\S]*?See the proof/g, " ")
   .replace(/The hero's steps 1 to 3 and the two Airwallex rows:[\s\S]*?The terms are exactly as signed\./g, " ")
   // Home's "About Purser" fold (the owner, 12 Nov): how many runs /runs lists, and the payout and fee of the run of 10
