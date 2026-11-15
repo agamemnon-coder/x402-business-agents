@@ -169,3 +169,9 @@ a5ebcf967661ea4c747d1985c549710409609ade:docs/proof/try-refused.json:generic-api
 9106d40b36c3f070acb762a3f4ee109d756f6826:docs/proof/try-paid.json:generic-api-key:65
 # public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
 9106d40b36c3f070acb762a3f4ee109d756f6826:docs/proof/try-refused.json:generic-api-key:65
+# public WebAuthn value in the film's proof record, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+9b74a05ba3d5f844c112971fbcaf14399ac7fb36:docs/film/under-the-hood/record.json:generic-api-key:162
+# public WebAuthn value in the film's proof record, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+9b74a05ba3d5f844c112971fbcaf14399ac7fb36:docs/film/under-the-hood/record.json:generic-api-key:523
+# public WebAuthn value in the film's proof record, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+9b74a05ba3d5f844c112971fbcaf14399ac7fb36:docs/film/under-the-hood/try-proof.json:generic-api-key:65
