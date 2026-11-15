@@ -41,6 +41,7 @@ function authData(b: Buffer) {
 }
 
 async function main(): Promise<void> {
+  if (argv.includes("--verify")) { await (await import("./recordUthVerify.js")).recordVerify(); return; }
   if (argv.includes("--cloud")) { await (await import("./recordUthCloud.js")).recordCloudAgents(); return; }
   const raw = resolve(out, "frames");
   rmSync(raw, { recursive: true, force: true });
@@ -101,6 +102,13 @@ async function main(): Promise<void> {
     await mark(page, "paid");
     await hold(4);
     await mark(page, "paid-held");
+    // The proof bundle the finish hands over (for the film's /verify beat): this very payment, signed on this site.
+    const dl = page.getByRole("button", { name: /Download the proof/ }).or(page.getByRole("link", { name: /Download the proof/ })).first();
+    if (await dl.count()) {
+      const [file] = await Promise.all([page.waitForEvent("download", { timeout: 30_000 }), dl.click()]);
+      await file.saveAs(resolve(root, "docs/film/under-the-hood/try-proof.json"));
+      console.log("proof bundle saved");
+    }
     await page.getByRole("link", { name: BOOKS.cheat }).or(page.getByRole("button", { name: BOOKS.cheat })).first().click();
     await page.getByRole("button", { name: PAY.button }).waitFor({ timeout: 60_000 });
     await mark(page, "cheat");

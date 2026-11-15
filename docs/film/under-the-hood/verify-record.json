@@ -1,0 +1,40 @@
+{
+  "recorded_at": "2026-11-15T04:26:56.602Z",
+  "page": "https://kit11.max-31b.workers.dev/verify",
+  "bundle": "docs/film/under-the-hood/try-proof.json (a /try test company, test money)",
+  "one_cent": "the amount 1850.00 changed to 1850.01 in the page's JSON box",
+  "marks": {
+    "start": 0.474,
+    "passed": 2.44,
+    "passed-held": 7.989,
+    "edit": 10.258,
+    "failed": 12.483,
+    "failed-held": 16.503
+  },
+  "lines": {
+    "paid": [
+      "pass format: purser.proof-bundle/v1, proposal P-0001",
+      "pass terms hash: SHA-256 of the canonical terms is 58b8dd275759f5cfb02e02779a7e3c411746d09d824197913f99ef7d5c666ead, as the file says",
+      "pass challenge: clientDataJSON.challenge is 58b8dd275759f5cfb02e02779a7e3c411746d09d824197913f99ef7d5c666ead, the terms hash",
+      "pass client data: type webauthn.get, origin https://purser-try.max-31b.workers.dev",
+      "pass rp id: rpIdHash 426155d1fdc5…509d = SHA-256(\"purser-try.max-31b.workers.dev\")",
+      "pass user verified: flags 0x05: user present yes, user verified yes",
+      "pass signature: ES256 verifies over authenticatorData + SHA-256(clientDataJSON) (5098bd41dd5d…cbad) with the public key",
+      "pass decision: paid; signed 58b8dd275759…6ead, sent 58b8dd275759…6ead; signature true, executor true; transfers 0 → 1",
+      "pass ledger balance: 5 entries, debits equal credits: entry 3 413.38 = 413.38; entry 4 370.00 = 370.00; entry 5 1850.00 = 1850.00; entry 6 13.40 = 13.40; entry 9 1850.00 = 1850.00",
+      "pass ledger chain: 5 entries hash as posted, each covering the one before; ledger head 2daf5f8b6b44…3690 of 9 entries, the last of these"
+    ],
+    "one_cent": [
+      "pass format: purser.proof-bundle/v1, proposal P-0001",
+      "FAIL terms hash: SHA-256 of the canonical terms is 9c3a593ce3d5d700aae54b028b2e9821ca187548b1be7a91a3a8f7d93b7a4740, the file says 58b8dd275759f5cfb02e02779a7e3c411746d09d824197913f99ef7d5c666ead",
+      "FAIL challenge: clientDataJSON.challenge is 58b8dd275759f5cfb02e02779a7e3c411746d09d824197913f99ef7d5c666ead, not the terms hash 9c3a593ce3d5d700aae54b028b2e9821ca187548b1be7a91a3a8f7d93b7a4740",
+      "pass client data: type webauthn.get, origin https://purser-try.max-31b.workers.dev",
+      "pass rp id: rpIdHash 426155d1fdc5…509d = SHA-256(\"purser-try.max-31b.workers.dev\")",
+      "pass user verified: flags 0x05: user present yes, user verified yes",
+      "pass signature: ES256 verifies over authenticatorData + SHA-256(clientDataJSON) (5098bd41dd5d…cbad) with the public key",
+      "FAIL decision: paid; signed 58b8dd275759…6ead, sent 58b8dd275759…6ead; signature true, executor true; transfers 0 → 1",
+      "pass ledger balance: 5 entries, debits equal credits: entry 3 413.38 = 413.38; entry 4 370.00 = 370.00; entry 5 1850.00 = 1850.00; entry 6 13.40 = 13.40; entry 9 1850.00 = 1850.00",
+      "pass ledger chain: 5 entries hash as posted, each covering the one before; ledger head 2daf5f8b6b44…3690 of 9 entries, the last of these"
+    ]
+  }
+}

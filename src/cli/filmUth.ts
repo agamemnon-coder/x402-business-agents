@@ -140,7 +140,7 @@ async function main(): Promise<void> {
     inputs.push("-i", bed); const k = inputs.filter((x) => x === "-i").length - 1;
     filters.push(`[${k}:a]volume=0.10,afade=t=in:st=0:d=2,afade=t=out:st=${(total - 3).toFixed(2)}:d=3,atrim=0:${total.toFixed(2)}[bed]`); mixes.push("[bed]");
   }
-  const style = "FontName=Inter,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H90000000,BackColour=&H90000000,BorderStyle=3,Outline=6,Shadow=0,MarginV=36,Alignment=2";
+  const style = "FontName=Inter,FontSize=15,PrimaryColour=&H00FFFFFF,OutlineColour=&H22000000,BackColour=&H22000000,BorderStyle=3,Outline=6,Shadow=0,MarginV=36,Alignment=2";
   const subs = `subtitles=${resolve(docs, "captions.srt")}:fontsdir=${resolve(root, "src/ui")}:force_style='${style}'`;
   const film = resolve(out, "under-the-hood.mp4");
   if (mixes.length) {
