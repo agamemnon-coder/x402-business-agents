@@ -81,7 +81,8 @@ const NAMES: Record<CardAgent, string> = { sourcing: "Sourcing agent", support: 
 export type CardActionKind = "issue" | "freeze" | "unfreeze" | "limits" | "test" | "tidy" | "edge";
 export const CARD_ACTION_KINDS: readonly CardActionKind[] = ["issue", "freeze", "unfreeze", "limits", "test", "tidy", "edge"];
 /** At most this many older cards frozen in one signed action. */
-const TIDY_MAX = FREEZE_MANY_MAX;
+/** One signed tidy freezes up to this many older cards, in calls of FREEZE_MANY_MAX (15 Nov: about 50 per agent were left). */
+const TIDY_MAX = 5 * FREEZE_MANY_MAX;
 
 export class CardRefused extends Error {
   constructor(readonly status: number, message: string) { super(message); this.name = "CardRefused"; }
@@ -393,9 +394,21 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   let result: Record<string, unknown>;
   if (r.kind === "tidy") {
     // Each older card frozen in turn; every answer kept, and the action is done only when all of them are.
-    // In one call to the gateway (up to FREEZE_MANY_MAX cards), each card's answer kept.
-    const x = await ask({ op: "freeze_many", action_sha256: r.sha256, card_ids: a.card_ids ?? [] });
-    const frozen = x.ok && x.op === "freeze_many" ? x.frozen.map((f) => ({ card_id_last4: f.card_id_last4, status: f.ok ? "INACTIVE" : null, reason: f.reason })) : (a.card_ids ?? []).map((id) => ({ card_id_last4: id.slice(-4), status: null, reason: x.ok ? "an unexpected answer" : x.reason }));
+    // One signed action, every listed card: calls to the gateway of up to FREEZE_MANY_MAX cards each, until none is left.
+    // A call that fails, or stops early (writes off, no key, forbidden), ends the loop; the cards not reached say why.
+    const ids = a.card_ids ?? [];
+    const frozen: { card_id_last4: string; status: string | null; reason: string | null }[] = [];
+    for (let i = 0; i < ids.length; i += FREEZE_MANY_MAX) {
+      const chunk = ids.slice(i, i + FREEZE_MANY_MAX);
+      const x = await ask({ op: "freeze_many", action_sha256: r.sha256, card_ids: chunk });
+      const got = x.ok && x.op === "freeze_many" ? x.frozen.map((f) => ({ card_id_last4: f.card_id_last4, status: f.ok ? "INACTIVE" : null, reason: f.reason })) : [];
+      frozen.push(...got);
+      if (got.length < chunk.length) {
+        const why = !x.ok ? x.reason : x.op !== "freeze_many" ? "an unexpected answer" : got.at(-1)?.reason ?? "an unexpected answer";
+        frozen.push(...ids.slice(i + got.length).map((id) => ({ card_id_last4: id.slice(-4), status: null, reason: `not reached: ${why}` })));
+        break;
+      }
+    }
     const all = frozen.length > 0 && frozen.every((f) => f.status === "INACTIVE");
     result = { status: all ? "done" : "failed", kind: r.kind, agent: r.agent, sha256: r.sha256, frozen, ...(all ? {} : { reason: "not every older card was frozen" }), label: CARDS_LABEL };
     await o.sql.run("DELETE FROM card_reads WHERE tenant_id = '' AND key = 'list'");
