@@ -44,6 +44,9 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 /* The proof line (15 Nov): what it runs on and three measured figures, under the idea. */
 .proofl { margin: 14px 0 0; font-size: 15px; line-height: 1.6; color: var(--muted); max-width: 36em; }
 .proofl a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); white-space: nowrap; }
+/* Each figure is a 44 px target, like every link on Home (test/browser/homeStory.ts). */
+.proofl a { display: inline-flex; align-items: center; gap: .3em; min-height: 44px; border-bottom: 0; text-decoration: underline dotted var(--faint); text-underline-offset: 4px; }
+.proofl { line-height: 1.3; }
 .proofl a:hover, .proofl a:focus-visible { color: var(--accent); border-color: var(--accent); }
 .proofl b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
 .proofl .dot { color: var(--faint); }
