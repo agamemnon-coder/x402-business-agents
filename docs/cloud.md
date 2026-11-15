@@ -111,7 +111,8 @@ the reference below (`test/cloud-docs.test.ts` fails when an endpoint is missing
 | `GET /v1/tokenisation` | read | Tokenisation as the records hold it: the invoice token on Alta testnet (mint, finance, settle), the agents' Airwallex cards and the Visa credential via Airi, each labelled as its record labels it. |
 | `GET /v1/cards` | read | The agents' live Airwallex sandbox cards (test money): last four digits only, live status, limits against the CFO policy, newest authorizations with their ids; whether card actions are on (`awx_cards`) and today's caps. |
 | `GET /v1/cards/scope` | anyone | Whether the sandbox key may use Airwallex Issuing: `ok`, `forbidden`, `no_key`, `no_gateway` or `unavailable`, with why in fixed codes (`why`: the gateway's code or `rpc_failed`; `http_status`; Airwallex's `awx_code`). One read a minute at most, for everyone; no card data. |
-| `POST /v1/cards/actions` | admin | A signed-in owner asks for a card action (`issue`, `freeze`, `unfreeze`, `limits`, `test`): the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing is sent yet. |
+| `GET /v1/cards/edge/latest` | anyone | The newest one-cent-over test at the Airwallex sandbox: an agent's card at its limit L, then L + 0.01, with Airwallex's own answers (approved, or declined with its reason code), their ids and times. Sandbox, test money, the card's last four digits only; 404 before the first run. `npm run card-cent:record` writes it to docs/runs. |
+| `POST /v1/cards/actions` | admin | A signed-in owner asks for a card action (`issue`, `freeze`, `unfreeze`, `limits`, `test`, `tidy`: freeze the agent's older test cards, `edge`: the limit, then one cent over): the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing is sent yet. |
 | `POST /v1/cards/actions/{id}/sign` | admin | The owner's own passkey over the action's hash; the action then runs once at the Airwallex sandbox. The same signed action again answers its first result. |
 | `GET /v1/airwallex-live/{view}` | read | The live Airwallex tab, read-only, from the Airwallex sandbox (test money). Purser Cloud holds no Airwallex key: it asks the site Worker's gateway (`AWX_READ`, a service binding to kit11's `AwxRead` entrypoint; `worker/src/awxRead.ts`), which alone calls `api.sandbox.airwallex.com`, by a fixed list of GETs (and the login). Views: `balances`, `accounts`, `financial`, `rates`, `transfers`, `beneficiaries`, `issuing`, `calls`, `reconcile` (Purser's ledger of the recorded awx-1 run against Airwallex's financial transactions, to the cent), `events` (the webhooks Airwallex sent the site, signature verified only, the last 50: type, Airwallex object id and time, nothing else; `worker/src/awxEvents.ts`). Each answer says when Airwallex was read, or why the sandbox is unavailable. Kept 45 s for everyone; capped per visitor here and for all visitors in the gateway. |
 | `GET /v1/books/bookings` | read | For each supplier invoice, the ledger entries that book it (its accrual and its payment). |
@@ -677,3 +678,17 @@ policy's. The CFO freezes and unfreezes it, or sets it back to the policy, with 
 - Checked on this machine with a stand-in sandbox: `npx tsx test/browser/agent-cards.check.ts docs/assets/cloud`.
 
 ![The Sourcing agent's live card, frozen, with a declined over-limit purchase](assets/cloud/cloud-agents-card-1440.png)
+
+### One live card per agent, and one cent over the limit (15 Nov)
+
+- **One reading, two views.** `src/airwallex/agentCardSet.ts` sorts the sandbox's cards per agent, by nickname:
+  - the live card is the one Purser Cloud pinned, else the newest active card that matches the CFO policy, else the newest active card;
+  - every other card of the agent is an older test card, frozen or still to be frozen.
+  - Purser Cloud's Agents tab and /airwallex's live block (`GET /api/awx/agent-cards` on kit11, read only, one read a minute, last four digits only) both use it.
+- **Adopted, not issued twice.** An agent whose card is already at the sandbox adopts it in Purser Cloud. This is our records only; nothing is sent. "Issue card" refuses an agent that already has one.
+- **Tidy.** "Freeze older test cards" is one signed action that sets the agent's older active cards to INACTIVE, at most 6. The live card is left alone.
+- **One cent over.** "Test: L, then L + 0.01" is one signed action with two sandbox test purchases on the live card (Airwallex's simulated card transaction API). It needs the card's limits to match the CFO policy first. Airwallex's own answers, with their ids and times, are kept and served by `GET /v1/cards/edge/latest`. `npm run card-cent:record` writes them to `docs/runs/airwallex-card-cent-<date>.json`. /airwallex and /proof then show "Airwallex itself: L approved, L + 0.01 declined", computed from that file and linking it. With no file, they claim nothing.
+- **The 6 Nov read is dated.** /airwallex's and /proof's line on the main run's cards now says it was read on 6 Nov, against that run's policy. It is not today's sandbox.
+- **Payees who are people.** They are shown by initials only, in the read gateway and again in Purser Cloud (`src/airwallex/personName.ts`).
+
+![The Support agent: its live card adopted from the sandbox, an older test card frozen](assets/cloud/cloud-agents-card-older-1440.png)

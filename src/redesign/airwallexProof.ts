@@ -172,10 +172,14 @@ ${badge(h.match, "Match: the same hash", "No match")}
 <p class="src">${esc(`GET /transfers/{id}, read ${day(h.readAt)}, sandbox, test money · ${h.file}`)}</p></div>`;
 }
 
-/** One line for all the cards: how many match the CFO policy on every control, counted from the rows. */
-export function cardsMatchBadge(rows: CardControlRow[]): string {
-  const matched = rows.filter((r) => r.match).length;
-  return badge(matched === rows.length, `${countOf(matched, rows.length)} cards match the CFO policy`, `${rows.length - matched} of ${rows.length} cards differ from the CFO policy`);
+/**
+ * One line for all the cards: how many matched the main run's CFO policy on every control, counted from the rows. Dated
+ * and past tense (15 Nov): it is the 6 Nov read of the main run's cards, not today's sandbox, which the live block above
+ * it reads (src/redesign/cardCent.ts, worker/src/agentCardsLive.ts).
+ */
+export function cardsMatchBadge(rows: CardControlRow[], readAt: string): string {
+  const matched = rows.filter((r) => r.match).length, on = day(readAt);
+  return badge(matched === rows.length, `${countOf(matched, rows.length)} cards of the main run matched its CFO policy (read ${on})`, `${rows.length - matched} of ${rows.length} cards of the main run differed from its CFO policy (read ${on})`);
 }
 
 /** /airwallex's fold of the cards, side by side with the CFO policy: Proof links here, and the page opens it on arrival. */
@@ -193,7 +197,7 @@ export function controlsShortHtml(rows: CardControlRow[], readAt: string, file: 
   });
   return `<div class="card" id="awx-cards"><h3>${icon("credit-card", 18)}${esc("Card controls Airwallex enforces, written from the CFO policy")}</h3>
 <p>${esc("Limit per purchase and per month, merchant categories, currency and end date, as Airwallex returns each agent's card.")}</p>
-${cardsMatchBadge(rows)}
+${cardsMatchBadge(rows, readAt)}
 <details class="fold"><summary>${esc("Show each card")}</summary><ul class="awc">${items.join("")}</ul></details>
 <p class="src">${esc(`GET /issuing/cards, read ${day(readAt)}, sandbox · ${file}`)}</p>
 <a class="open" href="airwallex#${AWX_CONTROLS_ID}">${esc("Policy and card side by side")} ${icon("arrow-right", 14)}</a></div>`;
@@ -208,7 +212,7 @@ ${r.checks.map((c) => `<div class="awrow"><span class="k ${c.ok ? "ok" : "no"}">
 <small>${esc(`Card id …${r.idTail} · ${r.status} · created by "${r.createdBy}"`)}</small></div>`;
   // Max, 6 Nov: one line on the page; each card's side by side in a collapsed fold, as Proof folds its lists. The fold is
   // #controls and each card #card-<agent>: a link to either opens the fold (OPEN_TARGET_JS, src/redesign/ui.ts).
-  return `<div class="card">${cardsMatchBadge(rows)}
+  return `<div class="card">${cardsMatchBadge(rows, readAt)}
 <details class="fold" id="${AWX_CONTROLS_ID}"><summary>${esc("Show each card: the CFO policy beside the Airwallex card control")}</summary>
 <p>${esc("Purser writes each card's controls from the CFO policy; Airwallex declines anything outside them, whatever the agent does.")}</p>
 <div class="awcards">${rows.map(cardHtml).join("")}</div>
