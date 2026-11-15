@@ -1871,6 +1871,7 @@ screen('company',{heading:C.company.heading,draw(box){
   // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs on /proof; three secondary ones.
   const rails=out('btn primary big proofl',[el('span','',Y.rails),icon('arrow-right',18)],PROOF);
   const more=el('div','acts more',[out('btn quiet verifyl',[el('span','',C.verifyYourself.verify),icon('external-link',14)],C.verifyYourself.url),out('btn quiet',[icon('play',14),el('span','',Y.film)],C.film),out('btn quiet',[el('span','',Y.cloud),icon('external-link',14)],C.finish.cloud),out('btn quiet',[el('span','',Y.star),icon('external-link',14)],C.finish.repo)]);
+  {const n=C.finish.negotiate;if(n){const a=el('a','btn quiet negl',[el('span','',n.label),icon('arrow-right',14)]);a.href=n.href;more.append(a)}}
   // The records: the PDF a person reads, the JSON for developers.
   const dl=btn(Y.download);const line=el('p','muted');line.hidden=true;
   const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
