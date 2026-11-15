@@ -243,7 +243,8 @@ describe("TAP on /proof: nowhere (Max's last round, item 2; the footer link went
     expect(html).not.toContain('class="septest"');
     // (The red team's night batch of 2 November stays: it is not the TAP run.) Since 13 Nov the live-runs list ends with
     // one link, "Visa TAP run → /visa" (src/redesign/proofRuns.ts), the only TAP on the page; the fold stays off /proof.
-    expect(words(dropBlocks(html)).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
+    // Judge panel, 15 Nov: the first of the three facts is Airwallex's own LIMIT_EXCEEDED decline of 7 Nov (awx-1, not TAP).
+    expect(words(dropBlocks(html.replace(/<ol class="pfirst"[\s\S]*?<\/ol>/, ""))).replace("Visa TAP run → /visa", "")).not.toMatch(/\bTAP\b|LIMIT_EXCEEDED|card limit/);
   });
 
   // 12 Nov (merge of #148 into #157): main kept this footer link on Proof; #157 removes it, as Visa is a section of its

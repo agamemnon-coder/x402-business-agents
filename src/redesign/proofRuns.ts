@@ -129,7 +129,9 @@ export function partnerStripHtml(tiles = partnerTiles(), runs?: number, listed =
   // One source (judge scan, 14 Nov): the tiles and the timeline count the same rows; the TAP run is told on /visa only.
   // Jury scan, 14 Nov: the tiles add up to fewer than the list when it holds a run of no partner's own (the main run).
   const byPartner = tiles.reduce((n, t) => n + t.runs, 0), other = listed - byPartner;
-  const note = runs === undefined ? "" : `${runs} live runs: ${listed} below, each listed once${other > 0 ? ` (${byPartner} in the tiles, ${other === 1 ? "plus the main run" : `plus ${other} more`})` : ""}${runs > listed ? `; ${runs - listed} on /visa` : ""}.`;
+  // Live measurement, 15 Nov: one plain line ("25 live runs: 23 by partner in the tiles, the main run, and 1 on /visa").
+  const parts = [`${byPartner} by partner in the tiles`, ...(other > 0 ? [other === 1 ? "the main run" : `${other} more`] : []), ...(runs !== undefined && runs > listed ? [`${runs - listed} on /visa`] : [])];
+  const note = runs === undefined ? "" : `${runs} live runs: ${parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}` : parts[0]}.`;
   return `${note ? `<p class="ptnote">${esc(note)}</p>` : ""}<ul class="ptiles" aria-label="${esc("Live runs by partner")}">${tiles.map((t) => `<li><a href="${esc(t.href)}"><span class="pt-n">${esc(t.name)}</span><b class="pt-c">${t.runs}</b><small>${esc(`live ${t.runs === 1 ? "run" : "runs"} · latest ${dayOf(t.latest.iso)}`)}</small><span class="chip live">${esc(t.badge)}</span></a></li>`).join("")}</ul>`;
 }
 
@@ -160,7 +162,7 @@ ${groups.map((g) => `<h3 id="${groupId(g.group)}">${esc(g.group)}</h3><ul class=
 // ── 3. The receipt you check offline ───────────────────────────────────────────────────────────────────────────────
 export const VERIFY_COMMAND = "npm run verify-approval";
 /** The receipt the command checks, as package.json names it. */
-const RECEIPT = /\s(docs\/\S+\.json)$/.exec(pkgScripts["verify-approval"] ?? "")?.[1] ?? "";
+export const RECEIPT = /\s(docs\/\S+\.json)$/.exec(pkgScripts["verify-approval"] ?? "")?.[1] ?? "";
 export function verifyCalloutHtml(): string {
   if (!pkgScripts["verify-approval"]) return "";
   return `<aside class="pverify" aria-labelledby="h-pverify">${icon("shield-check", 22)}<div><h2 id="h-pverify">${esc("Check a real approval yourself, offline")}</h2>

@@ -22,7 +22,7 @@ export const VIS = {
   flow: { invoice: "Invoice", readClaude: "Claude reads", readCode: "Code reads", checks: "Purser checks", passkey: "Your passkey", bankAwx: "Airwallex (sandbox)", bankTest: "Test bank", booked: "Booked", label: "Where the money is" },
   charts: "Your test company in numbers",
   source: "From this test company's own records. Test money.",
-  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "In", now: "Now", note: "Now is the simulated bank's balance; each step is the ledger's bank lines." },
+  cash: { head: "Bank, start to now", start: "Start", paid: "Paid", fees: "Fees", in: "Opening + FX", now: "Now", note: "Opening + FX is the opening balance plus the FX conversion into this currency. Now is the simulated bank's balance; each step is the ledger's bank lines." },
   spend: { head: "Spend by account", note: "Debits on expense accounts in the ledger, including the sample invoice already on file." },
   checks: { head: "Invoices checked", passed: "Passed", held: "Held", of: "invoices", note: "Including the sample invoice already on file." },
 } as const;

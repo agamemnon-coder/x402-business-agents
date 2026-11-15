@@ -8,6 +8,10 @@ import { pageResponse } from "../worker/src/core.js";
 
 const root = (p: string) => new URL(`../${p}`, import.meta.url);
 
+// Built once for the file, at load, as the other page tests do (CI, 15 Nov: two tests each building every page ran
+// past vitest's 5 s on a loaded runner).
+const PAGES = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
+
 describe("What Purser guarantees", () => {
   it("names a source file and a test that exist, for every promise", () => {
     expect(GUARANTEES.length).toBeGreaterThanOrEqual(6);
@@ -53,7 +57,7 @@ describe("What Purser guarantees", () => {
 
 describe("/llms.txt", () => {
   it("serves the repository's llms.txt as plain text", async () => {
-    const pages = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv);
+    const pages = PAGES;
     expect(pages.llms).toBe(readFileSync(root("llms.txt"), "utf8"));
     const r = (await pageResponse(new Request("https://example.test/llms.txt"), pages))!;
     expect(r.status).toBe(200);

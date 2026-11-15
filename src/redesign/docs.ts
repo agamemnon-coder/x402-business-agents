@@ -174,7 +174,7 @@ export function docsPage(o: { cloudDemoUrl?: string | null } = {}): string {
     <p class="promise">Your AI reads the books; only the CFO's Face ID approves.</p>
     <div class="chips">${chip("MCP", PURSER_CLOUD_MCP)}${chip(DEMO_TOKEN_LABEL, DEMO_TOKEN)}</div>
     <ul class="ww"><li class="l">${readToolCount()} read tools · works with any MCP client:</li>${WORKS_WITH.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>
-    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(PURSER_CLOUD_URL, "Try as guest (test money)")}</div>
+    <div class="links">${outLink(CONNECT_PAGE, "Setup for each AI")}${outLink(`${PURSER_CLOUD_URL}#/guest`, "Try as guest (test money)")}</div>
     ${foldHtml("Connect Claude, step by step", [
       `Open Purser Cloud and choose <b>Try as guest</b>. No passkey, no e-mail.`,
       `claude.ai or Claude Desktop: Settings, Connectors, <b>Add custom connector</b>. Paste ${code(PURSER_CLOUD_MCP)}. On Purser's sign-in page choose <b>Use the demo company</b>.`,

@@ -92,7 +92,7 @@ the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 charac
 
 **What's real.** Test money. Simulated: customer, supplier, settlement, second approver. Details → https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/submission/long-description.md#what-is-real-and-what-is-simulated
 
-**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/mp9fmOYfBWc · https://github.com/agamemnon-coder/x402-business-agents
+**Links.** https://kit11.max-31b.workers.dev/proof · https://youtu.be/PNLuqhRzVfE · https://github.com/agamemnon-coder/x402-business-agents
 <!-- /description -->
 
 ## Instructions
@@ -108,8 +108,8 @@ the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 charac
    - Proof: <https://kit11.max-31b.workers.dev/proof> has every id from the main run, the Alta ones checkable on
      Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
-     credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The walkthrough
-     (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The 90-second trailer:
+     credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The film, "Purser, under the hood" (3:29):
+     <https://youtu.be/PNLuqhRzVfE>. The walkthrough (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The 90-second trailer:
      <https://youtu.be/n3HLVGROJc4>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
@@ -141,6 +141,7 @@ For the long form text and the jury: the Starter Kit 11 brief's flow ("x402 Busi
 ## Links
 
 - Trailer (90 s): <https://youtu.be/n3HLVGROJc4>
+- Film, "Purser, under the hood" (3:29): <https://youtu.be/PNLuqhRzVfE>
 - Video, the walkthrough (an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
@@ -152,7 +153,7 @@ For the long form text and the jury: the Starter Kit 11 brief's flow ("x402 Busi
 - Repository: <https://github.com/agamemnon-coder/x402-business-agents> (tag `v1.1-submission`)
 - New on 14 November (merged, live, test money): /try puts a live Airwallex sandbox FX quote in the terms the
   passkey signs, within the company's FX limit; after the passkey, one Airwallex sandbox transfer of the signed payment
-  (off by default); Purser Cloud has a read-only Airwallex tab, a signed events feed and each agent's sandbox card
+  (off by default); Purser Cloud has a read-only Airwallex tab, a signed events feed (switched on; no event yet) and each agent's sandbox card
   (card actions off by default); the agents get the CFO's past decisions as precedent; a "Built on Airwallex" badge on
   every page. Not run live: Purser Cloud can also run payables at the Airwallex sandbox (new supplier, pay, pay all
   ready, money in), each step behind the CFO's passkey over the exact terms; switched off by default (admin switches

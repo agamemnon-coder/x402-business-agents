@@ -25,10 +25,9 @@ export const VISA_PLAN_FILE = "docs/plans/visa-1114.md";
 /** The TAP section's heading: it says at once that TAP is outside the entry (Visa, 5 Nov). */
 export const VISA_TAP_SECTION_HEADING = "Outside the entry: Visa TAP";
 
-/** Visa's developer pages read on 14 Nov 2026 (docs/plans/visa-1114.md); no date is shown on them. */
-const VIC_CONCEPTS = "https://developer.visa.com/docs/visa-intelligent-commerce/concepts";
+/** Visa's developer page for Visa Intelligent Commerce. The Concepts and Workflows pages read on 14 Nov (docs/plans/visa-1114.md)
+ * answered 404 on 15 Nov (docs/evidence/live-measurement-2026-11-15.json), so every area links the live page. */
 const VIC_START = "https://developer.visa.com/capabilities/visa-intelligent-commerce";
-const VIC_FLOWS = "https://developer.visa.com/docs/visa-intelligent-commerce/workflows";
 
 /**
  * What Visa Intelligent Commerce asks for, four areas in our own words, each linked to the Visa page it paraphrases
@@ -36,9 +35,9 @@ const VIC_FLOWS = "https://developer.visa.com/docs/visa-intelligent-commerce/wor
  */
 export const VISA_ASKS: readonly { key: string; area: string; terms: string; href: string }[] = [
   { key: "identity", area: "Agent identity", terms: "the agent is registered with Visa, and Visa checks its signatures", href: VIC_START },
-  { key: "credential", area: "Payment credential", terms: "a Visa token stands in for the card number, with a cryptogram that is used once", href: VIC_CONCEPTS },
+  { key: "credential", area: "Payment credential", terms: "a Visa token stands in for the card number, with a cryptogram that is used once", href: VIC_START },
   { key: "auth", area: "Consumer authentication", terms: "a Visa passkey on the consumer's own device", href: VIC_START },
-  { key: "intent", area: "Intent, consent and limits", terms: "the consumer's instruction sets the limits, and the agent buys only within them", href: VIC_FLOWS },
+  { key: "intent", area: "Intent, consent and limits", terms: "the consumer's instruction sets the limits, and the agent buys only within them", href: VIC_START },
 ];
 
 type Rec = Vic3Record & { audit?: { seq: number; event: string; payload?: { values?: Record<string, string> } }[] };

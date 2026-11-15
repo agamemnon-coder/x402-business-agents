@@ -153,7 +153,8 @@ describe("the Built on strip", () => {
   const run = agentRun();
   const items = builtOnItems(run);
   it("names each partner once, with one proof number from its record", () => {
-    expect(items.map((i) => i.name)).toEqual(["Airwallex", "Alta (formerly Metal)", "Visa (VIC through Airwallex's Airi)", "Claude", "T:0", "x402"]);
+    // Jury panel, 15 Nov: "Alta"; "(formerly Metal)" once per page, at the first mention in <main>.
+    expect(items.map((i) => i.name)).toEqual(["Airwallex", "Alta", "Visa (VIC through Airwallex's Airi)", "Claude", "T:0", "x402"]);
     const st = metalStory(run.record);
     // Paid across both live Airi runs, as /visa counts them (the jury check, 12 Nov): 7 Nov SETTLED plus vic-3's paid.
     // 13 Nov: and vic-4's paid, three live runs in all. 14 Nov: and vic-5's (the latest), four in all.

@@ -16,7 +16,7 @@ const EVENTS_JSON = "awx-live/events.json";
 /** Events shown on /proof; all 50 are in Purser Cloud's Airwallex tab. */
 export const AWX_LIVE_SHOWN = 5;
 export const AWX_LIVE_HEAD = "Live with Airwallex";
-export const AWX_LIVE_LEAD = "Purser sends a quote or a transfer. Airwallex answers with a signed webhook. Both read live from the Airwallex sandbox: test money.";
+export const AWX_LIVE_LEAD = "Purser asks the Airwallex sandbox for a quote or sends it a transfer, live, test money. The signed events feed is built and switched on: it shows Airwallex's webhooks as Airwallex sends them.";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 

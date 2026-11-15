@@ -254,7 +254,8 @@ describe("the console's language, mark and first run", () => {
   const markup = withoutBlocks(html, ["script", "style"]);
 
   it("paints in English first: the page's language and the menu's words", () => {
-    expect(html).toContain('<html lang="en" data-theme="light">');
+    // 15 Nov (live measurement): the console follows a dark colour scheme, as /try does.
+    expect(html).toContain('<html lang="en">');
     // 12 Nov: the console's own pages moved to a bar under the site's header (cloud/src/siteHeader.ts): nav.apptabs.
     const nav = /<nav class="apptabs"[^]*?<\/nav>/.exec(markup)![0];
     // 14 Nov: "Invoices & books" became two tabs, Invoices and Books.

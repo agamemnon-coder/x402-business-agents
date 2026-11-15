@@ -182,7 +182,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     // screen; then the band, the offline check and every live run, by partner; the details fold closed.
     const sum = (await page.evaluate(`(() => { const h1 = document.querySelector("main h1"), c = document.querySelector("main ol.pchain"), d = document.querySelector("main details.sumd"), r = document.getElementById("live-runs"); return { first: !!h1 && !!h1.nextElementSibling && h1.nextElementSibling.matches("p.plead") && h1.nextElementSibling.nextElementSibling === c, n: c ? c.children.length : 0, top: c ? Math.round(c.getBoundingClientRect().top + scrollY) : -1, rows: r ? r.querySelectorAll("li[id^=run-]").length : 0, closed: !!d && !d.open }; })()`)) as { first: boolean; n: number; top: number; rows: number; closed: boolean };
     if (!sum.first || sum.n !== 4 || sum.top < 0 || sum.top >= h || sum.rows < 10 || !sum.closed) fail(`/proof ${tag}: not the lead and the four-step proof chain under the heading on the first screen, the live runs below, with the details fold closed (${JSON.stringify(sum)})`);
-    await page.locator("main details.sumd > summary").click();
+    await page.locator("main details#details > summary").click();
     const order = (await page.evaluate(`(() => {
       const d = document.querySelector("main details.sumd"), g = document.getElementById("guarantees"), u = document.querySelector("main .util"), c = document.getElementById("live-runs");
       const shown = (e) => e.getBoundingClientRect().height > 0 && e.checkVisibility();
