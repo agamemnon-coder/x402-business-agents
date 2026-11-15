@@ -166,7 +166,22 @@ export function verifyCalloutHtml(): string {
   return `<aside class="pverify" aria-labelledby="h-pverify">${icon("shield-check", 22)}<div><h2 id="h-pverify">${esc("Check a real approval yourself, offline")}</h2>
 <p data-rec="${esc(RECEIPT)}">${esc("The owner's own passkey approval of 7 Nov, published on 12 Nov: the passkey signed exactly those terms. Change one cent and it says NOT VALID. No network, no keys.")}</p>
 <p class="cmdl"><code>${esc(VERIFY_COMMAND)}</code> ${a(`${REPO_BLOB}README.md#verify-it-yourself-in-3-commands`, "How to run it")}</p>
-<p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call. No file yet? ")}<a href="${proofSamplePath("paid").slice(1)}" download="${PROOF_SAMPLES.paid}">${esc("A paid sample")}</a>${esc(" · ")}<a href="${proofSamplePath("refused").slice(1)}" download="${PROOF_SAMPLES.refused}">${esc("the refused sample")}</a></p></div></aside>`;
+<p class="vbundle"><a href="verify">${esc("Verify a /try payment yourself")}</a>${esc(": drop its proof file and your browser checks the signature, with no server call. No file yet? ")}<a href="${proofSamplePath("paid").slice(1)}" download="${PROOF_SAMPLES.paid}">${esc("A paid sample")}</a>${esc(" · ")}<a href="${proofSamplePath("refused").slice(1)}" download="${PROOF_SAMPLES.refused}">${esc("the refused sample")}</a></p>${verifiedLiveHtml()}</div></aside>`;
+}
+
+/** The verification report of 15 Nov (npm run verify-all): its count, read from the committed report, never typed. */
+export const VERIFICATION_REPORT = "docs/evidence/verification-2026-11-15";
+export function verifiedLive(): { passed: number; failed: number } | null {
+  try {
+    const r = JSON.parse(readFileSync(new URL(`${VERIFICATION_REPORT}.json`, ROOT), "utf8")) as { counts?: { passed?: unknown; failed?: unknown } };
+    const passed = r.counts?.passed, failed = r.counts?.failed;
+    return typeof passed === "number" && typeof failed === "number" ? { passed, failed } : null;
+  } catch { return null; }
+}
+/** One line by the evidence links; none when the report is missing or a check failed. */
+export function verifiedLiveHtml(v = verifiedLive()): string {
+  if (!v || v.failed > 0 || !pkgScripts["verify-all"]) return "";
+  return `<p class="vall" data-rec="${esc(`${VERIFICATION_REPORT}.json`)}">${a(`${REPO_BLOB}${VERIFICATION_REPORT}.md`, `Verified live on 15 Nov: ${v.passed.toLocaleString("en-GB")} checks passed`)}${esc(" (how to re-run: ")}<code>npm run verify-all</code>${esc(")")}</p>`;
 }
 
 /** The chain's own rules, shared with /docs' diagram (14 Nov). */

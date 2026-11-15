@@ -1,0 +1,4090 @@
+{
+ "what": "Verification report: every verifier of this repository on the committed records it is built for, every Alta testnet transaction the site links to read from the chain, every figure on /proof that a record backs recomputed and compared with the deployed page, and timed runs of the deployed /try. Test money only. Made by npm run verify-all (src/cli/verifyAll.ts); run it again to check.",
+ "rerun": "npm ci && npm run verify-all   (METAL_RPC_URL, an Alta testnet RPC endpoint, for the chain checks; without it they say could not run here)",
+ "started_at": "2026-11-15T06:28:20.005Z",
+ "finished_at": "2026-11-15T06:28:39.480Z",
+ "commit": "5fdaec4",
+ "site": "https://kit11.max-31b.workers.dev",
+ "summary": "189 checks passed, 3 could not run here, 0 failed",
+ "counts": {
+  "passed": 189,
+  "could_not_run_here": 3,
+  "failed": 0
+ },
+ "failures": [],
+ "transactions": {
+  "read_from_chain": 129,
+  "found": 129,
+  "not_found": [],
+  "reverted_as_the_pages_say": 7,
+  "compared_with_a_record": 16
+ },
+ "try_timing": {
+  "today": {
+   "source": "docs/evidence/try-timed-2026-11-15.json",
+   "stopped": null,
+   "start_to_paid": {
+    "n": 10,
+    "median_ms": 21015,
+    "p90_ms": 22590,
+    "worst_ms": 25714,
+    "values_ms": [
+     22590,
+     21157,
+     22273,
+     25714,
+     19872,
+     19700,
+     17900,
+     21403,
+     19451,
+     20873
+    ]
+   },
+   "refusal_round_trip": {
+    "n": 10,
+    "median_ms": 840.5,
+    "p90_ms": 866,
+    "worst_ms": 1815,
+    "values_ms": [
+     866,
+     814,
+     845,
+     864,
+     1815,
+     829,
+     835,
+     836,
+     866,
+     819
+    ]
+   }
+  },
+  "before": {
+   "source": "docs/evidence/live-measurement-2026-11-15.json",
+   "note": "the 5 runs measured earlier on 15 Nov, read as they are (not changed); their steps are timed differently from today's two times, so they are shown next to them, not pooled",
+   "passkey_to_paid": {
+    "n": 5,
+    "median_ms": 7696,
+    "p90_ms": 8176,
+    "worst_ms": 8176,
+    "values_ms": [
+     8117,
+     8176,
+     7696,
+     7192,
+     7180
+    ]
+   },
+   "one_cent_refusal": {
+    "n": 5,
+    "median_ms": 1669,
+    "p90_ms": 1678,
+    "worst_ms": 1678,
+    "values_ms": [
+     1678,
+     1672,
+     1669,
+     1668,
+     1659
+    ]
+   },
+   "total_start_to_finish": {
+    "n": 5,
+    "median_ms": 29411,
+    "p90_ms": 31969,
+    "worst_ms": 31969,
+    "values_ms": [
+     28351,
+     31217,
+     31969,
+     25763,
+     29411
+    ]
+   }
+  },
+  "method": "median: the middle value (the mean of the two middle ones for an even count); p90: nearest rank; worst: the largest. From the raw values listed only."
+ },
+ "checks": [
+  {
+   "group": "the site",
+   "status": "pass",
+   "what": "GET https://kit11.max-31b.workers.dev/proof",
+   "seen": "200, 190370 bytes",
+   "source": "the deployed site"
+  },
+  {
+   "group": "the site",
+   "status": "pass",
+   "what": "GET https://kit11.max-31b.workers.dev/",
+   "seen": "200, 68153 bytes",
+   "source": "the deployed site"
+  },
+  {
+   "group": "the site",
+   "status": "pass",
+   "what": "GET https://kit11.max-31b.workers.dev/alta",
+   "seen": "200, 102694 bytes",
+   "source": "the deployed site"
+  },
+  {
+   "group": "the site",
+   "status": "pass",
+   "what": "GET https://kit11.max-31b.workers.dev/runs",
+   "seen": "200, 188383 bytes",
+   "source": "the deployed site"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-bundle -- docs/proof/try-paid.json",
+   "seen": "10 check lines pass, 0 fail; VALID: docs/proof/try-paid.json",
+   "source": "docs/proof/try-paid.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-bundle -- docs/proof/try-refused.json",
+   "seen": "11 check lines pass, 0 fail; VALID: docs/proof/try-refused.json",
+   "source": "docs/proof/try-refused.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-approval",
+   "seen": "11 check lines ok, 0 fail; VALID",
+   "source": "docs/runs/2026-11-07-awx-1/receipt-P-0002.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-receipt -- docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json",
+   "seen": "13 check lines ok, 0 fail; VALID",
+   "source": "docs/runs/2026-11-10-platform-e2e/receipt-SANDBOXTEST-P-0002.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-log -- --jsonl docs/audit/friday-1-audit.jsonl --anchor 194:ee07…3618",
+   "seen": "ok chain 194 rows from docs/audit/friday-1-audit.jsonl, each hash recomputed and linked; head ee0732445a717f7386b4c6ccd94c0f5459b515e1d3e0869833c10d328fd83618; ok anchor row 194 still has hash ee0732445a71…: nothing up to it was changed or removed",
+   "source": "docs/audit/friday-1-audit.jsonl"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run verify-anchor (Alta testnet, read-only)",
+   "seen": "9 lines ok; MATCH: docs/runs/2026-11-13-anchor.json, tx 0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+   "source": "docs/runs/2026-11-13-anchor.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "pass",
+   "what": "npm run judge -- --check",
+   "seen": "29 pages served with 200, 0 failed, offline from the main run's record",
+   "source": "docs/demo/main-run.json"
+  },
+  {
+   "group": "verifiers",
+   "status": "could not run here",
+   "what": "npm run verify",
+   "seen": "needs the full ledger (KIT11_DB, a SQLite file), which is not committed; on an empty ledger it compares nothing, so running it here would prove nothing; its committed audit log is checked by verify-log above",
+   "source": "docs/audit/README.md"
+  },
+  {
+   "group": "verifiers",
+   "status": "could not run here",
+   "what": "npm run reconcile",
+   "seen": "needs the full ledger (KIT11_DB, a SQLite file), which is not committed; on an empty ledger it compares nothing, so running it here would prove nothing; it also reads Airwallex with sandbox keys",
+   "source": "src/cli/reconcile.ts"
+  },
+  {
+   "group": "verifiers",
+   "status": "could not run here",
+   "what": "npm run reconcile-books",
+   "seen": "needs the full ledger (KIT11_DB, a SQLite file), which is not committed; on an empty ledger it compares nothing, so running it here would prove nothing; it also needs the outside books' settings",
+   "source": "src/cli/reconcileBooks.ts"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x02d5bf5b…e8fd on chain, succeeded",
+   "seen": "success, block 14144676",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x03811931…e23a on chain, reverted, as the page says",
+   "seen": "reverted, block 10097390",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x03c218ce…d2f0 on chain, succeeded",
+   "seen": "success, block 14154372",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x0536400e…5dd0 on chain, succeeded",
+   "seen": "success, block 14146094",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x053d2b7c…c861 on chain, succeeded",
+   "seen": "success, block 26125973",
+   "source": "linked from /alta"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x055ba899…6766 on chain, succeeded",
+   "seen": "success, block 8705132",
+   "source": "linked from /proof, /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x080cf1b0…4e1c on chain, succeeded",
+   "seen": "success, block 14146910",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x09133534…2ed9 on chain, succeeded",
+   "seen": "success, block 14154120",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x108e9e74…4136 on chain, succeeded",
+   "seen": "success, block 14153883",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x168c6579…8c2d on chain, succeeded",
+   "seen": "success, block 26125740",
+   "source": "linked from /proof, /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x182fbd26…6668 on chain, succeeded",
+   "seen": "success, block 14149546",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x1add0f46…dcce on chain, succeeded",
+   "seen": "success, block 26134048",
+   "source": "linked from /alta"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x1b82bda5…2e1e on chain, succeeded",
+   "seen": "success, block 14157100",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x1b8c645f…f744 on chain, succeeded",
+   "seen": "success, block 14154632",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x222385b5…2737 on chain, reverted, as the page says",
+   "seen": "reverted, block 10097250",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x285281ea…2724 on chain, succeeded",
+   "seen": "success, block 14153634",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2a81d430…f08a on chain, succeeded",
+   "seen": "success, block 9388477",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2a91ac97…e790 on chain, succeeded",
+   "seen": "success, block 14153004",
+   "source": "linked from /proof, /alta, README.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2b3a3110…7159 on chain, succeeded",
+   "seen": "success, block 14146080",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2cc5a16e…2fc7 on chain, succeeded",
+   "seen": "success, block 14144153",
+   "source": "linked from /proof, /alta, README.md, docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2e92f9cb…1871 on chain, succeeded, as its record says",
+   "seen": "success, block 14150386; matches the record's block 14150386, sender, recipient; block 14150386; block 14150386",
+   "source": "linked from /proof, /alta, README.md; docs/runs/2026-11-12-metal-inspector.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x2f2d7afc…fb2a on chain, succeeded",
+   "seen": "success, block 23200516",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x31ecebc2…2d3e on chain, succeeded",
+   "seen": "success, block 14147725",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x32127371…434e on chain, succeeded",
+   "seen": "success, block 14144436",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x32c0e691…1486 on chain, succeeded",
+   "seen": "success, block 14148741",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x3878ee90…3bcf on chain, succeeded",
+   "seen": "success, block 14156854",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x39a4a2e5…07ac on chain, succeeded",
+   "seen": "success, block 14157615",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x39c5c7b0…ee33 on chain, succeeded",
+   "seen": "success, block 14148494",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x3bf9f70e…3ab5 on chain, reverted, as the page says",
+   "seen": "reverted, block 10099200",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x3e4db1a7…eadb on chain, succeeded",
+   "seen": "success, block 14156136",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x41a963a9…24de on chain, reverted, as the page says",
+   "seen": "reverted, block 11567553",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x41ef8b79…39fb on chain, succeeded",
+   "seen": "success, block 23200538",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x4fde2db7…2b04 on chain, succeeded",
+   "seen": "success, block 14153621",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5099fe44…4510 on chain, succeeded, as its record says",
+   "seen": "success, block 14154286; matches the record's recipient and USDZ 0.05",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x51f90725…3170 on chain, succeeded",
+   "seen": "success, block 14155135",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x522470d2…5092 on chain, succeeded",
+   "seen": "success, block 8767743",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5637860a…f4aa on chain, succeeded",
+   "seen": "success, block 14150092",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5669f975…be41 on chain, succeeded",
+   "seen": "success, block 14146640",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5717cfbc…8633 on chain, succeeded",
+   "seen": "success, block 14149280",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5c3c0161…e986 on chain, succeeded",
+   "seen": "success, block 14148220",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x5f09a1fb…f594 on chain, succeeded",
+   "seen": "success, block 14145516",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6086aa0a…c831 on chain, succeeded",
+   "seen": "success, block 14149035",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x64d22177…4c7d on chain, succeeded",
+   "seen": "success, block 14144133",
+   "source": "linked from /proof, /alta, docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x65fac962…3518 on chain, succeeded",
+   "seen": "success, block 14148480",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x67fb4590…1836 on chain, succeeded",
+   "seen": "success, block 14147715",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x68ab794b…67be on chain, succeeded",
+   "seen": "success, block 14147990",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6972c97d…6bd0 on chain, succeeded",
+   "seen": "success, block 14157850",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6b6ac4ab…a61e on chain, succeeded",
+   "seen": "success, block 14157360",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6e751649…874c on chain, succeeded",
+   "seen": "success, block 14148234",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6eba6d48…8caa on chain, succeeded",
+   "seen": "success, block 14154906",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x6f7d1da8…f13c on chain, succeeded",
+   "seen": "success, block 14147456",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x728a9c27…c43b on chain, reverted, as the page says",
+   "seen": "reverted, block 10099142",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x7860403e…ebe2 on chain, succeeded",
+   "seen": "success, block 14149800",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x786686b6…fc3c on chain, succeeded",
+   "seen": "success, block 9466819",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x789abb24…ebbc on chain, succeeded, as its record says",
+   "seen": "success, block 14152940; matches the record's block 14152940, sender, recipient; block 14152940; block 14152940; block 14152940; block 14152940; block 14152940",
+   "source": "linked from /proof, /alta; docs/runs/2026-11-12-metal-inspector.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x78e58558…ac3c on chain, succeeded",
+   "seen": "success, block 14146654",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x7e6d0104…1098 on chain, succeeded",
+   "seen": "success, block 14154642",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x809e7a30…3a9f on chain, succeeded",
+   "seen": "success, block 13906293",
+   "source": "linked from /alta"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x81897ab4…b4fe on chain, succeeded",
+   "seen": "success, block 14147972",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x86936a5b…ccb4 on chain, succeeded, as its record says",
+   "seen": "success, block 14153316; matches the record's recipient and USDZ 0.69; block 14153316",
+   "source": "linked from /proof, /alta, /runs, README.md, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x870e0c20…bc8f on chain, succeeded",
+   "seen": "success, block 14150080",
+   "source": "linked from /alta, docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x871c658e…4da5 on chain, succeeded",
+   "seen": "success, block 14156866",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x88d59e38…1d09 on chain, succeeded",
+   "seen": "success, block 14155407",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x8f3e8de3…9b6e on chain, succeeded",
+   "seen": "success, block 14155900",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x902badf6…c3d4 on chain, succeeded",
+   "seen": "success, block 8748888",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x9076343b…20d3 on chain, succeeded",
+   "seen": "success, block 9352421",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x91ed35a5…442e on chain, reverted, as the page says",
+   "seen": "reverted, block 10098356",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x91f25465…7ead on chain, succeeded",
+   "seen": "success, block 14157838",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x9312b362…fede on chain, succeeded",
+   "seen": "success, block 14156376",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x93b8a8b3…bcea on chain, succeeded",
+   "seen": "success, block 14156148",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x96850ad4…7d5b on chain, succeeded",
+   "seen": "success, block 11567572",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x99c7d22d…ae0d on chain, succeeded",
+   "seen": "success, block 14155648",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x9c7d37f2…a2f7 on chain, succeeded",
+   "seen": "success, block 13906369",
+   "source": "linked from /alta"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x9cb93362…1808 on chain, succeeded, as its record says",
+   "seen": "success, block 13906203; matches the record's block 13906203, sender, recipient; block 13906203; block 13906203; block 13906203",
+   "source": "linked from /alta; docs/runs/2026-11-12-metal-inspector.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0x9de16c5c…8fd3 on chain, succeeded",
+   "seen": "success, block 14155664",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xa2e3a329…8ed4 on chain, succeeded",
+   "seen": "success, block 14154384",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xa6b615ce…c309 on chain, succeeded",
+   "seen": "success, block 14147444",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xa86b5f04…ee11 on chain, succeeded",
+   "seen": "success, block 14155915",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xaa93f270…e6c1 on chain, succeeded, as its record says",
+   "seen": "success, block 27469355; matches the record's block 27469355, sender; block 27469355, sender",
+   "source": "linked from /proof, /alta, /runs; docs/runs/2026-11-13-anchor.json, docs/runs/2026-11-15-anchor-verified.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xac6f03f2…0efd on chain, succeeded",
+   "seen": "success, block 14153872",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xad900a08…cfa3 on chain, succeeded",
+   "seen": "success, block 14149526",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xadb282a0…c79d on chain, succeeded",
+   "seen": "success, block 14146370",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb28b5831…07ac on chain, succeeded",
+   "seen": "success, block 14145810",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb2fbcfc4…668d on chain, succeeded",
+   "seen": "success, block 14144425",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb371a336…7859 on chain, succeeded",
+   "seen": "success, block 26157527",
+   "source": "linked from /proof, /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb4f04a35…cf0b on chain, succeeded",
+   "seen": "success, block 14157114",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb64d78ea…82bc on chain, succeeded",
+   "seen": "success, block 14155146",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb6eff587…315d on chain, succeeded",
+   "seen": "success, block 26133904",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb7ef08bb…44ad on chain, succeeded",
+   "seen": "success, block 13906111",
+   "source": "linked from /proof, /alta, README.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xb8fe41c8…9ffa on chain, succeeded",
+   "seen": "success, block 14147158",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xba330558…4c38 on chain, succeeded",
+   "seen": "success, block 14145234",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xbdb5b8f2…b0a8 on chain, succeeded",
+   "seen": "success, block 14148754",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc27764be…6fad on chain, succeeded, as its record says",
+   "seen": "success, block 26148767; matches the record's block 26148767, sender",
+   "source": "linked from /alta, /runs; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc2eb6814…f237 on chain, succeeded",
+   "seen": "success, block 10096702",
+   "source": "linked from /proof, /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc3ac51e4…56cf on chain, succeeded, as its record says",
+   "seen": "success, block 26148487; matches the record's block 26148487, sender",
+   "source": "linked from /alta; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc3e7487e…c237 on chain, succeeded",
+   "seen": "success, block 14144950",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc6e1f0b2…0723 on chain, succeeded",
+   "seen": "success, block 14144690",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc704078e…6ded on chain, succeeded",
+   "seen": "success, block 14146358",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc7f59df3…3b59 on chain, succeeded",
+   "seen": "success, block 14155394",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xc82912c3…b8cd on chain, succeeded",
+   "seen": "success, block 11567638",
+   "source": "linked from /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xcf02673e…ab4e on chain, succeeded, as its record says",
+   "seen": "success, block 26148693; matches the record's block 26148693, sender",
+   "source": "linked from /alta; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xcfb214b1…875d on chain, succeeded",
+   "seen": "success, block 14145536",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd00cf2e4…de7a on chain, succeeded",
+   "seen": "success, block 14147178",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd3bf7e0d…9f3e on chain, succeeded",
+   "seen": "success, block 26135039",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd4c40c27…9b91 on chain, succeeded, as its record says",
+   "seen": "success, block 26148264; matches the record's block 26148264, sender",
+   "source": "linked from /alta; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd5a11eca…a2d8 on chain, succeeded",
+   "seen": "success, block 14157347",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd5f54825…9134 on chain, succeeded",
+   "seen": "success, block 14156390",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd95bf33c…900c on chain, succeeded",
+   "seen": "success, block 14145796",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xd98e94ff…d30d on chain, succeeded",
+   "seen": "success, block 10099167",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xe0976c5a…69c3 on chain, reverted, as the page says",
+   "seen": "reverted, block 10099120",
+   "source": "linked from /proof, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xe44a3460…75e5 on chain, succeeded, as its record says",
+   "seen": "success, block 14154236; matches the record's recipient and USDZ 0.05",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xe4bf7962…c89d on chain, succeeded, as its record says",
+   "seen": "success, block 14154191; matches the record's recipient and USDZ 0.05",
+   "source": "linked from /proof, /alta, README.md, docs/runs/2026-11-03-main-run-metal-transactions.md; docs/demo/main-run.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xe6d9c7ea…5df4 on chain, succeeded",
+   "seen": "success, block 26126103",
+   "source": "linked from /alta, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xe892abfd…a884 on chain, succeeded",
+   "seen": "success, block 14146897",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xebd682c7…8ae0 on chain, succeeded, as its record says",
+   "seen": "success, block 26148537; matches the record's block 26148537, sender",
+   "source": "linked from /alta; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xee14c617…eb44 on chain, succeeded",
+   "seen": "success, block 14144963",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xef3c845b…32be on chain, succeeded, as its record says",
+   "seen": "success, block 26148587; matches the record's block 26148587, sender",
+   "source": "linked from /alta, /runs; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xefc68319…b575 on chain, succeeded, as its record says",
+   "seen": "success, block 26148371; matches the record's block 26148371, sender",
+   "source": "linked from /proof, /alta, /runs; docs/runs/2026-11-12-tokenize.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf1a7fe96…0c37 on chain, succeeded",
+   "seen": "success, block 9351961",
+   "source": "linked from /proof, /runs"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf23d83dc…7b0b on chain, succeeded",
+   "seen": "success, block 14149814",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf4530112…a1a6 on chain, succeeded",
+   "seen": "success, block 14157600",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf4bdd52d…cf23 on chain, succeeded",
+   "seen": "success, block 14154136",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf97bcade…f98d on chain, succeeded, as its record says",
+   "seen": "success, block 10099272; matches the record's block 10099272, sender, recipient; block 10099272; block 10099272",
+   "source": "linked from /alta; docs/runs/2026-11-12-metal-inspector.json"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xf9be147f…e93f on chain, succeeded",
+   "seen": "success, block 14156629",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xfab9cc3d…c4c6 on chain, succeeded",
+   "seen": "success, block 14156616",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xfacf2126…36a8 on chain, succeeded",
+   "seen": "success, block 14149266",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xfd1db54e…b1d5 on chain, succeeded",
+   "seen": "success, block 14149023",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xfdfa0cfc…4fb4 on chain, succeeded",
+   "seen": "success, block 14154885",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "Alta transactions",
+   "status": "pass",
+   "what": "tx 0xff8debd3…9516 on chain, succeeded",
+   "seen": "success, block 14145246",
+   "source": "linked from docs/runs/2026-11-03-main-run-metal-transactions.md"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: tests passing",
+   "seen": "page 6932, record 6932",
+   "source": "docs/assets/test-summary.json (passed)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "the last full test run had no failure",
+   "seen": "failed 0",
+   "source": "docs/assets/test-summary.json"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: sandbox and testnet runs",
+   "seen": "page 25, record 25",
+   "source": "/runs' rows (src/redesign/runs.ts liveRunCount)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: Airwallex sandbox API calls logged",
+   "seen": "page 150, record 150",
+   "source": "the call logs in docs/runs and docs/demo (src/redesign/scale.ts airwallexCallsIn)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: Alta testnet transactions",
+   "seen": "page 233, record 233",
+   "source": "distinct explorer links in docs/runs and docs/demo, counted here"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: Claude calls with request ids",
+   "seen": "page 451, record 451",
+   "source": "distinct req_011… ids in docs/**/*.json(l), counted here"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: refusals on record",
+   "seen": "page 68, record 68",
+   "source": "audit rows of a refusal, decline, rejection or fraud stop in docs/runs and docs/demo, counted here"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: the partner tiles add up to the note's count",
+   "seen": "page 23, record 23",
+   "source": "the tiles: Airwallex 7, Visa via Airi 4, Alta (formerly Metal) 9, T:0 2, Moneybird 1"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: runs listed = tiles + the main run",
+   "seen": "page 24, record 24",
+   "source": "/proof"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: live runs = listed + on /visa",
+   "seen": "page 25, record 25",
+   "source": "/proof"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: the note's live runs = the band's",
+   "seen": "page 25, record 25",
+   "source": "/proof"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: decisions by Claude (main run)",
+   "seen": "page 24, record 24",
+   "source": "docs/demo/main-run.json agent_stats (by_claude)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: fallbacks (main run)",
+   "seen": "page 0, record 0",
+   "source": "docs/demo/main-run.json agent_stats (fallback)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: calls to Claude, each logged",
+   "seen": "page 50, record 50",
+   "source": "docs/demo/main-run.json agent_stats (claude_calls)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "main run: every Claude call has a request id",
+   "seen": "0 calls without one",
+   "source": "docs/demo/main-run.json agent_stats"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: sourcing agent's decisions, fallbacks, calls, cost",
+   "seen": "page 11/11 0 26 0.0088, record 11/11 0 26 0.0088",
+   "source": "docs/demo/main-run.json agent_stats (sourcing)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: support agent's decisions, fallbacks, calls, cost",
+   "seen": "page 4/4 0 7 0.0500, record 4/4 0 7 0.0500",
+   "source": "docs/demo/main-run.json agent_stats (support)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: treasury agent's decisions, fallbacks, calls, cost",
+   "seen": "page 9/9 0 17 0.2582, record 9/9 0 17 0.2582",
+   "source": "docs/demo/main-run.json agent_stats (treasury)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: Alta payments (main run)",
+   "seen": "page 86, record 86",
+   "source": "docs/demo/main-run-trace.json payments (rail metal)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: card charges (main run)",
+   "seen": "page 1, record 1",
+   "source": "docs/demo/main-run-trace.json payments (rail airwallex_card)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: sales + purchases + refunds + sweep",
+   "seen": "page 41 41 3 1, record 41 41 3 1",
+   "source": "docs/demo/main-run-trace.json payments by kind"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: stops (main run): total, buy rule, Alta, CFO, planted",
+   "seen": "page 16 12 2 1 1, record 16 12 2 1 1",
+   "source": "docs/demo/main-run.json snapshot.refusals and proof.chain_refusals"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: decisions signed with Face ID",
+   "seen": "page 5, record 5",
+   "source": "docs/demo/main-run.json snapshot.decisions (by … Face ID)"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: Face ID count = the record's proof.face_id",
+   "seen": "page 5, record 5",
+   "source": "docs/demo/main-run.json"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: orders disputed",
+   "seen": "page 12, record 12",
+   "source": "docs/demo/main-run.json ledger.disputes[0].claims.sale_refs"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: disputed orders refunded (wrong data)",
+   "seen": "page 3, record 3",
+   "source": "docs/demo/main-run-trace.json refunds on Alta"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: disputed orders proven valid",
+   "seen": "page 9, record 9",
+   "source": "disputed minus refunded"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "/proof: audit rows (main run)",
+   "seen": "page 412, record 412",
+   "source": "docs/demo/main-run.json snapshot.audit.rows"
+  },
+  {
+   "group": "figures on the pages",
+   "status": "pass",
+   "what": "main run: the audit chain is recorded intact",
+   "seen": "intact true",
+   "source": "docs/demo/main-run.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 1: paid, and its proof bundle verifies",
+   "seen": "start to paid 22590 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 1: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 866 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 2: paid, and its proof bundle verifies",
+   "seen": "start to paid 21157 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 2: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 814 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 3: paid, and its proof bundle verifies",
+   "seen": "start to paid 22273 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 3: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 845 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 4: paid, and its proof bundle verifies",
+   "seen": "start to paid 25714 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 4: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 864 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 5: paid, and its proof bundle verifies",
+   "seen": "start to paid 19872 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 5: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 1815 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 6: paid, and its proof bundle verifies",
+   "seen": "start to paid 19700 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 6: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 829 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 7: paid, and its proof bundle verifies",
+   "seen": "start to paid 17900 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 7: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 835 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 8: paid, and its proof bundle verifies",
+   "seen": "start to paid 21403 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 8: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 836 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 9: paid, and its proof bundle verifies",
+   "seen": "start to paid 19451 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 9: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 866 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 10: paid, and its proof bundle verifies",
+   "seen": "start to paid 20873 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  },
+  {
+   "group": "timed /try runs",
+   "status": "pass",
+   "what": "/try run 10: one cent more refused, and its proof bundle verifies",
+   "seen": "refusal round trip 819 ms; bundle VALID",
+   "source": "docs/evidence/try-timed-2026-11-15.json"
+  }
+ ],
+ "transaction_rows": [
+  {
+   "hash": "0x02d5bf5b302a5dea04a80f4ef9da555300aa0a00067af96d5ae7e6d2c0c3e8fd",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144676,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x0381193151a1990c4d6c829fa15243b30471e72dfb9bdfdfcd9c2ce13ad5e23a",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"↗ redirected to the attacker: reverted ·\"",
+   "status": "reverted",
+   "block": 10097390,
+   "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+   "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x03c218ced23f5c3721a90d386f2dd044fe279c40b6b4b40f5c7b75c6ed88d2f0",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154372,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x0536400e04ea60ea9d6f352266a68872661d33ee64c9e53453230846a9cd5dd0",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146094,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x053d2b7ce158a197e83d5c2ee143e3d9195ea4c6e7f1c5c194aba4130cd7c861",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26125973,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [
+    {
+     "to": "0xabfc7b9ed8c2886e18917ee4e30f0433c7ba6e29",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x055ba89987f658cb038fcbd1660f4d9e98e78e4c44c86c5346946f8cca1a6766",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 8705132,
+   "from": "0x95c07d674f848bd29553b7bc9156a3f3c4db1a1c",
+   "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22",
+   "transfers": [
+    {
+     "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22",
+     "amount": "5.00"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x080cf1b07dfeb6608d5838450f2a39b4c7cd0bc9c6edff93906ec3ca87cc4e1c",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146910,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x0913353458e90e3e8402d81d70893df68d011f381ba13abd33ac0662dd912ed9",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154120,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x108e9e743d26f030607e36526fec063ab613c115d783c904a2a9fa5dc9ca4136",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153883,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x168c657909460959b0444f05db2e7c03728435311ac059415d3504ef7b2a8c2d",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26125740,
+   "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x182fbd2620c8efc6f2f31f6850581f48cd79b11d2cd13e60747f6ca577a56668",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149546,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x1add0f462da3cf0a1e60666a78df7777fed1dc2ac7c1ea397ac4ecd4c53adcce",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26134048,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [
+    {
+     "to": "0xabfc7b9ed8c2886e18917ee4e30f0433c7ba6e29",
+     "amount": "0.06"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x1b82bda54c82cb48714fac20dd68c33644b1359ea8eeed8254788d778c9e2e1e",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157100,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x1b8c645f6ff693bade67a70a41b2a8ff99839a6ed37a4c251d8db4188fb6f744",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154632,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x222385b575d3b143e462e1146bd37d556fd263a6aa87f264fce9721b63232737",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"0xc2eb6814…f237 ↗ replayed decision: reverted ·\"",
+   "status": "reverted",
+   "block": 10097250,
+   "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+   "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x285281ea1e1aa1c8d7cfb84504fc251e79ce6072a461cf0a541d57a042da2724",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153634,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2a81d430d7ad08d9c009088b9ce965d30b5d6697c179cf85fe94f14f0922f08a",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 9388477,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0xb6c24ec17ab3fa37d80ec7739aaf387e49a1eb25",
+   "transfers": [
+    {
+     "to": "0x828c7de12cab8149aa516958433f6eee23aec875",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2a91ac97fc2a459da2b0c73f2b8020edec1901d051c7ef03bb088d36067fe790",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "README.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153004,
+   "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2b3a31102b4f10c36bac7dd4b596428379d018e5a541754431f31b8b6f0a7159",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146080,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2cc5a16e4aa74d5912e1b155f815270bd6f8a82796c08371dafa540410fa2fc7",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "README.md",
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144153,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "README.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14150386,
+   "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14150386,
+     "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14150386
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14150386
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x2f2d7afce9fce6b21278104828cc552c9d0aea387857f1c8384419cc6b64fb2a",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 23200516,
+   "from": "0xb598ae440ff61d234999f2e9923fecb94e85962a",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x31ecebc2045bcdce45aeb87bf2dbc965e81f1a71e11ef8d8f81ee4ed6a642d3e",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147725,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x3212737162d2fcac7474bcb076e632015981521b112ab16eade124220268434e",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144436,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x32c0e6918a7fa9439375acda943100cc63941d3c0623cc32f93c318c0aad1486",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148741,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x3878ee902ac7238e1f989465af04de7a613ebd5061db2cdb78c55187ab833bcf",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156854,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x39a4a2e5f05b3093e656e3eaa34a316b93166d7d940c609838819186eb6d07ac",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157615,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x39c5c7b0006a84a548b7ddba155060b9acc4c55b243a06874e33744e532dee33",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148494,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x3bf9f70e0b7c4e3c9cef05eddc755d3a4218227251b3699ddaa77756ba303ab5",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"↗ revoke by CFO alone: reverted ·\"",
+   "status": "reverted",
+   "block": 10099200,
+   "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+   "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x3e4db1a771fd2faaffdef209e7bbfb68310ee1298787e17280f10079884beadb",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156136,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x41a963a9cb765dc98fbc98ed6e78abcb02dc1b341c4e7378dea3c1843acb24de",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"↗ Alta bind, the CFO's passkey alone: reverted\"",
+   "status": "reverted",
+   "block": 11567553,
+   "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+   "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x41ef8b799002e32015fad9a0a988d1f7c2772636a0552e22f8424ed4e1bb39fb",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 23200538,
+   "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [
+    {
+     "to": "0x000000000000000000000000000000000000b5d5",
+     "amount": "0.25"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x4fde2db7720fbd282c894affc11048c978ddd0223668a32ae521a2ded7232b04",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153621,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5099fe44b03d83f4dd3963fc59a40e2a506bee533e5a41e8f1b00a12bee14510",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154286,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/demo/main-run.json",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x51f907258bd7493ef932cb65d0b84715d2ba4ed2939607a1c5f4f53494723170",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155135,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x522470d292f78b390fe153cb40905cdc6102afef1345d62e1dc975f900145092",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 8767743,
+   "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
+   "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22",
+   "transfers": [
+    {
+     "to": "0x3a7a546cab389a405fa1620370f4958f447de25e",
+     "amount": "0.70"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5637860a1ea4a7a109a45d2347e19d38887adbdb5bfd2415f0c3dc5bc785f4aa",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14150092,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5669f975b6c9fcd039453984f8c98811b31874186461a448d5c6d6c9baddbe41",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146640,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5717cfbc222837c34d68e5ca815b61ddd97303c30060c44355c44974825d8633",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149280,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5c3c0161742d0e65537a9732bf9bc1e220cda1485f52b72dfd70660ce201e986",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148220,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x5f09a1fb8d8511834e8079a8e59e41d1559a87c9000c9d0a89bb11d1f2e1f594",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145516,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6086aa0a65e0ffb4cb765aeaf4ca5e1cf2af1aaed17a9231f48aef3ac7cdc831",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149035,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x64d22177140e07b30b4493eb6cab456c9af594383ffeb0f07599766073dd4c7d",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144133,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x65fac96280f0b1097e3aa629e667f2f83490a490644cce8c1f45603f169b3518",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148480,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x67fb45900d3ee2704296d46eb7affa1e910f792982c0d49fe55a7e2123891836",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147715,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x68ab794be6e6d0ca8c68e20d2d73804c5e75db6a2084856e22e21e118c9967be",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147990,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6972c97d15381dac56ded0094d4c6d4f35aee9f477daae6412cdbaf905996bd0",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157850,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6b6ac4ab5fd312942eefc20f4a2fcf88ef67e3cc118ba8d77b457e85c808a61e",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157360,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6e7516497ace3a3c74b322979ac37fe2deda20cdc8b32efc12c243808721874c",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148234,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6eba6d485b312b36288bc27aab9dfff1d68ddead1a5123373d57bc2ba0538caa",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154906,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x6f7d1da8dc2d3e15166b766c5915c40b9b89a3ffe5e2ce123d6766d273b2f13c",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147456,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x728a9c270614d5bbeb11540f897a3b29fab00e2275c84cbb4022c74d7149c43b",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"0xe0976c5a…69c3 ↗ CFO and a stranger: reverted ·\"",
+   "status": "reverted",
+   "block": 10099142,
+   "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+   "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x7860403ed99b0362dbe2219817f77fe6eaf5da0563163ddf1532508da151ebe2",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149800,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x786686b6dd5112b80bbf84902c8b51f407459c3e3112a6a3d8a0e23bac60fc3c",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 9466819,
+   "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
+   "to": "0x0000000000000000000000000000000000000f4d",
+   "transfers": [
+    {
+     "to": "0xa262cd65b0ed95d23a56aa2e933f6482ad2cb646",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x789abb249896e01cee8e3641d7794676b6f2ce5d05f45093f6cc64101c9aebbc",
+   "linked_from": [
+    "/proof",
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14152940,
+   "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 14152940
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x78e585580d066feaffc2540315565ed6eb221304152c7c74853972d6d5e5ac3c",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146654,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x7e6d0104f163607f71429aea587063ebb223410acbcc5f57065b038aca001098",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154642,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x809e7a30aff19c19e0eb9f147267a60a97fee6872e3ad52195473db7b0f93a9f",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 13906293,
+   "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x81897ab40485937d1b4e139636cbf268e453884a5fa16579285c6eed2906b4fe",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147972,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x86936a5b29f9550857676fa710231af9e20882ebe6eee16f75a90af29767ccb4",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs",
+    "README.md",
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153316,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x24c159d585981113357ae805fa49ce1b0f2044c4",
+     "amount": "0.69"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/demo/main-run.json",
+     "to": "0x24c159d585981113357ae805fa49ce1b0f2044c4",
+     "amount": "0.69"
+    },
+    {
+     "where": "docs/demo/main-run.json",
+     "block": 14153316
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x870e0c20f626494109eb47cc7399662aca4d7cddca92cf08c1c5ffd81f3ebc8f",
+   "linked_from": [
+    "/alta",
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14150080,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x871c658ef7dd9e8a8eaf6ff1034836d55cc54fe022b425ed412cce7aa7e94da5",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156866,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x88d59e383a70bce3f37b10a12e2f1440e2e59cf81d713b1b8aabfd88f1211d09",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155407,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x8f3e8de3191fe3b9b2a568240cc7142520c4744386a73df798cf5014f3ae9b6e",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155900,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x902badf6f82f4e453c99ff9e5fd870d3e96ab40293bff64e3a611014930cc3d4",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 8748888,
+   "from": "0x2dae87d24deec5fe8d211253d753947d1390fdcd",
+   "to": "0xab3cc15a5ad1812d0bfea239bbcf076d2437ec22",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x9076343b01ba60809fad1a25c4f8dfa91bfaa15ffec45f55946ceea4e15e20d3",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 9352421,
+   "from": "0xa262cd65b0ed95d23a56aa2e933f6482ad2cb646",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [
+    {
+     "to": "0x0000000000000000000000000000000000000f4d",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x91ed35a52e1b3a0c01dbff9ab23f934d7d617b506ab89ac4022cf0739aed442e",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"0x03811931…e23a ↗ sanctioned payee: reverted ·\"",
+   "status": "reverted",
+   "block": 10098356,
+   "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+   "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x91f25465953772decefaf5934c17117abce91e7a368e88a8ee309afa08a27ead",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157838,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x9312b362d919c0579dc22497d869fcd69d5c82b1563dcf9f613d92fa3251fede",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156376,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x93b8a8b31fed1d9bbc9c57f05210db67551a1387d015532d64da2b57f454bcea",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156148,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x96850ad4562ae5abb370aead62e7ccd5d926d7b5d1a61b6a7aabbbbc78f17d5b",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 11567572,
+   "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+   "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x99c7d22d5c6b419afb3c05fc39463dde71f97bac73b18d73787ae1a47125ae0d",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155648,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x9c7d37f248cd0037881c6becf0ef2e865769b411313ee267cf763f28b9e8a2f7",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 13906369,
+   "from": "0x4b88d7ec199b7975e0367337c743879bdb8a4818",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x9cb933624be5946c890f77a33aceb2adde3d75d138890a6e1abb91fdad721808",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 13906203,
+   "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 13906203,
+     "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc"
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 13906203
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 13906203
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 13906203
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0x9de16c5ce16a428d369307b1b2f020f6e70a854641172fa671104ade4a618fd3",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155664,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xa2e3a329654845d5c8605ebebe82d34247dd4635482d7d973c745d0efbea8ed4",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154384,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xa6b615ce2a980169d66875aec460890def1a331a4c840e178672f4435beec309",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147444,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xa86b5f049ac952a26b392329e950c28891550ae6bafd06dc9636305cbdceee11",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155915,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 27469355,
+   "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+   "to": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-13-anchor.json",
+     "block": 27469355,
+     "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93"
+    },
+    {
+     "where": "docs/runs/2026-11-15-anchor-verified.json",
+     "block": 27469355,
+     "from": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xac6f03f2512f4720dc8dda773f969892776cd35664473482332062e3025d0efd",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14153872,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xad900a08b042207d9c185bc0babe46bd7291830895a3af6143fc7d576eb0cfa3",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149526,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xadb282a0a1779c1e407152416708a554232bb5de0b5bb97d302439924cdfc79d",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146370,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb28b58314d55e69047f8c00251a630b2a02d812f43bb810f77836ed2c68307ac",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145810,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb2fbcfc409816191124573304f189d67c31493278b19603564eca52af1e1668d",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144425,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb371a336f5a0ec74c4e3a26691dc3f2233882535dcac92e8a74b82f28b7a7859",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26157527,
+   "from": "0xfe75ebffb5427693c46956ef3d345d51526afd8e",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [
+    {
+     "to": "0xb598ae440ff61d234999f2e9923fecb94e85962a",
+     "amount": "0.25"
+    },
+    {
+     "to": "0x5d72985b418c6ef4753ba630b285882a14e47336",
+     "amount": "0.25"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb4f04a35418ea5593f18c2436b33459818163661c5748e43f4f41c5b56c8cf0b",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157114,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb64d78eaaaab1281ba2404432d5a4784f1600099d5e0ad92fb1fe60a948d82bc",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155146,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb6eff587c71ddec3014503364135c5072c6e1a1315df5abf52d26e554ddd315d",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26133904,
+   "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb7ef08bb4531c3cbd4b56f4307255b4d88f68d279c8073d9bc96d352fb3d44ad",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "README.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 13906111,
+   "from": "0xbf7192657b0bed7880a9a12e9de9884dce8c3b87",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xb8fe41c81170039ee9937df0a35e504d01eb78c02f162c5087a06fbc363b9ffa",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147158,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xba330558c8637a95f6aa4bd45c2d5ff3d297aed1747c547c7b12f66e6ac84c38",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145234,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xbdb5b8f21a1a856b813d49a211dfcb8c8af904cac37982343b7d83058657b0a8",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14148754,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc27764bec045d4c8a573672b68b5e222098c8f9f07ada65bd06ca4ed19726fad",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148767,
+   "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
+   "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b",
+   "transfers": [
+    {
+     "to": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
+     "amount": "2.40"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148767,
+     "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc2eb68144c8285a07ac6687a8f1c8085e9ee2826f8d6043663073eca2e79f237",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 10096702,
+   "from": "0x5022c244b1e0b5f98cd25c2101333ea94749c191",
+   "to": "0x498d1f70c57a869799b44bcf869983b0e121fa4f",
+   "transfers": [
+    {
+     "to": "0x026cb40753452f9262d4ffe8443e1ab10a77b711",
+     "amount": "0.50"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc3ac51e43f02dcb234a854358a6b74116091e61684c783be07bebb1e4da656cf",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148487,
+   "from": "0xd180c231b85d3d5aa95441cda5d14022e610f8c2",
+   "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148487,
+     "from": "0xd180c231b85d3d5aa95441cda5d14022e610f8c2"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc3e7487eb6e8ac862d2bd029f992795c5bcbad2588a64899614e0d6ac13ec237",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144950,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc6e1f0b284b3d7d21124edf06cb1691e5d037819c147659f3b68741d4b000723",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144690,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc704078ef23e2af7cb03dd01ee6c1bb169a6ecff4ce3aaa7085b22f565596ded",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146358,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc7f59df339cf9f4ec578d8c2c809b3563e050727d76134c0f52c5ddc573a3b59",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14155394,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xc82912c30de9c996cb2b397989c1518e38ff3a32824c2e1a39b2d83d00bdb8cd",
+   "linked_from": [
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 11567638,
+   "from": "0xfd485b319d6159cecc5380b306a803db25949c12",
+   "to": "0x44af42d8f16981932aa6cec7668b8faef3f037e8",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xcf02673efcad2326c0bb8603be23d3972f744a11c7b99ecf7156b69b0fe4ab4e",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148693,
+   "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148693,
+     "from": "0x4d7f6807abe468d511bcf11571cd6eca153b2c18"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xcfb214b1e950035b44f9785d0f7dbe55e8cdf59420247fb6d5f5928c9a03875d",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145536,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd00cf2e49eb85619d999b667628d6a1683088515b95507910af1cde1b0d7de7a",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14147178,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd3bf7e0df56fc267ff071fdbe2356ccd9270fb62585dbf31b0c9fef8b3e29f3e",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26135039,
+   "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd4c40c277410d5c2769db1b316b40a222b4e32081bed6300815ff643d2ff9b91",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148264,
+   "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af",
+   "to": null,
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148264,
+     "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd5a11eca1a5d2d94ada310eb382b3348a64819453d8384fe291dac3f1c56a2d8",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157347,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd5f548251d6c1e174a8b27e1ce61d51301a3375d5fcf956c10b5713886a59134",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156390,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd95bf33cb2ec1ac3c910011c94c023fd89849ec015590463359e385dcbb7900c",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145796,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xd98e94ffa3c859de037f944322b05c0f3a097f45780dbd1b8ec9d4689961d30d",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 10099167,
+   "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+   "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a",
+   "transfers": [
+    {
+     "to": "0x706813f343dbe1df0ad9f5de8b4e9e789d71b13a",
+     "amount": "1.00"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xe0976c5a0ad7ebe51ed0bc9564b2f366fd141b6ba24a55b09fe71ea23e2269c3",
+   "linked_from": [
+    "/proof",
+    "/runs"
+   ],
+   "page_says": "/runs labels it \"↗ 3 more ids CFO alone: reverted ·\"",
+   "status": "reverted",
+   "block": 10099120,
+   "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+   "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xe44a3460faf6cb2050067bf22791df61803f8646adeb5fcc2a205d1f1afa75e5",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154236,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/demo/main-run.json",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xe4bf79623f9cb9212a49ea7c0ced60d241041051f322d199e319989d6548c89d",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "README.md",
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154191,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/demo/main-run.json",
+     "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+     "amount": "0.05"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xe6d9c7eab36bb2c3af40269aa2e605982f3aa3d78a93a94d13b62ef96b585df4",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26126103,
+   "from": "0xb2022ef3f880fd842c806ff90f3e583858e2a007",
+   "to": "0xb5a370dcdfb60f1ede241c9c3b28135ac4216a3c",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xe892abfd354543e27f777bd76bdbdb65b6c74e0402b301be00935fcff38fa884",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14146897,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xebd682c7b7f15a87193b2fee145337c0118b6ef0b7e948c48bd9983ffbcf8ae0",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148537,
+   "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
+   "to": "0x000000000000000000000000000000000000b5d5",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148537,
+     "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xee14c617291c39d0f41659d52ef2b397d6539b6911d9d027579c67266295eb44",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14144963,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xef3c845b00bd7066638ff2acbe97f9e8ef0cb786bed240bc3a4c1263c78f32be",
+   "linked_from": [
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148587,
+   "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a",
+   "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b",
+   "transfers": [
+    {
+     "to": "0xd180c231b85d3d5aa95441cda5d14022e610f8c2",
+     "amount": "2.35"
+    }
+   ],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148587,
+     "from": "0xff85e23d4e7a9cdf928f6da186952ea0e7de197a"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xefc6831934784df1ae4b65a0d03d5f2e9e08c1d009ef4bd73d07844b5559b575",
+   "linked_from": [
+    "/proof",
+    "/alta",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 26148371,
+   "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af",
+   "to": "0xf4756b24eb825ad81771c3ddb5e1a88772f5f29b",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-tokenize.json",
+     "block": 26148371,
+     "from": "0x4f12163d77d6bc540f48736f2e0c9a0958c3d1af"
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf1a7fe9664053c9d2fdf1b2d11122bde5be0668da8afc8d4f17b08088e220c37",
+   "linked_from": [
+    "/proof",
+    "/runs"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 9351961,
+   "from": "0x5efc661508eac02798008350c4b829c6f15b6b23",
+   "to": "0x0000000000000000000000000000000000000f4d",
+   "transfers": [],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf23d83dc77d754a7ea984de3392f067e14ed03e45cb3e7b21db0c60fcd0c7b0b",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149814,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf45301127515cc35511591538a221d95c16c6e87f387c9317a844572db93a1a6",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14157600,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf4bdd52d65aa032f49901788fb251805aca415238811b1d4eb2ee1defd86cf23",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154136,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf97bcade4a83d7a23198660bee37e1c84d72d6da153eaf6d49f39cd8f542f98d",
+   "linked_from": [
+    "/alta"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 10099272,
+   "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+   "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a",
+   "transfers": [],
+   "recorded": [
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 10099272,
+     "from": "0x4bdb9589d5f12b12786049ab1d9c53e5f6d56ecb",
+     "to": "0x15eb7c1322952e0c549b7da0b57d35171518a41a"
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 10099272
+    },
+    {
+     "where": "docs/runs/2026-11-12-metal-inspector.json",
+     "block": 10099272
+    }
+   ],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xf9be147f549664028372ade452a2fd650d3265c87dbd215b07083a2ad659e93f",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156629,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xfab9cc3dc73a8526566ab5e16ac705f48483dd59fb4766c56c2ef6eb9ddac4c6",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14156616,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xfacf21264a589d1caf93b3c0a5c4862a6592e78659114afec3361a9fa52036a8",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149266,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xfd1db54e3a59b90984b850fece4735a4255ec975810be2d817f8c5b35cefb1d5",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14149023,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.02"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xfdfa0cfca372c97894127e78b9ede8946365850e09b1a01b30b8c10e166c4fb4",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14154885,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+   "transfers": [
+    {
+     "to": "0x1936e1869fadf65a53b8492fb6cccf21200d42ed",
+     "amount": "0.04"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  },
+  {
+   "hash": "0xff8debd3c0a4dea07b0eeceb84bb2bc22e23273ad534f9fe4ba199f78a0a9516",
+   "linked_from": [
+    "docs/runs/2026-11-03-main-run-metal-transactions.md"
+   ],
+   "page_says": "linked as a payment or step that went through",
+   "status": "success",
+   "block": 14145246,
+   "from": "0xa1ea44afe3948831194c90438f23827c8b458f88",
+   "to": "0x7b71643913d05d14376562b3682dd1a45cca6cdf",
+   "transfers": [
+    {
+     "to": "0x6e621d0f1ff6a03caf1dbfe9747ecec4513efefc",
+     "amount": "0.05"
+    }
+   ],
+   "recorded": [],
+   "result": "pass",
+   "why": ""
+  }
+ ]
+}
