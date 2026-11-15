@@ -12,16 +12,38 @@
 //   page's own requests, read, never changed): the time from the start to paid, the steps the engine recorded and how
 //   many were Claude's, the amount paid, and whether a changed term was refused (and by which layers). Each figure is
 //   what came back, or "not in this run".
+// - The app shell (sidebar, sections, Claude's usage); ?shell=0 turns it off, and in it &neg=1 keeps the negotiation.
 // - ?phone=0: no phone lane, for a laptop that signs with its own passkey (Windows Hello); R keeps it.
 // - Keys for the presenter: → the step's main button (the same click a person makes), R start again (a new test
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
+
+import { INVOICE } from "../tryCopy.js";
+
+const NEG_HINT = INVOICE.hints.clean ?? "";
 
 export const PRESENT_BEFORE = "An agent's invoice lands in a queue. An approve button anyone can click pays it, whatever was changed on the way.";
 export const PRESENT_AFTER = "The CFO signs the exact terms with Face ID. Change one cent and the signature is refused: nothing moves.";
 export const PRESENT_TRY = "kit11.max-31b.workers.dev/try";
 export const PRESENT_MONEY = "Test money · simulated bank · nothing real is paid";
 export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact terms";
+/**
+ * The app shell (15 Nov, Max: "it needs to look like the actual product"): in recording mode, the site's menu and the
+ * step bar give way to a product's own frame: a sidebar with the workspace, the sections (the current one lit by the
+ * screen shown) and Claude's usage in this run, call by call (model, time, cost, Anthropic's request id), read from the
+ * engine's own events. ?shell=0 turns it off.
+ */
+export const PRESENT_SHELL = {
+  workspace: "Your test company",
+  tag: "Test money · sandbox",
+  nav: ["Inbox", "Approvals", "Payments", "Books", "Agents"],
+  usage: "Claude · this run",
+  none: "No Claude call yet",
+  calls: "calls",
+  user: "CFO",
+  userSub: "Signs with a passkey",
+  reader: "Reader",
+} as const;
 /** The figures of the outcome card, by name; each is filled from an answer or says NOT_IN_RUN. */
 export const PRESENT_OUTCOME = {
   heading: "What just happened",
@@ -100,6 +122,44 @@ body.present:has(.screen.approve) .pv-lane, body.present:has(.screen.pay) .pv-la
 @media (max-width: 1199px) { .pv-lane { display: none !important; } .pv-card { padding: 24px 16px; } .pv-ba, .pv-figs { grid-template-columns: 1fr; } .pv-ba p { font-size: 22px; } .pv-card h2 { font-size: 32px; } .pv-figs b { font-size: 36px; } .pv-try { font-size: 22px; } .pv-money { top: auto; bottom: 12px; right: 12px; } }
 @media (prefers-reduced-motion: no-preference) { .pv-card.on .in { animation: pvin .5s ease-out; } }
 @keyframes pvin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+/* The app shell (?shell=0 turns it off): the site's menu and step bar give way to a product frame. */
+@media (min-width: 1200px) {
+  body.present.pv-shell { padding-left: 276px; }
+  body.present.pv-shell header.top, body.present.pv-shell .progw { display: none !important; }
+  body.present.pv-shell .pv-money { top: 22px; }
+  body.present.pv-shell .acts.pdfl { display: flex !important; }
+  body.present.pv-shell .acts.pdfl .btn:not(.proofdl) { display: none; }
+  body.present.pv-noneg .negcard { display: none !important; }
+  body.present.pv-noneg .payrow { justify-content: flex-start; gap: 16px; }
+}
+.pv-side { display: none; }
+@media (min-width: 1200px) {
+  body.present.pv-shell .pv-side { display: flex; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 252px; flex-direction: column; gap: 18px; padding: 22px 16px; background: color-mix(in srgb, var(--bg) 82%, #000); border-right: 1px solid var(--border); font: 500 14px/1.35 Inter, system-ui, sans-serif; color: var(--text); }
+}
+.pv-side .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 19px; color: var(--text); text-decoration: none; }
+.pv-side .brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--text); color: var(--bg); }
+.pv-ws { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.pv-ws b { display: block; font-weight: 650; }
+.pv-ws span { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 650; color: var(--ok); }
+.pv-nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pv-nav li { padding: 9px 12px; border-radius: 9px; color: var(--muted); font-weight: 600; }
+body.present:has(.screen.invoice, .screen.work, .screen.start) .pv-nav li:nth-child(1),
+body.present:has(.screen.approve) .pv-nav li:nth-child(2),
+body.present:has(.screen.books, .screen.pay) .pv-nav li:nth-child(3),
+body.present:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.pv-use { margin-top: auto; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.pv-use h3 { margin: 0 0 6px; font: 700 11px/1.2 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.pv-use .tot { font: 750 24px/1.15 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.pv-use .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+.pv-use ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 7px; }
+.pv-use li { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: 12.5px; }
+.pv-use li b { font-weight: 650; }
+.pv-use li .c { font-variant-numeric: tabular-nums; font-weight: 650; }
+.pv-use li .m { grid-column: 1 / -1; color: var(--muted); font: 500 11px/1.3 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.pv-me { display: flex; align-items: center; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.pv-me .av { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--bg); font: 750 12px/1 Inter, system-ui, sans-serif; }
+.pv-me small { display: block; color: var(--muted); font-size: 12px; }
+
 `;
 
 /**
@@ -115,7 +175,7 @@ document.body.classList.add('present');
 const POOLTAG=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.hash);try{if(m)sessionStorage.setItem('purser.present.pool',m[0]);return m?m[0]:sessionStorage.getItem('purser.present.pool')||''}catch(e){return m?m[0]:''}})();
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 // The run's own numbers, from the answers this page gets.
-const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,refused:null};
+const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,refused:null,calls:new Map()};
 try{const o=JSON.parse(sessionStorage.getItem('purser.present')||'null');if(o&&typeof o==='object'){RUN.startAt=o.startAt??null;RUN.paidAt=o.paidAt??null;RUN.paid=o.paid??null;RUN.refused=o.refused??null;for(const s of o.seqs||[])RUN.seqs.add(s);for(const s of o.claude||[])RUN.claude.add(s)}}catch(e){}
 const keep=()=>{try{sessionStorage.setItem('purser.present',JSON.stringify({startAt:RUN.startAt,paidAt:RUN.paidAt,paid:RUN.paid,refused:RUN.refused,seqs:[...RUN.seqs],claude:[...RUN.claude]}))}catch(e){}};
 const AMT=/^\d{1,9}\.\d{2}$/,CUR=/^[A-Z]{3}$/;
@@ -129,15 +189,15 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear()}
-        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq)}}}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();RUN.calls.clear()}
+        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);if((e.event==='claude.read'||e.event==='agent.run')&&!RUN.calls.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)RUN.calls.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:''})}}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
           const t=sent&&sent.terms||{};
           if(j.outcome==='paid'&&!RUN.paidAt){RUN.paidAt=at;RUN.paid=AMT.test(String(t.amount))&&CUR.test(String(t.currency))?money(String(t.amount),String(t.currency)):''}
           if(j.outcome==='refused'&&Array.isArray(j.changed)&&j.changed.length){const L=j.layers||{};RUN.refused={both:!!(L.signature&&L.signature.verified===false&&L.executor&&L.executor.accepted===false),changed:j.changed.filter((k)=>/^[a-z_0-9]{1,32}$/.test(k))}}
         }
-        keep();drawOutcome();
+        keep();drawOutcome();drawUse();
       }).catch(()=>{});
     }
   }catch(e){}
@@ -148,6 +208,31 @@ document.body.append(mk('div','pv-money',PC.money));
 // The phone lane, unless ?phone=0 (a recording on a laptop that signs with its own passkey, e.g. Windows Hello).
 const NOPHONE=new URLSearchParams(location.search).get('phone')==='0';
 if(!NOPHONE)document.body.append(mk('aside','pv-lane',[mk('div','pv-phone',mk('span','',PC.laneSpot)),mk('p','',PC.lane)]));
+// The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
+const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
+const SH=PC.shell;let useBox=null;
+if(SHELL){
+  document.body.classList.add('pv-shell');
+  const hb=document.querySelector('header.top .brand');const brand=hb?hb.cloneNode(true):mk('span','brand','Purser');
+  useBox=mk('section','pv-use');
+  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
+}
+// In the app shell the negotiation is left out unless &neg=1: "Pay this invoice" becomes the step's main button (→ clicks it).
+if(SHELL&&new URLSearchParams(location.search).get('neg')!=='1'){
+  document.body.classList.add('pv-noneg');
+  const promote=()=>{for(const b of document.querySelectorAll('#main .payrow > button.btn:not(.primary)'))b.classList.add('primary','big');for(const el of document.querySelectorAll('#main *'))if(el.childElementCount===0&&el.textContent===PC.negHint)el.textContent=PC.negHintShort};
+  promote();new MutationObserver(promote).observe(document.body,{childList:true,subtree:true});
+}
+const usd=(m)=>'$'+(m/1e6).toFixed(4);
+const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
+const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
+function drawUse(){
+  if(!useBox)return;
+  const calls=[...RUN.calls.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
+  const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
+  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
+}
+drawUse();
 // The opener: Before and After.
 const opener=mk('section','pv-card',mk('div','in',[mk('div','pv-money',PC.money),mk('h2','',PC.openerHeading),mk('div','pv-ba',[mk('div','before',[mk('b','',PC.beforeLabel),mk('p','',PC.before)]),mk('div','after',[mk('b','',PC.afterLabel),mk('p','',PC.after)])]),mk('p','pv-go',PC.go)]));
 opener.setAttribute('role','dialog');opener.setAttribute('aria-label',PC.openerHeading);
@@ -225,7 +310,9 @@ export function presentExtra(): { css: string; script: string } {
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME,
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL,
+    // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
+    negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
   return { css: CSS, script: SCRIPT.replace("__PRESENT_CFG__", () => json(cfg)) };
 }

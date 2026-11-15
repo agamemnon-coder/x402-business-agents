@@ -45,6 +45,16 @@ describe("recording mode", () => {
     expect(script).toContain("'?present=1'+(NOPHONE?'&phone=0':'')+POOLTAG");
   });
 
+  it("frames the run as the product: a sidebar, the sections, Claude's usage call by call, the proof download; no negotiation unless &neg=1", () => {
+    const { script, css } = presentExtra();
+    expect(script).toContain("get('shell')!=='0'");
+    expect(script).toContain("get('neg')!=='1'");
+    expect(script).toContain("e.event==='claude.read'||e.event==='agent.run'");
+    expect(css).toContain(".pv-noneg .negcard { display: none !important; }");
+    expect(css).toContain("body.present.pv-shell .acts.pdfl { display: flex !important; }");
+    for (const w of ["Inbox", "Approvals", "Payments", "Books", "Agents", "Claude · this run"]) expect(script).toContain(w);
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {
