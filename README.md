@@ -16,7 +16,15 @@
 
 </div>
 
+> [!TIP]
+> **Try it in 2 minutes, no sign-up:** [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try) gives you a test company of your own. Approve the exact terms with your passkey, then change one cent: refused.
+
+> [!IMPORTANT]
+> **Test money only.** Live: calls to the Airwallex sandbox, Alta testnet, Visa via Airi (sandbox), the T:0 sandbox ledger and Claude. Simulated: the customer, the supplier, the merchants' charges, the settlement and the second approver.
+
 ## At a glance
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 7,044 tests passing in the last full run; 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
 - **The agent trace, live:** on [/try](https://kit11.max-31b.workers.dev/try), each Claude call, its lookups and its decision, as the engine recorded them ([record](docs/evidence/try-agentic-2026-11-15/README.md)).
 - **Agents negotiate:** on [/try/negotiate](https://purser-try.max-31b.workers.dev/try/negotiate), two Claude agents agree a deal; code holds the limits, you sign it ([the rails](src/negotiate/rails.ts)).
@@ -42,6 +50,11 @@ npm ci                       # under a minute: the exact versions in the lockfil
 npm run judge -- --check     # about 5 s: every page in CHECK_PATHS built from the main run's record, offline
 npm run verify-approval      # under 1 s: the owner's real passkey approval of 7 November, checked with Node's crypto
 ```
+
+> [!NOTE]
+> **Verify it yourself, offline:** `npm run verify-approval` checks the real approval; change one cent in a copy and `npm run verify-receipt -- tampered.json` says NOT VALID. Below, the real output of both.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/terminal-verify-dark.svg"><img src="docs/assets/readme/terminal-verify-light.svg" alt="A terminal, animated: npm run -s verify-approval prints eleven ok checks and VALID for the owner's passkey approval of 7 November; then the amount is changed from 240.00 to 240.01 in a copy, and npm run -s verify-receipt -- tampered.json prints FAIL terms hash and NOT VALID. The real output, captured 15 Nov 2026; test money." width="100%"></picture>
 
 <details><summary>What you should see (abridged)</summary>
 
@@ -107,6 +120,10 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 
 ## Architecture
 
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/system-map-dark.svg"><img src="docs/assets/readme/system-map-light.svg" alt="Purser's whole system in six zones, left to right: who uses it, the surfaces, the Claude agents, the rails in code, the money rails on test money, and the proof and books; dots follow one payment from a visitor through /try, the Reader, the Checker, the CFO policy and the passkey to Airwallex and the proof files, and a red dot takes a changed cent to Refused" width="100%"></picture>
+
+*The whole system at a glance: everything here is built and runs on test money; open the image for full size.*
+
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/architecture-dark.svg"><img src="docs/assets/readme/architecture-light.svg" alt="Purser in four layers: the CFO and company, the Purser engine, the payment rails and the proof, with the path of one payment" width="100%"></picture>
 
 - **CFO & company:** /try, the Purser Cloud console and /verify; the CFO's passkey signs the SHA-256 of the exact terms.
@@ -165,6 +182,30 @@ flowchart LR
   F --> R
   R --> B["Books<br/>posted to T:0 and Moneybird (sandboxes)"]
   B --> L["Hash-chained audit log"] --> N["Its head anchored on Alta testnet<br/>npm run verify-anchor"]
+```
+
+### One payment, step by step
+
+The approval path in [src/policy/approvals.ts](src/policy/approvals.ts) and the Airwallex transfer in [src/airwallex/adapter.ts](src/airwallex/adapter.ts):
+
+```mermaid
+sequenceDiagram
+  participant A as Agent (Claude)
+  participant P as Purser rails (code)
+  participant C as CFO passkey
+  participant X as Airwallex / Alta
+  A->>P: proposes a payment: the exact terms
+  P->>P: checks the CFO's limits
+  Note over P: above the limit: a proposal with the SHA-256 of the terms
+  P->>C: asks the CFO to approve those terms
+  C->>P: signs the SHA-256 of the exact terms (WebAuthn)
+  P->>P: before paying: do the stored terms still hash to the signed hash?
+  alt the terms as signed
+    P->>X: pays, the transfer carrying the signed hash (approval_sha256)
+    X-->>P: Airwallex's record of the transfer carries the hash
+  else one cent changed after signing
+    P--xA: refused: the terms do not match the approved hash
+  end
 ```
 
 ## For judges: 3 minutes
