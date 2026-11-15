@@ -128,6 +128,9 @@ const EVENTS: Record<string, Pick> = {
   "ap.checker_decided": (p) => ({
     ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings),
     reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
+    // 15 Nov (jury): how many concerns the agent itself named (its findings: a count, never their words), so /try can
+    // say "no concerns found" only when the agent found none.
+    concerns: Array.isArray(p.agent_findings) ? p.agent_findings.length : undefined,
     // 15 Nov: the always-pay script on the same case (src/ap/checkerAgent.ts scriptOn): code's outcome and its rule.
     script_outcome: typeof p.script_outcome === "string" ? p.script_outcome : undefined, script_overridden_by: typeof p.script_overridden_by === "string" ? p.script_overridden_by : undefined,
   }),

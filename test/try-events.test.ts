@@ -213,3 +213,27 @@ describe("round 4: the agents' lines read whole", () => {
     expect(eventLine(pub("claude.capped", { reason: "something_else" })).text).toBe(LIVE.ev["claude.capped"]);
   });
 });
+
+// 15 Nov (jury, live on BTX-2026-21): the Checker found nothing and asked the CFO only because the rails require it
+// (agent limit zero). Its line says "No concerns found" beside the rails' reason, never "Decided: ask the CFO, because"
+// a reason that argues for paying. Any concern of its own, a finding of code's, or an override keeps the usual line.
+describe("the Checker with no concerns (15 Nov)", () => {
+  const ev = (f: Record<string, unknown>): EngineEvent => ({ seq: 27, ts: "2026-11-15T10:37:18.982Z", actor: "checker", event: "ap.checker_decided", subject: "AP-0002",
+    fields: { source: "claude", model: "claude-haiku-5-5", action: "ask_cfo", outcome: "ask_cfo", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "",
+      reason: "Bergtex Textil GmbH invoice BTX-2026-21 checks out: the IBAN is the account on file and the totals add up.", enforced: "in this company, agents pay no invoice alone: the CFO decides every one", concerns: 0, ...f } as EngineEvent["fields"] });
+
+  it("no concern of its own and none of code's: No concerns found, and the rails' reason", () => {
+    const l = eventLine(ev({}));
+    expect(l.lead).toBe(LIVE.lead["ap.checker_decided_clear"]);
+    expect(l.own).toMatch(/^Bergtex Textil GmbH invoice BTX-2026-21 checks out/);
+    expect(l.enforced).toBe(LIVE.railsClear);
+    expect(`${l.lead} ${l.enforced}`).not.toMatch(/because/);
+  });
+
+  it("a concern of its own, a finding of code's, an override, or the fallback: the usual line", () => {
+    for (const f of [{ concerns: 1 }, { codes: "unusual_amount" }, { action: "pay", overridden: true, overridden_by: "no_alone_limit" }, { concerns: undefined }]) {
+      expect(eventLine(ev(f)).lead).not.toBe(LIVE.lead["ap.checker_decided_clear"]);
+    }
+    expect(eventLine(ev({ source: "fallback", model: null })).lead).not.toBe(LIVE.lead["ap.checker_decided_clear"]);
+  });
+});

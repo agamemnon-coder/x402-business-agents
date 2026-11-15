@@ -75,7 +75,7 @@ describe("the agents' events on a page", () => {
       task: "ap.check.AP-0001", run_id: "run_1", request_ids: ["req_011"], origin: { actor: "agent" },
     });
     expect(f).toEqual({ source: "claude", model: "claude-haiku-4-5", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "hold", codes: "bank_details_changed,possible_duplicate",
-      reason: "the account ****3000 is new", enforced: "code holds ****3000", request_id: "req_011" });
+      reason: "the account ****3000 is new", enforced: "code holds ****3000", request_id: "req_011", concerns: 1 });
   });
 
   it("ap.checker_decided: the always-pay script on the same case, code's outcome and its rule (15 Nov, /try)", () => {

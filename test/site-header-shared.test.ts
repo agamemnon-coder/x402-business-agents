@@ -30,6 +30,7 @@ describe("the site's header, byte for byte as before", () => {
     expect(sha(CSS)).toBe(snap.cssSha256);
     expect(sha(NAV_CSS)).toBe(snap.navCssSha256);
     expect(sha(MORE_CSS)).toBe(snap.moreCssSha256);
+    // 15 Nov: pageSha256 renewed: "Agents negotiate" left the More menu (Max; /try/negotiate has a card on Home).
     // 14 Nov: pageSha256 renewed: the shared page script names Alta where it said Metal, and the More menu links /alta.
     // 12 Nov (wire-in): every page's stylesheet carries the shared motion (src/ui/motion.ts) after CSS; the rest is unchanged.
     expect(sha(page({ title: "T", description: "D", tab: "home", css: "", body: "<main></main>", source: "s" }).replace(`\n${MOTION_CSS}${SITE_MOTION_CSS}`, ""))).toBe(snap.pageSha256);
@@ -50,7 +51,7 @@ describe("the cloud pages carry the site's header", () => {
       const html = siteHeader(k);
       expect(shape(html)).toBe(shape(snap.header[String(k)]!));
       for (const h of hrefs(html)) {
-        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try")) continue;
+        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try") || h === `${CLOUD}try/negotiate`) continue;
         expect(h.startsWith(`${SITE_ORIGIN}/`), h).toBe(true);
       }
     }

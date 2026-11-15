@@ -928,8 +928,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      // The guarantees close the fold "How a payment is checked" (jury panel, 15 Nov): a reader opens it first.
-      await page.locator("#how-checked > summary").click();
+      // The guarantees are in sight again (Max, 15 Nov).
       await page.locator("#g-terms details > summary").click();
       await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
       await page.waitForURL(/\/security#unavailable$/);
@@ -1098,9 +1097,10 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         return { order: order.slice(0, 9).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
       // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
-      // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check, the offline check
-      // and the film links; then the live runs, how a payment is checked, and all the rest, each in a fold closed on load.
-      if (first.order !== "h1 p.plead section.pfacts aside.pverify p.pwatch details.sumd details.sumd details.sumd section.cichk" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five facts, the offline check, the film links and three folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
+      // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check. Max, the same day
+      // ("just links, no more visuals"): the facts as cards, then the payment-check chain, the numbers band, the offline
+      // check, the film links and the guarantees in sight; every live run and all the rest in two folds closed on load.
+      if (first.order !== "h1 p.plead section.pfacts ol.pchain ul.scale aside.pverify p.pwatch section.gtee details.sumd" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five fact cards, the chain, the band, the offline check, the film links, the guarantees and the folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
         // The five facts start on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
         const facts = await page.evaluate(`(() => { const e = document.querySelector("main section.pfacts"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
