@@ -70,9 +70,9 @@ export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's publ
  * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
  * run counts), on the Airi run, not on TAP.
  */
-export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
+export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Alta (formerly Metal) Award and the Visa Award";
 /** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
-export const HOME_BADGE = "Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude";
+export const HOME_BADGE = "Kit 11 · Alta (formerly Metal) Award and Visa Award · built on Airwallex, Alta, Claude";
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
 /**

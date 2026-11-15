@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
-import { homeScaleStats, scaleStats } from "../src/redesign/scale.js";
+import { HOME_REFUSALS_LABEL, homeScaleStats, scaleStats } from "../src/redesign/scale.js";
 import { FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
@@ -180,10 +180,10 @@ describe("Home, the enterprise pass", () => {
     expect(mainOf(ON).indexOf('<p class="proofl"')).toBeLessThan(mainOf(ON).indexOf('<div class="ctas">'));
     expect(text(line).startsWith("Built on Airwallex · test money · ")).toBe(true);
     // Judge panel, 13 Nov: six figures read as number soup; Home keeps three, each with its link (/proof keeps them all).
-    expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals on record"]);
+    expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals across all runs, on record"]);
     expect([...line.matchAll(/<b>([\d,]+)<\/b>/g)].map((m) => Number(m[1]!.replace(/,/g, "")))).toEqual(homeScaleStats().map((x) => x.n));
     expect([...line.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(homeScaleStats().map((x) => x.href));
-    for (const s of homeScaleStats()) expect(scaleStats()).toContainEqual(s);
+    for (const s of homeScaleStats()) expect(scaleStats()).toContainEqual(s.label === HOME_REFUSALS_LABEL ? { ...s, label: "refusals on record" } : s);
     for (const html of [ON, OFF]) expect(mainOf(html)).toContain(`<article class="e-statrec" data-rec="${STAT_RECORDS}">`);
     expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Alta"]);
     expect(text(/<h2[^>]*id="h-locks"[^>]*>[\s\S]*?<\/h2>/.exec(ON)![0])).toBe(LOCKS_HEAD);
@@ -243,8 +243,9 @@ describe("Home, the enterprise pass", () => {
   // reuse section (13 words; 354 as built). 360 since the partner scan (14 Nov): Visa in "Works with" named in full,
   // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built). 378 on
   // 14 Nov (Max, Airwallex at the centre): one line on the live Airwallex sandbox FX quote in /try's signed terms (378 as built).
-  it("A11: stays within 378 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(378);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(378);
+  it("A11: stays within 381 visible words", () => {
+    // +3, 15 Nov: Home's refusals label says it counts all runs.
+    expect(visibleWords(ON)).toBeLessThanOrEqual(381);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(381);
   });
 });

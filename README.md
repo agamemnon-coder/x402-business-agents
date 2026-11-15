@@ -130,7 +130,7 @@ flowchart LR
 ## For judges: 3 minutes
 
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta, built for
-Starter Kit 11 (x402 Business Agents) and entered for the Metal Award and the Visa Award.
+Starter Kit 11 (x402 Business Agents) and entered for the Founder's Choice Award, the Judges' Choice Award, the Alta (formerly Metal) Award and the Visa Award.
 The Kit 11 scenario, run live on 3 November.\
 **1. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
 passkey, then change them: refused.\
@@ -146,7 +146,7 @@ One column per rail in [Built with](#built-with); every run, live or simulated, 
 
 Purser's Visa Award entry: [docs/visa-award.md](docs/visa-award.md).
 
-## Metal Award
+## Alta Award
 
 Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/alta](https://kit11.max-31b.workers.dev/alta) · [docs/metal-award.md](docs/metal-award.md)
 
@@ -230,7 +230,7 @@ CI runs it on every push, with CodeQL and gitleaks; `npm run test:coverage` meas
 
 ## Awards entered
 
-The Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award (Starter Kit 11, x402 Business Agents).
+The Founder's Choice Award, the Judges' Choice Award, the Alta Award and the Visa Award (Starter Kit 11, x402 Business Agents).
 
 ## Links
 
