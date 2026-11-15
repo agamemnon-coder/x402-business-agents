@@ -16,6 +16,18 @@ The trailer, 1:30 (AI voice and music: ElevenLabs): https://youtu.be/n3HLVGROJc4
 
 Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet transactions. Simulated: the customer, the supplier, the merchants' charges, the settlement (Purser moves the SWIFT transfer to SENT, then PAID, through the sandbox's simulation API) and the second approver (a labelled test passkey).
 
+## At a glance (15 November)
+
+- Live product: a test company of your own on /try. Claude reads an invoice; the Checker agent's own tool calls are shown step by step (supplier on file, bank details, invoice history, totals, limits), with its model, timing and cost; then the same invoice goes through a script that always says pay, side by side: https://kit11.max-31b.workers.dev/try
+- Two agents negotiate: Purser's Sourcing agent (Claude) and a simulated supplier's agent (Claude, labelled) agree an early-payment discount; the CFO's rails in code refuse the supplier's mid-negotiation bank change and show the rule that held; the agreed terms are hashed and signed with a passkey, one cent more refused: https://kit11.max-31b.workers.dev/try/negotiate
+- The worst-case AI test: Purser's AI replaced by a script that always says pay, on 50 hostile and clean invoices: no wrong payment and nothing paid past the CFO. A payer with no rules: 35 wrong payments and twelve paid past the CFO: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md
+- Airwallex itself refuses one cent over the limit, live on 15 November: on an agent's sandbox card, EUR 30.00 approved and EUR 30.01 declined (LIMIT_EXCEEDED), after the company owner's software test passkey signed the action: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/airwallex-card-cent-2026-11-15.json
+- Every Airwallex sandbox call in the run records, listed with its method, path and record, and the signed hashes recomputed offline (`npm run airwallex-trail`): https://kit11.max-31b.workers.dev/airwallex/calls
+- Verify it yourself: every /try payment hands over a proof file; https://kit11.max-31b.workers.dev/verify checks the passkey signature in the browser with no server call; `npm run verify-bundle` does it offline. One live verification report, 15 November: 189 checks passed, 3 could not run here, 0 failed: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md
+- Alta: the audit log's anchor on chain read back MATCH on 15 November (`npm run verify-anchor`): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-15-anchor-verified.md
+- Reconciled to the cent: the main run's 95 journal entries posted to T:0's sandbox ledger (10 November) and read back on 14 November, every account to the cent, with 0 differences: https://kit11.max-31b.workers.dev/t0
+- Engineering: 7,044 tests passing (docs/assets/test-summary.json); CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 pages (docs/evidence/live-measurement-2026-11-15.json).
+
 ## Proofs you can check
 
 - Airwallex: the hash of the exact terms the CFO signed with Face ID is in Airwallex's own record of the EUR 240.00 SWIFT payment, transfer 03360bfa-afce-457b-89d1-e1097fbe3985 (main run, 3 November; settlement simulated in the sandbox): https://kit11.max-31b.workers.dev/airwallex#awx-hash
