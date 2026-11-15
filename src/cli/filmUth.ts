@@ -109,7 +109,7 @@ async function main(): Promise<void> {
     const clips = s.segments.filter((g) => !("card" in g)) as { clip: string; from: number; to: number; hold?: number }[];
     const clipLen = clips.reduce((n, c) => n + Math.max(0.5, Math.min(c.to, dur(resolve(out, `${c.clip}.mp4`))) - c.from) + (c.hold ?? 0), 0);
     const cards = s.segments.filter((g) => "card" in g).length;
-    const length = Math.max(s.min, voLen + LEAD + 1.2, clipLen + cards * 4);
+    const length = Math.max(s.min, voLen + LEAD + 1.0, clipLen + cards * 4);
     const perCard = cards ? (length - clipLen) / cards : 0;
     const segs: string[] = [];
     for (const [i, g] of s.segments.entries()) {
