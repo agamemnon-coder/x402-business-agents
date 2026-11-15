@@ -27,6 +27,7 @@ import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, TRAILER_LINK, TRAILER_URL, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
+import { centHtml, centRecord } from "./cardCent.js";
 import { AWX_CONTROLS_ID, READBACK_CSS, cardControlRows, cardsReadback, controlsShortHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { AIRI_CSS, airiRunBlock } from "./airiRun.js";
 import { vic2RunBlock } from "./vic2Run.js";
@@ -36,7 +37,7 @@ import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
 import { LEAD_CSS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
-import { SCORECARD_CSS, scorecardCardHtml } from "./scorecardCard.js";
+import { WORST_CASE_CSS, worstCaseCardHtml } from "./worstCaseCard.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
 /** "3 Nov": a record's day, as the run's label writes it. */
@@ -437,7 +438,7 @@ export function readBack(run: AgentRun): string {
   const awx1 = awxRunBlock(undefined, { short: true });
   if (!h && !rows.length && !awx1) return "";
   return `<h2 class="sec" id="airwallex-readback">Airwallex, read back</h2>
-  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}</div>${awx1 ? `
+  <div class="awrb two">${hashBlockHtml(h)}${cards ? controlsShortHtml(rows, cards.rec.read_at, cards.file) : ""}${centHtml(centRecord())}</div>${awx1 ? `
   <div class="awrb">${awx1}</div>` : ""}`;
 }
 
@@ -587,7 +588,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${proofRunsHtml()}
   ${awxLiveHtml()}
   ${guaranteesHtml()}
-  ${detailsFold("details", "All the proof: partners, numbers and every check", `${scorecardCardHtml()}
+  ${detailsFold("details", "All the proof: partners, numbers and every check", `${worstCaseCardHtml()}
   ${lifeVisual("wide")}
   ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
@@ -607,7 +608,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + SCORECARD_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
