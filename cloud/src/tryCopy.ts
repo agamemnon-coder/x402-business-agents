@@ -610,6 +610,8 @@ export const BOOKS = {
   account: "Account",
   debit: "Debit",
   credit: "Credit",
+  /** Judge scan, 15 Nov: money in transit (1590) carries a conversion in two currencies, one line each; the row under them says so. */
+  conv: "1590: one conversion, {out} for {in}.",
   even: "Debits equal credits.",
   uneven: "Debits and credits differ.",
   /** The fold with the ledger chain's head (the newest entry's own hash). */
@@ -664,7 +666,7 @@ export const COMPANY = {
   /** The next steps, one primary and three quiet links; no form, nothing collected. */
   /** 15 Nov (owner: "I'm stuck at the end"): the primary way on, and three secondary ones (the walkthrough is 4:58). */
   rails: "See it run on a live Airwallex sandbox",
-  film: "Watch the 5-min film",
+  film: "Watch the film (3:29)",
   cloud: "Open Purser Cloud",
   star: "Star on GitHub",
   download: "Download your test company's records",
@@ -693,7 +695,7 @@ export const COMPANY = {
  */
 export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json" };
 
-export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
+export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
 
 /**
  * The recorded real runs screen 6 links to (kit11 /runs#<key>): each key and its date as src/redesign/runs.ts gives them
@@ -702,7 +704,7 @@ export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", 
 export const RECORDED: { key: string; date: string; title: string }[] = [
   { key: "awx-1", date: "7 Nov 2026", title: "An agent's overspend, declined by Airwallex" },
   { key: "connected-1", date: "10 Nov 2026", title: "A connected-account payout" },
-  { key: "t0-1", date: "10 Nov 2026", title: "The books posted to T:0" },
+  { key: "t0-1", date: "10 Nov 2026", title: "The books posted to T:0, an outside ledger" },
 ];
 
 /** The session's renewal answered that the company is gone (410). */
@@ -842,7 +844,7 @@ export const VISIBLE = {
   ],
   books: [
     // Paid, booked and filed, all three back (the original and the receipt as two downloads).
-    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.conv, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     [BOOKS.heading, BOOKS.payment, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.uneven, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
     // While the blocks' reads run: a skeleton each, named for screen readers.
     [BOOKS.heading, BOOKS.loading, BOOKS.another, BOOKS.what, BOOKS.cheat, BOOKS.next, BOOKS.cloudNote],
@@ -920,6 +922,8 @@ export const VISIBLE = {
 // Round 2 (14 Nov, jury): "Ready to pay" lists the checks that passed and who signs ("work 2"; "work 12" read by Claude).
 // The integration of 14 Nov (try-integ-1114) re-pinned every state at its count. The start adds "What's real here"
 // (owner: "fill and lift it"), four proof chips: "start 0" to "start 3", +37 each.
+// Judge scan, 15 Nov (polish, merged onto round 7): "books 0" carries the line naming the two 1590 lines as one
+// conversion (+6), pinned at its count.
 // 15 Nov (owner, round 7: "it feels staged", "I'm stuck at the end", "numbers and proof"): the start and the finish
 // carry "Proof in numbers" (five measured figures, each linked to its record) in place of the four chips; "write your
 // own" has the payee's name, the currency and a note ("invoice 2" to "invoice 5"), and the samples say what it lets
@@ -930,7 +934,7 @@ export const VISIBLE = {
 // 15 Nov ("what does Claude add?"): every answer with an invoice also shows the Checker's steps' fold summary and the
 // script button, +13 words each ("work 2" to "work 6", "work 10" to "work 12", "work 15"; "work 7" newly over at 57);
 // "work 16" is the comparison opened, carrying the worst-case record's own line verbatim (WORST_CASE_LINE).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 83, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -1003,14 +1007,15 @@ export const LIVE = {
   } as Record<string, string>,
   method: { passkey: "with your passkey" } as Record<string, string>,
   status: {
-    blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waits for a signature",
+    blocked: "blocked", needs_review: "needs a person", needs_vendor: "waits for a new supplier", waiting_cfo: "waiting for your signature",
     ready: "ready to pay", paid: "paid", rejected: "rejected", received: "received",
   } as Record<string, string>,
   ev: {
     "ap.received_why": "An invoice of {money} came in and was checked: {status}. Found: {why}.",
     "ap.received": "An invoice of {money} came in and was checked: {status}.",
     "ap.received_plain": "A document came in and was read and checked.",
-    "ap.status": "The invoice is now: {status}.",
+    "ap.status": "The invoice is now {status}.",
+    "ap.status_waiting": "Waiting for your signature.",
     "ap.status_plain": "The invoice changed status.",
     "ap.duplicate_document": "The same file came in again. It was already filed, so nothing was added.",
     "ap.duplicate_cleared": "You confirmed the invoice is not a duplicate.",

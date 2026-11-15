@@ -113,20 +113,31 @@ async function awlEvents(slot){
   slot.body.replaceChildren(awlTable([[t('cs.awl.col.event')],[t('cs.awl.col.object')],[t('cs.awl.col.received')],[t('cs.awl.ev_verified')]],
     ev.map((x)=>el('tr','',[awlTd(el('span','awev',[el('b','',x.topic),el('code','',x.type)])),awlTd(awlId(x.object_id||x.event_id)),awlTd(awlWhen(x.received_at),'num'),awlTd(el('span','obadge ok',[ic('circle-check'),t('cs.awl.ev_verified')]))]))))}
 // The Overview's live card (14 Nov): the Airwallex sandbox's money and one rate, read now, apart from the demo month.
+// Live measurement, 15 Nov: the card could sit as a skeleton for about 4 s. It says it is reading, with a spinner; when the
+// live read takes over 2 s it shows this browser's last live read (kept in localStorage, marked with its time) until the
+// live answer lands. Never a figure the sandbox did not give: the cache is a past live read, said as such.
+const AWL_OV_KEY='purser.awl.ov';
+const awlReading=()=>{const p=el('p','awreading',[el('i','awspin'),t('cs.awl.reading')]);p.setAttribute('role','status');return p};
 function awlOverview(){
-  const body=el('div','awov-b',awlSkel()),stamp=el('span','awstamp');
+  const body=el('div','awov-b',awlReading()),stamp=el('span','awstamp');
   const go=el('a','awov-go',[t('cs.awl.ov_open'),' ',ic('arrow-right')]);go.href='#/airwallex';
   const card=el('section','card awov rise',[el('div','awov-h',[awlLogo('sm'),awlPill(),stamp]),el('p','sub awov-s',t('cs.awl.ov_sub')),body,go]);
-  (async()=>{try{
-    const [b,r]=await Promise.all([api('/v1/airwallex-live/balances'),api('/v1/airwallex-live/rates')]);
-    if(b.source!=='airwallex-sandbox'){body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
-    stamp.replaceChildren(el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(b.read_at)})]));
+  const draw=(b,r,cached)=>{
+    stamp.replaceChildren(cached?el('span','awcached',[ic('clock'),t('cs.awl.cached',{time:awlTime(b.read_at)})]):el('span','awlive',[el('i',''),t('cs.awl.live',{time:awlTime(b.read_at)})]));
     const nz=((b.data&&b.data.balances)||[]).filter((x)=>!awlZero(x)).sort(awlOrder).slice(0,3);
-    const rate=r.source==='airwallex-sandbox'?((r.data&&r.data.rates)||[]).find((x)=>x.says):null;
-    const figs=nz.map((x)=>{const v=el('b','num');awlCount(v,x.available,(n)=>awlAmt('',n));return el('div','awov-f',[el('span','awtl',x.currency),v])});
+    const rate=r&&r.source==='airwallex-sandbox'?((r.data&&r.data.rates)||[]).find((x)=>x.says):null;
+    const figs=nz.map((x)=>{const v=el('b','num');if(cached)v.textContent=awlAmt('',x.available);else awlCount(v,x.available,(n)=>awlAmt('',n));return el('div','awov-f',[el('span','awtl',x.currency),v])});
     body.replaceChildren(el('div','awov-row',[...(figs.length?figs:[el('p','awcalm',t('cs.awl.bal_all_zero',{n:((b.data&&b.data.balances)||[]).length}))]),
-      rate?el('div','awov-f rate',[el('span','awtl',t('cs.awl.rate_buy',{buy:rate.buy_currency,sell:rate.sell_currency})),el('b','num',rate.says)]):null]));
-  }catch(e){if(!(e instanceof Expired))body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}})();
+      rate?el('div','awov-f rate',[el('span','awtl',t('cs.awl.rate_buy',{buy:rate.buy_currency,sell:rate.sell_currency})),el('b','num',rate.says)]):null]))};
+  let done=false;
+  setTimeout(()=>{if(done)return;let c=null;try{c=JSON.parse(localStorage.getItem(AWL_OV_KEY)||'null')}catch(e){c=null}
+    if(c&&c.b&&c.b.source==='airwallex-sandbox')draw(c.b,c.r,true)},2000);
+  (async()=>{try{
+    const [b,r]=await Promise.all([api('/v1/airwallex-live/balances'),api('/v1/airwallex-live/rates')]);done=true;
+    if(b.source!=='airwallex-sandbox'){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')+(b.reason?': '+b.reason:'')));return}
+    try{localStorage.setItem(AWL_OV_KEY,JSON.stringify({b,r}))}catch(e){}
+    draw(b,r,false);
+  }catch(e){done=true;if(!(e instanceof Expired)){stamp.replaceChildren();body.replaceChildren(el('p','sub',t('cs.awl.unavailable')))}}})();
   return card}
 async function airwallexView(){
   title(t('cs.nav.awx'));
@@ -206,9 +217,16 @@ code.awid { font-size: 12px; word-break: break-all; background: var(--sunken); p
 .awbrand { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 img.awlogo { height: 22px; width: auto; display: block; }
 img.awlogo.sm { height: 16px; }
+/* 15 Nov: the official file is dark letters; on a dark scheme it sits on a white chip, unaltered (as the site's tiles do). */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) img.awlogo { background: #fff; padding: 4px 8px; border-radius: 6px; box-sizing: content-box; } }
 .awpill { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
 .awpill i, .awlive i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; flex: none; }
 .awskel { display: grid; gap: 10px; padding: 4px 0; }
+.awreading { display: flex; align-items: center; gap: 8px; margin: 6px 0; color: var(--muted); font-size: 14px; }
+.awspin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border); border-top-color: var(--accent); animation: awspin .8s linear infinite; flex: none; }
+@keyframes awspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .awspin { animation: none; } }
+.awcached { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12.5px; }
 .awskel i { display: block; height: 14px; border-radius: 6px; background: var(--sunken); }
 .awskel i:nth-child(1) { width: 62%; height: 22px; } .awskel i:nth-child(2) { width: 88%; } .awskel i:nth-child(3) { width: 45%; }
 .awtile.big b { font-size: clamp(19px, 2vw, 26px); letter-spacing: -.01em; white-space: nowrap; overflow-wrap: normal; }

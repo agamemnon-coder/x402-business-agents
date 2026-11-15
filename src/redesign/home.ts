@@ -41,6 +41,9 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .btn.ghost { background: transparent; }
 .btn.ghost:hover { border-color: var(--text); }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
+/* Live measurement, 15 Nov: the two links wrap flush left on a phone (a margin indented the trailer on its own line). */
+.walk { margin: 4px 0 0; font-size: 15px; display: flex; flex-wrap: wrap; column-gap: 14px; }
+.walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
 /* The proof line (15 Nov): what it runs on and three measured figures, under the idea. */
 .proofl { margin: 14px 0 0; font-size: 15px; line-height: 1.6; color: var(--muted); max-width: 36em; }
 .proofl a { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--faint); white-space: nowrap; }
@@ -214,10 +217,14 @@ export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
 export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
 export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
+/** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
+export const CLAUDE_ADDS = "With a script always saying pay, code sent seven invoices to the CFO; with Claude reading, Purser held them.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
-  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs amount, payee and account. Change one cent and it fails." },
-  { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds the limits." },
+  // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.
+  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs the exact terms." },
+  // Jury panel, 15 Nov ("what does Claude add?"): docs/worst-case-ai.md, its figure word for word (test/home-about.test.ts).
+  { icon: "shield-check", title: "What Claude adds", text: CLAUDE_ADDS },
   { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
@@ -375,7 +382,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   // /assets/logo-*; alt is the partner's name; each on its own white tile (CSS), never filtered.
   // Airwallex left this row on 14 Nov (owner): it is the platform, shown by the header's "Built on Airwallex" badge
   // (src/ui/builtOn.ts); the others work with it.
-  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
+  const partners = [["", VISA_WORKS_WITH, 0, 0, "visa"], ["logo-alta.svg", "Alta (formerly Metal)", 475, 250, "alta"], ["logo-claude-slate.svg", "Claude", 184, 40, ""]] as const;
   // 14 Nov (owner): Visa as text on its tile, no logo image. Alta (formerly Metal, renamed 14 Nov): its header wordmark, shown with the Alta team's OK (docs/evidence/logo-permissions.md).
   const body = `<main class="ent">
 <section class="e-hero"><div class="wrap">

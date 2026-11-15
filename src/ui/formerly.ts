@@ -11,10 +11,11 @@
 export const altaWords = (t: string): string => t.replace(/(?<!formerly )\bMetal\b(?! Award)/g, "Alta");
 
 /**
- * An id's label from a run record (judge scan, 14 Nov): a contract call keeps its own name, said as Alta's, formerly
- * Metal ("Metal's authorizeMandateCall" → "authorizeMandateCall (Alta, formerly Metal)"); any other "Metal" reads Alta.
+ * An id's label from a run record (judge scan, 14 Nov): a contract call keeps its own name, said as Alta's
+ * ("Metal's authorizeMandateCall" → "authorizeMandateCall of Alta"; "formerly Metal" once per page, jury panel 15 Nov);
+ * any other "Metal" reads Alta.
  */
-export const altaLabel = (t: string): string => altaWords(t.replace(/\bMetal's ([a-z]\w*[A-Z]\w*)/g, "$1 of Alta, formerly Metal"));
+export const altaLabel = (t: string): string => altaWords(t.replace(/\bMetal's ([a-z]\w*[A-Z]\w*)/g, "$1 of Alta"));
 
 /**
  * Beside a quote of Claude's own words that names Metal (partner scan, 14 Nov): the quote stays as Claude wrote it, and
@@ -33,12 +34,24 @@ export const ALTA_FIRST = "Alta (formerly Metal)";
 const SKIP = /^(script|style|svg|title|code|pre|option|textarea|button|kbd|nav|select)$/i;
 const SKIP_CLASS = /\b(logo|mark|wm|lg|tile|chip|navl|vh-n)\b/;
 
+/** The characters outside tags, for a check (not a sanitizer: nothing it returns is put on a page). */
+function textOf(markup: string): string {
+  let out = "", inTag = false;
+  for (const ch of markup) {
+    if (ch === "<") inTag = true;
+    else if (ch === ">" && inTag) inTag = false;
+    else if (!inTag) out += ch;
+  }
+  return out;
+}
+
 /** The page with its first visible "Alta" inside <main> written as "Alta (formerly Metal)"; unchanged when it has none, or already says so. */
 export function formerlyMetal(html: string): string {
   const open = html.search(/<main\b/i);
   const close = html.search(/<\/main>/i);
   if (open < 0 || close < 0 || close < open) return html;
-  if (html.slice(open, close).includes(ALTA_FIRST)) return html;
+  // In the text, not in an attribute (judge panel, 15 Nov: Alta's logo's alt reads "Alta (formerly Metal)").
+  if (textOf(html.slice(open, close)).includes(ALTA_FIRST)) return html;
   const stack: { tag: string; cls: string }[] = [];
   const re = /<\/?([a-zA-Z][\w-]*)([^>]*)>|([^<]+)/g;
   re.lastIndex = open;
