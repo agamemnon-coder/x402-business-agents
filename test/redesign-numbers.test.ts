@@ -293,8 +293,8 @@ describe("the redesigned public pages", () => {
     // "Visa (VIC via Airi)" in "Built on" since 12 Nov (jury panel): the Visa entry is the Airi run. Never "Visa TAP":
     // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
     expect(VISA_VIC_BUILT_ON).toBe(true);
-    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
-    expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude");
+    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Alta (formerly Metal) Award and the Visa Award");
+    expect(HOME_BADGE).toBe("Kit 11 · Alta (formerly Metal) Award and Visa Award · built on Airwallex, Alta, Claude");
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.

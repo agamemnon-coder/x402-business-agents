@@ -53,12 +53,12 @@ describe("the final review (13 Nov)", () => {
     expect(readme).toContain('"components do not initiate money-out actions (transfers, FX conversions, or payouts) on\nyour behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026)');
   });
 
-  it("has a Visa Award and a Metal Award section, each with its live dates and records", () => {
+  it("has a Visa Award and an Alta Award section, each with its live dates and records", () => {
     const readme = readmeFull();
     const sec = (h: string) => readme.slice(readme.indexOf(`## ${h}`), readme.indexOf("\n## ", readme.indexOf(`## ${h}`) + 5));
     for (const f of ["docs/runs/2026-11-07-vic-1.md", "docs/runs/2026-11-13-vic-4.md"]) expect(sec("Visa Award")).toContain(`](${f})`);
-    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Metal Award")).toContain(`](${f})`);
-    expect(sec("Metal Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Alta Award")).toContain(`](${f})`);
+    expect(sec("Alta Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(read("docs/demo/main-run.json")).toContain("0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(sec("Visa Award")).toContain("Visa TAP is an extra, not part of the entry.");
   });
@@ -66,15 +66,18 @@ describe("the final review (13 Nov)", () => {
   it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
     const readme = readmeFull();
     // The banner (PNG, drawn from scripts/readme-banner.html) and the phone frame of the recorded /try walk count too.
-    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png))"/g)].map((m) => m[1]!);
+    // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
+    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */,
+      "architecture-dark.svg", "architecture-light.svg", "deployment-dark.svg", "deployment-light.svg" /* 15 Nov: the Architecture section's two diagrams */];
+    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png|svg))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages
     for (const f of shots) {
       expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
-      expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
+      if (!handMade.includes(f)) expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
     }
-    // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
-    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */];
+    // The hand-made diagrams are shown in the README, not left lying in the folder.
+    for (const f of handMade.filter((h) => h.endsWith(".svg"))) expect({ f, shown: shots.includes(f) }).toEqual({ f, shown: true });
     expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set([...shots, ...handMade])].sort());
     // T:0: the run record's own figures.
     expect(read("docs/runs/2026-11-10-t0-journal-sandbox.md")).toContain("95 journal entries posted to T:0's shared sandbox entity");

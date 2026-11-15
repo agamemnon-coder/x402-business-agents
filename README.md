@@ -105,6 +105,37 @@ The live FX quote in the signed terms, the sandbox transfer, the Cloud's Airwall
 
 Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:** `npm ci` · `npm run judge -- --check` · `npm run verify-approval` ([what each does](#verify-it-yourself-in-3-commands))
 
+## Architecture
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/architecture-dark.svg"><img src="docs/assets/readme/architecture-light.svg" alt="Purser in four layers: the CFO and company, the Purser engine, the payment rails and the proof, with the path of one payment" width="100%"></picture>
+
+- **CFO & company:** /try, the Purser Cloud console and /verify; the CFO's passkey signs the SHA-256 of the exact terms.
+- **Purser engine:** Claude agents propose (Reader, Checker, Sourcing, Support, Treasury); the CFO policy, the terms hash and the hash-chained audit log decide in code. One cent changed: refused.
+- **Payment rails:** the Airwallex sandbox (cards, transfers, FX), Alta testnet (a mandate per agent) and Visa Intelligent Commerce via Airwallex Airi; each holds its own limit.
+- **Proof:** the log's head anchored on Alta, the T:0 read-back, proof files anyone can check, `npm run verify-all`.
+- **Where it runs:** two Cloudflare Workers with Durable Objects and D1; keys are Worker secrets; deployed by hand with wrangler, while CI only checks.
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/deployment-dark.svg"><img src="docs/assets/readme/deployment-light.svg" alt="Where Purser runs: the browser with the passkey, two Cloudflare Workers, the test rails and models outside, and CI" width="100%"></picture>
+
+<details><summary>Where each part lives in the code</summary>
+
+| Path | What it does |
+|---|---|
+| `src/claude/reader.ts`, `src/ap/read.ts` | The Claude reader (Haiku, Sonnet, Opus) and the Reader of invoices |
+| `src/ap/checkerAgent.ts` | The Checker: pay, ask the CFO, hold or reject; code enforces it |
+| `src/agents/` | Sourcing, Support, Treasury and the other agents |
+| `src/policy/rules.ts`, `src/policy/cardRules.ts` | The CFO policy, and its limits as Airwallex card controls |
+| `src/lib/terms.ts`, `src/policy/approvals.ts`, `src/passkey/` | The terms hash, the approvals, the passkey checks |
+| `src/audit/log.ts` | The hash-chained audit log |
+| `src/negotiate/` | The negotiation: two Claude agents, rails in code |
+| `src/airwallex/`, `src/metal/`, `src/airi/` | The rails: Airwallex sandbox, Alta testnet, Visa via Airi |
+| `src/anchor/`, `src/accounting/t0.ts`, `src/proof/bundle.ts`, `src/cli/verifyAll.ts` | The anchor, T:0, the proof file, verify-all |
+| `worker/wrangler.jsonc` | Worker kit11: the site, the relay, the Airwallex entrypoints |
+| `cloud/wrangler.try.jsonc` | Worker purser-try: the console, /try's engine, /mcp, D1 |
+| `.github/workflows/ci.yml` | CI: tests, browsers, secrets scan, security; no deploy |
+
+</details>
+
 ## Built with
 
 | Partner | What Purser uses | Live or simulated | Proof |
@@ -139,7 +170,7 @@ flowchart LR
 ## For judges: 3 minutes
 
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta, built for
-Starter Kit 11 (x402 Business Agents) and entered for the Metal Award and the Visa Award.
+Starter Kit 11 (x402 Business Agents) and entered for the Founder's Choice Award, the Judges' Choice Award, the Alta (formerly Metal) Award and the Visa Award.
 The Kit 11 scenario, run live on 3 November.\
 **1. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
 passkey, then change them: refused.\
@@ -155,7 +186,7 @@ One column per rail in [Built with](#built-with); every run, live or simulated, 
 
 Purser's Visa Award entry: [docs/visa-award.md](docs/visa-award.md).
 
-## Metal Award
+## Alta Award
 
 Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/alta](https://kit11.max-31b.workers.dev/alta) · [docs/metal-award.md](docs/metal-award.md)
 
@@ -239,7 +270,7 @@ CI runs it on every push, with CodeQL and gitleaks; `npm run test:coverage` meas
 
 ## Awards entered
 
-The Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award (Starter Kit 11, x402 Business Agents).
+The Founder's Choice Award, the Judges' Choice Award, the Alta Award and the Visa Award (Starter Kit 11, x402 Business Agents).
 
 ## Links
 
