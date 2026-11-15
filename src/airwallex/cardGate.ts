@@ -45,8 +45,8 @@ export const SIM_MAX_EUR = 600;
 type J = Record<string, unknown>;
 const obj = (v: unknown): J | null => (typeof v === "object" && v !== null && !Array.isArray(v) ? v as J : null);
 const keysAre = (o: J, keys: string[]) => Object.keys(o).length === keys.length && keys.every((k) => k in o);
-// Whole cents only. 30.01 * 100 is 3000.9999999999995 in floating point, so the check allows a rounding hair.
-const amountOk = (v: unknown, max: number) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max && Math.abs(Math.round(v * 100) - v * 100) < 1e-6;
+// Whole cents only, to a rounding hair: 19.99 or 30.01 times 100 is not an exact integer in floating point.
+const amountOk = (v: unknown, max: number) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max && Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
 
 /** The transaction limits a write may carry: EUR, one per purchase and one a month, within the ceilings. */
 function limitsOk(tl: unknown): boolean {
