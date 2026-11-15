@@ -416,8 +416,8 @@ export const UI_CSS = `
 .t0close .links { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .t0close .links a { display: inline-flex; align-items: center; min-height: 44px; }
 /* The CFO's pass (14 Nov): calm cards, one accent, numbers that settle, motion only when the person allows it. */
-.card.next.hero { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 20px; margin: 4px 0 16px; text-decoration: none; color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, #fff), #fff); }
-.card.next.hero:not(.act) { border-color: var(--border); background: #fff; }
+.card.next.hero { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 20px; margin: 4px 0 16px; text-decoration: none; color: var(--text); border-color: color-mix(in srgb, var(--accent) 35%, var(--border)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface)); }
+.card.next.hero:not(.act) { border-color: var(--border); background: var(--surface); }
 .next.hero .nic { width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
 .next.hero .nic svg { width: 26px; height: 26px; }
 .next.hero .nb { display: grid; gap: 2px; min-width: 0; }
@@ -427,7 +427,7 @@ export const UI_CSS = `
 .next.hero .nw { display: grid; justify-items: end; gap: 2px; padding-right: 8px; border-right: 1px solid var(--border); }
 .next.hero .nw .nv { color: var(--muted); font-size: 13px; }
 .next.hero .nw b { font-size: 20px; font-variant-numeric: tabular-nums; }
-.next.hero .ngo { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 10px; background: var(--text); color: #fff; font-weight: 650; font-size: 14px; white-space: nowrap; }
+.next.hero .ngo { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; font-size: 14px; white-space: nowrap; }
 .next.hero:hover .ngo { background: var(--accent); }
 @media (max-width: 720px) { .card.next.hero { grid-template-columns: 44px minmax(0, 1fr); gap: 12px; padding: 16px; } .next.hero .nic { width: 44px; height: 44px; }
   .next.hero .nw { grid-column: 1 / -1; justify-items: start; border-right: 0; padding: 0; display: flex; gap: 10px; align-items: baseline; } .next.hero .ngo { grid-column: 1 / -1; justify-content: center; } .next.hero .nb b { font-size: 17px; } }
@@ -442,11 +442,11 @@ export const UI_CSS = `
 .tline::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
 .tline li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 8px 0; }
 .tline li[hidden] { display: none; }
-.tline .tlic { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 1px solid var(--border); color: var(--muted); position: relative; }
+.tline .tlic { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--border); color: var(--muted); position: relative; }
 .tline .tlic svg { width: 15px; height: 15px; }
 .tline .by-agent .tlic { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
 .tline .by-cfo .tlic { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
-.tline .by-rail .tlic { color: #7a4a00; background: #fff4dc; border-color: transparent; }
+.tline .by-rail .tlic { color: var(--warn); background: var(--warn-soft); border-color: transparent; }
 .tline .tl-bad .tlic { color: var(--bad); background: var(--bad-soft); border-color: transparent; }
 .tline p { margin: 6px 0 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; } .tline p b { font-weight: 650; }
 .tline time { font-size: 12.5px; color: var(--faint); padding-top: 7px; white-space: nowrap; }
@@ -532,11 +532,11 @@ ol.trail { list-style: none; margin: 0; padding: 0; display: grid; grid-template
 ol.trail li { position: relative; display: grid; justify-items: center; text-align: center; gap: 4px; padding: 0 6px; font-size: 14px; }
 ol.trail li::before { content: ""; position: absolute; top: 15px; left: calc(-50% + 18px); right: calc(50% + 18px); height: 2px; background: var(--border); }
 ol.trail li:first-child::before { display: none; }
-ol.trail .tdot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--border); color: var(--faint); }
+ol.trail .tdot { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--border); color: var(--faint); }
 ol.trail .tdot svg { width: 15px; height: 15px; }
-ol.trail li.done .tdot { background: var(--ok); border-color: var(--ok); color: #fff; }
+ol.trail li.done .tdot { background: var(--ok); border-color: var(--ok); color: var(--bg); }
 ol.trail li.now .tdot { border-color: var(--warn); color: var(--warn); background: var(--warn-soft); box-shadow: 0 0 0 4px color-mix(in srgb, var(--warn) 14%, transparent); }
-ol.trail li.stop .tdot { border-color: var(--bad); background: var(--bad); color: #fff; }
+ol.trail li.stop .tdot { border-color: var(--bad); background: var(--bad); color: var(--bg); }
 ol.trail li.todo b { color: var(--muted); font-weight: 600; }
 ol.trail .sub { font-size: 12.5px; }
 @media (max-width: 640px) { ol.trail { grid-template-columns: minmax(0, 1fr); gap: 10px; } ol.trail li { grid-template-columns: 32px auto minmax(0, 1fr); justify-items: start; text-align: left; align-items: center; gap: 10px; padding: 0; }
@@ -593,9 +593,9 @@ h3.tsec { margin: 20px 0 10px; font-size: 13px; text-transform: uppercase; lette
 .tnode { position: relative; display: grid; justify-items: center; gap: 4px; padding: 6px 4px 10px; border: 0; background: none; border-radius: 12px; cursor: pointer; font: inherit; color: var(--text); text-align: center; }
 .tnode:hover, .tnode[aria-expanded="true"] { background: var(--sunken); }
 .tnode:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.tnode .tni { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--border); color: var(--muted); position: relative; z-index: 1; }
+.tnode .tni { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 2px solid var(--border); color: var(--muted); position: relative; z-index: 1; }
 .tnode.on .tni { border-color: var(--ok); color: var(--ok); }
-.tnode[aria-expanded="true"] .tni { background: var(--ok); color: #fff; }
+.tnode[aria-expanded="true"] .tni { background: var(--ok); color: var(--bg); }
 .tnode b { font-size: 14px; } .tnode .sub { font-size: 12px; }
 .tchain { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font-size: 12px; font-weight: 650; }
 .tchain svg { width: 12px; height: 12px; }
@@ -609,7 +609,7 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
 .btn.mini { min-height: 32px; padding: 4px 10px; font-size: 12.5px; }
 .tflow { display: grid; gap: 10px; }
 .tfr { display: grid; grid-template-columns: 170px minmax(0, 1fr) 170px; gap: 10px; align-items: center; }
-.tparty { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-weight: 650; font-size: 14px; background: #fff; }
+.tparty { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-weight: 650; font-size: 14px; background: var(--surface); }
 .tparty svg { width: 16px; height: 16px; color: var(--accent); } .tparty.gone { color: var(--muted); border-style: dashed; } .tparty.gone svg { color: var(--muted); }
 .tarrow { position: relative; display: grid; justify-items: center; padding-bottom: 10px; }
 .tarrow .ta-l { font-size: 13px; color: var(--text); background: var(--accent-soft); color: var(--accent); font-weight: 650; padding: 3px 10px; border-radius: 999px; position: relative; z-index: 1; }
@@ -657,7 +657,7 @@ ul.thash .tw { display: grid; } ul.thash .tw .sub { font-size: 12px; } ul.thash 
 ol.tsteps3 { list-style: none; margin: 14px 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 ol.tsteps3 > li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
 ol.tsteps3 .tdot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--sunken); font-weight: 700; font-size: 13px; }
-ol.tsteps3 li.done .tdot { background: var(--ok); color: #fff; } ol.tsteps3 .tdot svg { width: 14px; height: 14px; }
+ol.tsteps3 li.done .tdot { background: var(--ok); color: var(--bg); } ol.tsteps3 .tdot svg { width: 14px; height: 14px; }
 ol.tsteps3 p.sub { margin: 2px 0 8px; font-size: 13px; }
 ul.txw { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; } ul.txw li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; } ul.txw svg { width: 14px; height: 14px; color: var(--ok); margin-top: 2px; }
 details.tokdet { margin: 12px 0 4px; } details.tokdet summary { cursor: pointer; font-weight: 650; color: var(--muted); font-size: 14px; min-height: 32px; display: flex; align-items: center; }

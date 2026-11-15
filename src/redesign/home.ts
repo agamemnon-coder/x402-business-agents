@@ -41,9 +41,9 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .btn.ghost { background: transparent; }
 .btn.ghost:hover { border-color: var(--text); }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
-.walk { margin: 4px 0 0; font-size: 15px; }
+/* Live measurement, 15 Nov: the two links wrap flush left on a phone (a margin indented the trailer on its own line). */
+.walk { margin: 4px 0 0; font-size: 15px; display: flex; flex-wrap: wrap; column-gap: 14px; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
-.walk a.film + a.film { margin-left: 14px; }
 .trust { margin: 40px 0 0; padding-top: 24px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 16px 12px; }
 .trust span { width: 100%; font-size: 13px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
 /* 14 Nov (owner): the partners' official files again, each unaltered on its own white tile in both themes (size only;

@@ -1498,8 +1498,9 @@ route();
 `;
 
 /**
- * Purser Cloud's own look (13 Nov, owner: "white and enterprise, clearly not the /try demo"): always light (the page
- * sets data-theme="light", so the tokens' dark block never applies), white surfaces with hairline borders, a neutral
+ * Purser Cloud's own look (13 Nov, owner: "white and enterprise, clearly not the /try demo"): white surfaces with
+ * hairline borders in light; since 15 Nov (live measurement) it follows a dark colour scheme as /try does (the shared
+ * tokens' dark block, :root:not([data-theme="light"]), wins over the light values below), a neutral
  * page, calmer type and spacing, square-ish corners. Last in the one style, so it settles what the shared kit leaves.
  */
 const CLOUD_CSS = `
@@ -1510,23 +1511,23 @@ const CLOUD_CSS = `
 .skel .sk-cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); } .skel .sk-cards i { height: 96px; }
 @media (prefers-reduced-motion: no-preference) { .skel i { animation: skp 1.4s ease-in-out infinite; } }
 @keyframes skp { 50% { opacity: .55; } }
-:root[data-theme="light"] { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #667085; --r: 12px; }
-body { background: #ffffff; font-size: 15px; letter-spacing: -.005em; }
-header.top, .appbar { background: #ffffff; border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
+:root { --bg: #ffffff; --surface: #ffffff; --sunken: #f4f5f7; --border: #e4e7ec; --muted: #5b6472; --faint: #667085; --r: 12px; }
+body { background: var(--bg); font-size: 15px; letter-spacing: -.005em; }
+header.top, .appbar { background: var(--surface); border-bottom: 1px solid var(--border); backdrop-filter: none; -webkit-backdrop-filter: none; }
 .appbar .wrap { min-height: 52px; }
 .apptabs a { border-radius: 8px; font-weight: 600; color: var(--muted); }
 .apptabs a[aria-current="page"] { background: var(--sunken); color: var(--text); box-shadow: inset 0 -2px 0 var(--text); border-radius: 8px 8px 0 0; }
 main { padding: 32px 0 72px; }
 #view h1 { font-size: 28px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 4px; }
 #view h2 { font-weight: 650; letter-spacing: -.01em; }
-.card, .auth { border: 1px solid var(--border); border-radius: 12px; background: #ffffff; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
-table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-weight: 600; letter-spacing: .02em; }
-.test { background: #fff7e6; border: 1px solid #f3dfb5; }
+.card, .auth { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+table thead th, .tbl thead th { background: var(--sunken); color: var(--muted); font-weight: 600; letter-spacing: .02em; }
+.test { background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); }
 #foot { color: var(--faint); border-top: 1px solid var(--border); padding-top: 18px; }
 .foot-awx { margin-top: 0; padding-bottom: 28px; }
 /* Signed out: a neutral panel beside the card, the Purser mark's colours only. */
-.signed-out { background: #ffffff; }
-.signed-out .hero { background: #f8f9fb; border-right: 1px solid var(--border); align-content: center; justify-items: center; }
+.signed-out { background: var(--bg); }
+.signed-out .hero { background: var(--sunken); border-right: 1px solid var(--border); align-content: center; justify-items: center; }
 .side { max-width: 420px; margin: 0 auto; padding: 8px 4px; }
 .side h2 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -.02em; color: var(--text); }
 .side p { margin: 8px 0 20px; color: var(--muted); font-size: 16px; line-height: 1.5; }
@@ -1545,7 +1546,7 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .auth .guest { margin-top: 18px; display: grid; gap: 8px; }
 .auth .guest .or { display: flex; align-items: center; gap: 12px; color: var(--faint); font-size: 13px; }
 .auth .guest .or::before, .auth .guest .or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-.btn.ghost { background: #fff; border-color: var(--border); width: 100%; }
+.btn.ghost { background: var(--surface); border-color: var(--border); width: 100%; }
 .btn.ghost:hover { border-color: var(--text); }
 .auth .guest .gsub { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 /* The demo company's ribbon: on every page while a guest looks around. */
@@ -1557,10 +1558,10 @@ table thead th, .tbl thead th { background: #f9fafb; color: var(--muted); font-w
 .claude ul.tokens li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line, #e5e7eb); }
 .claude ul.tokens li .btn { margin-left: auto; }
 .claude p.others { margin-top: 10px; } .claude p.others a { display: inline-block; padding: 12px 0; font-weight: 600; }
-.demo-ribbon { background: #fff7e6; border-bottom: 1px solid #f3dfb5; color: #7a4a00; font-size: 13.5px; }
+.demo-ribbon { background: var(--warn-soft); border-bottom: 1px solid color-mix(in srgb, var(--warn) 30%, var(--surface)); color: var(--warn); font-size: 13.5px; }
 .demo-ribbon .wrap { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-top: 6px; padding-bottom: 6px; }
 .demo-ribbon span { flex: 1; line-height: 1.4; }
-.demo-ribbon a { font-weight: 650; color: #7a4a00; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
+.demo-ribbon a { font-weight: 650; color: var(--warn); white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
 .signed-out .demo-ribbon { display: none; }
 /* The start screen's dashboard (GET /v1/dashboard). */
 .dash { display: grid; gap: 16px; margin: 4px 0 32px; }
@@ -1585,12 +1586,12 @@ svg.chart .zero { stroke: #c9ced6; stroke-width: 1; stroke-dasharray: 3 3; }
 svg.chart .ax { font: 500 12px Inter, system-ui, sans-serif; fill: var(--faint); }
 svg.chart .val { font: 650 12px Inter, system-ui, sans-serif; fill: var(--text); }
 svg.chart .line { fill: none; stroke: var(--accent); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
-svg.chart .end { fill: #fff; stroke: var(--accent); stroke-width: 2.5; }
+svg.chart .end { fill: var(--surface); stroke: var(--accent); stroke-width: 2.5; }
 svg.chart .hit { fill: transparent; } svg.chart .hit:hover { fill: rgba(16, 24, 40, .04); }
-svg.chart .b.cfo { fill: var(--accent); } svg.chart .b.alone { fill: color-mix(in srgb, var(--accent) 30%, #fff); }
+svg.chart .b.cfo { fill: var(--accent); } svg.chart .b.alone { fill: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .klegend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; font-size: 12.5px; color: var(--muted); }
 .klegend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
-.klegend i.cfo { background: var(--accent); } .klegend i.alone { background: color-mix(in srgb, var(--accent) 30%, #fff); }
+.klegend i.cfo { background: var(--accent); } .klegend i.alone { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
 .ringwrap { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
 svg.ring { flex: none; transform: rotate(-90deg); }
 svg.ring .track, svg.ring .seg { fill: none; stroke-width: 13; }
@@ -1713,8 +1714,8 @@ export function consolePage(n: string, cfg: { origin: string; rpId: string; mail
   const accounts = JSON.stringify(Object.fromEntries(Object.entries(LEDGER_ACCOUNTS).map(([k, v]) => [k, v.replace(/\s*\(.*\)$/, "")]))).replace(/</g, "\\u003c");
   const script = SCRIPT.replace("__CATALOGUES__", () => catalogues).replace("__ACCOUNTS__", () => accounts).replace("__I18N__", () => I18N_JS).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__ICONS__", ICON_SET(ICONS)).replace("__UI__", () => UI_JS + AWX_UI_JS + AWX_JS);
   return `<!doctype html>
-<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
-<meta name="color-scheme" content="light">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
+<meta name="color-scheme" content="light dark">
 <meta name="purser-cloud" content="${escAttr(JSON.stringify({ ...cfg, t0Close: T0_CLOSE }))}">
 <title>Purser Cloud</title><meta name="description" content="${escAttr(tr("en", "cs.what_cloud"))}">
 <style nonce="${n}">${PAYABLES_CSS}${EXTRA_CSS}${SITE_HEADER_CSS}${CLOUD_CSS}${UI_CSS}${AWX_UI_CSS}${AWX_CSS}</style></head><body class="signed-out">
