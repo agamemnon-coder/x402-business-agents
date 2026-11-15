@@ -51,7 +51,11 @@ export function facts() {
   const refused = rec.pays.find((p) => p.answer.outcome === "refused")!.answer;
   const paid = rec.pays.find((p) => p.answer.outcome === "paid")!.answer;
   const replay = rec.pays.find((p) => p.answer.outcome === "paid_once")!.answer;
-  return { rec, xfer: xfer.transfer, xferReadAt: xfer.read_at, reconFlows: Number(recon[1]), anchor, anchorFile, tests: Number(tests), decisions: Number(decisions), alta: Number(alta), alone: Number(alone), faceId: Number(faceId), stops: Number(stops), refused, paid, replay };
+  // The scorecard (docs/scorecard.md, 15 Nov): every figure per run, and the same in each run, or the film says nothing.
+  const sc = read<{ runs: number; cases_per_run: number; ran_at: string; by_run: Record<string, Record<"claude_alone" | "purser" | "purser_script" | "naive_script", { wrong_payments: number; to_cfo_not_held: number }>> }>("docs/evals/scorecard-summary.json");
+  const per = (k: "claude_alone" | "purser" | "purser_script" | "naive_script", m: "wrong_payments" | "to_cfo_not_held") => { const v = [...new Set(Object.values(sc.by_run).map((r) => r[k][m]))]; if (sc.runs !== Object.keys(sc.by_run).length || v.length !== 1) throw new Error(`uth: scorecard ${k}.${m} differs between runs`); return v[0]!; };
+  const score = { ranOn: new Date(sc.ran_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }), scriptNotHeld: per("purser_script", "to_cfo_not_held"), runs: sc.runs, cases: sc.cases_per_run, aloneWrong: per("claude_alone", "wrong_payments"), aloneNotHeld: per("claude_alone", "to_cfo_not_held"), purserWrong: per("purser", "wrong_payments"), purserNotHeld: per("purser", "to_cfo_not_held"), scriptWrong: per("purser_script", "wrong_payments"), naiveWrong: per("naive_script", "wrong_payments") };
+  return { score, rec, xfer: xfer.transfer, xferReadAt: xfer.read_at, reconFlows: Number(recon[1]), anchor, anchorFile, tests: Number(tests), decisions: Number(decisions), alta: Number(alta), alone: Number(alone), faceId: Number(faceId), stops: Number(stops), refused, paid, replay };
 }
 
 const fmt = (n: number) => n.toLocaleString("en-GB");
@@ -116,6 +120,9 @@ export function scenes(): Scene[] {
     { id: "u08", title: "The numbers", min: 20,
       vo: `Only measured numbers. In the main run: ${f.decisions} decisions by Claude, ${f.alta} payments on Alta within the limits, ${f.faceId} signatures with Face ID, and nothing paid over a limit. And ${fmt(f.tests)} tests pass.`,
       segments: [{ card: `<div class="band"><div><b>${f.decisions}</b><span>decisions by Claude, 0 fallbacks</span><i>main run, 3 Nov</i></div><div><b>${f.alta}</b><span>Alta payments within the limits</span><i>main run, 3 Nov</i></div><div><b>${f.faceId}</b><span>signatures with Face ID</span><i>main run, 3 Nov</i></div><div><b>0</b><span>paid over a limit (${f.stops} stops)</span><i>main run, 3 Nov</i></div><div><b>${fmt(f.tests)}</b><span>tests passing</span><i>README, last full run</i></div></div>` }] },
+    { id: "u08s", title: "The scorecard", min: 22,
+      vo: `A scorecard: ${f.score.cases} hostile and clean invoices, run twice with real Claude. No wrong payment by Claude alone, or with Purser. But invoices that had to be held went to the CFO to sign: ${f.score.aloneNotHeld === 11 ? "eleven" : f.score.aloneNotHeld} a run for Claude alone, none with Purser. A naive script made ${f.score.naiveWrong} wrong payments a run. And with a script that always says pay in the model's place, Purser made no wrong payment.`,
+      segments: [{ card: `<p class="kicker">Scorecard · ${f.score.cases} hostile and clean invoices · run twice with real Claude · ${f.score.ranOn}</p><table class="sc"><thead><tr><th></th><th>Claude alone</th><th>With Purser</th><th>Purser, a script that always says pay</th><th>A naive script</th></tr></thead><tbody><tr><td>Wrong payments, per run</td><td>${f.score.aloneWrong}</td><td class="good">${f.score.purserWrong}</td><td class="good">${f.score.scriptWrong}</td><td class="bad">${f.score.naiveWrong}</td></tr><tr><td>Had to be held, went to the CFO to sign, per run</td><td class="warn">${f.score.aloneNotHeld}</td><td class="good">${f.score.purserNotHeld}</td><td>${f.score.scriptNotHeld}</td><td class="na">pays all</td></tr></tbody></table><p class="foot">docs/scorecard.md · test invoices · Claude alone made no wrong payments either.</p>` }] },
     { id: "u09", title: "An agent's own card", min: 18,
       vo: "A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud.",
       segments: [{ clip: "cloud-agents", from: 0, to: 10 }, { card: `<div class="hero small-hero"><p class="kicker">Purser Cloud · Agents</p><h2>Each agent's card: per purchase, per month, the kind of shop</h2><p class="sub">The CFO changes a limit or freezes a card with Face ID. In the public demo company these actions are switched off; the cards shown are simulated.</p></div>` }] },
@@ -168,6 +175,12 @@ dt{color:#9aa1b5}dd{margin:0;word-break:break-all}
 .band span{font-size:26px;color:#d6dbe8;line-height:1.25}
 .band i{font-style:normal;color:#8a91a6;font-size:22px}
 .small-hero h2{font-size:52px}
+table.sc{width:100%;border-collapse:separate;border-spacing:0 14px;font-size:30px}
+table.sc th{color:#9aa1b5;font-weight:600;font-size:24px;text-align:center;padding:0 16px 8px;vertical-align:bottom}
+table.sc td{background:#141824;padding:28px 20px;text-align:center;font-size:64px;font-weight:750;font-variant-numeric:tabular-nums}
+table.sc td:first-child{text-align:left;font-size:28px;font-weight:500;color:#d6dbe8;border-radius:16px 0 0 16px;width:30%}
+table.sc td:last-child{border-radius:0 16px 16px 0}
+table.sc .na{font-size:26px;color:#8a91a6;font-weight:500}table.sc .good{color:#3ccf82}table.sc .bad{color:#ff6b70}table.sc .warn{color:#ffc26b}
 .credit{color:#7d8498;font-size:22px;margin:28px 0 0}
 </style></head><body>${body}</body></html>`;
 }

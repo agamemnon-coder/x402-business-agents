@@ -1,4 +1,4 @@
-# Purser, under the hood (3:58)
+# Purser, under the hood (4:26)
 
 Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is read from its record at build time. Test money only. This build has no voice (captions only); the narrator for the voiced build: Ian (ElevenLabs voice library): professional, warm, calm (an AI voice). Music: an AI-generated instrumental (ElevenLabs), out/video/v10/music-292.mp3.
 
@@ -14,8 +14,9 @@ Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is re
 | 2:29 | u06 · The card's own limit | Agents also pay by card. When a charge goes over the card's limit, Airwallex itself declines it, whatever the agent asks. | card |
 | 2:44 | u07 · The audit log, anchored | Every step lands in an audit log where each row hashes the one before. Its head is written into a transaction on Alta, formerly Metal, on testnet. Anyone can recompute it from the repository: verify-anchor prints match. | card |
 | 3:08 | u08 · The numbers | Only measured numbers. In the main run: 24 decisions by Claude, 86 payments on Alta within the limits, 5 signatures with Face ID, and nothing paid over a limit. And 6,932 tests pass. | card |
-| 3:28 | u09 · An agent's own card | A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud. | cloud-agents 0.0–10.0 s + card |
-| 3:46 | u10 · Close | Purser: AI agents pay the bills, the CFO signs the exceptions, and every step can be checked. Built on Airwallex, with test money only. Try it yourself. | card |
+| 3:28 | u08s · The scorecard | A scorecard: 50 hostile and clean invoices, run twice with real Claude. No wrong payment by Claude alone, or with Purser. But invoices that had to be held went to the CFO to sign: eleven a run for Claude alone, none with Purser. A naive script made 35 wrong payments a run. And with a script that always says pay in the model's place, Purser made no wrong payment. | card |
+| 3:56 | u09 · An agent's own card | A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud. | cloud-agents 0.0–10.0 s + card |
+| 4:14 | u10 · Close | Purser: AI agents pay the bills, the CFO signs the exceptions, and every step can be checked. Built on Airwallex, with test money only. Try it yourself. | card |
 
 ## Sources
 

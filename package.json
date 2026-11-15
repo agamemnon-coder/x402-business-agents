@@ -175,7 +175,8 @@
     "awx-switch-on": "tsx src/cli/awxSwitchOn.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
     "contracts:tokenize": "tsx src/tokenize/compile.ts",
-    "scorecard": "tsx src/cli/scorecard.ts"
+    "scorecard": "tsx src/cli/scorecard.ts",
+    "voice-takes": "tsx src/cli/voiceTakes.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",
