@@ -12,6 +12,7 @@ import { pruneAutopilot, runAutopilot } from "./edge/autopilot.js";
 import { consumeMail, enqueueMail, requeueWaitingMail, type MailQueue, type QueuedMessage } from "./edge/inbox.js";
 import { countsOf, countUp, pruneCounts, writeCounts } from "./edge/stats.js";
 import { sweepTry } from "./try/sweep.js";
+import { negotiateClaudeOf } from "./try/negotiateRoutes.js";
 import { expireStale } from "./engine/spend.js";
 import { logEvent } from "./log.js";
 import type { ConnectEnv } from "./connect.js";
@@ -113,6 +114,7 @@ function envOf(b: Bindings): CloudEnv {
     version: b.VERSION ?? "dev", outbound: (url: string, init: RequestInit) => fetch(url, init),
     ...(assets ? { asset: async (path: string) => assets.fetch(new Request(new URL(path, b.ORIGIN))) } : {}),
     ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE ? { engine: engineStubs(b.ENGINE), ...(b.HANDS_ON === "on" ? { tryIt: { claude: b.ENGINE_CLAUDE === "on" && !!b.KIT11_ANTHROPIC_API_KEY, ...(b.TRY_BOTCHECK_SECRET ? { botSecret: b.TRY_BOTCHECK_SECRET } : {}) } } : {}) } : {}),
+    ...(b.ENGINE && b.ENGINE_MODE === ENGINE_MODE && b.HANDS_ON === "on" ? { negotiateClaude: negotiateClaudeOf(sql, b.ENGINE_CLAUDE, b.KIT11_ANTHROPIC_API_KEY) } : {}),
     edge: { stats: b.STATS !== "off" }, ...(connect ? { connect } : {}), alerts: alertsOf(b), ...(b.AWX_READ ? { awxRead: b.AWX_READ } : {}), ...(b.AWX_CARDS ? { awxCards: b.AWX_CARDS } : {}) };
 }
 

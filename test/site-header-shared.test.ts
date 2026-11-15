@@ -50,7 +50,7 @@ describe("the cloud pages carry the site's header", () => {
       const html = siteHeader(k);
       expect(shape(html)).toBe(shape(snap.header[String(k)]!));
       for (const h of hrefs(html)) {
-        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try")) continue;
+        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try") || h === `${CLOUD}try/negotiate`) continue;
         expect(h.startsWith(`${SITE_ORIGIN}/`), h).toBe(true);
       }
     }
@@ -78,7 +78,7 @@ describe("the cloud pages carry the site's header", () => {
     for (const html of pages) {
       const body = html.slice(html.indexOf("<body"));
       // The console marks no item since the review of 13 Nov ("More" was marked on every page); /try marks Try.
-      expect(body).toContain(siteHeader(html.includes("purser-try") ? "try" : null));
+      expect(body).toContain(siteHeader(html === pages[0] ? "try" : null));
       expect(html).toContain(HEADER_CSS_MARK);
       expect(html).not.toMatch(/\son[a-z]+="/);
       expect(html).not.toMatch(/<script(?![^>]*nonce=)/);

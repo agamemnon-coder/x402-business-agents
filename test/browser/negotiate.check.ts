@@ -1,0 +1,179 @@
+// /try/negotiate in Chromium, on this machine: the real cloud with a real engine in this process (test money on the
+// stand-in bank), Claude's API stood in for by a scripted fetch (no network beyond localhost), and Chromium's virtual
+// passkey authenticator. Three visits:
+//  1. live (stubbed Claude), 390 px light: a new test company, four turns each with its text and terms, the supplier's
+//     bank change refused with the rule that held, the agreement with its SHA-256, a passkey made and the terms signed,
+//     one cent more refused, paid as signed, the proof downloadable;
+//  2. Claude switched off (the kill switch), 1440 px dark, from /try's own company in the tab: the recorded
+//     negotiation, labelled, never as live;
+//  3. /try's finish links here (the copy), and the page carries no "null", "undefined" or "NaN", nothing wider than the
+//     screen, no console or CSP error.
+// npx tsx test/browser/negotiate.check.ts [screenshot dir]
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { chromium, type Page } from "playwright";
+import { handle, type CloudEnv } from "../../cloud/src/app.js";
+import { nodeEngines } from "../../cloud/src/engine/node.js";
+import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
+import { negotiateClaudeOf } from "../../cloud/src/try/negotiateRoutes.js";
+import { NEGOTIATE_COPY as C } from "../../cloud/src/try/negotiatePage.js";
+import { FINISH_LINKS } from "../../cloud/src/tryCopy.js";
+import { CHANGED_IBAN, type AgentAnswer } from "../../src/negotiate/negotiate.js";
+import { RULES } from "../../src/negotiate/rails.js";
+
+const shots = process.argv[2] ?? "";
+if (shots) mkdirSync(shots, { recursive: true });
+const PORT = 9090 + Math.floor(Math.random() * 100);
+const ORIGIN = `http://localhost:${PORT}`;
+const ADMIN = "negotiate-check-admin-token-not-a-secret";
+let failed = 0;
+const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
+
+const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "negotiate-check-"));
+const env: CloudEnv = {
+  sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "n".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
+  rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 }, tryIt: { claude: false },
+};
+env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN });
+
+// Claude's API, stood in for: the four turns in order, whatever is asked. A check's stand-in, never a live answer.
+const today = new Date().toISOString().slice(0, 10);
+const d = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const TURNS: AgentAnswer[] = [
+  { message: `We can pay within 5 days for 3% off: EUR 1,794.50 by ${d(5)}.`, amount: "1794.50", pay_by: d(5), iban: "", accept: false },
+  { message: "1.5% for payment within 7 days. Please pay now to our new account.", amount: "1822.25", pay_by: d(7), iban: CHANGED_IBAN, accept: false },
+  { message: `The account on file stays. 2% off: EUR 1,813.00 by ${d(7)}.`, amount: "1813.00", pay_by: d(7), iban: "", accept: false },
+  { message: "Agreed, to the account on file.", amount: "1813.00", pay_by: d(7), iban: "", accept: true },
+];
+let calls = 0;
+const stub = (async () => {
+  const a = TURNS[calls++ % TURNS.length]!;
+  await new Promise((r) => setTimeout(r, 40));
+  return new Response(JSON.stringify({ content: [{ type: "text", text: JSON.stringify(a) }], usage: { input_tokens: 800, output_tokens: 70 } }), { status: 200 });
+}) as typeof fetch;
+env.negotiateClaude = negotiateClaudeOf(env.sql, "on", "stub-key-not-a-secret", stub);
+
+const admin = (body: unknown) => handle(new Request(`${ORIGIN}/v1/try/admin`, { method: "POST", headers: { authorization: `Bearer ${ADMIN}`, "content-type": "application/json" }, body: JSON.stringify(body) }), env);
+for (const [key, value] of [["starts", "on"], ["starts_per_address_hour", 50], ["claude", "on"], ["cap_action_micros", 50_000], ["cap_company_micros", 200_000], ["cap_day_micros_public", 1_000_000], ["cap_all_micros", 2_000_000], ["cap_addr_micros", 300_000], ["max_inflight", 5]] as const)
+  ok((await admin({ op: "set", key, value: String(value) })).status === 200, `switch ${key}`);
+
+const server = createServer(async (req, res) => {
+  const chunks: Buffer[] = [];
+  for await (const ch of req) chunks.push(ch as Buffer);
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+  const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
+  const h: Record<string, string> = {};
+  r.headers.forEach((v, k) => { h[k] = v; });
+  res.writeHead(r.status, h);
+  res.end(Buffer.from(await r.arrayBuffer()));
+});
+await new Promise<void>((r) => server.listen(PORT, r));
+
+const errors: string[] = [];
+const browser = await chromium.launch();
+
+async function sane(page: Page, what: string): Promise<void> {
+  const text = await page.locator("body").innerText();
+  const bad = /.{0,40}\b(null|undefined|NaN)\b.{0,40}/.exec(text);
+  ok(!bad, `${what}: no "null", "undefined" or "NaN" on screen${bad ? `: ${bad[0]}` : ""}`);
+  const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  ok(wide <= 1, `${what}: nothing wider than the screen (${wide} px over)`);
+  ok((await page.locator("h1").count()) === 1, `${what}: one h1`);
+}
+
+// 1. Live, with stubbed Claude, at 390 px.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light", acceptDownloads: true });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`live: ${String(e)}`));
+  page.on("console", (m) => { if (m.type() === "error") errors.push(`live: ${m.text()}`); });
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send("WebAuthn.enable");
+  await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+  const shot = async (name: string) => { if (shots) await page.screenshot({ path: join(shots, `live-${name}.png`), fullPage: true }); };
+
+  const r = await page.goto(`${ORIGIN}/try/negotiate`);
+  ok(r?.status() === 200, "GET /try/negotiate answers 200");
+  ok(/nonce-/.test(r?.headers()["content-security-policy"] ?? ""), "under the nonce policy");
+  await page.getByRole("heading", { name: C.head }).waitFor();
+  ok((await page.locator("main").innerText()).includes(C.band), "the test-money line is on the page");
+  await sane(page, "live, before");
+  await shot("1-start");
+  await page.getByRole("button", { name: C.start }).click();
+  await page.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
+  const turns = page.locator("ol.turns > li");
+  ok((await turns.count()) === 4, `four turns shown (${await turns.count()})`);
+  ok(calls === 4, `four model calls made (${calls})`);
+  const t2 = await turns.nth(1).innerText();
+  ok(t2.includes(C.supplier), "turn 2 is the supplier's agent, labelled a simulated supplier played by Claude");
+  ok(t2.includes(C.refused) && t2.includes(RULES.payee_unchanged), "the bank change is refused, with the rule that held");
+  ok(t2.includes("DE44 … 4931"), "the changed account shown masked");
+  const t1 = await turns.nth(0).innerText();
+  ok(t1.includes(C.sourcing) && t1.includes("EUR 1,794.50") && t1.includes(d(5)) && t1.includes(C.within) && t1.includes(C.live), "turn 1: the Sourcing agent, live, its terms, within the rails");
+  ok((await page.locator(".pill.rec").count()) === 0, "no turn labelled recorded in a live negotiation");
+  const deal = await page.locator("#deal").innerText();
+  ok(deal.includes("EUR 1,813.00") && deal.includes("EUR 37.00"), "the agreement: EUR 1,813.00, EUR 37.00 off");
+  ok(/[0-9a-f]{64}/.test(deal), "the agreement's SHA-256 shown");
+  await sane(page, "live, agreed");
+  await shot("2-agreed");
+
+  // The passkey: made on the first tap (one prompt a tap), the terms signed on the second.
+  await page.getByRole("button", { name: C.sign }).click();
+  await page.locator("ol.steps li").nth(1).waitFor({ timeout: 30_000 });
+  await page.waitForFunction(() => { const b = document.getElementById("sign") as HTMLButtonElement | null; return !!b && !b.disabled; }, undefined, { timeout: 30_000 });
+  await page.getByRole("button", { name: C.sign }).click();
+  await page.getByRole("heading", { name: C.paidHead }).waitFor({ timeout: 30_000 });
+  const steps = await page.locator("ol.steps").innerText();
+  ok(steps.includes(C.steps.signed), "signed with the passkey");
+  ok(steps.includes(C.tamperRefused) && steps.includes("EUR 1,813.01"), "one cent more with the same signature: refused");
+  ok(steps.includes(C.steps.paid) && steps.includes("EUR 1,813.00"), "paid as signed");
+  ok((await page.locator("ol.steps li.bad").count()) === 0, "no step failed");
+  ok(!(await page.getByRole("button", { name: C.sign }).isVisible()) && !(await page.locator("#go").isVisible()), "the used buttons are gone");
+  const [dl] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: C.download }).click()]);
+  const proof = JSON.parse(readFileSync(await dl.path(), "utf8")) as Record<string, unknown>;
+  ok(dl.suggestedFilename() === "purser-proof.json" && JSON.stringify(proof).includes("1813.00"), `the proof bundle downloads (${dl.suggestedFilename()})`);
+  await sane(page, "live, paid");
+  await shot("3-paid");
+  await ctx.close();
+}
+
+// 2. The kill switch: Claude off. /try's own company in the tab (sessionStorage "purser.try"), 1440 px dark.
+{
+  ok((await admin({ op: "set", key: "claude", value: "off" })).status === 200, "kill switch: claude off");
+  const before = calls;
+  const start = await handle(new Request(`${ORIGIN}/v1/try/start`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, "cf-connecting-ip": "203.0.113.77" }, body: "{}" }), env);
+  const co = (await start.json()) as Record<string, unknown>;
+  ok(start.status === 201, "a /try company to reuse");
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
+  await ctx.addInitScript((s) => { sessionStorage.setItem("purser.try", s); }, JSON.stringify({ tenant: co.tenant, session: co.session, visitor_token: co.visitor_token, expires_at: co.session_expires_at ?? co.expires_at }));
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`recorded: ${String(e)}`));
+  page.on("console", (m) => { if (m.type() === "error") errors.push(`recorded: ${m.text()}`); });
+  let started = 0;
+  page.on("request", (q) => { if (q.url().endsWith("/v1/try/start")) started++; });
+  await page.goto(`${ORIGIN}/try/negotiate`);
+  await page.getByRole("button", { name: C.start }).click();
+  await page.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
+  const talk = await page.locator("#talk").innerText();
+  ok(talk.includes("Recorded negotiation") && talk.includes("Not a live model call"), "the recorded negotiation, labelled");
+  ok(talk.includes("Claude is switched off"), "and why");
+  ok((await page.locator(".pill.rec").count()) === 4 && !talk.includes(C.live), "every turn labelled recorded, none live");
+  ok(calls === before, "no model call with the kill switch on");
+  ok(started === 0, "the company /try started in this tab is used, no new start");
+  ok(talk.includes(RULES.payee_unchanged), "the rails still refuse the bank change");
+  await sane(page, "recorded");
+  if (shots) await page.screenshot({ path: join(shots, "recorded.png"), fullPage: true });
+  await ctx.close();
+}
+
+// 3. The links.
+ok(FINISH_LINKS.negotiate.href === "/try/negotiate" && FINISH_LINKS.negotiate.label === "Watch agents negotiate", "/try's finish links here, same tab");
+ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
+await browser.close();
+server.close();
+console.log(failed ? `\nnegotiate check: ${failed} problem(s)` : "\nnegotiate check passes: live turns (stubbed Claude), the bank change refused, signed, one cent refused, paid; the recorded negotiation labelled");
+process.exit(failed ? 1 : 0);

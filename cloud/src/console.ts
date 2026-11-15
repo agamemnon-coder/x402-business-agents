@@ -13,9 +13,10 @@ import { fromB64 } from "./crypto.js";
 import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
-import { tryPageResponse } from "./tryPage.js";
+import { tryPageResponse, VERIFY_URL } from "./tryPage.js";
 import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
+import { NEGOTIATE_PATH, negotiatePageResponse } from "./try/negotiatePage.js";
 import { UI_CSS, UI_JS } from "./consoleUi.js";
 import { AWX_CSS, AWX_JS } from "./awxActUi.js";
 import { AWX_UI_CSS, AWX_UI_JS } from "./awxUi.js";
@@ -1785,6 +1786,8 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   if (url.pathname === "/try") return tryPageResponse(req, url, env);
   // Stage mode for the finals (cloud/src/try/stagePage.ts): the hands-on deployment only.
   if (url.pathname === "/try/stage" && env.tryIt) return stagePageResponse(req);
+  // /try/negotiate (cloud/src/try/negotiatePage.ts): the agents' negotiation, a page of its own beside /try.
+  if (url.pathname === NEGOTIATE_PATH && env.tryIt) return negotiatePageResponse(env, VERIFY_URL);
   // The console's pages are routes after "#" (#/sign-in, #/start); a typed or bookmarked path (/sign-in, /login,
   // /console) went to a plain 404 (13 Nov). It goes to the console's own route instead.
   const route = CONSOLE_PATHS[url.pathname.replace(/\/+$/, "") || "/"];
