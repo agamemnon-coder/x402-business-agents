@@ -508,7 +508,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(/Answered in (<0\.1|\d+\.\d) s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
   await page.waitForTimeout(1500);
   ok(await page.locator(".live li").count() > 0, `${tag}: the engine's steps are in the live panel`);
-  ok(await page.locator(".live li:visible").count() <= 3, `${tag}: the live panel shows at most three rows`);
+  // 15 Nov (jury): four, so the Reader stays in view now that rows stand in the engine's order.
+  ok(await page.locator(".live li:visible").count() <= 4, `${tag}: the live panel shows at most four rows`);
   await screenChecks(page, `${tag} screen 2`, width);
   await shot("2-work");
   await design("2-work", { full: true });
@@ -1173,6 +1174,8 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
     at(10, "20.462", "system", "claude.read", "x", { source: "claude", model: "claude-haiku-5-5", request_id: "req_r1" }),
     at(12, "21.992", "checker", "agent.tool", "ap.check.x", { agent: "checker", tool: "policy_limits", turn: 1, model: "claude-haiku-5-5", ms: 0, answer: "Nothing is paid without the CFO: you may pay no invoice alone.", inputs: 0 }),
     at(25, "23.709", "checker", "agent.run", "ap.check.x", { agent: "checker", model: "claude-haiku-5-5", status: "done", turns: 1, cost_usd_micros: 300, latency_ms: 1500, claude_ms: "1400" }),
+    // Code's own filing line, stamped (like the decision) at the filing's start, written after the reader's calls.
+    at(26, "18.982", "system", "ap.received", "AP-0001", {}),
     at(27, "18.982", "checker", "ap.checker_decided", "AP-0001", { source: "claude", model: "claude-haiku-5-5", action: "ask_cfo", outcome: "ask_cfo", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "", concerns: 0,
       reason: "Bergtex Textil GmbH invoice BTX-2026-21 checks out: the IBAN is the account on file and the totals add up.", enforced: "in this company, agents pay no invoice alone: the CFO decides every one", request_id: "req_c1", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" }),
     at(30, "23.709", "treasury", "ap.coded", "AP-0001", { source: "claude", model: "claude-haiku-5-5", status: "coded", lines: 1, account: "6200", vat_code: "P21", reason: "Linen fabric, as before.", request_id: "req_k1" }),
@@ -1183,8 +1186,9 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
   await settle(p.page);
   await run(p.page, 1500);
   const shown = (await p.page.locator(".live li:visible").allInnerTexts()).map((x) => x.replace(/\s+/g, " "));
-  ok(/^Reader/.test(shown[0] ?? "") && /^Checker agent/.test(shown[1] ?? "") && /^Coder agent/.test(shown[2] ?? ""), `jury 15 Nov: Activity in the engine's order, Reader → Checker → Coder (${shown.map((x) => x.split(" · ")[0]).join(" → ")})`);
-  const checker = shown[1] ?? "";
+  const who = shown.map((x) => (x.startsWith("Purser's code") ? "Purser's code" : x.split(" · ")[0]!));
+  ok(who.join(" → ") === "Reader → Purser's code → Checker agent → Coder agent", `jury 15 Nov: Activity in the engine's order, all in view (${who.join(" → ")})`);
+  const checker = shown.find((x) => x.startsWith("Checker agent")) ?? "";
   ok(checker.includes(`${LIVE.lead["ap.checker_decided_clear"]} `) && checker.includes(LIVE.railsClear) && !checker.includes("Decided: ask the CFO, because"), `jury 15 Nov: no concerns found, beside the rails' reason (${checker.slice(0, 160)})`);
   await p.page.locator(".agentic details.trace summary").click();
   ok((await p.page.locator(".agentic ol.trace li.decision").textContent())?.startsWith(TRACE.decidedClear) === true, "jury 15 Nov: the trace's decision row says no concerns found; the CFO signs");

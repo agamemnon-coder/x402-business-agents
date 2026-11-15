@@ -1019,7 +1019,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
 // A reader's key (its agent, or the reader), and whether a row is a reader's (it closes that reader's open call).
 const keyOf=(e)=>{const a=e.fields&&typeof e.fields.agent==='string'&&/^[A-Za-z_-]{1,32}$/.test(e.fields.agent)?e.fields.agent.toLowerCase():'reader';return a};
 const agentRow=(e)=>typeof e.event==='string'&&(e.event.indexOf('claude.')===0||e.event.indexOf('agent.')===0||!!(e.fields&&e.fields.agent));
-// Shown at once: the last three rows that are not an agent's working steps; the rest, and every working step (a tool
+// Shown at once: the last four rows that are not an agent's working steps (15 Nov: four, so the Reader stays in view
+// above code's own filing line and the agents, now that rows stand in the engine's order); the rest, and every working step (a tool
 // call, its words, its run), in the "All steps" fold. An agent's decision: its lead, its reason marked as its own words,
 // and what Purser's code enforced on a muted line under it.
 function livePanel(){
@@ -1050,9 +1051,9 @@ function livePanel(){
     past();
   }
   function past(){
-    // The last three rows outside the fold stay in view; every other row waits behind "All steps".
+    // The last four rows outside the fold stay in view; every other row waits behind "All steps".
     let seen=0;
-    for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>3)}
+    for(let i=list.children.length-1;i>=0;i--){const li=list.children[i];if(li.classList.contains('fold'))continue;seen++;li.classList.toggle('past',seen>4)}
     node.hidden=!list.children.length;more.hidden=!list.querySelector('.fold,.past');
   }
   function add(items,t0){
