@@ -81,6 +81,13 @@ async function saltOf(sql: Sql, now: Date): Promise<string> {
   return (await sql.first<{ salt: string }>("SELECT salt FROM try_salts WHERE day = ?", [d]))!.salt;
 }
 
+/** An IPv6 address's /48 (the usual allocation to one site); null for an IPv4 address, which is counted whole. */
+export function addressPrefix48(ip: string): string | null {
+  const p = addressPrefix(ip);
+  const m = /^([0-9a-f]{1,4}:[0-9a-f]{1,4}:[0-9a-f]{1,4}):[0-9a-f]{1,4}::\/64$/.exec(p);
+  return m ? `${m[1]}::/48` : null;
+}
+
 /** The start address keyed with the day's salt: equal for one /64 on one day, and unlinkable once the salt is gone. */
 export async function addressKey(sql: Sql, ip: string, now: Date): Promise<string> {
   return sha256Hex(`${await saltOf(sql, now)}:${addressPrefix(ip)}`);
@@ -127,6 +134,11 @@ export async function startCompany(a: { sql: Sql; engine: (tenantId: string) => 
     addr = await addressKey(sql, a.ip, now);
     const hour = Math.floor(now.getTime() / 3_600_000) * 3_600;
     if ((await bump(sql, `trystart-addr:${addr}`, hour, 1)) > num(s, "starts_per_address_hour")) {
+      throw new TryRefused(429, "limit", "Enough test companies were started from this network in the last hour. Please try again in an hour.");
+    }
+    // Many /64s of one /48 count together as well, so rotating through them cannot use up the day's public starts.
+    const wide = addressPrefix48(a.ip);
+    if (wide && (await bump(sql, `trystart-48:${await sha256Hex(`${await saltOf(sql, now)}:${wide}`)}`, hour, 1)) > num(s, "starts_per_48_hour")) {
       throw new TryRefused(429, "limit", "Enough test companies were started from this network in the last hour. Please try again in an hour.");
     }
   }
