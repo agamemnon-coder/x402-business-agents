@@ -631,6 +631,12 @@ export const COMPANY = {
   didPaid: "Paid",
 };
 /** Where screen 6's quiet links go (14 Nov): Purser Cloud's own front page, and the code. */
+/**
+ * "Verify it yourself" (15 Nov): on Paid and on the refusal, the payment's proof file (the pay route's own bundle,
+ * src/proof/bundle.ts); on the finish, the site's /verify, where the visitor's browser checks it without our server.
+ */
+export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json" };
+
 export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/", repo: "https://github.com/agamemnon-coder/x402-business-agents" };
 
 /**
@@ -787,15 +793,15 @@ export const VISIBLE = {
   company: [
     // 14 Nov (owner): the finish. The result (its figures are data), the three steps, the way on and its quiet links,
     // the records (the PDF, the JSON link), Start again, the recorded runs' fold.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.donePlain, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.downloading, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.failed, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
     // Start again asks first: the question and its two answers in place of the link.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
     // 14 Nov (owner): the score without the one-cent change: its link in the refusal's place.
-    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.tryCent, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.tryCent, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
     // 15 Nov: what Claude cost for this invoice, measured in this visit (only when the engine recorded a cost).
-    [COMPANY.heading, COMPANY.done, COMPANY.cost, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    [COMPANY.heading, COMPANY.done, COMPANY.cost, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, VERIFY_YOURSELF.verify, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -856,7 +862,7 @@ export const VISIBLE = {
 // that held and the signature line, and two ways on ("pay 1" to "pay 10"); the finish has one primary way on and three
 // secondary ones ("company 0" to "company 4"); screen 2's progress line and the flagged line ("work 13" to "work 15").
 // Each pinned at its count, for the lead to decide.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 115, "company 1": 105, "company 2": 121, "company 3": 131, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 116, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 127 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 119, "company 1": 109, "company 2": 125, "company 3": 135, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 120, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 131 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
