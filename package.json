@@ -174,7 +174,8 @@
     "awx-depth": "tsx src/cli/awxDepth.ts",
     "awx-switch-on": "tsx src/cli/awxSwitchOn.ts",
     "tokenize": "tsx src/cli/tokenize.ts",
-    "contracts:tokenize": "tsx src/tokenize/compile.ts"
+    "contracts:tokenize": "tsx src/tokenize/compile.ts",
+    "scorecard": "tsx src/cli/scorecard.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.3.0",

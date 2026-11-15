@@ -45,7 +45,7 @@ export const SIM_MAX_EUR = 600;
 type J = Record<string, unknown>;
 const obj = (v: unknown): J | null => (typeof v === "object" && v !== null && !Array.isArray(v) ? v as J : null);
 const keysAre = (o: J, keys: string[]) => Object.keys(o).length === keys.length && keys.every((k) => k in o);
-const amountOk = (v: unknown, max: number) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max && Math.round(v * 100) === v * 100;
+const amountOk = (v: unknown, max: number) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max && Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
 
 /** The transaction limits a write may carry: EUR, one per purchase and one a month, within the ceilings. */
 function limitsOk(tl: unknown): boolean {
