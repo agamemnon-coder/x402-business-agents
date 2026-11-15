@@ -6,6 +6,7 @@
 // (docs/demo/airwallex-run.json), the anchor record (docs/runs/*-anchor.json, checked live by npm run verify-anchor) and
 // the README's test count. A figure without a record is not in the film. Test money only, and said on screen.
 
+import { WORST_CASE, WORST_CASE_DOC, WORST_CASE_HEADLINE, worstOf } from "../evals/worstCase.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -51,10 +52,10 @@ export function facts() {
   const refused = rec.pays.find((p) => p.answer.outcome === "refused")!.answer;
   const paid = rec.pays.find((p) => p.answer.outcome === "paid")!.answer;
   const replay = rec.pays.find((p) => p.answer.outcome === "paid_once")!.answer;
-  // The scorecard (docs/scorecard.md, 15 Nov): every figure per run, and the same in each run, or the film says nothing.
-  const sc = read<{ runs: number; cases_per_run: number; ran_at: string; by_run: Record<string, Record<"claude_alone" | "purser" | "purser_script" | "naive_script", { wrong_payments: number; to_cfo_not_held: number; paid_past_cfo: number }>> }>("docs/evals/scorecard-summary.json");
-  const per = (k: "claude_alone" | "purser" | "purser_script" | "naive_script", m: "wrong_payments" | "to_cfo_not_held" | "paid_past_cfo") => { const v = [...new Set(Object.values(sc.by_run).map((r) => r[k][m]))]; if (sc.runs !== Object.keys(sc.by_run).length || v.length !== 1) throw new Error(`uth: scorecard ${k}.${m} differs between runs`); return v[0]!; };
-  const score = { ranOn: new Date(sc.ran_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }), scriptNotHeld: per("purser_script", "to_cfo_not_held"), runs: sc.runs, cases: sc.cases_per_run, aloneWrong: per("claude_alone", "wrong_payments"), aloneNotHeld: per("claude_alone", "to_cfo_not_held"), purserWrong: per("purser", "wrong_payments"), purserNotHeld: per("purser", "to_cfo_not_held"), scriptWrong: per("purser_script", "wrong_payments"), scriptPastCfo: per("purser_script", "paid_past_cfo"), naiveWrong: per("naive_script", "wrong_payments"), naivePastCfo: per("naive_script", "paid_past_cfo") };
+  // The worst-case AI test (src/evals/worstCase.ts, its record docs/evals/worst-case-summary.json): each payer's worse run.
+  const script = worstOf("purser_script"), naive = worstOf("no_rules");
+  if (!script || !naive) throw new Error("uth: the worst-case AI test's record has no runs");
+  const score = { ranOn: new Date(WORST_CASE.ran_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }), runs: WORST_CASE.runs, cases: WORST_CASE.cases_per_run, scriptWrong: script.wrong_payments, scriptPastCfo: script.paid_past_cfo, naiveWrong: naive.wrong_payments, naivePastCfo: naive.paid_past_cfo };
   // The /verify beat (npm run record-uth -- --verify): the page's own result lines, the paid file and the one-cent copy.
   const verify = read<{ marks: Record<string, number>; lines: { paid: string[]; one_cent: string[] } }>("docs/film/under-the-hood/verify-record.json");
   const failed = verify.lines.one_cent.filter((l) => l.startsWith("FAIL")).map((l) => l.split(":")[0]!.slice(5));
@@ -134,8 +135,8 @@ export function scenes(): Scene[] {
     // The worst-case AI test (Max, 15 Nov: this, not a "Claude alone" comparison): Purser's AI replaced by a script that
     // always says pay, on the scorecard's invoices; beside it a payer with no rules. From the scorecard's record.
     { id: "u08s", title: "The worst-case AI test", min: 20,
-      vo: `The worst-case test: Purser's AI replaced by a script that always says pay, on ${f.score.cases} hostile and clean invoices, run twice. ${f.score.scriptWrong === 0 ? "No wrong payment" : `${f.score.scriptWrong} wrong payments`}, and ${f.score.scriptPastCfo === 0 ? "nothing" : f.score.scriptPastCfo} paid past the CFO. A payer with no rules made ${f.score.naiveWrong} wrong payments a run. Even an AI that always says pay can't make Purser pay wrongly.`,
-      segments: [{ card: `<p class="kicker">The worst-case AI test · ${f.score.cases} hostile and clean invoices · run twice · ${f.score.ranOn}</p><table class="sc"><thead><tr><th></th><th>Purser, its AI replaced by a script that always says pay</th><th>A payer with no rules</th></tr></thead><tbody><tr><td>Wrong payments, per run</td><td class="good">${f.score.scriptWrong}</td><td class="bad">${f.score.naiveWrong}</td></tr><tr><td>Paid past the CFO, per run</td><td class="good">${f.score.scriptPastCfo}</td><td class="bad">${f.score.naivePastCfo}</td></tr></tbody></table><h2 class="line">Even an AI that always says “pay” can't make Purser pay wrongly.</h2><p class="foot">docs/evals/scorecard-2026-11-15.json · test invoices</p>` }] },
+      vo: `The worst-case AI test: Purser's AI replaced by a script that always says pay, on ${f.score.cases} hostile and clean invoices, run ${f.score.runs === 2 ? "twice" : `${f.score.runs} times`}. ${f.score.scriptWrong === 0 ? "No wrong payment" : `${f.score.scriptWrong} wrong payments`}, and ${f.score.scriptPastCfo === 0 ? "nothing" : f.score.scriptPastCfo} paid past the CFO. A payer with no rules made ${f.score.naiveWrong} wrong payments. ${WORST_CASE_HEADLINE}`,
+      segments: [{ card: `<p class="kicker">The worst-case AI test · ${f.score.cases} hostile and clean invoices · run ${f.score.runs === 2 ? "twice" : `${f.score.runs} times`} · ${f.score.ranOn}</p><table class="sc"><thead><tr><th></th><th>Purser, its AI replaced by a script that always says pay</th><th>A payer with no rules</th></tr></thead><tbody><tr><td>Wrong payments</td><td class="good">${f.score.scriptWrong}</td><td class="bad">${f.score.naiveWrong}</td></tr><tr><td>Paid past the CFO</td><td class="good">${f.score.scriptPastCfo}</td><td class="bad">${f.score.naivePastCfo}</td></tr></tbody></table><h2 class="line">${esc(WORST_CASE_HEADLINE)}</h2><p class="foot">${WORST_CASE_DOC} · each payer's worse run of ${f.score.runs} · test invoices</p>` }] },
     { id: "u09", title: "An agent's own card", min: 18,
       vo: "A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud.",
       segments: [{ clip: "cloud-agents", from: 0, to: 10 }, { card: `<div class="hero small-hero"><p class="kicker">Purser Cloud · Agents</p><h2>Each agent's card: per purchase, per month, the kind of shop</h2><p class="sub">The CFO changes a limit or freezes a card with Face ID. In the public demo company these actions are switched off; the cards shown are simulated.</p></div>` }] },

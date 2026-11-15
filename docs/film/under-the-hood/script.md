@@ -1,4 +1,4 @@
-# Purser, under the hood (4:35)
+# Purser, under the hood (4:34)
 
 Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is read from its record at build time. Test money only. This build has no voice (captions only); the narrator for the voiced build: Ian (ElevenLabs voice library): professional, warm, calm (an AI voice). Music: an AI-generated instrumental (ElevenLabs), out/video/v10/music-292.mp3.
 
@@ -15,7 +15,7 @@ Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is re
 | 2:43 | u06 · The card's own limit | Agents also pay by card. When a charge goes over the card's limit, Airwallex itself declines it, whatever the agent asks. | card |
 | 2:58 | u07 · The audit log, anchored | Every step lands in an audit log where each row hashes the one before. Its head is written into a transaction on Alta, formerly Metal, on testnet. Anyone can recompute it from the repository: verify-anchor prints match. | card |
 | 3:22 | u08 · The numbers | Only measured numbers. In the main run: 24 decisions by Claude, 86 payments on Alta within the limits, 5 signatures with Face ID, and nothing paid over a limit. And 6,932 tests pass. | card |
-| 3:42 | u08s · The worst-case AI test | The worst-case test: Purser's AI replaced by a script that always says pay, on 50 hostile and clean invoices, run twice. No wrong payment, and nothing paid past the CFO. A payer with no rules made 35 wrong payments a run. Even an AI that always says pay can't make Purser pay wrongly. | card |
+| 3:42 | u08s · The worst-case AI test | The worst-case AI test: Purser's AI replaced by a script that always says pay, on 50 hostile and clean invoices, run twice. No wrong payment, and nothing paid past the CFO. A payer with no rules made 35 wrong payments. Even an AI that always says “pay” can't make Purser pay wrongly. | card |
 | 4:04 | u09 · An agent's own card | A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud. | cloud-agents 0.0–10.0 s + card |
 | 4:22 | u10 · Close | Purser: AI agents pay the bills, the CFO signs the exceptions, and every step can be checked. Built on Airwallex, with test money only. Try it yourself. | card |
 
