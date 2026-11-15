@@ -23,6 +23,7 @@ import { homeScaleStats, SCALE_CSS, SCALE_SOURCES } from "./scale.js";
 import { ownersRun, ownersSteps, type OwnersRun } from "./metalOnchain.js";
 import { booksData } from "./booksPage.js";
 import { SITE_URL } from "../ui/meta.js";
+import { NEGOTIATE_URL } from "../ui/more.js";
 
 const CSS = `/* Home, enterprise pass (the owner, 12 Nov): an 8 px grid, 1120 px wide, neutral greys and one accent. */
 main.ent .wrap { max-width: 1120px; }
@@ -228,6 +229,22 @@ export const FEATURES = [
   { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
+/**
+ * /try/negotiate on Home (Max, 15 Nov): one card under the features, its page's own headline word for word
+ * (cloud/src/try/negotiatePage.ts; test/home-negotiate.test.ts keeps the two the same) and one button to watch it.
+ */
+export const NEGOTIATE_HEAD = "Two agents negotiate. Code holds the limits. You sign the deal.";
+export const NEGOTIATE_BUTTON = "See them negotiate";
+export function negotiateCardHtml(href: string = NEGOTIATE_URL): string {
+  return `<div class="negf reveal"><span class="fi">${icon("users", 22)}</span><b class="negt">${esc(NEGOTIATE_HEAD)}</b><a class="btn big ghost" href="${esc(href)}">${esc(NEGOTIATE_BUTTON)}${icon("arrow-right", 18)}</a></div>`;
+}
+const NEGOTIATE_CSS = `
+.negf { margin: 24px 0 0; padding: 24px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.negf .fi { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.negf b { display: block; font-size: 19px; line-height: 1.3; font-weight: 720; }
+@media (max-width: 720px) { .negf { grid-template-columns: 1fr; padding: 20px; } .negf .btn { justify-self: start; } }
+`;
+
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
 export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
 export const STAT_NOTE = "All runs and test companies on record, counted at build.";
@@ -401,6 +418,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   <p class="eyebrow">Why Purser</p>
   <h2 class="e-h reveal" id="h-feat">${esc(FEATURES_HEAD)}</h2>
   <ul class="feat">${FEATURES.map((f) => `<li class="reveal"><span class="fi">${icon(f.icon, 20)}</span><b>${esc(f.title)}</b><p>${esc(f.text)}</p></li>`).join("")}</ul>
+  ${negotiateCardHtml()}
 </div></section>
 <section class="e-flow" aria-labelledby="about"><div class="wrap">
   ${aboutHtml()}
@@ -430,7 +448,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
   ];
   return page({
     // Final jury, 13 Nov: / and /home serve this page; /home is its one canonical address.
-    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + AWX_HOME_BADGE_CSS, body, js: JS + COUNT_JS, stage: false,
+    title: "Purser", description: `${HERO} ${CORE_SENTENCE}`, canonical: `${SITE_URL}/home`, tab: "home", css: CSS + STATS_CSS + SCALE_CSS + HERO_FLOW_CSS + AWX_HOME_BADGE_CSS + NEGOTIATE_CSS, body, js: JS + COUNT_JS, stage: false,
     links: [],
     real,
     source: `Source: a /try run of its sample invoice, ${AWX_RUN_FILE} and ${run.file} (${run.name}).`,

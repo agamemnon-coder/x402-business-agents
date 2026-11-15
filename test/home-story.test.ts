@@ -17,6 +17,8 @@ import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { VIC3_RUN_FILE } from "../src/redesign/vic3Run.js";
 import { scriptBlocks, scriptBody, withoutBlocks } from "./support/scriptBlocks.js";
+import { NEGOTIATE_BUTTON } from "../src/redesign/home.js";
+import { NEGOTIATE_URL } from "../src/ui/more.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const ENTITIES: Record<string, string> = { "&amp;": "&", "&quot;": '"', "&#39;": "'", "&lt;": "<", "&gt;": ">" };
@@ -64,7 +66,8 @@ describe("Home, the enterprise pass", () => {
     const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
     expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film", "See the proof"]);
     // 15 Nov: /verify is live (#364), so "Verify a payment yourself" is the hero's third button; "" hides it.
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    // 15 Nov (Max): /try/negotiate's card under the features, its one button after the hero's.
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], [NEGOTIATE_URL, NEGOTIATE_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
     for (const html of [ON, OFF]) expect(html).toContain(`<a class="btn big ghost" href="/verify">${VERIFY_BUTTON}</a></div>`);
     expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
@@ -243,9 +246,9 @@ describe("Home, the enterprise pass", () => {
   // reuse section (13 words; 354 as built). 360 since the partner scan (14 Nov): Visa in "Works with" named in full,
   // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built). 378 on
   // 14 Nov (Max, Airwallex at the centre): one line on the live Airwallex sandbox FX quote in /try's signed terms (378 as built).
-  it("A11: stays within 381 visible words", () => {
-    // +3, 15 Nov: Home's refusals label says it counts all runs.
-    expect(visibleWords(ON)).toBeLessThanOrEqual(381);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(381);
+  // 398 since 15 Nov (Max): /try/negotiate's card under the features, its headline and button (392 as built); +3, the refusals label (#390).
+  it("A11: stays within 398 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(398);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(398);
   });
 });
