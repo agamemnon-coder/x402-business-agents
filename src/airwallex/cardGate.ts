@@ -180,6 +180,8 @@ export type CardsAsk =
   | { op: "transactions"; card_id: string }
   | ({ op: "create"; holder: { email: string; first_name: string; last_name: string }; nickname: string; created_by: string; limits: { per_tx_cents: number; monthly_cents: number }; mccs: string[]; active_days: number } & Signed)
   | ({ op: "status"; card_id: string; status: "ACTIVE" | "INACTIVE" } & Signed)
+  /** Freeze several cards in one call (older test cards): updates only, no read-back; at most FREEZE_MANY_MAX. */
+  | ({ op: "freeze_many"; card_ids: string[] } & Signed)
   | ({ op: "limits"; card_id: string; limits: { per_tx_cents: number; monthly_cents: number } } & Signed)
   | ({ op: "simulate"; card_id: string; amount_cents: number; merchant: string; mcc: string } & Signed);
 
@@ -192,10 +194,13 @@ export type CardsAnswer =
   /** Every agent card (by nickname) the sandbox lists, with its limits; cut: more pages than were read. */
   | { ok: true; op: "list"; cards: SafeCard[]; cut: boolean }
   | { ok: true; op: "simulate"; tx: SafeTx }
+  | { ok: true; op: "freeze_many"; frozen: { card_id_last4: string; ok: boolean; reason: string | null }[] }
   | CardsRefusal;
 
 /** What the Cloud holds: the service binding's named entrypoint. */
 export interface CardsPort { ask(a: CardsAsk): Promise<CardsAnswer> }
 
 export const SHA256_HEX = /^[0-9a-f]{64}$/;
+/** Cards frozen in one freeze_many call: one login and this many updates stay well under a Worker's subrequest limit. */
+export const FREEZE_MANY_MAX = 40;
 export const CARD_ID = /^[A-Za-z0-9_-]{1,64}$/;
