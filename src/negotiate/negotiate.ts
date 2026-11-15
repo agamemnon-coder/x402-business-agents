@@ -48,8 +48,11 @@ export interface InvoiceFacts { vendor: string; invoice_no: string; currency: st
 export function sceneFromInvoice(inv: InvoiceFacts, today: string): Scene | { refused: string } {
   const s = SEEDED_SUPPLIERS.find((x) => x.name === inv.vendor.trim());
   if (!s) return { refused: "Only an invoice from a supplier on file can be negotiated here." };
-  if (inv.payable === false || (inv.status && inv.status !== "ready")) return { refused: "Only an invoice that is ready to pay can be negotiated." };
+  // Ready to pay, or prepared for the passkey (/try asks for the payment's terms while its result is on screen): a
+  // payment proposal still waiting for approval leaves it open to negotiation; one approved or paid does not.
   if (inv.proposal && inv.proposal.status && inv.proposal.status !== "PENDING_APPROVAL") return { refused: "This invoice's payment is already under way." };
+  const waiting = inv.proposal?.status === "PENDING_APPROVAL";
+  if (!waiting && (inv.payable === false || (inv.status && inv.status !== "ready"))) return { refused: "Only an invoice that is ready to pay can be negotiated." };
   if (inv.currency !== "EUR") return { refused: "Only a euro invoice can be negotiated here." };
   const c = cents(inv.total);
   if (!Number.isFinite(c) || c < 10_000 || c > 500_000) return { refused: "Only an invoice of EUR 100 to EUR 5,000 can be negotiated here." };

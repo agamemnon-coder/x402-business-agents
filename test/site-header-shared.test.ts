@@ -50,7 +50,7 @@ describe("the cloud pages carry the site's header", () => {
       const html = siteHeader(k);
       expect(shape(html)).toBe(shape(snap.header[String(k)]!));
       for (const h of hrefs(html)) {
-        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try") || h === `${CLOUD}try/negotiate`) continue;
+        if (h === "/try" || (h === "/" && k !== "try") || (h === CLOUD && k === "try")) continue;
         expect(h.startsWith(`${SITE_ORIGIN}/`), h).toBe(true);
       }
     }

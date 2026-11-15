@@ -46,6 +46,19 @@ export const NEG_COPY = {
   shaNote: "The agreed invoice carries the first 8 characters of this hash as its reference, so the terms your passkey signs name this agreement and no other.",
   failed: "The negotiation could not finish. Nothing was paid.",
   noAnswer: "No answer from Purser's demo. Check your connection and try again.",
+  /** /try's own flow (cloud/src/tryPage.ts drawResult): the step before the passkey. */
+  inline: {
+    head: "Let Purser's agent negotiate an early-payment discount",
+    sub: "Purser's Sourcing agent (Claude) asks {supplier}'s agent (a simulated supplier, played by Claude) for a discount for paying early. Code holds the CFO's limits on every turn; you sign whatever is agreed, with your passkey.",
+    button: "Negotiate an early-payment discount",
+    signAgreed: "Sign the agreed terms with your passkey",
+    payIssued: "Pay the invoice as issued",
+    filing: "Filing the agreed invoice…",
+    filedHeld: "The agreed invoice could not be filed as ready to pay. Pay the invoice as issued instead.",
+    limit: "Today's live limit is reached; showing the recorded negotiation.",
+    paused: "The live demo is paused right now; showing the recorded negotiation.",
+    recordedPay: "A recording has nothing to sign: pay the invoice as issued, below.",
+  },
 } as const;
 
 /** The view's style: every selector under .neg, appended after the page's own. */
@@ -101,8 +114,16 @@ export const NEG_CSS = `
 .negagreed .sha.typing-out::after { content: "▍"; }
 .negagreed .nnote { font-size: 14px; color: var(--muted); }
 .negagreed .negacts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0 0; }
+.negspin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -2px; }
+.negcard { border: 1px solid var(--accent); border-radius: 16px; background: var(--surface); padding: 16px; margin: 14px 0; }
+.negcard > h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.25; }
+.negcard > .nnote { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
+.negcard .negacts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.negcard .negbox:not(:empty) { margin-top: 14px; }
 .neg-err { border: 1px solid var(--bad); background: var(--bad-soft); border-radius: 12px; padding: 10px 12px; margin: 10px 0; }
 @media (prefers-reduced-motion: no-preference) {
+  .negspin { animation: negspin .8s linear infinite; }
+  @keyframes negspin { to { transform: rotate(360deg); } }
   .neg .turn { animation: negrise .35s ease-out both; }
   @keyframes negrise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   .neg .dots i { animation: negblink 1.1s infinite ease-in-out; }
@@ -249,10 +270,56 @@ function agreed(n,actions){
   return {card,heading:h};
 }
 function thinking(box){const V=view(box);V.waiting('sourcing',NC.thinking,'thinking');return V}
-return {run,recorded,agreed,thinking,el,eur,calm:()=>calm,shake:(node)=>{if(!calm){node.classList.remove('negshake');void node.offsetWidth;node.classList.add('negshake')}}};
+return {copy:NC,run,recorded,agreed,thinking,el,eur,calm:()=>calm,shake:(node)=>{if(!calm){node.classList.remove('negshake');void node.offsetWidth;node.classList.add('negshake')}}};
 })();
 `;
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 /** The script with its words in it. */
 export const negKitJs = (): string => NEG_KIT_JS.replace("__NEGCOPY__", () => json(NEG_COPY));
+
+/**
+ * /try's step before the passkey (cloud/src/tryPage.ts drawResult, the "Ready to pay" branch): NEGI.card(inv, pay)
+ * for a payable EUR invoice not yet due. It uses /try's own api, show, renew, say and session (S): the same company.
+ * The negotiation runs inline; agreed, the agreed invoice is filed (POST /v1/engine/compose) and /try's own approve
+ * screen signs it; no deal, the invoice as issued goes to the approve screen. A limit or a pause plays the recording,
+ * labelled, and the invoice can still be paid as invoiced. The server decides what can be negotiated (409, said).
+ */
+export const NEG_TRY_JS = String.raw`
+const NEGI=(()=>{
+  const NC=NEG.copy,I=NC.inline,el=NEG.el;
+  const today=()=>new Date().toISOString().slice(0,10);
+  // The guided tour (?tour=1, cloud/src/try/run.ts) walks the plain payment: no card there.
+  const touring=()=>{try{return new URLSearchParams(location.search).get('tour')==='1'}catch(e){return false}};
+  const eligible=(inv)=>!touring()&&!!inv&&inv.currency==='EUR'&&inv.payable!==false&&inv.status==='ready'&&typeof inv.due_date==='string'&&inv.due_date>today()&&!(inv.proposal&&inv.proposal.status&&inv.proposal.status!=='PENDING_APPROVAL');
+  const spin=(b,words)=>{b.disabled=true;b.replaceChildren(el('span','negspin'),document.createTextNode(' '+words))};
+  function card(inv,pay){
+    pay.className='btn';
+    const go=el('button','btn primary big',I.button);go.type='button';go.id='negotiate';
+    const box=el('div','negbox');const said=el('div','');said.setAttribute('role','status');
+    const sup=String(inv.vendor||'').split(/\s+/)[0]||'The supplier';
+    const sec=el('section','negcard',[el('h3','',I.head),el('p','nnote',I.sub.replace('{supplier}',sup)),el('div','negacts',[go]),said,box]);
+    go.addEventListener('click',async()=>{
+      spin(go,NC.thinking);said.replaceChildren();
+      const res=await NEG.run({box,body:{invoice_id:inv.id},auth:()=>S.session,renew,say});
+      go.remove();
+      if(!res.ok){
+        if(res.status===429||res.status===503){said.replaceChildren(el('p','neg-err',res.status===503?I.paused:I.limit));await NEG.recorded({box,why:res.status===503?'paused':'limit',say});box.append(el('p','nnote',I.recordedPay));return}
+        said.replaceChildren(el('p','neg-err',res.message||NC.failed));return}
+      const n=res.n;
+      const sign=el('button','btn primary big',n.outcome==='agreed'?I.signAgreed:I.payIssued);sign.type='button';sign.id='negsign';
+      const a=NEG.agreed(n,[sign]);box.append(a.card);a.heading.focus();
+      sign.addEventListener('click',async()=>{
+        if(n.outcome!=='agreed'){show('approve',{invoice:inv});return}
+        spin(sign,I.filing);
+        const f=await api('POST','/v1/engine/compose',n.compose);
+        const ni=f.json&&f.json.invoice;
+        if(f.status===200&&ni&&ni.id&&ni.status==='ready'){show('approve',{invoice:ni});return}
+        sign.disabled=false;sign.textContent=I.signAgreed;a.card.append(el('p','neg-err',(f.json&&(f.json.message||f.json.error))||I.filedHeld));
+      });
+    });
+    return sec;
+  }
+  return {eligible,card};
+})();
+`;

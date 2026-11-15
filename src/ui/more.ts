@@ -3,7 +3,7 @@
 // so the two definitions cannot drift apart. "More" is a <details> element: it opens and closes without any script, by
 // mouse, touch or keyboard (Enter or Space on the summary; its links take focus only while it is open).
 
-export type MoreKey = "cloud" | "negotiate" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
+export type MoreKey = "cloud" | "pricing" | "security" | "docs" | "books" | "status" | "airwallex" | "metal" | "visa" | "claude";
 
 export interface MoreLink {
   key: MoreKey;
@@ -33,9 +33,6 @@ export const NEGOTIATE_URL = `${PURSER_CLOUD_URL}try/negotiate`;
 export const MORE_LINKS: readonly MoreLink[] = [
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
   { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product" },
-  // 15 Nov: the agents' negotiation on /try's deployment, served on the site's own host (worker/src/tryEngine.ts). No "Watch" in
-  // a menu (test/watch-out-of-menu.test.ts): /try's finish says "Watch agents negotiate", the menu "Agents negotiate".
-  { key: "negotiate", label: "Agents negotiate", href: NEGOTIATE_URL, group: "product" },
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },

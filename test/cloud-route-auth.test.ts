@@ -34,6 +34,7 @@ const PUBLIC: Record<string, string> = {
   "POST /v1/try/challenge": "the hands-on demo's bot check",
   "POST /v1/try/session": "the visitor's token is the credential",
   "GET /v1/try/counter": "the demo's public counter",
+  "GET /v1/try/negotiate/recorded": "the recorded negotiation, written in advance and labelled, for a visitor the live path turned away: no company, no Claude, nothing to sign",
   "GET /v1/try/stage/stats": "stage mode's wall: counts of the event pool only, no names, ids or addresses (cloud/src/try/stage.ts)",
   "POST /v1/try/stage/qr": "stage mode's QR code: draws a live event token the caller already holds; keeps and sets nothing",
   "POST /v1/try/feedback": "the demo's feedback form",

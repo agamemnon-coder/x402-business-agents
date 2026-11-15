@@ -49,6 +49,16 @@ describe("the demo's invoice PDF", () => {
     expect(net + vat).toBe(CLEAN.amountCents);
     expect(parseInvoiceFallback(text)).toMatchObject({ invoice_no: CLEAN.invoiceNo, vendor: CLEAN.supplier.name, amount: "1850.00", currency: "EUR", due_date: "2026-11-30", iban: CLEAN.iban, bic: CLEAN.supplier.bic });
   });
+
+  // 15 Nov: an agreed invoice's number (the original's and the agreement's hash, /try's negotiation) is 20 characters;
+  // the title is set smaller, never wrapped, so the number reads whole and the dates keep their place.
+  it("reads a long invoice number whole, with its dates", async () => {
+    for (const no of ["BTX-2026-21-c593b1b7", "A".repeat(10) + "-" + "1".repeat(21)]) {
+      const { text } = await pdfText(await invoicePdf({ fields: { ...CLEAN, invoiceNo: no }, supplierKey: "bergtex", billTo: "Tulip Tiles (test) · Purser demo" }));
+      expect(parseInvoiceFallback(text), no).toMatchObject({ invoice_no: no, due_date: "2026-11-30" });
+      expect(text).toContain("Invoice date: 9 November 2026");
+    }
+  });
 });
 
 describe("a written invoice, paid on the engine", () => {

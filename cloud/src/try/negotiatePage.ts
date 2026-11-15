@@ -113,8 +113,6 @@ ol.steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
 ol.steps li.done::marker { color: var(--ok); }
 ol.steps li.bad::marker { color: var(--bad); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -2px; }
-@media (prefers-reduced-motion: no-preference) { .spin { animation: spin .8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
 ${NEG_CSS}
 `;
 
@@ -179,7 +177,7 @@ const rails=(b)=>{
   const R=C.rails;const last4=String(b.payee_iban||'').slice(-4);
   return el('ul','rails',[el('li','',fill(R.max_amount,{max:NEG.eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
 };
-const busy=(btn,words)=>{btn.disabled=true;btn.hidden=false;btn.replaceChildren(el('span','spin'),document.createTextNode(' '+words))};
+const busy=(btn,words)=>{btn.disabled=true;btn.hidden=false;btn.replaceChildren(el('span','negspin'),document.createTextNode(' '+words))};
 const errBox=(words)=>el('p','neg-err',words);
 function againRow(){
   const b=el('button','btn',C.again);b.type='button';b.id='again';

@@ -7,7 +7,7 @@ import { worstCaseMicros } from "../src/engine/budget.js";
 import { HAIKU } from "../src/try/claude.js";
 import { termsHash, type Terms } from "../src/lib/terms.js";
 import { actionBudget, claudeSpeak, costMicros, NEGOTIATE_MODEL, TurnFailed, worstMicros } from "../src/negotiate/claude.js";
-import { CHANGED_IBAN, MAX_TURNS, negotiate, recordedNegotiation, sceneOf, TURN_MAX_TOKENS, type AgentAnswer, type Speak } from "../src/negotiate/negotiate.js";
+import { CHANGED_IBAN, MAX_TURNS, negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, TURN_MAX_TOKENS, type AgentAnswer, type Speak } from "../src/negotiate/negotiate.js";
 import { agreedInvoiceNo, agreementOf, agreementSha256, asksNewAccount, boundsOf, canonicalAgreement, checkTurn, foreignIbans, signedMatches } from "../src/negotiate/rails.js";
 
 const TODAY = "2026-11-15";
@@ -235,5 +235,27 @@ describe("the buyer never asks for less than the supplier's best offer (jury che
     const n = await recordedNegotiation(TODAY, "x");
     expect(n.turns.every((t) => t.held_to_best_offer === null)).toBe(true);
     expect(n.agreement.amount).toBe("1813.00");
+  });
+});
+
+// 15 Nov (Max): the negotiation inside /try's flow takes the visitor's own invoice as its scene.
+describe("the scene from /try's invoice", () => {
+  const today = "2026-11-15";
+  const inv = { vendor: "Bergtex Textil GmbH", invoice_no: "BTX-2026-21", currency: "EUR", total: "1850.00", due_date: "2026-11-30", issue_date: "2026-11-09", status: "ready", payable: true, proposal: null };
+  it("a ready Bergtex invoice, not yet due: the scene with the payee on file", () => {
+    const sc = sceneFromInvoice(inv, today);
+    expect(sc).toEqual({ supplier: { name: "Bergtex Textil GmbH", iban: sceneOf(today).supplier.iban, bic: sceneOf(today).supplier.bic }, invoice_no: "BTX-2026-21", currency: "EUR", amount_cents: 185_000, issue_date: "2026-11-09", due_date: "2026-11-30" });
+  });
+  it("still open while its payment waits for the passkey (/try prepares the terms with the result on screen)", () => {
+    expect("refused" in sceneFromInvoice({ ...inv, status: "awaiting_approval", payable: false, proposal: { status: "PENDING_APPROVAL" } }, today)).toBe(false);
+  });
+  it("refuses, saying why: another supplier, approved or paid, held, not euros, out of range, already due", () => {
+    const why = (x: Partial<typeof inv> & Record<string, unknown>) => { const r = sceneFromInvoice({ ...inv, ...x } as typeof inv, today); return "refused" in r ? r.refused : null; };
+    expect(why({ vendor: "Someone Else Ltd" })).toMatch(/supplier on file/);
+    expect(why({ proposal: { status: "APPROVED" } } as never)).toMatch(/already under way/);
+    expect(why({ status: "needs_review", payable: false })).toMatch(/ready to pay/);
+    expect(why({ currency: "USD" })).toMatch(/euro/);
+    expect(why({ total: "50.00" })).toMatch(/EUR 100 to EUR 5,000/);
+    expect(why({ due_date: today })).toMatch(/not yet due/);
   });
 });

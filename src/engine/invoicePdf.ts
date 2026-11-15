@@ -44,7 +44,12 @@ export function invoicePdf(d: InvoiceDoc): Promise<Buffer> {
   // The seller's block, left; the document's title, right.
   doc.font("Helvetica-Bold").fontSize(15).fillColor(INK).text(f.supplier.name, L, 50, { width: 300 });
   doc.font("Helvetica").fontSize(9.5).fillColor(MUTED).text(`${f.supplier.street}, ${f.supplier.city}`, L, doc.y + 2, { width: 300 });
-  doc.font("Helvetica-Bold").fontSize(22).fillColor(ACCENT).text(`INVOICE ${f.invoiceNo}`, 300, 50, { width: R - 300, align: "right" });
+  // The title on one line: a long number (up to 32 characters, such as an agreed invoice's BTX-2026-21-c593b1b7) is set
+  // smaller rather than wrapped, so the number is read whole and the dates under it keep their place.
+  const title = `INVOICE ${f.invoiceNo}`;
+  let size = 22;
+  while (size > 10 && doc.font("Helvetica-Bold").fontSize(size).widthOfString(title) > R - 300) size -= 1;
+  doc.font("Helvetica-Bold").fontSize(size).fillColor(ACCENT).text(title, 300, 50, { width: R - 300, align: "right", lineBreak: false });
   doc.font("Helvetica").fontSize(9.5).fillColor(INK);
   doc.text(`Invoice date: ${longDate(f.issueDate)}`, 300, 80, { width: R - 300, align: "right" });
   doc.text(`Due date: ${longDate(f.dueDate)}`, 300, doc.y + 1, { width: R - 300, align: "right" });

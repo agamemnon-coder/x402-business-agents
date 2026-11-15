@@ -128,7 +128,7 @@ describe("the site after v4", () => {
   it("has four tabs and More in the menu, on every public page; under More the pages the site serves, in one order: Security, Docs, then Airwallex, Alta, Visa, Claude", () => {
     // The whole list, in the menu's order (src/ui/more.ts): the product pages, then the partner pages.
     // 13 Nov, evening (owner): the product tour and Pricing are out.
-    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Agents negotiate", "https://purser-try.max-31b.workers.dev/try/negotiate"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"]]);
+    expect(MORE_LINKS.map((l) => [l.label, l.href])).toEqual([["Purser Cloud", "https://purser-try.max-31b.workers.dev/"], ["Security", "security"], ["Docs", "docs"], ["Books", "books"], ["Airwallex", "airwallex"], ["Alta", "alta"], ["Visa", "visa"], ["Claude", "claude"]]);
     // The menu lists a page exactly when the site serves it, so "More" never opens onto a 404 (a page not built yet is
     // left out until it is registered; then the menu must list it).
     // 12 Nov: Purser Cloud is its own deployment (an absolute link), served there, not by this Worker.
