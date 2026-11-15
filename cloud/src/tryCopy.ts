@@ -666,7 +666,7 @@ export const COMPANY = {
   /** The next steps, one primary and three quiet links; no form, nothing collected. */
   /** 15 Nov (owner: "I'm stuck at the end"): the primary way on, and three secondary ones (the walkthrough is 4:58). */
   rails: "See it run on a live Airwallex sandbox",
-  film: "Watch the 5-min film",
+  film: "Watch the film (3:29)",
   cloud: "Open Purser Cloud",
   star: "Star on GitHub",
   download: "Download your test company's records",
