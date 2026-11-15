@@ -36,6 +36,7 @@ import { GUARANTEES_CSS, guaranteesHtml } from "./guarantees.js";
 import { LEAD_CSS, leadHtml, proofLeads, type Lead } from "./proofLead.js";
 import { TRACE_LINK, TRACE_URL } from "./trace.js";
 import { PACK_LINK, PACK_NAME } from "../accounting/monthPack.js";
+import { SCORECARD_CSS, scorecardCardHtml } from "./scorecardCard.js";
 
 const readJson = <T>(p: string): T => JSON.parse(readFileSync(new URL(`../../${p}`, import.meta.url), "utf8")) as T;
 /** "3 Nov": a record's day, as the run's label writes it. */
@@ -582,6 +583,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
   ${proofChainHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
+  ${scorecardCardHtml()}
   ${verifyCalloutHtml()}
   ${proofRunsHtml()}
   ${awxLiveHtml()}
@@ -605,7 +607,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + SCORECARD_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }
