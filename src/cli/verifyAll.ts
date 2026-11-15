@@ -24,6 +24,7 @@ import { publicClient } from "../metal/chain.js";
 import { USDZ } from "../metal/network.js";
 import { liveRunCount } from "../redesign/runs.js";
 import { airwallexCallsIn } from "../redesign/scale.js";
+import { mdCell as cell, pageText as text } from "./verifyAllFormat.js";
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const SITE = "https://kit11.max-31b.workers.dev";
@@ -191,7 +192,6 @@ async function transactions(pages: Record<string, string>) {
 }
 
 // 3. The figures on the pages ---------------------------------------------------------------------------------------------
-const text = (html: string) => html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/g, " ").replace(/<[^>]+>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ");
 
 function figures(pages: Record<string, string>) {
   const G = "figures on the pages";
@@ -348,7 +348,6 @@ if (!process.argv.includes("--no-write")) {
     transaction_rows: txs.rows,
   };
   writeFileSync(join(ROOT, `${OUT}.json`), `${JSON.stringify(report, null, 1)}\n`);
-  const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
   const groups = [...new Set(checks.map((c) => c.group))];
   const t = times.today as null | { start_to_paid: ReturnType<typeof stats>; refusal_round_trip: ReturnType<typeof stats>; stopped: string | null };
   const fmtS = (s: ReturnType<typeof stats>) => ("median_ms" in s ? `${s.n} runs: median ${s.median_ms} ms, p90 ${s.p90_ms} ms, worst ${s.worst_ms} ms (raw: ${s.values_ms!.join(", ")})` : "no runs");
