@@ -14,7 +14,8 @@
 // screen the heading's two sentences are two lines. Every expected value is read from the records, not typed here.
 import type { Page } from "playwright";
 import { FLOW, FLOW_STEPS, READER_CHIP, TRY_SAMPLE_RECORD } from "../../src/redesign/heroFlow.js";
-import { homeStats, PROOF_BUTTON, START, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_BUTTON, homeStats, START, VERIFY_BUTTON, VERIFY_URL, WHATS_REAL } from "../../src/redesign/home.js";
+import { FILM_URL } from "../../src/config/brand.js";
 import { agentRun } from "../../src/redesign/run.js";
 import { homeScaleStats } from "../../src/redesign/scale.js";
 
@@ -44,8 +45,9 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   // One story: the hero's two buttons, Try then Proof (the product tour was first for part of 13 Nov, then removed), the
   // first in the first screen with its one line under it.
   const ctas = await page.locator("main .e-hero .ctas a.btn").evaluateAll((as) => as.map((a) => ({ href: a.getAttribute("href"), text: (a.textContent ?? "").trim() })));
-  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, "proof"])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref} and proof`);
-  if (ctas[0]?.text !== START || ctas[1]?.text !== PROOF_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}" and "${PROOF_BUTTON}"`);
+  // 15 Nov (clarity): Try it in 2 minutes, then the film and "Verify a payment yourself" (/verify, live since #364).
+  if (JSON.stringify(ctas.map((c) => c.href)) !== JSON.stringify([o.tryHref, FILM_URL, VERIFY_URL])) fail(`the hero's buttons lead to ${JSON.stringify(ctas.map((c) => c.href))}, not to ${o.tryHref}, the film and ${VERIFY_URL}`);
+  if (ctas[0]?.text !== START || ctas[1]?.text !== FILM_BUTTON || ctas[2]?.text !== VERIFY_BUTTON) fail(`the hero's buttons say ${JSON.stringify(ctas.map((c) => c.text))}, not "${START}", "${FILM_BUTTON}" and "${VERIFY_BUTTON}"`);
   if ((await page.locator("main .e-hero .ctas a.btn.primary").count()) !== 1) fail("the hero has not exactly one primary button");
   const first = await page.locator("main p.reassure").boundingBox();
   if (!first || first.y + first.height > o.height) fail("the first button and its reassurance line are not in the first screen");
@@ -92,11 +94,11 @@ export async function checkHome(page: Page, o: { url: string; name: string; widt
   const wantTiles = STATS.map((s) => ({ figure: `${s.pre ?? ""}${fmt(s.n, s.dec)}${s.suf ?? ""}`, label: s.label }));
   if (JSON.stringify(tiles) !== JSON.stringify(wantTiles)) fail(`the stat row is ${JSON.stringify(tiles)}, not the records' ${JSON.stringify(wantTiles)}`);
   if (!/limit changes, each signed by \w+ passkeys on chain/.test(tiles[0]?.label ?? "")) fail(`the first tile is not the limit changes signed by passkeys on chain (${tiles[0]?.label})`);
-  // The scale band under it (the owner, 13 Nov): each figure as scaleStats() computes it from the records, each a link;
-  // Home shows three of them since the judge panel of 13 Nov (homeScaleStats).
-  const band = await page.locator("main ul.scale > li").evaluateAll((ls) => ls.map((l) => ({ figure: (l.querySelector("b")?.textContent ?? "").trim(), href: l.querySelector("a")?.getAttribute("href") ?? "" })));
+  // The three measured figures (the owner, 13 Nov: each as scaleStats() computes it from the records, each a link; three
+  // on Home since the judge panel of 13 Nov, homeScaleStats). Since 15 Nov (clarity) in the hero's proof line.
+  const band = await page.locator("main .e-hero p.proofl > a").evaluateAll((as) => as.map((a) => ({ figure: (a.querySelector("b")?.textContent ?? "").trim(), href: a.getAttribute("href") ?? "" })));
   const wantBand = SCALE.map((x) => ({ figure: fmt(x.n), href: x.href }));
-  if (JSON.stringify(band) !== JSON.stringify(wantBand)) fail(`the scale band is ${JSON.stringify(band)}, not the records' ${JSON.stringify(wantBand)}`);
+  if (JSON.stringify(band) !== JSON.stringify(wantBand)) fail(`the proof line's figures are ${JSON.stringify(band)}, not the records' ${JSON.stringify(wantBand)}`);
   page.off("request", onRequest);
   if (asked.length) fail(`Home made ${asked.length} request(s) after it loaded: ${asked.slice(0, 3).join(", ")}`);
 

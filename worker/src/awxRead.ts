@@ -18,6 +18,7 @@
 // never makes a figure up.
 
 import { AWX_SANDBOX_HOST } from "./fxQuote.js";
+import { looksLikePerson, publicNickname, publicPayeeName } from "../../src/airwallex/personName.js";
 import type { Sql } from "./core.js";
 
 /** The path inside the Worker where the RelayObject's awx-read instance answers. No outside request is routed here. */
@@ -161,8 +162,10 @@ export function beneficiariesOf(raw: unknown) {
     const ben = obj(b.beneficiary), bank = obj(ben?.bank_details);
     // The sandbox's beneficiaries carry the payee's name on the bank account (live, 14 Nov), not always company_name.
     const name = str(ben?.company_name) ?? str(bank?.account_name) ?? [str(ben?.first_name), str(ben?.last_name)].filter(Boolean).join(" ");
+    // Privacy (15 Nov): a payee who is a person is shown by initials only, here, before anything leaves kit11.
+    const entity = str(ben?.entity_type, 20), person = looksLikePerson(name || null, entity);
     return {
-      id: str(b.id, 64), nickname: str(b.nickname), name: name || null, entity_type: str(ben?.entity_type, 20), country: str(bank?.bank_country_code, 2), currency: str(bank?.account_currency, 3),
+      id: str(b.id, 64), nickname: publicNickname(str(b.nickname), person), name: publicPayeeName(name || null, entity), entity_type: entity, country: str(bank?.bank_country_code, 2), currency: str(bank?.account_currency, 3),
       bank: str(bank?.bank_name), iban_last4: last4(bank?.iban), account_number_last4: last4(bank?.account_number), methods: (Array.isArray(b.transfer_methods) ? b.transfer_methods : Array.isArray(b.payment_methods) ? b.payment_methods : []).filter((m): m is string => typeof m === "string").slice(0, 4),
       status: str(b.status, 40),
     };

@@ -116,6 +116,9 @@ async function cardAct(kind,agent,out){
 }
 function cardResultText(res){
   if(res.status!=='done')return [t('cs.cards.failed',{why:res.reason||''})+(res.awx_code?' ('+res.awx_code+')':''),'bad'];
+  if(res.kind==='edge'&&res.tries){const w=(x)=>eurc(x.amount_cents)+' '+(x.approved?t('cs.cards.approved').toLowerCase():t('cs.cards.declined').toLowerCase()+(x.failure_reason?' ('+x.failure_reason+')':''));
+    const held=res.tries.length===2&&res.tries[0].approved&&!res.tries[1].approved;return [t('cs.cards.edge_said',{said:res.tries.map(w).join(', ')}),held?'ok':'warn']}
+  if(res.kind==='tidy')return [t('cs.cards.done.tidy',{n:(res.frozen||[]).length}),'ok'];
   if(res.tx)return [res.tx.approved?t('cs.cards.test_ok',{amt:eurc(res.tx.amount_cents)}):t('cs.cards.test_declined',{amt:eurc(res.tx.amount_cents),why:res.tx.failure_reason||res.tx.status}),res.tx.approved?'warn':'ok'];
   return [t('cs.cards.done.'+res.kind,{last4:res.card&&res.card.last4||''}),'ok'];
 }
@@ -144,9 +147,13 @@ function liveCardPanel(x,CV){
       if(active)bar.append(act('freeze',t('cs.cards.freeze'),'snowflake','primary'));
       else if(c.status==='INACTIVE')bar.append(act('unfreeze',t('cs.cards.unfreeze'),'circle-check','primary'));
       if(!x.in_sync)bar.append(act('limits',t('cs.cards.sync'),'shield-check'));
-      if(active)bar.append(act('test',t('cs.cards.test',{amt:eurc((c.per_tx_cents||0)+500)}),'flask'));
+      if(active&&x.in_sync)bar.append(act('edge',t('cs.cards.edge',{amt:eurc(c.per_tx_cents),over:eurc((c.per_tx_cents||0)+1)}),'flask','primary'));
+      else if(active)bar.append(act('test',t('cs.cards.test',{amt:eurc((c.per_tx_cents||0)+500)}),'flask'));
+      const stray=(x.older||[]).filter((o)=>!o.frozen).length;
+      if(stray)bar.append(act('tidy',t('cs.cards.tidy',{n:stray}),'snowflake'));
     }
     kids.push(bar);
+    if((x.older||[]).length)kids.push(el('div','',[el('h3','',t('cs.cards.older_h')),el('ul','plain',x.older.map((o)=>el('li','sub',t(o.frozen?'cs.cards.older_frozen':'cs.cards.older_active',{last4:o.last4||'····',per:eurc(o.per_tx_cents)}))))]));
     kids.push(el('h3','',t('cs.cards.recent')));
     kids.push(x.transactions.length?el('ul','outs ctx',x.transactions.map((tx)=>el('li','',[el('span','obadge '+(tx.approved?'ok':'bad'),[ic(tx.approved?'circle-check':'ban'),tx.approved?t('cs.cards.approved'):t('cs.cards.declined')]),
       el('span','otext',[(tx.merchant||t('cs.cards.merchant'))+' · '+eurc(tx.amount_cents),tx.failure_reason?el('small','sub',' · '+tx.failure_reason):null,el('small','sub mono',' · '+tx.id)]),el('time','num',stamp(tx.at))]))):el('p','sub',t('cs.cards.no_tx')));

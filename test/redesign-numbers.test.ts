@@ -288,7 +288,10 @@ describe("the redesigned public pages", () => {
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.
     expect(homePage()).not.toMatch(/Kit 11|x402 Business Agents|Metal Award|Visa Award|class="built"/);
-    expect(/<main[\s\S]*<\/main>/.exec(homePage())![0]).not.toMatch(/Built on/);
+    // 15 Nov (clarity, the parent's brief): the hero's proof line opens with "Built on Airwallex · test money" (factual,
+    // the header's badge in words); still no "Built on" row, chip or partner list in Home's main.
+    expect(/<main[\s\S]*<\/main>/.exec(homePage())![0].replace(/<p class="proofl"[\s\S]*?<\/p>/, " ")).not.toMatch(/Built on/);
+    expect(/<p class="proofl"[^>]*>Built on Airwallex<span/.test(homePage())).toBe(true);
     // Since the jury check of 12 Nov Home has a Visa Intelligent Commerce proof card (vic-3, to /visa) and the logos; still no TAP and no award wording.
     expect(homePage().replace(/<header class="top">[\s\S]*?<\/header>/, "")).not.toMatch(/Visa TAP|Visa Award|\bTAP\b/);
     // Proof has no footer link to /visa since 12 Nov either: Visa TAP is on /visa only, in its closed fold.

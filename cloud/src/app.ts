@@ -2,6 +2,7 @@
 // the OpenAPI document (/v1/openapi.json), so the two cannot disagree. Every tenant route works through the caller's
 // TenantDb; a route never names a tenant itself.
 
+import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
@@ -41,7 +42,7 @@ import { DEMO_END, DEMO_SLUG, guestSession, isDemoTenant } from "./guest/guest.j
 import { dashboard } from "./dashboard.js";
 import { claudeRoutes, isClaudePath, mcpChallenge } from "./claude/routes.js";
 import { agentsOf, bookingsOf, journalOf, tokenisation } from "./consoleData.js";
-import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
+import { CARD_ACTION_KINDS, CardRefused, cardActionExists, cardsScope, cardsView, latestEdgeRun, signCardAction, startCardAction, type CardsPort } from "./agentCards.js";
 import { addTarget, AlertRefused, alertSettings, dispatchApprovalAlert, NewTarget, removeTarget, type AlertProviders } from "./alerts.js";
 import { ALWAYS_STEP_UP_ROUTES, requireStepUp, setStepUp, stepUpOn, SESSION_ONLY_ROUTES, STEP_UP_HEADER, STEP_UP_ROUTES, STEP_UP_TTL_MS, StepUpRequired, stepUpAssertion, stepUpToken } from "./stepUp.js";
 import { billsCsv, connectionsCatalogue, CSV_FORMATS, type CsvFormat, eventsOf, journalsCsv, statusesBefore } from "./connections.js";
@@ -480,6 +481,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/v1/agents", summary: "The company's agents from its own records: job, Claude model, what each may and may not do, card limits as issued, rails, status and newest decisions with who decided. Read only.", need: "read", run: async (c) => json(200, await agentsOf(db(c))) },
   { method: "GET", path: "/v1/cards", summary: "The agents' live Airwallex sandbox cards (test money): for each agent its card's last four digits (never the full number or the CVV), live status, limits against the CFO policy, and its newest authorizations with their ids; whether card actions are on (admin switch awx_cards) and today's caps.", need: "read", run: async (c) => json(200, await cardsView({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), now: c.now })) },
   { method: "GET", path: "/v1/cards/scope", summary: "Whether the Airwallex sandbox key may use Issuing: { issuing: ok | forbidden | no_key | no_gateway | unavailable }. One read of Airwallex a minute at most, for everyone; no card data.", need: "public", run: async (c) => json(200, await cardsScope(c.env.sql, c.env.awxCards, c.now)) },
+  { method: "GET", path: "/v1/cards/edge/latest", summary: "The newest one-cent-over test at the Airwallex sandbox: an agent's card at its limit L, then L + 0.01, with Airwallex's own answers (approved or declined with its reason code), their ids and times. The run record docs/runs keeps; sandbox, test money, the card's last four digits only. 404 when none has run.", need: "public", run: async (c) => { const r = await latestEdgeRun(c.env.sql); return r ? json(200, r) : err(404, "no one-cent-over test has run yet"); } },
   { method: "POST", path: "/v1/cards/actions", summary: "Ask for a card action (a signed-in owner): { kind: issue | freeze | unfreeze | limits | test, agent }. Answers the exact action as signed text, its SHA-256 and the passkey challenge (that hash). Nothing reaches Airwallex before POST /v1/cards/actions/{id}/sign.", need: "admin", run: async (c) => {
     const b = await body(c, z.object({ kind: z.enum(CARD_ACTION_KINDS as [string, ...string[]]), agent: z.string().min(1).max(40) }).strict(), 2_000);
     try { return json(201, await startCardAction({ sql: c.env.sql, caller: c.caller!, ...(c.env.awxCards ? { gateway: c.env.awxCards } : {}), kind: b.kind as never, agent: b.agent, now: c.now })); }
@@ -704,7 +706,8 @@ export function ensureSchema(sql: Sql): Promise<void> {
 /** The API and the console, with one structured log line per request (the route's pattern, never a token or a body). */
 export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const started = Date.now();
-  const res = await route(req, env);
+  // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
+  const res = withBaseline(await route(req, env));
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.

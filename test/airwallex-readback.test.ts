@@ -121,7 +121,7 @@ describe("each agent's card controls, written from the CFO policy and enforced b
       const r = cardControlRows(record, other);
       expect({ rule, failed: r[0]!.checks.filter((c) => !c.ok).map((c) => c.rule), match: r[0]!.match }).toEqual({ rule, failed: [rule], match: false });
       expect(r.slice(1).every((x) => x.match)).toBe(true);
-      expect(text(controlsShortHtml(r, other.rec.read_at, other.file))).toContain("1 of 3 cards differ from the CFO policy");
+      expect(text(controlsShortHtml(r, other.rec.read_at, other.file))).toContain("1 of 3 cards of the main run differed from its CFO policy (read 6 Nov)");
       expect(text(controlsSideBySideHtml(r, other.rec.read_at, other.file))).toContain("differs");
     }
   });
@@ -139,11 +139,11 @@ describe("the pages", () => {
       expect(t).toContain(cards.file);
       expect(t).toMatch(/writ(ten|es) [^.]*from the CFO policy/);
     }
-    for (const html of [pages.proof!, pages.airwallex!]) expect(text(html)).toContain("All 3 cards match the CFO policy");
+    for (const html of [pages.proof!, pages.airwallex!]) expect(text(html)).toContain("All 3 cards of the main run matched its CFO policy (read 6 Nov)");
     // /airwallex (Max, 6 Nov): the hash block and one line at the top; every card's side by side in a collapsed fold.
     const controls = /<div class="card">((?:(?!<div class="card">)[\s\S])*?<details class="fold" id="controls">[\s\S]*?)<\/details><\/div>/.exec(pages.airwallex!)?.[1] ?? "";
     const fold = /<details class="fold" id="controls">[\s\S]*$/.exec(controls)?.[0] ?? "";
-    expect(text(controls.slice(0, controls.length - fold.length)).trim()).toBe("All 3 cards match the CFO policy");
+    expect(text(controls.slice(0, controls.length - fold.length)).trim()).toBe("All 3 cards of the main run matched its CFO policy (read 6 Nov)");
     expect((fold.match(/class="awcard"/g) ?? []).length).toBe(3);
     expect(fold).not.toMatch(/<details[^>]*\sopen/);
     const side = text(pages.airwallex!);
