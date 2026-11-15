@@ -14,7 +14,9 @@ describe("no N/N fraction on any page", () => {
   it("renders the pages", () => expect(pages.length).toBeGreaterThan(10));
   for (const [name, html] of pages) {
     it(name, () => {
-      const t = visible(html);
+      // The one exception (15 Nov, the Airwallex API trail's brief): /airwallex/calls states its hash checks as
+      // "N of N transfers carry the signed hash", the checks it re-runs, not a count of a whole in prose.
+      const t = visible(html).replace(/\b\d+ of \d+ (?:batch )?transfers carry the signed (?:batch )?hash\b/g, "");
       const hits = FULL.flatMap((re) => [...t.matchAll(re)].map((m) => t.slice(Math.max(0, m.index! - 40), m.index! + m[0].length + 40)));
       expect(hits).toEqual([]);
     });

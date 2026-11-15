@@ -23,6 +23,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
 import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
+import { trailLinkHtml } from "./awxTrailLink.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
@@ -332,7 +333,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   // Owner, 12 Nov: Airwallex, Visa, Alta, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Alta, Claude). (The signed hash was the Airwallex card's
   // first chip since 7 Nov, #12; it is the card's main link now, from the same two read-backs.)
   return `<div class="partners">
-${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex, trailLinkHtml())}
 ${visa ? card("visa", "Visa", visa.what, visa.facts, visa.items) : ""}
 ${card("metal", "Alta", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Alta at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Alta because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${t0 ? card("t0", "T:0", t0.what, t0.facts, t0.items) : ""}
