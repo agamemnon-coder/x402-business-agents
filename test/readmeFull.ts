@@ -29,7 +29,7 @@ export function movedBody(file: string): string {
 export function readmeFull(readme = read("README.md")): string {
   let out = readme;
   for (const f of README_DOCS) {
-    const line = new RegExp(`\\n[^\\n]*\\]\\(${f.replace(/[.]/g, "\\.")}\\)\\.\\n`);
+    const line = new RegExp(`\\n[^\\n]*\\]\\(${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)\\.\\n`);
     if (!line.test(out)) throw new Error(`the README has no line linking ${f}`);
     out = out.replace(line, () => `\n${movedBody(f)}\n`);
   }
