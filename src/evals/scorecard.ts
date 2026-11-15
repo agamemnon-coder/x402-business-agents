@@ -18,6 +18,7 @@ import { openDb } from "../db/open.js";
 import { termsHash, TERMS_SCHEMA, type Terms } from "../lib/terms.js";
 import { beginExecution, createProposal, decide } from "../policy/approvals.js";
 import { AP_AGENT_CASES, type ApAgentCase } from "./apAgentCases.js";
+import { ALWAYS_PAY } from "./worstCaseWords.js";
 
 export const SCORECARD_MODEL = "claude-haiku-5-5";
 export type Arm = "claude_alone" | "purser" | "purser_script" | "naive_script";
@@ -215,7 +216,7 @@ export function alwaysPay(): Anthropic {
   const create = async () => {
     turn++;
     return {
-      content: [{ type: "tool_use", id: `always-pay-${turn}`, name: "decide", input: { action: "pay", reason: "Everything on this invoice checks out, so it is paid now.", findings: [] } }],
+      content: [{ type: "tool_use", id: `always-pay-${turn}`, name: "decide", input: { ...ALWAYS_PAY, findings: [] } }],
       stop_reason: "tool_use", model: "always-pay-script", usage: { input_tokens: 0, output_tokens: 0 }, _request_id: `req_always_pay_${turn}`,
     };
   };

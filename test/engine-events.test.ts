@@ -16,12 +16,12 @@ describe("the agents' events on a page", () => {
     expect(fieldsOf("claude.asking", { agent: "checker", model: "claude-haiku-4-5", turn: 2, messages: [IBAN] })).toEqual({ agent: "checker", model: "claude-haiku-4-5", turn: 2 });
   });
 
-  it("agent.tool: the tool's name and the first sentence of its answer, masked and short; never its input", () => {
+  it("agent.tool: the tool's name and the first sentence of its answer, masked and short; never its input (only how many fields it has, and whether code refused it)", () => {
     const f = fieldsOf("agent.tool", {
       agent: "checker", model: "claude-haiku-4-5", request_id: "req_011", tool: "read_invoice", input: { invoice_id: "AP-0001", iban: IBAN },
       result: `Bergtex Textil GmbH asks EUR 1,850.00 to ${IBAN} by 16 November. The supplier file holds the same account. ${"x".repeat(300)}`, ms: 12, turn: 1, blocked_by: "schema",
     });
-    expect(f).toEqual({ agent: "checker", tool: "read_invoice", turn: 1, model: "claude-haiku-4-5", request_id: "req_011", ms: 12, answer: "Bergtex Textil GmbH asks EUR 1,850.00 to ****3000 by 16 November." });
+    expect(f).toEqual({ agent: "checker", tool: "read_invoice", turn: 1, model: "claude-haiku-4-5", request_id: "req_011", ms: 12, answer: "Bergtex Textil GmbH asks EUR 1,850.00 to ****3000 by 16 November.", inputs: 2, refused: true });
     expect(JSON.stringify(f)).not.toMatch(/3704|0532|AP-0001"|iban/);
   });
 
@@ -64,7 +64,7 @@ describe("the agents' events on a page", () => {
       cost_usd_micros: 4210, latency_ms: 2100, from_seq: 4, run_id: "run_1", tokens: { input: 1000, output: 200 }, claude_ms: [700], claude_calls: [], request_ids: ["req_011"],
     });
     // Task A6: with the request id of the call that gave the answer.
-    expect(f).toEqual({ agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 3, cost_usd_micros: 4210, latency_ms: 2100, request_id: "req_011" });
+    expect(f).toEqual({ agent: "checker", model: "claude-haiku-4-5", status: "done", turns: 3, cost_usd_micros: 4210, latency_ms: 2100, request_id: "req_011", claude_ms: "700" });
   });
 
   it("ap.checker_decided: who decided and what code required; the codes of code's findings, never their words; the agent's reason and code's why, masked (task A6)", () => {
@@ -76,6 +76,12 @@ describe("the agents' events on a page", () => {
     });
     expect(f).toEqual({ source: "claude", model: "claude-haiku-4-5", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "hold", codes: "bank_details_changed,possible_duplicate",
       reason: "the account ****3000 is new", enforced: "code holds ****3000", request_id: "req_011" });
+  });
+
+  it("ap.checker_decided: the always-pay script on the same case, code's outcome and its rule (15 Nov, /try)", () => {
+    const f = fieldsOf("ap.checker_decided", { source: "claude", model: "claude-haiku-4-5", action: "hold", outcome: "hold", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" });
+    expect(f).toMatchObject({ script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" });
+    expect(fieldsOf("ap.checker_decided", { source: "claude", script_outcome: 3, script_overridden_by: { x: 1 } })).not.toHaveProperty("script_outcome");
   });
 
   it("ap.payer_proposed: the proposal's rail, day and currency, and whether code overrode it; never the terms", () => {
