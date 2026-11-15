@@ -48,6 +48,9 @@ const agentTraceOf=(T,S,W)=>{
   const model=(id)=>{const x=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(code(id));return x?W.who.claude+' '+cap(x[1])+' '+x[2]+(x[3]?'.'+x[3]:''):W.who.claude};
   const secs=(ms)=>(ms/1000).toFixed(1)+' s';
   const said=(v)=>typeof v==='string'&&v.length<=200?v.replace(/\s+$/,''):'';
+  // 15 Nov polish: an amount in code's own text as the page writes every amount (EUR 1,850.00); an agent's quoted
+  // words are left exactly as it wrote them.
+  const money=(t)=>t.replace(/\b([A-Z]{3}) (\d{4,})(\.\d{2})\b/g,(_,c,n,d)=>c+' '+n.replace(/\B(?=(\d{3})+(?!\d))/g,',')+d);
   const act=(v)=>code(v)?(own(W.actions,v)?W.actions[v]:words(v)):'';
   const rails=(o)=>code(o)&&own(T.rails,o)?T.rails[o]:'';
   // A rule in the trace's words where it has them (the zero agent limit), else the code in plain words.
@@ -78,7 +81,7 @@ const agentTraceOf=(T,S,W)=>{
         const t=num(f.turn);if(t!==null&&t>=1&&t<=12)upTo(t);
         const name=code(f.tool);const n=num(f.inputs);
         const input=n===0?T.noInput:n!==null?fill(T.input,{n}):'';
-        const answer=said(f.answer);
+        const answer=money(said(f.answer));
         rows.push({kind:'tool',text:own(T.tools,name)?T.tools[name]:fill(T.tool,{tool:name||'?'}),sub:[input,answer].filter(Boolean).join(' → '),own:'',time:num(f.ms)!==null?f.ms+' ms':'',refused:f.refused===true});
       }else if(e.event==='agent.nudged')rows.push({kind:'nudge',text:T.nudged,sub:said(f.reason),own:'',time:'',refused:false});
       else if(e.event==='agent.run'){const t=num(f.turns);if(t!==null&&t<=12)upTo(t)}

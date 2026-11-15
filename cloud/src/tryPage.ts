@@ -96,7 +96,8 @@ main .tabs button[aria-selected="true"] { background: var(--surface); color: var
 .payrow .paynote { margin: 0; flex: 1 1 200px; color: var(--muted); font-size: 14px; }
 .payrow .btn.big { margin-left: auto; }
 .payrow .btn.big { margin-top: 0; }
-@media (max-width: 520px) { .payrow { flex-direction: column; align-items: stretch; } }
+/* 15 Nov polish: in a column the note's 200px basis became 200px of height (a gap above Pay at 390 px). */
+@media (max-width: 520px) { .payrow { flex-direction: column; align-items: stretch; } .payrow .paynote { flex: none; } .payrow .btn.big { margin-left: 0; } }
 .skip { position: absolute; left: 12px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 10px; background: var(--text); color: var(--bg); font-weight: 650; text-decoration: none; }
 .skip:focus { top: 12px; }
 .samples .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -439,6 +440,8 @@ body:not(:has(.screen.start)) h1 { font-size: 26px; line-height: 1.2; letter-spa
 .activity .ah { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 13px; font-weight: 650; letter-spacing: .02em; text-transform: uppercase; color: var(--muted); }
 .activity .ah .i { color: var(--faint); }
 .activity .live li { grid-template-columns: 8px minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 0; border-top: 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+/* 15 Nov polish: the Activity panel at phone width, a step larger and with air between a line and what code enforced. */
+@media (max-width: 520px) { .activity .live li { font-size: 14.5px; line-height: 1.45; padding: 12px 0; } .live .ownw, .live .enf { font-size: 13px; } .live .enf { margin-top: 4px; } .activity .live .t { font-size: 12.5px; } }
 .activity .live li:last-child { border-bottom: 0; }
 .activity .live li::before { content: ""; grid-column: 1; grid-row: 1; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
 .activity .live li.claude::before { background: var(--claude); }

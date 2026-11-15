@@ -160,4 +160,15 @@ describe("the always-pay script on the visitor's same invoice", () => {
     expect(c.script!.rule).toBe("rule: the agent limit is zero, so the CFO signs");
     expect(c.verdict).toBe("same");
   });
+
+  it("15 Nov polish: an amount in a tool's answer is written as the page writes every amount; the agent's own words are not touched", () => {
+    const items = [
+      { seq: 1, ts: "t", actor: "checker", event: "agent.tool", subject: "ap.check.y", fields: { agent: "checker", tool: "verify_totals", turn: 1, model: "claude-haiku-5-5", ms: 0, answer: "The subtotal EUR 1554.62 plus tax EUR 295.38 is EUR 1850.00: the total adds up.", inputs: 0 } },
+      { seq: 2, ts: "t", actor: "checker", event: "ap.checker_decided", subject: "AP-1", fields: { source: "claude", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "", concerns: 1, reason: "It asks EUR 1850.00." } },
+    ];
+    const rows = traceOf(items);
+    expect(rows.find((r) => r.kind === "tool")!.sub).toBe("no input: it reads Purser's own records → The subtotal EUR 1,554.62 plus tax EUR 295.38 is EUR 1,850.00: the total adds up.");
+    expect(rows.find((r) => r.kind === "decision")!.own).toBe("It asks EUR 1850.00.");
+  });
 });
+
