@@ -56,7 +56,7 @@ CI runs these checks on every push; the CI badge at the top shows the result of 
 
 | Folder | What it holds |
 |---|---|
-| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta, Visa via Airi), the ledger |
+| `src/` | Purser itself: the agents, the policy and its checks, the rails (Airwallex, Alta (formerly Metal), Visa via Airi), the ledger |
 | `cloud/` | Purser Cloud on Cloudflare Workers: the console, its API, /try and the engine |
 | `worker/` | The public site's Worker (kit11): the pages and the relay for the dashboard and passkey approvals |
 | `docs/runs/` | The record of every live run: ids, amounts, timestamps |

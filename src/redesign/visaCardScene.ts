@@ -135,7 +135,7 @@ export function visaCardSceneHtml(s: CardScene | null = cardScene()): string {
   const range = s.from.split(" ")[1] === s.to.split(" ")[1] ? `${s.from.split(" ")[0]}–${s.to}` : `${s.from}–${s.to}`;
   return `<section class="card vcs" id="${VISA_CARD_SCENE_ID}" aria-labelledby="${VISA_CARD_SCENE_ID}-h">
 <h2 id="${VISA_CARD_SCENE_ID}-h">${esc(`${VISA_CARD_SCENE_HEADING} (test card, sandbox; recorded run of ${range})`)}</h2>
-<p class="vcs-label"><b>${esc("Recorded, not live")}</b>${esc("Airi's credential is the agent's Visa card rail: Airwallex sandbox, test card, test money. Purser adds its checks to every credential.")}</p>
+<p class="vcs-label"><b>${esc("Recorded, not live")}</b> ${esc("Airi's credential is the agent's Visa card rail: Airwallex sandbox, test card, test money. Purser adds its checks to every credential.")}</p>
 <ol>
 <li><b>${esc("Signed terms")}</b><span>${esc(`The agent asks to buy for ${p.currency} ${p.amount} at ${p.merchant}. Purser writes the exact terms (${p.proposal}).`)}</span></li>
 <li><b>${esc("Face ID")}</b><span>${esc("Above the CFO's limit, the CFO signs the SHA-256 of those terms with Face ID.")}</span><span class="vcs-say">${code(`${p.hash.slice(0, 16)}…`)}</span></li>

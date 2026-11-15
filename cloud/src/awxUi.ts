@@ -108,7 +108,7 @@ async function awlEvents(slot){
   let a;try{a=await api('/v1/airwallex-live/events')}catch(e){if(e instanceof Expired)throw e;a={source:'unavailable',reason:e.message}}
   if(!a||a.source!=='airwallex-webhooks'){awlUnavailable(slot,a,()=>awlEvents(slot));return}
   const ev=a.events||[];
-  slot.stamp.replaceChildren(ev.length?el('span','awlive',[el('i',''),t('cs.awl.ev_last',{time:awlWhen(a.last_event_at)})]):null);
+  slot.stamp.replaceChildren(...(ev.length?[el('span','awlive',[el('i',''),t('cs.awl.ev_last',{time:awlWhen(a.last_event_at)})])]:[]));
   if(!ev.length){slot.body.replaceChildren(el('p','sub',a.receiving?t('cs.awl.ev_none'):t('cs.awl.ev_off')));return}
   slot.body.replaceChildren(awlTable([[t('cs.awl.col.event')],[t('cs.awl.col.object')],[t('cs.awl.col.received')],[t('cs.awl.ev_verified')]],
     ev.map((x)=>el('tr','',[awlTd(el('span','awev',[el('b','',x.topic),el('code','',x.type)])),awlTd(awlId(x.object_id||x.event_id)),awlTd(awlWhen(x.received_at),'num'),awlTd(el('span','obadge ok',[ic('circle-check'),t('cs.awl.ev_verified')]))]))))}

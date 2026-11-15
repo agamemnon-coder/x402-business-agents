@@ -28,9 +28,9 @@ describe("the /try visual layer", () => {
     for (const p of js.match(/'\/v1\/[^']*'/g) ?? []) expect(["'/v1/engine'", "'/v1/ledger/entries'", "'/v1/engine/invoices'"]).toContain(p);
   });
 
-  it("names the bank as it is: Airwallex (sandbox) only when the sandbox rail is on or the page holds an Airwallex transfer", () => {
+  it("names the bank as it is: Airwallex (sandbox) only when this payment went out as an Airwallex sandbox transfer (15 Nov, jury: an FX quote alone is not a payout)", () => {
     expect(VIS.flow.bankAwx).toBe("Airwallex (sandbox)");
-    expect(js).toContain("awx=m.rail_awx==='on'||!!o.awx");
+    expect(js).toContain("awx=!!(o.awx&&o.awx.source==='airwallex-sandbox')");
     expect(js).toContain("m.claude==='live'?V.flow.readClaude:V.flow.readCode");
   });
 

@@ -56,7 +56,7 @@ describe("/try's sandbox payout after a verified signature", () => {
     const note = await sandboxPayout({ company: "t_try_a", proposalId: "P-0002", termsSha256: SHA, terms: TERMS, source: s.src, allowed: async () => false, db: w.db, keep: w.keep });
     expect(note).toEqual({ source: "simulated", reason: "switched_off", terms_sha256: SHA });
     expect(s.asked).toHaveLength(0);
-    expect(eventLine(w.events()[0]!).text).toBe("No Airwallex sandbox transfer: the simulated bank alone paid.");
+    expect(eventLine(w.events()[0]!).text).toBe("No Airwallex sandbox transfer for this payment: the test money moved on the simulated bank only.");
   });
 
   it("Airwallex says no, answers for another amount, or is too slow: labelled, and only a final answer is kept", async () => {

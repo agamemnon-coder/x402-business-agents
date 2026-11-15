@@ -105,7 +105,7 @@ function flowOf(name,box){
   return null;
 }
 function flow(name,box){
-  const at=flowOf(name,box);if(!at)return;const [done,cur,bad]=at,o=st(),m=o.mode||{},awx=m.rail_awx==='on'||!!o.awx;
+  const at=flowOf(name,box);if(!at)return;const [done,cur,bad]=at,o=st(),m=o.mode||{},awx=!!(o.awx&&o.awx.source==='airwallex-sandbox');
   const names=[V.flow.invoice,m.claude==='live'?V.flow.readClaude:V.flow.readCode,V.flow.checks,V.flow.passkey,awx?V.flow.bankAwx:V.flow.bankTest,V.flow.booked];
   const key=done+'/'+cur+'/'+bad;let ol=box.querySelector(':scope > .vflow');
   if(ol&&ol.dataset.k===key)return;
