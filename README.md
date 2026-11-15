@@ -24,7 +24,7 @@
 
 ## At a glance
 
-<a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/promo.webp" alt="Animated: the whole Purser system on one map, then one payment step by step: Claude reads the invoice, code checks the CFO policy, the exact terms are hashed, the CFO signs with a passkey, paid on the Airwallex sandbox or Alta testnet, anyone can verify it; one cent changed is refused. Test money only." width="100%"></a>
+<a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/promo.webp" alt="The whole Purser system on one map, and one payment step by step: Claude reads the invoice, code checks the CFO policy, the exact terms are hashed, the CFO signs with a passkey, paid on the Airwallex sandbox or Alta testnet, anyone can verify it; one cent changed is refused. Test money only." width="100%"></a>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 7,044 tests passing in the last full run; 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
