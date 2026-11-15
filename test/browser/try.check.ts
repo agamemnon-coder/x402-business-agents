@@ -296,7 +296,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
   }
   const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
-  ok(JSON.stringify(logos) === JSON.stringify([["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
+  ok(JSON.stringify(logos) === JSON.stringify([["Alta (formerly Metal)", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
   const ptext = (await page.textContent(".start .partners"))!;
   ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
   ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
@@ -670,7 +670,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(await page.locator(`button.btn.primary.cheat:text-is("${BOOKS.cheat}")`).count() === 1, `${tag}: screen 5: "${BOOKS.cheat}" is the main button`);
   await page.click(`button.cheat:has-text("${BOOKS.cheat}")`);
   await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
-  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+  // 15 Nov (judges): the panel opens with the one-cent change filled in, marked as changed.
+  await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01");
+  ok(await page.locator(".f.changed #p-amt").count() === 1, `${tag}: screen 4 opens with the one-cent change filled in (1850.01), marked changed`);
   await screenChecks(page, `${tag} screen 4`, width);
   ok(await page.inputValue("#p-payee") === L0.terms.beneficiary_name && await page.inputValue("#p-acct") === L0.terms.iban_last4, `${tag}: the fields hold the signed payee and account ending`);
   // 15 Nov ("Try to change it"): every signed field a person reads, each holding its signed value, and three attacks.
@@ -721,6 +723,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
   const layers = await page.locator(".layer").allTextContents();
   ok(layers.length === 2 && layers[0] === "Your signature: The signature is over other terms than the ones sent." && layers[1] === PAY.executor, `${tag}: refused: one row per layer (${layers.join(" | ")})`);
+  ok(await page.locator(".why .hashes .hash").count() === 2 && await page.locator(".why .hashes").isVisible(), `${tag}: refused: the signed and the asked hash in view, not folded`);
   const hashes = await page.locator(".hash").allTextContents();
   const raw = JSON.parse(rawText) as { signed_sha256: string; sent_sha256: string };
   ok(hashes.length === 2 && hashes[0] === `${PAY.signed}${raw.signed_sha256}` && hashes[1] === `${PAY.sent}${raw.sent_sha256}` && raw.signed_sha256 === L0.terms_sha256 && raw.sent_sha256 !== raw.signed_sha256, `${tag}: refused: the signed and the sent hash`);
@@ -758,7 +761,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     await page.evaluate(() => { const o = JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>; o.cred = null; sessionStorage.setItem("purser.try", JSON.stringify(o)); });
     await page.reload();
     await page.waitForSelector(`h1:text-is("${PAY.heading}")`);
-    await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
+    await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01");
     ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
   }
   // An attack: pay it twice. The signed terms sent again: paid once, the rule that held, no second transfer.

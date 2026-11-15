@@ -206,7 +206,8 @@ export const WORK = {
    * 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed, never a fixed
    * list), then why the CFO signs ({money}: the invoice's total; the agents pay no supplier invoice alone here).
    */
-  signNeeded: "{money} is paid only with your signature: the agents pay no supplier invoice alone.",
+  /** 15 Nov (judges): what is true of this test company: its agent limit is zero; with a CFO's limit, agents pay alone below it. */
+  signNeeded: "{money} is paid only with your signature: this test company's agent limit is zero. With a CFO's limit set, agents pay alone below it.",
   /** The time line with the model that read it ({model}: "Claude Haiku 4.5"), when Claude did. */
   tookBy: "{model} read it; answered in {s} s, measured in your browser.",
 };
@@ -599,6 +600,11 @@ export const COMPANY = {
   done: "Done: {money} read, checked, signed and paid in {time}. Nothing real moved.",
   /** Without the figures (a reload that cannot read them): the same sentence without them. */
   donePlain: "Done: read, checked, signed and paid. Nothing real moved.",
+  /**
+   * 15 Nov (owner: "cost per invoice"): what Claude cost for this invoice, measured from this visit's own events (the
+   * engine records each call's cost and model). Shown only when a cost was recorded: never estimated. {usd}, {models}.
+   */
+  cost: "Claude cost of this invoice: USD {usd} ({models}), measured in this visit.",
   /** The next steps, one primary and three quiet links; no form, nothing collected. */
   /** 15 Nov (owner: "I'm stuck at the end"): the primary way on, and three secondary ones (the walkthrough is 4:58). */
   rails: "See it run on a live Airwallex sandbox",
@@ -788,6 +794,8 @@ export const VISIBLE = {
     [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.againAsk, COMPANY.againYes, COMPANY.againNo, COMPANY.runs],
     // 14 Nov (owner): the score without the one-cent change: its link in the refusal's place.
     [COMPANY.heading, COMPANY.done, COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.tryCent, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
+    // 15 Nov: what Claude cost for this invoice, measured in this visit (only when the engine recorded a cost).
+    [COMPANY.heading, COMPANY.done, COMPANY.cost.replace("{usd}", "0.0123").replace("{models}", "Claude Haiku 4.5"), COMPANY.didFiled, COMPANY.didSigned, COMPANY.didPaid, RUN.head, "1:42", RUN.time, "4", RUN.steps, RUN.refused, RUN.share, COMPANY.rails, COMPANY.film, COMPANY.cloud, COMPANY.star, ...PROOF_WORDS, COMPANY.download, COMPANY.json, COMPANY.again, COMPANY.runs],
   ],
   gone: [[GONE.heading, GONE.button]],
   ended: [[ENDED.heading, ENDED.button]],
@@ -848,7 +856,7 @@ export const VISIBLE = {
 // that held and the signature line, and two ways on ("pay 1" to "pay 10"); the finish has one primary way on and three
 // secondary ones ("company 0" to "company 4"); screen 2's progress line and the flagged line ("work 13" to "work 15").
 // Each pinned at its count, for the lead to decide.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 110, "company 1": 103, "company 2": 116, "company 3": 126, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 111, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 94, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 75, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 78, "invoice 7": 67, "pay 10": 168 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 110, "company 1": 103, "company 2": 116, "company 3": 126, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 111, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 124 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

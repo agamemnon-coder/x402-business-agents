@@ -34,7 +34,7 @@ export const STEP_PROOF: Record<string, string> = {
  * Airwallex logo here; Airwallex is the platform, shown as the site header's "Built on Airwallex" badge.
  */
 export const START_LOGOS: { src: string; alt: string; w: number; h: number; key: string }[] = [
-  { src: "/assets/logo-alta.svg", alt: "Alta", w: 475, h: 250, key: "alta" },
+  { src: "/assets/logo-alta.svg", alt: "Alta (formerly Metal)", w: 475, h: 250, key: "alta" },
   { src: "/assets/logo-claude-slate.svg", alt: "Claude", w: 9156, h: 2000, key: "claude" },
 ];
 
@@ -86,7 +86,10 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
   const logos=el('ul','logos');
   for(const l of LOGOS){
     const img=el('img');img.src=l.src;img.alt=l.alt;img.width=l.w;img.height=l.h;img.decoding='async';img.className='lg lg-'+l.key;
-    logos.append(el('li','tile'+(l.key==='alta'?' alta':''),l.key==='alta'?[img,el('span','was',T.formerly)]:img));
+    // 15 Nov (judges: the strip read "(formerly Metal)" alone): the logo's alt names it, "Alta (formerly Metal)"; the
+    // visible "(formerly Metal)" beside it is the same words for the eye, so screen readers hear them once.
+    const was=el('span','was',T.formerly);was.setAttribute('aria-hidden','true');
+    logos.append(el('li','tile'+(l.key==='alta'?' alta':''),l.key==='alta'?[img,was]:img));
     if(l.key==='alta')logos.append(el('li','tile tname',T.visa));
   }
   const partners=el('div','partners',[el('p','pl',T.worksWith),logos,el('p','pn',T.runs_note)]);
@@ -218,7 +221,8 @@ const tour=(()=>{
     if(s==='pay'&&refusedNow()){show('company');return}
     if(s==='pay'&&t){
       // One cent less than what was signed, as a person would type it, then Pay.
-      const f=$('#main .screen.pay input');const v=f&&runKit.oneCentLess(normAmount(f.value));
+      // The panel opens with the one-cent change filled in (15 Nov); only a field put back is changed here.
+      const f=$('#main .screen.pay input');const v=f&&!f.closest('.f.changed')&&runKit.oneCentLess(normAmount(f.value));
       if(f&&v){f.value=v;f.dispatchEvent(new Event('input',{bubbles:true}))}
     }
     let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}

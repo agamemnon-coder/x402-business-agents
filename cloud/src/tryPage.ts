@@ -280,6 +280,7 @@ pre.terms { margin: 8px 0 0; padding: 12px; border-radius: 12px; background: var
 .outcome { margin-top: 16px; }
 .stamp { display: inline-block; margin: 0 0 10px; padding: 2px 10px; border: 2px solid var(--bad); border-radius: 8px; color: var(--bad); font-weight: 750; font-size: 17px; letter-spacing: .02em; }
 .layer { margin: 0 0 6px; font-size: 15px; }
+.why .hashes { margin: 0 0 12px; display: grid; gap: 2px; }
 .hash { margin: 0; font-size: 12px; line-height: 1.6; color: var(--faint); overflow-wrap: anywhere; }
 .hash .hl { display: inline-block; min-width: 52px; color: var(--muted); font-family: Inter, system-ui, sans-serif; font-weight: 600; }
 .hash mark { background: none; color: var(--text); font-weight: 600; }
@@ -689,7 +690,7 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx'];
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','cost'];
 const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
@@ -735,6 +736,14 @@ function pollLater(ms){clearTimeout(pollTimer);pollTimer=setTimeout(pollTick,ms)
 function pollStart(onEvents,onSlow){P.on=true;P.inflight=true;P.final=false;P.renewed=false;P.waiting=false;P.onEvents=onEvents;P.onSlow=onSlow||null;P.t0=performance.now();pollLater(1000)}
 function pollDone(){P.inflight=false;P.final=true;if(P.on&&!P.busy&&!P.waiting)pollLater(1000)}
 function pollStop(){P.on=false;P.waiting=false;clearTimeout(pollTimer);pollTimer=null}
+// 15 Nov (owner: "cost per invoice"): what Claude cost for this invoice, measured: the engine's own events for its calls
+// (claude.read, agent.run: cost_usd_micros and the model) while this invoice is filed and approved. Never estimated: no
+// event with a cost, no figure.
+const modelName=(m)=>{const mm=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2})(?!\d))?/.exec(typeof m==='string'?m:'');return mm?'Claude '+mm[1][0].toUpperCase()+mm[1].slice(1)+' '+mm[2]+(mm[3]?'.'+mm[3]:''):''};
+function costSeen(items){if(!S.cost||typeof S.cost!=='object')return;let moved=false;
+  for(const e of items){const f=e&&e.fields;if(!f||(e.event!=='claude.read'&&e.event!=='agent.run'))continue;const c=Number(f.cost_usd_micros);if(!(isFinite(c)&&c>0))continue;
+    S.cost.micros=(Number(S.cost.micros)||0)+c;const n=modelName(f.model);if(n&&S.cost.models.indexOf(n)<0)S.cost.models.push(n);moved=true}
+  if(moved)save()}
 async function pollTick(){
   pollTimer=null;
   if(!P.on)return;
@@ -759,7 +768,7 @@ async function pollTick(){
     const items=r.json.items.filter((e)=>e&&typeof e.seq==='number'&&e.seq>(S.after||0));
     if(typeof r.json.next==='number'&&r.json.next>=(S.after||0))S.after=r.json.next;else if(items.length)S.after=items[items.length-1].seq;
     save();
-    if(items.length&&P.onEvents)P.onEvents(items);
+    if(items.length){costSeen(items);if(P.onEvents)P.onEvents(items)}
   }
   if(P.inflight||P.final)pollLater(1000);else if(last)pollStop();
 }
@@ -1158,6 +1167,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     return;
   }
   const sk=skeleton();result.append(sk.node);
+  S.cost={micros:0,models:[],invoice:null};save();
   const t0=performance.now();
   // A line aimed at the AI that the engine flagged while it filed this invoice (its own event, read by the poller):
   // said under the answer once both are in. The answer is the engine's as for any invoice (the line changed nothing).
@@ -1174,7 +1184,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
     result.replaceChildren();drawResult(result,r,ms);drawn=r.status===200;flag();
     // Back from the next step returns to this answer, never files the invoice again.
-    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
+    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed&&S.cost){S.cost.invoice=filed.id;save()}if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
 }});
@@ -1519,6 +1529,9 @@ screen('pay',{heading:C.pay.heading,draw(box){
     // What to do first, then the fields.
     intro=el('div','',[el('p','',Y.line)]);
     top.replaceChildren(intro,form);reset();
+    // 15 Nov (judges): the first attempt is the one-cent change, filled in: one cent more than the signed amount.
+    const up=(a)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(a));if(!m)return null;const c=Number(m[1])*100+Number(m[2])+1;return Math.floor(c/100)+'.'+String(c%100).padStart(2,'0')};
+    const plus=up(T.terms.amount);if(plus){F.amount.value=plus;mark()}
     // Three attacks, each the same pay route (or, for a planted instruction, a new invoice): what Purser did, and why.
     const atk=(label,glyph,run)=>{const b=el('button','btn quiet atk',[icon(glyph,15),el('span','',label)]);b.type='button';b.addEventListener('click',()=>{if(!main.node.disabled)run()});return b};
     attacks.replaceChildren(el('p','ah',Y.attacks),el('div','acts',[
@@ -1590,9 +1603,10 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(sig.verified===false){const why=typeof sig.reason==='string'&&/\s/.test(sig.reason.trim())?sig.reason.trim():Y.signatureOff;proof.append(el('p','layer',fill(Y.signature,{reason:why})))}
     if(ex.accepted===false){proof.append(el('p','layer',Y.executor));
       if(typeof ex.said==='string'&&ex.said)proof.append(el('details','',[el('summary','',Y.executorFold),el('p','',ex.said),el('p','hint',Y.executorNote)]))}
+    // 15 Nov (judges): the two hashes in view, signed above asked, every differing character marked.
     const h=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
     const line=(label,runs)=>el('p','hash mono',[el('span','hl',label),...runs.map((x)=>x[1]?el('mark','',x[0]):x[0])]);
-    proof.append(line(Y.signed,h.a),line(Y.sent,h.b));
+    diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));
     proof.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
     proof.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
     const made=Number(j.transfers_after)-Number(j.transfers_before);
@@ -1776,6 +1790,9 @@ screen('company',{heading:C.company.heading,draw(box){
     const ms=inv?Date.parse(inv.paid_at)-Date.parse(inv.received_at):NaN;
     if(inv&&isFinite(ms)&&ms>=0){done.removeAttribute('aria-busy');done.textContent=fill(Y.done,{money:cash(inv.currency,inv.total),time:took(ms)})}else plain();
   });
+  // What Claude cost for this invoice, measured from this visit's own events; nothing when none was recorded.
+  const want0=S.proposal&&S.proposal.invoice;const cm=S.cost&&S.cost.invoice&&S.cost.invoice===want0?Number(S.cost.micros):0;
+  const costLine=cm>0?el('p','muted cost',fill(Y.cost,{usd:(cm/1e6).toFixed(4),models:(S.cost.models||[]).join(', ')||'Claude'})):null;
   const did=el('ul','did',[['file-check',Y.didFiled],['scan-face',Y.didSigned],['circle-check',Y.didPaid]].map(([n,w])=>el('li','',[el('span','dic',icon(n,22)),el('span','',w)])));did.setAttribute('aria-label',Y.did);
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
   // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs on /proof; three secondary ones.
@@ -1795,7 +1812,7 @@ screen('company',{heading:C.company.heading,draw(box){
   yes.addEventListener('click',()=>{clearTimeout(renewTimer);renewTimer=null;forget();show('start')});
   const runs=el('ul','runs');
   for(const r of C.recorded){const a=el('a','',[el('span','rt',r.title),el('span','rd',fill(Y.recorded,{date:r.date}))]);a.href=RUNS+'#'+r.key;a.rel='noopener';a.target='_blank';runs.append(el('li','',a))}
-  box.append(done,did,runScore(),el('div','acts next',[rails]),more,proofBand(),el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
+  box.append(done,...(costLine?[costLine]:[]),did,runScore(),el('div','acts next',[rails]),more,proofBand(),el('div','records',[line,el('div','acts',[dl,json])]),el('p','againl',again),ask,el('details','',[el('summary','',Y.runs),runs]));
   // Early access (hook, 14 Nov): no such link until the owner names the contact channel; then one more quiet link in
   // "more", never a form, and nothing collected on this page.
   async function download(asJson){
