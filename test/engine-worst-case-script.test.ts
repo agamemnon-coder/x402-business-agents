@@ -84,6 +84,8 @@ describe("the always-pay script on the visitor's same invoice", () => {
     const [d] = decision(db);
     expect(d!.fields).toMatchObject({ source: "claude", action: "hold", outcome: "hold", script_outcome: "ask_cfo" });
     expect(typeof d!.fields.script_overridden_by).toBe("string");
+    // 15 Nov: code's own injection screen reached the Checker as a warning (its codes), and changed no outcome by itself.
+    expect(String(d!.fields.codes).split(",")).toContain("instructions_in_document");
   });
 
   it("scriptOn is enforce with ALWAYS_PAY: a finding that stops payment holds it, whatever the script says", () => {
