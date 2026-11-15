@@ -20,7 +20,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { AIRI_CREDENTIAL, SANDBOX_SETTLED, VISA_CLAIM, VISA_ICC_LINE, VISA_TAP_STATUS } from "../config/brand.js";
 import { airwallexData } from "../partners/data.js";
 import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family, fxOf, ownTap, payments, split, tapRun, timings, type AgentRun, type Ev } from "./run.js";
-import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
+import { PROOF_FIRST_CSS, proofFirstHtml, visaFirstFacts, visaLimitsLine } from "./proofFirst.js";
+import { VISA_REUSE_ID } from "./visaStory.js";
+import { ENDORSE_NOTE, LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
 import { centHtml, centRecord, LIVE_CARDS_JS, liveCardsHtml } from "./cardCent.js";
@@ -53,6 +55,7 @@ import { OPEN_TARGET_JS, esc, icon, page, pageTitle, setBuiltOn, TRY_URL } from 
 const CSS = `.pp { padding: 26px 0 24px; }
 .pp .wrap { max-width: 1040px; display: grid; gap: 18px; }
 .phd { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.phd .noend { font-size: 13px; color: var(--muted); }
 .phd h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 780; letter-spacing: -.03em; flex: 1 1 100%; }
 .logo { display: inline-flex; align-items: center; height: 34px; padding: 0 12px; border-radius: 10px; background: #fff; border: 1px solid var(--border); flex: none; }
 .logo.dark { background: #191919; border-color: #191919; } .logo img { display: block; height: 15px; width: auto; }
@@ -176,7 +179,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // (Alta earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
   // and /visa show. Proof's "Policy and card side by side" opens the cards' fold (#controls, or #card-<agent>).
   const body = airwallexBody(run, {
-    logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: liveCardsHtml() + centHtml(centRecord()) + (cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""),
+    logo: LOGO.airwallex + ENDORSE_NOTE, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: liveCardsHtml() + centHtml(centRecord()) + (cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""),
     awx1: awxRunBlock(), airi: airiRunBlock() + vic2RunBlock(undefined, { short: true }),
     picture: [node("zap", "Alta earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
@@ -335,7 +338,9 @@ export function visaPage(run: AgentRun = agentRun()): string {
   // TAP work, outside the entry, last inside it (its own closed fold), so it is never on the first screen at any width.
   const body = `<main class="pp"><div class="wrap">
   <div class="phd">${LOGO.visa}<span class="pill run">${icon("database", 14)}${esc(vic3 ? visaLatestLabel(rec, vic3.started_at) : visaRunLabel(rec))}</span><h1>${esc(VISA_H1)}</h1></div>
-  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
+  ${vic3 ? `<p class="vlead" data-rec="${VIC3_RUN_FILE}">${esc(`${vic3Lead(vic3)}.`)}</p>
+  <p class="vlimits" data-rec="${VIC3_RUN_FILE}">${esc(visaLimitsLine(vic3 as never))}</p>
+  ${proofFirstHtml(visaFirstFacts(vic3 as never, VIC3_RUN_FILE, `#${VISA_REUSE_ID}`))}` : `<p class="vintro">${esc(VISA_LEAD)}</p>`}
   ${visaCardSceneHtml()}
   <p class="vbasis">${esc(VISA_ENTRY_LINE)}${iccLine ? `<br>${iccLine}` : ""}</p>${icc}
   <details class="sumd" id="visa-asks-fold"><summary>${esc("What Visa Intelligent Commerce asks for, and how Purser meets it")}</summary>
@@ -370,7 +375,7 @@ export function visaPage(run: AgentRun = agentRun()): string {
     ...(sceneData ? { data: sceneData } : {}),
     // /visa says the ICC status once, in its body; its footer leaves that item out (assertVicFirst).
     builtOn: builtOnHtml(run, false),
-    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
+    title: VISA_TITLE, tab: "visa", css: `${CSS}\n${PROOF_FIRST_CSS}\n.pp .vlimits { margin: 6px 0 0; font-size: 14.5px; color: var(--muted); }\n${STATS_CSS}\n${VISA_HERO_CSS}\n${VISA_STORY_CSS}\n.airi-finding { margin: 12px 0 0; font-size: 14.5px; color: var(--muted); }\n.pp .vlead { margin: 8px 0 0; font-size: 18px; font-weight: 650; }`, body, js: `${COUNT_JS}\n${OPEN_TARGET_JS}${sceneData ? `\n${VISA_CARD_SCENE_JS}` : ""}`, stage: false,
     // Who asked, in the description and "What's real?", from the same function as the run's summary line (airiAsker).
     description: `Visa Intelligent Commerce via Airwallex's Airi, run live in the Airwallex sandbox with a test card: above the limit, an ${AIRI_CREDENTIAL} for one purchase is asked for only after the CFO's Face ID. ${asker.sentence}.`,
     // "What's real?": the Airi run's own line (its label and merchant, from the record) and nothing of the main run.
@@ -421,7 +426,7 @@ export function claudePage(run: AgentRun = agentRun()): string {
   // as a bar chart; the folds below as details.
   const ev = claudeEvidence(), used = Object.fromEntries(run.agents.map((a) => [a.id, a.family]));
   const body = claudeMain({
-    logo: LOGO.claude, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
+    logo: LOGO.claude + ENDORSE_NOTE, label: run.label, runIcon: icon("database", 14), evidence: ev, used,
     split: { ...sp, calls, faceId: faceIdDecisions(run.record), onChain: metalStory(run.record).payments },
     agents: run.agents.map((a) => { const st = s.agent_stats.find((x) => x.agent === a.id); return { id: a.id, short: a.short, family: a.family, decisions: st?.decisions ?? 0, calls: st?.claude_calls ?? 0 }; }),
     folds: sweepFold(ev, used) + failureFold(ev)
@@ -460,7 +465,8 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true)}, each run dated` }] : []),
-    { name: "Alta (formerly Metal)", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
+    // Jury panel, 15 Nov: "Alta" here, as on every later mention; "(formerly Metal)" is said once per page, at its first mention in <main>.
+    { name: "Alta", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },

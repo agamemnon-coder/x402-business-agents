@@ -11,6 +11,7 @@
 // CSS only. The final state is the default: with reduced motion (or no animation support) the whole flow stands.
 
 import { readFileSync } from "node:fs";
+import { AP_ACCOUNTS, dutchVat } from "../ap/books.js";
 import { esc, icon } from "./ui.js";
 
 /** The record of that run: every value the card shows is read from it. */
@@ -19,10 +20,24 @@ interface TrySample { mode: { reader: string; reader_model?: string }; invoice: 
 const rec = JSON.parse(readFileSync(new URL(`../../${TRY_SAMPLE_RECORD}`, import.meta.url), "utf8")) as TrySample;
 const money = (a: string) => Number(a).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const cur = rec.invoice.currency;
+/**
+ * Judge scan, 15 Nov: the card books the VAT as Purser's engine books it now (src/ap/books.ts accrualEntries): VAT at
+ * no Dutch rate (the German supplier's 19%) goes to 1515, VAT to reclaim from Germany, as the /try run of the same
+ * invoice does today. The recorded run (13 Nov, earlier that day) posted it to 1510, Dutch input VAT; its record stays
+ * as it was and "What's real?" says so. Every amount on the card is still the record's.
+ */
+const vatLine = (l: TrySample["booked"][number]) => l.account === AP_ACCOUNTS.inputVat && l.debit;
+const net = rec.booked.find((l) => l.debit && !vatLine(l));
+const nowAbroad = (l: TrySample["booked"][number]) => vatLine(l) && net ? dutchVat(Math.round(Number(net.debit) * 100), Math.round(Number(l.debit) * 100)) === null : false;
+export const BOOKED = rec.booked.map((l) => (nowAbroad(l) ? { ...l, account: AP_ACCOUNTS.foreignVat, name: "Foreign VAT" } : l));
+export const VAT_THEN = rec.booked.some(nowAbroad)
+  ? "Its VAT line is booked as Purser books that invoice now, as VAT to reclaim from Germany, as /try does; the recorded run, earlier that day, booked it as Dutch input VAT."
+  : "";
+
 export const FLOW = {
   supplier: rec.invoice.supplier, number: rec.invoice.number, amount: `${cur} ${money(rec.invoice.total)}`, due: rec.invoice.due, account: `…${rec.invoice.account_ending}`,
   hash: `${rec.signed.terms_hash_prefix}…`,
-  ledger: rec.booked.map((l) => ({ code: l.account, name: l.name, debit: l.debit ? `${cur} ${money(l.debit)}` : "", credit: l.credit ? `${cur} ${money(l.credit)}` : "" })),
+  ledger: BOOKED.map((l) => ({ code: l.account, name: l.name, debit: l.debit ? `${cur} ${money(l.debit)}` : "", credit: l.credit ? `${cur} ${money(l.credit)}` : "" })),
 };
 
 /** The step labels above the card, a few words each. */
@@ -30,15 +45,6 @@ export const FLOW_STEPS = ["Invoice", "Read", "Check", "Sign", "Paid"] as const;
 // Jury, 13 Nov: whose run it is (a test company in /try, not the main run's Northwind Outdoor); its day is in "What's real?".
 // Partner scan, 14 Nov: "test money" moved up to the line under the buttons (REASSURE), still said once on Home.
 export const FLOW_NOTE = "One /try run, a test company's sample invoice.";
-/**
- * Judge scan, 14 Nov: the recorded run booked the German supplier's 19% to 1510 (input VAT); later on 13 Nov Purser's
- * code began booking a German supplier's 19% to 1515, VAT to reclaim from Germany (src/ap/books.ts foreignVat), as /try
- * and Purser Cloud do now. The record stays as it was; the line says so wherever the hero shows a 1510 line.
- */
-export const VAT_THEN = rec.booked.some((l) => l.account === "1510")
-  ? "Its VAT line is as that run booked it: Dutch input VAT. Since later that day Purser books a German supplier's 19% as VAT to reclaim from Germany, as /try and Purser Cloud do now."
-  : "";
-
 const LOOP = 12;
 
 /** The reader chip names who read the recorded invoice: Claude only when the record says Claude read it. */
@@ -65,7 +71,7 @@ export function heroFlowHtml(): string {
       </div>
       <div class="hf-paid">
         <p class="hf-paid-h"><span>${icon("check", 14)}</span><b>Paid</b><small>simulated bank</small></p>
-        <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td${l.code === "1510" && VAT_THEN ? ` title="${esc(VAT_THEN)}"` : ""}>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
+        <table class="hf-led"><tbody>${f.ledger.map((l, i) => `<tr class="hf-l${i}"><th>${esc(l.code)}</th><td${l.code === AP_ACCOUNTS.foreignVat && VAT_THEN ? ` title="${esc(VAT_THEN)}"` : ""}>${esc(l.name)}</td><td>${esc(l.debit || l.credit)}<small>${l.debit ? "Dr" : "Cr"}</small></td></tr>`).join("")}</tbody></table>
       </div>
     </div>
   </div>

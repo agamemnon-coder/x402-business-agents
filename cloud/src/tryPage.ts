@@ -1812,6 +1812,10 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
           // Each amount right-aligned in tabular figures; on a phone each line stacks, its side named (Dr or Cr).
           const amt=(cents,side)=>{const d=el('td','r');if(cents){d.append(el('span','side',side+' '),money(l.currency,fromCents(cents)))}else d.className='r none';return d};
           tb.append(el('tr',ac.role==='vat'?'vatl':'',[el('td','acct',[el('span','mono',String(l.account||'')),role?el('span','role',' · '+role):null]),amt(l.debit_cents,B.dr),amt(l.credit_cents,B.cr)]))}}
+      // A conversion through money in transit (src/ap/books.ts paymentEntries): the currency sold in on the debit side, the
+      // currency bought out on the credit side, one line each; the row under the table says they are one conversion.
+      const tr=mine.flatMap((e)=>(e.lines||[]).filter((l)=>String(l.account)==='1590')),sold=tr.find((l)=>l.debit_cents),bought=tr.find((l)=>l.credit_cents);
+      if(sold&&bought&&sold.currency!==bought.currency){const c=el('td','en conv',fill(B.conv,{out:sold.currency+' '+fromCents(sold.debit_cents),in:bought.currency+' '+fromCents(bought.credit_cents)}));c.colSpan=3;tb.append(el('tr','',[c]))}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
       const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?'#'+e.entry_id:'').filter(Boolean);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),ids.length?el('p','ids',[el('span','muted',C.receipt.entries+' '),el('span','mono',ids.join(', '))]):null,el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),

@@ -445,11 +445,14 @@ async function engineGuestArchive(origin: string) {
   await p.goto(`${origin}/#/sign-in`);
   await p.waitForSelector("#guest");
   await p.click("#guest");
-  await p.waitForSelector(".dash", { timeout: 20_000 });
+  // Judge panel, 15 Nov: a guest lands on what waits for approval (Invoices, Waits for Face ID).
+  await p.waitForURL(/#\/invoices\?f=waiting_cfo$/, { timeout: 20_000 });
+  // Drawn before moving on, as the overview was (its .dash): a late list would land on the next page.
+  await p.waitForSelector("main >> text=Waits for Face ID", { timeout: 20_000 });
   await p.goto(`${origin}/#/archive`);
   await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
   const text = (await p.textContent("main")) ?? "";
-  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""} (vault reads ${vault.length}: ${text.replace(/\s+/g, " ").slice(0, 160)})`);
   await c.close();
 }
 
@@ -902,6 +905,11 @@ async function guestPass() {
     await p.goto(`${ORIGIN}/#/sign-in`);
     await p.waitForSelector("#guest");
     await p.click("#guest");
+    // Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval, not on the overview or the sign-in.
+    await p.waitForURL(/#\/invoices\?f=waiting_cfo$/, { timeout: 20_000 });
+    await p.waitForTimeout(900);
+    ok(/Waits for Face ID/.test((await p.textContent("main")) ?? ""), `${tag}: a guest lands on the invoices that wait for Face ID`);
+    await p.goto(`${ORIGIN}/#/overview`);
     await p.waitForSelector(".dash", { timeout: 20_000 });
     // Review, 13 Nov: no empty band below the first screen. Without any scroll (a page read whole, or a full-page
     // screenshot), every card has risen in, the ones below the first screen too.

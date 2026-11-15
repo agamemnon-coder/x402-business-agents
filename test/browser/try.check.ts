@@ -886,7 +886,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // the code as secondary buttons; the proof band. 15 Nov: then /try/negotiate, in the same tab (it finds this company).
   const outs = await page.locator(".acts.more a.btn").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent]));
   ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && (await page.locator("a.btn.primary.proofl").textContent()) === COMPANY.rails
-    && JSON.stringify(outs) === JSON.stringify([[VERIFY_URL, VERIFY_YOURSELF.verify], [FILM_URL, COMPANY.film], ["https://purser-try.max-31b.workers.dev/", COMPANY.cloud], ["https://github.com/agamemnon-coder/x402-business-agents", COMPANY.star], [`${ORIGIN}${FINISH_LINKS.negotiate.href}`, FINISH_LINKS.negotiate.label]])
+    && JSON.stringify(outs) === JSON.stringify([[VERIFY_URL, VERIFY_YOURSELF.verify], [FILM_URL, COMPANY.film], ["https://purser-try.max-31b.workers.dev/#/guest", COMPANY.cloud] /* judge panel 15 Nov: the guest route */, ["https://github.com/agamemnon-coder/x402-business-agents", COMPANY.star], [`${ORIGIN}${FINISH_LINKS.negotiate.href}`, FINISH_LINKS.negotiate.label]])
     && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one primary way on to the live sandbox runs, five secondary buttons ("Verify this payment yourself" first, "Watch agents negotiate" last, same tab), no form`);
   const band6 = await page.locator(".screen.company .proofband li:not(.wide) a").evaluateAll((as) => as.map((a) => [a.querySelector(".pv")?.textContent, (a as HTMLAnchorElement).href.startsWith("https://github.com/agamemnon-coder/x402-business-agents/blob/main/")]));
   ok(band6.length === 5 && band6.every(([v, linked]) => /^[\d,]+$/.test(String(v)) && linked), `${tag}: the finish's proof band: five measured figures, each linked to its record (${band6.map((b) => b[0]).join(", ")})`);
@@ -1199,9 +1199,10 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${ORIGIN}/${new URL(CLOUD_URL).hash}`);
-  await page.waitForSelector('h1:text-is("Overview")', { timeout: 20_000 });
+  // Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval (Invoices, Waits for Face ID).
+  await page.waitForSelector('h1:text-is("Invoices")', { timeout: 20_000 });
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.cloud.session") ?? "{}") as { guest?: boolean });
-  ok(stored.guest === true && new URL(page.url()).hash === "#/overview" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's overview as a guest, with no page error (${errors.join(" | ")})`);
+  ok(stored.guest === true && new URL(page.url()).hash === "#/invoices?f=waiting_cfo" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's pending approvals as a guest, with no page error (${errors.join(" | ")})`);
   await ctx.close();
 }
 

@@ -92,7 +92,7 @@ function expected(): Record<string, string | string[]> {
     "orders disputed": String(orders),
     "variation runs by Claude": `${VAR.summary.by_claude}/${VAR.summary.runs}`,
     // Stopped before anything moved; the ones only found afterwards are not "stopped" (final review, 4 Nov: "39/39 attacks failed").
-    "attacks stopped": `${RED.results.filter((r) => r.caught === "before").length}/${RED.attempts}`,
+    "attacks stopped": `${RED.results.filter((r) => r.caught === "before").length} of ${RED.attempts}`, // jury panel 15 Nov: never "N/N"
     "audit rows": String(s.audit.rows),
     // Home's tiles (the Home before the v4 animation).
     "decisions made by Claude": `${byClaude}/${decisions}`,

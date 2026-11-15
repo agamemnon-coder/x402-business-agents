@@ -83,7 +83,8 @@ try {
     page.on("console", (m) => { if (m.type() === "error" && !/status of 429/.test(m.text())) errors.push(m.text()); });
     page.on("pageerror", (e) => errors.push(String(e)));
     await page.goto(`${ORIGIN}/#/guest`);
-    await page.waitForFunction(() => location.hash === "#/overview" && document.body.classList.contains("signed-in"));
+    // Judge panel, 15 Nov: a guest lands on what waits for approval.
+    await page.waitForFunction(() => location.hash === "#/invoices?f=waiting_cfo" && document.body.classList.contains("signed-in"));
     // The tab, as a person reaches it (on a phone the menu wraps to a second row).
     await page.click("#tabs a[data-tab='airwallex']");
     await page.waitForFunction(() => document.querySelectorAll(".awcard").length === 10 && [...document.querySelectorAll(".awcard .awstamp")].every((s) => s.textContent!.trim() !== ""), null, { timeout: 15_000 });
