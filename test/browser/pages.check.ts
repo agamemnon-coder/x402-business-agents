@@ -1177,7 +1177,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["All 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
         // The partner cards are in the one fold under the four cards (jury pass, 13 Nov): a reader opens it first.
-        await page.locator("main details.sumd > summary").click();
+        await page.locator("main details#details > summary").click();
         if (inFold) await page.locator("#airwallex details.fold > summary").click();
         await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
         await page.waitForURL(new RegExp(`/airwallex#${id}$`));
@@ -1216,7 +1216,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(250);
       if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      await page.locator("main details.sumd > summary").click();
+      await page.locator("main details#details > summary").click();
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);
       const s = await landed("stops");
@@ -1233,7 +1233,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { open: boolean; cards: number; top: number; head: number; inView: boolean };
       // The read-back sits in a fold on Proof (one flow, Max 7 Nov): open it as a reader does, by its summary, inside the
       // one fold under the four cards (jury pass, 13 Nov).
-      await page.locator("main details.sumd > summary").click();
+      await page.locator("main details#details > summary").click();
       await page.locator("details.deep > summary", { hasText: "Airwallex, read back" }).click();
       const link = page.locator("a.open", { hasText: "Policy and card side by side" });
       if ((await link.getAttribute("href")) !== "airwallex#controls") fail(`/proof ${tag}: "Policy and card side by side" does not point at airwallex#controls`);

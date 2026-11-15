@@ -450,7 +450,7 @@ async function engineGuestArchive(origin: string) {
   await p.goto(`${origin}/#/archive`);
   await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
   const text = (await p.textContent("main")) ?? "";
-  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""}`);
+  ok(/kept by Purser's engine/.test(text) && !/Could not load/.test(text) && vault.length === 0 && errors.length === 0, `engine cloud, guest: #/archive says the archive needs the engine, asks the vault nothing, no console error${errors.length ? ` (${errors.join(" | ")})` : ""} (vault reads ${vault.length}: ${text.replace(/\s+/g, " ").slice(0, 160)})`);
   await c.close();
 }
 

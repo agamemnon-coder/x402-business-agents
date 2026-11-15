@@ -1106,9 +1106,10 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto(`${ORIGIN}/${new URL(CLOUD_URL).hash}`);
-  await page.waitForSelector('h1:text-is("Overview")', { timeout: 20_000 });
+  // Judge panel, 15 Nov: a guest lands on what waits for the CFO's approval (Invoices, Waits for Face ID).
+  await page.waitForSelector('h1:text-is("Invoices")', { timeout: 20_000 });
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.cloud.session") ?? "{}") as { guest?: boolean });
-  ok(stored.guest === true && new URL(page.url()).hash === "#/overview" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's overview as a guest, with no page error (${errors.join(" | ")})`);
+  ok(stored.guest === true && new URL(page.url()).hash === "#/invoices?f=waiting_cfo" && errors.length === 0, `guest: ${new URL(CLOUD_URL).hash} opens the demo company's pending approvals as a guest, with no page error (${errors.join(" | ")})`);
   await ctx.close();
 }
 
