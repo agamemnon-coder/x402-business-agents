@@ -328,7 +328,8 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pv-chain a { color: var(--accent); font-weight: 650; text-decoration: none; }
 .pp-visa { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); color: var(--text); font: 700 15px/1 Inter, system-ui, sans-serif; } /* Visa named in text, never a drawn mark */
 .pp-card b { font: 750 18px/1.25 Inter, system-ui, sans-serif; color: var(--text); }
-.pp-card p { margin: 0; color: var(--muted); font: 500 14.5px/1.5 Inter, system-ui, sans-serif; flex: 1; }
+.pp-card p { margin: 0; color: var(--muted); font: 500 14.5px/1.5 Inter, system-ui, sans-serif; flex: 1; font-feature-settings: "calt" 0; }
+.pv-chain, .pp-l { font-feature-settings: "calt" 0; }
 .pp-a { color: var(--accent); font: 650 14px/1.3 Inter, system-ui, sans-serif; text-decoration: none; }
 .pp-a:hover { text-decoration: underline; }
 .pp-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
@@ -368,6 +369,77 @@ body.present .card.refusal .hashes .hl { margin-right: 10px; font-family: Inter,
 body.present .card.refusal .hashes { margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg); border: 1px solid var(--border); }
 body.present .card.refusal .hashes .hash + .hash { color: var(--bad); }
 body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; font-weight: 800; }
+
+/* Motion (15 Nov, Max: ultra high quality): every screen arrives, every state change is felt, nothing loops loudly.
+   All of it off for people who ask for less motion. */
+.pv-aurora { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  body.pv-shell #main > h1 { animation: mvUp .5s cubic-bezier(.2,.8,.2,1) both; }
+  body.pv-shell #main > .screen > * { animation: mvUp .6s cubic-bezier(.2,.8,.2,1) both; }
+  body.pv-shell #main > .screen > *:nth-child(2) { animation-delay: .07s; }
+  body.pv-shell #main > .screen > *:nth-child(3) { animation-delay: .14s; }
+  body.pv-shell #main > .screen > *:nth-child(4) { animation-delay: .21s; }
+  body.pv-shell #main > .screen > *:nth-child(n+5) { animation-delay: .28s; }
+  /* The agent ticks its checks one by one. */
+  body.pv-shell .screen.work ul.checks li { animation: mvTick .45s cubic-bezier(.2,.8,.2,1) both; }
+  body.pv-shell .screen.work ul.checks li:nth-child(1) { animation-delay: .25s; }
+  body.pv-shell .screen.work ul.checks li:nth-child(2) { animation-delay: .5s; }
+  body.pv-shell .screen.work ul.checks li:nth-child(3) { animation-delay: .75s; }
+  body.pv-shell .screen.work ul.checks li:nth-child(4) { animation-delay: 1s; }
+  body.pv-shell .screen.work ul.checks li svg { animation: mvPop .4s cubic-bezier(.2,1.6,.4,1) both; animation-delay: inherit; }
+  /* Tags, the stage bar, the sidebar. */
+  .pv-tag { animation: mvTag .5s cubic-bezier(.2,.8,.2,1) both .1s; }
+  .pv-stages li .n { transition: background .35s, border-color .35s, color .35s, transform .35s; }
+  .pv-stages li.cur .n { animation: mvRing 2.4s ease-out infinite; }
+  .pv-stages li.done .n { animation: mvPop .45s cubic-bezier(.2,1.6,.4,1) both; }
+  .pv-stages li + li::before { transition: background .5s; }
+  .pv-stages li.done + li::before, .pv-stages li.done + li.cur::before { background: var(--ok); }
+  .pv-howbtn .dot { animation: mvDot 2.4s ease-out infinite; }
+  .pv-use li { animation: mvRow .4s cubic-bezier(.2,.8,.2,1) both; }
+  .pv-use .tot.flash { animation: mvFlash .9s ease-out; }
+  /* The main button breathes once it is the only thing to do; a light sweeps across on hover. */
+  body.pv-shell #main .btn.primary { position: relative; overflow: hidden; transition: transform .18s, box-shadow .25s; }
+  body.pv-shell #main .btn.primary:hover { transform: translateY(-1px); box-shadow: 0 10px 30px -10px color-mix(in srgb, var(--accent) 80%, transparent); }
+  body.pv-shell #main .btn.primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, #ffffff40 50%, transparent 70%); transform: translateX(-120%); }
+  body.pv-shell #main .btn.primary:hover::after { transform: translateX(120%); transition: transform .7s; }
+  body.pv-shell #main .btn.primary.big { animation: mvBreathe 2.8s ease-in-out infinite 1.4s; }
+  /* Approve: the amount lands, the seal settles. */
+  body.pv-shell .screen.approve .receipt.sheet .amount { animation: mvScale .6s cubic-bezier(.2,.9,.3,1.15) both .3s; }
+  body.pv-shell .hashpill[data-v2] { background-image: linear-gradient(100deg, transparent 30%, #ffffff30 50%, transparent 70%); background-size: 250% 100%; animation: mvShine 1.6s ease-out .9s both; }
+  /* Paid: an emerald light passes over the payment once. */
+  body.pv-shell .screen.books .blk.paid { position: relative; overflow: hidden; }
+  body.pv-shell .screen.books .blk.paid::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 35%, color-mix(in srgb, var(--ok) 22%, transparent) 50%, transparent 65%); transform: translateX(-100%); animation: mvSweep 1.4s ease-out .5s both; }
+  body.pv-shell .screen.books .blk.paid .amount { animation: mvScale .6s cubic-bezier(.2,.9,.3,1.15) both .35s; }
+  /* Blocked: one shake, a red pulse, the changed cent marked. */
+  .card.refusal { animation: mvShake .55s cubic-bezier(.36,.07,.19,.97) both .1s, mvGlowRed 2.4s ease-in-out .8s 2 !important; }
+  .card.refusal .diff mark.new { animation: mvMark 1.4s ease-out .5s both; }
+  .card.refusal .hashes mark { animation: mvBlink 1.2s ease-in-out .9s 2; }
+  /* The landing: the steps arrive in order, the refusal last; a slow aurora behind. */
+  body.pv-shell .screen.start .flow li { animation: mvUp .6s cubic-bezier(.2,.8,.2,1) both; }
+  body.pv-shell .screen.start .flow li:nth-child(1) { animation-delay: .25s; }
+  body.pv-shell .screen.start .flow li:nth-child(2) { animation-delay: .45s; }
+  body.pv-shell .screen.start .flow li:nth-child(3) { animation-delay: .65s; }
+  body.pv-shell .screen.start .flow li.fend { animation: mvUp .6s cubic-bezier(.2,.8,.2,1) .95s both, mvShake .5s cubic-bezier(.36,.07,.19,.97) 1.55s; }
+  body.pv-shell:has(.screen.start) .pv-aurora { display: block; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(40vw 30vw at 70% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(35vw 28vw at 30% 80%, color-mix(in srgb, var(--ok) 14%, transparent), transparent 70%); animation: mvAurora 18s ease-in-out infinite alternate; }
+}
+.pv-grad { background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 40%, var(--ok))); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@keyframes mvUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes mvTick { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes mvPop { 0% { transform: scale(.4); } 70% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes mvTag { from { opacity: 0; transform: translateY(-6px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes mvRing { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 10px transparent; } }
+@keyframes mvDot { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent); } 70%, 100% { box-shadow: 0 0 0 8px transparent; } }
+@keyframes mvRow { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes mvFlash { 0% { color: var(--ok); } 100% { color: inherit; } }
+@keyframes mvBreathe { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 18%, transparent); } }
+@keyframes mvScale { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes mvShine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@keyframes mvSweep { to { transform: translateX(100%); } }
+@keyframes mvShake { 0%, 100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+@keyframes mvGlowRed { 0%, 100% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 10%, transparent); } 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--bad) 22%, transparent), 0 0 40px color-mix(in srgb, var(--bad) 30%, transparent); } }
+@keyframes mvMark { 0% { background: color-mix(in srgb, var(--bad) 45%, transparent); } 100% { background: transparent; } }
+@keyframes mvBlink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes mvAurora { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(-4vw,3vh,0) scale(1.08); } }
 `;
 
 const SHARED = String.raw`
@@ -418,12 +490,14 @@ if(new URLSearchParams(location.search).get('neg')!=='1'){
 if(!document.querySelector('body > .pv-money'))document.body.append(mk('div','pv-money',PC.money));
 const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),t])));
 document.body.append(stages);
+document.body.prepend(mk('div','pv-aurora',''));
 function stageOf(){const m=document.getElementById('main');if(!m)return -1;const has=(c)=>!!m.querySelector('.screen.'+c);
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 function v2(){
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
   [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
   const m=document.getElementById('main');if(!m)return;
+  const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
@@ -456,7 +530,8 @@ function drawUse(){
   if(!useBox)return;
   const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
   const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
-  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
+  const flash=calls.length&&useBox.dataset.tot!==String(tot);useBox.dataset.tot=String(tot);
+  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
 }
 drawUse();
 `;
