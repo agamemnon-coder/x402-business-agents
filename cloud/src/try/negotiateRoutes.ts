@@ -14,7 +14,8 @@ import { actionBudget, claudeSpeak, type Budget } from "../../../src/negotiate/c
 import { d1Spend } from "../engine/spend.js";
 import type { Sql } from "../store.js";
 import { readSwitches } from "./switches.js";
-import { negotiate, recordedNegotiation, type Speak } from "../../../src/negotiate/negotiate.js";
+import { negotiate, recordedNegotiation, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
+import { boundsOf } from "../../../src/negotiate/rails.js";
 import type { EngineKit, EngineRoute } from "../engine/routes.js";
 import type { TryEngineCtx } from "./engineRoutes.js";
 import { isTryTenant, tryScopes, TryRefused } from "./start.js";
@@ -47,7 +48,7 @@ export function negotiateClaudeOf(sql: Sql, engineClaude: string | undefined, ke
 }
 
 /** What the route needs of the request's context: /try's engine context, and Claude for the company when it is set up. */
-export interface NegotiateCtx extends TryEngineCtx { env: TryEngineCtx["env"] & { negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined } }
+export interface NegotiateCtx extends TryEngineCtx { env: TryEngineCtx["env"] & { negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined; waitUntil?: (p: Promise<unknown>) => void } }
 
 /** Why the recorded negotiation is shown, in words a visitor reads. */
 export function reasonWords(reason: CappedReason | "not_set_up" | "failed", detail?: string): string {
@@ -74,19 +75,38 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
         throw new TryRefused(429, "limit", `This test company has negotiated ${NEGOTIATIONS_PER_COMPANY} times, its limit. Start a new one to watch again.`);
       const today = c.now.toISOString().slice(0, 10);
       const claude = c.env.negotiateClaude?.(tenant);
-      if (!claude) return json(200, await recordedNegotiation(today, reasonWords("not_set_up")));
-      const got = await claude.reserve();
-      if (!got.ok) return json(200, await recordedNegotiation(today, reasonWords(got.reason)));
-      const budget = actionBudget(got.reservation.micros);
-      try {
-        const n = await negotiate({ today, speak: claude.speak(budget), mode: "live" });
-        await got.reservation.settle(n.micros);
-        return json(200, n);
-      } catch (x) {
-        // What the turns may have cost: every sent turn's worst case, as the budget counted it.
-        await got.reservation.settle(got.reservation.micros - Math.max(0, budget.left()));
-        return json(200, await recordedNegotiation(today, reasonWords("failed", x instanceof Error ? x.message.slice(0, 120) : undefined)));
-      }
+      // The whole negotiation; onTurn hears each live turn as Claude answers it, and reset that the live turns are dropped.
+      const run = async (onTurn?: (t: Turn, best: BestOffer | null) => void, reset?: (reason: string) => void, onLive?: () => void): Promise<Negotiation> => {
+        if (!claude) return recordedNegotiation(today, reasonWords("not_set_up"));
+        const got = await claude.reserve();
+        if (!got.ok) return recordedNegotiation(today, reasonWords(got.reason));
+        const budget = actionBudget(got.reservation.micros);
+        onLive?.();
+        try {
+          const n = await negotiate({ today, speak: claude.speak(budget), mode: "live", ...(onTurn ? { onTurn } : {}) });
+          await got.reservation.settle(n.micros);
+          return n;
+        } catch (x) {
+          // What the turns may have cost: every sent turn's worst case, as the budget counted it.
+          await got.reservation.settle(got.reservation.micros - Math.max(0, budget.left()));
+          const reason = reasonWords("failed", x instanceof Error ? x.message.slice(0, 120) : undefined);
+          reset?.(reason);
+          return recordedNegotiation(today, reason);
+        }
+      };
+      if (c.url.searchParams.get("stream") !== "1") return json(200, await run());
+      // ?stream=1 (15 Nov, the page's chat): one JSON object a line, as it happens. {type: "start", live: true, bounds} once live Claude is reserved, then {type: "turn", turn, best} for each
+      // live turn the moment Claude has answered it and the rails have checked it; {type: "reset", reason} when Claude
+      // failed mid-way and the live turns are dropped; then {type: "done", negotiation}, the same object as without it.
+      const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+      const w = writable.getWriter();
+      const enc = new TextEncoder();
+      const line = (o: unknown) => { void w.write(enc.encode(`${JSON.stringify(o)}\n`)).catch(() => undefined); };
+      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(sceneOf(today), today) }))
+        .then((negotiation) => line({ type: "done", negotiation }), () => line({ type: "error", message: "The negotiation could not finish. Nothing was paid." }))
+        .finally(() => { void w.close().catch(() => undefined); });
+      c.env.waitUntil?.(done);
+      return new Response(readable, { status: 200, headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
     } },
   ];
 }

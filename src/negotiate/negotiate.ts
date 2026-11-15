@@ -168,7 +168,7 @@ const standing = (t: Turn | undefined): { amount: string; pay_by: string } | nul
  * The negotiation: turns in order, Sourcing first, until one side accepts the other's last terms that the rails let
  * stand (and its own accepting turn passes them too), or MAX_TURNS. No deal: the invoice as issued, by its due date.
  */
-export async function negotiate(o: { today: string; speak: Speak; mode: "live" | "recorded" }): Promise<Negotiation> {
+export async function negotiate(o: { today: string; speak: Speak; mode: "live" | "recorded"; onTurn?: (t: Turn, best: BestOffer | null) => void }): Promise<Negotiation> {
   const scene = sceneOf(o.today);
   const b = boundsOf(scene, o.today);
   const turns: Turn[] = [];
@@ -181,6 +181,7 @@ export async function negotiate(o: { today: string; speak: Speak; mode: "live" |
     micros += r.micros;
     const t = turnOf(n, who, r.answer, scene, b, { live: o.mode === "live", model: r.model, ms: r.ms }, best);
     turns.push(t);
+    o.onTurn?.(t, bestOfferOf(turns, b));
     if (t.accept && t.rails.ok) {
       const theirs = standing([...turns].reverse().find((x) => x.who !== who));
       // Accepting means the other side's standing terms, exactly: an accept with other terms is a counter.

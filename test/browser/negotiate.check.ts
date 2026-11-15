@@ -52,7 +52,7 @@ const TURNS: AgentAnswer[] = [
 let calls = 0;
 const stub = (async () => {
   const a = TURNS[calls++ % TURNS.length]!;
-  await new Promise((r) => setTimeout(r, 40));
+  await new Promise((r) => setTimeout(r, 300));
   return new Response(JSON.stringify({ content: [{ type: "text", text: JSON.stringify(a) }], usage: { input_tokens: 800, output_tokens: 70 } }), { status: 200 });
 }) as typeof fetch;
 env.negotiateClaude = negotiateClaudeOf(env.sql, "on", "stub-key-not-a-secret", stub);
@@ -70,7 +70,9 @@ const server = createServer(async (req, res) => {
   const h: Record<string, string> = {};
   r.headers.forEach((v, k) => { h[k] = v; });
   res.writeHead(r.status, h);
-  res.end(Buffer.from(await r.arrayBuffer()));
+  // Streamed answers (POST /v1/try/negotiate?stream=1) are passed on as they come, as a Worker sends them.
+  if (r.body) { const rd = r.body.getReader(); for (;;) { const { value, done } = await rd.read(); if (done) break; res.write(Buffer.from(value)); } }
+  res.end();
 });
 await new Promise<void>((r) => server.listen(PORT, r));
 
@@ -108,7 +110,14 @@ async function sane(page: Page, what: string): Promise<void> {
   ok(pads.length === 2 && pads.every(([t, l]) => Math.abs(t! - l!) <= 2), `the cards' headings sit at the same padding top and side (${JSON.stringify(pads)})`);
   await shot("1-start");
   await page.getByRole("button", { name: C.start }).click();
+  // Live: a typing indicator on the side whose model call is running, before its turn comes in.
+  await page.locator("li.typing.sourcing").waitFor({ timeout: 15_000 });
+  ok(true, "a typing indicator on Purser's side while its live call runs");
+  await page.locator("li.typing.supplier").waitFor({ timeout: 15_000 });
+  ok((await page.locator("ol.turns > li.turn:not(.typing)").count()) >= 1, "turns come in one by one while the next side types (streamed)");
   await page.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
+  await page.locator(".sha.done").waitFor({ timeout: 10_000 });
+  ok((await page.locator("li.typing").count()) === 0, "no typing indicator once the agents are done");
   const turns = page.locator("ol.turns > li");
   ok((await turns.count()) === 4, `four turns shown (${await turns.count()})`);
   ok(calls === 4, `four model calls made (${calls})`);
@@ -116,6 +125,14 @@ async function sane(page: Page, what: string): Promise<void> {
   ok(t2.includes(C.supplier), "turn 2 is the supplier's agent, labelled a simulated supplier played by Claude");
   ok(t2.includes(C.refused) && t2.includes(RULES.payee_unchanged), "the bank change is refused, with the rule that held");
   ok(t2.includes("DE44 … 4931"), "the changed account shown masked");
+  ok((await turns.nth(1).locator(".stamp").innerText()).trim().toLowerCase() === C.stamp.toLowerCase(), `the IBAN swap's bubble carries the "${C.stamp}" stamp`);
+  ok(await turns.nth(1).evaluate((n) => n.classList.contains("supplier") && n.querySelector(".pill.sim") !== null), "the supplier's bubble is on its side, with the simulated-supplier badge");
+  const sides = await page.$$eval("ol.turns > li.turn .bubble", (bs) => bs.map((b) => { const r = b.getBoundingClientRect(); return Math.round(r.left + r.width / 2); }));
+  ok(sides[0]! < sides[1]! && sides[2]! < sides[3]!, `Purser on the left, the supplier on the right (bubble centres ${sides.join(", ")})`);
+  const chipsNow = await page.$$eval("#railchips li", (ls) => ls.map((l) => l.className));
+  ok(chipsNow.length === 4 && chipsNow.every((c) => c.includes("ok")), "the four rail chips, green after the last turn");
+  const meter = await page.locator("#meter").innerText();
+  ok(meter.includes("EUR 1,850.00") && meter.includes("EUR 1,813.00") && /EUR 37\.00/.test(meter) && meter.includes("2.0%"), "the deal meter: the invoice, the current and best offer, the discount in EUR and %");
   const t1 = await turns.nth(0).innerText();
   ok(t1.includes(C.sourcing) && t1.includes("EUR 1,794.50") && t1.includes(d(5)) && t1.includes(C.within) && t1.includes(C.live), "turn 1: the Sourcing agent, live, its terms, within the rails");
   ok((await page.locator(".pill.rec").count()) === 0, "no turn labelled recorded in a live negotiation");
@@ -136,6 +153,7 @@ async function sane(page: Page, what: string): Promise<void> {
   const steps = await page.locator("ol.steps").innerText();
   ok(steps.includes(C.steps.signed), "signed with the passkey");
   ok(steps.includes(C.tamperRefused) && steps.includes("EUR 1,813.01"), "one cent more with the same signature: refused");
+  ok((await page.locator("ol.steps li.stop").count()) === 1, "the one-cent refusal drawn as a red line");
   ok(steps.includes(C.steps.paid) && steps.includes("EUR 1,813.00"), "paid as signed");
   ok((await page.locator("ol.steps li.bad").count()) === 0, "no step failed");
   ok(!(await page.getByRole("button", { name: C.sign }).isVisible()) && !(await page.locator("#go").isVisible()), "the used buttons are gone");
@@ -162,6 +180,7 @@ async function sane(page: Page, what: string): Promise<void> {
   let started = 0;
   page.on("request", (q) => { if (q.url().endsWith("/v1/try/start")) started++; });
   await page.goto(`${ORIGIN}/try/negotiate`);
+  await page.evaluate(() => { (window as unknown as { typed: number }).typed = 0; new MutationObserver(() => { if (document.querySelector("li.typing")) (window as unknown as { typed: number }).typed++; }).observe(document.body, { subtree: true, childList: true }); });
   const pads2 = await page.$$eval("section.card", (cs) => cs.map((c) => { const h = c.querySelector("h2")!; const cr = c.getBoundingClientRect(), hr = h.getBoundingClientRect(); return [Math.round(hr.top - cr.top), Math.round(hr.left - cr.left)]; }));
   ok(pads2.length === 2 && pads2.every(([t, l]) => Math.abs(t! - l!) <= 2), `1440 px: the cards' headings sit at the same padding top and side (${JSON.stringify(pads2)})`);
   await page.getByRole("button", { name: C.start }).click();
@@ -171,6 +190,7 @@ async function sane(page: Page, what: string): Promise<void> {
   ok(talk.includes("Claude is switched off"), "and why");
   ok((await page.locator(".pill.rec").count()) === 4 && !talk.includes(C.live), "every turn labelled recorded, none live");
   ok(calls === before, "no model call with the kill switch on");
+  ok((await page.evaluate(() => (window as unknown as { typed: number }).typed)) === 0, "a recorded negotiation never shows a typing indicator");
   ok(started === 0, "the company /try started in this tab is used, no new start");
   ok(talk.includes(RULES.payee_unchanged), "the rails still refuse the bank change");
   await sane(page, "recorded");
