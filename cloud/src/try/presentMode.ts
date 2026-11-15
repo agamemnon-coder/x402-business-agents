@@ -18,7 +18,7 @@
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
 
-import { INVOICE } from "../tryCopy.js";
+import { INVOICE, PAY } from "../tryCopy.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
 import { LOGO_FILES } from "./logos.gen.js";
 import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
@@ -28,7 +28,7 @@ const NEG_HINT = INVOICE.hints.clean ?? "";
 export const PRESENT_BEFORE = "An agent's invoice lands in a queue. An approve button anyone can click pays it, whatever was changed on the way.";
 export const PRESENT_AFTER = "The CFO signs the exact terms with Face ID. Change one cent and the signature is refused: nothing moves.";
 export const PRESENT_TRY = "kit11.max-31b.workers.dev/try";
-export const PRESENT_MONEY = "Test money · simulated bank · nothing real is paid";
+export const PRESENT_MONEY = "Sandbox mode · test money · Airwallex sandbox";
 export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact terms";
 /**
  * The app shell (15 Nov, Max: "it needs to look like the actual product"): in recording mode, the site's menu and the
@@ -40,7 +40,7 @@ export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact 
 export const PRESENT_HOW = {
   eyebrow: "How Purser works",
   heading: "AI agents pay the invoices. You approve the exceptions with Face ID.",
-  tabFlow: "One payment", tabMap: "The whole system", close: "Close",
+  tabFlow: "One payment", tabMap: "The whole system", tabProof: "Partner proof", close: "Close",
   steps: [
     { h: "An invoice comes in", p: "A supplier sends it, by email or as an upload." },
     { h: "AI agents read and check it", p: "Claude reads it. The agents check the supplier, the bank account and whether it was paid before.", logo: "claude" },
@@ -53,6 +53,57 @@ export const PRESENT_HOW = {
   built: "Built with",
   foot: "Test money only · Airwallex sandbox · Alta testnet · no endorsement implied",
 } as const;
+
+/**
+ * The v2 preview (/try?v=2, and recording mode): the same screens and engine, the product's words (Max, 15 Nov). Merged
+ * over the page's copy key by key (tryPage's over), so plain /try keeps the release's words and its negotiation.
+ */
+export const V2_COPY = {
+  start: {
+    eyebrow: "Live demo · about 2 minutes",
+    heading: "AI agents prepare the transfer. Your Face ID releases the funds.",
+    text: "AI agents read and check every supplier invoice within your limits. Above the limit, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
+    flow: [
+      { name: "The AI agent prepares", line: "Claude reads the invoice and proposes the payment." },
+      { name: "Your rules check it", line: "Above the agent's limit, it waits for you." },
+      { name: "You release it", line: "Face ID on the exact amount, supplier and account." },
+    ],
+    flowEnd: "Changed by one cent: blocked",
+    button: "Launch the live transfer demo",
+    fine: "The real product · test money · Airwallex sandbox · deleted after 24 hours",
+  },
+  approve: {
+    heading: "Approve the transfer.",
+    sheet: "Locked payment terms",
+    limit: "Above the agent's limit, so it waits for the CFO. In this demo the limit is EUR 0; below a CFO's limit, agents pay on their own.",
+    signs: "Your approval locks exactly these terms.",
+    approve: "Approve & sign {amount} with {method}",
+  },
+  books: { heading: "Transfer executed." },
+  work: { heading: "The AI agent prepares the transfer." },
+  company: { heading: "Your run, start to finish." },
+  pay: {
+    heading: "Test the lock.",
+    line: "This is the payment you approved, with one cent added. Press Pay and watch what happens.",
+  },
+} as const;
+
+/** The partners' proof, each from a run record, each a link to it (Metal and Visa awards; test networks only). */
+export const PRESENT_PARTNERS = {
+  heading: "Live on real payment rails",
+  sub: "Three refusals and one fingerprint, each from a recorded run you can open. Test networks and sandboxes only.",
+  cards: [
+    { logo: "alta", label: "Alta (formerly Metal) · testnet", h: "Refused on chain", p: "An agent tried to spend over its mandate. Alta refused purchase #24 on chain and recorded why: over the per-payment cap.", link: "See the transaction", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
+    { logo: "airwallex", label: "Airwallex · sandbox", h: "The approval travels with the money", p: "A EUR 240.00 SWIFT payment: Airwallex's own record carries the fingerprint the CFO signed with Face ID, 797d4483…", link: "See it on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi", h: "A reused card credential, blocked", p: "The sandbox accepted the same agent credential a second time and for another amount. Purser refused both before any payment.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
+  ],
+  all: "View live partner proof & architecture",
+  allHref: "https://kit11.max-31b.workers.dev/proof",
+  foot: "No endorsement implied.",
+} as const;
+
+/** The four stages on top of the workspace (v2). */
+export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
 
 export const PRESENT_SHELL = {
   workspace: "Your test company",
@@ -238,6 +289,63 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pv-howbtn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font: 650 14px/1.2 Inter, system-ui, sans-serif; cursor: pointer; text-align: left; }
 .pv-howbtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
 .pv-howbtn:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+
+/* v2 (/try?v=2 and recording mode): the four stages, the status tags, the partners' proof. */
+.pv-stages { display: none; }
+@media (min-width: 1200px) {
+  body.pv-shell.pv-staged { padding-top: 64px; }
+  body.pv-shell.pv-staged .pv-stages { display: flex; position: fixed; z-index: 35; top: 0; left: 252px; right: 0; height: 58px; align-items: center; gap: 6px; margin: 0; padding: 0 24px; list-style: none; background: color-mix(in srgb, var(--bg) 88%, #000); border-bottom: 1px solid var(--border); }
+  body.present.pv-shell.pv-staged .pv-money { top: 12px; }
+}
+.pv-stages li { display: flex; align-items: center; gap: 9px; padding: 7px 14px 7px 8px; border-radius: 999px; color: var(--faint); font: 650 14px/1 Inter, system-ui, sans-serif; }
+.pv-stages li + li::before { content: ""; width: 28px; height: 2px; margin-right: 6px; background: var(--border); border-radius: 2px; }
+.pv-stages .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border); font-size: 12px; }
+.pv-stages li.cur { color: var(--text); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.pv-stages li.cur .n { border-color: var(--accent); background: var(--accent); color: #fff; }
+.pv-stages li.done { color: var(--muted); }
+.pv-stages li.done .n { border-color: var(--ok); background: var(--ok); color: #04130d; }
+.pv-tag { display: inline-flex; align-items: center; gap: 7px; width: fit-content; margin: 0 0 12px; padding: 5px 11px; border-radius: 999px; font: 700 12px/1.2 Inter, system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; }
+.pv-tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pv-tag.amber { color: #f5b544; background: color-mix(in srgb, #f5b544 14%, transparent); }
+.pv-tag.ok { color: var(--ok); background: var(--ok-soft); margin: 10px 0 0; }
+.pv-tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); font-size: 13px; }
+.hashpill[data-v2] { font-family: Inter, system-ui, sans-serif; font-weight: 650; color: var(--ok); background: var(--ok-soft); }
+.hashpill[data-v2]::before { content: "✓ "; }
+.pp { margin-top: 28px; }
+.pp h2 { margin: 0; font: 760 26px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
+.pp-sub { margin: 6px 0 16px; color: var(--muted); font: 500 15px/1.45 Inter, system-ui, sans-serif; }
+.pp-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.pp-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface); min-width: 0; }
+.pp-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pp-l { color: var(--faint); font: 600 12px/1.3 Inter, system-ui, sans-serif; }
+.pp-visa { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border); color: var(--text); font: 700 15px/1 Inter, system-ui, sans-serif; } /* Visa named in text, never a drawn mark */
+.pp-card b { font: 750 18px/1.25 Inter, system-ui, sans-serif; color: var(--text); }
+.pp-card p { margin: 0; color: var(--muted); font: 500 14.5px/1.5 Inter, system-ui, sans-serif; flex: 1; }
+.pp-a { color: var(--accent); font: 650 14px/1.3 Inter, system-ui, sans-serif; text-decoration: none; }
+.pp-a:hover { text-decoration: underline; }
+.pp-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-top: 16px; }
+.pp-note { color: var(--faint); font: 500 12.5px/1.3 Inter, system-ui, sans-serif; }
+.hw-prf { display: none; }
+.pv-how.prf .hw-one { display: none; }
+.pv-how.prf .hw-prf { display: block; }
+.pv-how.prf h2 { display: none; }
+.pv-how .pp { margin-top: 0; }
+.pv-how .pp-card b { font-size: 21px; }
+.pv-how .pp-card p { font-size: 16px; }
+@media (max-width: 899px) { .pp-cards { grid-template-columns: 1fr; } }
+
+/* v2 polish (round 2): one step bar, the pill in it, the refusal framed in red, the partners across the page. */
+@media (min-width: 1200px) {
+  body.pv-shell:not(.pv-staged):not(.present) > .pv-money { display: none; }
+  body.pv-shell.pv-staged > .pv-money { top: 12px; right: 20px; }
+  body.pv-shell.pv-staged #main .vflow { display: none !important; }
+}
+body.pv-shell .band .same { display: none; }
+.card.refusal { border: 2px solid var(--bad) !important; background: color-mix(in srgb, var(--bad) 8%, var(--bg)) !important; box-shadow: 0 0 0 6px color-mix(in srgb, var(--bad) 10%, transparent), 0 24px 60px -30px color-mix(in srgb, var(--bad) 60%, transparent) !important; }
+body.pv-shell .screen.start .pp { grid-column: 1 / -1; width: 100%; }
+body.pv-shell .screen.start li.wide { display: none; }
+.screen.books .blk.booked .v2fold > summary { cursor: pointer; color: var(--accent); font: 600 14px/1.3 Inter, system-ui, sans-serif; margin-top: 6px; }
+.screen .card .pv-tag.amber { margin-bottom: 14px; }
 `;
 
 const SHARED = String.raw`
@@ -252,6 +360,14 @@ function takeCall(e,f){if((e.event==='claude.read'||e.event==='agent.run')&&!CAL
 const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
 const SH=PC.shell;let useBox=null;
 // "How Purser works": the flow in five steps, and the whole system's map (the README's), as a card over the page.
+
+// The partners' proof (Metal and Visa awards): three cards from recorded runs, each a link; and the way to all of it.
+function partners(withHead){
+  const P=PC.partners;const a=(href,text,cls)=>{const l=mk('a',cls||'',text);l.href=href;l.target='_blank';l.rel='noopener';return l};
+  const cards=mk('div','pp-cards',P.cards.map((c)=>mk('article','pp-card',[mk('div','pp-top',[c.logo?logoChip(c.logo):mk('span','pp-visa','Visa'),mk('span','pp-l',c.label)]),mk('b','',c.h),mk('p','',c.p),a(c.href,c.link+' →','pp-a')])));
+  const foot=mk('div','pp-foot',[a(P.allHref,P.all+' →','btn primary pp-all'),mk('span','pp-note',P.foot)]);
+  return mk('section','pp',(withHead?[mk('h2','',P.heading),mk('p','pp-sub',P.sub)]:[]).concat([cards,foot]));
+}
 const H=PC.how;
 const logoChip=(k)=>{const i=document.createElement('img');i.src=PC.logos[k].src;i.alt=PC.logos[k].alt;i.decoding='async';return mk('span','hw-logo hw-'+k,i)};
 const how=mk('section','pv-card pv-how');how.setAttribute('role','dialog');how.setAttribute('aria-label',H.eyebrow);
@@ -259,12 +375,12 @@ const how=mk('section','pv-card pv-how');how.setAttribute('role','dialog');how.s
   const flow=mk('ol','hw-flow',H.steps.map((st,i)=>{const li=mk('li','',[mk('span','n',String(i+1)),mk('b','',st.h),mk('p','',st.p)].concat(st.logo?[logoChip(st.logo)]:[]));li.style.setProperty('--i',String(i));return li}));
   const cut=mk('div','hw-cut',[mk('b','',H.cut.h),mk('p','',H.cut.p)]);
   const img=document.createElement('img');img.src=PC.map;img.alt=H.mapAlt;img.decoding='async';
-  const tF=mk('button','hw-tab',H.tabFlow),tM=mk('button','hw-tab',H.tabMap),x=mk('button','hw-x',H.close);
-  for(const b of [tF,tM,x])b.type='button';
-  const setTab=(m)=>{how.classList.toggle('map',m);tF.setAttribute('aria-pressed',String(!m));tM.setAttribute('aria-pressed',String(m))};
-  tF.addEventListener('click',()=>setTab(false));tM.addEventListener('click',()=>setTab(true));x.addEventListener('click',()=>how.classList.remove('on'));
-  setTab(false);
-  how.append(mk('div','in',[mk('div','hw-top',[mk('span','hw-eb',H.eyebrow),mk('div','hw-tabs',[tF,tM]),x]),mk('h2','',H.heading),mk('div','hw-body',[mk('div','hw-one',[flow,cut]),mk('div','hw-map',img)]),
+  const tF=mk('button','hw-tab',H.tabFlow),tM=mk('button','hw-tab',H.tabMap),tP=mk('button','hw-tab',H.tabProof),x=mk('button','hw-x',H.close);
+  for(const b of [tF,tM,tP,x])b.type='button';
+  const setTab=(m)=>{how.classList.toggle('map',m==='map');how.classList.toggle('prf',m==='prf');tF.setAttribute('aria-pressed',String(m==='flow'));tM.setAttribute('aria-pressed',String(m==='map'));tP.setAttribute('aria-pressed',String(m==='prf'))};
+  tF.addEventListener('click',()=>setTab('flow'));tM.addEventListener('click',()=>setTab('map'));tP.addEventListener('click',()=>setTab('prf'));x.addEventListener('click',()=>how.classList.remove('on'));
+  setTab('flow');
+  how.append(mk('div','in',[mk('div','hw-top',[mk('span','hw-eb',H.eyebrow),mk('div','hw-tabs',[tF,tM,tP]),x]),mk('h2','',H.heading),mk('div','hw-body',[mk('div','hw-one',[flow,cut]),mk('div','hw-map',img),mk('div','hw-prf',partners(false))]),
     mk('div','hw-foot',[mk('span','hw-built',H.built),logoChip('claude'),logoChip('airwallex'),logoChip('alta'),mk('span','hw-note',H.foot)])]));
   how.addEventListener('click',(e)=>{if(e.target===how)how.classList.remove('on')});
   document.body.append(how);
@@ -275,6 +391,29 @@ if(new URLSearchParams(location.search).get('neg')!=='1'){
   const promote=()=>{for(const b of document.querySelectorAll('#main .payrow > button.btn:not(.primary)'))b.classList.add('primary','big');for(const el of document.querySelectorAll('#main *'))if(el.childElementCount===0&&el.textContent===PC.negHint)el.textContent=PC.negHintShort};
   promote();new MutationObserver(promote).observe(document.body,{childList:true,subtree:true});
 }
+
+// v2: the test-money pill, the four stages on top, the partners' proof on the start screen and the way to it at the end.
+if(!document.querySelector('body > .pv-money'))document.body.append(mk('div','pv-money',PC.money));
+const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),t])));
+document.body.append(stages);
+function stageOf(){const m=document.getElementById('main');if(!m)return -1;const has=(c)=>!!m.querySelector('.screen.'+c);
+  if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
+function v2(){
+  const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
+  [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
+  const m=document.getElementById('main');if(!m)return;
+  const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
+  const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
+  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Verified digital fingerprint'}
+  const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & settled'));
+  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Verified digital fingerprint'}
+  const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
+  if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
+  if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
+  const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'))}
+}
+let v2t=0;new MutationObserver(()=>{if(!v2t)v2t=requestAnimationFrame(()=>{v2t=0;v2()})}).observe(document.body,{childList:true,subtree:true});v2();
 const showHow=()=>{how.classList.remove('on');void how.offsetWidth;how.classList.add('on')};
 // The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
 if(SHELL){
@@ -447,7 +586,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS,
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, payButton: PAY.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };

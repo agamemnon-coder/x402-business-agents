@@ -64,6 +64,14 @@ describe("recording mode", () => {
     expect(script).not.toContain("document.body.classList.add('present');");
   });
 
+  it("shows the partners' proof from recorded runs: Alta's refusal on chain, Airwallex's record of the CFO's hash, Visa via Airi's reused credential", () => {
+    const { script } = presentExtra("public");
+    expect(script).toContain("https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    expect(script).toContain("797d4483");
+    expect(script).toContain("Visa Intelligent Commerce · via Airwallex Airi");
+    expect(script).toContain("No endorsement implied.");
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {
@@ -73,7 +81,12 @@ describe("recording mode", () => {
       // Recording mode only with ?present=1; the app shell and "How Purser works" on both.
       expect(on).toContain("document.body.classList.add('present');");
       expect(off).not.toContain("document.body.classList.add('present');");
-      for (const page of [on, off]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); }
+      const v2 = await (await c.fetch(`${ORIGIN}/try?v=2`)).text();
+      // The product frame and its words on ?present=1 and ?v=2; plain /try stays the release's page, negotiation included.
+      for (const page of [on, v2]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your Face ID releases the funds."); }
+      expect(v2).not.toContain("document.body.classList.add('present');");
+      expect(off).not.toContain("pv-side");
+      expect(off).not.toContain("AI agents prepare the transfer.");
     } finally { c.close(); }
   });
 });

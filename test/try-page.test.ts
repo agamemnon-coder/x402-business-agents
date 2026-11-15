@@ -42,7 +42,7 @@ describe("GET /try", () => {
     expect(n).not.toBe(/'nonce-([^']+)'/.exec(b.headers.get("content-security-policy")!)![1]);
     expect(csp).toBe(consoleCsp(n));
     const page = await a.text();
-    expect(scriptBlocks(page)).toHaveLength(2); // the page's own, and the app shell before it (cloud/src/try/presentMode.ts)
+    expect(scriptBlocks(page)).toHaveLength(1); // plain /try: the release's page; ?v=2 and ?present=1 add the product frame
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
     // The same headers as the console's page, the policy's nonce aside.
