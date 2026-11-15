@@ -89,7 +89,8 @@ describe("the README's diagrams and media", () => {
     const docs = blocks(readFileSync(join(ROOT, "docs/diagrams.md"), "utf8"));
     expect(docs).toHaveLength(5);
     // 14 Nov (the README upgrade): the architecture diagram moved to docs/architecture.md, word for word, linked from the README.
-    expect(blocks(readme)).toEqual([docs[0], docs[2]]);
+    // 15 Nov (readme-wow): plus the README's own sequence diagram, "One payment, step by step", not one of the five.
+    expect(blocks(readme).filter((b) => !b.includes("participant A as Agent (Claude)"))).toEqual([docs[0], docs[2]]);
     expect(blocks(readFileSync(join(ROOT, "docs/architecture.md"), "utf8"))).toContain(docs[4]);
     expect(readme).toContain("(docs/architecture.md#where-it-runs)");
     expect(readme).toContain("(docs/diagrams.md)"); // who holds which limit: in docs/diagrams.md, linked from Links (13 Nov)
