@@ -109,7 +109,7 @@ the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 charac
      Alta's testnet explorer, awx-1, the Airwallex-only run of 7 November (all seven checks passed), and Visa Intelligent
      Commerce via Airwallex's Airi (4 runs, 7 to 14 November; Airwallex sandbox, test card, test money; 6 paid; a reused
      credential refused by Purser): <https://kit11.max-31b.workers.dev/visa>. The film, "Purser, under the hood" (3:29):
-     <https://youtu.be/PNLuqhRzVfE>. The walkthrough (AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>. The 90-second trailer:
+     <https://youtu.be/PNLuqhRzVfE>. The 90-second trailer:
      <https://youtu.be/n3HLVGROJc4>. The replay of the main run of 3 November (three Claude agents, a price
      rise, a dispute and a euro bill): <https://kit11.max-31b.workers.dev/replay>
    - Purser Cloud as a guest: <https://purser-try.max-31b.workers.dev/>, then *Try as guest*: the demo company (made-up
@@ -140,9 +140,8 @@ For the long form text and the jury: the Starter Kit 11 brief's flow ("x402 Busi
 
 ## Links
 
-- Trailer (90 s): <https://youtu.be/n3HLVGROJc4>
+- Trailer (90 s; an AI-generated voice over AI-generated music, ElevenLabs): <https://youtu.be/n3HLVGROJc4>
 - Film, "Purser, under the hood" (3:29): <https://youtu.be/PNLuqhRzVfE>
-- Video, the walkthrough (an AI-generated voice over AI-generated music; AI voice and music: ElevenLabs): <https://youtu.be/mp9fmOYfBWc>
 - Live: <https://kit11.max-31b.workers.dev/>
 - Try it yourself: <https://kit11.max-31b.workers.dev/try>: a test company of your own, a sample invoice read by
   Claude, your passkey on the exact terms, paid on a simulated bank and booked; change what you signed: refused.
