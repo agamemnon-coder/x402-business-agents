@@ -36,6 +36,7 @@ import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
 import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
 import { PROOF_FIGURES } from "./try/proof.gen.js";
+import { SCORECARD_HREF, SCORECARD_SHORT } from "./try/scorecard.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -1469,7 +1470,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
     const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
-    if(o==='paid_once'){said.replaceChildren(el('p','big',C.approve.paidOnce));main.set(C.books.next,()=>show('did'));return}
+    if(o==='paid_once'){said.replaceChildren(el('p','big paidonce',C.approve.paidOnce));main.set(C.books.next,()=>show('did'));return}
     if(o==='expired'){said.replaceChildren(note(words(j,Y.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     if(o==='failed'){said.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
     if(o==='not_signed'||o==='refused'){if(o==='not_signed'){S.cred=null;save()}said.replaceChildren(note(words(j,sig||Y.failed)));stage();return}
@@ -1574,7 +1575,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     if(o==='refused'){intro.hidden=true;if(runKit.oneCent(T.terms,sent)){S.passed=runKit.mark(S.passed,'refuse');save()}const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
     // Pay it twice: the signed terms again answer paid once, and the transfers made say nothing moved.
     if(o==='paid_once'){const made=Number(j.transfers_after)-Number(j.transfers_before);
-      const card=el('section','why card once',[el('p','head',[icon('circle-check',20),el('span','',Y.twiceHead)]),el('p','rule',Y.twiceRule),isFinite(made)?el('p','proof xfer',fill(Y.transfers,{n:made})):null,endActs()]);
+      const card=el('section','why card once paidonce',[el('p','head',[icon('circle-check',20),el('span','',Y.twiceHead)]),el('p','rule',Y.twiceRule),isFinite(made)?el('p','proof xfer',fill(Y.transfers,{n:made})):null,endActs()]);
       card.setAttribute('role','status');out.replaceChildren(card);inView(card);return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
@@ -1891,7 +1892,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
-    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst SCORECARD=${json(SCORECARD_SHORT ? { line: SCORECARD_SHORT, href: SCORECARD_HREF } : null)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

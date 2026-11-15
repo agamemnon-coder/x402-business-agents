@@ -13,20 +13,21 @@ const lines = README.split("\n");
 const json = <T>(p: string) => JSON.parse(read(p)) as T;
 
 describe("the README's shape (jury panel, 12 Nov)", () => {
-  it("is at most 390 lines, with a badge row and a partners row, and 'The business hypothesis' in the first 180 lines", () => {
+  it("is at most 405 lines, with a badge row and a partners row, and 'The business hypothesis' in the first 195 lines", () => {
     // 150 lines until 13 Nov; the owner then asked for the diagrams and the charts inline, so the cap was 300; the
     // restored header (the mark and the three buttons, 13 Nov, evening) added four lines; the README upgrade (13 Nov,
     // evening: Watch it, the 3 steps, Built with, the gallery, the collapsibles) makes it 360.
     // +15, jury scan 14 Nov: the quick start's sample output folded in a details block, and "Where things are" (5 rows).
     // +2, #335: the "Built on Airwallex" line under the title. 14 Nov (Max: Airwallex at the centre): today's merged and
     // live Airwallex upgrades and the table of the endpoints called live; the Architecture stub went (389 as built); +1, #332 (not run live).
-    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(390);
+    // +15 on 15 Nov (the Kit 11 table under the header: the brief's steps, what Purser does, one proof each; 405 as built).
+    expect(README.endsWith("\n") ? lines.length - 1 : lines.length).toBeLessThanOrEqual(405);
     // 14 Nov (Max, the README and repo upgrade): two rows, the project's badges and one row of the partners.
     expect(lines.filter((l) => /\[!\[[^\]]*\]\(https:\/\/(img\.shields\.io|github\.com\/[^)]*badge)/.test(l))).toHaveLength(2);
     expect(lines.indexOf("## The business hypothesis")).toBeGreaterThan(0);
     // Within the first 60 lines until 13 Nov; the README upgrade put the one-line diagram, the judges' 3 minutes and the
     // table of what is live above it, so within the first 90.
-    expect(lines.indexOf("## The business hypothesis")).toBeLessThan(180); // 180 since 14 Nov (Max: Airwallex at the centre, the live Airwallex section and its table, 177 as built); 110 since the Visa and Metal Award sections came in; 170 since the README upgrade
+    expect(lines.indexOf("## The business hypothesis")).toBeLessThan(195); // 195 since 15 Nov (the Kit 11 table under the header, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, the live Airwallex section and its table, 177 as built); 110 since the Visa and Metal Award sections came in; 170 since the README upgrade
   });
 
   it("names no run by its code", () => {

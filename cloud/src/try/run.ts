@@ -150,6 +150,8 @@ function proofBand(){
   const item=(n,label,href)=>{const a=el('a','',[el('span','pv',n),el('span','pk',label)]);a.href=href;a.target='_blank';a.rel='noopener';ul.append(el('li','',a))};
   for(const f of PROOF_FIGS)if(P.labels[f.key])item(String(f.n),P.labels[f.key],f.href);
   if(TESTS_PASSING)item(TESTS_PASSING,P.labels.tests,TESTS_HREF);
+  // The scorecard's summary in short (with Purser vs Claude alone, from its run's record), across the band.
+  if(SCORECARD){const a=el('a','',el('span','pk',SCORECARD.line));a.href=SCORECARD.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
   const s=el('section','real proofband',[el('p','rh',P.head),ul]);s.setAttribute('aria-label',P.head);return s;
 }
 function runScore(){
@@ -318,8 +320,9 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .proofband li a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .proofband .pv { font-size: 22px; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .proofband .pk { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.3; }
-.proofband li:last-child:nth-child(odd) { grid-column: 1 / -1; }
-@media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
+.proofband li:last-child:nth-child(odd), .proofband li.wide { grid-column: 1 / -1; }
+.proofband li.wide .pk { color: var(--text); font-size: 13px; }
+@media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
 /* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
 .start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }
 .start .fs2 .fi { animation-delay: 1.2s; } .start .fs3 .fi { animation-delay: 2.4s; } .start .fs.fend .fi { animation: none; }
