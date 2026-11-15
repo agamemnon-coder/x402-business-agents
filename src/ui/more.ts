@@ -33,9 +33,8 @@ export const NEGOTIATE_URL = `${PURSER_CLOUD_URL}try/negotiate`;
 export const MORE_LINKS: readonly MoreLink[] = [
   // 12 Nov (owner): the hosted product, Purser Cloud, on its own test-money deployment.
   { key: "cloud", label: "Purser Cloud", href: PURSER_CLOUD_URL, group: "product" },
-  // 15 Nov: the agents' negotiation on /try's deployment, served on the site's own host (worker/src/tryEngine.ts). No "Watch" in
-  // a menu (test/watch-out-of-menu.test.ts): /try's finish says "Watch agents negotiate", the menu "Agents negotiate".
-  { key: "negotiate", label: "Agents negotiate", href: NEGOTIATE_URL, group: "product" },
+  // 15 Nov: "Agents negotiate" left the menu (Max: it read as unprofessional there); /try/negotiate has a card on Home
+  // (src/redesign/home.ts negotiateCardHtml) and stays linked at the end of /try.
   // 13 Nov (Max): the product tour and Pricing are gone; /tour and /pricing answer 302 to /home (src/servers/dashboard.ts REDIRECTS).
   { key: "security", label: "Security", href: "security", group: "product" },
   { key: "docs", label: "Docs", href: "docs", group: "product" },

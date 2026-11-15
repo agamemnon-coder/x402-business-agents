@@ -97,7 +97,9 @@ const eventLineOf=(W)=>{
       // The reason is marked as the agent's own words only when a model gave it; code's own reason is plain text.
       lead=(v.reason&&fill(W.lead[clear?name+'_clear':name],v))||'';
       if(lead&&tag==='claude')mine=v.reason;else if(lead)lead=lead+' '+(/^[A-Z][a-z]/.test(v.reason)?v.reason.charAt(0).toLowerCase()+v.reason.slice(1):v.reason)+'.';else lead=fill(W.lead[name+'_plain'],v)||'';
-      const e=v.outcome&&v.enforced?v.outcome+'; '+v.enforced:v.enforced||v.outcome;
+      // 15 Nov polish: one sentence after the semicolon ("ask the CFO; the agent may…"), not a capital mid-line.
+      const low=(t)=>/^[A-Z][a-z]/.test(t)?t.charAt(0).toLowerCase()+t.slice(1):t;
+      const e=v.outcome&&v.enforced?v.outcome+'; '+low(v.enforced):v.enforced||v.outcome;
       // Round 4 (14 Nov): where code's outcome is not what the agent decided, code overrode it, and the line says so.
       const over=f.overridden===true||(name==='ap.checker_decided'&&!!code(f.action)&&!!code(f.outcome)&&f.action!==f.outcome);
       if(e)enforced=clear?W.railsClear:fill(over?W.overrode:W.enforced,{enforced:e})||'';

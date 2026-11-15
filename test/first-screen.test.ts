@@ -51,7 +51,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     // Since 13 Nov (the enterprise README): the site's link-preview card as the hero (the same file as src/ui/brand/og.png).
     // 13 Nov, evening (owner, the README upgrade): the banner, then the title; under the badges and the live demo's line,
     // Watch it, the 3 steps, the three proofs and the rails' line, Built with, the gallery, the quick start, Enterprise.
-    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", BANNER, ""]);
+    // 15 Nov (Max): the animated flow right under the banner, on the banner's line (test/readme-flow.test.ts).
+    expect(lines.slice(0, 4)).toEqual(['<div align="center">', "", lines[2]!, ""]);
+    expect(lines[2]!.startsWith(`${BANNER}<br><picture>`)).toBe(true);
     for (const f of ["docs/assets/readme/banner-dark.png", "docs/assets/readme/banner-light.png", "docs/assets/readme/hero-dark.webp", "docs/assets/readme/hero-light.webp"]) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
     expect(lines[4]).toBe(`# Purser · ${HERO}`);
     const badges = lines.findIndex((l) => l.startsWith("[![CI]"));
@@ -60,10 +62,13 @@ describe("the first screen (section D, 6 Nov)", () => {
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.
     const kit = lines.indexOf("## Kit 11, step by step");
     // 15 Nov (Max: "the tags on top of the readme"): the two badge rows sit under the links, inside the centred top.
-    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: sandbox]"));
-    expect(lines.slice(5, kit)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: LIVE"));
+    // 15 Nov (Max): "At a glance" under the badges, six lines, each with its record (test/readme-glance.test.ts), then Kit 11.
+    const glance = lines.indexOf("## At a glance");
+    expect(lines.slice(5, glance)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(25);
+    expect(kit).toBeLessThan(35);
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -75,7 +80,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // Five project badges, then the partners' row.
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
-    expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(5);
+    expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(6); // 15 Nov (Max): four partners LIVE, Claude's decisions, the worst-case AI test
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.

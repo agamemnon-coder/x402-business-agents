@@ -25,8 +25,10 @@ describe("README badges", () => {
   it("is CI, CodeQL, the tests read from test-summary.json, MIT and the MCP server; then a row of the five partners", () => {
     // 14 Nov (Max, the README and repo upgrade): CI, CodeQL, the tests, MIT and the MCP server; the partners on their own row.
     expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", "MCP server: read, propose only"]);
-    const partnerLine = readme.split("\n").find((l) => l.startsWith("[![Airwallex: sandbox]")) ?? "";
-    expect([...partnerLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Airwallex: sandbox", "Alta: testnet", "Visa: VIC via Airi", "T:0: sandbox ledger", "Claude: Haiku, Sonnet, Opus"]);
+    // 15 Nov (Max): the second row says each partner's status, then Claude's decisions and the worst-case AI test, every
+    // value read from its record in test/readme-glance.test.ts.
+    const partnerLine = readme.split("\n").find((l) => l.startsWith("[![Airwallex: LIVE")) ?? "";
+    expect([...partnerLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Airwallex: LIVE · sandbox", "Alta (formerly Metal): LIVE · testnet", "Visa VIC via Airi: LIVE · sandbox", "T:0: LIVE · sandbox ledger", "Claude: LIVE · 24 decisions", "worst-case AI: 0 wrong payments"]);
     expect(partnerLine).not.toMatch(/[?&]logo=/);
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     expect(badgeLine).toContain("https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed");
@@ -58,7 +60,7 @@ describe("README badges", () => {
     // line follows the Kit 11 table's closing sentence.
     const at = lines.findIndex((l) => l.startsWith("**Live demo: "));
     expect(at).toBeGreaterThan(lines.indexOf(badgeLine));
-    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     // 14 Nov (Max): "In 30 seconds" (three bullets) now comes first; the three proofs follow it.
     // 14 Nov: "Airwallex at the centre" sits between; the three proofs open "How it works in 3 steps".
     const proofs = lines.slice(lines.indexOf("## How it works in 3 steps")).filter((l) => l.startsWith("- **")).slice(0, 3);

@@ -52,6 +52,6 @@ dollar, "test USD" on the pages.
 
 - The plan named "a video under 5 minutes": the walkthrough is 4:58 (film v10, 13 November: Purser Cloud, the live
   /try, security, the partners' runs; AI voice and music: ElevenLabs; [docs/video/README.md](video/README.md)), and is
-  on YouTube: https://youtu.be/mp9fmOYfBWc.
+  on YouTube until 15 November; the film "Purser, under the hood" (3:29) replaces it: https://youtu.be/PNLuqhRzVfE.
   Its voice-over is an AI-generated voice (ElevenLabs), and its link is in the submission text
   ([docs/submission/README.md](submission/README.md)).
