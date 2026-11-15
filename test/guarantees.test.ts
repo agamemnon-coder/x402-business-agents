@@ -30,15 +30,17 @@ describe("What Purser guarantees", () => {
   // Jury, 13 Nov (second round): the first screen was too thin; the guarantees are in sight again, under the four cards.
   // The owner, 13 Nov ("the proof is what we need"): the lead line, the proof chain, the band, the offline check and every
   // live run come first; the guarantees follow, in sight, above the fold with the partners and the numbers.
-  it("is in sight under the chain, the band, the offline check and the live runs, above the fold with the partners and the numbers", () => {
+  // Jury panel, 15 Nov ("/proof is too long"): the five facts lead; the guarantees close the second fold, "How a payment
+  // is checked", under the chain and the band; the fold with the partners and the numbers follows.
+  it("closes the fold on how a payment is checked, under the chain and the band, above the fold with the partners and the numbers", () => {
     const proof = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).proof!;
     expect(proof).toContain(guaranteesHtml());
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf("The partners"));
     expect(proof.indexOf(`id="${GUARANTEES_ID}"`)).toBeLessThan(proof.indexOf('<div class="nums">'));
-    const between = proof.slice(proof.indexOf("<h1>Proof</h1>") + "<h1>Proof</h1>".length, proof.indexOf(guaranteesHtml())).trim();
-    // 14 Nov: the Airwallex line (p.pawx) under the partner tiles.
-    expect(between).toMatch(/^<p class="plead">[^<]+<\/p>\s*<p class="pwatch">[\s\S]*?<\/p>\s*<p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul>\s*<p class="pawx">[\s\S]*?<\/p>\s*<ol class="pchain"[\s\S]*<\/ol>\s*<ul class="scale"[\s\S]*<\/ul>\s*<aside class="pverify"[\s\S]*<\/aside>\s*<section class="pruns"[\s\S]*<\/section>$/);
-    expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
+    const fold = proof.indexOf('<details class="sumd" id="how-checked">');
+    expect(fold).toBeGreaterThan(proof.indexOf('<section class="pfacts"'));
+    expect(proof.slice(fold, proof.indexOf(guaranteesHtml())).replace(/\s+/g, " ")).toMatch(/^<details class="sumd" id="how-checked"><summary>How a payment is checked, and what Purser guarantees<\/summary><ol class="pchain"[\s\S]*<\/ol> <ul class="scale"[\s\S]*<\/ul> $/);
+    expect(proof.slice(proof.indexOf(guaranteesHtml()) + guaranteesHtml().length).trim()).toMatch(/^<\/details>\s*<details class="sumd" id="details"><summary>All the proof: partners, numbers and every check<\/summary>/);
   });
 
   it("keeps its seven promises, numbered in this order, each with who enforces it and its evidence in sight, how folded", () => {

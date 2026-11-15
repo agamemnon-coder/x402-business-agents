@@ -10,6 +10,7 @@ import { packFacts } from "../src/submission/facts.js";
 import { CARDS, INITIAL_MANDATES, PLANS, TOTAL_BUDGET_CENTS } from "../src/config/policy.js";
 import { PRE_KIT11_NAMES, preKit11NamesIn } from "../src/demo/oldNames.js";
 import { buildPages } from "../src/relay/assets.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const dir = (p: string, re: RegExp) => readdirSync(new URL(`../${p}`, import.meta.url)).filter((f) => re.test(f)).map((f) => `${p}/${f}`);
@@ -67,7 +68,7 @@ describe("Kit 11's agent names, word for word", () => {
   it("describes Northwind in one sentence everywhere a juror meets it", () => {
     const pages = buildPages();
     const flat = (t: string) => t.replace(/\s+/g, " ");
-    for (const [where, text] of [["home", pages.home!], ["metal", pages.metal], ["README", read("README.md")], ["form text", read("docs/submission/README.md")], ["deck", deckHtml(packFacts(), {} as never, "")]] as const) {
+    for (const [where, text] of [["home", pages.home!], ["metal", pages.metal], ["README", readmeFull()], ["form text", read("docs/submission/README.md")], ["deck", deckHtml(packFacts(), {} as never, "")]] as const) {
       expect({ where, has: flat(text as string).includes(NORTHWIND_LINE) }).toEqual({ where, has: true });
     }
   });

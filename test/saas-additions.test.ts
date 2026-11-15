@@ -24,10 +24,12 @@ import { OVERVIEW_DOC, UNAVAILABLE, securityCards, securityPage, unavailableLine
 import { esc } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
 import { pageResponse, type Pages } from "../worker/src/core.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** A doc as running text: bold and code marks out, white space single, so a sentence wrapped over lines reads as one. */
-const flat = (p: string) => read(p).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
+// 15 Nov: the README with the sections moved to docs/ in place (test/readmeFull.ts).
+const flat = (p: string) => (p === "README.md" ? readmeFull() : read(p)).replace(/\*\*|`/g, "").replace(/\s+/g, " ");
 // "&amp;" last, so an escaped entity ("&amp;lt;") is decoded once, never twice.
 const decode = (s: string) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 /** A page's <main> as a person reads it with every fold open. */
