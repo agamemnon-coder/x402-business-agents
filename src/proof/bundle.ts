@@ -11,6 +11,14 @@
 /** The bundle's format name. */
 export const PROOF_FORMAT = "purser.proof-bundle/v1";
 
+/**
+ * The two committed samples (docs/proof/, from the deployed /try), served byte for byte as downloads under
+ * PROOF_SAMPLE_DIR on the site, so a visitor without a file of their own has one to drop on /verify.
+ */
+export const PROOF_SAMPLES = { paid: "try-paid.json", refused: "try-refused.json" } as const;
+export const PROOF_SAMPLE_DIR = "/verify/samples/";
+export const proofSamplePath = (which: keyof typeof PROOF_SAMPLES): string => `${PROOF_SAMPLE_DIR}${PROOF_SAMPLES[which]}`;
+
 /** The bundle's file name as /try offers it. */
 export const PROOF_FILE = "purser-proof.json";
 

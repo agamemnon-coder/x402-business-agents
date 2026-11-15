@@ -188,3 +188,57 @@ describe("/verify, and the links to it", () => {
     expect(readFileSync("README.md", "utf8")).toMatch(/\[\/verify\]\(https:\/\/kit11\.max-31b\.workers\.dev\/verify\).*npm run verify-bundle -- purser-proof\.json/);
   });
 });
+
+describe("the sample proof bundles as downloads (Max, 15 Nov: \"I don't have anything\")", () => {
+  const files = { paid: "docs/proof/try-paid.json", refused: "docs/proof/try-refused.json" } as const;
+
+  it("the site serves both at /verify/samples/, byte for byte from docs/proof/, as JSON attachments; no other name", async () => {
+    const { buildPages } = await import("../src/relay/assets.js");
+    const { pageResponse } = await import("../worker/src/core.js");
+    const { proofSamplePath, PROOF_SAMPLES } = await import("../src/proof/bundle.js");
+    const pages = buildPages({} as NodeJS.ProcessEnv);
+    for (const which of ["paid", "refused"] as const) {
+      const r = pageResponse(new Request(`https://kit11.example${proofSamplePath(which)}`), pages);
+      expect(r?.status).toBe(200);
+      expect(r!.headers.get("content-type")).toBe("application/json; charset=utf-8");
+      expect(r!.headers.get("content-disposition")).toBe(`attachment; filename="${PROOF_SAMPLES[which]}"`);
+      expect(await r!.text()).toBe(readFileSync(files[which], "utf8"));
+    }
+    for (const bad of ["/verify/samples/", "/verify/samples/other.json", "/verify/samples/constructor", "/verify/samples/../package.json"]) {
+      const r = pageResponse(new Request(`https://kit11.example${bad}`), pages);
+      expect(r?.headers.get("content-disposition") ?? null, bad).toBeNull();
+    }
+  });
+
+  it("npm run judge serves the same bytes", async () => {
+    const { startJudge } = await import("../src/cli/judge.js");
+    const j = await startJudge(0);
+    try {
+      for (const [which, f] of Object.entries(files)) {
+        const r = await fetch(`${j.url}/verify/samples/try-${which}.json`);
+        expect(r.status).toBe(200);
+        expect(r.headers.get("content-type")).toMatch(/^application\/json/);
+        expect(r.headers.get("content-disposition")).toBe(`attachment; filename="try-${which}.json"`);
+        expect(await r.text()).toBe(readFileSync(f, "utf8"));
+      }
+    } finally {
+      j.server.close();
+    }
+  });
+
+  it("/verify offers them under the drop zone with /try, and /proof's verify aside links them", async () => {
+    const { VERIFY_BUNDLE_PAGE } = await import("../src/servers/dashboard.js");
+    const line = /<p class="nofile small" id="v-nofile">([\s\S]*?)<\/p>/.exec(VERIFY_BUNDLE_PAGE)?.[1] ?? "";
+    expect(line).toMatch(/^No file yet\? /);
+    expect(line).toContain('<a href="/verify/samples/try-paid.json" download="try-paid.json">Download a paid sample</a>');
+    expect(line).toContain('<a href="/verify/samples/try-refused.json" download="try-refused.json">Download the refused sample</a>');
+    expect(line).toContain('or make your own on <a href="/try">/try</a> (2 minutes): the finish hands you the proof file.');
+    // Right under the drop zone, and the sample buttons are still there.
+    expect(VERIFY_BUNDLE_PAGE.indexOf('id="v-nofile"')).toBeGreaterThan(VERIFY_BUNDLE_PAGE.indexOf('id="v-drop"'));
+    expect(VERIFY_BUNDLE_PAGE.indexOf('id="v-nofile"')).toBeLessThan(VERIFY_BUNDLE_PAGE.indexOf('id="v-paste"'));
+    expect(VERIFY_BUNDLE_PAGE).toContain('id="v-sample"');
+    const { verifyCalloutHtml } = await import("../src/redesign/proofRuns.js");
+    expect(verifyCalloutHtml()).toContain('<a href="verify/samples/try-paid.json" download="try-paid.json">A paid sample</a>');
+    expect(verifyCalloutHtml()).toContain('<a href="verify/samples/try-refused.json" download="try-refused.json">the refused sample</a>');
+  });
+});
