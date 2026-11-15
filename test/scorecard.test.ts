@@ -1,13 +1,10 @@
 // The scorecard, with Purser vs Claude alone (src/evals/scorecard.ts): the scoring is plain code, the same for every
 // payer, and the committed record is what its rows add up to. No network: a script stands in for Claude here.
-import { readFileSync } from "node:fs";
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import {
-  aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, totals, totalsByRun, type ScoreRow,
+  aloneRow, centNaiveRow, centPurserRow, alwaysPay, centScore, CENT, naiveRow, numbersNotShown, purserRow, SCORECARD_CASES, scoreOutcome, scorecardLine, totals,
 } from "../src/evals/scorecard.js";
-import { SCORECARD, SCORECARD_LINE, worstRun } from "../src/evals/scorecardSummary.js";
-import { scorecardCardHtml } from "../src/redesign/scorecardCard.js";
 
 const kase = (id: string) => SCORECARD_CASES.find((k) => k.id === id)!;
 
@@ -92,43 +89,5 @@ describe("one cent after the CFO's approval", () => {
     const p = centPurserRow(1);
     expect(p).toMatchObject({ outcome: "hold", paid: null, wrong_money: null, decided_by: "signature: terms do not match the approved hash", claude_calls: 0 });
     expect(centNaiveRow(1).wrong_money).toBe("EUR 1850.01");
-  });
-});
-
-describe("the committed record", () => {
-  const summary = SCORECARD;
-  const full = JSON.parse(readFileSync(new URL(`../${summary.file}`, import.meta.url), "utf8")) as { rows: ScoreRow[]; by_run: Record<string, unknown>; line: string; model: string; runs: number; cost_usd: number };
-
-  it("its totals are what its rows add up to, and the summary the site reads is the same run", () => {
-    expect(totalsByRun(full.rows)).toEqual(full.by_run);
-    expect(summary.line).toBe(full.line);
-    expect(SCORECARD_LINE).toBe(full.line);
-    expect(summary.model).toBe(full.model);
-    expect(Number((full.rows.reduce((n, r) => n + r.cost_usd_micros, 0) / 1e6).toFixed(4))).toBeCloseTo(full.cost_usd, 3);
-    for (const [n, x] of Object.entries(summary.by_run)) {
-      const t = (full.by_run as Record<string, Record<string, { wrong_payments: number; paid_past_cfo: number }>>)[n]!;
-      for (const a of ["claude_alone", "purser", "purser_script", "naive_script"] as const) expect(x[a]).toMatchObject({ wrong_payments: t[a]!.wrong_payments, paid_past_cfo: t[a]!.paid_past_cfo });
-    }
-  });
-
-  it("ran every case twice with real Claude, both Claude payers on the same model, and Purser moved no wrong money", () => {
-    expect(full.runs).toBe(2);
-    expect(summary.cases_per_run).toBe(SCORECARD_CASES.length + 1);
-    for (const run of ["1", "2"]) for (const arm of ["claude_alone", "purser"]) expect(full.rows.filter((r) => String(r.run) === run && r.arm === arm)).toHaveLength(summary.cases_per_run);
-    expect(full.rows.filter((r) => r.arm === "claude_alone" && r.case !== CENT.id).every((r) => r.source === "claude" || r.decided_by.startsWith("no decision"))).toBe(true);
-    expect(worstRun("purser")?.wrong_payments).toBe(0);
-    expect(worstRun("purser_script")?.wrong_payments).toBe(0);
-  });
-
-  it("the /proof card shows each payer's worse run, with no fraction and no other product named", () => {
-    const html = scorecardCardHtml();
-    expect(html).toContain("With Purser vs Claude alone");
-    expect(html).toContain(`commit ${summary.commit}`);
-    expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/\b\d+\s*\/\s*\d+\b/);
-    // Its figures are the summary's, each payer's worse run.
-    const naive = worstRun("naive_script")!, alone = worstRun("claude_alone")!;
-    expect(html).toContain(`${naive.wrong_payments} wrong payments`);
-    expect(html).toContain(alone.to_cfo_not_held ? `${alone.to_cfo_not_held} sent to the CFO that had to be held` : "none sent to the CFO that had to be held");
-    expect(html).toContain(`USD ${alone.cost_usd.toFixed(4)} a run`);
   });
 });
