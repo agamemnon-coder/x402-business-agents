@@ -22,6 +22,7 @@ import { agentRun, callBadge, cardRaiseOf, decisionsOf, faceIdDecisions, family,
 import { LOGO, earlierLine, fold, partnerProof } from "./proof.js";
 import { EXPLORER, REPO_BLOB, metalStory } from "./metalStory.js";
 import { READBACK_CSS, cardControlRows, cardsReadback, controlsSideBySideHtml, hashBlockHtml, hashTravel } from "./airwallexProof.js";
+import { centHtml, centRecord, LIVE_CARDS_JS, liveCardsHtml } from "./cardCent.js";
 import { AIRI_CSS, AIRI_RUN_FILE, AIRI_RUN_ID, airiAsker, airiRun, airiRunBlock, type AiriRunRecord } from "./airiRun.js";
 import { awxRunBlock } from "./awxRun.js";
 import { VISA_HERO_CSS, visaFlowHtml, visaHashHtml, visaOutcomesHtml } from "./visaHero.js";
@@ -172,7 +173,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
   // (Alta earnings booked, the licence paid) is one of the folds, as are awx-1 and the Airi runs, in the blocks /proof
   // and /visa show. Proof's "Policy and card side by side" opens the cards' fold (#controls, or #card-<agent>).
   const body = airwallexBody(run, {
-    logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : "",
+    logo: LOGO.airwallex, proofHash: "airwallex", hash: hashBlockHtml(hash), controls: liveCardsHtml() + centHtml(centRecord()) + (cards ? controlsSideBySideHtml(rows, cards.rec.read_at, cards.file) : ""),
     awx1: awxRunBlock(), airi: airiRunBlock() + vic2RunBlock(undefined, { short: true }),
     picture: [node("zap", "Alta earnings", "final on chain", "metal"), arrow, node("landmark", booked ? `${booked.amount} USD booked` : "Booked at Airwallex", "simulated deposit", "awx"), arrow,
       node("scan-face", "CFO · Face ID", "approves the invoice"), arrow, ...(fx ? [node("arrow-left-right", `${fx.buy} by FX`, "only the shortfall", "awx"), arrow] : []),
@@ -181,7 +182,7 @@ export function airwallexPage(run: AgentRun = agentRun()): string {
     simulated: [...(licence ? [`The SWIFT payout's settlement: Purser moves the sandbox transfer to SENT, then PAID, through Airwallex's simulation API${t.faceToPaid !== null ? `; the ${t.faceToPaid} s are measured from the CFO's Face ID to PAID` : ""}.`] : []),
       ...money.filter((e) => e.earlier).map((e) => earlierLine(e))],
   });
-  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  return page({ title: "Airwallex", description: airwallexDescription(run), tab: "airwallex", css: `${CSS}\n${PRODUCTS_CSS}`, body, source: SOURCE(run), js: OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 /**

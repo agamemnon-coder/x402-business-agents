@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
 import { AWX_CONTROLS_ID, awxCardId } from "../src/redesign/airwallexProof.js";
 import { OPEN_TARGET_JS } from "../src/redesign/ui.js";
+import { LIVE_CARDS_JS } from "../src/redesign/cardCent.js";
 import { scriptBlocks } from "./support/scriptBlocks.js";
 
 const pages = buildPages();
@@ -38,16 +39,19 @@ describe("/proof → /airwallex#controls: the link and the ids match", () => {
     expect(awxCardId(" Data / buyer ")).toBe("card-data-buyer");
   });
 
-  it("the page's one script opens the fold around the target and scrolls to it, hashed into a CSP that connects nowhere", () => {
+  it("the page's one script opens the fold around the target and scrolls to it, hashed into a CSP that connects to its own origin only", () => {
     const scripts = scriptBlocks(awx);
     // Since 12 Nov the page's figures count up (src/redesign/stats.ts COUNT_JS), in the same one script.
-    expect(scripts).toEqual([`<script>\n${OPEN_TARGET_JS + COUNT_JS}</script>`]);
+    // Since 15 Nov it reads the agents' cards live from its own origin (src/redesign/cardCent.ts LIVE_CARDS_JS), in that one script.
+    expect(scripts).toEqual([`<script>\n${OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS}</script>`]);
     expect(OPEN_TARGET_JS).toContain('t.closest("details")');
     expect(OPEN_TARGET_JS).toContain('window.addEventListener("hashchange", openTarget)');
     expect(OPEN_TARGET_JS).toContain('t.scrollIntoView({ block: "start" })');
-    const hash = createHash("sha256").update(`\n${OPEN_TARGET_JS + COUNT_JS}`, "utf8").digest("base64");
+    const hash = createHash("sha256").update(`\n${OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS}`, "utf8").digest("base64");
     expect(pages.csp.airwallex).toContain(`script-src 'sha256-${hash}'`);
-    expect(pages.csp.airwallex).not.toMatch(/unsafe-inline|connect-src/);
+    expect(pages.csp.airwallex).not.toMatch(/unsafe-inline/);
+    expect(pages.csp.airwallex).toContain("connect-src 'self'");
+    expect(pages.csp.airwallex).not.toMatch(/connect-src [^;]*(https?:|\*)/);
   });
 
   it("run as written: opening #controls or #card-sourcing opens the fold; another hash, or none, leaves it closed", () => {

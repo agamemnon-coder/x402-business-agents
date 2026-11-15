@@ -198,7 +198,7 @@ describe("/replay answers, as a replay under Proof (it was /watch until the film
 describe("no served page links to a path the site does not serve", () => {
   /** Where a bundle's pages are served. */
   const PATHS: Record<string, string> = {
-    dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
+    dashboard: "/?recorded", home: "/home", watch: "/watch", replay: "/replay", try: "/try", proof: "/proof", verify: "/verify", trace: "/trace", runs: "/runs", month: "/month", film: "/film", lab: "/lab",
     metal: "/alta", metalReport: "/metal/report", visa: "/visa", airwallex: "/airwallex", claude: "/claude", t0: "/t0", books: "/books", security: "/security", docs: "/docs", status: "/status", trySign: "/try/sign", tryVerify: "/try/verify", tour: "/tour",
     enrol: "/enrol", policy: "/policy", approve: "/approve/P-0001", notFound: "/no/such/page",
   };
