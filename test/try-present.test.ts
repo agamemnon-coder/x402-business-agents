@@ -72,6 +72,11 @@ describe("recording mode", () => {
     expect(script).toContain("no endorsement implied");
   });
 
+  it("says what is happening at every step in one plain sentence (Max, 15 Nov)", () => {
+    const { script } = presentExtra("public");
+    for (const w of ["Step 1 of 4", "The AI agent read the invoice and checked it.", "You are the CFO. Approve this exact payment.", "Blocked. Not a cent moved."]) expect(script).toContain(w);
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {
