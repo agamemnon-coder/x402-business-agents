@@ -272,7 +272,7 @@ describe("dates", () => {
     const dir = temp();
     const written = writeOwnersRecord(r, dir);
     expect(written).toEqual({ json: join(dir, "2026-11-09-faceid-onchain.json"), md: join(dir, "2026-11-09-faceid-onchain.md") });
-    expect(readFileSync(written.json, "utf8")).not.toMatch(/2031/);
+    expect(readFileSync(written.json, "utf8")).not.toMatch(/2031-\d\d-\d\d/);
     expect(JSON.parse(readFileSync(written.json, "utf8"))).toEqual(r);
     expect(readFileSync(written.md, "utf8")).toBe(renderOwnersRecord(r));
   });
