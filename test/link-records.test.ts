@@ -1,6 +1,7 @@
 // Every transaction hash and Airwallex id the public surfaces name is in a run record (master list 526, part 1). The
 // surfaces: README.md, llms.txt, docs/claims.md and every page the site serves (buildPages). The records: every file
-// under docs/runs and docs/demo. A full hash (0x and 64 hex digits) and a UUID-shaped id (Airwallex's transfers,
+// under docs/runs and docs/demo, and the proof bundles of a recorded local /try run under docs/proof (15 Nov: /verify
+// carries them as its samples). A full hash (0x and 64 hex digits) and a UUID-shaped id (Airwallex's transfers,
 // conversions, authorizations and requests) must appear as written; a shortened hash ("0x2e92f9cb…1871") must match a
 // full one in a record. Breaks when a page or doc names an id that no record holds. Offline: the external links are
 // checked by `npm run links:external` (scripts/linkcheck-external.ts), never in this suite.
@@ -12,7 +13,7 @@ import { buildPages } from "../src/relay/assets.js";
 const ROOT = new URL("..", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
-const RECORDS = [...walk(join(ROOT, "docs/runs")), ...walk(join(ROOT, "docs/demo"))].map((f) => readFileSync(f, "latin1").toLowerCase()).join("\n");
+const RECORDS = [...walk(join(ROOT, "docs/runs")), ...walk(join(ROOT, "docs/demo")), ...walk(join(ROOT, "docs/proof"))].map((f) => readFileSync(f, "latin1").toLowerCase()).join("\n");
 const PAGES = buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv) as unknown as Record<string, unknown>;
 const SURFACES: [string, string][] = [
   ["README.md", read("README.md")], ["llms.txt", read("llms.txt")], ["docs/claims.md", read("docs/claims.md")],

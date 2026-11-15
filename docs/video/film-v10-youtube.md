@@ -1,7 +1,10 @@
-# Film v10 on YouTube: title, description, chapters
+# Film v10.1 on YouTube: title, description, chapters
 
-Upload `out/video/v10/purser-v10.mp4` (4:58), visibility **Unlisted**, and add `out/video/v10/purser-v10.srt` (the same
-as [film-v10.srt](film-v10.srt)) as English captions.
+Upload `out/video/v10/purser-v10-1.mp4` (4:50; v10.1 of 15 Nov replaces v10 of 13 Nov), visibility **Unlisted**, and add
+`out/video/v10/purser-v10-1.srt` (the same as [film-v10.srt](film-v10.srt)) as English captions. What changed from v10:
+the captions name Alta (formerly Metal) where the voice says Metal (Metal renamed itself Alta on 14 November), and the
+outdated sentences on the reused credential are cut (since 14 November Purser refuses a reused credential before any
+Airwallex call, docs/runs/2026-11-14-vic-5.md).
 
 **Title:** Purser: AI agents pay company bills, only within limits the CFO signs (Kit 11 hand-in)
 
@@ -16,7 +19,7 @@ Try it yourself: https://kit11.max-31b.workers.dev/try (your own test company, t
 The proof, every claim with its record: https://kit11.max-31b.workers.dev/proof
 Security, the layers a payment must pass: https://kit11.max-31b.workers.dev/security
 
-Test money only: the Airwallex sandbox, Metal testnet, Airi's test card and a simulated bank. Settlement in the Airwallex sandbox is simulated. Purser Cloud is shown with its demo company (made-up data). The approval alerts are built, live once Twilio keys are set. The walk of /try was recorded by code with a virtual test passkey.
+Test money only: the Airwallex sandbox, Alta (formerly Metal) testnet, Airi's test card and a simulated bank. Settlement in the Airwallex sandbox is simulated. Purser Cloud is shown with its demo company (made-up data). The approval alerts are built, live once Twilio keys are set. The walk of /try was recorded by code with a virtual test passkey.
 
 Voice-over and music: AI-generated (ElevenLabs).
 
@@ -28,12 +31,12 @@ Chapters
 1:48 Security in layers
 2:25 Claude decides, code checks
 2:51 Airwallex
-3:17 Metal
+3:17 Alta (formerly Metal)
 3:44 Visa via Airi
 4:01 T:0
 4:11 The proof
 4:22 What is not done
-4:39 Close
+4:31 Close
 ```
 
 The chapters are the cut's own (`npm run cut -- --docs handin-10` writes them into [film-v10-script.md](film-v10-script.md));
