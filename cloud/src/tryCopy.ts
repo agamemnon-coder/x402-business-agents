@@ -33,18 +33,18 @@ export const BAND = {
 export const START = {
   eyebrow: "Hands-on · about 2 minutes",
   /** "Your passkey": true on every device (Face ID, Touch ID, a fingerprint or Windows Hello is the device's own word). */
-  heading: "Sign an invoice with your passkey. Then change one cent.",
-  text: "Purser refuses it: your signature covers the exact terms.",
+  heading: "AI agents pay your suppliers. You approve the big ones with Face ID.",
+  text: "Change one cent after you approve, and the payment is blocked.",
   /** The three steps as a picture, each a word and one short line; then what a one-cent change gets. */
   flow: [
-    { name: "Read", line: "AI agents read it." },
-    { name: "Check", line: "Purser's code checks it." },
-    { name: "You sign", line: "Face ID or any passkey." },
+    { name: "Read", line: "AI agents read the invoice." },
+    { name: "Check", line: "Your rules check it." },
+    { name: "You approve", line: "With Face ID or a fingerprint." },
   ],
-  flowEnd: "One cent changed: refused",
+  flowEnd: "One cent changed: blocked",
   button: "Start with a test company",
   /** Under the button, small. */
-  fine: "Purser's real engine · test money · deleted after 24 h",
+  fine: "The real product · test money · deleted after 24 hours",
   /** Beside the button, quiet: the trailer on YouTube (TRAILER_URL, src/config/brand.ts). */
   trailer: "Watch the 90 s trailer",
   /** The partners' row: their official logos (Visa named in text), then the note. */
@@ -377,21 +377,21 @@ export const WHY = {
  */
 export const TAMPER = {
   /** 15 Nov (owner: "it glows red when you change something"): one red word, then the reason in plain text. */
-  refused: "Refused",
-  head: "the terms changed after you signed.",
+  refused: "Blocked",
+  head: "nothing was paid.",
   /** For screen readers, on each row of the diff: what was signed and what was asked. */
   signed: "You signed",
   asked: "Payment asked",
   /** The rule that held, then the signature line (where the one-cent refusal shows). */
-  rule: "The rule that held: your signature covers these exact terms.",
+  rule: "Your approval covers only the exact payment you saw. Anything else is blocked.",
   /**
    * {via}: " (Face ID)", the device's word for its passkey (METHOD) in brackets, or nothing where it has none. Only where it is so: the hash travels in the Airwallex sandbox
    * transfer's metadata when this payment made one (signAwx; the transfer's status is read back, not its metadata);
    * otherwise the simulated bank's own check (signSim).
    */
-  signSim: "Signed with your passkey{via}, not a PIN or a click. Purser checks the hash of the exact terms before the simulated bank moves anything.",
-  signAwx: "Signed with your passkey{via}, not a PIN or a click. The hash of the exact terms travels in the Airwallex sandbox transfer's metadata.",
-  proof: "Show the proof",
+  signSim: "You approved with your passkey{via}, not a click. Before any money moves, Purser compares the payment with the one you approved.",
+  signAwx: "You approved with your passkey{via}, not a click. A digital fingerprint of what you approved travels with the Airwallex test transfer.",
+  proof: "Show the technical proof",
 };
 
 /** The invoice's fields in its fold (the invoice itself: outside the word budget). */
@@ -515,11 +515,11 @@ export const FX_CARD = {
  * simulated bank alone paid. Outside the word budget, as the terms' labels are. {why}: one of `why`.
  */
 export const PAYOUT_CARD = {
-  live: "Airwallex · sandbox transfer", simulated: "Simulated bank only",
-  transfer: "Transfer", status: "Status", amount: "Amount", hash: "approval_sha256",
-  liveNote: "Test money. Airwallex keeps the hash of the terms you signed in this transfer's metadata.",
+  live: "Also sent through Airwallex · test account", simulated: "Practice bank only",
+  transfer: "Transfer", status: "Airwallex status", amount: "Amount", hash: "Fingerprint of your approval",
+  liveNote: "Test money. Airwallex stores a fingerprint of what you approved with this transfer.",
   /** The labelled step: the sandbox's own simulation moves the transfer on; no money anywhere. */
-  simulate: "Sandbox: move to PAID", simulating: "Asking the sandbox…", simulateNote: "Airwallex's sandbox simulation, not a payment.",
+  simulate: "Approve it in Airwallex (test)", simulating: "Asking the sandbox…", simulateNote: "Airwallex's sandbox simulation, not a payment.",
   simWhy: {
     in_approval: "It waits for a person to approve it in Airwallex first", switched_off: "Sandbox transfers are switched off", no_transfer: "There is no sandbox transfer for this payment",
     refused: "The sandbox did not move it", unavailable: "Airwallex did not answer", timeout: "Airwallex took too long", no_binding: "Sandbox transfers are not set up here",
@@ -548,7 +548,7 @@ export const PAY = {
   heading: "Try to change it.",
   loading: "Loading the terms you signed…",
   /** final-polish, 13 Nov: the screen leads with what to do; it is shown above the fields. */
-  line: "These are the terms you signed. Change any field and press Pay: Purser's real check answers.",
+  line: "This is the payment you approved. Change anything, even one cent, and press Pay.",
   attacks: "Or try an attack:",
   twice: "Pay it twice",
   bank: "Change the bank account",
@@ -576,8 +576,8 @@ export const PAY = {
   executor: "Purser's payment check: refused (the terms do not match what was approved)",
   executorFold: "Its own words",
   executorNote: "asked with your changed terms; nothing was kept",
-  signed: "Signed",
-  sent: "Sent",
+  signed: "Approved",
+  sent: "Asked",
   /** The verdict, computed from the signed and the sent values. */
   vAmountCent: "You changed the amount by one cent.",
   vAmount: "You changed the amount from {from} to {to}.",
@@ -589,8 +589,8 @@ export const PAY = {
   vOther: "The terms you sent are not the ones you signed.",
   vCover: "Your signature does not cover that.",
   roundTrip: "Round trip {n} ms, measured in your browser",
-  transfers: "Transfers made: {n}",
-  sandbox: "Airwallex sandbox calls: {n}",
+  transfers: "Payments made: {n}",
+  sandbox: "Airwallex test calls: {n}",
   raw: "Raw answer",
   fileAgain: "File it again",
   retry: "Try the payment again",
@@ -607,22 +607,22 @@ export const BOOKS = {
   heading: "Paid, booked, filed.",
   /** When settled.error is set: what failed is the engine's own words, beneath. */
   headingError: "Not everything went through.",
-  paid: "Paid on the simulated bank · test money",
+  paid: "Paid · test money",
   /** The payment found for this invoice is not PAID (its status is beside it). */
-  payment: "Payment on the simulated bank · test money",
+  payment: "Payment · test money",
   fee: "Fee",
   /** Beside the fee: where it comes from (src/redteam/airwallex.ts SANDBOX_SWIFT_FEE_CENTS, measured in the sandbox). */
-  feeWhy: "the simulated bank's flat SWIFT fee",
-  booked: "Booked in Purser's ledger",
+  feeWhy: "international transfer fee",
+  booked: "Booked in your accounts",
   account: "Account",
   debit: "Debit",
   credit: "Credit",
   /** Judge scan, 15 Nov: money in transit (1590) carries a conversion in two currencies, one line each; the row under them says so. */
-  conv: "1590: one conversion, {out} for {in}.",
-  even: "Debits equal credits.",
+  conv: "Currency exchange: {out} for {in}.",
+  even: "The books balance.",
   uneven: "Debits and credits differ.",
   /** The fold with the ledger chain's head (the newest entry's own hash). */
-  head: "Chain head",
+  head: "Tamper-proof seal",
   filed: "Filed in the archive",
   original: "Invoice",
   receipt: "Receipt",
@@ -943,7 +943,7 @@ export const VISIBLE = {
 // 15 Nov ("what does Claude add?"): every answer with an invoice also shows the Checker's steps' fold summary and the
 // script button, +13 words each ("work 2" to "work 6", "work 10" to "work 12", "work 15"; "work 7" newly over at 57);
 // "work 16" is the comparison opened, carrying the worst-case record's own line verbatim (WORST_CASE_LINE).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 83, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 79 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 79 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 219 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).

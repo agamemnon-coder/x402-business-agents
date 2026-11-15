@@ -66,7 +66,8 @@ describe("S3: /try's money-flow strip after a payment that was already made (pai
     expect(flowOf("approve", box(".paidonce"))).toEqual([6, -1, -1]);
     // Unchanged otherwise: signing, and a refused change.
     expect(flowOf("pay", box())).toEqual([3, 3, -1]);
-    expect(flowOf("pay", box(".refusal"))).toEqual([3, -1, 3]);
+    // A refused change: the passkey step stands, the bank step is where it stopped (review, 15 Nov).
+    expect(flowOf("pay", box(".refusal"))).toEqual([4, -1, 4]);
   });
 
   it("the page marks its paid-once line with the class the strip reads", () => {

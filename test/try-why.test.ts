@@ -85,13 +85,13 @@ describe("the refused payment: signed beside asked", () => {
     expect(kit.tamperRows(signed, { ...signed, amount: "2000.00", iban_last4: "1111" }, null, labels, fmt)).toEqual([["Amount", "EUR 1850.00", "EUR 2000.00"], ["Account ending", "…3000", "…1111"]]);
   });
   it("says it plainly", () => {
-    expect(`${TAMPER.refused}: ${TAMPER.head}`).toBe("Refused: the terms changed after you signed.");
-    expect(TAMPER.rule).toBe("The rule that held: your signature covers these exact terms.");
+    expect(`${TAMPER.refused}: ${TAMPER.head}`).toBe("Blocked: nothing was paid.");
+    expect(TAMPER.rule).toBe("Your approval covers only the exact payment you saw. Anything else is blocked.");
     // "Read back" is said nowhere: the transfer's status is read back, its metadata is not.
-    expect(TAMPER.signAwx).toBe("Signed with your passkey{via}, not a PIN or a click. The hash of the exact terms travels in the Airwallex sandbox transfer's metadata.");
-    expect(TAMPER.signSim).toBe("Signed with your passkey{via}, not a PIN or a click. Purser checks the hash of the exact terms before the simulated bank moves anything.");
+    expect(TAMPER.signAwx).toBe("You approved with your passkey{via}, not a click. A digital fingerprint of what you approved travels with the Airwallex test transfer.");
+    expect(TAMPER.signSim).toBe("You approved with your passkey{via}, not a click. Before any money moves, Purser compares the payment with the one you approved.");
     for (const v of Object.values(TAMPER)) expect(v).not.toMatch(/read back/i);
-    expect(TAMPER.proof).toBe("Show the proof");
+    expect(TAMPER.proof).toBe("Show the technical proof");
   });
   it("the page draws the reason first and folds the stamp, the layers and the fingerprints under Show the proof", () => {
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
@@ -100,7 +100,7 @@ describe("the refused payment: signed beside asked", () => {
     expect(html).toContain("const li=el('li','',[el('span','dk',k),el('s','old',a),el('span','arr',' → '),el('mark','new',b)]);");
     expect(html).not.toMatch(/card refusal shake|animation: glow/);
     expect(html).toContain("const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);");
-    expect(html).toContain("diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));");
+    expect(html).toContain("proof.append(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));");
   });
 });
 

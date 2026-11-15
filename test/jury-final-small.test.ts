@@ -32,11 +32,11 @@ describe("final jury: small fixes", () => {
 describe("/try's first screen", () => {
   it("says in the headline what the visit does, and that any passkey works, in words that hold on every device", async () => {
     const { START } = await import("../cloud/src/tryCopy.js");
-    // 14 Nov (review): "your passkey" holds on every device (an iPhone SE has Touch ID; an iPad says Macintosh).
-    expect(START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
+    // 15 Nov (Max): the concept in the headline, AI agents and Face ID; the step under it names the other devices' words.
+    expect(START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
     expect(START.eyebrow).toBe("Hands-on · about 2 minutes");
-    expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You sign"]);
-    expect(START.flow[2]!.line).toBe("Face ID or any passkey.");
+    expect(START.flow.map((f) => f.name)).toEqual(["Read", "Check", "You approve"]);
+    expect(START.flow[2]!.line).toBe("With Face ID or a fingerprint.");
     // The trailer on YouTube, one quiet link beside the button (14 Nov, owner).
     expect(START.trailer).toBe("Watch the 90 s trailer");
   });

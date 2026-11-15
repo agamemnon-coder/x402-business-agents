@@ -42,7 +42,7 @@ describe("GET /try", () => {
     expect(n).not.toBe(/'nonce-([^']+)'/.exec(b.headers.get("content-security-policy")!)![1]);
     expect(csp).toBe(consoleCsp(n));
     const page = await a.text();
-    expect(scriptBlocks(page)).toHaveLength(1);
+    expect(scriptBlocks(page)).toHaveLength(1); // plain /try: the release's page; ?v=2 and ?present=1 add the product frame
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
     // The same headers as the console's page, the policy's nonce aside.
@@ -195,8 +195,8 @@ describe("the frame and the start", () => {
   });
 
   it("keeps the start's words: the headline, the line under it, the button, test money deleted after 24 h, and the partners", () => {
-    expect(COPY.START.fine).toBe("Purser's real engine · test money · deleted after 24 h");
-    expect(COPY.START.text).toBe("Purser refuses it: your signature covers the exact terms.");
+    expect(COPY.START.fine).toBe("The real product · test money · deleted after 24 hours");
+    expect(COPY.START.text).toBe("Change one cent after you approve, and the payment is blocked.");
     // 14 Nov: Metal is now Alta; the first mention says so. Visa as text, "via Airwallex Airi". No endorsement implied.
     expect(`Alta ${COPY.START.formerly}`).toBe("Alta (formerly Metal)");
     expect(COPY.START.visa).toBe("Visa via Airwallex Airi");
@@ -265,13 +265,13 @@ describe("the copy", () => {
     expect(COPY.APPROVE.terms).toBe("Show the exact terms");
     expect(Object.values(COPY.METHOD)).toEqual(["Face ID", "Touch ID", "fingerprint", "Windows Hello", "your passkey"]);
     expect(COPY.PAY.heading).toBe("Try to change it.");
-    expect(COPY.PAY.line).toBe("These are the terms you signed. Change any field and press Pay: Purser's real check answers.");
+    expect(COPY.PAY.line).toBe("This is the payment you approved. Change anything, even one cent, and press Pay.");
     expect(COPY.PAY.button).toBe("Pay with my signature");
     expect(COPY.PAY.stamp).toBe("Refused by Purser");
     expect(COPY.PAY.executor).toBe("Purser's payment check: refused (the terms do not match what was approved)");
     expect(COPY.PAY.executorNote).toBe("asked with your changed terms; nothing was kept");
     expect(COPY.PAY.roundTrip).toBe("Round trip {n} ms, measured in your browser");
-    expect(COPY.PAY.transfers).toBe("Transfers made: {n}");
+    expect(COPY.PAY.transfers).toBe("Payments made: {n}");
     expect(COPY.PAY.raw).toBe("Raw answer");
     expect([COPY.PAY.seeResult, COPY.PAY.another]).toEqual(["See your result", "Try another change"]);
     expect(COPY.APPROVE.paidOnce).toBe("These are the terms you signed. They were paid once.");
@@ -285,7 +285,7 @@ describe("the copy", () => {
     expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
     expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
-    expect(COPY.START.heading).toBe("Sign an invoice with your passkey. Then change one cent.");
+    expect(COPY.START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");
     expect(COPY.START.button).toBe("Start with a test company");
     expect(COPY.GONE.heading).toBe("Your test company was deleted after 24 hours.");
     expect(COPY.GONE.button).toBe("Start again");
@@ -295,8 +295,8 @@ describe("the copy", () => {
 
   it("holds screens 5 and 6 to the words of lanes/page.md B3, and never says that Purser retries by itself", () => {
     expect(COPY.BOOKS.heading).toBe("Paid, booked, filed.");
-    expect(COPY.BOOKS.paid).toBe("Paid on the simulated bank · test money");
-    expect(COPY.BOOKS.booked).toBe("Booked in Purser's ledger");
+    expect(COPY.BOOKS.paid).toBe("Paid · test money");
+    expect(COPY.BOOKS.booked).toBe("Booked in your accounts");
     expect(COPY.BOOKS.filed).toBe("Filed in the archive");
     expect(COPY.BOOKS.retry).toBe("Try the payment again");
     // Purser Cloud's guest dashboard, said to be a sample company, never the visitor's own (try-fixes, 13 Nov).
