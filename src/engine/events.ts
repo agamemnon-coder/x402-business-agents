@@ -61,6 +61,11 @@ export function masked(v: unknown, max: number): string | undefined {
 }
 /** The first sentence of a text, masked, at most `max` characters. A dot after a capital ("B.V. is", "GmbH. ") never ends it
  * (round 4, 14 Nov: a reason was cut at "B.V."); a sentence that runs on is cut at a word, with "…". */
+/** How many fields a tool's input has (never their names or values); undefined when it is no object. */
+const inputKeys = (v: unknown): number | undefined => (v && typeof v === "object" && !Array.isArray(v) ? Math.min(Object.keys(v).length, 99) : undefined);
+/** A list of whole milliseconds as one text ("812,640"), at most 12 entries. */
+const msList = (v: unknown): string | undefined =>
+  Array.isArray(v) && v.length && v.every((x) => Number.isSafeInteger(x) && (x as number) >= 0) ? v.slice(0, 12).join(",") : undefined;
 const firstSentence = (v: unknown, max: number): string | undefined => {
   const m = masked(v, 10_000);
   return m === undefined ? undefined : masked(m.split(/(?<=[a-z0-9%)"'”][.!?])\s+(?=[A-Z0-9"“(])/)[0], max);
@@ -107,16 +112,24 @@ const EVENTS: Record<string, Pick> = {
   "claude.capped": (p) => ({ reason: typeof p.reason === "string" && CAPPED.has(p.reason) ? p.reason : undefined }),
   // The product's agents (src/agents/loop.ts on branch ap-agents-1112): a tool's name and the first sentence of what it
   // answered, the model's words, a nudge, and the run's outcome. A tool's input is never shown.
-  "agent.tool": (p) => ({ agent: p.agent, tool: p.tool, turn: p.turn, model: p.model, request_id: p.request_id, ms: p.ms, answer: firstSentence(p.result, 160) }),
+  // 15 Nov (/try's agent trace): how many fields the input has (0 for the Checker's six lookups, which take none; never
+  // a name or a value), and whether code refused the call.
+  "agent.tool": (p) => ({
+    agent: p.agent, tool: p.tool, turn: p.turn, model: p.model, request_id: p.request_id, ms: p.ms, answer: firstSentence(p.result, 160),
+    inputs: inputKeys(p.input), refused: typeof p.blocked_by === "string" && p.blocked_by ? true : undefined,
+  }),
   "agent.said": (p) => ({ agent: p.agent, turn: p.turn, model: p.model, text: masked(p.text, 600) }),
   "agent.nudged": (p) => ({ agent: p.agent, reason: masked(p.reason, 160) }),
-  "agent.run": (p) => ({ ...copy("agent", "model", "status", "turns", "cost_usd_micros", "latency_ms")(p), request_id: lastRequest(p.request_ids) }),
+  // 15 Nov: each Claude call's own time in ms, in turn order ("812,640"), from the run's measurement (claude_ms).
+  "agent.run": (p) => ({ ...copy("agent", "model", "status", "turns", "cost_usd_micros", "latency_ms")(p), request_id: lastRequest(p.request_ids), claude_ms: msList(p.claude_ms) }),
   // The agents' decisions (src/ap/checkerAgent.ts, src/ap/coderAgent.ts, src/ap/payerAgent.ts; task A6): who decided,
   // the agent's one-line reason (masked, its first sentence), what code required, enforced or overrode, and the request
   // that gave the answer. The codes of code's findings, never their words; never the payment's terms.
   "ap.checker_decided": (p) => ({
     ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings),
     reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
+    // 15 Nov: the always-pay script on the same case (src/ap/checkerAgent.ts scriptOn): code's outcome and its rule.
+    script_outcome: typeof p.script_outcome === "string" ? p.script_outcome : undefined, script_overridden_by: typeof p.script_overridden_by === "string" ? p.script_overridden_by : undefined,
   }),
   "ap.coded": (p) => {
     const lines = Array.isArray(p.lines) ? (p.lines as { account?: unknown; vat_code?: unknown; cost_centre?: unknown }[]) : [];
