@@ -66,6 +66,8 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 @media (max-width: 640px) {
   main.ent section { padding: 64px 0; } main.ent section.e-hero { padding: 40px 0 56px; }
   .ctas .btn { width: 100%; justify-content: center; }
+  /* 15 Nov: three buttons stacked; the two secondary ones a little lower, so the reassurance line stays on a 360 x 780 first screen. */
+  .ctas .btn.ghost { height: 48px; font-size: 16px; }
   .e-hero .what { font-size: 18px; }
 }
 /* Four features: an icon, a title, one line. */
