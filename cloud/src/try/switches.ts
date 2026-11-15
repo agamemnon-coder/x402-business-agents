@@ -33,6 +33,8 @@ export const NUMBERS: Record<string, { ceiling: number; fallback: number }> = {
   max_inflight: { ceiling: 20, fallback: 0 },
   // Starts.
   starts_per_address_hour: { ceiling: 50, fallback: 5 },
+  // An IPv6 /48 holds 65,536 /64s: its starts in an hour are counted together too (security sweep 2, 15 Nov).
+  starts_per_48_hour: { ceiling: 200, fallback: 20 },
   starts_per_day_public: { ceiling: 2_000, fallback: 300 },
   starts_per_day_event: { ceiling: 2_000, fallback: 300 },
   starts_per_day_jury: { ceiling: 500, fallback: 100 },
