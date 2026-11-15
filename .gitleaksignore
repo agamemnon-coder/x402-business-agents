@@ -157,3 +157,7 @@ b1742c57d99da0934be4321f4203ca1139735294:docs/proof/try-refused.json:generic-api
 # the same two public WebAuthn values as above, under the squash commit that landed on main (#364)
 a5ebcf967661ea4c747d1985c549710409609ade:docs/proof/try-paid.json:generic-api-key:65
 a5ebcf967661ea4c747d1985c549710409609ade:docs/proof/try-refused.json:generic-api-key:65
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+9106d40b36c3f070acb762a3f4ee109d756f6826:docs/proof/try-paid.json:generic-api-key:65
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+9106d40b36c3f070acb762a3f4ee109d756f6826:docs/proof/try-refused.json:generic-api-key:65

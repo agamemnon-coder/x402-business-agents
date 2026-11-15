@@ -6,7 +6,8 @@
 //    file picker, passes every check line; the two sample buttons pass; the pasted paid file with one cent changed
 //    fails on the terms hash. At 1440 and 390 px; nothing wider than the screen; no console or CSP error.
 // With --write, the two downloaded files become the samples committed under docs/proof/ (try-paid.json, try-refused.json).
-// npx tsx test/browser/proof.check.ts [screenshot dir] [--write]
+// With --live, the same walk on the deployed site: /try on purser-try (its own rpId, test money only) and /verify on kit11.
+// npx tsx test/browser/proof.check.ts [screenshot dir] [--write] [--live]
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
@@ -24,21 +25,17 @@ const args = process.argv.slice(2);
 const write = args.includes("--write");
 const shots = args.find((a) => !a.startsWith("--")) ?? "";
 if (shots) mkdirSync(shots, { recursive: true });
+const LIVE = args.includes("--live");
 const PORT = 9090 + Math.floor(Math.random() * 100);
 const ORIGIN = `http://localhost:${PORT}`;
+/** Where /try and /verify are: here, one local server; live, the deployed hands-on demo and the site. */
+const TRY_ORIGIN = LIVE ? "https://purser-try.max-31b.workers.dev" : ORIGIN;
+const VERIFY_ORIGIN = LIVE ? "https://kit11.max-31b.workers.dev" : ORIGIN;
 const ADMIN = "proof-check-admin-token-not-a-secret";
 let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
 
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "proof-check-"));
-const env: CloudEnv = {
-  sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "p".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
-  rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 }, tryIt: { claude: false },
-};
-env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN });
-const admin = (body: unknown) => handle(new Request(`${ORIGIN}/v1/try/admin`, { method: "POST", headers: { authorization: `Bearer ${ADMIN}`, "content-type": "application/json" }, body: JSON.stringify(body) }), env);
-for (const [key, value] of [["starts", "on"], ["starts_per_address_hour", 50]] as const) ok((await admin({ op: "set", key, value })).status === 200, `switch ${key}`);
-
 // /verify as the site serves it: the page and a CSP made as src/servers/dashboard.ts makes VERIFY_BUNDLE_CSP.
 const bundles: { paid?: ProofBundle; refused?: ProofBundle } = {};
 const inlineHash = (page: string, tag: "script" | "style") => `'sha256-${createHash("sha256").update(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, "i").exec(page)![1]!, "utf8").digest("base64")}'`;
@@ -48,23 +45,33 @@ const verifyPage = () => {
   return { html, csp };
 };
 
-const server = createServer(async (req, res) => {
-  if (req.url === "/verify") {
-    const v = verifyPage();
-    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": v.csp });
-    return res.end(v.html);
-  }
-  const chunks: Buffer[] = [];
-  for await (const ch of req) chunks.push(ch as Buffer);
-  const headers = new Headers();
-  for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
-  const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
-  const h: Record<string, string> = {};
-  r.headers.forEach((v, k) => { h[k] = v; });
-  res.writeHead(r.status, h);
-  res.end(Buffer.from(await r.arrayBuffer()));
-});
-await new Promise<void>((r) => server.listen(PORT, r));
+let server: ReturnType<typeof createServer> | null = null;
+if (!LIVE) {
+  const env: CloudEnv = {
+    sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "p".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
+    rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 }, tryIt: { claude: false },
+  };
+  env.engine = nodeEngines({ sql: env.sql, blobs: env.blobs, rpId: "localhost", origin: ORIGIN });
+  const admin = (body: unknown) => handle(new Request(`${ORIGIN}/v1/try/admin`, { method: "POST", headers: { authorization: `Bearer ${ADMIN}`, "content-type": "application/json" }, body: JSON.stringify(body) }), env);
+  for (const [key, value] of [["starts", "on"], ["starts_per_address_hour", 50]] as const) ok((await admin({ op: "set", key, value })).status === 200, `switch ${key}`);
+  server = createServer(async (req, res) => {
+    if (req.url === "/verify") {
+      const v = verifyPage();
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8", "content-security-policy": v.csp });
+      return res.end(v.html);
+    }
+    const chunks: Buffer[] = [];
+    for await (const ch of req) chunks.push(ch as Buffer);
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+    const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers, ...(chunks.length ? { body: Buffer.concat(chunks) } : {}) }), env);
+    const h: Record<string, string> = {};
+    r.headers.forEach((v, k) => { h[k] = v; });
+    res.writeHead(r.status, h);
+    res.end(Buffer.from(await r.arrayBuffer()));
+  });
+  await new Promise<void>((r) => server!.listen(PORT, r));
+}
 
 const errors: string[] = [];
 const browser = await chromium.launch();
@@ -86,7 +93,7 @@ const take = async (page: Page, click: () => Promise<void>): Promise<{ name: str
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${TRY_ORIGIN}/try`);
   await page.getByRole("button", { name: /Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await page.locator(".samples .btn:not(.skel)").first().waitFor();
@@ -105,7 +112,7 @@ const take = async (page: Page, click: () => Promise<void>): Promise<{ name: str
   await shot(page, "try-paid-proof");
   const paidFile = await take(page, () => dlPaid.click());
   bundles.paid = JSON.parse(paidFile.text) as ProofBundle;
-  ok(paidFile.name === VERIFY_YOURSELF.file && bundles.paid.decision.outcome === "paid" && bundles.paid.rp_id === "localhost" && bundles.paid.origin === ORIGIN, `the paid proof downloads as ${paidFile.name}: outcome paid, rpId localhost`);
+  ok(paidFile.name === VERIFY_YOURSELF.file && bundles.paid.decision.outcome === "paid" && bundles.paid.rp_id === new URL(TRY_ORIGIN).hostname && bundles.paid.origin === TRY_ORIGIN, `the paid proof downloads as ${paidFile.name}: outcome paid, rpId ${bundles.paid.rp_id}`);
   const nodeOk = await verifyProofBundle(bundles.paid);
   ok(nodeOk.ok, `the paid proof passes the Node checks too (${nodeOk.checks.filter((c) => !c.ok).map((c) => c.check).join(", ") || "all"})`);
 
@@ -145,7 +152,7 @@ for (const width of [1440, 390]) {
   page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
   let requests = 0;
   page.on("request", (r) => { if (!r.url().startsWith("data:") && !r.url().endsWith("/verify") && !/\/assets\//.test(r.url())) requests++; });
-  await page.goto(`${ORIGIN}/verify`);
+  await page.goto(`${VERIFY_ORIGIN}/verify`);
   const verdict = async () => { await page.locator("#v-verdict:not([hidden])").waitFor(); return { ok: await page.getAttribute("#v-verdict", "data-ok"), failed: await page.getAttribute("#v-verdict", "data-failed"), lines: await page.locator("#v-checks li").count(), pass: await page.locator("#v-checks li.ok").count() }; };
   for (const [name, b] of Object.entries(bundles)) {
     const f = join(dir, `${name}-${width}.json`);
@@ -184,6 +191,6 @@ if (write && failed === 0) {
   console.log("wrote docs/proof/try-paid.json and docs/proof/try-refused.json");
 }
 await browser.close();
-server.close();
+server?.close();
 console.log(failed ? `${failed} FAILED` : "all ok");
 process.exit(failed ? 1 : 0);

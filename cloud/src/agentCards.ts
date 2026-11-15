@@ -17,6 +17,7 @@
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { CARD_ACTIVE_DAYS, CARDS as POLICY_CARDS } from "../../src/config/policy.js";
 import type { CardsAnswer, CardsPort, SafeCard, SafeTx } from "../../src/airwallex/cardGate.js";
+import { classifyAgentCards, type AgentCardSet, type CardAgentId, type CardLite } from "../../src/airwallex/agentCardSet.js";
 import { AuthError, type Caller } from "./auth.js";
 import { agentsOf } from "./consoleData.js";
 import { randomToken, sha256Hex, toB64u } from "./crypto.js";
@@ -52,6 +53,9 @@ CREATE TABLE IF NOT EXISTS card_actions (
   PRIMARY KEY (tenant_id, id)
 );
 CREATE INDEX IF NOT EXISTS card_actions_by_day ON card_actions (day, tenant_id);
+CREATE TABLE IF NOT EXISTS card_edge_runs (
+  id TEXT PRIMARY KEY, ran_at TEXT NOT NULL, record_json TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS card_reads (
   tenant_id TEXT NOT NULL, key TEXT NOT NULL, at INTEGER NOT NULL, body_json TEXT NOT NULL,
   PRIMARY KEY (tenant_id, key)
@@ -70,8 +74,14 @@ const isCardAgent = (a: string): a is CardAgent => (CARD_AGENTS as string[]).inc
 const MCCS: Record<CardAgent, string[]> = { sourcing: ["5734"], support: ["5734", "7372"], treasury: ["5734"] };
 const NAMES: Record<CardAgent, string> = { sourcing: "Sourcing agent", support: "Support agent", treasury: "Treasury agent" };
 
-export type CardActionKind = "issue" | "freeze" | "unfreeze" | "limits" | "test";
-export const CARD_ACTION_KINDS: readonly CardActionKind[] = ["issue", "freeze", "unfreeze", "limits", "test"];
+/**
+ * tidy: freeze the agent's older test cards that are still active (15 Nov: the sandbox holds two or three per agent).
+ * edge: two sandbox test purchases on the live card, exactly its limit L and then L + 0.01 (one cent over).
+ */
+export type CardActionKind = "issue" | "freeze" | "unfreeze" | "limits" | "test" | "tidy" | "edge";
+export const CARD_ACTION_KINDS: readonly CardActionKind[] = ["issue", "freeze", "unfreeze", "limits", "test", "tidy", "edge"];
+/** At most this many older cards frozen in one signed action. */
+const TIDY_MAX = 6;
 
 export class CardRefused extends Error {
   constructor(readonly status: number, message: string) { super(message); this.name = "CardRefused"; }
@@ -138,6 +148,43 @@ async function liveCard(sql: Sql, tenantId: string, row: CardRow, gateway: Cards
   return out;
 }
 
+const liteOf = (c: SafeCard): CardLite => ({ id: c.card_id, last4: c.last4, status: c.status, nickname: c.nickname, created_at: c.created_at, per_tx_cents: c.limits?.per_tx_cents ?? null, monthly_cents: c.limits?.monthly_cents ?? null });
+
+/**
+ * Every agent card the sandbox lists (one read for all companies, kept READ_TTL_MS), sorted per agent into its live card
+ * and older test cards by the same function /airwallex uses (src/airwallex/agentCardSet.ts). The company's own pinned
+ * card (issued or adopted here) is its live card.
+ */
+async function cardSets(sql: Sql, tenantId: string, gateway: CardsPort | undefined, policy: Map<CardAgent, { per_tx_cents: number; monthly_cents: number }>, now: Date, fresh = false): Promise<{ sets: AgentCardSet[] | null; reason: string | null }> {
+  let cards: CardLite[] | null = null, reason: string | null = null;
+  const hit = fresh ? null : await sql.first<{ at: number; body_json: string }>("SELECT at, body_json FROM card_reads WHERE tenant_id = '' AND key = 'list'");
+  if (hit && now.getTime() - hit.at < READ_TTL_MS) cards = JSON.parse(hit.body_json) as CardLite[];
+  else if (!gateway) reason = "this deployment has no card gateway";
+  else {
+    let a: CardsAnswer | null;
+    try { a = await gateway.ask({ op: "list" }); } catch { a = null; }
+    if (a && a.ok && a.op === "list") {
+      cards = a.cards.map(liteOf);
+      await sql.run("INSERT INTO card_reads (tenant_id, key, at, body_json) VALUES ('', 'list', ?, ?) ON CONFLICT(tenant_id, key) DO UPDATE SET at = excluded.at, body_json = excluded.body_json", [now.getTime(), JSON.stringify(cards)]);
+    } else reason = a && !a.ok ? a.reason : "the card gateway did not answer";
+  }
+  if (!cards) return { sets: null, reason };
+  const rows = await sql.all<{ agent: string; card_id: string }>("SELECT agent, card_id FROM agent_cards WHERE tenant_id = ?", [tenantId]);
+  const pinned = Object.fromEntries(rows.map((r) => [r.agent, r.card_id])) as Partial<Record<CardAgentId, string>>;
+  const pol = Object.fromEntries(CARD_AGENTS.map((a) => [a, policy.get(a) ?? { per_tx_cents: POLICY_CARDS[a].perTxCents, monthly_cents: POLICY_CARDS[a].monthlyCents }])) as Record<CardAgentId, { per_tx_cents: number; monthly_cents: number }>;
+  return { sets: classifyAgentCards(cards, pol, pinned), reason: null };
+}
+
+/** The agent's live card from the sandbox becomes the company's pinned card here (our records only: nothing is sent). */
+async function adopt(sql: Sql, tenantId: string, set: AgentCardSet, now: Date): Promise<void> {
+  if (!set.live) return;
+  const iso = now.toISOString();
+  await sql.run("INSERT INTO agent_cards (tenant_id, agent, card_id, last4, status, per_tx_cents, monthly_cents, created_at, updated_at, action_sha256) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tenant_id, agent) DO NOTHING",
+    [tenantId, set.agent, set.live.id, set.live.last4, set.live.status, set.live.per_tx_cents, set.live.monthly_cents, set.live.created_at ?? iso, iso, "adopted"]);
+}
+
+const shownOlder = (o: { card: CardLite; frozen: boolean }) => ({ last4: o.card.last4, card_id_last4: o.card.id.slice(-4), status: o.card.status, frozen: o.frozen, per_tx_cents: o.card.per_tx_cents, monthly_cents: o.card.monthly_cents });
+
 const shown = (c: SafeCard | null, row: CardRow) => ({
   last4: c?.last4 ?? row.last4, card_id_last4: row.card_id.slice(-4), status: c?.status ?? row.status, brand: c?.brand ?? null,
   per_tx_cents: c?.limits?.per_tx_cents ?? row.per_tx_cents, monthly_cents: c?.limits?.monthly_cents ?? row.monthly_cents, issued_at: row.created_at,
@@ -150,16 +197,20 @@ export async function cardsView(o: { sql: Sql; caller: Caller; gateway?: CardsPo
   const tenantId = o.caller.tenantId;
   const why = await cardsBlocked(o.sql, tenantId, o.gateway);
   const policy = await policyLimits(o.sql, tenantId);
+  // The sandbox's cards, sorted per agent; an agent with no pinned card here adopts its live card from that read.
+  const listed = await cardSets(o.sql, tenantId, o.gateway, policy, o.now);
+  for (const set of listed.sets ?? []) if (policy.has(set.agent)) await adopt(o.sql, tenantId, set, o.now);
   const rows = await o.sql.all<CardRow>("SELECT agent, card_id, last4, status, per_tx_cents, monthly_cents, created_at, updated_at FROM agent_cards WHERE tenant_id = ?", [tenantId]);
   const agents = [];
   for (const [agent, p] of policy) {
     const row = rows.find((r) => r.agent === agent);
-    if (!row) { agents.push({ agent, name: p.name, policy: { per_tx_cents: p.per_tx_cents, monthly_cents: p.monthly_cents }, card: null, live: false, read_at: null, reason: null, in_sync: false, transactions: [] }); continue; }
+    const older = (listed.sets?.find((x) => x.agent === agent)?.older ?? []).map(shownOlder);
+    if (!row) { agents.push({ agent, name: p.name, policy: { per_tx_cents: p.per_tx_cents, monthly_cents: p.monthly_cents }, card: null, live: false, read_at: null, reason: listed.reason, in_sync: false, transactions: [], older }); continue; }
     const live = await liveCard(o.sql, tenantId, row, o.gateway, o.now);
     const card = shown(live.card, row);
     agents.push({
       agent, name: p.name, policy: { per_tx_cents: p.per_tx_cents, monthly_cents: p.monthly_cents }, card, live: !!live.card, read_at: live.read_at, reason: live.reason,
-      in_sync: card.per_tx_cents === p.per_tx_cents && card.monthly_cents === p.monthly_cents, transactions: live.items.map(shownTx),
+      in_sync: card.per_tx_cents === p.per_tx_cents && card.monthly_cents === p.monthly_cents, transactions: live.items.map(shownTx), older,
     });
   }
   const owner = o.caller.kind === "session" && o.caller.role === "owner";
@@ -198,23 +249,25 @@ export async function cardsScope(sql: Sql, gateway: CardsPort | undefined, now: 
 }
 
 /** The exact action, in a fixed key order: what the passkey signs (through its SHA-256). */
-export function canonicalAction(a: { company: string; agent: string; kind: CardActionKind; card_id: string | null; limits: { per_tx_cents: number; monthly_cents: number } | null; amount_cents: number | null; by: string; nonce: string; issued_at: string; expires_at: string }): string {
+export function canonicalAction(a: { company: string; agent: string; kind: CardActionKind; card_id: string | null; limits: { per_tx_cents: number; monthly_cents: number } | null; amount_cents: number | null; card_ids?: string[] | null; amounts_cents?: number[] | null; by: string; nonce: string; issued_at: string; expires_at: string }): string {
   return JSON.stringify({
     v: 1, what: "purser.agent_card_action", sandbox: true, test_money: true,
     company: a.company, agent: a.agent, kind: a.kind, card_id: a.card_id,
     limits: a.limits ? { currency: "EUR", per_tx_cents: a.limits.per_tx_cents, monthly_cents: a.limits.monthly_cents } : null,
-    amount_cents: a.amount_cents, by: a.by, nonce: a.nonce, issued_at: a.issued_at, expires_at: a.expires_at,
+    amount_cents: a.amount_cents, card_ids: a.card_ids ?? null, amounts_cents: a.amounts_cents ?? null, by: a.by, nonce: a.nonce, issued_at: a.issued_at, expires_at: a.expires_at,
   });
 }
 
 /** The action in plain words, for the person who signs it. */
-function linesOf(kind: CardActionKind, name: string, row: CardRow | null, limits: { per_tx_cents: number; monthly_cents: number } | null, amount: number | null): string[] {
+function linesOf(kind: CardActionKind, name: string, row: CardRow | null, limits: { per_tx_cents: number; monthly_cents: number } | null, amount: number | null, extra: { older?: string[]; amounts?: number[] } = {}): string[] {
   const card = row?.last4 ? `card •••• ${row.last4}` : "the card";
   switch (kind) {
     case "issue": return [`Issue a virtual Visa card for the ${name}`, `Limits from the CFO policy: ${eur(limits!.per_tx_cents)} a purchase, ${eur(limits!.monthly_cents)} a month`, "Airwallex sandbox, test money"];
     case "freeze": return [`Freeze the ${name}'s ${card}`, "Airwallex declines every purchase until it is unfrozen"];
     case "unfreeze": return [`Unfreeze the ${name}'s ${card}`, "It can buy again within its limits"];
     case "limits": return [`Set the ${name}'s ${card} to the CFO policy`, `${eur(limits!.per_tx_cents)} a purchase, ${eur(limits!.monthly_cents)} a month`];
+    case "tidy": return [`Freeze the ${name}'s older test cards: ${(extra.older ?? []).map((l) => `•••• ${l}`).join(", ")}`, `Its live card ${card} stays as it is`, "Airwallex sandbox, test money"];
+    case "edge": return [`Test the ${name}'s ${card} at its limit, at Airwallex`, `Two test purchases: ${eur(extra.amounts![0]!)} (exactly the limit), then ${eur(extra.amounts![1]!)} (one cent over)`, "Airwallex sandbox simulation, test money; its answers are kept as a run record"];
     case "test": return [`Test: the ${name} tries to buy for ${eur(amount!)} on ${card}`, `That is over its limit of ${eur(row?.per_tx_cents ?? 0)} a purchase: Airwallex should decline it`, "Airwallex sandbox simulation, test money"];
   }
 }
@@ -232,10 +285,23 @@ export async function startCardAction(o: { sql: Sql; caller: Caller; gateway?: C
   const p = (await policyLimits(o.sql, c.tenantId)).get(o.agent);
   if (!p) throw new CardRefused(404, "this company has no such agent");
   if ((await writesToday(o.sql, c.tenantId, o.now)) >= WRITES_PER_DAY) throw new CardRefused(429, `the daily cap of ${WRITES_PER_DAY} card writes is reached for this company`);
+  // A card the sandbox already has for this agent is adopted first (our records only), so the action fits what is there.
+  const policyAll = await policyLimits(o.sql, c.tenantId);
+  const listed = o.kind === "issue" || o.kind === "tidy" ? await cardSets(o.sql, c.tenantId, o.gateway, policyAll, o.now, true) : { sets: null, reason: null };
+  const set = listed.sets?.find((x) => x.agent === o.agent) ?? null;
+  if (o.kind === "issue" && set?.live) throw new CardRefused(409, `this agent has a card at the sandbox already (•••• ${set.live.last4 ?? "?"}); it is adopted, not issued again`);
+  if (o.kind === "tidy" && set) await adopt(o.sql, c.tenantId, set, o.now);
   let row = await cardRow(o.sql, c.tenantId, o.agent);
   let limits: { per_tx_cents: number; monthly_cents: number } | null = null;
   let amount: number | null = null;
-  if (o.kind === "issue") {
+  let cardIds: string[] | null = null, amounts: number[] | null = null, olderLast4: string[] = [];
+  if (o.kind === "tidy") {
+    if (!set) throw new CardRefused(503, listed.reason ?? "the sandbox's cards could not be read");
+    const stray = set.older.filter((x) => !x.frozen).slice(0, TIDY_MAX);
+    if (!stray.length) throw new CardRefused(409, "no older test card of this agent is still active");
+    cardIds = stray.map((x) => x.card.id);
+    olderLast4 = stray.map((x) => x.card.last4 ?? "?");
+  } else if (o.kind === "issue") {
     if (row) throw new CardRefused(409, "this agent has a live card already");
     const n = await o.sql.first<{ n: number }>("SELECT COUNT(*) AS n FROM agent_cards WHERE tenant_id = ?", [c.tenantId]);
     if (Number(n?.n ?? 0) >= CARDS_PER_COMPANY) throw new CardRefused(409, `at most ${CARDS_PER_COMPANY} live cards a company`);
@@ -253,14 +319,19 @@ export async function startCardAction(o: { sql: Sql; caller: Caller; gateway?: C
       limits = { per_tx_cents: p.per_tx_cents, monthly_cents: p.monthly_cents };
     }
     if (o.kind === "test") amount = (row.per_tx_cents ?? p.per_tx_cents) + TEST_OVER_CENTS;
+    if (o.kind === "edge") {
+      if (status !== "ACTIVE") throw new CardRefused(409, `the card is ${status.toLowerCase()}, not active`);
+      if (row.per_tx_cents !== p.per_tx_cents || row.monthly_cents !== p.monthly_cents) throw new CardRefused(409, "set the card's limits to the CFO policy first");
+      amounts = [p.per_tx_cents, p.per_tx_cents + 1];
+    }
   }
   const issued = o.now.toISOString(), expires = new Date(o.now.getTime() + ACTION_TTL_MS).toISOString();
-  const json = canonicalAction({ company: c.tenantId, agent: o.agent, kind: o.kind, card_id: row?.card_id ?? null, limits, amount_cents: amount, by: c.principal, nonce: randomToken(12).replace(/[^A-Za-z0-9]/g, "x"), issued_at: issued, expires_at: expires });
+  const json = canonicalAction({ company: c.tenantId, agent: o.agent, kind: o.kind, card_id: row?.card_id ?? null, limits, amount_cents: amount, card_ids: cardIds, amounts_cents: amounts, by: c.principal, nonce: randomToken(12).replace(/[^A-Za-z0-9]/g, "x"), issued_at: issued, expires_at: expires });
   const sha = await sha256Hex(json);
   const r: ActionRow = { id: `ca_${sha.slice(0, 16)}`, sha256: sha, kind: o.kind, agent: o.agent, action_json: json, challenge: toB64u(hexBytes(sha)), by_user: c.principal, created_at: issued, expires_at: expires, status: "pending", result_json: null };
   await o.sql.run("INSERT INTO card_actions (tenant_id, id, sha256, kind, agent, action_json, challenge, by_user, created_at, expires_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')",
     [c.tenantId, r.id, r.sha256, r.kind, r.agent, r.action_json, r.challenge, r.by_user, r.created_at, r.expires_at]);
-  return { action: actionOut(r, linesOf(o.kind, p.name, row, limits, amount)) };
+  return { action: actionOut(r, linesOf(o.kind, p.name, row, limits, amount, { older: olderLast4, ...(amounts ? { amounts } : {}) })) };
 }
 
 /** Whether this company has a card action with this id (another company's is "no such action"). */
@@ -292,7 +363,7 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   // The kill switch, again, at the moment of sending.
   const why = await cardsBlocked(o.sql, c.tenantId, o.gateway);
   if (why) throw new CardRefused(409, why);
-  const a = JSON.parse(r.action_json) as { card_id: string | null; limits: { per_tx_cents: number; monthly_cents: number } | null; amount_cents: number | null };
+  const a = JSON.parse(r.action_json) as { card_id: string | null; limits: { per_tx_cents: number; monthly_cents: number } | null; amount_cents: number | null; card_ids: string[] | null; amounts_cents: number[] | null };
   const today = day(o.now), iso = o.now.toISOString();
   // One claim: pending to running, only under both daily caps (and, for a new card, under the cards cap with none for
   // this agent). Two signatures at once cannot both pass a cap.
@@ -310,6 +381,39 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
     throw new CardRefused(429, r.kind === "issue" ? `a cap is reached: at most ${CARDS_PER_COMPANY} cards a company, one an agent, ${WRITES_PER_DAY} card writes a day` : `the daily cap of card writes is reached (${WRITES_PER_DAY} a company, ${WRITES_PER_DAY_ALL} in all)`);
   }
   const p = POLICY_CARDS[r.agent as CardAgent];
+  const ask = async (q: Parameters<CardsPort["ask"]>[0]): Promise<CardsAnswer> => { try { return await o.gateway!.ask(q); } catch { return { ok: false, code: "no_answer", reason: "the card gateway did not answer" }; } };
+  let result: Record<string, unknown>;
+  if (r.kind === "tidy") {
+    // Each older card frozen in turn; every answer kept, and the action is done only when all of them are.
+    const frozen: { card_id_last4: string; status: string | null; reason: string | null }[] = [];
+    for (const id of a.card_ids ?? []) {
+      const x = await ask({ op: "status", action_sha256: r.sha256, card_id: id, status: "INACTIVE" });
+      frozen.push({ card_id_last4: id.slice(-4), status: x.ok && "card" in x ? x.card.status : null, reason: x.ok ? null : x.reason });
+    }
+    const all = frozen.length > 0 && frozen.every((f) => f.status === "INACTIVE");
+    result = { status: all ? "done" : "failed", kind: r.kind, agent: r.agent, sha256: r.sha256, frozen, ...(all ? {} : { reason: "not every older card was frozen" }), label: CARDS_LABEL };
+    await o.sql.run("DELETE FROM card_reads WHERE tenant_id = '' AND key = 'list'");
+  } else if (r.kind === "edge") {
+    // Exactly the limit, then one cent over, one after the other: Airwallex's own answers, with their ids and times.
+    const row = await cardRow(o.sql, c.tenantId, r.agent);
+    const tries: Record<string, unknown>[] = [];
+    let failed: string | null = null;
+    for (const cents of a.amounts_cents ?? []) {
+      const x = await ask({ op: "simulate", action_sha256: r.sha256, card_id: a.card_id!, amount_cents: cents, merchant: "Purser test merchant", mcc: MCCS[r.agent as CardAgent][0]! });
+      if (x.ok && x.op === "simulate") tries.push({ amount_cents: cents, currency: x.tx.currency, id: x.tx.id, at: x.tx.at, status: x.tx.status, approved: x.tx.approved, failure_reason: x.tx.failure_reason });
+      else { failed = x.ok ? "an unexpected answer" : `${x.reason}${x.awx_code ? ` (${x.awx_code})` : ""}`; break; }
+    }
+    if (!failed) {
+      const record = {
+        run: "card-cent", ran_at: iso, label: CARDS_LABEL, agent: r.agent, action_sha256: r.sha256,
+        method: "POST /api/v1/simulation/issuing/create, twice on one card, after the CFO's passkey signed the action in Purser Cloud",
+        card: { last4: row?.last4 ?? null, card_id_last4: (a.card_id ?? "").slice(-4), per_tx_cents: a.amounts_cents![0]!, monthly_cents: row?.monthly_cents ?? null },
+        attempts: tries,
+      };
+      await o.sql.run("INSERT INTO card_edge_runs (id, ran_at, record_json) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING", [r.sha256, iso, JSON.stringify(record)]);
+      result = { status: "done", kind: r.kind, agent: r.agent, sha256: r.sha256, tries, label: CARDS_LABEL };
+    } else result = { status: "failed", kind: r.kind, agent: r.agent, sha256: r.sha256, tries, reason: failed, label: CARDS_LABEL };
+  } else {
   let ans: CardsAnswer;
   try {
     ans = r.kind === "issue"
@@ -320,7 +424,6 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   } catch {
     ans = { ok: false, code: "no_answer", reason: "the card gateway did not answer" };
   }
-  let result: Record<string, unknown>;
   if (ans.ok && "card" in ans) {
     const card = ans.card;
     if (r.kind === "issue") {
@@ -338,8 +441,16 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   } else {
     result = { status: "failed", kind: r.kind, agent: r.agent, sha256: r.sha256, reason: "an unexpected answer", label: CARDS_LABEL };
   }
+  }
   await o.sql.run("UPDATE card_actions SET status = ?, done_at = ?, result_json = ? WHERE tenant_id = ? AND id = ?", [String(result.status), iso, JSON.stringify(result), c.tenantId, r.id]);
   await o.sql.run("DELETE FROM card_reads WHERE tenant_id = ? AND key = ?", [c.tenantId, `card:${r.agent}`]);
   await db.apply([db.insert("security_events", { id: `se_${r.id}`, at: iso, kind: `card.${r.kind}.${result.status}`, actor: c.principal, detail_json: JSON.stringify({ agent: r.agent, action_sha256: r.sha256, label: CARDS_LABEL }) })]);
   return result;
+}
+
+/** GET /v1/cards/edge/latest: the newest one-cent-over run, as the run record docs/runs keeps (sandbox, last four digits only). */
+export async function latestEdgeRun(sql: Sql): Promise<unknown | null> {
+  await tables(sql);
+  const r = await sql.first<{ record_json: string }>("SELECT record_json FROM card_edge_runs ORDER BY ran_at DESC LIMIT 1");
+  return r ? JSON.parse(r.record_json) : null;
 }

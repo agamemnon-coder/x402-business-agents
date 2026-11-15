@@ -9,6 +9,7 @@
 //      challenge, both with an expired deadline: each sent and reverted on chain; both passkeys: paid; the same signed
 //      batch sent again: reverted (nonce used);
 //   4. a mandate bound with both passkeys through Metal's own authorizeMandateCall; with the CFO's alone: reverted;
+//      the agent pays 0.05 under it; then 0.06, one cent over its cap: refused on chain;
 //   5. that mandate revoked with both passkeys.
 // The passkeys here are SOFTWARE STAND-INS (src/metal/softPasskey.ts): the same WebAuthn format a phone produces, keys
 // in the test keys dir. Test money only; keys are never printed. Writes docs/runs/passkey-owners.json (RUN_OUT renames).
@@ -24,6 +25,7 @@ const { publicClient, transferUsdz, usdzBalance } = await import("../metal/chain
 // Shared with the owners path (npm run owners): key files, the agent's payment, a credential's ingest, a revert decoded.
 const { plainKey: eoa } = await import("../metal/keyFiles.js");
 const { pullUnder } = await import("../metal/pull.js");
+const { overCapCents, overCapRow } = await import("../metal/overCap.js");
 const { ingestIssued } = await import("../metal/mandate.js");
 const { whyRefused: decodedRefusal } = await import("../metal/accountErrors.js");
 const { CHAIN_ID, EXPLORER_TX, USDZ } = await import("../metal/network.js");
@@ -39,7 +41,7 @@ const FACTORY = "0x3dbED5DebA965A639bB0Fd40BE96b97922070FA8" as Address;
 const VERIFY_SELECTOR = toFunctionSelector("verify(bytes,bytes32,bytes)");
 const pc = publicClient();
 const say = (s: string) => console.log(redactSecrets(s));
-type Outcome = "done" | "reverted" | "returned";
+type Outcome = "done" | "reverted" | "returned" | "refused on chain" | "refused" | "pending";
 const steps: { step: string; outcome: Outcome; tx: string | null; detail: string }[] = [];
 const record = (step: string, outcome: Outcome, tx: string | null, detail: string) => {
   steps.push({ step, outcome, tx, detail });
@@ -160,6 +162,12 @@ if (!bound) {
 // The mandate key metal-agent wrote beside the credential signs; no owner does.
 const small = await pullUnder({ credentialPath: cred, keyFile: keyPath("agent.credential.key.json"), reference: ingested.reference })({ agent: "sourcing", to: payee.address, amountCents: 5, paymentId: `passkey-owners-${Date.now()}` });
 record("the agent pays 0.05 inside the passkey-approved mandate, no owner signs", small.outcome === "PAID" ? "done" : "reverted", small.tx, small.outcome === "PAID" ? "paid with the mandate key alone" : `${small.outcome.toLowerCase()}${small.reason ? `: ${small.reason}` : ""}`.slice(0, 120));
+
+// 4b. One cent over the cap (15 Nov): the same mandate key asks for 0.06 under the 0.05 cap; Alta must refuse it on
+// chain (src/metal/overCap.ts says what counts). Nothing moves.
+const over = await pullUnder({ credentialPath: cred, keyFile: keyPath("agent.credential.key.json"), reference: ingested.reference })({ agent: "sourcing", to: payee.address, amountCents: overCapCents(5), paymentId: `passkey-owners-over-${Date.now()}` });
+const overRow = overCapRow(5, over);
+record(overRow.step, overRow.outcome, overRow.tx, overRow.detail);
 
 // 5. Revoked with both passkeys.
 const rv = await authorizeMandateCall(pc, FACTORY, revokeCall(account, ingested.reference), validUntil(), quorumOf([[cfo, sCfo], [controller, sCtl]]));

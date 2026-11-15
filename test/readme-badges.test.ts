@@ -36,15 +36,17 @@ describe("README badges", () => {
     expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
   });
 
-  // The buttons above the badges, restored 13 Nov, evening (owner): Try it on /try, the proof, the walkthrough (film
-  // v10, on YouTube; the old film's button and its 3:58 are gone; no duration in the words since 14 Nov, owner).
-  it("puts four buttons above the badges: the trailer, Try on /try, the proof, the walkthrough", () => {
-    const buttons = readme.split("\n").find((l) => l.includes("Watch_the_walkthrough")) ?? "";
-    // 14 Nov (Max): the trailer first, then Try, /proof and the walkthrough.
-    expect([...buttons.matchAll(/<a href="([^"]+)">/g)].map((m) => m[1])).toEqual(["https://youtu.be/n3HLVGROJc4", "https://kit11.max-31b.workers.dev/try", "https://kit11.max-31b.workers.dev/proof", "https://youtu.be/mp9fmOYfBWc"]);
-    expect([...buttons.matchAll(/alt="([^"]+)"/g)].map((m) => m[1])).toEqual(["Watch the trailer, 90 seconds (AI voice and music: ElevenLabs)", "Try it: a test company of your own, 2 minutes", "See every id on /proof", "Watch the walkthrough on YouTube, 5 minutes (AI voice and music: ElevenLabs)"]);
-    expect(buttons).toContain("style=for-the-badge");
-    expect(readme.indexOf(buttons)).toBeLessThan(readme.indexOf(badgeLine));
+  // The buttons above the badges, restored 13 Nov, evening (owner). 15 Nov (clarity): one line of three links under the
+  // idea replaces them: Try on /try, the film (the walkthrough on YouTube), and the README's own offline check. The
+  // trailer stays in "Watch it", /proof in the live demo's line.
+  it("puts three links above the badges: Try on /try, the film, verify it yourself", () => {
+    const links = readme.split("\n").find((l) => l.startsWith("**[Try it in 2 minutes]")) ?? "";
+    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/mp9fmOYfBWc", "#verify-it-yourself-in-3-commands"]);
+    expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the film", "Verify a payment yourself"]);
+    expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
+    expect(readme.indexOf(links)).toBeLessThan(readme.indexOf(badgeLine));
+    expect(readme).toContain("(https://youtu.be/n3HLVGROJc4)");
+    expect(readme).toContain("(https://kit11.max-31b.workers.dev/proof)");
     expect(readme).not.toContain("kCUsFHrxE-o");
   });
 

@@ -181,7 +181,8 @@ describe("/try/sign in the bundle (TRY_SIGN_ENABLED)", () => {
     // Since 12 Nov (the owner) every Try call to action opens the hands-on demo (TRY_URL); /try/sign keeps its own page.
     expect(on.home).toContain('href="/try"');
     // 13 Nov, evening (owner): with the product tour gone, Home's first button is the hands-on demo again.
-    expect(on.home).toMatch(/<a class="btn primary big start" href="\/try">Try it live[\s\S]*?<\/a>/);
+    // 15 Nov (clarity): its words are "Try it in 2 minutes".
+    expect(on.home).toMatch(/<a class="btn primary big start" href="\/try">Try it in 2 minutes[\s\S]*?<\/a>/);
   });
 
   it("the local relay: off, /try/sign answers 301 to /try and its API is 404; on, the whole visit works", async () => {

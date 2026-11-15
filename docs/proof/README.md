@@ -31,12 +31,13 @@ Both run the same code. The checks:
 
 ## The two samples here
 
-`try-paid.json` and `try-refused.json` come from a /try run in Chromium on this machine:
+`try-paid.json` and `try-refused.json` come from the deployed site, on 15 November 2026:
 
-- the real /try page, the real engine and the real pay route;
-- the passkey is Chromium's virtual authenticator (user verification on);
-- the origin is `http://localhost`, so the rpId is `localhost`;
-- the bank is the simulated stand-in bank (test money).
+- paid at 04:26:10 UTC and refused at 04:26:16 UTC (each file's `made_at`);
+- one run of the live /try, https://purser-try.max-31b.workers.dev/try, so the rpId is `purser-try.max-31b.workers.dev`;
+- a fresh test company, on the simulated bank (test money; ids such as `tr_5`), signed by Chromium's virtual passkey (user verification on);
+- the clean sample invoice, EUR 1,850.00 to Bergtex Textil GmbH (a test supplier), paid; then the same signature sent with EUR 1,850.01, refused.
 
-They are not from the deployed site. `npx tsx test/browser/proof.check.ts --write` makes them again. A bundle from
-the deployed site names its own host as the rpId.
+Both pass every line on the live [/verify](https://kit11.max-31b.workers.dev/verify) and with `npm run verify-bundle`.
+`npx tsx test/browser/proof.check.ts --live --write` makes them again; without `--live` it runs the same walk on this
+machine, on `localhost`.
