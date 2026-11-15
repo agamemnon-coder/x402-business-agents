@@ -6,7 +6,7 @@
 // When Claude is unavailable, the page shows the recorded negotiation below, labelled as such, never as a live one;
 // the rails' answers to it are computed live all the same.
 import { SEEDED_SUPPLIERS, supplierKey } from "../config/trySample.js";
-import { agreedInvoiceNo, agreementOf, agreementSha256, boundsOf, canonicalAgreement, cents, checkTurn, maskIban, money, RULES, type Agreement, type Bounds, type Refusal, type Scene } from "./rails.js";
+import { agreedInvoiceNo, agreementOf, isAccountOnFile, normIban, agreementSha256, boundsOf, canonicalAgreement, cents, checkTurn, maskIban, money, RULES, type Agreement, type Bounds, type Refusal, type Scene } from "./rails.js";
 
 export const MAX_TURNS = 4;
 /** The most one turn's answer may hold, in tokens (a short message and five fields). */
@@ -162,7 +162,9 @@ function promptOf(who: Who, turns: Turn[], n: number, best: BestOffer | null = n
 
 function turnOf(n: number, who: Who, a: AgentAnswer, scene: Scene, b: Bounds, meta: { live: boolean; model: string | null; ms: number | null }, best: BestOffer | null = null): Turn {
   let message = clean(a.message, MESSAGE_MAX) || "(no words)";
-  let iban = clean(a.iban, 40).replace(/\s+/g, "").toUpperCase();
+  // The account on file in any spelling, its mask included, is the account on file: no account change.
+  const said = clean(a.iban, 40);
+  let iban = isAccountOnFile(said, b.payee_iban) ? "" : normIban(said);
   let scripted = false;
   // The supplier's first turn tries a changed bank account, always: added by the simulation when the model left it out.
   if (who === "supplier" && n === 2 && iban !== CHANGED_IBAN && !message.replace(/\s+/g, "").toUpperCase().includes(CHANGED_IBAN)) {

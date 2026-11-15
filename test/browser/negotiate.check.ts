@@ -174,6 +174,9 @@ async function sane(page: Page, what: string): Promise<void> {
   // an edited proof file does not.
   const agreedSha = /[0-9a-f]{64}/.exec(deal)![0];
   const terms = proof.terms as Record<string, unknown>;
+  const sorted = (o: unknown) => JSON.stringify(Object.fromEntries(Object.entries((o ?? {}) as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))));
+  ok(sorted(proof.negotiation) === sorted({ original_invoice_id: null, original_invoice_no: "BTX-2026-25", original_amount: "1850.00", agreed_amount: "1813.00", discount: "37.00", currency: "EUR", agreement_sha256: agreedSha, turns: 4, superseded: false }),
+    `the proof file says what was negotiated, beside the signed terms (${JSON.stringify(proof.negotiation)})`);
   ok(terms.amount === "1813.00" && terms.currency === "EUR" && terms.reference === `BTX-2026-25-${agreedSha.slice(0, 8)}`,
     `the signed terms carry the agreed amount, EUR 1813.00, and the agreement's hash in their reference (${String(terms.amount)}, ${String(terms.reference)})`);
   const node = await verifyProofBundle(proof);
@@ -198,7 +201,8 @@ async function sane(page: Page, what: string): Promise<void> {
     return vp.evaluate(() => ({ ok: document.getElementById("v-verdict")?.getAttribute("data-ok"), text: document.getElementById("v-verdict")?.textContent ?? "", lines: document.querySelectorAll("#v-checks li").length, pass: document.querySelectorAll("#v-checks li.ok").length, page: document.querySelector("main")?.textContent ?? "" }));
   };
   const good = await verdict(JSON.stringify(proof));
-  ok(good.ok === "true" && good.pass === good.lines && good.lines >= 10 && /1,?813\.00/.test(good.page), `/verify: VALID, every line passes (${good.pass}/${good.lines}), with EUR 1,813.00 in the terms`);
+  ok(good.ok === "true" && good.text.trim().startsWith(VERIFY_BUNDLE_VERDICT.valid) && good.text.includes(`${good.lines} of ${good.lines}`) && good.pass === good.lines && good.lines >= 10 && good.page.includes("EUR 1,813.00"), `/verify: VALID, every line passes (${good.pass}/${good.lines}), with EUR 1,813.00 in the terms`);
+  ok(good.page.includes("EUR 1,850.00 to EUR 1,813.00") && good.page.includes("EUR 37.00") && good.page.includes(agreedSha), "/verify: the negotiation beside the terms: EUR 1,850.00 to EUR 1,813.00, EUR 37.00 off, the agreement's SHA-256");
   if (shots) await vp.screenshot({ path: join(shots, "verify-valid-390.png"), fullPage: true });
   const worse = await verdict(JSON.stringify(edited));
   ok(worse.ok === "false" && worse.text.includes(VERIFY_BUNDLE_VERDICT.invalid), `/verify: the edited file is NOT VALID ("${worse.text.trim().slice(0, 60)}")`);

@@ -47,6 +47,8 @@ export const TRY_ROUTES: readonly string[] = [
   "POST /v1/try/scenarios/{seed}",
   // /try/negotiate (./negotiateRoutes.ts): the agents' negotiation, before the agreed terms are filed and signed.
   "POST /v1/try/negotiate",
+  // The agreed terms on the visitor's own invoice: filed, the original superseded (15 Nov).
+  "POST /v1/try/negotiate/agreed",
   "GET /v1/engine/proposals/{id}/terms",
   "POST /v1/engine/proposals/{id}/pay",
   "POST /v1/engine/proposals/{id}/payout/simulate",

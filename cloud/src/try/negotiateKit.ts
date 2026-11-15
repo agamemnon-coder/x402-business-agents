@@ -52,7 +52,6 @@ export const NEG_COPY = {
     sub: "Purser's Sourcing agent (Claude) asks {supplier}'s agent (a simulated supplier, played by Claude) for a discount for paying early. Code holds the CFO's limits on every turn; you sign whatever is agreed, with your passkey.",
     button: "Negotiate an early-payment discount",
     signAgreed: "Sign the agreed terms with your passkey",
-    payIssued: "Pay the invoice as issued",
     filing: "Filing the agreed invoice…",
     filedHeld: "The agreed invoice could not be filed as ready to pay. Pay the invoice as issued instead.",
     limit: "Today's live limit is reached; showing the recorded negotiation.",
@@ -115,6 +114,7 @@ export const NEG_CSS = `
 .negagreed .nnote { font-size: 14px; color: var(--muted); }
 .negagreed .negacts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0 0; }
 .negspin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -2px; }
+.payrow .btn[hidden] { display: none !important; }
 .negcard { border: 1px solid var(--accent); border-radius: 16px; background: var(--surface); padding: 16px; margin: 14px 0; }
 .negcard > h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.25; }
 .negcard > .nnote { font-size: 14px; color: var(--muted); margin: 0 0 12px; }
@@ -313,15 +313,22 @@ const NEGI=(()=>{
         if(res.status===429||res.status===503){said.replaceChildren(el('p','neg-err',res.status===503?I.paused:I.limit));await NEG.recorded({box,why:res.status===503?'paused':'limit',say});box.append(el('p','nnote',I.recordedPay));return}
         said.replaceChildren(el('p','neg-err',res.message||NC.failed));return}
       const n=res.n;
-      const sign=el('button','btn primary big',n.outcome==='agreed'?I.signAgreed:I.payIssued);sign.type='button';sign.id='negsign';
+      if(n.outcome!=='agreed'){
+        // No deal: the invoice stands as issued; Pay is the main button again.
+        const a=NEG.agreed(n,[]);box.append(a.card);pay.className='btn primary big';a.heading.focus();return}
+      // Agreed (jury run, 15 Nov): the only way on is to sign the agreed terms; Pay (the invoice's full amount) goes.
+      pay.hidden=true;pay.disabled=true;
+      const sign=el('button','btn primary big',I.signAgreed);sign.type='button';sign.id='negsign';
       const a=NEG.agreed(n,[sign]);box.append(a.card);a.heading.focus();
       sign.addEventListener('click',async()=>{
-        if(n.outcome!=='agreed'){show('approve',{invoice:inv});return}
         spin(sign,I.filing);
-        const f=await api('POST','/v1/engine/compose',n.compose);
+        // The agreed invoice is filed and REPLACES the original (its payment superseded, its booking reversed).
+        const f=await api('POST','/v1/try/negotiate/agreed',{invoice_id:inv.id,agreement_sha256:n.sha256,compose:n.compose,turns:n.turns.length});
         const ni=f.json&&f.json.invoice;
-        if(f.status===200&&ni&&ni.id&&ni.status==='ready'){show('approve',{invoice:ni});return}
+        if(f.status===200&&ni&&ni.id&&ni.status==='ready'){PREP.delete(inv.id);show('approve',{invoice:ni});return}
         sign.disabled=false;sign.textContent=I.signAgreed;a.card.append(el('p','neg-err',(f.json&&(f.json.message||f.json.error))||I.filedHeld));
+        // The original still stands when the agreed one could not be filed: it can be paid as issued.
+        pay.hidden=false;pay.disabled=false;
       });
     });
     return sec;

@@ -52,7 +52,23 @@ const NEW_ACCOUNT = /\b(new|changed|different|updated|other|another|alternative|
 const REFUSES = /\b(no|not|never|won't|will not|cannot|can't|refuse[sd]?|decline[sd]?|stays|keep|unchanged)\b/i;
 export const asksNewAccount = (words: string): boolean => words.split(/(?<=[.!?;])\s+/).some((s) => NEW_ACCOUNT.test(s) && !REFUSES.test(s));
 
-export const normIban = (s: string): string => s.replace(/\s+/g, "").toUpperCase();
+export const normIban = (s: string): string => s.replace(/[\s\u00a0\u2007\u202f-]+/g, "").toUpperCase();
+/**
+ * The account on file, written as people and this page write it (jury run, 15 Nov: a model echoed the page's mask
+ * "DE89 … 3000" back as its iban, and the rails compared the mask with the full IBAN): in full, in any spacing, case or
+ * dashes, or masked ("DE89 … 3000", "DE89...3000", "DE89****3000") when the mask's visible start and end are the file's
+ * own. A mask can never name another account: the payment goes to the account on file, whatever a turn writes.
+ */
+export function isAccountOnFile(s: string, onFile: string): boolean {
+  const raw = s.trim();
+  if (!raw) return false;
+  const file = normIban(onFile);
+  const parts = raw.split(/\s*(?:\u2026|\.{2,}|\*+)\s*/).map(normIban);
+  if (parts.length === 1) return parts[0] === file;
+  if (parts.length !== 2) return false;
+  const [pre, post] = parts as [string, string];
+  return pre.length >= 4 && post.length >= 4 && file.startsWith(pre) && file.endsWith(post);
+}
 export const cents = (s: string): number => { const m = /^(\d+)\.(\d{2})$/.exec(s); return m ? Number(m[1]) * 100 + Number(m[2]) : NaN; };
 export const money = (c: number): string => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, "0")}`;
 const realDay = (d: string): boolean => DAY.test(d) && !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
@@ -82,7 +98,8 @@ export function checkTurn(p: Proposed, words: string, b: Bounds): RailCheck {
   if (p.invoice_no !== undefined && p.invoice_no !== null && p.invoice_no !== "" && p.invoice_no !== b.invoice_no) no("invoice_only", `the invoice ${String(p.invoice_no).slice(0, 40)} is not ${b.invoice_no}`);
   if (p.extra !== undefined && p.extra !== null && p.extra !== "" && !(Array.isArray(p.extra) && p.extra.length === 0)) no("invoice_only", "extra lines or fees beyond the invoice");
   // payee_unchanged: the terms' IBAN, any IBAN in the words, and a new-account line.
-  const iban = typeof p.iban === "string" ? normIban(p.iban) : "";
+  const raw = typeof p.iban === "string" ? p.iban : "";
+  const iban = isAccountOnFile(raw, b.payee_iban) ? b.payee_iban : normIban(raw);
   if (iban && iban !== b.payee_iban) no("payee_unchanged", `the IBAN ${maskIban(iban)} is not the one on file (${maskIban(b.payee_iban)})`);
   const inWords = foreignIbans(words, b.payee_iban).filter((x) => x !== iban);
   if (inWords.length) no("payee_unchanged", `the message names another account (${inWords.map(maskIban).join(", ")})`);

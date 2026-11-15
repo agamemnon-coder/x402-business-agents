@@ -75,12 +75,15 @@ export function proofBundle(db: DB, p: ProofInput): ProofBundle | null {
   const transferRequestId = typeof p.stored.transfer_request_id === "string" ? p.stored.transfer_request_id : null;
   const asked = sha === termsHash(p.sent as unknown as Terms) ? undefined
     : { terms: p.sent, canonical: canonicalTerms(p.sent as unknown as Terms), sha256: termsHash(p.sent as unknown as Terms) };
+  const negotiated = invoice ? db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.negotiated' AND subject = ? ORDER BY seq DESC LIMIT 1").get(invoice.id) as { payload_json: string } | undefined : undefined;
+  const negotiation = negotiated ? JSON.parse(negotiated.payload_json) as NonNullable<ProofBundle["negotiation"]> : undefined;
   return {
     format: PROOF_FORMAT, note: PROOF_NOTE, made_at: p.now.toISOString(), proposal_id: p.proposalId,
     terms: p.stored, canonical, terms_sha256: sha, rp_id: p.passkey.rp_id, origin: p.passkey.origin, assertion,
     public_key: { format: "cose", cose: p.passkey.public_key, alg: coseAlg(p.passkey.public_key) },
     decision: p.decision,
     ...(asked ? { asked } : {}),
+    ...(negotiation ? { negotiation } : {}),
     ledger: { entries: paymentEntries(rows, { invoiceId: invoice?.id ?? null, transferRequestId, conversionId }), head: rows.length ? rows[rows.length - 1]!.entry_hash : null, count: rows.length },
   };
 }

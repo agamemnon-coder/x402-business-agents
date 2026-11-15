@@ -104,3 +104,14 @@ describe("the agents' events on a page", () => {
     expect(e).toMatchObject({ seq: 7, actor: "payer", event: "agent.run", subject: "ap.pay.AP-0001" });
   });
 });
+
+// Jury run (15 Nov): the Checker's line read "BTX-****8997" for the agreed invoice BTX-2026-21-87668997.
+describe("masked: an invoice number is shown whole, an account never", () => {
+  it("keeps an invoice number's digits, masks an IBAN and a bare account number", async () => {
+    const { masked } = await import("../src/engine/events.js");
+    expect(masked("checked BTX-2026-21-87668997 from Bergtex", 200)).toBe("checked BTX-2026-21-87668997 from Bergtex");
+    expect(masked("to DE89 3704 0044 0532 0130 00", 200)).toBe("to ****3000");
+    expect(masked("account 12345678 and 9876 5432 1098", 200)).toBe("account ****5678 and ****1098");
+    expect(masked("due 2026-11-30", 200)).toBe("due 2026-11-30");
+  });
+});

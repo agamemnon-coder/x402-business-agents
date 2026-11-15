@@ -1828,7 +1828,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const tr=mine.flatMap((e)=>(e.lines||[]).filter((l)=>String(l.account)==='1590')),sold=tr.find((l)=>l.debit_cents),bought=tr.find((l)=>l.credit_cents);
       if(sold&&bought&&sold.currency!==bought.currency){const c=el('td','en conv',fill(B.conv,{out:sold.currency+' '+fromCents(sold.debit_cents),in:bought.currency+' '+fromCents(bought.credit_cents)}));c.colSpan=3;tb.append(el('tr','',[c]))}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
-      const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?'#'+e.entry_id:'').filter(Boolean);
+      // In posting order (jury run, 15 Nov: "#10, #3, #4").
+      const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?Number(e.entry_id):NaN).filter((n)=>isFinite(n)).sort((a,b)=>a-b).filter((n,i,a)=>a.indexOf(n)===i).map((n)=>'#'+n);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),ids.length?el('p','ids',[el('span','muted',C.receipt.entries+' '),el('span','mono',ids.join(', '))]):null,el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
     }));

@@ -1032,6 +1032,8 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     ok(meter.includes("EUR 1,850.00") && meter.includes("EUR 1,813.00") && meter.includes("2.0%"), `${tag}: the deal meter: invoice, offer, discount`);
     ok(/[0-9a-f]{64}/.test(await page.innerText(".negcard .negagreed")), `${tag}: the agreed terms' SHA-256`);
     ok(await page.locator("#main .btn.primary:visible").count() === 1 && (await page.textContent("#negsign")) === I.signAgreed, `${tag}: one main button, "${I.signAgreed}"`);
+    // Jury run (15 Nov): once agreed, Pay this invoice (the original's full amount) is gone; signing the agreed terms is the only way on.
+    ok(!(await page.locator(`.result .payrow .btn:has-text("${WORK.pay}")`).isVisible()), `${tag}: once agreed, "${WORK.pay}" is gone`);
     ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (agreed)`);
     await noOverlap(page, `${tag} agreed`);
     await shot("2-agreed");
@@ -1049,6 +1051,11 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     await page.click(`.btn.primary:has-text("Approve EUR 1,813.00 with your passkey")`);
     await page.waitForSelector(".paidstamp", { timeout: 30_000 });
     ok((await page.innerText("#main")).includes("1,813.00"), `${tag}: signed with the passkey and paid: EUR 1,813.00`);
+    // The original is superseded, not left open beside the paid agreed invoice (jury run, 15 Nov).
+    const all = (await page.evaluate(`fetch("/v1/engine/invoices",{headers:{authorization:"Bearer "+JSON.parse(sessionStorage.getItem("purser.try")).session}}).then((r)=>r.json())`)) as { items?: { invoice_no: string; status: string; status_words: string }[] };
+    const orig = (all.items ?? []).find((x) => x.invoice_no === "BTX-2026-21");
+    ok(orig?.status === "rejected" && /Superseded by the negotiated terms/.test(orig.status_words) && (all.items ?? []).filter((x) => x.invoice_no.startsWith("BTX-2026-21-") && x.status === "paid").length === 1,
+      `${tag}: the original BTX-2026-21 superseded (${orig?.status_words}), the agreed one paid`);
     await noOverlap(page, `${tag} signed`);
     ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (signed)`);
     await shot("4-signed");
