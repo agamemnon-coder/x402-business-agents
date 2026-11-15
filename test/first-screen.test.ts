@@ -62,8 +62,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(5);
     expect(lines[badges + 4]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start right under the header, on the first screen, then where things are.
-    expect(lines.slice(badges + 5, badges + 9)).toEqual(["", "</div>", "", "## Verify it yourself in 3 commands"]);
-    const order = ["## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Enterprise"].map((h) => lines.indexOf(h));
+    // 15 Nov: the Kit 11 table (the brief's steps, what Purser does, one proof each) first under the header.
+    expect(lines.slice(badges + 5, badges + 9)).toEqual(["", "</div>", "", "## Kit 11, step by step"]);
+    const order = ["## Kit 11, step by step", "## Verify it yourself in 3 commands", "## Where things are", "## Watch it", "## How it works in 3 steps", "**Not signed is never paid.**", "## Built with", "## Gallery", "## Enterprise"].map((h) => lines.indexOf(h));
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     // 14 Nov (Max): the walkthrough and the trailer side by side, each with its thumbnail in the trailer's style.
@@ -81,7 +82,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(180); // 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(195); // 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with what Purser is, the hands-on demo as the one primary button, the proof second, one reassurance line", () => {
