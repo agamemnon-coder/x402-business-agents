@@ -189,8 +189,10 @@ describe("4. the red team, said as its records say it", () => {
   it("is 37 of 39 stopped and 2 detected afterwards (30 October), never '39/39 attacks failed'", () => {
     expect([before, after, rt.attempts, rt.caught_after]).toEqual([37, 2, 39, 2]);
     const t = words(proofPage());
-    expect(t).toContain(`${before}/${rt.attempts} attacks stopped`);
-    expect(t).toContain(`${after} more detected afterwards, not prevented`);
+    // Jury panel, 15 Nov: "37 of 39", never "N/N"; the two not stopped named.
+    expect(t).toContain(`${before} of ${rt.attempts} attacks stopped`);
+    expect(t).not.toContain(`${before}/${rt.attempts}`);
+    expect(t).toContain(`The other ${after} were detected afterwards, not prevented:`);
     expect(t).not.toMatch(/39\/39|39 of 39|attacks failed/);
   });
 
