@@ -14,7 +14,7 @@ const root = resolve(import.meta.dirname, "../..");
 const read = <T>(p: string): T => JSON.parse(readFileSync(resolve(root, p), "utf8")) as T;
 
 /** One segment of a scene: a card (HTML, rendered at 1920x1080) or a window of a recording. */
-export type Segment = { card: string; seconds?: number } | { clip: string; from: number; to: number };
+export type Segment = { card: string; seconds?: number } | { clip: string; from: number; to: number; hold?: number }; // hold: seconds the clip's last frame stays
 export interface Scene { id: string; title: string; vo: string; segments: Segment[]; min: number; note?: string }
 
 export interface UthRecord {
@@ -88,14 +88,17 @@ export function scenes(): Scene[] {
     { id: "a01", title: "What Purser is", min: 10,
       vo: "Purser lets AI agents pay a company's supplier invoices, but only within limits the CFO signs. It is built on Airwallex. Everything you see runs in its sandbox, with test money.",
       segments: [{ card: `<div class="hero"><p class="kicker">Purser · built on Airwallex</p><h1>AI agents pay supplier invoices.<br>Only within limits the CFO signs.</h1><p class="sub">Airwallex sandbox · test money only · every claim shown with its id or hash</p></div>` }] },
-    { id: "a02", title: "Live on /try", min: 28,
+    { id: "a02", title: "Live on /try", min: 26.5,
       vo: `An agent reads the invoice and checks it: not paid before, bank details on file, a known supplier. Within the CFO's limits, the agents pay alone: ${f.alone} payments in the main run, with no approval needed. Above them, the CFO signs the exact terms with Face ID. Then it is paid, booked and filed.`,
       segments: [
         { clip: "try-walk", from: Math.max(0, m.inbox! - 0.3), to: m.inbox! + 2.2 },
-        { clip: "try-walk", from: m.checked! - 1.2, to: m.checked! + 2.4 },
-        { clip: "try-walk", from: m.sheet! - 0.2, to: m.sheet! + 3.2 },
-        { clip: "try-walk", from: m.sign! - 0.6, to: m["paid-held"]! },
-        { card: `<div class="hero small-hero"><p class="kicker">Main run, 3 Nov · Airwallex sandbox and Alta (formerly Metal) testnet · test money</p><h2>${f.alone} payments within the CFO's limits, with no approval needed</h2><p class="sub">Above a limit, the CFO signs the exact terms with Face ID or a passkey. On /try every invoice is above the agents' limit (EUR 0 in that demo), so you sign each one.</p></div>`, seconds: 5 }] },
+        // Timed to the voice: the checks while it reads them, the card while it says "within the CFO's limits", the
+        // approval sheet and the signature while it says "above them", Paid while it says "paid, booked and filed".
+        { clip: "try-walk", from: m.checked! - 1.2, to: m.checked! + 2.4, hold: 2.3 },
+        { card: `<div class="hero small-hero"><p class="kicker">Main run, 3 Nov · Airwallex sandbox and Alta (formerly Metal) testnet · test money</p><h2>${f.alone} payments within the CFO's limits, with no approval needed</h2><p class="sub">Above a limit, the CFO signs the exact terms with Face ID or a passkey. On /try every invoice is above the agents' limit (EUR 0 in that demo), so you sign each one.</p></div>`, seconds: 5 },
+        { clip: "try-walk", from: m.sheet! - 0.2, to: m.sheet! + 2.6 },
+        { clip: "try-walk", from: m.sign! - 0.2, to: m["paid-held"]! },
+      ] },
     { id: "a03", title: "Under the hood", min: 6,
       vo: "So how can anyone check that the CFO signed exactly this, and nothing else? Here is what happens under the hood.",
       segments: [{ card: `<div class="hero"><p class="kicker">Under the hood</p><h1>Who signed what,<br>and how anyone can check it.</h1></div>` }] },
@@ -117,7 +120,8 @@ export function scenes(): Scene[] {
     { id: "u04v", title: "Verify it yourself", min: 18,
       vo: `Don't take our word for it. The finish hands over a proof file. Drop it on the verify page: your browser checks the hash, the passkey's signature and the ledger, and all ${f.verify.paid.length} checks pass. Change one cent in the file, and the hash, the challenge and the decision fail.`,
       segments: [
-        { clip: "verify", from: Math.max(0, f.verify.marks.start! - 0.3), to: f.verify.marks["passed-held"]! },
+        // The passing result holds until the voice has said "all checks pass"; then the one-cent edit and its failure.
+        { clip: "verify", from: Math.max(0, f.verify.marks.start! - 0.3), to: f.verify.marks["passed-held"]!, hold: 4.5 },
         { clip: "verify", from: f.verify.marks.edit! - 0.6, to: f.verify.marks["failed-held"]! },
       ] },
     { id: "u05", title: "At Airwallex", min: 32,

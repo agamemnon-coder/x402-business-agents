@@ -9,7 +9,7 @@
 // Writes out/video/uth/under-the-hood.mp4 (1920x1080, 30 fps, H.264 + AAC), docs/film/under-the-hood/script.md and the
 // .srt. Test money only; the film says so on screen.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { chromium } from "playwright";
@@ -46,13 +46,25 @@ const ts = (t: number) => { const ms = Math.round(t * 1000); const h = Math.floo
 const clock = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
 
 /** A line's subtitles: its sentences (long ones split at a comma), timed by their length across the voice. */
-function cues(text: string, start: number, length: number): { from: number; to: number; text: string }[] {
+function cues(text: string, start: number, length: number, voFile?: string): { from: number; to: number; text: string }[] {
   const parts = text.match(/[^.!?]+[.!?]+/g)?.map((x) => x.trim()) ?? [text];
   const pieces = parts.flatMap((p) => (p.length > 90 ? p.split(/(?<=,) /).reduce<string[]>((acc, w) => { const last = acc.at(-1); if (last && (last + " " + w).length < 90) acc[acc.length - 1] = `${last} ${w}`; else acc.push(w); return acc; }, []) : [p]));
   const total = pieces.reduce((n, p) => n + p.length, 0);
-  let t = start;
-  return pieces.map((p) => { const d = (p.length / total) * length; const c = { from: t, to: t + d, text: p }; t += d; return c; });
+  // Each boundary between two cues moves to the nearest pause the voice really makes (within 1.2 s), so a caption changes
+  // when the narrator does; the pauses are read from the voice file itself.
+  const pauses = voFile ? [...spawnSync("ffmpeg", ["-hide_banner", "-i", voFile, "-af", "silencedetect=n=-38dB:d=0.16", "-f", "null", "-"], { encoding: "utf8" }).stderr.matchAll(/silence_start: ([\d.]+)[\s\S]*?silence_end: ([\d.]+)/g)].map((m) => (Number(m[1]) + Number(m[2])) / 2) : [];
+  const bounds: number[] = [];
+  let acc = 0;
+  for (const p of pieces.slice(0, -1)) {
+    acc += (p.length / total) * length;
+    const near = pauses.filter((x) => Math.abs(x - acc) <= 1.2 && x > (bounds.at(-1) ?? 0) + 0.8).sort((a, b) => Math.abs(a - acc) - Math.abs(b - acc))[0];
+    bounds.push(near ?? acc);
+  }
+  snapped.push(...bounds.map((b, i) => ({ snapped: pauses.includes(b), moved: +(b - pieces.slice(0, i + 1).reduce((n, p) => n + (p.length / total) * length, 0)).toFixed(2) })));
+  const edges = [0, ...bounds, length];
+  return pieces.map((p, i) => ({ from: start + edges[i]!, to: start + edges[i + 1]!, text: p }));
 }
+const snapped: { snapped: boolean; moved: number }[] = [];
 
 async function main(): Promise<void> {
   // --still: the film's strongest frame (the passkey's assertion, scene u03) at 2560x1440, for the hand-in.
@@ -94,8 +106,8 @@ async function main(): Promise<void> {
   const parts: string[] = [];
   for (const s of all) {
     const voLen = vo[s.id] ? dur(vo[s.id]!) : s.vo.split(/\s+/).length / 2.6;
-    const clips = s.segments.filter((g) => !("card" in g)) as { clip: string; from: number; to: number }[];
-    const clipLen = clips.reduce((n, c) => n + Math.max(0.5, Math.min(c.to, dur(resolve(out, `${c.clip}.mp4`))) - c.from), 0);
+    const clips = s.segments.filter((g) => !("card" in g)) as { clip: string; from: number; to: number; hold?: number }[];
+    const clipLen = clips.reduce((n, c) => n + Math.max(0.5, Math.min(c.to, dur(resolve(out, `${c.clip}.mp4`))) - c.from) + (c.hold ?? 0), 0);
     const cards = s.segments.filter((g) => "card" in g).length;
     const length = Math.max(s.min, voLen + LEAD + 1.2, clipLen + cards * 4);
     const perCard = cards ? (length - clipLen) / cards : 0;
@@ -107,8 +119,11 @@ async function main(): Promise<void> {
       } else {
         const src = resolve(out, `${g.clip}.mp4`);
         const to = Math.min(g.to, dur(src));
-        const len = Math.max(0.5, to - g.from);
-        ff(["-ss", g.from.toFixed(3), "-t", len.toFixed(3), "-i", src, "-vf", `${ZOOM},scale=1920:1080:flags=lanczos,fps=${FPS},format=yuv420p,fade=t=in:st=0:d=0.3,fade=t=out:st=${(len - 0.3).toFixed(3)}:d=0.3`, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", file]);
+        // A scene of clips only is held on its last clip's last frame until the voice is done.
+        const pad = !cards && i === s.segments.length - 1 ? Math.max(0, length - clipLen) : 0;
+        const hold = (g.hold ?? 0) + pad;
+        const len = Math.max(0.5, to - g.from) + hold;
+        ff(["-ss", g.from.toFixed(3), "-t", Math.max(0.5, to - g.from).toFixed(3), "-i", src, "-vf", `${ZOOM},scale=1920:1080:flags=lanczos,fps=${FPS}${hold ? `,tpad=stop_mode=clone:stop_duration=${hold.toFixed(3)}` : ""},format=yuv420p,fade=t=in:st=0:d=0.3,fade=t=out:st=${(len - 0.3).toFixed(3)}:d=0.3`, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", file]);
       }
       segs.push(file);
     }
@@ -116,7 +131,7 @@ async function main(): Promise<void> {
     writeFileSync(resolve(out, "scenes", `${s.id}.txt`), segs.map((x) => `file '${x}'`).join("\n") + "\n");
     ff(["-f", "concat", "-safe", "0", "-i", resolve(out, "scenes", `${s.id}.txt`), "-c", "copy", sceneFile]);
     const real = dur(sceneFile);
-    for (const c of cues(s.vo, at + LEAD, voLen)) srt.push(`${srt.length + 1}\n${ts(c.from)} --> ${ts(c.to)}\n${c.text}\n`);
+    for (const c of cues(s.vo, at + LEAD, voLen, vo[s.id] ?? undefined)) srt.push(`${srt.length + 1}\n${ts(c.from)} --> ${ts(c.to)}\n${c.text}\n`);
     rows.push(`| ${clock(at)} | ${s.id} · ${s.title} | ${s.vo.replace(/\|/g, "/")} | ${s.segments.map((g) => ("card" in g ? "card" : `${g.clip} ${g.from.toFixed(1)}–${g.to.toFixed(1)} s`)).join(" + ")}${s.note ? ` · ${s.note}` : ""} |`);
     parts.push(JSON.stringify({ id: s.id, at, length: real, vo: vo[s.id] }));
     at += real;
@@ -158,6 +173,7 @@ async function main(): Promise<void> {
     `- The anchor: \`${f.anchorFile}\`, checked live by \`npm run verify-anchor\` (output in \`docs/film/under-the-hood/verify-anchor.txt\`).`,
     `- The test count (${f.tests}): README.md.`, "- The Purser Cloud clip: the demo company's Agents tab as a guest (made-up data, read only).", ""].join("\n");
   writeFileSync(resolve(docs, "script.md"), md);
+  if (snapped.length) console.log(`captions: ${snapped.filter((x) => x.snapped).length} of ${snapped.length} cue changes on a pause in the voice; largest move ${Math.max(...snapped.map((x) => Math.abs(x.moved))).toFixed(2)} s`);
   console.log(`under-the-hood.mp4: ${clock(total)} (${total.toFixed(1)} s), ${(Number(execFileSync("stat", ["-c%s", film], { encoding: "utf8" })) / 1e6).toFixed(1)} MB`);
 }
 
