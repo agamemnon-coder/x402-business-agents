@@ -33,13 +33,24 @@ export const ALTA_FIRST = "Alta (formerly Metal)";
 const SKIP = /^(script|style|svg|title|code|pre|option|textarea|button|kbd|nav|select)$/i;
 const SKIP_CLASS = /\b(logo|mark|wm|lg|tile|chip|navl|vh-n)\b/;
 
+/** The characters outside tags, for a check (not a sanitizer: nothing it returns is put on a page). */
+function textOf(markup: string): string {
+  let out = "", inTag = false;
+  for (const ch of markup) {
+    if (ch === "<") inTag = true;
+    else if (ch === ">" && inTag) inTag = false;
+    else if (!inTag) out += ch;
+  }
+  return out;
+}
+
 /** The page with its first visible "Alta" inside <main> written as "Alta (formerly Metal)"; unchanged when it has none, or already says so. */
 export function formerlyMetal(html: string): string {
   const open = html.search(/<main\b/i);
   const close = html.search(/<\/main>/i);
   if (open < 0 || close < 0 || close < open) return html;
   // In the text, not in an attribute (judge panel, 15 Nov: Alta's logo's alt reads "Alta (formerly Metal)").
-  if (html.slice(open, close).replace(/<[^>]*>/g, "").includes(ALTA_FIRST)) return html;
+  if (textOf(html.slice(open, close)).includes(ALTA_FIRST)) return html;
   const stack: { tag: string; cls: string }[] = [];
   const re = /<\/?([a-zA-Z][\w-]*)([^>]*)>|([^<]+)/g;
   re.lastIndex = open;
