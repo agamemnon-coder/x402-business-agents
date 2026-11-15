@@ -123,11 +123,9 @@ async function main(): Promise<void> {
     await mark(page, "refused");
     await hold(4);
     await mark(page, "refused-held");
-    // The replay: the signed terms put back and sent again: paid once, never twice.
-    await page.getByRole("button", { name: PAY.putBack }).or(page.getByRole("link", { name: PAY.putBack })).first().click();
-    await hold(1);
-    await page.getByRole("button", { name: PAY.button }).click();
-    await page.getByText(PAY.paidOnce).first().waitFor({ timeout: 60_000 }).catch(() => undefined);
+    // The replay ("Pay it twice", /try round 7): the same signed terms sent again: paid once, never twice.
+    await page.getByRole("button", { name: PAY.twice }).or(page.getByRole("link", { name: PAY.twice })).first().click();
+    await page.getByText(PAY.twiceHead).first().waitFor({ timeout: 60_000 }).catch(() => undefined);
     await mark(page, "replay");
     await hold(3);
     await mark(page, "replay-held");
