@@ -1,0 +1,163 @@
+{
+  "recorded_at": "2026-11-15T02:55:24.726Z",
+  "origin": "https://purser-try.max-31b.workers.dev",
+  "page": "https://purser-try.max-31b.workers.dev/try",
+  "browser": "headless Chromium (Playwright), 1920x1080, light",
+  "passkey": "a CDP virtual authenticator: a virtual test passkey with user verification, not a person's Face ID",
+  "money": "test money on the page's simulated bank; the test company is deleted after 24 hours",
+  "marks": {
+    "start": 0.448,
+    "inbox": 5.394,
+    "checked": 13.924,
+    "sheet": 23.38,
+    "sheet-held": 29.449,
+    "sign": 32.629,
+    "paid": 36.273,
+    "paid-held": 40.274,
+    "cheat": 40.359,
+    "refused": 44.05,
+    "refused-held": 48.051,
+    "replay": 50.971,
+    "replay-held": 53.971
+  },
+  "terms": {
+    "terms_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+    "sha256_of_canonical": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+    "canonical": "{\"after\":{\"eur_free\":\"0.00\",\"usd_available\":\"24586.62\"},\"amount\":\"1850.00\",\"balances_before\":{\"eur_available\":\"35000.00\",\"usd_available\":\"25000.00\"},\"beneficiary_id\":\"ben_2\",\"beneficiary_name\":\"Bergtex Textil GmbH\",\"bic\":\"COBADEFFXXX\",\"conversion\":{\"buy_amount\":\"370.00\",\"buy_currency\":\"EUR\",\"client_rate\":\"1.117256\",\"quote_id\":\"191ddeba-03f2-3e63-be77-2ca0ac9a5bd8\",\"request_id\":\"d9c07980-fe60-4a3c-ad7c-c0d06040d543\",\"sell_amount\":\"413.38\",\"sell_currency\":\"USD\",\"valid_to\":\"2026-11-15T03:09:28.000Z\"},\"currency\":\"EUR\",\"document_currency\":\"EUR\",\"document_total_line\":\"Total due EUR 1,850.00\",\"evidence\":[{\"ref\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"sha256\":\"71dc0539b893d3613328b164ef280f7d52c8eb5d87b127cea0a39bc2a75d4cbd\",\"type\":\"invoice\"}],\"expires_at\":\"2026-11-15T03:08:58Z\",\"fee_max\":\"20.00\",\"floors\":{\"eur_floor\":\"25000.00\",\"eur_obligations\":\"8500.00\",\"usd_floor\":\"20000.00\"},\"iban_last4\":\"3000\",\"invoice_no\":\"BTX-2026-21 · Bergtex Textil GmbH\",\"kind\":\"invoice_payment\",\"method\":\"SWIFT\",\"proposal_id\":\"P-0001\",\"reason\":\"goods_purchased\",\"reference\":\"BTX-2026-21\",\"schema\":\"kit11.approval-terms/v1\",\"source\":\"payables_inbox\",\"test_money\":true,\"transfer_request_id\":\"92ed435d-db88-4548-9189-060f98011ff2\",\"vendor\":\"Bergtex Textil GmbH\"}",
+    "fx_quote": {
+      "source": "airwallex-sandbox",
+      "quote_id": "191ddeba-03f2-3e63-be77-2ca0ac9a5bd8",
+      "client_rate": "1.117256",
+      "sell_currency": "USD",
+      "sell_amount": "413.38",
+      "buy_currency": "EUR",
+      "buy_amount": "370.00",
+      "valid_to": "2026-11-15T03:09:28.000Z",
+      "market_rate": "1.106203"
+    }
+  },
+  "assertion": {
+    "client_data": {
+      "type": "webauthn.get",
+      "challenge": "NJ_xqXKir-vY0udtZUfSNk7PYx2CzlNPZ20ZbE3fptE",
+      "origin": "https://purser-try.max-31b.workers.dev",
+      "crossOrigin": false
+    },
+    "challenge_hex": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+    "authenticator_data": {
+      "rp_id_hash": "426155d1fdc59b19886dbc62284715baf70aa965e39312118d9af90ebe0b509d",
+      "flags_byte": "0x05",
+      "user_present": true,
+      "user_verified": true,
+      "sign_count": 2
+    },
+    "rp_id_hash_of": "426155d1fdc59b19886dbc62284715baf70aa965e39312118d9af90ebe0b509d"
+  },
+  "approve": {
+    "status": 200,
+    "answer": {
+      "status": "approved",
+      "message": "P-0001 approved with You (visitor) (passkey cugf4_op)",
+      "settled": null,
+      "held": true
+    }
+  },
+  "pays": [
+    {
+      "status": 200,
+      "answer": {
+        "outcome": "paid",
+        "layers": {
+          "signature": {
+            "verified": true,
+            "reason": "Your signature is over exactly these terms."
+          },
+          "executor": {
+            "accepted": true,
+            "said": null
+          }
+        },
+        "signed_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+        "sent_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+        "changed": [],
+        "transfers_before": 0,
+        "transfers_after": 1,
+        "settled": {
+          "invoice_status": "paid",
+          "transfer_status": "PAID",
+          "ledger_entries": 9,
+          "vault_added": [
+            "Harbour Linen (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-02 BTX-2026-17 EUR 1620.00.pdf",
+            "Harbour Linen (test)/2026/2026-Q4/Purchase invoices/Bergtex Textil GmbH/2026-11-09 BTX-2026-21 EUR 1850.00.pdf",
+            "Harbour Linen (test)/2026/2026-Q4/Payments/2026-11-15 Bergtex Textil GmbH BTX-2026-21.pdf",
+            "Harbour Linen (test)/2026/Leveranciers 2026-11-15.pdf"
+          ],
+          "fed": true,
+          "error": null
+        },
+        "airwallex_payout": {
+          "source": "simulated",
+          "reason": "switched_off",
+          "terms_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1"
+        },
+        "sandbox_calls": 0,
+        "request_id": "req_PtrX0srOF5cG"
+      }
+    },
+    {
+      "status": 200,
+      "answer": {
+        "outcome": "refused",
+        "layers": {
+          "signature": {
+            "verified": false,
+            "reason": "This signature is over other terms than the ones on screen. Nothing was paid."
+          },
+          "executor": {
+            "accepted": false,
+            "said": "P-0001 is EXECUTED, not approved"
+          }
+        },
+        "signed_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+        "sent_sha256": "f1cc698af83db4486838c9f716da7ba0cf0ed75b6c8f08b48883c1bbc0b477ea",
+        "changed": [
+          "amount"
+        ],
+        "transfers_before": 1,
+        "transfers_after": 1,
+        "settled": null,
+        "sandbox_calls": 0,
+        "request_id": "req_9AxC5BF3SO0z"
+      }
+    },
+    {
+      "status": 200,
+      "answer": {
+        "outcome": "paid_once",
+        "layers": {
+          "signature": {
+            "verified": true,
+            "reason": "Your signature is over exactly these terms."
+          },
+          "executor": {
+            "accepted": false,
+            "said": "P-0001 is EXECUTED, not approved"
+          }
+        },
+        "signed_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+        "sent_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1",
+        "changed": [],
+        "transfers_before": 1,
+        "transfers_after": 1,
+        "settled": null,
+        "airwallex_payout": {
+          "source": "simulated",
+          "reason": "switched_off",
+          "terms_sha256": "349ff1a972a2afebd8d2e76d6547d2364ecf631d82ce534f676d196c4ddfa6d1"
+        },
+        "sandbox_calls": 0,
+        "request_id": "req_TdRX5mR5xcPv"
+      }
+    }
+  ]
+}

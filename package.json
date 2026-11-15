@@ -84,6 +84,8 @@
     "capture": "tsx src/cli/capture.ts",
     "cut": "tsx src/cli/cut.ts",
     "record-try10": "tsx src/cli/recordTry10.ts",
+    "record-uth": "tsx src/cli/recordUth.ts",
+    "film-uth": "tsx src/cli/filmUth.ts",
     "voice10": "tsx src/cli/voice10.ts",
     "agent-evals": "tsx src/cli/agentEvals.ts",
     "ap-agent-evals": "tsx src/cli/apAgentEvals.ts",
