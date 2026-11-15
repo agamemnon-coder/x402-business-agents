@@ -10,6 +10,7 @@ Why not Airwallex's own approvals? Purser signs the exact terms with the CFO's p
 
 Hands-on on Purser's real engine, a test company of your own on test money: https://kit11.max-31b.workers.dev/try
 
+The film, "Purser, under the hood" (3:29): https://youtu.be/PNLuqhRzVfE
 The walkthrough (AI voice and music: ElevenLabs): https://youtu.be/mp9fmOYfBWc
 The trailer, 1:30 (AI voice and music: ElevenLabs): https://youtu.be/n3HLVGROJc4
 

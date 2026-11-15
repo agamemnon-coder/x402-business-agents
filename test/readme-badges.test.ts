@@ -41,7 +41,7 @@ describe("README badges", () => {
   // trailer stays in "Watch it", /proof in the live demo's line.
   it("puts three links above the badges: Try on /try, the film, verify it yourself", () => {
     const links = readme.split("\n").find((l) => l.startsWith("**[Try it in 2 minutes]")) ?? "";
-    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/mp9fmOYfBWc", "#verify-it-yourself-in-3-commands"]);
+    expect([...links.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1])).toEqual(["https://kit11.max-31b.workers.dev/try", "https://youtu.be/PNLuqhRzVfE", "#verify-it-yourself-in-3-commands"]);
     expect([...links.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Try it in 2 minutes", "Watch the film", "Verify a payment yourself"]);
     expect(readme).toContain("\n## Verify it yourself in 3 commands\n");
     expect(readme.indexOf(links)).toBeLessThan(readme.indexOf(badgeLine));
@@ -55,7 +55,7 @@ describe("README badges", () => {
   it("puts the live demo's line under the badges, then three proofs with their records, and says test money only", () => {
     const lines = readme.split("\n");
     const at = lines.indexOf(badgeLine);
-    expect(lines[at + 4]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(lines[at + 4]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     // 14 Nov (Max): "In 30 seconds" (three bullets) now comes first; the three proofs follow it.
     // 14 Nov: "Airwallex at the centre" sits between; the three proofs open "How it works in 3 steps".
     const proofs = lines.slice(lines.indexOf("## How it works in 3 steps")).filter((l) => l.startsWith("- **")).slice(0, 3);

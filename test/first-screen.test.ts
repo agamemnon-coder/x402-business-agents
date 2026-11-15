@@ -30,7 +30,7 @@ const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source me
 const README_BUILT_ON = "**Built on Airwallex.** Purser's agent cards and payments run on Airwallex's API (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).";
 
 /** The README's three links under the idea (15 Nov): Try, the film, and the offline check in the README itself. */
-const README_LINKS = "**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/mp9fmOYfBWc) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)";
+const README_LINKS = "**[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/PNLuqhRzVfE) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)";
 
 describe("the first screen (section D, 6 Nov)", () => {
   it("is what Purser is, the three sentences, then Try it in a minute", () => {
@@ -78,10 +78,10 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(order.every((x, i) => x > badges && (i === 0 || x > order[i - 1]!))).toBe(true);
     expect(lines.some((l) => l.startsWith("Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandbox), Claude. **Check it yourself, offline, no keys:**"))).toBe(true);
     // 14 Nov (Max): the walkthrough and the trailer side by side, each with its thumbnail in the trailer's style.
-    expect(README).toContain('<a href="https://youtu.be/mp9fmOYfBWc"><img src="docs/assets/readme/walkthrough-thumb.jpg"');
+    expect(README).toContain('<a href="https://youtu.be/PNLuqhRzVfE"><img src="docs/assets/readme/film-thumb.jpg"');
     expect(README).toContain('<a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg"');
     // Jury round 2, 13 Nov: the film's own length (298.0 s) (the partners were text only until 14 Nov).
-    expect(README).toContain("| [The walkthrough](https://youtu.be/mp9fmOYfBWc) · AI voice and music: ElevenLabs | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |"); // no duration on the walkthrough since 14 Nov (owner); the trailer beside it
+    expect(README).toContain("| [The film: Purser, under the hood (3:29)](https://youtu.be/PNLuqhRzVfE) · test money only | [The trailer (1:30)](https://youtu.be/n3HLVGROJc4) · test money only |"); // no duration on the walkthrough since 14 Nov (owner); the trailer beside it
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
     // 14 Nov: Alta's wordmark in the row (the Alta team's OK); Visa and Cloudflare in text (the owner's decision).
@@ -91,7 +91,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
-    expect(FILM_URL).toBe("https://youtu.be/mp9fmOYfBWc");
+    expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
     expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(200); // 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
