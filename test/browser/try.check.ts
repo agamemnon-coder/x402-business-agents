@@ -508,7 +508,8 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(/Answered in (<0\.1|\d+\.\d) s, measured in your browser\./.test(result), `${tag}: the round trip is the browser's own measure`);
   await page.waitForTimeout(1500);
   ok(await page.locator(".live li").count() > 0, `${tag}: the engine's steps are in the live panel`);
-  ok(await page.locator(".live li:visible").count() <= 3, `${tag}: the live panel shows at most three rows`);
+  // 15 Nov (jury): four, so the Reader stays in view now that rows stand in the engine's order.
+  ok(await page.locator(".live li:visible").count() <= 4, `${tag}: the live panel shows at most four rows`);
   await screenChecks(page, `${tag} screen 2`, width);
   await shot("2-work");
   await design("2-work", { full: true });
@@ -943,9 +944,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
 
 // Part 2: the poller, on Chromium's stand-in clock, with every /v1 answer stubbed in the page.
 const T0 = new Date("2026-11-12T12:00:00Z").getTime();
-interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null; answer?: unknown; scheme?: "light" | "dark" }
+interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null; answer?: unknown; scheme?: "light" | "dark"; width?: number }
 async function poller(stubs: Stubs) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, ...(stubs.scheme ? { colorScheme: stubs.scheme } : {}) });
+  const ctx = await browser.newContext({ viewport: { width: stubs.width ?? 390, height: stubs.width ? 1000 : 844 }, ...(stubs.scheme ? { colorScheme: stubs.scheme } : {}) });
   const page = await ctx.newPage();
   // The page's visibility, set from this check.
   // (A string, not a function: the check's own compiler would wrap a function in helpers the page does not have.)
@@ -1143,7 +1144,7 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
   ok(/^Asked Claude Haiku 5\.5 \(turn 1\)\s+1\.2 s$/.test(rows[0] ?? ""), `trace (${kind}): a Claude call with its own measured time (${rows[0]?.replace(/\s+/g, " ")})`);
   ok((rows[1] ?? "").includes("Looked up the supplier on file") && (rows[1] ?? "").includes(TRACE.noInput) && (rows[1] ?? "").includes("Bergtex Textil GmbH is on file") && /3 ms$/.test(rows[1] ?? ""), `trace (${kind}): a tool call, its input, its answer and its ms (${rows[1]?.replace(/\s+/g, " ")})`);
   ok((rows[5] ?? "").startsWith(held ? "Decision: hold for a person" : "Decision: pay") && await fold.locator("q.own").count() === 1, `trace (${kind}): the decision and its reason, marked as its own words`);
-  ok((rows[6] ?? "").startsWith(held ? TRACE.rails.hold! : TRACE.rails.ask_cfo!) && (rows[6] ?? "").includes(held ? TRACE.ownRule : "rule: no alone limit"), `trace (${kind}): what the rails did and the rule (${rows[6]?.replace(/\s+/g, " ")})`);
+  ok((rows[6] ?? "").startsWith(held ? TRACE.rails.hold! : TRACE.rails.ask_cfo!) && (rows[6] ?? "").includes(held ? TRACE.ownRule : `rule: ${TRACE.rules.no_alone_limit}`), `trace (${kind}): what the rails did and the rule (${rows[6]?.replace(/\s+/g, " ")})`);
   ok(rows[7] === "2 Claude calls, 2.4 s in all, USD 0.0021", `trace (${kind}): the run, from agent.run (${rows[7]})`);
   const b = p.page.locator(`button:has-text("${SCRIPT.button}")`);
   ok(await b.count() === 1 && await p.page.locator(".agentic .cmp:visible").count() === 0, `script (${kind}): one button, nothing compared before it is pressed`);
@@ -1159,6 +1160,41 @@ for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) 
   ok(p.log.slice(calls).every((x) => x === "GET /v1/engine/events"), `script (${kind}): no request made for it (no Claude call): ${p.log.slice(calls).join(", ") || "none"}`);
   ok(await p.page.evaluate(() => document.documentElement.scrollWidth) <= 390, `trace and script (${kind}, ${scheme}): nothing wider than 390 px`);
   if (shots) await p.page.locator(".agentic").screenshot({ path: join(shots, `agentic-${kind}-${scheme}.png`) });
+  await p.ctx.close();
+}
+{
+  // 15 Nov (jury, live on BTX-2026-21 at 1440 px): (1) a Checker that found no concern and asked the CFO only because
+  // the agent limit is zero says "No concerns found" beside the rails' reason, not "Decided: ask the CFO, because";
+  // (2) the Activity rows stand in the engine's order (Reader, then Checker, then Coder), though the decision row is
+  // stamped with the moment its filing began, before the reader's calls; (3) the step bar under the answer keeps clear
+  // of the script button.
+  const at = (seq: number, ts: string, actor: string, event: string, subject: string, fields: Record<string, unknown>) => ({ seq, ts: `2026-11-15T10:37:${ts}Z`, actor, event, subject, fields });
+  const items = [
+    at(8, "18.997", "system", "claude.asking", "x", { role: "read", model: "claude-haiku-5-5" }),
+    at(10, "20.462", "system", "claude.read", "x", { source: "claude", model: "claude-haiku-5-5", request_id: "req_r1" }),
+    at(12, "21.992", "checker", "agent.tool", "ap.check.x", { agent: "checker", tool: "policy_limits", turn: 1, model: "claude-haiku-5-5", ms: 0, answer: "Nothing is paid without the CFO: you may pay no invoice alone.", inputs: 0 }),
+    at(25, "23.709", "checker", "agent.run", "ap.check.x", { agent: "checker", model: "claude-haiku-5-5", status: "done", turns: 1, cost_usd_micros: 300, latency_ms: 1500, claude_ms: "1400" }),
+    // Code's own filing line, stamped (like the decision) at the filing's start, written after the reader's calls.
+    at(26, "18.982", "system", "ap.received", "AP-0001", {}),
+    at(27, "18.982", "checker", "ap.checker_decided", "AP-0001", { source: "claude", model: "claude-haiku-5-5", action: "ask_cfo", outcome: "ask_cfo", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "", concerns: 0,
+      reason: "Bergtex Textil GmbH invoice BTX-2026-21 checks out: the IBAN is the account on file and the totals add up.", enforced: "in this company, agents pay no invoice alone: the CFO decides every one", request_id: "req_c1", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" }),
+    at(30, "23.709", "treasury", "ap.coded", "AP-0001", { source: "claude", model: "claude-haiku-5-5", status: "coded", lines: 1, account: "6200", vat_code: "P21", reason: "Linen fabric, as before.", request_id: "req_k1" }),
+  ];
+  const p = await poller({ events: (n) => ({ status: 200, body: n === 1 ? { items, next: 30 } : { items: [], next: 30 } }), session: () => ({ status: 200, body: {} }), width: 1440 });
+  await run(p.page, 1000);
+  p.release();
+  await settle(p.page);
+  await run(p.page, 1500);
+  const shown = (await p.page.locator(".live li:visible").allInnerTexts()).map((x) => x.replace(/\s+/g, " "));
+  const who = shown.map((x) => (x.startsWith("Purser's code") ? "Purser's code" : x.split(" · ")[0]!));
+  ok(who.join(" → ") === "Reader → Purser's code → Checker agent → Coder agent", `jury 15 Nov: Activity in the engine's order, all in view (${who.join(" → ")})`);
+  const checker = shown.find((x) => x.startsWith("Checker agent")) ?? "";
+  ok(checker.includes(`${LIVE.lead["ap.checker_decided_clear"]} `) && checker.includes(LIVE.railsClear) && !checker.includes("Decided: ask the CFO, because"), `jury 15 Nov: no concerns found, beside the rails' reason (${checker.slice(0, 160)})`);
+  await p.page.locator(".agentic details.trace summary").click();
+  ok((await p.page.locator(".agentic ol.trace li.decision").textContent())?.startsWith(TRACE.decidedClear) === true, "jury 15 Nov: the trace's decision row says no concerns found; the CFO signs");
+  const gap = await p.page.evaluate(() => { const b = document.querySelector(".agentic .cmpb")!.getBoundingClientRect(); const v = document.querySelector(".screen.work > .vflow"); return v ? v.getBoundingClientRect().top - b.bottom : null; });
+  ok(gap !== null && gap >= 16, `jury 15 Nov, 1440 px: the step bar keeps clear of the script button (${gap} px)`);
+  if (shots) await p.page.screenshot({ path: join(shots, "jury-1115-1440.png"), fullPage: true });
   await p.ctx.close();
 }
 {

@@ -90,14 +90,17 @@ const eventLineOf=(W)=>{
     if(text===null)text=W.step;
     if(tag==='money')text=text.replace(/\.$/,'')+' · '+W.money;
     let lead='',mine='',enforced='';
+    // 15 Nov (jury): the Checker found no concern of its own (concerns 0, no finding of code's) and asked the CFO only
+    // because the rails require it (code requires ask_cfo too): the line says so, and the rails' reason, not "because".
+    const clear=name==='ap.checker_decided'&&tag==='claude'&&f.action==='ask_cfo'&&f.code_requires==='ask_cfo'&&f.outcome==='ask_cfo'&&f.concerns===0&&!code(f.codes)&&f.overridden!==true;
     if(DECIDED){
       // The reason is marked as the agent's own words only when a model gave it; code's own reason is plain text.
-      lead=(v.reason&&fill(W.lead[name],v))||'';
+      lead=(v.reason&&fill(W.lead[clear?name+'_clear':name],v))||'';
       if(lead&&tag==='claude')mine=v.reason;else if(lead)lead=lead+' '+(/^[A-Z][a-z]/.test(v.reason)?v.reason.charAt(0).toLowerCase()+v.reason.slice(1):v.reason)+'.';else lead=fill(W.lead[name+'_plain'],v)||'';
       const e=v.outcome&&v.enforced?v.outcome+'; '+v.enforced:v.enforced||v.outcome;
       // Round 4 (14 Nov): where code's outcome is not what the agent decided, code overrode it, and the line says so.
       const over=f.overridden===true||(name==='ap.checker_decided'&&!!code(f.action)&&!!code(f.outcome)&&f.action!==f.outcome);
-      if(e)enforced=fill(over?W.overrode:W.enforced,{enforced:e})||'';
+      if(e)enforced=clear?W.railsClear:fill(over?W.overrode:W.enforced,{enforced:e})||'';
       if(over)text=text.split(W.enforced.replace('{enforced}','')).join(W.overrode.replace('{enforced}',''));
     }
     return {who:who,text:one(text),tag:tag,asking:asking,fold:fold,lead:one(lead),own:mine,enforced:enforced};
