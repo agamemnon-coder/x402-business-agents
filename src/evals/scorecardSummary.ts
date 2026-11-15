@@ -16,8 +16,8 @@ export const SCORECARD: ScorecardSummary = SUMMARY as unknown as ScorecardSummar
 export const SCORECARD_LINE: string = SCORECARD.line;
 
 /** The worst run of a payer, by wrong payments: what the line and the card count, so no run is picked. */
-export function worstRun(arm: "claude_alone" | "purser" | "purser_script" | "naive_script"): ScorecardArm {
-  return Object.values(SCORECARD.by_run).map((x) => x[arm]).sort((a, b) => b.wrong_payments - a.wrong_payments || b.to_cfo_not_held - a.to_cfo_not_held)[0]!;
+export function worstRun(arm: "claude_alone" | "purser" | "purser_script" | "naive_script"): ScorecardArm | undefined {
+  return Object.values(SCORECARD.by_run).map((x) => x[arm]).filter(Boolean).sort((a, b) => b.wrong_payments - a.wrong_payments || b.to_cfo_not_held - a.to_cfo_not_held)[0];
 }
 
 /** The record's path in the repository, for a link. */

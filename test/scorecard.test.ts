@@ -116,8 +116,8 @@ describe("the committed record", () => {
     expect(summary.cases_per_run).toBe(SCORECARD_CASES.length + 1);
     for (const run of ["1", "2"]) for (const arm of ["claude_alone", "purser"]) expect(full.rows.filter((r) => String(r.run) === run && r.arm === arm)).toHaveLength(summary.cases_per_run);
     expect(full.rows.filter((r) => r.arm === "claude_alone" && r.case !== CENT.id).every((r) => r.source === "claude" || r.decided_by.startsWith("no decision"))).toBe(true);
-    expect(worstRun("purser").wrong_payments).toBe(0);
-    expect(worstRun("purser_script").wrong_payments).toBe(0);
+    expect(worstRun("purser")?.wrong_payments).toBe(0);
+    expect(worstRun("purser_script")?.wrong_payments).toBe(0);
   });
 
   it("the /proof card shows each payer's worse run, with no fraction and no other product named", () => {

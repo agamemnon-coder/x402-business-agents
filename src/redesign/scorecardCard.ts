@@ -17,6 +17,8 @@ export function scorecardCardHtml(): string {
   if (!s?.by_run || !Object.keys(s.by_run).length) return "";
   const col = (name: string, a: ScorecardArm, cost: string) => `<li><b class="scn">${esc(name)}</b><span class="scw">${esc(wrong(a))}</span><small>${esc(`${past(a)}; ${loose(a)}; ${cost}`)}</small></li>`;
   const alone = worstRun("claude_alone"), purser = worstRun("purser"), script = worstRun("purser_script"), naive = worstRun("naive_script");
+  // A record from before a payer was added has no column for it: no card rather than a half one.
+  if (!alone || !purser || !script || !naive) return "";
   const runs = s.runs === 2 ? "two runs" : `${s.runs} runs`;
   return `<section class="scard" id="${SCORECARD_ID}" aria-label="${esc("Scorecard: with Purser vs Claude alone")}">
   <h2 class="sec">With Purser vs Claude alone</h2>
