@@ -25,6 +25,7 @@ import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
+import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
 import { AWX_LIVE_LINE, CFO_VIEW_LINK, CFO_VIEW_URL, CHAIN_TEST, FILM_LINK, FILM_URL, SECOND_APPROVER, TRAILER_LINK, TRAILER_URL, SPLIT_LINE } from "../config/brand.js";
 import { agentRun, faceIdDecisions, faceIdLine, family, letThroughOf, ownTap, payments, sandboxRails, runName, split, metalDetail, stopFigure, stopStory, stopSub, stops, stopsLine, tapRun, type AgentRun, type Ev, type RunRecord, type StopStory, type Tile } from "./run.js";
 import { centHtml, centRecord } from "./cardCent.js";
@@ -603,12 +604,13 @@ export function proofPage(run: AgentRun = agentRun()): string {
   ${archiveFold(run)}
   ${lifeVisual("tall")}
   ${railsVisual("tall")}`)}
+  ${ciChecksHtml()}
   <nav class="util" aria-label="More from this run"><a class="open" href="${CFO_VIEW_URL}">${icon("layout-dashboard", 14)}${esc(CFO_VIEW_LINK)}</a><a class="open" href="${TRACE_URL}">${icon("receipt", 14)}${esc(TRACE_LINK)}</a><a class="open" href="assets/${PACK_NAME}" download>${icon("file-check", 14)}${esc(PACK_LINK)}</a></nav>
 </div></main>`;
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

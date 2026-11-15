@@ -445,8 +445,9 @@ describe("/proof's words in sight", () => {
     // its id and how to verify it; the proof chain and the offline check above them; the four cards gone: 810 as built.
     // Visa judge, 14 Nov: the live vic-5 run in that list and one line on the Visa outcome to /visa: 837 as built.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(845);
-    expect(visibleWords(html)).toBeLessThanOrEqual(1230); // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
+    // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words): 917 as built.
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960);
+    expect(visibleWords(html)).toBeLessThanOrEqual(1345); // 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words). // 1,230 since 14 Nov: the trailer link (1,223 as built). 720 until the live runs came into sight (1,186 as built); 1,214 with vic-5 (14 Nov)
     // The same count is what it says: a fold with nothing folded inside it adds only its header.
     expect(wordsOutsideFolds("<main><p>one two</p><details><summary>three</summary><p>four</p></details></main>")).toBe(3);
     expect(wordsOutsideFolds("<main><details><summary>one</summary><details><summary>two</summary>three</details>four five</details>six</main>")).toBe(2);
@@ -454,6 +455,6 @@ describe("/proof's words in sight", () => {
     // +28, 12 Nov wire-in: the Visa and T:0 cards (343 as built).
     // +10, 12 Nov: the rail cards' fold header, once per drawing (wide and tall); the cards themselves got shorter.
     // 14 Nov: "Alta (formerly Metal)" at the first mention (Metal renamed itself): 841 as built.
-    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(845); // 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
+    expect(wordsOutsideFolds(main)).toBeLessThanOrEqual(960); // 960 since 15 Nov (Max: "add the CI"): +115 for "Checked on every change", one line per CI job (111 words); 357 until the live runs came into sight (the owner, 13 Nov; 810 as built); 837 with vic-5 and the Visa line (14 Nov)
   });
 });
