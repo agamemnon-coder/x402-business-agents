@@ -12,6 +12,7 @@ This sweep covers main at `c431a468`, before the hand-in. Fixes are on branch `s
 | S1 | Medium | A payout could leave the daily Airwallex caps uncounted. | Fixed |
 | S2 | Low (fails closed) | The card gate refused valid limits such as EUR 19.99. | Fixed |
 | S3 | Low (UI) | /try's money-flow strip stopped at "Your passkey" after "paid once". | Fixed |
+| S4 | Low (hardening) | purser-try's JSON answers, redirects and plain text carried only HSTS and nosniff. | Fixed (sweep 3) |
 | N1 | Low–medium (availability) | /try starts could rotate through the /64s of one IPv6 /48. | Fixed (sweep 2) |
 | N2 | Low (by design) | Event-pool starts skip the per-address limits. | Not fixed: by design |
 | N3 | Low | Wrong platform-admin tokens are not counted or rate-limited. | Not changed, on purpose; owner action |
@@ -70,6 +71,27 @@ The per-address start limit (`starts_per_address_hour`) already keyed an IPv6 ad
 **Still per /64:** the per-address Claude cap (`cap_addr_micros`). Claude spend stays inside the pool's daily and all-time caps (at most USD 30 a day, USD 78 in all).
 
 **Not reproduced live:** that would mean a flood of starts.
+
+### S4: baseline headers on the cloud's non-page answers (low, hardening, fixed in sweep 3)
+
+**Found live:** `/v1/engine` (401 JSON), `/v1/try/admin` (405 JSON) and `/console` (302) on purser-try carried only `strict-transport-security`, `x-content-type-options` and `cache-control`. The pages had the full set.
+
+**Fix:** `cloud/src/baseHeaders.ts` `withBaseline`, applied once in `handle()` (`cloud/src/app.ts`), adds to every answer the headers it does not set itself:
+- HSTS;
+- nosniff;
+- `x-frame-options: DENY`;
+- `referrer-policy: no-referrer`;
+- `cross-origin-opener-policy: same-origin`;
+- the pages' Permissions-Policy;
+- for JSON, plain text and answers without a body (redirects): `content-security-policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`.
+
+**Kept as they were:**
+- A page's own headers win: the console's nonce CSP, and the PDF frame's `x-frame-options: SAMEORIGIN` and sandbox CSP.
+- CORS is untouched: the one `access-control-allow-origin` (pdf.js) and the cross-origin refusals.
+- Scripts, fonts and images get no CSP, so their loading does not change.
+- An HTML answer without its own CSP gets none: one that allows nothing would blank it.
+
+**Test:** `test/security-sweep-3-2026-11-15.test.ts`. The two integration tests failed before the fix.
 
 ### Not fixed: written down for the owner
 

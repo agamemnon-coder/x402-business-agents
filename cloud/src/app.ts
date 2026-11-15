@@ -2,6 +2,7 @@
 // the OpenAPI document (/v1/openapi.json), so the two cannot disagree. Every tenant route works through the caller's
 // TenantDb; a route never names a tenant itself.
 
+import { withBaseline } from "./baseHeaders.js";
 import { z } from "zod";
 import { SECURITY_TXT } from "../../src/lib/securityTxt.js";
 import { AuthError, callerOf, isConnector, endSessions, enrolPasskey, failedAuthBlocked, isPlatformAdmin, KEY_MAX_DAYS, keyIdOf, need, newApiKey, newChallenge, noteFailedAuth, passkeyLogin, ROLES, SCOPES, startEnrolment, withinRate, type Caller, type Role, type Scope, firstApiKey, descendantKeys, inviteInfo, STARTER_KEY_DAYS, RECOVERY_KEY_DAYS } from "./auth.js";
@@ -705,7 +706,8 @@ export function ensureSchema(sql: Sql): Promise<void> {
 /** The API and the console, with one structured log line per request (the route's pattern, never a token or a body). */
 export async function handle(req: Request, env: CloudEnv): Promise<Response> {
   const started = Date.now();
-  const res = await route(req, env);
+  // The baseline security headers each answer lacks (./baseHeaders.ts): one place for the API, redirects and files.
+  const res = withBaseline(await route(req, env));
   const path = new URL(req.url).pathname;
   const pattern = path.startsWith("/v1/") || isClaudePath(path) ? (ROUTES.find((r) => { try { return match(path, r.path) !== null; } catch { return false; } })?.path ?? "unknown") : "console";
   // The hands-on deployment's own figures for the owner's page (cloud/src/try/metrics.ts): counts and buckets only.
