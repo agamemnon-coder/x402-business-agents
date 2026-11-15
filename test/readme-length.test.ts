@@ -9,7 +9,7 @@ const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
 describe("the README, short (15 Nov)", () => {
   it("is about 2,500 words (2,609 as this test counts them, 2,575 by wc), down from 6,255", () => {
-    expect(words(README)).toBeLessThanOrEqual(2665); // +45, 15 Nov: the film "Purser, under the hood" linked in the video table and the live demo's line (2,655 as built)
+    expect(words(README)).toBeLessThanOrEqual(3010); // 2,665 after the film's line (15 Nov); +345, 15 Nov: the Architecture section, two diagrams, five bullets, the code table in a fold (3,002 as built)
   });
 
   it("keeps the quick start, verify-it-yourself and what's live and what's simulated in the README itself", () => {

@@ -66,15 +66,18 @@ describe("the final review (13 Nov)", () => {
   it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
     const readme = readmeFull();
     // The banner (PNG, drawn from scripts/readme-banner.html) and the phone frame of the recorded /try walk count too.
-    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png))"/g)].map((m) => m[1]!);
+    // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
+    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */,
+      "architecture-dark.svg", "architecture-light.svg", "deployment-dark.svg", "deployment-light.svg" /* 15 Nov: the Architecture section's two diagrams */];
+    const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png|svg))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages
     for (const f of shots) {
       expect({ f, there: existsSync(new URL(`../docs/assets/readme/${f}`, import.meta.url)) }).toEqual({ f, there: true });
-      expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
+      if (!handMade.includes(f)) expect({ f, written: script.includes(`file: "${f}"`) }).toEqual({ f, written: true });
     }
-    // 14 Nov (Max): the two video thumbnails in the trailer's style are made by hand, not by npm run readme:shots.
-    const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */];
+    // The hand-made diagrams are shown in the README, not left lying in the folder.
+    for (const f of handMade.filter((h) => h.endsWith(".svg"))) expect({ f, shown: shots.includes(f) }).toEqual({ f, shown: true });
     expect(readdirSync(new URL("../docs/assets/readme/", import.meta.url)).sort()).toEqual([...new Set([...shots, ...handMade])].sort());
     // T:0: the run record's own figures.
     expect(read("docs/runs/2026-11-10-t0-journal-sandbox.md")).toContain("95 journal entries posted to T:0's shared sandbox entity");
