@@ -27,18 +27,3 @@ describe("the proof band's figures", () => {
   });
 });
 
-describe("the band's scorecard line", () => {
-  it("is built from the scorecard's own record and links to docs/scorecard.md", async () => {
-    const { SCORECARD_SHORT, SCORECARD_HREF, scorecardShort } = await import("../cloud/src/try/scorecard.js");
-    const { SCORECARD } = await import("../src/evals/scorecardSummary.js");
-    expect(SCORECARD_SHORT).toBe("With Purser: none of the must-hold invoices reached the CFO; Claude alone sent eleven a run (50 cases, two runs, real Claude)");
-    expect(SCORECARD_HREF).toBe(`${REPO_BLOB}docs/scorecard.md`);
-    expect(existsSync("docs/scorecard.md")).toBe(true);
-    // A run that disagrees, or Purser sending one to the CFO: no short line, never a made-up one.
-    const runs = Object.values(SCORECARD.by_run);
-    const other = structuredClone(SCORECARD);
-    other.by_run[Object.keys(other.by_run)[0]!]!.purser.to_cfo_not_held = 1;
-    expect(scorecardShort(other)).toBeNull();
-    expect(runs.every((r) => r.purser.to_cfo_not_held === 0)).toBe(true);
-  });
-});

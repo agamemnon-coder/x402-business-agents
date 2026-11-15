@@ -36,7 +36,6 @@ import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
 import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
 import { PROOF_FIGURES } from "./try/proof.gen.js";
-import { SCORECARD_HREF, SCORECARD_SHORT } from "./try/scorecard.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -1878,6 +1877,11 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 
 /** The suite's count from its last full run (docs/assets/test-summary.json, written by npm run test-count), as words. */
 export const testsPassing = (): string => (SUITE as { passed: number }).passed.toLocaleString("en-US");
+/**
+ * One more line across the proof band, from a record and linked to it ({ line, href }), or none. A slot (15 Nov): the
+ * worst-case line (branch worst-case-1115) goes here once it lands; until then the band has no such line.
+ */
+const BAND_LINE: { line: string; href: string } | null = null;
 /** The suite's record, which the band's test figure links to. */
 const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json";
 
@@ -1892,7 +1896,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
   const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
-    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst SCORECARD=${json(SCORECARD_SHORT ? { line: SCORECARD_SHORT, href: SCORECARD_HREF } : null)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
+    .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}${PREVIEW_TAGS}
 <meta name="color-scheme" content="light dark">

@@ -150,8 +150,8 @@ function proofBand(){
   const item=(n,label,href)=>{const a=el('a','',[el('span','pv',n),el('span','pk',label)]);a.href=href;a.target='_blank';a.rel='noopener';ul.append(el('li','',a))};
   for(const f of PROOF_FIGS)if(P.labels[f.key])item(String(f.n),P.labels[f.key],f.href);
   if(TESTS_PASSING)item(TESTS_PASSING,P.labels.tests,TESTS_HREF);
-  // The scorecard's summary in short (with Purser vs Claude alone, from its run's record), across the band.
-  if(SCORECARD){const a=el('a','',el('span','pk',SCORECARD.line));a.href=SCORECARD.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
+  // One more line from a record, across the band, when there is one (BAND_LINE: a slot, empty until it lands).
+  if(BAND_LINE){const a=el('a','',el('span','pk',BAND_LINE.line));a.href=BAND_LINE.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
   const s=el('section','real proofband',[el('p','rh',P.head),ul]);s.setAttribute('aria-label',P.head);return s;
 }
 function runScore(){
