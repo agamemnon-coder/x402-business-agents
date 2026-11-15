@@ -31,7 +31,7 @@ The brief's eight steps, what Purser does in each, and one proof each from the 3
 
 An approval is usually a button. In Purser it's a signature over the exact terms: change one cent and it's worthless.
 
-**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)
+**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)
 
 ## Verify it yourself in 3 commands
 

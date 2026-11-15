@@ -5,7 +5,7 @@
 **AI agents spend. You sign off.** Alta (formerly Metal) holds each agent's on-chain budget, Airwallex holds each card's
 limit, Purser's code holds the rest; the CFO approves anything beyond them, by signing the exact terms with a passkey.
 
-[▶ Film (3:29)](https://youtu.be/PNLuqhRzVfE) · [Trailer (90 s)](https://youtu.be/n3HLVGROJc4) · [Walkthrough](https://youtu.be/mp9fmOYfBWc) ·
+[▶ Film (3:29)](https://youtu.be/PNLuqhRzVfE) · [Trailer (90 s)](https://youtu.be/n3HLVGROJc4) ·
 [Try it in 2 minutes](https://kit11.max-31b.workers.dev/try) · [Every id on /proof](https://kit11.max-31b.workers.dev/proof) ·
 [Repository](https://github.com/agamemnon-coder/x402-business-agents)
 

@@ -281,7 +281,34 @@ async function screenChecks(page: Page, name: string, width: number, main = 1, f
   ok(await page.locator(".btn.primary:visible").count() === main, `${name}: ${main === 1 ? "exactly one main button" : `${main} main buttons`}`);
   ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${name}: nothing wider than ${width} px`);
   if (focus) ok(await page.evaluate(() => document.activeElement?.tagName === "H1" || document.activeElement?.classList.contains("primary")), `${name}: focus on the heading (or on the main button an answer just drew)`);
+  const hits = await overlaps(page);
+  ok(hits.length === 0, `${name}: no two blocks overlap${hits.length ? ` (${hits.slice(0, 3).join(" | ")})` : ""}`);
 }
+/**
+ * 15 Nov polish (Max: "no overlapping elements at 1024, 1440 or 390 px"): every two visible blocks on the screen (headings,
+ * paragraphs, list rows, terms, buttons, cards, the step bar, folds) that are not one inside the other must not
+ * intersect by more than 2 px either way. Fixed and sticky things (the site header) and what a closed fold hides are
+ * left out.
+ */
+// (A string, not a function: the check's own compiler would wrap inner functions in helpers the page does not have.)
+const OVERLAPS = `(async () => {
+  // Entrance animations (a translate on the way in) settle first; endless ones (a glowing step) are left as they are.
+  await Promise.all(document.getAnimations().filter((a) => { const t = a.effect && a.effect.getTiming(); return t && t.iterations !== Infinity; }).map((a) => a.finished.catch(() => null)));
+  const sel = ".screen :is(h1,h2,h3,p,li,dt,dd,button,a.btn,.card,.vflow,details,summary,table,dl,figure,pre,input,select,textarea,label)";
+  const fixed = (e) => { for (let n = e; n; n = n.parentElement) { const p = getComputedStyle(n).position; if (p === "fixed" || p === "sticky") return true; } return false; };
+  const els = [...document.querySelectorAll(sel)].filter((e) => { const r = e.getBoundingClientRect(); const st = getComputedStyle(e); const host = e.tagName === "SUMMARY" ? e.parentElement : e; if (host && host.parentElement && host.parentElement.closest("details:not([open])")) return false; const shut = e.closest("details:not([open])"); if (shut && shut !== e && !(e.tagName === "SUMMARY" && e.parentElement === shut)) return false; return r.width > 2 && r.height > 2 && st.visibility !== "hidden" && st.display !== "none" && !fixed(e); });
+  const name = (e) => e.tagName.toLowerCase() + (typeof e.className === "string" && e.className.trim() ? "." + e.className.trim().split(/\\s+/).join(".") : "") + '"' + (e.textContent || "").trim().slice(0, 24) + '"';
+  const out = [];
+  for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) {
+    const a = els[i], b = els[j];
+    if (a.contains(b) || b.contains(a)) continue;
+    const r = a.getBoundingClientRect(), q = b.getBoundingClientRect();
+    const w = Math.min(r.right, q.right) - Math.max(r.left, q.left), h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top);
+    if (w > 2 && h > 2) out.push(name(a) + " x " + name(b) + " (" + Math.round(w) + "x" + Math.round(h) + ")");
+  }
+  return out;
+})()`;
+const overlaps = (page: Page) => page.evaluate(OVERLAPS) as Promise<string[]>;
 /** The page's kept state in this tab. */
 const keptState = (page: Page) => page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>);
 /** A context with Chromium's virtual passkey authenticator (the platform kind, with user verification). */
@@ -386,7 +413,8 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
 }
 
 // Part 1: a visit at each size.
-for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
+// 15 Nov polish: 1024 px light as well (Max: "no overlapping elements at 1024, 1440 or 390 px").
+for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] as const) {
   const ctx = await passkeyContext(width, scheme);
   const page = await ctx.newPage();
   // The blobs the page makes, kept here so the check can read a file's first bytes (no fetch: the page's policy allows none).
@@ -1231,12 +1259,13 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await run(p.page, 1000);
   const shown = await p.page.locator(".live li:visible").allInnerTexts();
   ok(shown.length === 3 && await p.page.locator(".live li.agent:visible").count() === 3, `agents: three lines in view, one per agent (${shown.length})`);
-  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code overrode it: ask the CFO; The agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
+  ok(/^Checker agent · Claude Haiku 4\.5\s+Decided: pay, because “?Bergtex is on file and the totals add up”? \(its own words\)\s+Purser's code overrode it: ask the CFO; the agent may pay no invoice alone/.test(shown[0] ?? ""), `agents: the Checker's line (${shown[0]?.replace(/\s+/g, " ")})`);
   ok(/^Coder agent · Claude Haiku 4\.5\s+6200 expense, VAT 21%: “?Office supplies at the high rate”? \(its own words\)/.test(shown[1] ?? "") && !(shown[1] ?? "").includes("enforced"), `agents: the Coder's line (${shown[1]?.replace(/\s+/g, " ")})`);
   ok(/^Payer agent · Claude Haiku 4\.5\s+Proposed: pay on 20 Nov 2026 by a SWIFT bank transfer from EUR, because .*\(its own words\)\s+Purser's code enforced: ask the CFO/.test(shown[2] ?? ""), `agents: the Payer's line (${shown[2]?.replace(/\s+/g, " ")})`);
   ok(await p.page.locator(".live .own").count() === 3 && await p.page.locator(".live .enf:visible").count() === 2, "agents: each reason marked as its own words; what code enforced, where the event says it");
   ok(await p.page.locator(".live li.fold").count() === 6 && await p.page.locator(".live li.fold:visible").count() === 0, "agents: the tool calls, words, runs and the agent's Claude call wait in the fold");
   ok(!(await p.page.textContent(".live"))!.includes("SECRET"), "agents: a field the allowlist does not name is never shown");
+  if (shots) await p.page.locator(".card.activity").screenshot({ path: join(shots, "activity-agents-390.png") });
   await p.page.click(`button:has-text("${LIVE.allSteps}")`);
   ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();

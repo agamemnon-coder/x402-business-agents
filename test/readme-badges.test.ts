@@ -60,7 +60,7 @@ describe("README badges", () => {
     // line follows the Kit 11 table's closing sentence.
     const at = lines.findIndex((l) => l.startsWith("**Live demo: "));
     expect(at).toBeGreaterThan(lines.indexOf(badgeLine));
-    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [the walkthrough](https://youtu.be/mp9fmOYfBWc) (AI voice and music: ElevenLabs) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
+    expect(lines[at]).toBe("**Live demo: [kit11.max-31b.workers.dev/try](https://kit11.max-31b.workers.dev/try)**: a test company of your own on test money, in 2 minutes · [the film](https://youtu.be/PNLuqhRzVfE) · [every id on /proof](https://kit11.max-31b.workers.dev/proof)");
     // 14 Nov (Max): "In 30 seconds" (three bullets) now comes first; the three proofs follow it.
     // 14 Nov: "Airwallex at the centre" sits between; the three proofs open "How it works in 3 steps".
     const proofs = lines.slice(lines.indexOf("## How it works in 3 steps")).filter((l) => l.startsWith("- **")).slice(0, 3);
