@@ -1401,7 +1401,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
     const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
-    if(o==='paid_once'){said.replaceChildren(el('p','big',Y.paidOnce));main.set(C.books.next,()=>show('did'));return}
+    if(o==='paid_once'){said.replaceChildren(el('p','big paidonce',Y.paidOnce));main.set(C.books.next,()=>show('did'));return}
     if(o==='expired'){said.replaceChildren(note(words(j,Y.failed)));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     if(o==='failed'){said.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
     if(o==='not_signed'||o==='refused'){if(o==='not_signed'){S.cred=null;save()}said.replaceChildren(note(words(j,sig||Y.failed)));stage();return}
@@ -1479,7 +1479,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
     // The score's "one-cent change refused" only when the amount alone moved by one cent (review, 14 Nov).
     if(o==='refused'){intro.hidden=true;if(runKit.oneCent(T.terms,sent)){S.passed=runKit.mark(S.passed,'refuse');save()}const card=refused(r,ms,sent);out.replaceChildren(card);inView(card);return}
-    if(o==='paid_once'){out.replaceChildren(el('p','big',Y.paidOnce));return}
+    if(o==='paid_once'){out.replaceChildren(el('p','big paidonce',Y.paidOnce));return}
     if(o==='expired'){out.replaceChildren(note(words(j,Y.failed)));main.set(Y.fileAgain,()=>show('approve',{invoice:S.proposal.invoice?{id:S.proposal.invoice}:null,again:true}));return}
     if(o==='failed'){out.replaceChildren(note(words(j,j.settled&&j.settled.error||Y.failed)));main.set(Y.retry,retry);return}
     out.replaceChildren(note(words(j,Y.failed)));
