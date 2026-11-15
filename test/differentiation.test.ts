@@ -74,8 +74,11 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 160 once it lists every live Airwallex upgrade of 14 Nov and its calls (the Kit 11 line at 155 as built).
     // 175 since 15 Nov: the Kit 11 table under the header (the Kit 11 line at 171 as built).
     const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 175).filter((l) => !l.startsWith("**Built on Airwallex.**")).join("\n"));
-    // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS.
-    expect(top.startsWith(`${README_WHAT} ${DIFFERENTIATORS[0]}`)).toBe(true);
+    // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS. Since
+    // 15 Nov (clarity) README_WHAT is the idea in one sentence, then the three links; the first sentence follows the Kit 11
+    // table, under "At a glance".
+    expect(top.startsWith(`${README_WHAT} Try it in 2 minutes · Watch the film · Verify a payment yourself`)).toBe(true);
+    expect(readme.indexOf(DIFFERENTIATORS[0])).toBeGreaterThan(readme.indexOf("## Kit 11, step by step"));
     // Since 13 Nov (the judge run) the buttons after them: sign in 60 seconds (/try/sign), then the payables inbox on /try
     // (TRY_IT's 2 minutes), the film (the tour's button went with the tour, 13 Nov, evening).
     // Since 13 Nov (the enterprise README): the live demo's line under the badges, in TRY_IT's 2 minutes.
@@ -100,7 +103,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // The enterprise pass (owner, 12 Nov): the headline, one sentence, two buttons (Try it live, See the proof; the tour
     // was first for part of 13 Nov, then removed), the reassurance line; the first
     // sentence is told by the product card and the features ("Change one cent and it fails"), not word for word.
-    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Try it live See the proof Your own test company, test money, deleted after 24 hours.`)).toBe(true);
+    // 15 Nov (clarity): the idea, its proof line, Try it in 2 minutes and the film, then the reassurance line.
+    expect(t.startsWith(`AI agents spend. You sign off. ${HOME_SUB} Built on Airwallex · test money · `)).toBe(true);
+    expect(t).toContain(" Try it in 2 minutes Watch the film Verify a payment yourself Your test company, deleted after 24 hours.");
     expect(WHAT_IT_IS.length).toBeGreaterThan(0);
     expect(t).not.toContain(DIFFERENTIATORS[1]);
     expect(t).not.toContain(DIFFERENTIATORS[2]);
