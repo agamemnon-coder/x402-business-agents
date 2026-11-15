@@ -557,39 +557,54 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
   return out;
 }
 
-/** The facts /proof leads with, each a link to where a judge can check it. */
-export interface ProofFact { text: string; href: string; rec?: string }
+/** The facts /proof leads with, each a card: the partner, one figure from its record, a short line, its link. */
+export interface ProofFact { key: "awx" | "metal" | "claude" | "runs"; icon: string; fig: string; text: string; href: string; link: string; rec?: string }
 export const PROOF_FACTS_TITLE = "Five facts you can check";
 
 /**
- * Jury panel, 15 Nov ("/proof is too long"): five facts first, each one link, every number read from its record
- * (proofLeads, airwallexHold); everything else folded under them. Fewer than five when a record does not say one.
+ * Jury panel, 15 Nov ("/proof is too long"): five facts first, every figure read from its record (hashTravel,
+ * airwallexHold, proofLeads, split, liveRunCount). Max, 15 Nov ("just links, no more visuals"): each is a card with
+ * its partner's colour and icon, one big figure, a short line and its link. Fewer than five when a record does not say one.
  */
 export function proofFacts(run: AgentRun = agentRun()): ProofFact[] {
-  const lead = proofLeads(run.record), hold = airwallexHold();
-  const awx = lead.airwallex[0], alta = lead.metal[0], claude = lead.claude[0];
+  const lead = proofLeads(run.record), hold = airwallexHold(), hash = hashTravel(run.record), sp = split(run.record);
+  const awx = lead.airwallex[0], alta = lead.metal[0];
+  const held = hold ? /\((EUR [\d,]+\.\d\d)\)/.exec(hold.short)?.[1] : undefined;
+  const ended = hold ? /then ([A-Z_]+)\.$/.exec(hold.short)?.[1] : undefined;
+  const altaNo = alta ? /#\d+/.exec(alta.text)?.[0] : undefined;
+  const runs = liveRunCount();
   return [
-    ...(awx ? [{ text: `Airwallex: ${awx.text}.`, href: awx.href }] : []),
-    ...(hold ? [{ text: `Airwallex: ${hold.short}`, href: `${REPO_BLOB}${hold.record}`, rec: hold.record }] : []),
-    ...(alta ? [{ text: `Alta: ${alta.text}.`, href: alta.href, rec: run.file }] : []),
-    ...(claude ? [{ text: `Claude: in the main run, ${claude.text}; code enforces the limits.`, href: claude.href, rec: run.file }] : []),
-    // The fifth: every live run, each with its id and record (the same count as the strip's, liveRunCount).
-    ...((n) => (n ? [{ text: `${n} live runs in sandboxes and on testnet, each listed with its id and record.`, href: "#live-runs", rec: "docs/runs" }] : []))(liveRunCount()),
+    ...(awx && hash?.match ? [{ key: "awx" as const, icon: "lock", fig: `${hash.signed.slice(0, 8)}…`, text: `${awx.text}.`, href: awx.href, link: "Airwallex's record", rec: hash.file }] : []),
+    ...(hold && held && ended ? [{ key: "awx" as const, icon: "landmark", fig: held, text: `Held by Airwallex until a person approved it there; then ${ended}.`, href: `${REPO_BLOB}${hold.record}`, link: "record ↗", rec: hold.record }] : []),
+    ...(alta && altaNo ? [{ key: "metal" as const, icon: "octagon-x", fig: altaNo, text: "Refused on chain by Alta: over the agent's mandate.", href: alta.href, link: "explorer ↗", rec: run.file }] : []),
+    ...(sp.decisions ? [{ key: "claude" as const, icon: "bot", fig: String(sp.byClaude), text: `Decisions by Claude in the main run, ${sp.fallbacks} ${sp.fallbacks === 1 ? "fallback" : "fallbacks"}; code enforces the limits.`, href: "claude", link: "how it decides", rec: run.file }] : []),
+    ...(runs ? [{ key: "runs" as const, icon: "circle-check", fig: String(runs), text: "Live runs in sandboxes and on testnet, each listed with its id and record.", href: "#live-runs", link: "every run ↓", rec: "docs/runs" }] : []),
   ];
 }
 
 export function proofFactsHtml(facts: ProofFact[] = proofFacts()): string {
   const ext = (h: string) => /^https?:/.test(h);
-  return `<section class="pfacts" aria-labelledby="h-pfacts"><h2 id="h-pfacts">${esc(PROOF_FACTS_TITLE)}</h2><ol>${facts.map((f) => `<li${f.rec ? ` data-rec="${esc(f.rec)}"` : ""}><a href="${esc(f.href)}"${ext(f.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(f.text)}${ext(f.href) ? "&nbsp;↗" : ""}</a></li>`).join("")}</ol></section>`;
+  return `<section class="pfacts" aria-labelledby="h-pfacts"><h2 id="h-pfacts">${esc(PROOF_FACTS_TITLE)}</h2><ol>${facts.map((f) => `<li class="pf ${f.key}"${f.rec ? ` data-rec="${esc(f.rec)}"` : ""}><a href="${esc(f.href)}"${ext(f.href) ? ' target="_blank" rel="noopener"' : ""}><span class="pf-ic" aria-hidden="true">${icon(f.icon, 20)}</span><b class="pf-fig">${esc(f.fig)}</b><span class="pf-t">${esc(f.text)}</span><span class="pf-l">${esc(f.link.replace(/ ↗$| ↓$/, ""))}${/↗$/.test(f.link) ? "&nbsp;↗" : /↓$/.test(f.link) ? "&nbsp;↓" : "&nbsp;→"}</span></a></li>`).join("")}</ol></section>`;
 }
 
 const PFACTS_CSS = `
-.pfacts { margin: 14px 0 18px; }
-.pfacts h2 { font-size: 20px; font-weight: 720; margin: 0 0 8px; }
-.pfacts ol { margin: 0; padding: 0 0 0 1.4em; display: grid; gap: 0; }
-.pfacts li { font-size: 16px; line-height: 1.45; }
-.pfacts a { display: block; min-height: 44px; padding: 8px 0; color: inherit; text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
-.pfacts a:hover, .pfacts a:focus-visible { text-decoration-color: var(--accent); }
+.pfacts { margin: 14px 0 22px; }
+.pfacts h2 { font-size: 20px; font-weight: 720; margin: 0 0 10px; }
+.pfacts ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 1100px) { .pfacts ol { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .pfacts ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pfacts li:last-child { grid-column: 1 / -1; } }
+.pfacts li { --pc: var(--accent); --ps: var(--accent-soft); min-width: 0; }
+.pfacts li.awx { --pc: var(--awx); --ps: var(--awx-soft); }
+.pfacts li.metal { --pc: var(--metal); --ps: var(--metal-soft); }
+.pfacts li.claude { --pc: var(--claude); --ps: var(--claude-soft); }
+.pfacts li.runs { --pc: var(--ok); --ps: var(--ok-soft); }
+.pfacts a { display: flex; flex-direction: column; gap: 6px; height: 100%; min-height: 44px; padding: 14px 14px 12px; border: 1px solid var(--border); border-top: 3px solid var(--pc); border-radius: 14px; background: var(--surface); color: inherit; text-decoration: none; }
+.pfacts a:hover, .pfacts a:focus-visible { border-color: var(--pc); }
+.pfacts .pf-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--ps); color: var(--pc); }
+.pfacts .pf-fig { font-size: 26px; line-height: 1.1; font-weight: 760; letter-spacing: -.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pfacts .pf-t { font-size: 14px; line-height: 1.4; color: var(--muted); flex: 1; }
+.pfacts .pf-l { font-size: 13px; font-weight: 650; color: var(--pc); }
+@media (max-width: 420px) { .pfacts a { padding: 12px 12px 10px; } .pfacts .pf-fig { font-size: 22px; } .pfacts .pf-t { font-size: 13.5px; } }
 `;
 
 export function proofPage(run: AgentRun = agentRun()): string {
@@ -622,15 +637,15 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
   ${proofFactsHtml(proofFacts(run))}
+  ${proofChainHtml()}
+  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
   ${verifyCalloutHtml()}
   <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
+  ${guaranteesHtml()}
   ${detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
   <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
   ${proofRunsHtml()}
   ${awxLiveHtml()}`)}
-  ${detailsFold("how-checked", "How a payment is checked, and what Purser guarantees", `${proofChainHtml()}
-  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
-  ${guaranteesHtml()}`)}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${worstCaseCardHtml()}
   ${lifeVisual("wide")}
   ${railsVisual("wide")}
