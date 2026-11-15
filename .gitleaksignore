@@ -154,9 +154,17 @@ c35d36c909d2eff3bdd8dc250389905bc3d07924:docs/submission/long-description.md:gen
 b1742c57d99da0934be4321f4203ca1139735294:docs/proof/try-paid.json:generic-api-key:65
 # public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
 b1742c57d99da0934be4321f4203ca1139735294:docs/proof/try-refused.json:generic-api-key:65
-# the same two public WebAuthn values as above, under the squash commit that landed on main (#364)
+# public WebAuthn value in the film's record and proof bundle (a virtual test passkey), not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+ae8ca9d62c3f0a807a01afecc6fa9e65fd178353:docs/film/under-the-hood/record.json:generic-api-key:162
+# public WebAuthn value in the film's record and proof bundle (a virtual test passkey), not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+ae8ca9d62c3f0a807a01afecc6fa9e65fd178353:docs/film/under-the-hood/record.json:generic-api-key:523
+# public WebAuthn value in the film's record and proof bundle (a virtual test passkey), not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
+ae8ca9d62c3f0a807a01afecc6fa9e65fd178353:docs/film/under-the-hood/try-proof.json:generic-api-key:65
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter); the same files as b1742c57, as merged to main
 a5ebcf967661ea4c747d1985c549710409609ade:docs/proof/try-paid.json:generic-api-key:65
+# public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter); the same files as b1742c57, as merged to main
 a5ebcf967661ea4c747d1985c549710409609ade:docs/proof/try-refused.json:generic-api-key:65
+# the same two public WebAuthn values as above, under the squash commit that landed on main (#364)
 # public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
 9106d40b36c3f070acb762a3f4ee109d756f6826:docs/proof/try-paid.json:generic-api-key:65
 # public WebAuthn value in a sample proof bundle, not a secret (authenticatorData: SHA-256 of the rpId, the flags, the counter)
