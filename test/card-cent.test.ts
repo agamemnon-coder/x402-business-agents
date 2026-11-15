@@ -208,4 +208,24 @@ describe("live cards, sorted out and tested at the limit (Purser Cloud and /airw
     expect(r.status).toBe(409);
     expect(r.json.error).toContain("adopted");
   });
+
+  it("a company of its own with no agents in its records sees Kit 11's three when live cards are on, and nothing when off", async () => {
+    const c2 = testCloud();
+    const t2 = await c2.tenant("ownco");
+    c2.env.awxCards = { ask: (a) => desk.ask(a) };
+    const view = async () => ((await c2.req("GET", "/v1/cards", { key: t2.session })).json as { agents: { agent: string; card: { last4: string } | null }[] }).agents;
+    expect(await view()).toEqual([]);
+    await c2.env.sql.run("INSERT INTO try_switches (key, value, updated_at) VALUES ('awx_cards', 'on', '2026-11-15T00:00:00Z')");
+    const agents = await view();
+    expect(agents.map((a) => a.agent)).toEqual(["sourcing", "support", "treasury"]);
+    expect(agents.find((a) => a.agent === "sourcing")!.card).toMatchObject({ last4: "5550" });
+    // The one-cent test runs as built, signed by this company's own owner.
+    const a = await c2.req("POST", "/v1/cards/actions", { key: t2.session, body: { kind: "edge", agent: "sourcing" } });
+    expect(a.status).toBe(201);
+    const act = a.json.action as { id: string; challenge: string };
+    const sig = t2.ownerPasskey.pk.assert("0x00", { challenge: act.challenge, origin: ORIGIN, rpId: RP });
+    const signed = await c2.req("POST", `/v1/cards/actions/${act.id}/sign`, { key: t2.session, body: { credential_id: t2.ownerPasskey.credential_id, assertion: { authenticatorData: b64u(sig.authenticatorData), clientDataJSON: b64u(sig.clientDataJSON), signature: b64u(sig.signature) } } });
+    expect(signed.json).toMatchObject({ status: "done", kind: "edge" });
+    c2.close();
+  });
 });

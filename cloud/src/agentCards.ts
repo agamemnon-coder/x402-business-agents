@@ -117,6 +117,13 @@ async function policyLimits(sql: Sql, tenantId: string): Promise<Map<CardAgent, 
     const p = POLICY_CARDS[a.id];
     out.set(a.id, { name: a.name || NAMES[a.id], per_tx_cents: centsOfText(a.card?.per_purchase) ?? p.perTxCents, monthly_cents: centsOfText(a.card?.per_month) ?? p.monthlyCents });
   }
+  // A company of its own whose records name no card agent yet (15 Nov: an owner set up in the console, no runner has
+  // pushed): with live cards switched on, Kit 11's three agents at the CFO policy's starting limits (src/config/policy.ts),
+  // so its owner can adopt the sandbox's cards. Never a /try company; off while awx_cards is off. Every action still
+  // needs the owner's passkey and stays under the caps.
+  if (out.size === 0 && !(await cardsBlocked(sql, tenantId, { ask: async () => ({ ok: false, code: "no_answer", reason: "" }) }))) {
+    for (const a of CARD_AGENTS) out.set(a, { name: NAMES[a], per_tx_cents: POLICY_CARDS[a].perTxCents, monthly_cents: POLICY_CARDS[a].monthlyCents });
+  }
   return out;
 }
 
