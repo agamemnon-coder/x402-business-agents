@@ -5,7 +5,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { PROOF_FORMAT, PROOF_MEANS, PROOF_VERIFY_JS } from "./bundle.js";
+import { PROOF_FORMAT, PROOF_MEANS, PROOF_REFUSAL_MEANS, PROOF_SAMPLES, PROOF_VERIFY_JS, proofSamplePath } from "./bundle.js";
 
 /** The line under the heading, word for word. */
 export const VERIFY_BUNDLE_LEAD = "Don't trust our server: check the payment yourself.";
@@ -27,6 +27,7 @@ const CSS = `main { padding: 22px 0 28px; }
 .pick label:focus-within { outline: 2px solid var(--accent); }
 textarea { width: 100%; min-height: 96px; box-sizing: border-box; font: 500 13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; resize: vertical; }
 .muted { color: var(--muted); } .small { font-size: 15px; }
+.nofile { margin: 0; overflow-wrap: anywhere; } .nofile a { font-weight: 650; }
 .vv { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px; border-radius: 14px; font-size: clamp(19px, 2.2vw, 23px); font-weight: 750; }
 .vv svg { width: 34px; height: 34px; }
 .vv[hidden] { display: none; }
@@ -73,6 +74,8 @@ const JS = `
         row("Account", t.iban_last4 ? "···· " + t.iban_last4 : null), row("Proposal", b && b.proposal_id), row("Site (rpId)", b && b.rp_id),
         b && b.asked && b.asked.terms ? row("Asked amount", (b.asked.terms.currency || "") + " " + b.asked.terms.amount) : []));
       $("v-terms").hidden = false;
+      // The refusal's line of "What this proves" only for a refusal's bundle (one with the asked terms).
+      $("v-means-refusal").hidden = !(b && b.asked);
       status(name ? "Checked " + name + " in this browser; nothing was sent anywhere." : "");
     });
   }
@@ -110,6 +113,7 @@ export function verifyBundlePage(samples: ProofSamples): string {
     <div class="pick"><label class="btn primary" for="v-file">${icon("file-check", 18)}Pick the file</label><input type="file" id="v-file" accept="application/json,.json">
     <button class="btn" type="button" id="v-sample">${icon("receipt", 18)}Load a sample bundle</button><button class="btn" type="button" id="v-sample-refused">${icon("triangle-alert", 18)}Load the refused sample</button></div>
   </div>
+  <p class="nofile small" id="v-nofile">No file yet? <a href="${proofSamplePath("paid")}" download="${PROOF_SAMPLES.paid}">Download a paid sample</a> · <a href="${proofSamplePath("refused")}" download="${PROOF_SAMPLES.refused}">Download the refused sample</a> · or make your own on <a href="/try">/try</a> (2 minutes): the finish hands you the proof file.</p>
   <label class="small muted" for="v-paste">Or paste the bundle's text</label>
   <textarea id="v-paste" spellcheck="false" autocomplete="off"></textarea>
   <div><button class="btn" type="button" id="v-check">${icon("shield-check", 18)}Check the pasted text</button></div>
@@ -117,7 +121,7 @@ export function verifyBundlePage(samples: ProofSamples): string {
   <div class="vv" id="v-verdict" hidden></div>
   <dl class="terms" id="v-terms" hidden></dl>
   <ol class="checks" id="v-checks"></ol>
-  <details class="more"><summary>What this proves</summary><ul>${PROOF_MEANS.map((l) => `<li>${esc(l)}</li>`).join("")}<li>The same checks, the same code, offline: <code>npm run verify-bundle -- purser-proof.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}. The samples are <code>docs/proof/</code> there.</li></ul></details>
+  <details class="more"><summary>What this proves</summary><ul>${PROOF_MEANS.map((l) => (l === PROOF_REFUSAL_MEANS ? `<li id="v-means-refusal" hidden>${esc(l)}</li>` : `<li>${esc(l)}</li>`)).join("")}<li>The same checks, the same code, offline: <code>npm run verify-bundle -- purser-proof.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}. The samples are <code>docs/proof/</code> there.</li></ul></details>
 </section>
 <p class="small muted"><a href="/try">${icon("arrow-right", 16)}Make a payment on /try, then download its proof</a> · <a href="/proof">${icon("arrow-right", 16)}Proof</a></p>
 </div></main>`;
