@@ -256,8 +256,12 @@ export interface PaySignedResult {
   proof?: ProofBundle | null;
 }
 
-/** The keys the visitor may change on the pay screen; every other key must be the stored one. */
-export const CHANGEABLE_TERMS = ["amount", "beneficiary_name", "iban_last4"] as const;
+/**
+ * The keys the visitor may change on the pay screen ("Try to change it", 15 Nov: every field a person reads on the
+ * approval sheet, not one preset): the amount and its currency, the payee, the account ending, the BIC and the invoice
+ * number. Every other key must be the stored one. A change of any of them gives other terms, so another hash.
+ */
+export const CHANGEABLE_TERMS = ["amount", "currency", "beneficiary_name", "iban_last4", "bic", "invoice_no"] as const;
 
 /** Why the sent terms cannot be tried at all (their shape), or null. */
 function checkSent(stored: Record<string, unknown>, sent: Record<string, unknown>): string | null {
@@ -265,8 +269,11 @@ function checkSent(stored: Record<string, unknown>, sent: Record<string, unknown
   if (keys.length !== got.length || keys.some((k, i) => k !== got[i])) return "the terms must have exactly the keys of the signed terms";
   for (const k of keys) {
     if ((CHANGEABLE_TERMS as readonly string[]).includes(k)) continue;
-    if (JSON.stringify(stored[k]) !== JSON.stringify(sent[k])) return "only the amount, the payee and the account ending can be changed here";
+    if (JSON.stringify(stored[k]) !== JSON.stringify(sent[k])) return "only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here";
   }
+  if (typeof sent.currency !== "string" || !/^[A-Z]{3}$/.test(sent.currency)) return "the currency is three capital letters, such as EUR";
+  if (typeof sent.bic !== "string" || !/^[A-Z0-9]{8}([A-Z0-9]{3})?$/.test(sent.bic)) return "the BIC is 8 or 11 capital letters or digits";
+  if (typeof sent.invoice_no !== "string" || sent.invoice_no.length < 1 || sent.invoice_no.length > 64) return "the invoice number is 1 to 64 characters";
   if (typeof sent.amount !== "string" || !/^\d{1,9}\.\d{2}$/.test(sent.amount)) return "the amount is a number with two decimals, such as 1850.00";
   if (typeof sent.iban_last4 !== "string" || !/^[A-Za-z0-9]{4}$/.test(sent.iban_last4)) return "the account ending is four letters or digits";
   if (typeof sent.beneficiary_name !== "string" || sent.beneficiary_name.length < 1 || sent.beneficiary_name.length > 140) return "the payee is 1 to 140 characters";
