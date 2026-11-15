@@ -26,6 +26,7 @@ import { liveRuns, type RunRow } from "./runs.js";
 import type { AgentRun, RunRecord } from "./run.js";
 import { countOf, esc, icon } from "./ui.js";
 import { VISUAL_CSS, visualsHtml } from "./airwallexVisual.js";
+import { trailLinkHtml } from "./awxTrailLink.js";
 
 // 13 Nov: the payee check, the batch transfer and the ledger reconciliation joined once the switch-on run showed them
 // live in the flow (SWITCH_ON_FILE below); a record that does not show one leaves it with the built ones.
@@ -631,6 +632,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   ${tilesHtml(tiles)}
   ${flaggedHtml(flagged)}
   ${o.hash || o.controls ? `<h2 class="vh">Airwallex, read back</h2><div class="awrb">${o.hash}${swiftLineHtml(kitSwift(read(KIT_FILE)), platform)}${o.controls}</div>` : ""}
+  ${trailLinkHtml()}
   <div class="folds card">${folds}</div>
   <a class="open" href="proof#${esc(o.proofHash)}">All the proof ${icon("arrow-right", 15)}</a>
 </div></main>`;

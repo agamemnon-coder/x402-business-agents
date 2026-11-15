@@ -7,6 +7,7 @@ import { visaPage, visaRunsLine } from "../src/redesign/partners.js";
 import { VIC3_RUN_FILE, type Vic3Record } from "../src/redesign/vic3Run.js";
 import { VISA_FLOW_ID, VISA_HASH_ID, VISA_OUTCOMES_ID, outcomeOf, visaHashHtml } from "../src/redesign/visaHero.js";
 import { VISA_ICC_LINE } from "../src/config/brand.js";
+import { readmeFull } from "./readmeFull.js";
 
 const rec = JSON.parse(readFileSync(new URL(`../${VIC3_RUN_FILE}`, import.meta.url), "utf8")) as Vic3Record & { purchases: (Vic3Record["purchases"][number] & { terms_sha256?: string })[] };
 const html = visaPage();
@@ -78,7 +79,7 @@ describe("/visa's hero, from the vic-4 record", () => {
     expect(line).toMatch(/^\d+ paid in the \d{1,2} \w{3} run \(\d+ paid across \d+ Visa runs?\)$/);
     expect(text(section(VISA_OUTCOMES_ID))).toContain(`${line}.`);
     expect(text(/<footer[\s\S]*<\/footer>/.exec(html)![0])).toContain(line);
-    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    const readme = readmeFull();
     expect(readme).toContain(line);
     expect(readme).not.toMatch(/fourth live run/);
   });

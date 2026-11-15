@@ -2,6 +2,7 @@
 // section filled from its record, no working files at the docs root, and no internal asides in public files.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -41,19 +42,19 @@ describe("the final review (13 Nov)", () => {
   });
 
   it("names both sets of agents in the README, as the site does", () => {
-    const readme = read("README.md");
+    const readme = readmeFull();
     for (const a of ["Sourcing", "Support", "Treasury", "Reader", "Checker", "Coder", "Payer"]) expect({ a, named: readme.includes(a) }).toEqual({ a, named: true });
     expect(read("src/redesign/home.ts")).toMatch(/Checker agent \(Claude\)[\s\S]*Coder agent \(Claude\)[\s\S]*Payer agent \(Claude\)/);
   });
 
   it("quotes Airwallex's AgentOS word for word, with its URL, and says Purser's part without naming anyone else", () => {
-    const readme = read("README.md");
+    const readme = readmeFull();
     // Read on 13 Nov 2026 from https://www.airwallex.com/docs/developer-tools/ai/agentos ("Before you deploy").
     expect(readme).toContain('"components do not initiate money-out actions (transfers, FX conversions, or payouts) on\nyour behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026)');
   });
 
   it("has a Visa Award and a Metal Award section, each with its live dates and records", () => {
-    const readme = read("README.md");
+    const readme = readmeFull();
     const sec = (h: string) => readme.slice(readme.indexOf(`## ${h}`), readme.indexOf("\n## ", readme.indexOf(`## ${h}`) + 5));
     for (const f of ["docs/runs/2026-11-07-vic-1.md", "docs/runs/2026-11-13-vic-4.md"]) expect(sec("Visa Award")).toContain(`](${f})`);
     for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Metal Award")).toContain(`](${f})`);
@@ -63,7 +64,7 @@ describe("the final review (13 Nov)", () => {
   });
 
   it("shows only screenshots npm run readme:shots writes from a local build, and names T:0 and the anchor run from their records", () => {
-    const readme = read("README.md");
+    const readme = readmeFull();
     // The banner (PNG, drawn from scripts/readme-banner.html) and the phone frame of the recorded /try walk count too.
     const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");

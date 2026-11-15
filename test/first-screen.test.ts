@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { BUSINESS_CASE_LINK, BUSINESS_DOCS, DIFFERENTIATORS, README_WHAT, FILM_URL, FIRST_SCREEN, FIRST_SCREEN_TEXT, HERO, TRY_IT, TRY_SIGN_URL, WHAT_IT_IS, WHY_COMPANY, WHY_COMPANY_NOTE } from "../src/config/brand.js";
 import { FILM_BUTTON, HOME_SUB, REASSURE, START, VERIFY_BUTTON, homePage } from "../src/redesign/home.js";
 import { buildPages } from "../src/relay/assets.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 /** Text as read: tags, Markdown emphasis and link targets gone, entities decoded, white space single. */
@@ -85,7 +86,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
     // 14 Nov: Alta's wordmark in the row (the Alta team's OK); Visa and Cloudflare in text (the owner's decision).
-    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied');
+    // 15 Nov: the row is in "Who does what", moved to docs/who-does-what.md (test/readmeFull.ts).
+    expect(readmeFull()).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied');
     expect(README).toContain("\n\nNo endorsement implied.\n\n"); // under the partners table; "Text names only" gone since the logos came back (14 Nov)
     expect(README).not.toContain("Text names only");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);
