@@ -268,7 +268,7 @@ describe("dates", () => {
     expect(r.ran_at).toBe(rows("owners.tx_sent")[0]!.ts);
     expect(r.last_row_at).toBe("2026-11-09T08:30:00.000Z");
     expect(r.owners[0]!.enrolled_at).toBe("2026-11-09T08:00:00.000Z");
-    expect(text(r)).not.toMatch(/2031/);
+    expect(text(r)).not.toMatch(/2031-\d\d-\d\d/); // a date from the faked clock; random hashes may hold the digits 2031
     const dir = temp();
     const written = writeOwnersRecord(r, dir);
     expect(written).toEqual({ json: join(dir, "2026-11-09-faceid-onchain.json"), md: join(dir, "2026-11-09-faceid-onchain.md") });
