@@ -9,7 +9,7 @@
 import { fromCents } from "../../src/lib/money.js";
 import { createControlsBody, limitsUpdateBody } from "../../src/airwallex/cardBody.js";
 import {
-  CARD_ID, CARDS_SANDBOX_BASE, cardCallCheck, safeCard, safeTx, SHA256_HEX,
+  CARD_ID, CARDS_SANDBOX_BASE, FREEZE_MANY_MAX, cardCallCheck, safeCard, safeTx, SHA256_HEX,
   type CardsAnswer, type CardsAsk, type CardsRefusal, type SafeCard, type SafeTx,
 } from "../../src/airwallex/cardGate.js";
 import { agentOfCard } from "../../src/airwallex/agentCardSet.js";
@@ -199,6 +199,18 @@ export class AwxCardsDesk {
         if (!r.ok) return r;
         const card = safeCard(r.json);
         return card ? { ok: true, op: "create", card } : no("airwallex", "the sandbox's card answer could not be read");
+      }
+      case "freeze_many": {
+        // Older test cards set to INACTIVE in one call: each update on the allow-list, no read-back (freezing only lowers
+        // exposure; the next list read shows the result). Every card's answer is kept.
+        if (!Array.isArray(a.card_ids) || a.card_ids.length === 0 || a.card_ids.length > FREEZE_MANY_MAX || !a.card_ids.every((id) => typeof id === "string" && CARD_ID.test(id))) return no("refused", `between 1 and ${FREEZE_MANY_MAX} card ids`);
+        const frozen: { card_id_last4: string; ok: boolean; reason: string | null }[] = [];
+        for (const id of a.card_ids) {
+          const r = await this.raw("POST", `/issuing/cards/${id}/update`, { card_status: "INACTIVE" });
+          frozen.push({ card_id_last4: id.slice(-4), ok: r.ok, reason: r.ok ? null : `${r.reason}${r.awx_code ? ` (${r.awx_code})` : ""}` });
+          if (!r.ok && (r.code === "writes_off" || r.code === "no_key" || r.code === "forbidden")) break;
+        }
+        return { ok: true, op: "freeze_many", frozen };
       }
       case "status": {
         if (a.status !== "ACTIVE" && a.status !== "INACTIVE") return no("refused", "a status is ACTIVE or INACTIVE");

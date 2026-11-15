@@ -189,6 +189,8 @@ async function agentsView(){
   const soft=(p)=>api(p).catch((e)=>{if(e instanceof Expired)throw e;return null});
   const [m,r,tk0,CV]=await Promise.all([me(),api('/v1/agents'),soft('/v1/tokenisation'),soft('/v1/cards')]);shell();
   const cards=(r.agents||[]).map((a)=>agentCard(a,!!m.demo,CV&&(CV.agents||[]).find((x)=>x.agent===a.id),CV));
+  // A company whose records name no agent yet, with live cards on: each Kit 11 agent with its live card panel only.
+  if(!cards.length&&CV&&CV.agents&&CV.agents.length)for(const x of CV.agents)cards.push(el('section','card agent rise',[el('div','ah',[el('span','av',ic('bot')),el('div','',[el('h2','',x.name)])]),liveCardPanel(x,CV)]));
   // The agents' real cards and Visa runs from the live sandbox runs (judge scan, 14 Nov: they sat on Tokenisation, and
   // their limits read as the demo cards' own). Each section says which run its figures come from.
   const live=tk0?sandboxSections(tk0):[];

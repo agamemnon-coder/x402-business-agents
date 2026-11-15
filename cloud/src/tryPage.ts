@@ -28,9 +28,11 @@
 import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
+import { SCRIPT as SCRIPT_COPY, TRACE } from "./tryCopy.js";
 import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROOF_BAND, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { VERIFY_YOURSELF } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
+import { AGENT_TRACE_JS } from "./try/agentTrace.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
 import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
@@ -132,6 +134,31 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .result { margin-top: 20px; }
 .card[hidden]:first-child + .result { margin-top: 0; }
 .result .big { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+/* 15 Nov: the Checker's own steps (folded, one line each) and the same invoice through the always-pay script. Tokens only. */
+.agentic { margin-top: 16px; display: grid; gap: 10px; }
+.agentic details.trace { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 0 14px; }
+.agentic details.trace > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); }
+.agentic ol.trace { list-style: none; margin: 0 0 10px; padding: 0; }
+.agentic ol.trace li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; padding: 7px 0; border-top: 1px solid var(--border); font-size: 13.5px; line-height: 1.4; }
+.agentic ol.trace li.claude .tw { color: var(--claude); }
+.agentic ol.trace li.decision .tw, .agentic ol.trace li.rails .tw { color: var(--text); font-weight: 600; }
+.agentic .tw { overflow-wrap: anywhere; }
+.agentic .tsub { display: block; color: var(--faint); font-size: 12.5px; font-weight: 400; }
+.agentic .own { color: var(--muted); font-style: italic; font-weight: 400; }
+.agentic .rf { margin-left: 6px; color: var(--bad); font-size: 12.5px; }
+.agentic .t { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 12.5px; white-space: nowrap; }
+.agentic .cmpb { justify-self: start; }
+.agentic [hidden] { display: none !important; }
+.agentic .cmp { outline: none; }
+.agentic .sides { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 560px) { .agentic .sides { grid-template-columns: 1fr 1fr; } }
+.agentic .side { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--sunken); font-size: 14px; line-height: 1.4; }
+.agentic .side p { margin: 0 0 4px; }
+.agentic .side .sh { font-weight: 650; }
+.agentic .side .rl { font-weight: 600; }
+.agentic .side .rule { color: var(--faint); font-size: 12.5px; margin: 0; }
+.agentic .verdict { margin: 10px 0 4px; font-weight: 600; font-size: 14.5px; }
+.agentic .closing { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
 /* A line aimed at the AI, flagged by the engine (15 Nov): calm, under the answer. */
 .result .flagged { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--sunken); border: 1px solid var(--border); font-size: 14px; line-height: 1.45; }
 .result .flagged .i { flex: none; margin-top: 1px; color: var(--accent); }
@@ -654,11 +681,13 @@ const SCRIPT = String.raw`
 const C=__COPY__;
 const W=C.live;
 __EVENT_LINE__
+__AGENT_TRACE__
 __SIGN__
 __BOOKS__
 const {fromB64u,registrationOf,signedOf,hashDiff,normAmount,payBody,verdict,methodOf,rateLine}=signKit;
 const IC=__ICONS__;
 const lineOf=eventLineOf(W);
+const AT=agentTraceOf(C.trace,C.script,W);
 const CFG=JSON.parse(document.querySelector('meta[name=purser-try]').content);
 const RUNS=__RUNS__;
 const PROOF=__PROOF__;
@@ -1160,17 +1189,42 @@ function drawResult(box,r,ms){
   main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
   box.append(main);
 }
+// 15 Nov (jury: "what does Claude add?"): under the answer, the Checker agent's own steps on this invoice, folded,
+// one line each (AT.traceOf, from this request's events only), and one button: the same invoice through the always-pay
+// script, as the engine recorded it beside the decision (AT.compareOf: no Claude call), side by side with Claude's.
+function agentic(){
+  const items=[];let open=false;
+  const list=el('ol','trace');
+  const fold=el('details','trace',[el('summary','',C.trace.summary),list]);fold.hidden=true;
+  const b=btn(C.script.button);b.classList.add('quiet','cmpb');b.hidden=true;b.setAttribute('aria-expanded','false');
+  const out=el('div','cmp');out.hidden=true;out.setAttribute('role','status');
+  b.addEventListener('click',()=>{open=true;b.setAttribute('aria-expanded','true');draw();out.focus()});
+  out.tabIndex=-1;
+  const side=(head,x)=>el('div','side',[el('p','sh',head),el('p','',fill(C.script.said,{action:x.action})),el('p','rl',x.rails),x.rule?el('p','rule',x.rule):null]);
+  function draw(){
+    const rows=AT.traceOf(items);
+    list.replaceChildren(...rows.map((r)=>el('li',r.kind+(r.refused?' refused':''),[el('span','tw',[r.text,...(r.own?[' ',el('q','own',r.own)]:[]),...(r.refused?[el('span','rf',C.trace.refused)]:[]),...(r.sub?[el('span','tsub',r.sub)]:[])]),el('span','t',r.time)])));
+    fold.hidden=!rows.length;
+    const c=AT.compareOf(items);
+    b.hidden=open||c.verdict==='missing';
+    if(open){out.hidden=false;
+      out.replaceChildren(...(c.claude&&c.script?[el('div','sides',[side(C.script.claude,c.claude),side(C.script.script,c.script)])]:[]),
+        el('p','verdict',c.verdict==='missing'?C.script.missing:C.script[c.verdict]),...(c.verdict==='missing'?[]:[el('p','closing',C.script.line+' '+C.script.close)]))}
+  }
+  return {node:el('div','agentic',[fold,b,out]),add(x){if(Array.isArray(x)&&x.length){items.push(...x);draw()}}};
+}
 screen('work',{heading:C.work.heading,draw(box,arg){
-  const live=livePanel();const result=el('div','result');
+  const live=livePanel();const result=el('div','result');const ag=agentic();
   CLAUDE.on=false;CLAUDE.req=null;CLAUDE.slot=null;
   box.append(live.node,result);
   if(arg&&arg.kind==='reload'){
     // After a reload: the newest invoice as the server has it, and its steps so far (no times: they were not measured here).
     // Only this invoice's rows (the company starts with a paid invoice of its own: its rows are not this one's).
     const mine=(e)=>!(typeof e.subject==='string'&&/^AP-\d+$/.test(e.subject)&&arg.invoice&&e.subject!==arg.invoice.id);
-    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it)}});
+    call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it);ag.add(it)}});
     // A copy caught as the same file comes back as that answer (kept with the page's history), never as its paid original.
     drawResult(result,{status:200,json:Object.assign({invoice:arg.invoice},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{})},null);
+    result.append(ag.node);
     return;
   }
   const sk=skeleton();result.append(sk.node);
@@ -1181,7 +1235,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   let flagged=false,drawn=false;
   const flag=()=>{if(!flagged||!drawn||S.screen!=='work'||result.querySelector('.flagged'))return;
     const p=el('p','flagged',[icon('shield-check',18),el('span','',C.work.injected)]);const at=result.querySelector('.acts');if(at)at.before(p);else result.append(p)};
-  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
+  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items);ag.add(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     const ms=performance.now()-t0;
@@ -1189,7 +1243,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     if(S.screen!=='work')return;
     // A compose the server refused (400): back to the form as it was sent, its words calmly under it.
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
-    result.replaceChildren();drawResult(result,r,ms);drawn=r.status===200;flag();
+    result.replaceChildren();drawResult(result,r,ms);if(r.status===200||r.status===201)result.append(ag.node);drawn=r.status===200;flag();
     // Back from the next step returns to this answer, never files the invoice again.
     const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed&&S.cost){S.cost.invoice=filed.id;save()}if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
@@ -1904,12 +1958,12 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
+  const copy = { run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"], "shield-check": ICONS["shield-check"], ban: ICONS.ban, play: ICONS.play, "arrow-up-right": MORE["arrow-up-right"] };
-  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
+  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__AGENT_TRACE__", () => AGENT_TRACE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
     .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);

@@ -60,6 +60,8 @@ export interface Pages {
   status?: string;
   /** /t0 (owner, 12 Nov): Purser's books in T:0's ledger. */
   t0?: string;
+  /** /airwallex/calls (15 Nov): every Airwallex sandbox API call in the run records; absent in a bundle built before it. */
+  awxCalls?: string;
   /** /books (owner, 12 Nov): the bookkeeping with AI agents, from the run records. */
   books?: string;
   /** The redesign's public pages (Home, Watch, Proof), no key needed; absent in a bundle built before them. */
@@ -100,7 +102,7 @@ export interface Pages {
   font: string;
   /** The sponsors' logos (base64), served as /assets/<name>. */
   images: Record<string, { type: string; data: string }>;
-  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; claude?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
+  csp: { dashboard: string; month: string; demo: string; live: string; film: string; try: string; lab: string; metal: string; metalReport: string; visa: string; airwallex?: string; awxCalls?: string; claude?: string; security?: string; docs?: string; status?: string; t0?: string; books?: string; home?: string; watch?: string; replay?: string; proof?: string; verify?: string; trace?: string; runs?: string; notFound?: string; trySign?: string; tryVerify?: string; approve: string; enrol: string; policy: string };
 }
 
 const MAX_STATE_BYTES = 1_500_000;
@@ -202,6 +204,7 @@ export function pageResponse(req: Request, pages: Pages): Response | null {
   if (path === "/alta") return page(pages.metal, pages.csp.metal);
   if (path === "/visa" && pages.visa) return page(pages.visa, pages.csp.visa);
   if (path === "/airwallex" && pages.airwallex && pages.csp.airwallex) return page(pages.airwallex, pages.csp.airwallex);
+  if (path === "/airwallex/calls" && pages.awxCalls && pages.csp.awxCalls) return page(pages.awxCalls, pages.csp.awxCalls);
   if (path === "/claude" && pages.claude && pages.csp.claude) return page(pages.claude, pages.csp.claude);
   if (path === "/security" && pages.security && pages.csp.security) return page(pages.security, pages.csp.security);
   if (path === "/docs" && pages.docs && pages.csp.docs) return page(pages.docs, pages.csp.docs);

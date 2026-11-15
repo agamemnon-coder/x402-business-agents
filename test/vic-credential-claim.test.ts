@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
 const SINGLE_USE_VISA = /single-use (?:Visa|card) credential|single-use Visa card|Single-use Visa credential/i;
@@ -18,7 +19,7 @@ describe("the Visa credential is never called single-use", () => {
   });
 
   it("the README says what holds, with both records, and no single-use claim", () => {
-    const readme = read("README.md");
+    const readme = readmeFull();
     expect(readme).not.toMatch(SINGLE_USE_VISA);
     expect(readme).toContain("a Visa credential Purser binds to one purchase; in the sandbox Airi/Airwallex did not refuse a reuse or a higher amount ([vic-3](docs/runs/2026-11-12-vic-3.md)), Purser did ([vic-4](docs/runs/2026-11-13-vic-4.md))");
   });

@@ -14,6 +14,7 @@ import { audit } from "../audit/log.js";
 import { claudeClient } from "../claude/reader.js";
 import type { DB } from "../db/open.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
+import { ALWAYS_PAY } from "../evals/worstCaseWords.js";
 import {
   answerTool, CHECKER_EFFORT, CHECKER_MODEL, CHECKER_MAX_TURNS, CHECKER_SYSTEM, CHECKER_UNFINISHED, checkerInputs, checkerPrompt, checkerTools, codeRequires, enforce, fallbackDecision, statusOf,
   type ApStatus, type CheckerDecision, type CheckerToolName, type Enforced, type Finding, type InvoiceCase,
@@ -44,6 +45,17 @@ export interface CheckerOutcome {
   provenance: RunProvenance;
   /** The precedents the agent was given (the CFO's past decisions it learned from), by record id. */
   precedents: string[];
+  /**
+   * The worst-case policy on this same case and these same findings (15 Nov, /try): a script that always says pay in
+   * the model's place (ALWAYS_PAY), through the same enforce. Pure code, no Claude call; recorded beside the decision.
+   */
+  script: { outcome: string; overridden_by: string | null };
+}
+
+/** What Purser's code makes of the always-pay script's "pay" on this case (the same enforce Claude's decision goes through). */
+export function scriptOn(c: InvoiceCase, findings: Finding[]): CheckerOutcome["script"] {
+  const e = enforce(c, { action: ALWAYS_PAY.action, reason: ALWAYS_PAY.reason, findings: [] }, findings);
+  return { outcome: e.outcome, overridden_by: e.overridden_by };
 }
 
 export interface CheckerOptions {
@@ -86,7 +98,7 @@ export async function runChecker(db: DB, c: InvoiceCase, findings: Finding[], op
   const enforced = enforce(c, decision, findings);
   const provenance = runProvenance(db, CHECKER_AGENT, opts.task, run, source === "claude", "the payables checks decide alone (the Checker agent was unavailable or did not decide)");
   const need = codeRequires(c, findings);
-  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance, precedents: (c.precedents ?? []).map((p) => p.case.ref) };
+  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance, precedents: (c.precedents ?? []).map((p) => p.case.ref), script: scriptOn(c, findings) };
 }
 
 /**
@@ -98,7 +110,7 @@ export function enforceAgain(out: CheckerOutcome, c: InvoiceCase, findings: Find
   const decision: CheckerDecision = out.source === "claude" ? out.decision : { action: fallback.action, reason: fallback.reason, findings: fallback.findings };
   const enforced = enforce(c, decision, findings);
   const need = codeRequires(c, findings);
-  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why } };
+  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, script: scriptOn(c, findings) };
 }
 
 /**
@@ -129,6 +141,8 @@ export function recordChecked(db: DB, invoiceId: string, out: CheckerOutcome, st
     outcome: out.enforced.outcome, overridden_by: out.enforced.overridden_by, overridden: out.overridden, code_requires: out.required.action, why: out.required.why.slice(0, 600), status,
     task: out.task, run_id: out.provenance.run_id, request_ids: out.provenance.request_ids, origin: out.provenance.origin as Json | null,
     ...(out.run.note ? { note: out.run.note } : {}),
+    // The always-pay script on the same case (scriptOn): what code would have done had the script decided.
+    ...(out.script ? { script_outcome: out.script.outcome, script_overridden_by: out.script.overridden_by } : {}),
     // What the agent learned from: the CFO's past decisions it was given as precedent (only when Claude decided).
     ...(out.source === "claude" && out.precedents.length ? { precedents: out.precedents } : {}),
   }, now);

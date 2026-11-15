@@ -927,7 +927,8 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     // fold's heading in view, below the sticky header. At 390 and 1440 px.
     if (w === 390 || w === 1440) {
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      // The guarantees are in sight under the four cards (jury, 13 Nov, second round).
+      // The guarantees close the fold "How a payment is checked" (jury panel, 15 Nov): a reader opens it first.
+      await page.locator("#how-checked > summary").click();
       await page.locator("#g-terms details > summary").click();
       await page.locator("#g-terms a", { hasText: "If the approver is unavailable" }).click();
       await page.waitForURL(/\/security#unavailable$/);
@@ -1088,7 +1089,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { h: number; t: string }[];
       const first = (await page.evaluate(`(() => {
         const top = (e) => (e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1), h1 = document.querySelector("main h1");
-        const fold = document.querySelector("main details.sumd"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
+        const fold = document.querySelector("main details#details"), runs = document.getElementById("live-runs"), g = document.getElementById("guarantees");
         // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs,
         // then the guarantees and the one fold.
         const order = [];
@@ -1096,17 +1097,13 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
         return { order: order.slice(0, 9).join(" "), chain: top(document.querySelector("main ol.pchain")), band: top(document.querySelector("main ul.scale")), runs: top(runs), rows: runs ? runs.querySelectorAll("li[id^=run-]").length : 0, fold: top(fold), gtee: top(g), open: document.querySelectorAll("main details[open]").length };
       })()`)) as { order: string; chain: number; band: number; runs: number; rows: number; fold: number; gtee: number; open: number };
       // Max, 14 Nov: the walkthrough and the trailer, then a tile per partner with its one line, lead the page.
-      if (first.order !== "h1 p.plead p.pwatch p.ptnote ul.ptiles p.pawx ol.pchain ul.scale aside.pverify" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the chain, the band, the offline check, every live run (${PROOF_RUN_ROWS}), the guarantees and the one fold, closed on load (${JSON.stringify(first)})`);
+      // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check, the offline check
+      // and the film links; then the live runs, how a payment is checked, and all the rest, each in a fold closed on load.
+      if (first.order !== "h1 p.plead section.pfacts aside.pverify p.pwatch details.sumd details.sumd details.sumd section.cichk" || first.rows !== PROOF_RUN_ROWS || first.open) fail(`/proof ${tag}: not the heading, the lead, the five facts, the offline check, the film links and three folds (every live run, ${PROOF_RUN_ROWS}, in the first), closed on load (${JSON.stringify(first)})`);
       if (w === 390) {
-        // The partner tiles on the first screen; the chain and the band within the next (14 Nov, the tiles lead: the chain at
-        // 9xx px and the band at 1,3xx px as built at 390; before, the chain under 400 px and the band under 1,300 px).
-        const tiles = await page.evaluate(`(() => { const e = document.querySelector("main ul.ptiles"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
-        // 440 since 14 Nov: the "Built on Airwallex" line under the header on a phone (src/ui/builtOn.ts) adds 36 px.
-        if (tiles < 0 || tiles >= 440) fail(`/proof ${tag}: the partner tiles start at ${tiles} px, not on the first screen`);
-        // 14 Nov (Max, Airwallex at the centre): the Airwallex line under the tiles, plus the 36 px header line above:
-        // the chain under 1,100 px and the band under 1,550 px.
-        if (first.chain < 0 || first.chain >= 1100) fail(`/proof ${tag}: the proof chain starts at ${first.chain} px, over 1,100 px`);
-        if (first.band < 0 || first.band > 1550) fail(`/proof ${tag}: the band starts at ${first.band} px, over 1,550 px`);
+        // The five facts start on the first screen (under 440 px: the header's "Built on Airwallex" line adds 36 px).
+        const facts = await page.evaluate(`(() => { const e = document.querySelector("main section.pfacts"); return e ? Math.round(e.getBoundingClientRect().top + scrollY) : -1; })()`) as number;
+        if (facts < 0 || facts >= 440) fail(`/proof ${tag}: the five facts start at ${facts} px, not on the first screen`);
         const closed = await targets();
         for (const x of closed.filter((y) => y.h < 44)) fail(`/proof ${tag}: a tap target under 44 px with the folds closed: ${Math.round(x.h * 10) / 10} px "${x.t}"`);
         if (closed.length < 6) fail(`/proof ${tag}: only ${closed.length} links and fold headers in sight, the check is not looking at the page`);
@@ -1126,7 +1123,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // load; opened as a reader does, by its summary: the owner's copy, the badges, the checks, a link to its ids.
       if (await page.locator("#airi-run").isVisible()) fail(`/proof ${tag}: the Airi run is in sight before its line is opened`);
       // Since the jury pass (13 Nov) its line is inside the one fold under the four cards: a reader opens that first.
-      await page.locator("main details.sumd > summary").click();
+      await page.locator("main details#details > summary").click();
       await page.locator("main details.deep > summary", { hasText: "Visa Intelligent Commerce via Airwallex's Airi" }).click();
       const airi = await page.locator("#airi-run").innerText().catch(() => "");
       if (!/Visa Intelligent Commerce via Airwallex's Airi: a live run \(7 Nov\)\s*A separate run · Airwallex sandbox, test card, test money/.test(airi) || !/✓ Within the limit[\s\S]*✓ Paid after Face ID[\s\S]*✕ Refused by Purser[\s\S]*Every check passes/.test(airi)
@@ -1141,7 +1138,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
     {
       // Each card: its name, then its first claim, a link in sight; in its closed fold 2–3 facts with a bold number,
       // then its other claims, each a link. In sight once the one fold under the four cards is open (jury pass, 13 Nov).
-      await page.evaluate(() => { const d = document.querySelector("main details.sumd") as HTMLDetailsElement | null; if (d) d.open = true; });
+      await page.evaluate(() => { const d = document.querySelector("main details#details") as HTMLDetailsElement | null; if (d) d.open = true; });
       const leads = (await page.evaluate(`[...document.querySelectorAll("article.pcard")].map((c) => {
         const first = c.querySelector(".ph").nextElementSibling, fold = c.querySelector(":scope > details.fold"), ul = fold && fold.querySelector(":scope > ul.lead");
         const main = first && first.matches("ul.lead") ? [...first.querySelectorAll("a.c")] : [];
@@ -1201,7 +1198,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       for (const [claim, id, open, inFold] of [["The hash the CFO signed is in", "awx-hash", false, false], ["All 3 cards carry", "controls", true, true], ["Treasury ····", "card-treasury", true, true]] as const) {
         await page.goto(`${base}/proof`, { waitUntil: "load" });
         // The partner cards are in the one fold under the four cards (jury pass, 13 Nov): a reader opens it first.
-        await page.locator("main details.sumd > summary").click();
+        await page.locator("main details#details > summary").click();
         if (inFold) await page.locator("#airwallex details.fold > summary").click();
         await page.locator("#airwallex ul.lead a", { hasText: claim }).first().click();
         await page.waitForURL(new RegExp(`/airwallex#${id}$`));
@@ -1240,7 +1237,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       await page.waitForTimeout(250);
       if ((await landed("archive")).closed || !(await page.locator('#archive a[href="replay"]', { hasText: "Replay of the main run, 3 Nov" }).isVisible())) fail(`/proof#archive ${tag}: the archive does not open with the replay of the main run first`);
       await page.goto(`${base}/proof`, { waitUntil: "load" });
-      await page.locator("main details.sumd > summary").click();
+      await page.locator("main details#details > summary").click();
       await page.locator(".nums a.num.stop").click();
       await page.waitForTimeout(250);
       const s = await landed("stops");
@@ -1257,7 +1254,7 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       })()`)) as { open: boolean; cards: number; top: number; head: number; inView: boolean };
       // The read-back sits in a fold on Proof (one flow, Max 7 Nov): open it as a reader does, by its summary, inside the
       // one fold under the four cards (jury pass, 13 Nov).
-      await page.locator("main details.sumd > summary").click();
+      await page.locator("main details#details > summary").click();
       await page.locator("details.deep > summary", { hasText: "Airwallex, read back" }).click();
       const link = page.locator("a.open", { hasText: "Policy and card side by side" });
       if ((await link.getAttribute("href")) !== "airwallex#controls") fail(`/proof ${tag}: "Policy and card side by side" does not point at airwallex#controls`);
@@ -1292,6 +1289,15 @@ for (const [w, h] of [[360, 780], [390, 844], [768, 1024], [1440, 900]] as const
       // Without a hash the fold stays closed, as designed.
       await page.goto(`${base}/airwallex`, { waitUntil: "load" });
       if (await page.evaluate(`document.getElementById("controls").open`)) fail(`/airwallex ${tag}: the cards' fold is open without a link into it`);
+    }
+    // /airwallex/calls (15 Nov): every Airwallex API call in the run records; the hash lines in words, every link absolute.
+    {
+      const res = await page.goto(`${base}/airwallex/calls`, { waitUntil: "load" });
+      if (res?.status() !== 200) fail(`/airwallex/calls ${tag}: answered ${res?.status()}`);
+      await look(page, `/airwallex/calls ${tag}`, w);
+      const c = (await page.evaluate(`(() => ({ hash: /\\d+ of \\d+ transfers carry the signed hash/.test(document.body.innerText), runs: document.querySelectorAll("details.awc-run").length,
+        rel: [...document.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")).filter((h) => !/^(https?:|#|\\/)/.test(h)).length }))()`)) as { hash: boolean; runs: number; rel: number };
+      if (!c.hash || c.runs < 1 || c.rel) fail(`/airwallex/calls ${tag}: ${JSON.stringify(c)}`);
     }
     await page.goto(`${base}/metal/report`, { waitUntil: "load" });
     await look(page, `/metal/report ${tag}`, w);
@@ -1373,4 +1379,4 @@ if (failures.length) {
   console.log(`\npages check: ${failures.length} problem(s)`);
   process.exit(1);
 }
-console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);
+console.log(`pages check passes in ${BROWSER}: /, /?signin,${liveAt >= 0 ? " /policy, /approve (guest)," : ""} /?recorded, /?recorded&agents, /?recorded&books, /?recorded&disputes, /live and /demo (redirect), /metal, /airwallex, /airwallex/calls, /visa, /claude (folds open), /security (folds open), /verify (the sample bundle passes every line, no server call), the menu (four tabs and More, by keyboard too), /metal/report, the 404, /film, /try${liveAt >= 0 ? "" : " (five examples)"}, /month,${liveAt >= 0 ? "" : " /lab"}${judgeBase ? ", Home with /try/sign, and /tour, /pricing and /judge landing on Home" : ""} at 360, 390, 768 and 1440 px, light and dark (screenshots in ${shots})`);

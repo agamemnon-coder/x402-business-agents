@@ -23,6 +23,7 @@ import { REPO_BLOB } from "./metalStory.js";
 import { SIGNED_FILES, VERIFY_CSS, VERIFY_TERMS_JS, signedByRun, verifyList } from "./verifyTerms.js";
 import { VAULT_TREE_RECORD } from "../vault/treeSvg.js";
 import { T0_JOURNAL_RECORD, t0Journal } from "./t0Page.js";
+import { trailLinkHtml } from "./awxTrailLink.js";
 import { whyCompanyHtml } from "./home.js";
 import { readFileSync } from "node:fs";
 import { CI_CSS, ciChecksHtml } from "./ciChecks.js";
@@ -332,7 +333,7 @@ export function partnerCards(run: AgentRun, lead: Record<"airwallex" | "metal" |
   // Owner, 12 Nov: Airwallex, Visa, Alta, T:0, Claude (before: in the README's order, jury review, 7 Nov, #12: Airwallex, Alta, Claude). (The signed hash was the Airwallex card's
   // first chip since 7 Nov, #12; it is the card's main link now, from the same two read-backs.)
   return `<div class="partners">
-${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex)}
+${card("airwallex", "Airwallex", "Earnings booked once final, the euro licence by SWIFT (sandbox, settlement simulated), cards with limits the bank enforces.", fact(String(awx), "movements at Airwallex") + (cardsMatch ? fact(cardsMatch[1]!, "cards carry the CFO's limits") : "") + (st.airwallex ? fact(String(st.airwallex), "declined by Airwallex") : ""), p.airwallex, trailLinkHtml())}
 ${visa ? card("visa", "Visa", visa.what, visa.facts, visa.items) : ""}
 ${card("metal", "Alta", "Each agent's limit is a mandate on chain; payments per query over x402.", fact(String(onChain), "payments on chain") + fact(String(st.metal), "refused by Alta at the limit") + fact(String(mandates), "limits replaced on chain"), p.metal, (st.revoked ? `<p class="note">${esc(`${st.revoked} refused by Alta because its mandate had just been replaced.`)}</p>` : "") + (pay.sums && pay.onChain === onChain ? `<p class="note">${esc(`${pay.onChainLine}.`)}</p>` : ""))}
 ${t0 ? card("t0", "T:0", t0.what, t0.facts, t0.items) : ""}
@@ -551,6 +552,41 @@ export function proofSummary(run: AgentRun, o: { owners?: OwnersRun | null; vic3
   return out;
 }
 
+/** The facts /proof leads with, each a link to where a judge can check it. */
+export interface ProofFact { text: string; href: string; rec?: string }
+export const PROOF_FACTS_TITLE = "Five facts you can check";
+
+/**
+ * Jury panel, 15 Nov ("/proof is too long"): five facts first, each one link, every number read from its record
+ * (proofLeads, airwallexHold); everything else folded under them. Fewer than five when a record does not say one.
+ */
+export function proofFacts(run: AgentRun = agentRun()): ProofFact[] {
+  const lead = proofLeads(run.record), hold = airwallexHold();
+  const awx = lead.airwallex[0], alta = lead.metal[0], claude = lead.claude[0];
+  return [
+    ...(awx ? [{ text: `Airwallex: ${awx.text}.`, href: awx.href }] : []),
+    ...(hold ? [{ text: `Airwallex: ${hold.short}`, href: `${REPO_BLOB}${hold.record}`, rec: hold.record }] : []),
+    ...(alta ? [{ text: `Alta: ${alta.text}.`, href: alta.href, rec: run.file }] : []),
+    ...(claude ? [{ text: `Claude: in the main run, ${claude.text}; code enforces the limits.`, href: claude.href, rec: run.file }] : []),
+    // The fifth: every live run, each with its id and record (the same count as the strip's, liveRunCount).
+    ...((n) => (n ? [{ text: `${n} live runs in sandboxes and on testnet, each listed with its id and record.`, href: "#live-runs", rec: "docs/runs" }] : []))(liveRunCount()),
+  ];
+}
+
+export function proofFactsHtml(facts: ProofFact[] = proofFacts()): string {
+  const ext = (h: string) => /^https?:/.test(h);
+  return `<section class="pfacts" aria-labelledby="h-pfacts"><h2 id="h-pfacts">${esc(PROOF_FACTS_TITLE)}</h2><ol>${facts.map((f) => `<li${f.rec ? ` data-rec="${esc(f.rec)}"` : ""}><a href="${esc(f.href)}"${ext(f.href) ? ' target="_blank" rel="noopener"' : ""}>${esc(f.text)}${ext(f.href) ? "&nbsp;↗" : ""}</a></li>`).join("")}</ol></section>`;
+}
+
+const PFACTS_CSS = `
+.pfacts { margin: 14px 0 18px; }
+.pfacts h2 { font-size: 20px; font-weight: 720; margin: 0 0 8px; }
+.pfacts ol { margin: 0; padding: 0 0 0 1.4em; display: grid; gap: 0; }
+.pfacts li { font-size: 16px; line-height: 1.45; }
+.pfacts a { display: block; min-height: 44px; padding: 8px 0; color: inherit; text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+.pfacts a:hover, .pfacts a:focus-visible { text-decoration-color: var(--accent); }
+`;
+
 export function proofPage(run: AgentRun = agentRun()): string {
   const r = run.record, sp = split(r), story = stopStory(r), pay = payments(r);
   // The Airi runs (7 Nov): Visa Intelligent Commerce via Airwallex's Airi, short: its outcomes and checks, then a link
@@ -580,15 +616,16 @@ export function proofPage(run: AgentRun = agentRun()): string {
   const body = `<main class="proofp"><div class="wrap">
   <h1>Proof</h1>
   <p class="plead">${esc(PROOF_LEAD)}</p>
-  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
-  ${partnerStripHtml(undefined, liveRunCount())}
-  <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
-  ${proofChainHtml()}
-  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
+  ${proofFactsHtml(proofFacts(run))}
   ${verifyCalloutHtml()}
+  <p class="pwatch"><a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(FILM_LINK)}&nbsp;↗</a> <a class="film" href="${esc(TRAILER_URL)}" target="_blank" rel="noopener">${icon("play", 16)}${esc(TRAILER_LINK)}&nbsp;↗</a></p>
+  ${detailsFold("runs-fold", "Every live run, by partner", `${partnerStripHtml(undefined, liveRunCount())}
+  <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
   ${proofRunsHtml()}
-  ${awxLiveHtml()}
-  ${guaranteesHtml()}
+  ${awxLiveHtml()}`)}
+  ${detailsFold("how-checked", "How a payment is checked, and what Purser guarantees", `${proofChainHtml()}
+  ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
+  ${guaranteesHtml()}`)}
   ${detailsFold("details", "All the proof: partners, numbers and every check", `${worstCaseCardHtml()}
   ${lifeVisual("wide")}
   ${railsVisual("wide")}
@@ -610,7 +647,7 @@ export function proofPage(run: AgentRun = agentRun()): string {
   // No footer link to /visa since 12 Nov (before: "Extra, not an award entry", jury review, 6 Nov, #7): Visa is a
   // section of its own now ("Built on", the Airi run's fold); Home drops it too.
   return page({
-    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
+    title: "Purser · Proof", description: "What Purser guarantees, each promise with who enforces it and its evidence, then each partner's strongest proof and the main run's numbers.", tab: "proof", css: CSS + GUARANTEES_CSS + POLISH + VISUAL_CSS + PROOF_VISUAL_CSS + VERIFY_CSS + SUMMARY_CSS + SCALE_CSS + PROOF_CARDS_CSS + PROOF_RUNS_CSS + AWX_LIVE_CSS + WORST_CASE_CSS + CI_CSS + PFACTS_CSS, body, js: `${JS}\n${VERIFY_TERMS_JS}\n${MOTION_JS}\n${COUNT_JS}\n${COPY_JS}\n${AWX_LIVE_JS}`, stage: false,
     source: `Source: ${run.file} (${run.name}) and the run records in docs/runs and docs/evals.`,
   });
 }

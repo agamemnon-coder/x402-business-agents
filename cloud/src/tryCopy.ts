@@ -229,6 +229,61 @@ export const INBOX = {
 };
 
 /** 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed), by code. */
+/**
+ * 15 Nov (jury: "if a script that always says pay is just as safe, what does Claude add?"): under the answer on screen
+ * 2, the Checker agent's own steps on THIS invoice, folded, one line each, from the engine's events only (claude.asking,
+ * agent.tool, agent.said, agent.nudged, ap.checker_decided, agent.run, claude.capped): each Claude call and its own
+ * time, each tool it called (its input as the event counts it, the first sentence of its answer, the tool's own ms),
+ * its decision and reason (its own words), then what Purser's rails did and the rule that decided. Nothing is made up:
+ * a step the events do not hold is not shown. The summary is counted in the budget; the rows are the engine's (data).
+ */
+export const TRACE = {
+  summary: "What the Checker agent did",
+  /** One Claude call of the agent's ({t}: its turn); its time beside it is that call's own (agent.run's claude_ms). */
+  turn: "Asked {model} (turn {t})",
+  tools: {
+    supplier_on_file: "Looked up the supplier on file", check_bank_details: "Checked the bank details", invoice_history: "Read this supplier's earlier invoices",
+    verify_totals: "Checked the totals", policy_limits: "Read the CFO's limits", expected_amount: "Looked for a contract or order amount", decide: "Gave its decision",
+  } as Record<string, string>,
+  /** A tool the list does not name: its name as the event has it. */
+  tool: "Called {tool}",
+  noInput: "no input: it reads Purser's own records",
+  input: "input: {n} fields",
+  refused: "refused by Purser's code",
+  said: "Its words",
+  nudged: "Reminded by Purser's code to decide",
+  decided: "Decision: {action}",
+  /** The agent was not asked (claude.capped) or did not decide: code's own fallback decided, labelled so. */
+  fallback: "Claude was not asked; Purser's code decided",
+  /** What the rails did with the decision (ap.checker_decided outcome) and the rule (overridden_by, else the agent's own). */
+  rails: { pay: "Purser's rails: allowed to pay", ask_cfo: "Purser's rails: sent on to the CFO to sign with Face ID", hold: "Purser's rails: held for a person", reject: "Purser's rails: refused" } as Record<string, string>,
+  rule: "rule: {rule}",
+  ownRule: "rule: the agent's own call, within code's checks",
+  run: "{turns} Claude calls, {s} s in all, USD {usd}",
+};
+
+/**
+ * 15 Nov: "Same invoice, a script that always says pay". The engine ran the worst-case policy (src/evals/worstCaseWords.ts
+ * ALWAYS_PAY, the scorecard's own) on this invoice's same case and findings, beside the Checker, through the same enforce
+ * (src/ap/checkerAgent.ts scriptOn), and recorded code's outcome in ap.checker_decided (script_outcome): no Claude call.
+ * The button shows that record beside Claude's, then the record's own line (WORST_CASE_LINE, verbatim) and the close.
+ */
+export const SCRIPT = {
+  button: "Same invoice, a script that always says pay",
+  claude: "Claude (the Checker agent)",
+  script: "A script that always says pay",
+  said: "Said: {action}",
+  same: "Same outcome on this invoice: both reach it, so here the rails alone were enough.",
+  /** Claude held or refused what the script's pay sent on to the CFO (a hidden instruction, pressure in the document). */
+  stopped: "Different outcome: Claude stopped what the script's pay sent on to the CFO to sign.",
+  stricter: "Different outcome: Claude was stricter than the script on this invoice.",
+  fallback: "Claude was not asked on this invoice, so Purser's code decided for both.",
+  /** The worst-case test's own line, as its record wrote it (docs/evals/worst-case-summary.json), then the close. */
+  line: WORST_CASE_LINE,
+  close: "The rails keep you safe either way; Claude is what catches the bad invoice before it reaches you.",
+  missing: "This invoice has no recorded check to compare.",
+};
+
 export const WORK_CHECKS: Record<string, string> = { not_paid_before: "Not paid before (same supplier and number)", bank_on_file: "Bank details match the ones on file", known_supplier: "Known supplier" };
 
 /**
@@ -668,6 +723,11 @@ export const ENDED = {
  * What each screen shows at once, in each of its states: the word budget is counted per state, with the brand and,
  * after the start, the band. The server's own sentences and the invoice's data are not copy.
  */
+/**
+ * 15 Nov: under every answer with an invoice, the Checker's steps' fold (its summary; the rows are the engine's data, as
+ * the live panel's) and the script button. Each answer state's count rises by exactly these words (OVER_BUDGET).
+ */
+const AGENTIC = [TRACE.summary, SCRIPT.button];
 /** The proof band as shown (the figures are data from the records, counted as words; the test count is an example). */
 const PROOF_WORDS = [PROOF_BAND.head, "25", PROOF_BAND.labels.runs!, "24", PROOF_BAND.labels.claude!, "86", PROOF_BAND.labels.alta!, "0", PROOF_BAND.labels.overLimit!, "6,932", PROOF_BAND.labels.tests!, WORST_CASE_HEADLINE, WORST_CASE_LINE];
 /** The form's own words ("write your own", 15 Nov): its labels, the IBAN hint and the note's trick link. */
@@ -702,29 +762,33 @@ export const VISIBLE = {
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],
     [WORK.heading, WORK.readingCode, WORK.invoiceFold],
-    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay, ...AGENTIC],
     // 14 Nov (owner): held or refused, the reason first. The values beside the labels are data (the invoice, the earlier
     // one, what is on file), and so is the engine's own sentence; the fold (WHY.more) is closed. The five samples' answers:
     // the same file again; the paid invoice under a new number; new bank details; a new supplier; and a check with no
     // side by side (its engine sentence in its place), e.g. a total that is not its lines.
-    [WORK.heading, WHY.again.head, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.sameFile, WHY.again.rule, WHY.more, WORK.another],
-    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.reject, WORK.another],
-    [WORK.heading, WHY.codes.bank_details_changed!.head, WHY.onInvoice, WHY.onFile, WHY.codes.possible_fraud!.rule!, WHY.more, WORK.reject, WORK.another],
-    [WORK.heading, WHY.codes.new_supplier!.head, WHY.onInvoice, WHY.onFile, WHY.notOnFile, WHY.codes.new_supplier!.rule!, WHY.more, WORK.reject, WORK.another],
-    [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.reject, WORK.another],
+    [WORK.heading, WHY.again.head, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.sameFile, WHY.again.rule, WHY.more, WORK.another, ...AGENTIC],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.reject, WORK.another, ...AGENTIC],
+    [WORK.heading, WHY.codes.bank_details_changed!.head, WHY.onInvoice, WHY.onFile, WHY.codes.possible_fraud!.rule!, WHY.more, WORK.reject, WORK.another, ...AGENTIC],
+    [WORK.heading, WHY.codes.new_supplier!.head, WHY.onInvoice, WHY.onFile, WHY.notOnFile, WHY.codes.new_supplier!.rule!, WHY.more, WORK.reject, WORK.another, ...AGENTIC],
+    [WORK.heading, WHY.codes.sum_mismatch!.head, WHY.codes.sum_mismatch!.rule!, WHY.more, WORK.reject, WORK.another, ...AGENTIC],
     [WORK.heading, WORK.noInvoice, WORK.took, WORK.another],
     [WORK.heading, WORK.failed, WORK.another],
     // 14 Nov (owner): a possible duplicate by the same total (the visitor's own invoice, say): cleared in the sandbox, then
     // signed as always; or rejected. Then the rejected answer.
-    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.override, WORK.reject, WORK.another, WORK.overrideNote],
-    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.rejected, WORK.another],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.override, WORK.reject, WORK.another, WORK.overrideNote, ...AGENTIC],
+    [WORK.heading, WHY.codes.possible_duplicate!.headPaid!, WHY.earlierPaid, WHY.paidOn, WHY.thisOne, WHY.issuedOn, WHY.codes.possible_duplicate!.rule!, WHY.more, WORK.rejected, WORK.another, ...AGENTIC],
     // Read by Claude (round 2, 14 Nov): the time line names the model ({model}).
-    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.tookBy, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.tookBy, WORK.invoiceFold, WORK.claudeChip, WORK.pay, ...AGENTIC],
     // 15 Nov: the progress line moved on with the engine's events.
     [WORK.heading, WORK.checking, WORK.invoiceFold],
     [WORK.heading, WORK.limit, WORK.invoiceFold],
     // A line aimed at the AI, flagged: the ready answer with the flag under it.
-    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.injected, WORK.invoiceFold, WORK.claudeChip, WORK.pay],
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.injected, WORK.invoiceFold, WORK.claudeChip, WORK.pay, ...AGENTIC],
+    // 15 Nov ("Same invoice, a script that always says pay", pressed): the ready answer with the two sides, the verdict, and
+    // the record's line with the close (each side's said and rails line; a rule is data). Pinned at its count.
+    [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay, TRACE.summary,
+      SCRIPT.claude, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.script, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.same, SCRIPT.line, SCRIPT.close],
   ],
   approve: [
     [APPROVE.heading, APPROVE.filing],
@@ -865,7 +929,10 @@ export const VISIBLE = {
 // that held and the signature line, and two ways on ("pay 1" to "pay 10"); the finish has one primary way on and three
 // secondary ones ("company 0" to "company 4"); screen 2's progress line and the flagged line ("work 13" to "work 15").
 // Each pinned at its count, for the lead to decide.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 201 };
+// 15 Nov ("what does Claude add?"): every answer with an invoice also shows the Checker's steps' fold summary and the
+// script button, +13 words each ("work 2" to "work 6", "work 10" to "work 12", "work 15"; "work 7" newly over at 57);
+// "work 16" is the comparison opened, carrying the worst-case record's own line verbatim (WORST_CASE_LINE).
+export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
