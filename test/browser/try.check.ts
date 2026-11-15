@@ -24,7 +24,7 @@ import { recordedQuote } from "../../src/try/examples.js";
 import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
-import { VERIFY_YOURSELF } from "../../cloud/src/tryCopy.js";
+import { FINISH_LINKS, VERIFY_YOURSELF } from "../../cloud/src/tryCopy.js";
 import { APPROVE, BAND, BOOKS, INBOX, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL, VERIFY_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
@@ -881,11 +881,11 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const done6 = (await page.locator("p.done").textContent()) ?? "";
   ok(/^Done: EUR 1,850\.00 read, checked, signed and paid, (\d+ s|\d+ min( \d+ s)?) from upload to paid\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
   // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs; the 5-min film, Purser Cloud and
-  // the code as secondary buttons; the proof band.
+  // the code as secondary buttons; the proof band. 15 Nov: then /try/negotiate, in the same tab (it finds this company).
   const outs = await page.locator(".acts.more a.btn").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent]));
   ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && (await page.locator("a.btn.primary.proofl").textContent()) === COMPANY.rails
-    && JSON.stringify(outs) === JSON.stringify([[VERIFY_URL, VERIFY_YOURSELF.verify], [FILM_URL, COMPANY.film], ["https://purser-try.max-31b.workers.dev/", COMPANY.cloud], ["https://github.com/agamemnon-coder/x402-business-agents", COMPANY.star]])
-    && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one primary way on to the live sandbox runs, four secondary buttons ("Verify this payment yourself" first), no form`);
+    && JSON.stringify(outs) === JSON.stringify([[VERIFY_URL, VERIFY_YOURSELF.verify], [FILM_URL, COMPANY.film], ["https://purser-try.max-31b.workers.dev/", COMPANY.cloud], ["https://github.com/agamemnon-coder/x402-business-agents", COMPANY.star], [`${ORIGIN}${FINISH_LINKS.negotiate.href}`, FINISH_LINKS.negotiate.label]])
+    && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one primary way on to the live sandbox runs, five secondary buttons ("Verify this payment yourself" first, "Watch agents negotiate" last, same tab), no form`);
   const band6 = await page.locator(".screen.company .proofband li:not(.wide) a").evaluateAll((as) => as.map((a) => [a.querySelector(".pv")?.textContent, (a as HTMLAnchorElement).href.startsWith("https://github.com/agamemnon-coder/x402-business-agents/blob/main/")]));
   ok(band6.length === 5 && band6.every(([v, linked]) => /^[\d,]+$/.test(String(v)) && linked), `${tag}: the finish's proof band: five measured figures, each linked to its record (${band6.map((b) => b[0]).join(", ")})`);
   ok(await page.locator('.screen.company .proofband li.wide a[href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md"]').count() === 1, `${tag}: the band's worst-case line, linked to its record`);
