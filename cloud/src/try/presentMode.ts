@@ -12,6 +12,7 @@
 //   page's own requests, read, never changed): the time from the start to paid, the steps the engine recorded and how
 //   many were Claude's, the amount paid, and whether a changed term was refused (and by which layers). Each figure is
 //   what came back, or "not in this run".
+// - ?phone=0: no phone lane, for a laptop that signs with its own passkey (Windows Hello); R keeps it.
 // - Keys for the presenter: → the step's main button (the same click a person makes), R start again (a new test
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
@@ -144,8 +145,9 @@ window.fetch=async(input,init)=>{
 };
 // The test-money label, always on screen.
 document.body.append(mk('div','pv-money',PC.money));
-// The phone lane.
-document.body.append(mk('aside','pv-lane',[mk('div','pv-phone',mk('span','',PC.laneSpot)),mk('p','',PC.lane)]));
+// The phone lane, unless ?phone=0 (a recording on a laptop that signs with its own passkey, e.g. Windows Hello).
+const NOPHONE=new URLSearchParams(location.search).get('phone')==='0';
+if(!NOPHONE)document.body.append(mk('aside','pv-lane',[mk('div','pv-phone',mk('span','',PC.laneSpot)),mk('p','',PC.lane)]));
 // The opener: Before and After.
 const opener=mk('section','pv-card',mk('div','in',[mk('div','pv-money',PC.money),mk('h2','',PC.openerHeading),mk('div','pv-ba',[mk('div','before',[mk('b','',PC.beforeLabel),mk('p','',PC.before)]),mk('div','after',[mk('b','',PC.afterLabel),mk('p','',PC.after)])]),mk('p','pv-go',PC.go)]));
 opener.setAttribute('role','dialog');opener.setAttribute('aria-label',PC.openerHeading);
@@ -209,7 +211,7 @@ document.addEventListener('keydown',(e)=>{
   if(e.altKey||e.ctrlKey||e.metaKey)return;
   const t=e.target;if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
   if(e.key==='ArrowRight'){e.preventDefault();next()}
-  else if(e.key==='r'||e.key==='R'){try{sessionStorage.removeItem('purser.try');sessionStorage.removeItem('purser.present')}catch(x){}location.href=location.pathname+'?present=1'+POOLTAG;location.reload()}
+  else if(e.key==='r'||e.key==='R'){try{sessionStorage.removeItem('purser.try');sessionStorage.removeItem('purser.present')}catch(x){}location.href=location.pathname+'?present=1'+(NOPHONE?'&phone=0':'')+POOLTAG;location.reload()}
   else if(e.key==='o'||e.key==='O'){drawOutcome();outcome.classList.add('on')}
   else if(e.key==='Escape'){close(opener);close(outcome)}
 });
