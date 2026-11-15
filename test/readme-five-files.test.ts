@@ -7,10 +7,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { readmeFull } from "./readmeFull.js";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
-const README = read("README.md");
+const README = readmeFull(); // 15 Nov: the section moved to docs/how-it-works.md (test/readmeFull.ts)
 
 const HEADING = "## How it works in 5 files";
 const start = README.indexOf(HEADING);

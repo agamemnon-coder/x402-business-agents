@@ -5,6 +5,7 @@
 import { OG_FILE, withMeta } from "../ui/meta.js";
 import { T0_READBACK_FILE, T0_READBACK_PATH } from "../accounting/t0Readback.js";
 import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
+import { awxCallsPage } from "../redesign/awxTrailPage.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
 import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
@@ -290,6 +291,9 @@ const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src $
 export const VISA_CSP = VISA_PAGE.includes("<script>") ? styleAndScriptCsp(VISA_PAGE) : styleOnlyCsp(VISA_PAGE);
 export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? cspFor(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
+/** /airwallex/calls (15 Nov): every Airwallex sandbox API call in the run records (src/redesign/awxTrailPage.ts); no script, a style-only policy. */
+export const AWX_CALLS_PAGE = awxCallsPage();
+export const AWX_CALLS_CSP = styleOnlyCsp(AWX_CALLS_PAGE);
 /** /security (12 Nov), the product page under "More" (src/ui/more.ts): no script, so a style-only policy. /pricing went on 13 Nov (owner). */
 export const SECURITY_PAGE = securityPage();
 export const SECURITY_CSP = styleOnlyCsp(SECURITY_PAGE);
@@ -464,6 +468,10 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   app.get("/airwallex", (_req, res) => {
     res.setHeader("Content-Security-Policy", AIRWALLEX_CSP);
     res.type("html").send(AIRWALLEX_PAGE);
+  });
+  app.get("/airwallex/calls", (_req, res) => {
+    res.setHeader("Content-Security-Policy", AWX_CALLS_CSP);
+    res.type("html").send(AWX_CALLS_PAGE);
   });
   app.get("/trace", (_req, res) => {
     res.setHeader("Content-Security-Policy", TRACE_CSP);

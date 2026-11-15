@@ -21,10 +21,9 @@ describe("/proof opens with three facts", () => {
     expect(f[2]!.text.startsWith("npm run verify-approval:")).toBe(true);
     expect(f[2]!.id).toBe("receipt-P-0002.json");
   });
-  it("comes right under the lead line, before anything else", () => {
-    const h = proofPage();
-    expect(h.indexOf('<ol class="pfirst"')).toBeGreaterThan(h.indexOf('<p class="plead">'));
-    expect(h.indexOf('<ol class="pfirst"')).toBeLessThan(h.indexOf('<p class="pwatch">'));
+  // 15 Nov: /proof now leads with the five facts of the clarity pass (#383); these three stay the facts' source for /visa.
+  it("is not on /proof, which leads with the five facts", () => {
+    expect(proofPage()).not.toContain('<ol class="pfirst"');
   });
 });
 

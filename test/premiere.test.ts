@@ -15,9 +15,10 @@ import { DEFENSE_IN_DEPTH } from "../src/config/brand.js";
 import { CARDS, INITIAL_MANDATES } from "../src/config/policy.js";
 import { maskExpr, parseSlotArgs, slotBox, slotFilter, slotSpeed, windowsSeconds } from "../src/film/slots.js";
 import { FIXED_PROPOSALS, TEST_BALANCES, TEST_RULES, canonical, checkPayment } from "../worker/src/trySign.js";
+import { readmeFull } from "./readmeFull.js";
 
 const read = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
-const README = read("README.md");
+const README = readmeFull(); // 15 Nov: with the sections moved to docs/ in place (test/readmeFull.ts)
 const raw = () => JSON.parse(read(MAIN_RUN_FILE)) as MainRun & { ledger: NonNullable<MainRun["ledger"]> };
 const side = () => loadSideRuns();
 const data = buildPremiere(raw(), README);
@@ -768,7 +769,7 @@ describe("the premiere's look (Max, 4 November)", () => {
     ]);
     expect(screen("16-end")).toMatchObject({ head: "Who does what", roll: END_CREDITS, thanks: THANKS, credit: AI_CREDIT, last: "Test money only", short: "kit11.max-31b.workers.dev/try/sign" });
     // Each partner's line as the README's "Who does what" says it.
-    for (const [who, what] of END_CREDITS.slice(1)) expect({ who, said: read("README.md").includes(who) && read("README.md").includes(what.replace(/ \((sandbox|testnet)\)$/, "")) }).toEqual({ who, said: true });
+    for (const [who, what] of END_CREDITS.slice(1)) expect({ who, said: readmeFull().includes(who) && readmeFull().includes(what.replace(/ \((sandbox|testnet)\)$/, "")) }).toEqual({ who, said: true });
     // The credits come in at 3.5 s and stay to the end (v8: 14 s): 7 to 11 seconds on screen.
     expect(template).toContain("var A = [mk, ct, url, ft, mt], out = 2.9, at = 3.5;");
     expect(end.seconds - 3.5).toBeGreaterThanOrEqual(7);

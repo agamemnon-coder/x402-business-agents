@@ -14,6 +14,7 @@ import { EXPOSURE_HOW, EXPOSURE_TASK_CARDS, MONTH_DAYS, approxEurCents, exposure
 import { exposurePolicyFromDb, exposurePolicyFromRecord, readmeWorstCase, recordedRate, startPolicy, worstCaseLine, worstCaseWords, worstCaseWordsOf } from "../src/policy/exposureSources.js";
 import { ALONE_PER_DAY, STEP0_CHAIN, defaultPolicy, exposurePolicyOfWorld } from "../src/try/policy.js";
 import { BASE, RP, call, challengeOf, desk, withPasskey } from "./support/trySign.js";
+import { readmeFull } from "./readmeFull.js";
 
 const record = JSON.parse(readFileSync(new URL("../docs/demo/main-run.json", import.meta.url), "utf8")) as Parameters<typeof exposurePolicyFromRecord>[0] & Parameters<typeof recordedRate>[0];
 
@@ -133,7 +134,7 @@ describe("the shown numbers are identical in all places", () => {
 describe("the CFO's view, the README and step 0 show identical numbers", () => {
   const start = worstCaseWords(record);
   it("the README's block is the starting policy's words, exactly", () => {
-    const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
+    const readme = readmeFull(); // 15 Nov: the block moved to docs/how-it-works.md (test/readmeFull.ts)
     const block = /<!-- worst-case -->\n([\s\S]*?)\n<!-- \/worst-case -->/.exec(readme)![1]!;
     expect(block).toBe(readmeWorstCase(start));
     expect(block.startsWith(`**${start.headline}**\n\n${start.tasks} ${start.above}\n\n<details><summary>${EXPOSURE_HOW}</summary>`)).toBe(true);
