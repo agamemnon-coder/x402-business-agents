@@ -25,6 +25,8 @@ import { dirBlobs, sqliteSql } from "../../cloud/src/node.js";
 import { CLOUD_URL, DID } from "../../cloud/src/try/books.js";
 import { SyncBatch } from "../../cloud/src/sync.js";
 import { VERIFY_YOURSELF } from "../../cloud/src/tryCopy.js";
+import { SCRIPT, TRACE } from "../../cloud/src/tryCopy.js";
+import { WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { APPROVE, BAND, BOOKS, INBOX, FX_HOLD, WORK_CHECKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, LIVE, PAY, RUN, START, STEPS, TAMPER, WORK } from "../../cloud/src/tryCopy.js";
 import { PROOF_URL, RUNS_URL, VERIFY_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
@@ -941,9 +943,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
 
 // Part 2: the poller, on Chromium's stand-in clock, with every /v1 answer stubbed in the page.
 const T0 = new Date("2026-11-12T12:00:00Z").getTime();
-interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null }
+interface Stubs { events: (n: number) => { status: number; body: unknown }; session: () => { status: number; body: unknown }; expiresIn?: number; other?: (what: string) => { status: number; body: unknown } | null; answer?: unknown; scheme?: "light" | "dark" }
 async function poller(stubs: Stubs) {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, ...(stubs.scheme ? { colorScheme: stubs.scheme } : {}) });
   const page = await ctx.newPage();
   // The page's visibility, set from this check.
   // (A string, not a function: the check's own compiler would wrap a function in helpers the page does not have.)
@@ -967,6 +969,7 @@ Object.defineProperty(Document.prototype,'visibilityState',{configurable:true,ge
     if (what === "GET /v1/engine/events") { const e = stubs.events(++polls); return fulfil(route, e.status, e.body); }
     if (what === "POST /v1/engine/samples/clean") {
       await new Promise<void>((r) => { gate.release = r; });
+      if (stubs.answer) return fulfil(route, 200, stubs.answer);
       return fulfil(route, 200, { kind: "invoice", sha256: "0".repeat(64), invoice: { id: "AP-0001", status: "ready", status_words: "Ready to pay", payable: true, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", currency: "EUR", total: "1850.00", due_date: "2026-11-26", read_by: "parser", findings: [], doc_sha256: "0".repeat(64), proposal: null } });
     }
     const o = stubs.other?.(what);
@@ -1106,6 +1109,56 @@ const setHidden = (page: Page, hidden: boolean) => page.evaluate((h) => { (windo
   await p.page.click(`button:has-text("${LIVE.allSteps}")`);
   ok(await p.page.locator(".live li:visible").count() === 9, "agents: All steps opens every row");
   p.release();
+  await p.ctx.close();
+}
+// 15 Nov (jury: "what does Claude add?"): under the answer, the Checker's own steps folded, one line each, from the events
+// as the engine writes them (fields as src/engine/events.ts lets them through), then "Same invoice, a script that always
+// says pay": the two outcomes side by side and the record's own line. A clean invoice (same outcome, said so) at 390 px
+// light, and a hidden instruction (Claude holds, the script's pay goes on to the CFO) at 390 px dark.
+for (const [kind, scheme] of [["clean", "light"], ["hidden", "dark"]] as const) {
+  const held = kind === "hidden";
+  const at = (seq: number, actor: string, event: string, subject: string, fields: Record<string, unknown>) => ({ seq, ts: new Date(T0 + 1000 + seq * 200).toISOString(), actor, event, subject, fields });
+  const task = "ap.check.0000";
+  const items = [
+    at(1, "checker", "agent.tool", task, { agent: "checker", tool: "supplier_on_file", turn: 1, model: "claude-haiku-5-5", request_id: "req_1", ms: 3, answer: "Bergtex Textil GmbH is on file as a supplier.", inputs: 0 }),
+    at(2, "checker", "agent.tool", task, { agent: "checker", tool: "check_bank_details", turn: 1, model: "claude-haiku-5-5", request_id: "req_1", ms: 2, answer: "The IBAN's checksum is valid.", inputs: 0 }),
+    at(3, "checker", "agent.tool", task, { agent: "checker", tool: "decide", turn: 2, model: "claude-haiku-5-5", request_id: "req_2", ms: 1, answer: "Recorded.", inputs: 3 }),
+    at(4, "checker", "agent.run", task, { agent: "checker", model: "claude-haiku-5-5", status: "done", turns: 2, cost_usd_micros: 2140, latency_ms: 2380, request_id: "req_2", claude_ms: "1210,1090" }),
+    at(5, "checker", "ap.checker_decided", "AP-0001", held
+      ? { source: "claude", model: "claude-haiku-5-5", action: "hold", outcome: "hold", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "", reason: "The document tells its reader to skip the checks, so a person looks first.", enforced: "in this company, agents pay no invoice alone: the CFO decides every one", request_id: "req_2", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" }
+      : { source: "claude", model: "claude-haiku-5-5", action: "pay", outcome: "ask_cfo", overridden: true, overridden_by: "no_alone_limit", code_requires: "ask_cfo", codes: "", reason: "Bergtex is on file and the bank details match.", enforced: "in this company, agents pay no invoice alone: the CFO decides every one", request_id: "req_2", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" }),
+  ];
+  const answer = held ? { kind: "invoice", sha256: "0".repeat(64), invoice: { id: "AP-0001", status: "needs_review", status_words: "Needs a person", payable: false, vendor: "Bergtex Textil GmbH", invoice_no: "BTX-1", currency: "EUR", total: "1850.00", due_date: "2026-11-26", read_by: "parser",
+    findings: [{ code: "checker_hold", level: "review", detail: "the Checker agent holds it for a person: The document tells its reader to skip the checks, so a person looks first." }], doc_sha256: "0".repeat(64), proposal: null } } : undefined;
+  const p = await poller({ events: (n) => ({ status: 200, body: n === 1 ? { items, next: 5 } : { items: [], next: 5 } }), session: () => ({ status: 200, body: {} }), scheme, ...(answer ? { answer } : {}) });
+  await run(p.page, 1000);
+  p.release();
+  await settle(p.page);
+  await run(p.page, 1500);
+  const fold = p.page.locator(".agentic details.trace");
+  ok(await fold.count() === 1 && !(await fold.evaluate((d) => (d as HTMLDetailsElement).open)) && (await fold.locator("summary").textContent()) === TRACE.summary, `trace (${kind}): one fold under the answer, closed, "${TRACE.summary}"`);
+  await fold.locator("summary").click();
+  const rows = await fold.locator("li").allInnerTexts();
+  ok(rows.length === 8, `trace (${kind}): eight rows, one per step the events hold (${rows.length})`);
+  ok(/^Asked Claude Haiku 5\.5 \(turn 1\)\s+1\.2 s$/.test(rows[0] ?? ""), `trace (${kind}): a Claude call with its own measured time (${rows[0]?.replace(/\s+/g, " ")})`);
+  ok((rows[1] ?? "").includes("Looked up the supplier on file") && (rows[1] ?? "").includes(TRACE.noInput) && (rows[1] ?? "").includes("Bergtex Textil GmbH is on file") && /3 ms$/.test(rows[1] ?? ""), `trace (${kind}): a tool call, its input, its answer and its ms (${rows[1]?.replace(/\s+/g, " ")})`);
+  ok((rows[5] ?? "").startsWith(held ? "Decision: hold for a person" : "Decision: pay") && await fold.locator("q.own").count() === 1, `trace (${kind}): the decision and its reason, marked as its own words`);
+  ok((rows[6] ?? "").startsWith(held ? TRACE.rails.hold! : TRACE.rails.ask_cfo!) && (rows[6] ?? "").includes(held ? TRACE.ownRule : "rule: no alone limit"), `trace (${kind}): what the rails did and the rule (${rows[6]?.replace(/\s+/g, " ")})`);
+  ok(rows[7] === "2 Claude calls, 2.4 s in all, USD 0.0021", `trace (${kind}): the run, from agent.run (${rows[7]})`);
+  const b = p.page.locator(`button:has-text("${SCRIPT.button}")`);
+  ok(await b.count() === 1 && await p.page.locator(".agentic .cmp:visible").count() === 0, `script (${kind}): one button, nothing compared before it is pressed`);
+  const calls = p.log.length;
+  await b.click();
+  await settle(p.page);
+  const sides = await p.page.locator(".agentic .side").allInnerTexts();
+  ok(await b.isHidden() && await p.page.locator(".agentic .side .rl").evaluateAll((n) => n.filter((x) => x.getBoundingClientRect().width > 50).length) === 2, `script (${kind}): the button gives way to what it shows; each side's rails line in view`);
+  ok(sides.length === 2 && sides[0]!.includes(SCRIPT.claude) && sides[1]!.includes(SCRIPT.script) && sides[1]!.includes("Said: pay") && sides[1]!.includes(TRACE.rails.ask_cfo!), `script (${kind}): the two outcomes side by side (${sides.map((x) => x.replace(/\s+/g, " ")).join(" | ")})`);
+  ok(sides[0]!.includes(held ? TRACE.rails.hold! : TRACE.rails.ask_cfo!), `script (${kind}): Claude's side says what the rails did with Claude's decision`);
+  ok((await p.page.textContent(".agentic .verdict")) === (held ? SCRIPT.stopped : SCRIPT.same), `script (${kind}): the verdict, honestly`);
+  ok((await p.page.textContent(".agentic .closing")) === `${WORST_CASE_LINE} ${SCRIPT.close}`, `script (${kind}): the closing line, the record's own line verbatim`);
+  ok(p.log.slice(calls).every((x) => x === "GET /v1/engine/events"), `script (${kind}): no request made for it (no Claude call): ${p.log.slice(calls).join(", ") || "none"}`);
+  ok(await p.page.evaluate(() => document.documentElement.scrollWidth) <= 390, `trace and script (${kind}, ${scheme}): nothing wider than 390 px`);
+  if (shots) await p.page.locator(".agentic").screenshot({ path: join(shots, `agentic-${kind}-${scheme}.png`) });
   await p.ctx.close();
 }
 {
