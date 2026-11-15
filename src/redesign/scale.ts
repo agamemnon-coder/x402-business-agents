@@ -124,7 +124,10 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
  * link: the tests CI runs, the live runs and the refusals on record. /proof's strip keeps every figure.
  */
 const HOME_SCALE: readonly string[] = ["tests passing", "sandbox and testnet runs", "refusals on record"];
-export const homeScaleStats = (stats: ScaleStat[] = scaleStats()): ScaleStat[] => stats.filter((s) => HOME_SCALE.includes(s.label));
+/** Home's refusals label (jury review, 15 Nov): the count is every run's, not the main run's 16 stops beside it. */
+export const HOME_REFUSALS_LABEL = "refusals across all runs, on record";
+export const homeScaleStats = (stats: ScaleStat[] = scaleStats()): ScaleStat[] =>
+  stats.filter((s) => HOME_SCALE.includes(s.label)).map((s) => (s.label === "refusals on record" ? { ...s, label: HOME_REFUSALS_LABEL } : s));
 
 const fmt = (n: number) => n.toLocaleString("en-GB");
 
