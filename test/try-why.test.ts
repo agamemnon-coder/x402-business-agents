@@ -100,7 +100,7 @@ describe("the refused payment: signed beside asked", () => {
     expect(html).toContain("const li=el('li','',[el('span','dk',k),el('s','old',a),el('span','arr',' → '),el('mark','new',b)]);");
     expect(html).not.toMatch(/card refusal shake|animation: glow/);
     expect(html).toContain("const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);");
-    expect(html).toContain("proof.append(line(Y.signed,h.a),line(Y.sent,h.b));");
+    expect(html).toContain("diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));");
   });
 });
 
