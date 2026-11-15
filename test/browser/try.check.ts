@@ -636,7 +636,9 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov (judge scan): the conversion that funded the payment is booked and shown too, under the same signed terms.
   const sha = (ourTx.approval as { terms_sha256?: string } | null)?.terms_sha256;
   if (sha) for (const y of txs) if (y.rail === "airwallex_fx" && (y.approval as { terms_sha256?: string } | null)?.terms_sha256 === sha) for (const n of (y.booking as { entry_ids: number[] } | null)?.entry_ids ?? []) ids.add(n);
-  const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id)).sort((a, b) => a.entry_id - b.entry_id);
+  // 15 Nov (live measurement): the invoice received first, then what paid it, each in booking order.
+  const acc = (e: { source_key: string | null }) => (String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` ? 0 : 1);
+  const mine = entries.filter((e) => String(e.source_key ?? "").split("@")[0] === `ap-accrual|${invId}` || ids.has(e.entry_id)).sort((a, b) => acc(a) - acc(b) || a.entry_id - b.entry_id);
   ok(mine.some((e) => String(e.source_key).startsWith("fx|")) === (!!sha && txs.some((y) => y.rail === "airwallex_fx" && (y.approval as { terms_sha256?: string } | null)?.terms_sha256 === sha)), `${tag}: booked: the conversion that funded the payment is in the entries shown when there was one`);
   const apiLines = mine.flatMap((e) => e.lines);
   const shownAccounts = await page.locator(".blk.booked tbody td > span.mono").allTextContents();
