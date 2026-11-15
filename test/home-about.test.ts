@@ -4,7 +4,8 @@
 // claimed, no quotes, no design-partner call, no person named.
 import { describe, expect, it } from "vitest";
 import { DESIGN_PARTNER_LABEL, DESIGN_PARTNER_URL } from "../src/config/brand.js";
-import { ABOUT_HEAD, AGENT_FLOW, AGENT_SETS_NOTE, FLOW_HEAD, NO_ENDORSEMENT, VISA_WORKS_WITH, WORKS_WITH, homePage } from "../src/redesign/home.js";
+import { readFileSync } from "node:fs";
+import { ABOUT_HEAD, AGENT_FLOW, CLAUDE_ADDS, FEATURES, AGENT_SETS_NOTE, FLOW_HEAD, NO_ENDORSEMENT, VISA_WORKS_WITH, WORKS_WITH, homePage } from "../src/redesign/home.js";
 import { MARKS_NOTE } from "../src/redesign/ui.js";
 import { textOutsideTags } from "./support/scriptBlocks.js";
 
@@ -65,5 +66,16 @@ describe("About Purser on Home", () => {
     expect(t).not.toMatch(/\b(he|him|his|she|her|hers)\b/i);
     expect(t).not.toMatch(/\bMax\b|Geurtsen|founder/i);
     expect(t).not.toMatch(/customer|pilot|revenue|revolution|seamless|world-class|game.?chang|cutting.edge|best-in-class|unique|effortless/i);
+  });
+});
+
+// Jury panel, 15 Nov: Home answers "what does Claude add?" with the worst-case run's own figure.
+describe("What Claude adds, on Home", () => {
+  it("says what docs/worst-case-ai.md records, its figure word for word", () => {
+    const doc = readFileSync(new URL("../docs/worst-case-ai.md", import.meta.url), "utf8");
+    expect(doc).toContain("code alone sent seven invoices to the CFO to sign");
+    expect(doc).toContain("With the model reading them, Purser held them.");
+    expect(CLAUDE_ADDS).toContain("seven invoices to the CFO");
+    expect(FEATURES.find((f) => f.title === "What Claude adds")?.text).toBe(CLAUDE_ADDS);
   });
 });

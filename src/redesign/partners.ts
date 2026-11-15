@@ -465,7 +465,8 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
   const decisions = run.record.snapshot.agent_stats.reduce((n, a) => n + a.decisions, 0);
   return [
     ...(tiles.length ? [{ name: "Airwallex", href: "airwallex", proof: `${tilesCountWords(tiles, true)}, each run dated` }] : []),
-    { name: "Alta (formerly Metal)", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
+    // Jury panel, 15 Nov: "Alta" here, as on every later mention; "(formerly Metal)" is said once per page, at its first mention in <main>.
+    { name: "Alta", href: "alta", proof: `${st.payments.total} payments on testnet (main run)` },
     // Jury, 13 Nov: the latest run's own count first, as /visa leads with it, then all the runs' (they read as a clash).
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },

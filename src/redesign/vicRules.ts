@@ -23,6 +23,8 @@ import { VIC2_RUN_ID, type Vic2Record } from "./vic2Run.js";
 export const VIC_RULES_ID = "vic-rules";
 export const VIC_RULES_SUMMARY = "The CFO's policy next to Visa's VIC rules";
 /** The one page Visa's rules are quoted from, and the day it was read. */
+/** Visa's live page for Visa Intelligent Commerce (the Concepts page answered 404 on 15 Nov: docs/evidence/live-measurement-2026-11-15.json). */
+export const VIC_LIVE = "https://developer.visa.com/capabilities/visa-intelligent-commerce";
 export const VIC_DOCS = { url: "https://developer.visa.com/docs/visa-intelligent-commerce/concepts", title: "Visa Intelligent Commerce: Concepts", read: "2026-11-12" } as const;
 
 export type VicDocSection = "Foundations" | "Purchase types" | "Lifecycles" | "Controls and rules";
@@ -117,7 +119,7 @@ export function vicRulesHtml(rows: VicRuleRow[]): string {
 <div class="awcard vr"><div class="awhead"><span>${esc("Rule")}</span><span>${esc("The CFO's policy in Purser")}</span><span>${esc("Visa Intelligent Commerce (v2), as Visa describes it")}</span></div>
 ${rows.map(row).join("\n")}</div>
 <p>${esc("The checks on the left are Purser's own. Whether Airi or Visa enforce the rules on the right for this credential was not tested.")}</p>
-<p class="src">${esc("Visa's rules: ")}<a class="pf" href="${esc(VIC_DOCS.url)}" target="_blank" rel="noopener">${esc(VIC_DOCS.title)} ↗</a>${esc(` (${sections.join(", ")}), developer.visa.com, read ${dayLong(VIC_DOCS.read)}.`)}</p></details>`;
+<p class="src">${esc(`Visa's rules: ${VIC_DOCS.title} (${sections.join(", ")}), developer.visa.com, read ${dayLong(VIC_DOCS.read)}. Visa has since taken that page down, so it is named, not linked; Visa's live page: `)}<a class="pf" href="${esc(VIC_LIVE)}" target="_blank" rel="noopener">${esc("Visa Intelligent Commerce")} ↗</a>.</p></details>`;
 }
 
 /** The row for /visa: "" without the Airi run's record. */

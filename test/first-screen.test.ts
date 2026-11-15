@@ -85,7 +85,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README).not.toMatch(/5-minute walkthrough/);
     // 14 Nov (owner): the partners' logo row is back, the official files each on its own white tile, unaltered.
     // 14 Nov: Alta's wordmark in the row (the Alta team's OK); Visa and Cloudflare in text (the owner's decision).
-    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta (formerly Metal) and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied');
+    expect(README).toContain('<img src="docs/assets/logos/built-with.png" alt="Built with Airwallex, Alta and Claude" height="40"> official files, unmodified, each on its own white tile; Visa and Cloudflare named in text. No endorsement implied');
     expect(README).toContain("\n\nNo endorsement implied.\n\n"); // under the partners table; "Text names only" gone since the logos came back (14 Nov)
     expect(README).not.toContain("Text names only");
     expect(lines.indexOf("## How it works")).toBeGreaterThan(badges);

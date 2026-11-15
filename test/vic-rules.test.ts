@@ -11,7 +11,7 @@ import { fromCents } from "../src/lib/money.js";
 import { airiRun } from "../src/redesign/airiRun.js";
 import { visaPage } from "../src/redesign/partners.js";
 import { vic2Run } from "../src/redesign/vic2Run.js";
-import { VIC_DOCS, VIC_RULES_ID, VIC_RULES_SUMMARY, vicRules, vicRulesHtml } from "../src/redesign/vicRules.js";
+import { VIC_DOCS, VIC_LIVE, VIC_RULES_ID, VIC_RULES_SUMMARY, vicRules, vicRulesHtml } from "../src/redesign/vicRules.js";
 
 const run = airiRun()!, controls = vic2Run()!;
 const rows = vicRules(run, controls);
@@ -76,10 +76,12 @@ describe("the CFO's policy next to Visa's VIC rules", () => {
 
   it("gives Visa's rule in Visa's own words, each from the one page of developer.visa.com that was read", () => {
     expect(VIC_DOCS).toEqual({ url: "https://developer.visa.com/docs/visa-intelligent-commerce/concepts", title: "Visa Intelligent Commerce: Concepts", read: "2026-11-12" });
-    expect(block).toContain(`href="${VIC_DOCS.url}" target="_blank" rel="noopener"`);
+    // 15 Nov: the page answered 404 (docs/evidence/live-measurement-2026-11-15.json): named, not linked; Visa's live page linked.
+    expect(block).not.toContain(`href="${VIC_DOCS.url}"`);
+    expect(block).toContain(`href="${VIC_LIVE}" target="_blank" rel="noopener"`);
     expect(text(block)).toContain("read 12 Nov 2026");
-    // The only outside link in the block besides the repository is that page.
-    for (const m of block.matchAll(/href="(https?:[^"]+)"/g)) expect(m[1]!.startsWith(VIC_DOCS.url) || m[1]!.startsWith("https://github.com/agamemnon-coder/x402-business-agents/")).toBe(true);
+    // The only outside link in the block besides the repository is Visa's live page (15 Nov: the read page is gone).
+    for (const m of block.matchAll(/href="(https?:[^"]+)"/g)) expect(m[1]!.startsWith(VIC_LIVE) || m[1]!.startsWith("https://github.com/agamemnon-coder/x402-business-agents/")).toBe(true);
     for (const r of rows) {
       expect(["Foundations", "Purchase types", "Lifecycles", "Controls and rules"]).toContain(r.section);
       expect(r.quotes.length).toBeGreaterThan(0);

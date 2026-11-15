@@ -11,10 +11,11 @@
 export const altaWords = (t: string): string => t.replace(/(?<!formerly )\bMetal\b(?! Award)/g, "Alta");
 
 /**
- * An id's label from a run record (judge scan, 14 Nov): a contract call keeps its own name, said as Alta's, formerly
- * Metal ("Metal's authorizeMandateCall" → "authorizeMandateCall (Alta, formerly Metal)"); any other "Metal" reads Alta.
+ * An id's label from a run record (judge scan, 14 Nov): a contract call keeps its own name, said as Alta's
+ * ("Metal's authorizeMandateCall" → "authorizeMandateCall of Alta"; "formerly Metal" once per page, jury panel 15 Nov);
+ * any other "Metal" reads Alta.
  */
-export const altaLabel = (t: string): string => altaWords(t.replace(/\bMetal's ([a-z]\w*[A-Z]\w*)/g, "$1 of Alta, formerly Metal"));
+export const altaLabel = (t: string): string => altaWords(t.replace(/\bMetal's ([a-z]\w*[A-Z]\w*)/g, "$1 of Alta"));
 
 /**
  * Beside a quote of Claude's own words that names Metal (partner scan, 14 Nov): the quote stays as Claude wrote it, and

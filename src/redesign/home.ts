@@ -217,10 +217,14 @@ export const WHATS_REAL = "What's real?";
 export const LOCKS_HEAD = "Each lock, on record";
 export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
 export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
+/** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
+export const CLAUDE_ADDS = "With a script always saying pay, code sent seven invoices to the CFO; with Claude reading, Purser held them.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
-  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs amount, payee and account. Change one cent and it fails." },
-  { icon: "shield-check", title: "Limits in code, not prompts", text: "Claude agents read and propose; Purser's code holds the limits." },
+  // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.
+  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs the exact terms." },
+  // Jury panel, 15 Nov ("what does Claude add?"): docs/worst-case-ai.md, its figure word for word (test/home-about.test.ts).
+  { icon: "shield-check", title: "What Claude adds", text: CLAUDE_ADDS },
   { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
   { icon: "file-check", title: "Booked and checkable", text: "Every payment is booked; its signed receipt checks offline." },
 ] as const;
