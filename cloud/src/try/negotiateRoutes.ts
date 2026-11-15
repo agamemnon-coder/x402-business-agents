@@ -14,7 +14,9 @@ import { actionBudget, claudeSpeak, type Budget } from "../../../src/negotiate/c
 import { d1Spend } from "../engine/spend.js";
 import type { Sql } from "../store.js";
 import { readSwitches } from "./switches.js";
-import { negotiate, recordedNegotiation, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
+import { z } from "zod";
+import { negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
+import type { Scene } from "../../../src/negotiate/rails.js";
 import { boundsOf } from "../../../src/negotiate/rails.js";
 import type { EngineKit, EngineRoute } from "../engine/routes.js";
 import type { TryEngineCtx } from "./engineRoutes.js";
@@ -62,6 +64,14 @@ export function reasonWords(reason: CappedReason | "not_set_up" | "failed", deta
 }
 
 export const NEGOTIATE_ROUTE = "POST /v1/try/negotiate";
+const Body = z.object({ invoice_id: z.string().min(1).max(80).optional() }).strict();
+
+/** Why the public recording is shown (GET /v1/try/negotiate/recorded?why=): the page's own words, never the caller's. */
+export const RECORDED_WHY = {
+  limit: "Today's live limit is reached, so the recorded negotiation is shown.",
+  paused: "The live demo is paused right now, so the recorded negotiation is shown.",
+  start: "A test company could not be started right now, so the recorded negotiation is shown.",
+} as const;
 
 export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): EngineRoute<C>[] {
   const { json, err } = kit;
@@ -74,16 +84,28 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       if ((await bump(c.env.sql, `negotiate:${tenant}`, born, 1)) > NEGOTIATIONS_PER_COMPANY)
         throw new TryRefused(429, "limit", `This test company has negotiated ${NEGOTIATIONS_PER_COMPANY} times, its limit. Start a new one to watch again.`);
       const today = c.now.toISOString().slice(0, 10);
+      // { invoice_id } (15 Nov, the negotiation inside /try's flow): the visitor's own invoice, if it can be negotiated.
+      let scene: Scene = sceneOf(today);
+      if ((c.req.headers.get("content-type") ?? "").includes("json")) {
+        const b = await kit.body(c, Body, 1_000);
+        if (b.invoice_id) {
+          const inv = await c.env.engine?.(tenant)?.invoice(b.invoice_id);
+          if (!inv) return err(404, "no invoice");
+          const sc = sceneFromInvoice(inv, today);
+          if ("refused" in sc) throw new TryRefused(409, "not_negotiable", sc.refused);
+          scene = sc;
+        }
+      }
       const claude = c.env.negotiateClaude?.(tenant);
       // The whole negotiation; onTurn hears each live turn as Claude answers it, and reset that the live turns are dropped.
       const run = async (onTurn?: (t: Turn, best: BestOffer | null) => void, reset?: (reason: string) => void, onLive?: () => void): Promise<Negotiation> => {
-        if (!claude) return recordedNegotiation(today, reasonWords("not_set_up"));
+        if (!claude) return recordedNegotiation(today, reasonWords("not_set_up"), scene);
         const got = await claude.reserve();
-        if (!got.ok) return recordedNegotiation(today, reasonWords(got.reason));
+        if (!got.ok) return recordedNegotiation(today, reasonWords(got.reason), scene);
         const budget = actionBudget(got.reservation.micros);
         onLive?.();
         try {
-          const n = await negotiate({ today, speak: claude.speak(budget), mode: "live", ...(onTurn ? { onTurn } : {}) });
+          const n = await negotiate({ today, scene, speak: claude.speak(budget), mode: "live", ...(onTurn ? { onTurn } : {}) });
           await got.reservation.settle(n.micros);
           return n;
         } catch (x) {
@@ -91,7 +113,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
           await got.reservation.settle(got.reservation.micros - Math.max(0, budget.left()));
           const reason = reasonWords("failed", x instanceof Error ? x.message.slice(0, 120) : undefined);
           reset?.(reason);
-          return recordedNegotiation(today, reason);
+          return recordedNegotiation(today, reason, scene);
         }
       };
       if (c.url.searchParams.get("stream") !== "1") return json(200, await run());
@@ -102,11 +124,29 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const w = writable.getWriter();
       const enc = new TextEncoder();
       const line = (o: unknown) => { void w.write(enc.encode(`${JSON.stringify(o)}\n`)).catch(() => undefined); };
-      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(sceneOf(today), today) }))
+      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(scene, today) }))
         .then((negotiation) => line({ type: "done", negotiation }), () => line({ type: "error", message: "The negotiation could not finish. Nothing was paid." }))
         .finally(() => { void w.close().catch(() => undefined); });
       c.env.waitUntil?.(done);
       return new Response(readable, { status: 200, headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
     } },
+  ];
+}
+
+/**
+ * GET /v1/try/negotiate/recorded (public, the hands-on deployment's /v1/try block): the recorded negotiation on the
+ * seeded scene, labelled, for a visitor the live path turned away (a start limit, a pause): no company, no Claude, no
+ * cost, nothing signable. ?why= picks one of RECORDED_WHY's sentences.
+ */
+export function tryNegotiatePublicRoutes<C extends { now: Date; url?: URL; req: Request }>(kit: { json(status: number, body: unknown): Response }, live: (run: (c: C) => Promise<Response>) => (c: C) => Promise<Response>): { method: "GET"; path: string; summary: string; need: "public"; run: (c: C) => Promise<Response> }[] {
+  return [
+    { method: "GET", path: "/v1/try/negotiate/recorded", summary: "The recorded negotiation (public): the seeded scene's four turns, written in advance and labelled as such, checked by the rails live. For a visitor the live path turned away; nothing to sign. ?why=limit|paused|start says why in the page's own words.", need: "public", run: live(async (c) => {
+      const why = new URL(c.req.url).searchParams.get("why");
+      const reason = why && why in RECORDED_WHY ? RECORDED_WHY[why as keyof typeof RECORDED_WHY] : RECORDED_WHY.start;
+      const today = c.now.toISOString().slice(0, 10);
+      const r = kit.json(200, { ...(await recordedNegotiation(today, reason)), signable: false });
+      r.headers.set("cache-control", "no-store");
+      return r;
+    }) },
   ];
 }

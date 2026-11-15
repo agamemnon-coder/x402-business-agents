@@ -198,7 +198,57 @@ async function sane(page: Page, what: string): Promise<void> {
   await ctx.close();
 }
 
-// 3. The links.
+// 3. The error paths (15 Nov, Max: "nothing happens when I click"): instant feedback, a clear message for every
+//    refusal, the labelled recording played at once, and Start again.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme: "light" });
+  const page = await ctx.newPage();
+  page.on("pageerror", (e) => errors.push(`errors: ${String(e)}`));
+  page.on("console", (m) => { if (m.type() === "error" && !/status of (429|503)/.test(m.text())) errors.push(`errors: ${m.text()}`); });
+  // a. The demo paused (starts off): the message, then the recording, labelled, with nothing to sign.
+  ok((await admin({ op: "set", key: "starts", value: "off" })).status === 200, "starts off (the demo paused)");
+  await page.goto(`${ORIGIN}/try/negotiate`);
+  const t0 = Date.now();
+  await page.getByRole("button", { name: C.start }).click();
+  await page.locator("li.thinking").first().waitFor({ timeout: 2_000 }).catch(() => undefined);
+  const firstFeedback = Date.now() - t0;
+  ok(firstFeedback < 1_000, `a thinking row on Purser's side right after the click (${firstFeedback} ms, Playwright's click included)`);
+  await page.locator(".neg-err").waitFor({ timeout: 15_000 });
+  ok((await page.locator(".neg-err").innerText()).includes(C.pausedRecorded), `a paused demo says so: "${C.pausedRecorded}"`);
+  await page.locator("ol.turns > li.turn:not(.thinking):not(.typing)").nth(3).waitFor({ timeout: 15_000 });
+  const rec = await page.locator("#talk").innerText();
+  ok(rec.includes("Recorded negotiation") && (await page.locator(".pill.rec").count()) === 4, "and plays the labelled recording at once, four turns");
+  await page.getByRole("button", { name: C.again }).waitFor({ timeout: 15_000 });
+  ok((await page.locator("#more").innerText()).includes(C.nothingToSign), "nothing to sign, and Start again");
+  ok((await admin({ op: "set", key: "starts", value: "on" })).status === 200, "starts on again");
+  ok((await admin({ op: "set", key: "claude", value: "on" })).status === 200, "claude on again (section 2 switched it off)");
+  // b. A company that used its 3 negotiations: the message, the recording, then Start again runs live on a new company.
+  const st = await handle(new Request(`${ORIGIN}/v1/try/start`, { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN, "cf-connecting-ip": "203.0.113.91" }, body: "{}" }), env);
+  const co = (await st.json()) as Record<string, string>;
+  for (let i = 0; i < 3; i++) await handle(new Request(`${ORIGIN}/v1/try/negotiate`, { method: "POST", headers: { authorization: `Bearer ${co.session}`, origin: ORIGIN } }), env);
+  const ctx2 = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "light" });
+  await ctx2.addInitScript((v) => { sessionStorage.setItem("purser.try", v); }, JSON.stringify({ tenant: co.tenant, session: co.session, visitor_token: co.visitor_token, expires_at: co.session_expires_at ?? co.expires_at }));
+  const p2 = await ctx2.newPage();
+  p2.on("pageerror", (e) => errors.push(`limit: ${String(e)}`));
+  p2.on("console", (m) => { if (m.type() === "error" && !/status of (429|503)/.test(m.text())) errors.push(`limit: ${m.text()}`); });
+  await p2.goto(`${ORIGIN}/try/negotiate`);
+  await p2.getByRole("button", { name: C.start }).click();
+  await p2.locator(".neg-err").waitFor({ timeout: 15_000 });
+  ok((await p2.locator(".neg-err").innerText()).includes(C.companyLimit), "a company past its 3 negotiations says so");
+  await p2.locator(".pill.rec").nth(3).waitFor({ timeout: 15_000 });
+  ok(true, "and plays the recording");
+  const before = calls;
+  await p2.getByRole("button", { name: C.again }).click();
+  await p2.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
+  const recLeft = await p2.locator(".pill.rec").count(), errLeft = await p2.locator(".neg-err").count();
+  ok(calls > before && recLeft === 0 && errLeft === 0, `Start again: a new test company, a live negotiation, the old message gone (calls +${calls - before}, recorded ${recLeft}, errors ${errLeft})`);
+  await sane(p2, "start again");
+  if (shots) await p2.screenshot({ path: join(shots, "start-again-1440.png"), fullPage: true });
+  await ctx2.close();
+  await ctx.close();
+}
+
+// 4. The links.
 ok(FINISH_LINKS.negotiate.href === "/try/negotiate" && FINISH_LINKS.negotiate.label === "Watch agents negotiate", "/try's finish links here, same tab");
 ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.slice(0, 5).join(" | ")}` : ""}`);
 await browser.close();

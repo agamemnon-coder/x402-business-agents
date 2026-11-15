@@ -16,7 +16,7 @@ import { SITE_HEADER_CSS, siteHeader } from "../siteHeader.js";
 import { SIGN_JS } from "../tryPage.js";
 import { VERIFY_YOURSELF } from "../tryCopy.js";
 import { TOKENS } from "../../../src/redesign/ui.js";
-import { RECORDED_LABEL, SOURCING_LABEL, SUPPLIER_LABEL } from "../../../src/negotiate/negotiate.js";
+import { NEG_COPY, NEG_CSS, negKitJs } from "./negotiateKit.js";
 import { BOT_SOLVER_JS } from "./botCheck.js";
 
 export const NEGOTIATE_PATH = "/try/negotiate";
@@ -25,6 +25,7 @@ export const NEGOTIATE_LINK = "Watch agents negotiate";
 
 /** Every word of the page (tests read them). */
 export const NEGOTIATE_COPY = {
+  ...NEG_COPY,
   title: "Purser · agents negotiate",
   band: "Test money · test passkey · simulated bank · nothing real moves",
   head: "Two agents negotiate. Code holds the limits. You sign the deal.",
@@ -40,36 +41,15 @@ export const NEGOTIATE_COPY = {
     payee_unchanged: "Only to the account on file (ending {last4})",
   },
   start: "Start the negotiation",
-  starting: "Starting a test company…",
+  starting: "Starting… Purser's agent is thinking",
   talking: "The agents are negotiating…",
-  live: "Live · Claude",
-  recorded: "Recorded",
-  recordedLabel: RECORDED_LABEL,
-  why: "Why: {reason}",
-  sourcing: SOURCING_LABEL,
-  supplier: SUPPLIER_LABEL,
-  terms: { amount: "Amount", discount: "Discount", payBy: "Pay by", account: "Account" },
-  within: "Within the rails",
-  refused: "Refused by the rails",
-  heldRule: "The rule that held:",
-  scripted: "The simulation added this bank change (the model left it out), so you can see the rails refuse it.",
-  meter: { invoice: "Invoice", current: "Current offer", best: "Best offer on record", discount: "Discount", none: "—" },
-  railChips: { max_amount: "Max EUR {max}", pay_by_window: "Pay by {to}", invoice_only: "Invoice only", payee_unchanged: "Payee unchanged" },
-  railChipsLabel: "The rails, checked on every turn",
-  typing: "{who} is answering (Claude)…",
-  simBadge: "simulated supplier",
-  stamp: "Refused by code",
-  replay: "Replaying the recorded turns",
-  reset: "Claude stopped answering, so the live turns are dropped; the recorded negotiation follows.",
-  held: "Purser's code held the Sourcing agent to Bergtex's best offer on record: it had asked to pay {asked}; the best offer on record is {floor} (turn {turn}), its bank change dropped.",
-  accepts: "Accepts",
-  agreedHead: "Agreed terms",
-  noDealHead: "No deal: the invoice as issued",
-  noDeal: "The agents did not agree within 4 turns, so the invoice stands as issued, by its due date.",
-  agreement: { amount: "Pay", discount: "Discount", payBy: "By", payee: "To", ref: "Reference" },
-  canonical: "Show the canonical JSON",
-  sha: "SHA-256 of the agreement",
-  shaNote: "The agreed invoice carries the first 8 characters of this hash as its reference, so the terms your passkey signs name this agreement and no other.",
+  again: "Start again",
+  limitRecorded: "Today's live limit is reached; showing the recorded negotiation.",
+  pausedRecorded: "The live demo is paused right now; showing the recorded negotiation.",
+  startFailed: "A test company could not be started ({status}); showing the recorded negotiation.",
+  companyLimit: "This test company has negotiated 3 times, its limit; showing the recorded negotiation. Start again for a new test company.",
+  gone: "Your test company has ended; starting a new one.",
+  nothingToSign: "A recording has nothing to sign. Start again to watch the agents live.",
   sign: "Sign the agreed terms with your passkey",
   makeKey: "Make your test passkey",
   steps: {
@@ -88,7 +68,6 @@ export const NEGOTIATE_COPY = {
   downloadDeal: "Download the negotiation (JSON)",
   verify: VERIFY_YOURSELF.verify,
   back: "Back to /try",
-  again: "Watch them negotiate again",
   noPasskey: "This browser can't make a passkey here. Open this page in Safari or Chrome to sign.",
   cancelled: "The passkey was not used. Nothing was signed or paid.",
   failed: "Something went wrong. Nothing was paid.",
@@ -122,49 +101,6 @@ p { margin: 0 0 12px; }
 .btn:disabled { opacity: .55; cursor: progress; }
 .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-/* The chat (15 Nov): Purser's Sourcing agent on the left, the supplier's agent on the right, each with an avatar. */
-.turns { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.turn { display: flex; gap: 10px; align-items: flex-start; max-width: 100%; }
-.turn.sourcing { margin-right: 18%; }
-.turn.supplier { flex-direction: row-reverse; margin-left: 18%; }
-.av { flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 700 14px/1 Inter, system-ui, sans-serif; color: #fff; background: var(--accent); }
-.turn.supplier .av { background: var(--muted); }
-.bubble { position: relative; min-width: 0; flex: 1 1 auto; border: 1px solid var(--border); border-radius: 16px; border-top-left-radius: 4px; background: var(--surface); padding: 12px 14px; overflow: hidden; }
-.turn.supplier .bubble { border-radius: 16px; border-top-right-radius: 4px; border-style: dashed; }
-.turn.refused .bubble { border-color: var(--bad); border-style: solid; }
-.turn .who { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12.5px; color: var(--muted); margin: 0 0 6px; }
-.turn .who b { color: var(--text); }
-.pill { display: inline-block; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; line-height: 20px; }
-.pill.rec { border-style: dashed; }
-.pill.sim { border-color: var(--muted); border-style: dashed; color: var(--text); }
-.stamp { display: inline-block; margin: 0 0 8px; padding: 2px 10px; border: 2px solid var(--bad); border-radius: 6px; color: var(--bad); font: 800 12px/1.4 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; transform: rotate(-3deg); }
-.msg { margin: 0 0 8px; overflow-wrap: anywhere; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
-.chips li { font-size: 13px; padding: 2px 8px; border-radius: 8px; background: var(--sunken); overflow-wrap: anywhere; }
-.verdict { font-size: 14px; margin: 0; padding: 6px 10px; border-radius: 10px; }
-.verdict.ok { background: var(--ok-soft); color: var(--text); }
-.verdict.no { background: var(--bad-soft); color: var(--text); border: 1px solid var(--bad); }
-.verdict .rule { display: block; font-weight: 600; margin-top: 2px; }
-/* The typing indicator: shown while a live call runs, on the side that is answering. */
-.typing .bubble { flex: 0 1 auto; display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
-.dots { display: inline-flex; gap: 4px; }
-.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: .5; }
-/* The deal meter: the invoice, the current offer and the best offer on record, on one bar. */
-.meter { margin: 12px 0; }
-.mrow { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: 13px; color: var(--muted); }
-.mrow b { color: var(--text); font-variant-numeric: tabular-nums; }
-.track { position: relative; height: 12px; margin: 10px 0 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; }
-.track .fill { position: absolute; top: 0; bottom: 0; left: 0; width: 0; border-radius: 999px; background: var(--accent); }
-.track .mk { position: absolute; top: -2px; bottom: -2px; width: 3px; margin-left: -1px; left: 0; background: var(--ok); }
-.track .mk.cur { background: var(--text); }
-.disc { margin: 0; font-size: 15px; }
-.disc b { font-variant-numeric: tabular-nums; }
-/* The rails as chips, flashed on every turn. */
-.railchips { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.railchips li { font-size: 12.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); }
-.railchips li.ok { border-color: var(--ok); background: var(--ok-soft); }
-.railchips li.no { border-color: var(--bad); background: var(--bad-soft); font-weight: 650; }
-.sha.typing-out::after { content: "▍"; }
 ol.steps li.stop { color: var(--text); border-left: 3px solid var(--bad); padding-left: 8px; }
 ol.steps li.stop::marker { color: var(--bad); }
 .note { font-size: 14px; color: var(--muted); }
@@ -177,26 +113,16 @@ ol.steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
 ol.steps li.done::marker { color: var(--ok); }
 ol.steps li.bad::marker { color: var(--bad); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@media (prefers-reduced-motion: no-preference) {
-  .turn { animation: rise .35s ease-out both; }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-  .dots i { animation: blink 1.1s infinite ease-in-out; }
-  .dots i:nth-child(2) { animation-delay: .18s; } .dots i:nth-child(3) { animation-delay: .36s; }
-  @keyframes blink { 0%, 80%, 100% { opacity: .25; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
-  .track .fill, .track .mk { transition: width .6s ease, left .6s ease; }
-  .railchips li.flash { animation: flash .9s ease-out; }
-  @keyframes flash { 0% { transform: scale(1.08); } 100% { transform: none; } }
-  .stamp { animation: stamp .45s cubic-bezier(.2, 1.6, .4, 1) both; }
-  @keyframes stamp { from { opacity: 0; transform: rotate(-3deg) scale(1.8); } to { opacity: 1; transform: rotate(-3deg) scale(1); } }
-  .shake { animation: shake .45s ease-in-out; }
-  @keyframes shake { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
-}
+.spin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; vertical-align: -2px; }
+@media (prefers-reduced-motion: no-preference) { .spin { animation: spin .8s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } } }
+${NEG_CSS}
 `;
 
 const SCRIPT = String.raw`
 const C=__COPY__;const CFG=__CFG__;
 __SIGN__
 __SOLVER__
+__NEG__
 const {fromB64u,registrationOf,signedOf}=signKit;
 const $=(id)=>document.getElementById(id);
 const el=(tag,cls,kids)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(kids!==undefined&&kids!==null)for(const k of [].concat(kids))if(k!==null&&k!==undefined&&k!==false)n.append(typeof k==='string'?document.createTextNode(k):k);return n};
@@ -207,8 +133,10 @@ const eur=(s)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(s));if(!m)return String(s
 // The company: /try's own in this tab (its key), else one this page started (its own key). Read only from storage;
 // written back only to the key it came from (a renewed session).
 const KEYS=['purser.try','purser.negotiate'];
+// After Start again (or a company that ended), /try's company in this tab is not used again: a fresh one is started.
+const FRESH=()=>{try{return sessionStorage.getItem('purser.negotiate.fresh')==='1'}catch(e){return false}};
 let S=null,FROM=null;
-for(const k of KEYS){try{const o=JSON.parse(sessionStorage.getItem(k)||'null');if(o&&o.session&&o.visitor_token&&o.tenant){S=o;FROM=k;break}}catch(e){}}
+for(const k of KEYS){if(k==='purser.try'&&FRESH())continue;try{const o=JSON.parse(sessionStorage.getItem(k)||'null');if(o&&o.session&&o.visitor_token&&o.tenant){S=o;FROM=k;break}}catch(e){}}
 const save=()=>{if(!S||!FROM)return;try{const o=JSON.parse(sessionStorage.getItem(FROM)||'{}')||{};o.session=S.session;o.expires_at=S.expires_at;if(FROM==='purser.negotiate'){o.tenant=S.tenant;o.visitor_token=S.visitor_token}sessionStorage.setItem(FROM,JSON.stringify(o))}catch(e){}};
 const tenantId=()=>S&&(typeof S.tenant==='string'?S.tenant:S.tenant&&S.tenant.id);
 
@@ -231,162 +159,78 @@ async function api(method,path,body){
 }
 // A company of the visitor's own: /try's, or a new one through /try's start route (its bot check and its limits).
 async function company(){
-  if(S&&S.expires_at&&Date.parse(S.expires_at)>Date.now()+60000)return true;
-  if(S&&await renew())return true;
+  if(S&&S.expires_at&&Date.parse(S.expires_at)>Date.now()+60000)return {ok:true};
+  if(S&&await renew())return {ok:true};
   S=null;FROM=null;
   let proof;
   const ch=await call('POST','/v1/try/challenge');
-  if(ch.status===200&&ch.json.required===true){const p=solveProof(String(ch.json.challenge),Number(ch.json.difficulty));if(!p)return false;proof={challenge:String(ch.json.challenge),nonce:p.nonce}}
+  if(ch.status===200&&ch.json.required===true){const p=solveProof(String(ch.json.challenge),Number(ch.json.difficulty));if(!p)return {ok:false,status:0};proof={challenge:String(ch.json.challenge),nonce:p.nonce}}
   const r=await call('POST','/v1/try/start',proof?{proof}:{});
   if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
     S={tenant:r.json.tenant,session:r.json.session,visitor_token:r.json.visitor_token,expires_at:r.json.expires_at||null};FROM='purser.negotiate';
     try{sessionStorage.setItem(FROM,JSON.stringify(S))}catch(e){}
-    return true;
+    return {ok:true};
   }
-  return r.json&&typeof r.json.message==='string'?r.json.message:false;
+  return {ok:false,status:r.status,code:r.json&&r.json.code,message:r.json&&typeof r.json.message==='string'?r.json.message:''};
 }
 
-const box=$('flow');
+let N=null;
 const rails=(b)=>{
   const R=C.rails;const last4=String(b.payee_iban||'').slice(-4);
-  return el('ul','rails',[el('li','',fill(R.max_amount,{max:eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
+  return el('ul','rails',[el('li','',fill(R.max_amount,{max:NEG.eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
 };
-let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
-const sleep=(ms)=>new Promise((r)=>setTimeout(r,ms));
-const centsOf=(s)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(s));return m?Number(m[1])*100+Number(m[2]):NaN};
-// A number counting up (or down) to its value; at once under reduced motion.
-function countTo(node,from,to,fmt){
-  if(calm||!isFinite(from)||from===to){node.textContent=fmt(to);return}
-  const t0=performance.now(),d=600;
-  const tick=(t)=>{const k=Math.min(1,(t-t0)/d);node.textContent=fmt(from+(to-from)*(1-Math.pow(1-k,3)));if(k<1)requestAnimationFrame(tick)};requestAnimationFrame(tick);
+const busy=(btn,words)=>{btn.disabled=true;btn.hidden=false;btn.replaceChildren(el('span','spin'),document.createTextNode(' '+words))};
+const errBox=(words)=>el('p','neg-err',words);
+function againRow(){
+  const b=el('button','btn',C.again);b.type='button';b.id='again';
+  b.addEventListener('click',()=>{
+    // A clean slate: this tab's negotiate company forgotten, /try's not reused, the page's state cleared.
+    try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
+    S=null;FROM=null;N=null;F.inv=null;F.p=null;F.eng=null;F.cred=null;
+    $('deal').replaceChildren();$('end').replaceChildren();$('talk').replaceChildren();$('more').replaceChildren();
+    const go=$('go');go.hidden=false;negotiate(go);
+  });
+  return el('div','row',[b]);
 }
-function bubble(t,mode){
-  const T=C.terms;const sup=t.who==='supplier';
-  const who=el('p','who',[el('b','',sup?C.supplier:C.sourcing),sup?el('span','pill sim',C.simBadge):null,el('span','pill'+(mode==='recorded'?' rec':''),mode==='recorded'?C.recorded:C.live+(t.model?' · '+t.model:'')),t.ms>=100?el('span','',(t.ms/1000).toFixed(1)+' s'):null,el('span','','Turn '+t.n)]);
-  const p=t.proposed||{};
-  const chips=el('ul','chips',[el('li','',T.amount+': '+eur(p.amount)),el('li','',T.discount+': '+(p.discount==='—'?'—':eur(p.discount)+' ('+p.discount_pct+')')),el('li','',T.payBy+': '+p.pay_by),p.iban?el('li','',T.account+': '+p.iban):null,t.accept?el('li','',C.accepts):null]);
-  const refs=(t.rails&&t.rails.refusals)||[];
-  const ok=!!(t.rails&&t.rails.ok);
-  const v=ok?el('p','verdict ok',C.within):el('p','verdict no',[el('b','',C.refused+': '),refs.map((r)=>r.detail).join('; '),...refs.map((r)=>el('span','rule',C.heldRule+' '+r.says))]);
-  const stamp=refs.some((r)=>r.rule==='payee_unchanged')?el('span','stamp',C.stamp):null;
-  const bub=el('div','bubble',[who,stamp,el('p','msg',t.message),chips,v,t.scripted_bank_change?el('p','note',C.scripted):null,t.held_to_best_offer?el('p','note held',fill(C.held,{asked:eur(t.held_to_best_offer.asked),floor:eur(t.held_to_best_offer.floor),turn:t.held_to_best_offer.floor_turn})):null]);
-  const card=el('li','turn '+t.who+(ok?'':' refused'),[el('span','av',sup?'B':'P'),bub]);
-  card.setAttribute('aria-label','Turn '+t.n+', '+(sup?C.supplier:C.sourcing));
-  card.querySelector('.av').setAttribute('aria-hidden','true');
-  return card;
+// The recording, played at once, when the live path turned the visitor away; nothing to sign in it.
+async function fallback(words,why){
+  const talk=$('talk');const box=el('div','');talk.replaceChildren(errBox(words),box);
+  await NEG.recorded({box,why,say});
+  $('more').replaceChildren(el('p','note',C.nothingToSign),againRow());
 }
-function typingRow(who){
-  const sup=who==='supplier';
-  const r=el('li','turn typing '+who,[el('span','av',sup?'B':'P'),el('div','bubble',[el('span','dots',[el('i'),el('i'),el('i')]),el('span','',fill(C.typing,{who:sup?'Bergtex\'s agent':'Purser\'s Sourcing agent'}))])]);
-  r.querySelector('.av').setAttribute('aria-hidden','true');return r;
-}
-// The deal meter and the rail chips: built once, moved on every turn.
-const UI={};
-function board(bounds){
-  const M=C.meter;const inv=bounds.max_pay_cents;UI.inv=inv;UI.cur=inv;UI.lo=Math.round(inv*0.95);
-  UI.curB=el('b','',M.none);UI.bestB=el('b','',M.none);UI.disc=el('b','','EUR 0.00');UI.pct=el('span','','0.0%');
-  UI.fill=el('i','fill');UI.mkCur=el('i','mk cur');UI.mkBest=el('i','mk best');UI.mkBest.hidden=true;UI.mkCur.hidden=true;
-  const meter=el('div','card meter',[el('div','mrow',[el('span','',[M.invoice+' ',el('b','',eur((inv/100).toFixed(2)))]),el('span','',[M.current+' ',UI.curB]),el('span','',[M.best+' ',UI.bestB])]),el('div','track',[UI.fill,UI.mkBest,UI.mkCur]),el('p','disc',[M.discount+' ',UI.disc,' (',UI.pct,')'])]);
-  meter.id='meter';meter.setAttribute('aria-label',C.railChipsLabel);
-  const R=C.railChips;UI.chips={};
-  const lab={max_amount:fill(R.max_amount,{max:eur((inv/100).toFixed(2)).slice(4)}),pay_by_window:fill(R.pay_by_window,{to:bounds.latest_pay_by}),invoice_only:R.invoice_only,payee_unchanged:R.payee_unchanged};
-  const chips=el('ul','railchips',Object.keys(lab).map((k)=>{const li=el('li','',lab[k]);li.dataset.rule=k;UI.chips[k]=li;return li}));
-  chips.setAttribute('aria-label',C.railChipsLabel);chips.id='railchips';
-  return [meter,chips];
-}
-const pos=(c)=>Math.max(0,Math.min(100,(UI.inv-c)/(UI.inv-UI.lo)*100));
-function move(t,best){
-  // The chips: every rule passed flashes green; a refused one red, with its name.
-  const bad=new Set(((t.rails&&t.rails.refusals)||[]).map((r)=>r.rule));
-  for(const [k,li] of Object.entries(UI.chips)){li.classList.remove('ok','no','flash');void li.offsetWidth;li.classList.add(bad.has(k)?'no':'ok','flash')}
-  // The meter: a turn's terms count only when the rails let them stand.
-  const c=centsOf(t.proposed&&t.proposed.amount);
-  if(t.rails&&t.rails.ok&&isFinite(c)){
-    const from=UI.inv-UI.cur;UI.cur=c;
-    UI.curB.textContent=eur(t.proposed.amount);UI.mkCur.hidden=false;
-    UI.mkCur.style.left=pos(c)+'%';UI.fill.style.width=pos(c)+'%';
-    countTo(UI.disc,from,UI.inv-c,(v)=>'EUR '+(Math.round(v)/100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','));
-    countTo(UI.pct,from/UI.inv*100,(UI.inv-c)/UI.inv*100,(v)=>v.toFixed(1)+'%');
-  }
-  if(best&&isFinite(centsOf(best.amount))){UI.bestB.textContent=eur(best.amount);UI.mkBest.hidden=false;UI.mkBest.style.left=pos(centsOf(best.amount))+'%'}
-}
-// The supplier's best offer on record, as the server reckons it (src/negotiate/negotiate.ts bestOfferOf), for turns that came in one answer.
-function bestOf(turns){let b=null;for(const t of turns){if(t.who!=='supplier')continue;const r=(t.rails&&t.rails.refusals)||[];if(!(t.rails&&t.rails.ok)&&!r.every((x)=>x.rule==='payee_unchanged'))continue;const c=centsOf(t.proposed.amount);if(isFinite(c)&&(!b||c<centsOf(b.amount)))b={amount:t.proposed.amount,turn:t.n}}return b}
-let N=null;
-
-// One request, read as it comes: a line a turn while Claude answers (?stream=1), else the whole answer at once.
-async function negotiateCall(){
-  const go=async()=>{const h={};if(S&&S.session)h.authorization='Bearer '+S.session;try{return await fetch('/v1/try/negotiate?stream=1',{method:'POST',headers:h})}catch(e){return null}};
-  let r=await go();if(r&&r.status===401&&await renew())r=await go();
-  if(!r)return {status:0,json:{}};
-  if(r.status===200&&r.body&&/ndjson/.test(r.headers.get('content-type')||''))return {status:200,reader:r.body.getReader()};
-  let j={};try{j=await r.json()}catch(e){}
-  return {status:r.status,json:j&&typeof j==='object'?j:{}};
-}
-async function* lines(reader){
-  const dec=new TextDecoder();let buf='';
-  for(;;){const {value,done}=await reader.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;while((i=buf.indexOf('\n'))>=0){const l=buf.slice(0,i).trim();buf=buf.slice(i+1);if(l){try{yield JSON.parse(l)}catch(e){}}}}
-  if(buf.trim()){try{yield JSON.parse(buf)}catch(e){}}
-}
-
 async function negotiate(btn){
-  btn.disabled=true;btn.textContent=C.starting;say(C.starting);
-  const okc=await company();
-  if(okc!==true){btn.disabled=false;btn.textContent=C.start;$('talk').replaceChildren(el('p','note',typeof okc==='string'?okc:C.limit));return}
-  btn.textContent=C.talking;say(C.talking);
+  $('deal').replaceChildren();$('end').replaceChildren();$('more').replaceChildren();
+  busy(btn,C.starting);say(C.starting);
   const talk=$('talk');
-  const list=el('ol','turns');let typing=null;let shown=[];
-  const setTyping=(who)=>{if(typing){typing.remove();typing=null}if(who){typing=typingRow(who);list.append(typing)}};
-  const r=await negotiateCall();
-  if(r.status!==200){btn.disabled=false;btn.textContent=C.start;talk.replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.failed));return}
+  NEG.thinking(talk);
+  let okc=await company();
+  if(!okc.ok){btn.hidden=true;
+    if(okc.status===429)return fallback(C.limitRecorded,'limit');
+    if(okc.status===503)return fallback(C.pausedRecorded,'paused');
+    return fallback(fill(C.startFailed,{status:okc.status||'no answer'}),'start')}
+  busy(btn,C.talking);say(C.talking);
+  let res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
+  if(!res.ok&&(res.status===410||res.status===401)){
+    // The company this tab held has ended: a new one, once.
+    try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
+    S=null;FROM=null;say(C.gone);okc=await company();
+    if(okc.ok)res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
+  }
   btn.hidden=true;
-  let started=false;
-  const start=(bounds,head)=>{if(started)return;started=true;$('rails').replaceChildren(rails(bounds));talk.replaceChildren(...[head].concat(board(bounds),[list]).filter(Boolean))};
-  if(r.reader){
-    for await (const ev of lines(r.reader)){
-      if(ev.type==='start'&&ev.bounds){start(ev.bounds,null);if(ev.live===true)setTyping('sourcing')}
-      else if(ev.type==='turn'&&ev.turn){setTyping(null);list.append(bubble(ev.turn,'live'));shown.push(ev.turn);move(ev.turn,ev.best);say('Turn '+ev.turn.n);setTyping(ev.turn.n<4?(ev.turn.who==='sourcing'?'supplier':'sourcing'):null)}
-      else if(ev.type==='reset'){setTyping(null);shown=[];list.replaceChildren(el('li','note',C.reset))}
-      else if(ev.type==='done'&&ev.negotiation)N=ev.negotiation;
-      else if(ev.type==='error'){setTyping(null);talk.append(el('p','note',ev.message||C.failed));return}
-    }
-    setTyping(null);
-    if(!N||!Array.isArray(N.turns)){talk.append(el('p','note',C.failed));return}
-  }else{
-    N=r.json;if(!Array.isArray(N.turns)){talk.replaceChildren(el('p','note',C.failed));return}
+  if(!res.ok){
+    if(res.status===429)return fallback(res.code==='limit'?C.companyLimit:C.limitRecorded,'limit');
+    if(res.status===503)return fallback(C.pausedRecorded,'paused');
+    talk.prepend(errBox(res.message||C.failed));$('more').replaceChildren(againRow());return;
   }
-  // The real bounds, now known: the chips' words and the rails' card.
-  if(!started)start(N.bounds,null);
-  $('rails').replaceChildren(rails(N.bounds));
-  const R=C.railChips;UI.chips.pay_by_window.textContent=fill(R.pay_by_window,{to:N.bounds.latest_pay_by});
-  if(N.mode==='recorded'||!shown.length){
-    // Recorded (or Claude failed mid-way): labelled, and replayed turn by turn, never with a typing indicator.
-    if(N.mode==='recorded')talk.prepend(el('p','card note',[el('b','',N.label||C.recordedLabel),N.reason?el('span','',' '+fill(C.why,{reason:N.reason})):null]));
-    list.replaceChildren();
-    const seen=[];
-    for(const t of N.turns){seen.push(t);list.append(bubble(t,N.mode));move(t,bestOf(seen));say('Turn '+t.n);if(!calm)await sleep(700)}
-  }
-  deal();
-}
-
-// The SHA-256, typed out (at once under reduced motion).
-function typeOut(node,text){
-  if(calm){node.textContent=text;node.classList.add('done');return}
-  node.classList.add('typing-out');let i=0;
-  const t=setInterval(()=>{i=Math.min(text.length,i+2);node.textContent=text.slice(0,i);if(i>=text.length){clearInterval(t);node.classList.remove('typing-out');node.classList.add('done')}},16);
+  N=res.n;$('rails').replaceChildren(rails(N.bounds));deal();
 }
 function deal(){
-  const A=C.agreement,a=N.agreement;const d=$('deal');
-  const h=el('h2','',N.outcome==='agreed'?C.agreedHead:C.noDealHead);h.tabIndex=-1;
-  const dl=el('dl','deal',[el('dt','',A.amount),el('dd','',eur(a.amount)),el('dt','',A.discount),el('dd','',eur(a.discount)+' off '+eur(a.invoice_amount)),el('dt','',A.payBy),el('dd','',a.pay_by),el('dt','',A.payee),el('dd','',a.supplier+' · account ending '+a.payee_iban_last4),el('dt','',A.ref),el('dd','mono',N.compose.invoice_no)]);
-  const det=el('details','',[el('summary','',C.canonical),el('pre','mono',N.canonical)]);
-  const shaV=el('span','mono sha','');
-  const sha=el('p','',[el('span','muted',C.sha+': '),shaV]);
   const go=el('button','btn primary',C.sign);go.type='button';go.id='sign';
+  const {card,heading}=NEG.agreed(N,[go]);
   const steps=el('ol','steps');steps.id='steps';
   const out=el('div','');out.id='out';out.setAttribute('role','status');
-  d.replaceChildren(...[h,N.outcome==='agreed'?null:el('p','note',C.noDeal),el('div','card',[dl,det,sha,el('p','note',C.shaNote),el('div','row',[go])]),steps,out].filter(Boolean));
-  h.focus();typeOut(shaV,N.sha256);
+  $('deal').replaceChildren(card,steps,out);heading.focus();
+  $('more').replaceChildren(againRow());
   go.addEventListener('click',()=>sign(go));
 }
 
@@ -443,7 +287,7 @@ async function sign(go){
     const cent=Math.floor(v/100)+'.'+String(v%100).padStart(2,'0');
     const bad=await api('POST','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/pay',signKit.payBody(terms,Object.assign({},terms,{amount:cent}),cred));
     const refused=bad.status===200&&bad.json.outcome!=='paid'&&bad.json.outcome!=='paid_once';
-    {const li=step([C.steps.tamper+' ('+eur(terms.amount)+' → '+eur(cent)+'): ',el('b','',refused?C.tamperRefused:C.tamperOther)],refused?'stop':'bad');if(refused&&!calm)li.classList.add('shake')}
+    {const li=step([C.steps.tamper+' ('+eur(terms.amount)+' → '+eur(cent)+'): ',el('b','',refused?C.tamperRefused:C.tamperOther)],refused?'stop':'bad');if(refused)NEG.shake(li)}
     const good=await api('POST','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/pay',signKit.payBody(terms,terms,cred));
     if(good.status!==200||(good.json.outcome!=='paid'&&good.json.outcome!=='paid_once')){out.append(el('p','note',words(good.json,C.failed)));return}
     step(C.steps.paid+' ('+eur(terms.amount)+')','done');
@@ -472,7 +316,7 @@ export interface NegotiatePageCfg { rpId: string; verify: string }
 export function negotiatePage(n: string, cfg: NegotiatePageCfg): string {
   const C = NEGOTIATE_COPY;
   const script = SCRIPT.replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ ...cfg, proofFile: VERIFY_YOURSELF.file }))
-    .replace("__SIGN__", () => SIGN_JS).replace("__SOLVER__", () => BOT_SOLVER_JS);
+    .replace("__SIGN__", () => SIGN_JS).replace("__SOLVER__", () => BOT_SOLVER_JS).replace("__NEG__", () => negKitJs());
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}
 <meta name="color-scheme" content="light dark">
@@ -491,6 +335,7 @@ ${siteHeader("try")}
 <section id="talk" aria-live="polite"></section>
 <section id="deal"></section>
 <section id="end"></section>
+<section id="more"></section>
 </main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 <script type="module" nonce="${n}">${script}</script>
