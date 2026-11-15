@@ -235,7 +235,7 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
 export const FACEID_SEPARATE_RUN = "In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).";
 export const METAL_CSS = `${MT_CSS}\n${VIZ_CSS}`;
 /** Under /alta's heading (partner scan, 14 Nov): what this page is for the jury. The award keeps the hackathon's name. */
-export const METAL_AWARD_LINE = "Purser's entry for the Metal Award.";
+export const METAL_AWARD_LINE = "Purser's entry for the Alta Award.";
 
 /**
  * The page's one script: the live read replaces the recorded spend only when the chain answered, and only then shows
@@ -318,7 +318,9 @@ ${green ? `<div class="mpath ok"><span class="tag">${icon("circle-check", 18)}${
   // 2. The charts. (a) Budget and spend per mandate, one shared *USDZ scale (the largest budget). (b) The payments by
   // kind, one stacked bar. (c) The refusals, as a moment.
   const max = rows.reduce((m, x) => (cents(x.budget) > cents(m) ? x.budget : m), "0.00");
-  const budgetChart = `<section class="mchart card" aria-labelledby="mb-h"><h2 class="mh" id="mb-h">${esc("Budget and spend, per mandate")}</h2><p class="msub">${esc("One scale, in *USDZ; the terms as the main run ended (3 Nov).")}</p>
+  // Jury review, 15 Nov: the hero's cap at #24 and the higher cap below are both true; say why, from the trace.
+  const raised = r && sourcing?.first && cents(sourcing.cap) > cents(sourcing.first.cap) ? `<p class="msub">${esc(`After #${r.seq}, the CFO approved a higher Sourcing cap with Face ID, and the mandates were replaced on chain.`)}</p>` : "";
+  const budgetChart = `<section class="mchart card" aria-labelledby="mb-h"><h2 class="mh" id="mb-h">${esc("Budget and spend, per mandate")}</h2><p class="msub">${esc("One scale, in *USDZ; the terms as the main run ended (3 Nov).")}</p>${raised}
 <ul class="mbars">${rows.map((x) => `<li><span class="row"><b><span class="dot d-${esc(x.agent)}"></span>${esc(name(x))}</b><span>${esc("spent ")}<span data-spent="${esc(x.agent)}">${esc(spentOf(x))}</span>${esc(` of ${x.budget} · cap ${x.cap}`)}</span></span>${barSvg(x.agent, x.agent, x.budget, spentOf(x), max, `${name(x)}: spent ${spentOf(x)} of a ${x.budget} budget, cap ${x.cap} a payment`)}</li>`).join("")}</ul></section>`;
 
   const p = st.payments;

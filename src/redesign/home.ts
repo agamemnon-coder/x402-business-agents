@@ -257,7 +257,7 @@ export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud a
  * record; then the walkthrough (FILM_URL, FILM_LINK; no duration in the words since 14 Nov, owner).
  */
 /** The film's link on Home: no "Watch" (Home names no replay; home-story, 12 Nov). */
-export const FILM_HOME = "The walkthrough";
+export const FILM_HOME = "The film";
 export function kit11Html(run: AgentRun = agentRun()): string {
   const st = metalStory(run.record), sp = split(run.record), r = st.refusal;
   const company = (run.record as { company?: unknown }).company;
