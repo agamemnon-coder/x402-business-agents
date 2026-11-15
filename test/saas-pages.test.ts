@@ -242,7 +242,9 @@ describe("/security: security and trust", () => {
       .concat(((h) => [h.blocked_by_tool, h.overridden_at_enforce, h.stood].map(String))(json<{ blocked_by_tool: number; overridden_at_enforce: number; stood: number }>("docs/evals/ap-hostile.json")))
       .concat(String(new Date(json<{ anchored_at: string }>("docs/runs/2026-11-13-anchor.json").anchored_at).getUTCDate()))
       // And the day the two-locks run's record names, from its own heading.
-      .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!));
+      .concat(/^# [^\n]*\((\d{1,2}) [A-Z][a-z]+ \d{4}\)/.exec(read("docs/runs/2026-11-12-airwallex-two-locks-paid.md"))![1]!)
+      // 15 Nov ("Checked on every change"): the test count, from the last full run's summary.
+      .concat(json<{ passed: number }>("docs/assets/test-summary.json").passed.toLocaleString("en-GB")));
     // Names that carry a digit are not figures: "SOC 2", "SHA-256", "P-256" (the passkeys' curve), and the files the folds name.
     const figures = (t: string) => numbers(t.replace(/SOC 2|SHA-256|P-256|AES-256-GCM|ISO 27001/g, " ").replace(/(?:src|test|docs)\/[\w/.-]+/g, " "));
     expect(figures(text).filter((n) => !allowed.has(n))).toEqual([]);

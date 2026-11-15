@@ -1,0 +1,108 @@
+{
+ "what": "Timed runs of the deployed /try, 15 Nov 2026, by scripts/try-timed.ts: Chromium (headless) with a virtual passkey, at bot speed, from a cloud sandbox. Test company and test money only.",
+ "url": "https://purser-try.max-31b.workers.dev/try",
+ "asked": 10,
+ "stopped": null,
+ "runs": [
+  {
+   "run": 1,
+   "started_at": "2026-11-15T06:21:34.788Z",
+   "start_to_paid_ms": 22590,
+   "refusal_round_trip_ms": 866,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 2,
+   "started_at": "2026-11-15T06:22:03.819Z",
+   "start_to_paid_ms": 21157,
+   "refusal_round_trip_ms": 814,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 3,
+   "started_at": "2026-11-15T06:22:29.488Z",
+   "start_to_paid_ms": 22273,
+   "refusal_round_trip_ms": 845,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 4,
+   "started_at": "2026-11-15T06:22:58.076Z",
+   "start_to_paid_ms": 25714,
+   "refusal_round_trip_ms": 864,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 5,
+   "started_at": "2026-11-15T06:23:27.872Z",
+   "start_to_paid_ms": 19872,
+   "refusal_round_trip_ms": 1815,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 6,
+   "started_at": "2026-11-15T06:23:54.736Z",
+   "start_to_paid_ms": 19700,
+   "refusal_round_trip_ms": 829,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 7,
+   "started_at": "2026-11-15T06:24:20.436Z",
+   "start_to_paid_ms": 17900,
+   "refusal_round_trip_ms": 835,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 8,
+   "started_at": "2026-11-15T06:24:43.085Z",
+   "start_to_paid_ms": 21403,
+   "refusal_round_trip_ms": 836,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 9,
+   "started_at": "2026-11-15T06:25:09.951Z",
+   "start_to_paid_ms": 19451,
+   "refusal_round_trip_ms": 866,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  },
+  {
+   "run": 10,
+   "started_at": "2026-11-15T06:25:34.916Z",
+   "start_to_paid_ms": 20873,
+   "refusal_round_trip_ms": 819,
+   "paid_bundle_valid": true,
+   "refused_bundle_valid": true,
+   "refusal_head": "Refused: the terms changed after you signed.",
+   "stopped": null
+  }
+ ]
+}
