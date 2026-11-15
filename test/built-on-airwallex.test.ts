@@ -83,7 +83,7 @@ describe("the Built on Airwallex badge", () => {
   it("leaves the others on the \"Works with\" line: Airwallex is the platform", () => {
     // /try's start (cloud/src/try/run.ts): "Works with", then Alta's and Claude's logos, Visa in text; no Airwallex logo.
     expect(COPY.START.worksWith).toBe("Works with");
-    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta", "Claude"]);
+    expect(START_LOGOS.map((l) => l.alt)).toEqual(["Alta (formerly Metal)", "Claude"]);
     expect(t("en", "cs.trust_works").startsWith("Works with Alta")).toBe(true);
     expect(t("nl", "cs.trust_works").startsWith("Werkt met Alta")).toBe(true);
   });

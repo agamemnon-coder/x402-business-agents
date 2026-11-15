@@ -12,7 +12,7 @@ import { createHash } from "node:crypto";
 import type { Server } from "node:http";
 import express from "express";
 import { T0_READBACK_PATH } from "../accounting/t0Readback.js";
-import { T0_READBACK_TEXT, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE, sendInspector,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
+import { T0_READBACK_TEXT, AIRWALLEX_CSP, AIRWALLEX_PAGE, CLAUDE_CSP, CLAUDE_PAGE, HOME_CSP, HOME_PAGE, NOT_FOUND_CSP, NOT_FOUND_PAGE, PROOF_CSP, PROOF_PAGE, VERIFY_BUNDLE_CSP, VERIFY_BUNDLE_PAGE, PROOF_SAMPLE_TEXT, REDIRECTS, TRACE_CSP, TRACE_PAGE, RUNS_CSP, RUNS_PAGE, AGENT_PAGES, AGENT_CSPS, WATCH_CSP, WATCH_PAGE, FILM_WATCH_CSP, FILM_WATCH_PAGE, CSP, DEMO_CSP, FILM_CSP, FONT, LAB_CSP, LIVE_CSP, LOGOS, FILM_STILLS, DOWNLOADS, METAL_CSP, METAL_PAGE, METAL_REPORT, METAL_REPORT_CSP, MONTH_CSP, VISA_CSP, VISA_PAGE, PAGE, TRY_CSP, TRY_PAGE_OFFLINE, demoPage, filmPage, labPage, livePage, monthPage, T0_CSP, T0_PAGE, BOOKS_CSP, BOOKS_PAGE, sendInspector,  SECURITY_CSP, SECURITY_PAGE, DOCS_CSP, DOCS_PAGE, MOVED, STATUS_OFFLINE_CSP, STATUS_PAGE_OFFLINE } from "../servers/dashboard.js";
 import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
@@ -41,6 +41,7 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/replay", page(WATCH_CSP, () => WATCH_PAGE));
   app.get("/proof", page(PROOF_CSP, () => PROOF_PAGE));
   app.get("/verify", page(VERIFY_BUNDLE_CSP, () => VERIFY_BUNDLE_PAGE));
+  for (const [file, text] of Object.entries(PROOF_SAMPLE_TEXT)) app.get(`/verify/samples/${file}`, (_req, res) => { res.type("json").setHeader("Content-Disposition", `attachment; filename="${file}"`); res.send(text); });
   app.get("/trace", page(TRACE_CSP, () => TRACE_PAGE));
   app.get("/runs", page(RUNS_CSP, () => RUNS_PAGE));
   for (const id of Object.keys(AGENT_PAGES)) app.get(`/agents/${id}`, page(AGENT_CSPS[id]!, () => AGENT_PAGES[id]!));

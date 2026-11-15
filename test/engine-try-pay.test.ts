@@ -86,7 +86,7 @@ describe("one visitor: approve (held), change and be refused by both layers, the
     expect(await terms(v.s, v.proposal.id)).toMatchObject({ status: "APPROVED", approved: true });
   });
 
-  for (const [key, value] of [["amount", "1850.01"], ["beneficiary_name", "Bergtex Textil GmbH Ltd"], ["iban_last4", "9999"]] as const) {
+  for (const [key, value] of [["amount", "1850.01"], ["currency", "USD"], ["beneficiary_name", "Bergtex Textil GmbH Ltd"], ["iban_last4", "9999"], ["bic", "DEUTDEFFXXX"], ["invoice_no", "BTX-2026-99"]] as const) {
     it(`refuses ${key} changed, with the approval's own signature, by both layers, and moves nothing`, async () => {
       const sent = { ...signedTerms, [key]: value };
       const r = await pay(v.s, v.proposal.id, sent, approval);
@@ -122,14 +122,14 @@ describe("one visitor: approve (held), change and be refused by both layers, the
   });
 
   it("refuses another key changed, or a shape that does not fit, with a 400", async () => {
-    for (const sent of [{ ...signedTerms, bic: "DEUTDEFFXXX" }, { ...signedTerms, extra: "x" }, { ...signedTerms, amount: "1850.1" }, { ...signedTerms, iban_last4: "12" }, { ...signedTerms, beneficiary_name: "x".repeat(141) }]) {
+    for (const sent of [{ ...signedTerms, reason: "x" }, { ...signedTerms, bic: "deut" }, { ...signedTerms, currency: "eur" }, { ...signedTerms, invoice_no: "" }, { ...signedTerms, extra: "x" }, { ...signedTerms, amount: "1850.1" }, { ...signedTerms, iban_last4: "12" }, { ...signedTerms, beneficiary_name: "x".repeat(141) }]) {
       const r = await pay(v.s, v.proposal.id, sent, approval);
       expect(r.status, JSON.stringify(sent).slice(0, 80)).toBe(400);
       expect(r.json.code).toBe("bad_terms");
     }
     const { amount: _drop, ...without } = signedTerms;
     expect((await pay(v.s, v.proposal.id, without, approval)).status).toBe(400);
-    expect((await pay(v.s, v.proposal.id, { ...signedTerms, bic: "DEUTDEFFXXX" }, approval)).json.message).toBe("only the amount, the payee and the account ending can be changed here");
+    expect((await pay(v.s, v.proposal.id, { ...signedTerms, reason: "x" }, approval)).json.message).toBe("only the amount, the currency, the payee, the account ending, the BIC and the invoice number can be changed here");
   });
 
   it("pays the signed terms through the same route: paid on the simulated bank, booked, one transfer more", async () => {
