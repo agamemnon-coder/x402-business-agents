@@ -29,7 +29,7 @@ import { PROOF_URL, RUNS_URL } from "../../cloud/src/tryPage.js";
 import { SAMPLES as GEN_SAMPLES } from "../../cloud/src/engine/samples.gen.js";
 import { batchesFor } from "../../src/cloudsync/client.js";
 import { recordsPdf } from "../../src/engine/recordsPdf.js";
-import { TRAILER_URL } from "../../src/config/brand.js";
+import { FILM_URL, TRAILER_URL } from "../../src/config/brand.js";
 import type { DB } from "../../src/db/open.js";
 import { EngineHost } from "../../src/engine/host.js";
 import { termsHash, type Terms } from "../../src/lib/terms.js";
@@ -596,8 +596,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   const pp = JSON.parse((await paidReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string } } | null };
   const outcomeShown = () => page.evaluate(() => document.querySelectorAll(".stamp, .layer, .hash, .verdict, .proof, .outcome .card, .paidstamp").length);
   await page.waitForTimeout(300);
-  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1 && (await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.pay && await page.locator(`text=${APPROVE.approved}`).count() === 1,
-    `${tag}: one tap: "${PAY.paying}" with the ring, the rail on Pay, the approval's "${APPROVE.approved}" still shown`);
+  // 15 Nov (owner: "the Pay step either shows a real moment or goes"): it went; the rail stays on Approve while paying.
+  ok(await page.locator(`.btn.primary.asking:text-is("${PAY.paying}")`).count() === 1 && (await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.approve && await page.locator(`text=${APPROVE.approved}`).count() === 1
+    && !("pay" in STEPS.names) && !STEPS.order.includes("pay"),
+    `${tag}: one tap: "${PAY.paying}" with the ring, the rail on Approve (no Pay step), the approval's "${APPROVE.approved}" still shown`);
   ok(await outcomeShown() === 0 && stand.payAnswers === answered && (await ledgerOf(visitor.session, pid))!.transfers() === transfers0, `${tag}: 800 ms: nothing of the outcome is on the page while the answer is held, no transfer`);
   ok(Object.keys(pp).join() === "terms,credential" && JSON.stringify(pp.terms) === JSON.stringify(L0.terms) && pp.credential?.response.signature === ab.credential?.response?.signature, `${tag}: pay as signed: the signed terms unchanged and the approval's own signature`);
   await screenChecks(page, `${tag} screen 3 (paying)`, width, 1, false);
@@ -671,6 +673,10 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
   await screenChecks(page, `${tag} screen 4`, width);
   ok(await page.inputValue("#p-payee") === L0.terms.beneficiary_name && await page.inputValue("#p-acct") === L0.terms.iban_last4, `${tag}: the fields hold the signed payee and account ending`);
+  // 15 Nov ("Try to change it"): every signed field a person reads, each holding its signed value, and three attacks.
+  ok(await page.inputValue("#p-cur") === L0.terms.currency && await page.inputValue("#p-bic") === L0.terms.bic && await page.inputValue("#p-no") === L0.terms.invoice_no,
+    `${tag}: the currency, the BIC and the invoice number hold their signed values too`);
+  ok((await page.locator(".attacks .btn.atk").allTextContents()).join("|") === [PAY.twice, PAY.bank, PAY.inject].join("|"), `${tag}: three attacks to try`);
   ok(await page.getAttribute("#p-amt", "inputmode") === "decimal", `${tag}: the amount field asks for a decimal keyboard`);
   const transfersPaid = (await ledgerOf(visitor.session, pid))!.transfers();
   await page.fill("#p-amt", "1850,01");
@@ -693,15 +699,24 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   stand.payDelay = 0;
   ok(Date.now() - t0 >= 800, `${tag}: 800 ms: the outcome came after the answer`);
   // 14 Nov (owner): the reason first, signed beside asked with the changed value marked, one plain line; the rest in the fold.
-  ok((await page.locator(".why .head").textContent()) === TAMPER.head && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
+  ok((await page.locator(".why .head").textContent()) === `${TAMPER.refused}: ${TAMPER.head}` && await page.locator(".why .head").isVisible(), `${tag}: refused: the reason, big and first`);
+  // 15 Nov (owner: "it glows red"): one red word only; the reason in the text colour.
+  const tones = await page.evaluate(() => { const h = document.querySelector(".why .head")!, no = h.querySelector(".no")!; return [getComputedStyle(h).color, getComputedStyle(no).color, getComputedStyle(document.body).color]; });
+  ok(tones[0] === tones[2] && tones[1] !== tones[0], `${tag}: refused: "${TAMPER.refused}" is the one red word, the reason in the text colour (${tones.join(" / ")})`);
   // 14 Nov (live QA): on a phone the refusal is brought into view, not left under the fold.
   await page.waitForTimeout(900);
   const headBox = await page.locator(".why .head").boundingBox();
   ok(!!headBox && headBox.y >= 0 && headBox.y + headBox.height <= (page.viewportSize()?.height ?? 0), `${tag}: refused: the reason is in view (top ${Math.round(headBox?.y ?? -1)} px)`);
-  const cmp = await page.locator(".why .cmp div").allTextContents();
-  ok(cmp.length === 2 && cmp[0] === `${TAMPER.signed} · AmountEUR 1,850.00` && cmp[1] === `${TAMPER.asked} · AmountEUR 1,850.01`
-    && await page.locator(".why .cmp mark").count() === 1 && (await page.locator(".why .cmp mark").textContent()) === "EUR 1,850.01", `${tag}: refused: signed beside asked, the asked amount marked (${cmp.join(" | ")})`);
-  ok(/^(Face ID|Touch ID|Fingerprint|Windows Hello|Your passkey) signs the exact terms\. Change one cent and the signature no longer matches, so nothing is paid\.$/.test((await page.locator(".why .rule").textContent()) ?? ""), `${tag}: refused: the plain line`);
+  // The calm diff: one row per changed field, the signed value struck through, the asked one marked.
+  const diff = await page.locator(".why ul.diff li").evaluateAll((ls) => ls.map((l) => [l.querySelector(".dk")?.textContent, l.querySelector("s.old")?.textContent, l.querySelector("mark.new")?.textContent].join("|")));
+  ok(diff.length === 1 && diff[0] === "Amount|EUR 1,850.00|EUR 1,850.01", `${tag}: refused: the diff, signed struck through, asked marked (${diff.join(" ; ")})`);
+  ok((await page.locator(".why .rule").textContent()) === TAMPER.rule, `${tag}: refused: the rule that held`);
+  // The signature line says what is so for this payment: the Airwallex sandbox transfer's metadata only when this payment made one.
+  const awxMade = ((await keptState(page)).awx as { source?: string } | null)?.source === "airwallex-sandbox";
+  const sigl = (await page.locator(".why .sigl").textContent()) ?? "";
+  ok(new RegExp(`^Signed with your passkey( \\((Face ID|Touch ID|fingerprint|Windows Hello)\\))?, not a PIN or a click\\. ${awxMade ? "The hash of the exact terms travels in the Airwallex sandbox transfer's metadata\\." : "Purser checks the hash of the exact terms before the simulated bank moves anything\\."}$`).test(sigl) && !/read back/i.test(sigl),
+    `${tag}: refused: the signature line says what is so for this payment (${awxMade ? "a sandbox transfer" : "the simulated bank"}: ${sigl})`);
+  ok(await page.locator(".why .acts.end .btn.primary.see").textContent() === PAY.seeResult && await page.locator(".why .acts.end .btn.again").textContent() === PAY.another, `${tag}: refused: "${PAY.seeResult}" and "${PAY.another}"`);
   ok(!(await page.locator(".stamp").isVisible()) && (await page.locator(".why > details > summary").first().textContent()) === TAMPER.proof, `${tag}: refused: the stamp and the proof folded under "${TAMPER.proof}"`);
   ok((await page.textContent(".stamp")) === PAY.stamp, `${tag}: refused: the stamp`);
   const layers = await page.locator(".layer").allTextContents();
@@ -721,12 +736,23 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   ok(!(await page.isVisible(`text=${PAY.line}`)), `${tag}: refused: the line gives way to the answer`);
   await screenChecks(page, `${tag} screen 4 (refused)`, width, 1, false);
   await shot2("4-refused");
-  ok(await page.locator(".refusal.shake").count() === 1 && await page.locator(".proof.xfer").count() === 1, `${tag}: refused: the card shakes once and says the transfers in big type`);
-  ok(await page.locator(".f.changed #p-amt").count() === 1 && await page.locator(".f.changed").count() === 1, `${tag}: the edited field, and only it, glows while it differs from the signed value`);
+  ok(await page.locator(".refusal.shake").count() === 0 && await page.locator(".proof.xfer").count() === 1, `${tag}: refused: the card does not shake and says the transfers in big type`);
+  const calm = await page.evaluate(() => [getComputedStyle(document.querySelector("#p-amt")!).animationName, getComputedStyle(document.querySelector(".refusal")!).animationName]);
+  ok(await page.locator(".f.changed #p-amt").count() === 1 && await page.locator(".f.changed").count() === 1 && await page.locator(".f.changed .chg").isVisible() && calm[0] === "none",
+    `${tag}: the edited field, and only it, says "${PAY.changed}" while it differs from the signed value; nothing glows (${calm.join(", ")})`);
   await design("4-refused", { full: true });
   if (shots && width === 390) { await page.emulateMedia({ colorScheme: "dark" }); await page.waitForTimeout(400); await page.screenshot({ path: join(shots, "try-4-refused-390-dark.png") }); await page.emulateMedia({ colorScheme: "light" }); }
-  await page.click(`button.link:has-text("${PAY.putBack}")`);
-  ok(await page.inputValue("#p-amt") === "1850.00", `${tag}: put back what you signed`);
+  await page.click(`.why .btn.again:has-text("${PAY.another}")`);
+  ok(await page.inputValue("#p-amt") === "1850.00" && await page.locator(".why").count() === 0 && await page.isVisible(`text=${PAY.line}`), `${tag}: "${PAY.another}": the signed terms back, the answer gone`);
+  // An attack: changed bank details. The account ending is changed and sent with the kept signature: refused.
+  const bankReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
+  await page.click(`.attacks .btn.atk:has-text("${PAY.bank}")`);
+  const bk = JSON.parse((await bankReq).postData() ?? "{}") as { terms: Record<string, unknown> };
+  await page.waitForSelector(".why ul.diff li");
+  const bdiff = await page.locator(".why ul.diff li .dk").allTextContents();
+  ok(bk.terms.iban_last4 !== L0.terms.iban_last4 && JSON.stringify({ ...bk.terms, iban_last4: L0.terms.iban_last4 }) === JSON.stringify(L0.terms) && bdiff.join() === "Account ending"
+    && (await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid, `${tag}: "${PAY.bank}": only the account ending changed, refused, no transfer`);
+  await page.click(`.why .btn.again:has-text("${PAY.another}")`);
   if (width === 390) {
     // A reload that lost the kept signature: the passkey is asked again for the same terms before anything is sent.
     await page.evaluate(() => { const o = JSON.parse(sessionStorage.getItem("purser.try") ?? "{}") as Record<string, unknown>; o.cred = null; sessionStorage.setItem("purser.try", JSON.stringify(o)); });
@@ -735,12 +761,14 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.00");
     ok((await keptState(page)).cred === null, `${tag}: after the reload no signature is kept`);
   }
-  // The signed terms sent again: paid once, in the route's words; no second transfer.
+  // An attack: pay it twice. The signed terms sent again: paid once, the rule that held, no second transfer.
   const againReq = page.waitForRequest((r) => r.url().endsWith(`/proposals/${pid}/pay`));
-  await page.click(`.btn.primary:has-text("${PAY.button}")`);
+  await page.click(`.attacks .btn.atk:has-text("${PAY.twice}")`);
   const pa = JSON.parse((await againReq).postData() ?? "{}") as { terms: Record<string, unknown>; credential: { response: { signature: string; clientDataJSON: string } } | null };
-  await page.waitForSelector(`text=${PAY.paidOnce}`);
-  ok(JSON.stringify(pa.terms) === JSON.stringify(L0.terms) && (await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid, `${tag}: the signed terms again: "${PAY.paidOnce}", no second transfer`);
+  await page.waitForSelector(`text=${PAY.twiceHead}`);
+  ok(JSON.stringify(pa.terms) === JSON.stringify(L0.terms) && (await ledgerOf(visitor.session, pid))!.transfers() === transfersPaid && await page.isVisible(`text=${PAY.twiceRule}`)
+    && (await page.textContent(".why.once .proof.xfer")) === PAY.transfers.replace("{n}", "0") && await page.locator(".why.once .btn.primary.see").count() === 1,
+    `${tag}: "${PAY.twice}": "${PAY.twiceHead}", the rule, Transfers made: 0, and "${PAY.seeResult}"; no second transfer`);
   if (width === 390) {
     const cd = JSON.parse(Buffer.from(pa.credential!.response.clientDataJSON, "base64url").toString()) as { challenge: string };
     ok(pa.credential!.response.signature !== cred1?.response.signature && cd.challenge === (st.proposal as { challenge: string }).challenge, `${tag}: after the reload the passkey signed again, over the same challenge`);
@@ -846,8 +874,14 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // 14 Nov (owner): the finish: the result from the run's own record, one way on, three quiet links, no form.
   const done6 = (await page.locator("p.done").textContent()) ?? "";
   ok(/^Done: EUR 1,850\.00 read, checked, signed and paid in (\d+ s|\d+ min( \d+ s)?)\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
-  const outs = await page.locator(".more a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
-  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/" && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
+  // 15 Nov (owner: "I'm stuck at the end"): one primary way on, the live sandbox runs; the 5-min film, Purser Cloud and
+  // the code as secondary buttons; the proof band.
+  const outs = await page.locator(".acts.more a.btn").evaluateAll((as) => as.map((a) => [(a as HTMLAnchorElement).href, a.textContent]));
+  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && (await page.locator("a.btn.primary.proofl").textContent()) === COMPANY.rails
+    && JSON.stringify(outs) === JSON.stringify([[FILM_URL, COMPANY.film], ["https://purser-try.max-31b.workers.dev/", COMPANY.cloud], ["https://github.com/agamemnon-coder/x402-business-agents", COMPANY.star]])
+    && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one primary way on to the live sandbox runs, three secondary buttons, no form`);
+  const band6 = await page.locator(".screen.company .proofband li a").evaluateAll((as) => as.map((a) => [a.querySelector(".pv")?.textContent, (a as HTMLAnchorElement).href.startsWith("https://github.com/agamemnon-coder/x402-business-agents/blob/main/")]));
+  ok(band6.length === 5 && band6.every(([v, linked]) => /^[\d,]+$/.test(String(v)) && linked), `${tag}: the finish's proof band: five measured figures, each linked to its record (${band6.map((b) => b[0]).join(", ")})`);
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);

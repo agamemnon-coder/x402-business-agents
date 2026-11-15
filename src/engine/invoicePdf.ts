@@ -15,7 +15,7 @@ import type { InvoiceFields } from "../config/trySample.js";
 const INK = "#0b1220", MUTED = "#586174", LINE = "#e3e6ec", ACCENT = "#4f46e5", BAND = "#f1f3f7";
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 export const longDate = (iso: string) => { const [y, m, d] = iso.split("-").map(Number) as [number, number, number]; return `${d} ${MONTHS[m - 1]} ${y}`; };
-export const eur = (cents: number) => `EUR ${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
+export const eur = (cents: number, currency = "EUR") => `${currency} ${Math.floor(cents / 100).toLocaleString("en-US")}.${String(cents % 100).padStart(2, "0")}`;
 const groups = (iban: string) => iban.replace(/(.{4})/g, "$1 ").trim();
 
 /** What each seeded supplier sells: the one line of its invoice (test data). */
@@ -33,7 +33,7 @@ export interface InvoiceDoc { fields: InvoiceFields; supplierKey: string; billTo
 
 /** The invoice as a PDF, laid out like an enterprise invoice; deterministic (its dates come from the invoice). */
 export function invoicePdf(d: InvoiceDoc): Promise<Buffer> {
-  const f = d.fields, { net, vat } = vatSplit(f.amountCents);
+  const f = d.fields, { net, vat } = vatSplit(f.amountCents), cur = f.currency ?? "EUR";
   const at = new Date(`${f.issueDate}T00:00:00Z`);
   const doc = new PDFDocument({ size: "A4", margin: 50, info: { Title: "Test invoice (fake)", Author: f.supplier.name, Creator: "Purser demo", Producer: "Purser demo", CreationDate: at, ModDate: at } });
   const chunks: Buffer[] = [];
@@ -68,19 +68,19 @@ export function invoicePdf(d: InvoiceDoc): Promise<Buffer> {
   doc.font("Helvetica").fontSize(10).fillColor(INK);
   doc.text(LINE_ITEMS[d.supplierKey] ?? "Goods and services as agreed", L + 10, y, { width: 260, lineBreak: false });
   doc.text("1", L + 280, y, { width: 40, align: "right", lineBreak: false });
-  doc.text(eur(net), L + 330, y, { width: 75, align: "right", lineBreak: false });
-  doc.text(eur(net), L + 410, y, { width: W - 420, align: "right", lineBreak: false });
+  doc.text(eur(net, cur), L + 330, y, { width: 75, align: "right", lineBreak: false });
+  doc.text(eur(net, cur), L + 410, y, { width: W - 420, align: "right", lineBreak: false });
   y += 22;
   doc.moveTo(L, y).lineTo(R, y).strokeColor(LINE).lineWidth(1).stroke();
 
   // The totals, right: each one run of text, so the reading sees "Subtotal EUR …" on one line.
   y += 12;
   const total = (t: string, bold = false) => { doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(bold ? 12 : 10).fillColor(INK).text(t, 300, y, { width: R - 300, align: "right" }); y = doc.y + 5; };
-  total(`Subtotal ${eur(net)}`);
-  total(`VAT 19% ${eur(vat)}`);
+  total(`Subtotal ${eur(net, cur)}`);
+  total(`VAT 19% ${eur(vat, cur)}`);
   doc.moveTo(330, y).lineTo(R, y).strokeColor(INK).lineWidth(0.8).stroke();
   y += 6;
-  total(`Total due ${eur(f.amountCents)}`, true);
+  total(`Total due ${eur(f.amountCents, cur)}`, true);
 
   // Payment details.
   y += 18;
@@ -90,6 +90,13 @@ export function invoicePdf(d: InvoiceDoc): Promise<Buffer> {
   doc.text(`IBAN: ${groups(f.iban)}`, L + 12, y + 24);
   doc.text(`BIC: ${f.supplier.bic}`, L + 12, doc.y + 2);
   doc.text(`Payment reference: ${f.invoiceNo}`, L + 12, doc.y + 2);
+
+  // The visitor's note, printed as typed under the payment details: text on the invoice, read like the rest of it.
+  if (f.note) {
+    y += 86;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(MUTED).text("NOTE", L, y, { characterSpacing: 0.8 });
+    doc.font("Helvetica").fontSize(10).fillColor(INK).text(`Note: ${f.note}`, L, y + 12, { width: W });
+  }
 
   // The footer: what this document is.
   doc.font("Helvetica").fontSize(8).fillColor(MUTED).text("Demo · test money. A test invoice made by Purser's hands-on demo; no real supplier, no real money.", L, 780, { width: W, align: "center", lineBreak: false });

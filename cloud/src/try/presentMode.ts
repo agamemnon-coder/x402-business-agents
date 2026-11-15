@@ -50,15 +50,17 @@ body.present { font-size: 18px; }
   body.present .screen.books { display: grid; grid-template-columns: 1fr 1fr; column-gap: 22px; align-items: start; }
   /* The stamp, then the slot of the Airwallex sandbox transfer (empty unless awx_payout made one), then paid, booked,
      filed and the way on: placed by what they are, so the slot never moves the others (14 Nov). */
-  body.present .screen.books > .paidstamp { grid-column: 1 / -1; grid-row: 1; }
-  body.present .screen.books > :nth-child(3) { grid-column: 1; grid-row: 2; }
-  body.present .screen.books > :nth-child(4) { grid-column: 2; grid-row: 2 / 6; }
-  body.present .screen.books > :nth-child(5) { grid-column: 1; grid-row: 3; }
-  body.present .screen.books > .slot.payout { grid-column: 1; grid-row: 4; }
-  body.present .screen.books > :nth-child(6) { grid-column: 1; grid-row: 5; }
+  /* Each block placed by what it is (15 Nov: the visual strip, prepended, had moved every child one place on): the stamp
+     and the strip on top, the ledger's lines in the right column, the rest down the left. */
+  body.present .screen.books > * { grid-column: 1; }
+  body.present .screen.books > .paidstamp { grid-row: 1; }
+  body.present .screen.books > .vflow { grid-column: 2; grid-row: 1; align-self: center; margin: 0; }
+  body.present .screen.books > .slot:has(.booked) { grid-column: 2; grid-row: 2 / span 5; }
   /* The transfer card, compact for 1080p: its heading, the transfer id and the status; the rest stays in normal mode. */
   body.present .slot.payout .awx { padding: 10px 14px; margin: 0; }
   body.present .slot.payout .awx dl > :nth-child(n+5), body.present .slot.payout .awx > p { display: none; }
+  /* "Try to change it" (15 Nov), recorded: the amount and the payee only; the attacks are for visitors. */
+  body.present .screen.pay .tryform > .two, body.present .screen.pay .attacks { display: none; }
 }
 /* A card over the page: the page behind it does not scroll. */
 html:has(.pv-card.on) { overflow: hidden; }

@@ -13,6 +13,7 @@ import { apAgentsOn } from "../config/agents.js";
 import { VENDOR_GL } from "../config/gl.js";
 import type { DB } from "../db/open.js";
 import { skeleton } from "../policy/fraudCore.js";
+import { findInjections } from "../policy/injection.js";
 import { checkpoint } from "../policy/saga.js";
 import { accrualEntries, bookable, pushOnce, type BookkeepingSink } from "./books.js";
 import { enforceAgain, recordChecked, runChecker, statusAfter, type CheckerOutcome } from "./checkerAgent.js";
@@ -202,6 +203,11 @@ export async function ingestDocument(db: DB, deps: InboxDeps, doc: IncomingDocum
   // A scan has no text layer: its checks run on the model's transcription of the pages (red team 6: credit-note words,
   // a bracketed total or a bank-change line on a scan were never seen by any check).
   const checkText = scan ? scan.transcription : text;
+  // Documents are data (src/policy/injection.ts): a line aimed at a machine (an order to the AI, a claim that approval is
+  // not needed, hidden characters) is logged and shown, and changes nothing; code checks every reading and only a
+  // person's passkey approves. The excerpt is hostile text: kept in the audit row as text, never followed.
+  const planted = checkText ? findInjections(checkText) : [];
+  if (planted.length) audit(db, "system", "document.injection_flagged", sha, { document_sha256: sha, filename: doc.filename, findings: planted.slice(0, 5).map((x) => ({ kind: x.kind, excerpt: x.excerpt })) }, now);
   const ctx: CheckContext = { docSha: sha, now, ...(noText ? { noText } : {}) };
   // The model's label or the keyword rules: either one saying credit note or reminder is enough (red team round 2: a
   // model that calls a "Gutschrift" or a reminder an invoice does not make it payable).
