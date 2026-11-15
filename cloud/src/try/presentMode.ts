@@ -60,7 +60,7 @@ body.present { font-size: 18px; }
   body.present .slot.payout .awx { padding: 10px 14px; margin: 0; }
   body.present .slot.payout .awx dl > :nth-child(n+5), body.present .slot.payout .awx > p { display: none; }
   /* "Try to change it" (15 Nov), recorded: the amount and the payee only; the attacks are for visitors. */
-  body.present .screen.pay .tryform > .two, body.present .screen.pay .attacks { display: none; }
+  body.present .screen.pay .tryform > .two, body.present .screen.pay .attacks, body.present .screen.pay > p:has(> .link) { display: none; }
 }
 /* A card over the page: the page behind it does not scroll. */
 html:has(.pv-card.on) { overflow: hidden; }
