@@ -73,6 +73,24 @@ describe("the route and its caps", () => {
     expect(spent!.micros).toBeGreaterThan(0);
     expect(spent!.micros).toBeLessThan(50_000);
   });
+  it("?stream=1: a line a turn as Claude answers it, then the whole negotiation; recorded sends no live start", async () => {
+    script = LIVE; asked.length = 0;
+    const r = await c.req("POST", "/v1/try/negotiate?stream=1", { key: await visitor() });
+    expect(r.res.headers.get("content-type")).toMatch(/application\/x-ndjson/);
+    const text = await r.res.clone().text().catch(() => "");
+    const ev = (text || JSON.stringify(r.json)).trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; turn?: { n: number }; best?: { amount: string } | null; negotiation?: { mode: string; outcome: string } });
+    expect(ev.map((e) => e.type)).toEqual(["start", "turn", "turn", "turn", "turn", "done"]);
+    expect(ev.filter((e) => e.type === "turn").map((e) => e.turn!.n)).toEqual([1, 2, 3, 4]);
+    expect(ev[2]!.best).toEqual({ amount: "1822.25", pay_by: d(7), turn: 2 });
+    expect(ev[5]!.negotiation).toMatchObject({ mode: "live", outcome: "agreed" });
+    expect((await admin("claude", "off")).status).toBe(200);
+    const rec = await c.req("POST", "/v1/try/negotiate?stream=1", { key: await visitor() });
+    const recText = await rec.res.clone().text().catch(() => "");
+    const recEv = (recText || "").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; negotiation?: { mode: string } });
+    expect(recEv.map((e) => e.type)).toEqual(["done"]);
+    expect(recEv[0]!.negotiation!.mode).toBe("recorded");
+    expect((await admin("claude", "on")).status).toBe(200);
+  });
   it("the kill switch: Claude off, the recorded negotiation, labelled, and no model call", async () => {
     expect((await admin("claude", "off")).status).toBe(200);
     asked.length = 0;
