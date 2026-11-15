@@ -108,7 +108,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(240); // 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(250); // 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with the idea, its proof line, the hands-on demo as the one primary button, the film second, one reassurance line", () => {

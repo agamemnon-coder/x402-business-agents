@@ -153,6 +153,15 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 
 </details>
 
+### Invariants: what holds even if the AI is wrong
+
+| Invariant | How the code holds it |
+|---|---|
+| **Intent integrity** | The passkey signs the SHA-256 of the canonical terms (keys sorted, money as decimal strings); one changed cent fails the check before any rail is called ([src/policy/approvals.ts](src/policy/approvals.ts)). |
+| **No keys for agents** | Claude agents and the MCP server read and propose; they hold no payment credentials and cannot approve. |
+| **No double payment** | A payout's request_id is fixed before payment; a lost answer is resolved by looking that id up, never by a blind resend ([src/executors/invoicePayment.ts](src/executors/invoicePayment.ts)). |
+| **Tamper-evident log** | Every decision is hash-chained, and the chain's head is anchored on Alta testnet (`npm run verify-anchor`). |
+
 ## Built with
 
 | Partner | What Purser uses | Live or simulated | Proof |
