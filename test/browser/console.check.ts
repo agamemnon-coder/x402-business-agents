@@ -447,6 +447,8 @@ async function engineGuestArchive(origin: string) {
   await p.click("#guest");
   // Judge panel, 15 Nov: a guest lands on what waits for approval (Invoices, Waits for Face ID).
   await p.waitForURL(/#\/invoices\?f=waiting_cfo$/, { timeout: 20_000 });
+  // Drawn before moving on, as the overview was (its .dash): a late list would land on the next page.
+  await p.waitForSelector("main >> text=Waits for Face ID", { timeout: 20_000 });
   await p.goto(`${origin}/#/archive`);
   await p.waitForSelector("text=kept by Purser's engine", { timeout: 10_000 }).catch(() => {});
   const text = (await p.textContent("main")) ?? "";
