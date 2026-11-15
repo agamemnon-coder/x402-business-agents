@@ -61,9 +61,12 @@ describe("the first screen (section D, 6 Nov)", () => {
     const kit = lines.indexOf("## Kit 11, step by step");
     // 15 Nov (Max: "the tags on top of the readme"): the two badge rows sit under the links, inside the centred top.
     const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: sandbox]"));
-    expect(lines.slice(5, kit)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    // 15 Nov (Max): "At a glance" under the badges, six lines, each with its record (test/readme-glance.test.ts), then Kit 11.
+    const glance = lines.indexOf("## At a glance");
+    expect(lines.slice(5, glance)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(25);
+    expect(kit).toBeLessThan(35);
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
