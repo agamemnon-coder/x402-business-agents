@@ -1,6 +1,6 @@
 # Purser, under the hood (3:28)
 
-Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is read from its record at build time. Test money only. This build has no voice (captions only); the narrator for the voiced build: Ian (ElevenLabs voice library): professional, warm, calm (an AI voice).
+Built by `npm run film-uth` from `src/film/uth.ts`; every figure on screen is read from its record at build time. Test money only. This build has no voice (captions only); the narrator for the voiced build: Ian (ElevenLabs voice library): professional, warm, calm (an AI voice). Music: an AI-generated instrumental (ElevenLabs), out/video/v10/music-292.mp3.
 
 | At | Scene | Narration (and the captions) | On screen |
 |---|---|---|---|

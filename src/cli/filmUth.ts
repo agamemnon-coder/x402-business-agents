@@ -1,4 +1,4 @@
-// npm run film-uth [-- --no-voice] [--music] [--still]: builds "Purser, under the hood" from src/film/uth.ts.
+// npm run film-uth [-- --no-voice] [--music [--bed <file>]] [--still]: builds "Purser, under the hood" from src/film/uth.ts.
 //   1. each card rendered at 1920x1080 (Playwright) from its HTML, every figure read from its record;
 //   2. the narration, one line per scene, from ElevenLabs (the v10 narrator, src/film/narrator10.ts; the key comes from
 //      the session's proxy or ELEVENLABS_API_KEY, never this repository); --no-voice: a silent draft;
@@ -133,7 +133,9 @@ async function main(): Promise<void> {
   for (const p of placed) if (p.vo) { inputs.push("-i", p.vo); const k = inputs.filter((x) => x === "-i").length - 1; filters.push(`[${k}:a]adelay=${Math.round((p.at + LEAD) * 1000)}|${Math.round((p.at + LEAD) * 1000)}[v${k}]`); mixes.push(`[v${k}]`); }
   const total = at;
   if (argv.includes("--music")) {
-    const bed = resolve(out, "music.mp3");
+    // The bed: --bed <file> (an instrumental already made, e.g. the v10 film's ElevenLabs music), else out/video/uth/music.mp3,
+    // made by ElevenLabs music when it is not there yet.
+    const bed = argv.includes("--bed") ? resolve(root, argv[argv.indexOf("--bed") + 1]!) : resolve(out, "music.mp3");
     if (!existsSync(bed)) post("/v1/music?output_format=mp3_44100_128", { prompt: "Calm, minimal, precise ambient instrumental for a technical fintech explainer: soft sustained synth pads, a slow clean pulse, subtle glassy textures, no drums, no vocals, steady and trustworthy; it sits quietly under a narrator.", music_length_ms: Math.min(300_000, Math.ceil(total + 4) * 1000), model_id: "music_v1", force_instrumental: true }, bed);
     inputs.push("-i", bed); const k = inputs.filter((x) => x === "-i").length - 1;
     filters.push(`[${k}:a]volume=0.10,afade=t=in:st=0:d=2,afade=t=out:st=${(total - 3).toFixed(2)}:d=3,atrim=0:${total.toFixed(2)}[bed]`); mixes.push("[bed]");
@@ -142,13 +144,13 @@ async function main(): Promise<void> {
   const subs = `subtitles=${resolve(docs, "captions.srt")}:fontsdir=${resolve(root, "src/ui")}:force_style='${style}'`;
   const film = resolve(out, "under-the-hood.mp4");
   if (mixes.length) {
-    filters.push(`${mixes.join("")}amix=inputs=${mixes.length}:normalize=0:duration=longest,atrim=0:${total.toFixed(2)},loudnorm=I=-16:TP=-1.5:LRA=11[a]`);
+    filters.push(`${mixes.join("")}amix=inputs=${mixes.length}:normalize=0:duration=longest,atrim=0:${total.toFixed(2)},loudnorm=I=${silent ? -26 : -16}:TP=-1.5:LRA=11[a]`); // without a voice the bed alone stays quiet
     ff([...inputs, "-filter_complex", `[0:v]${subs}[v];${filters.join(";")}`, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", film]);
   } else {
     ff(["-i", picture, "-vf", subs, "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p", "-movflags", "+faststart", film]);
   }
   // The script, with its sources.
-  const md = [`# Purser, under the hood (${clock(total)})`, "", `Built by \`npm run film-uth\` from \`src/film/uth.ts\`; every figure on screen is read from its record at build time. Test money only. ${silent ? `This build has no voice (captions only); the narrator for the voiced build: ${VOICE_10.name} (an AI voice).` : `Narrator: ${VOICE_10.name} (an AI voice).`}`, "", "| At | Scene | Narration (and the captions) | On screen |", "|---|---|---|---|", ...rows, "", "## Sources", "",
+  const md = [`# Purser, under the hood (${clock(total)})`, "", `Built by \`npm run film-uth\` from \`src/film/uth.ts\`; every figure on screen is read from its record at build time. Test money only. ${silent ? `This build has no voice (captions only); the narrator for the voiced build: ${VOICE_10.name} (an AI voice).` : `Narrator: ${VOICE_10.name} (an AI voice).`}${argv.includes("--music") ? ` Music: an AI-generated instrumental (ElevenLabs)${argv.includes("--bed") ? `, ${argv[argv.indexOf("--bed") + 1]}` : ""}.` : ""}`, "", "| At | Scene | Narration (and the captions) | On screen |", "|---|---|---|---|", ...rows, "", "## Sources", "",
     `- The live /try walk, ${f.rec.recorded_at}: \`docs/film/under-the-hood/record.json\` (npm run record-uth): the terms' SHA-256 \`${f.rec.terms.terms_sha256}\`, the passkey's assertion (challenge = that hash, flags ${f.rec.assertion.authenticator_data.flags_byte}), the one-cent refusal (\`${f.refused.sent_sha256}\`), the replay (paid once). Recorded with a virtual test passkey, not a person's Face ID.`,
     `- The Airwallex transfer of the main run (3 Nov), read back with GET only on ${f.xferReadAt.slice(0, 10)}: \`docs/runs/airwallex-transfer-approval-2026-11-06.json\`; P-0005's passkey approval with the same hash: \`docs/demo/main-run.json\`.`,
     `- The reconciliation (${f.reconFlows} money flows, no differences) and the main-run figures (${f.decisions} decisions by Claude, ${f.alta} Alta payments within the limits, ${f.faceId} Face ID signatures, ${f.stops} stops and nothing paid over a limit): \`docs/demo/main-run.json\`, \`docs/claims.md\`.`,

@@ -110,7 +110,7 @@ export function scenes(): Scene[] {
       segments: [{ clip: "cloud-agents", from: 0, to: 10 }, { card: `<div class="hero small-hero"><p class="kicker">Purser Cloud · Agents</p><h2>Each agent's card: per purchase, per month, the kind of shop</h2><p class="sub">The CFO changes a limit or freezes a card with Face ID. In the public demo company these actions are switched off; the cards shown are simulated.</p></div>` }] },
     { id: "u10", title: "Close", min: 10,
       vo: "Agents act. People sign the exact terms. Every step can be checked. Try it yourself.",
-      segments: [{ card: `<div class="hero"><h1>Agents act.<br>People sign.<br>Every step can be checked.</h1><p class="links">kit11.max-31b.workers.dev/try · /proof · github.com/agamemnon-coder/x402-business-agents</p><p class="sub">Test money only · Airwallex sandbox · Alta (formerly Metal) testnet</p></div>` }] },
+      segments: [{ card: `<div class="hero"><h1>Agents act.<br>People sign.<br>Every step can be checked.</h1><p class="links">kit11.max-31b.workers.dev/try · /proof · github.com/agamemnon-coder/x402-business-agents</p><p class="sub">Test money only · Airwallex sandbox · Alta (formerly Metal) testnet</p><p class="credit">Music: AI-generated (ElevenLabs)</p></div>` }] },
   ];
 }
 
@@ -157,5 +157,6 @@ dt{color:#9aa1b5}dd{margin:0;word-break:break-all}
 .band span{font-size:26px;color:#d6dbe8;line-height:1.25}
 .band i{font-style:normal;color:#8a91a6;font-size:22px}
 .small-hero h2{font-size:52px}
+.credit{color:#7d8498;font-size:22px;margin:28px 0 0}
 </style></head><body>${body}</body></html>`;
 }
