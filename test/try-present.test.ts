@@ -38,6 +38,13 @@ describe("recording mode", () => {
     for (const w of [PRESENT_BEFORE, PRESENT_AFTER, PRESENT_MONEY, PRESENT_TRY]) expect(script).toContain(JSON.stringify(w).slice(1, -1));
   });
 
+  it("leaves the phone lane out with ?phone=0, and R keeps that switch", () => {
+    const { script } = presentExtra();
+    expect(script).toContain("get('phone')==='0'");
+    expect(script).toContain("if(!NOPHONE)document.body.append(mk('aside','pv-lane'");
+    expect(script).toContain("'?present=1'+(NOPHONE?'&phone=0':'')+POOLTAG");
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {
