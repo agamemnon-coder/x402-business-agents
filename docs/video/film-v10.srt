@@ -23,8 +23,8 @@ The Agents tab: each Claude agent, its card limits, what it may and may not do, 
 Invoices and books: what waits for the CFO, what is paid, and the journal.
 
 7
-00:00:41,800 --> 00:00:44,600
-Tokenisation: an invoice token on Metal testnet.
+00:00:41,800 --> 00:00:45,400
+Tokenisation: an invoice token on Alta (formerly Metal) testnet.
 
 8
 00:00:47,400 --> 00:00:54,600
@@ -127,15 +127,15 @@ A payout has two locks, Purser's and Airwallex's own: it waited until the owner 
 The payee's bank checks the name, and one signature pays a batch.
 
 33
-00:03:17,400 --> 00:03:24,600
-On Metal, the agent's limit lives in a passkey account that checks both owners' signatures itself, on chain.
+00:03:17,400 --> 00:03:25,400
+On Alta (formerly Metal), the agent's limit lives in a passkey account that checks both owners' signatures itself, on chain.
 
 34
-00:03:24,600 --> 00:03:31,400
+00:03:25,400 --> 00:03:32,200
 The agent paid 5 cents inside its mandate; 6 cents, over the cap, was refused on chain.
 
 35
-00:03:31,400 --> 00:03:39,400
+00:03:32,200 --> 00:03:40,200
 An invoice was tokenised there too, with a simulated financier, and the audit chain's head is anchored in one transaction.
 
 36
@@ -167,29 +167,21 @@ The proof page lists what Purser guarantees, who enforces each, and the evidence
 What is not done: the alerts go live once Twilio keys are set, and sandbox settlement is simulated.
 
 43
-00:04:29,600 --> 00:04:35,200
-In the Visa sandbox, a credential reused on a bigger payment was not refused.
-
-44
-00:04:35,200 --> 00:04:37,600
-There, only Purser holds the limit.
-
-45
-00:04:39,400 --> 00:04:41,000
+00:04:31,400 --> 00:04:33,000
 Agents do the work.
 
-46
-00:04:41,000 --> 00:04:43,400
+44
+00:04:33,000 --> 00:04:35,400
 The CFO signs only the exceptions.
 
-47
-00:04:43,400 --> 00:04:47,400
+45
+00:04:35,400 --> 00:04:39,400
 Our code checks every limit, and the rail checks again.
 
-48
-00:04:47,400 --> 00:04:49,000
+46
+00:04:39,400 --> 00:04:41,000
 Purser, for Kit 11.
 
-49
-00:04:49,000 --> 00:04:50,200
+47
+00:04:41,000 --> 00:04:42,200
 Try it yourself.

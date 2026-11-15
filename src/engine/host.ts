@@ -47,6 +47,8 @@ import { invoicePdf } from "./invoicePdf.js";
 import { BILL_TO_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
+import { proofBundle } from "./proofBundle.js";
+import type { ProofBundle } from "../proof/bundle.js";
 import { recordsPdf } from "./recordsPdf.js";
 import { beginExecution } from "../policy/approvals.js";
 import { batchesFor } from "../cloudsync/client.js";
@@ -250,6 +252,8 @@ export interface PaySignedResult {
   outcome: "paid" | "refused" | "paid_once" | "not_signed" | "expired" | "failed";
   layers: { signature: { verified: boolean | null; reason: string }; executor: { accepted: boolean | null; said: string | null } };
   signed_sha256: string; sent_sha256: string; changed: string[]; transfers_before: number; transfers_after: number; settled: Settled | null;
+  /** Paid or refused: the file anyone can check without our server (src/proof/bundle.ts); null when there is nothing to check. */
+  proof?: ProofBundle | null;
 }
 
 /** The keys the visitor may change on the pay screen; every other key must be the stored one. */
@@ -897,7 +901,10 @@ export class EngineHost {
       const base = { signed_sha256: approvedSha ?? stored.terms_sha256, sent_sha256: sentSha, changed, transfers_before: transfers() };
       const finish = (outcome: PaySignedResult["outcome"], layers: PaySignedResult["layers"], settled: Settled | null): PaySignedResult => {
         audit(db, "human", "try.pay", proposalId, { outcome, changed, signature_verified: layers.signature.verified, executor_accepted: layers.executor.accepted }, now);
-        return { outcome, layers, ...base, transfers_after: transfers(), settled };
+        const out = { outcome, layers, ...base, transfers_after: transfers(), settled };
+        if (outcome !== "paid" && outcome !== "refused") return out;
+        const decision = { outcome, signature: layers.signature, executor: layers.executor, signed_sha256: base.signed_sha256, sent_sha256: base.sent_sha256, changed, transfers_before: base.transfers_before, transfers_after: out.transfers_after };
+        return { ...out, proof: proofBundle(db, { proposalId, stored: stored.terms as Record<string, unknown>, sent, credential, passkey: activePasskey(db), decision, now }) };
       };
       if (!stored.approved) {
         return finish("not_signed", { signature: { verified: null, reason: "Not checked: this payment has no approval yet. Approve it first." }, executor: { accepted: null, said: "Not asked: nothing is approved." } }, null);
