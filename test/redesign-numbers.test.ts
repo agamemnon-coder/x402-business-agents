@@ -132,7 +132,11 @@ const visibleText = (html: string) => html
   .replace(/About Purser\s+The problem:[\s\S]*?No customers, pilots or revenue yet\./g, " ")
   // 12 Nov (jury panel): /claude's hostile-model eval line, from its own record (docs/evals/ap-hostile.json), which
   // test/ap-agent-evals.test.ts holds to a fresh run of the eval.
-  .replace(HOSTILE_CLAIM || "\u0000", " ");
+  .replace(HOSTILE_CLAIM || "\u0000", " ")
+  // 15 Nov: the one-cent-over card test on /airwallex and /proof (the card's last four, the limit and one cent over,
+  // Airwallex's ids and times), every figure read from docs/runs/airwallex-card-cent-<date>.json and held to it in
+  // test/card-cent.test.ts.
+  .replace(/One cent over the limit, on the[\s\S]*?airwallex-card-cent-[\d-]+\.json/g, " ");
 
 /** Numbers on the page that are not in the record. */
 export const unknownNumbers = (html: string) => (visibleText(html).match(NUM) ?? []).map(norm).filter((n) => !ALLOWED.has(n));

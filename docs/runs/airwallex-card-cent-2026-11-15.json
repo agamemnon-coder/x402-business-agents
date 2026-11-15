@@ -1,0 +1,40 @@
+{
+  "run": "card-cent",
+  "ran_at": "2026-11-15T09:31:44.370Z",
+  "label": "Airwallex sandbox · test money",
+  "agent": "sourcing",
+  "action_sha256": "26d4aa0a27a0fd460d11358e454c76cebcff003e76c27b868d6b250d30d853f9",
+  "method": "POST /api/v1/simulation/issuing/create, twice on one card, after the company owner's passkey signed the action in Purser Cloud",
+  "signed_by": {
+    "name": "Card run owner (software test passkey)",
+    "role": "owner",
+    "how": "passkey with user verification, over the action's SHA-256"
+  },
+  "card": {
+    "last4": "9298",
+    "card_id_last4": "968f",
+    "per_tx_cents": 3000,
+    "monthly_cents": 10000
+  },
+  "attempts": [
+    {
+      "amount_cents": 3000,
+      "currency": "EUR",
+      "id": "01a1de8c-6c31-7000-8ca8-0af114ac81b9",
+      "at": "2026-11-15T09:31:47.121+0000",
+      "status": "APPROVED",
+      "approved": true,
+      "failure_reason": null
+    },
+    {
+      "amount_cents": 3001,
+      "currency": "EUR",
+      "id": "01a1de8c-7a4e-7000-94e8-8e87229a3453",
+      "at": "2026-11-15T09:31:50.734+0000",
+      "status": "DECLINED",
+      "approved": false,
+      "failure_reason": "LIMIT_EXCEEDED"
+    }
+  ],
+  "read_from": "https://purser-try.max-31b.workers.dev/v1/cards/edge/latest"
+}

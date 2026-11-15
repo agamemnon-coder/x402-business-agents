@@ -8,8 +8,9 @@ const README = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
 
 describe("the README, short (15 Nov)", () => {
-  it("is about 2,500 words (2,609 as this test counts them, 2,575 by wc), down from 6,255", () => {
-    expect(words(README)).toBeLessThanOrEqual(2620);
+  // 2,646 as built after #383 (Clarity 2) on main; the pin of 2,620 had been set before its last lines went in.
+  it("is about 2,500 words (2,646 as this test counts them), down from 6,255", () => {
+    expect(words(README)).toBeLessThanOrEqual(2660);
   });
 
   it("keeps the quick start, verify-it-yourself and what's live and what's simulated in the README itself", () => {

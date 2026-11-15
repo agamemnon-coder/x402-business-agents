@@ -3,7 +3,7 @@
 // the film is set) and lists the partner pages under "More" (12 Nov).
 import { LIVE_CARDS_JS } from "../src/redesign/cardCent.js";
 import { COUNT_JS } from "../src/redesign/stats.js";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { WATCH_IN_MENU } from "../src/config/film.js";
 import { describe, expect, it } from "vitest";
@@ -28,6 +28,8 @@ const CONNECTED_RUN = read("docs/runs/2026-11-10-connected-accounts-sandbox.md")
 const TWO_LOCKS_RUN = read("docs/runs/2026-11-10-airwallex-two-locks.md");
 
 /** 12 Nov (jury check): /airwallex's tiles behind flags, each from its own record of 12 Nov. */
+// 15 Nov: the one-cent-over card test's records (Airwallex's ids for the two simulated purchases).
+const CENT_RECORDS = readdirSync(new URL("../docs/runs/", import.meta.url)).filter((f) => f.startsWith("airwallex-card-cent-")).map((f) => read(`docs/runs/${f}`)).join("\n");
 const FLAGGED_RECORDS = ["docs/runs/2026-11-12-airwallex-payee-check.json", "docs/runs/2026-11-12-airwallex-batch-transfer.json", "docs/runs/2026-11-12-airwallex-financial-transactions.json"].map((f) => readFileSync(new URL(`../${f}`, import.meta.url), "utf8")).join("\n");
 
 describe("the partner pages", () => {
@@ -93,7 +95,7 @@ describe("the partner pages", () => {
   it("invent no id: every Airwallex id, tx and request id on them is in the recorded files", () => {
     for (const page of [AIRWALLEX_PAGE, CLAUDE_PAGE]) {
       for (const tx of page.match(/0x[0-9a-f]{64}/g) ?? []) expect(RECORDED).toContain(tx);
-      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) + FLAGGED_RECORDS : "")).toContain(id);
+      for (const id of page.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []) expect(RECORDED + CONNECTED_RUN + TWO_LOCKS_RUN + (page === AIRWALLEX_PAGE ? read(PLATFORM_FACTS_FILE) + FLAGGED_RECORDS + CENT_RECORDS : "")).toContain(id);
       for (const req of page.match(/req_[A-Za-z0-9]{10,}/g) ?? []) expect(RECORDED + read("docs/runs/2026-11-01-try-world-dev.md")).toContain(req);
     }
     expect(AIRWALLEX_PAGE).toMatch(/LIMIT_EXCEEDED|over the card's limit/);
