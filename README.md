@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a>
+<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a><br><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero/flow-dark.svg"><img src="docs/assets/hero/flow-light.svg" alt="Purser's flow, animated: an agent asks to pay EUR 240.00; Airwallex's card controls, Alta's mandate and the CFO's passkey hold in turn; the passkey signs the SHA-256 of the exact terms; one cent changed (EUR 240.01) and the signature no longer matches: refused. An illustration; test money." width="100%"></picture>
 
 # Purser · AI agents spend. You sign off.
 
@@ -12,7 +12,7 @@
 
 [![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai)
 
-[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Alta: testnet](https://img.shields.io/badge/Alta-testnet-2dd4bf)](https://kit11.max-31b.workers.dev/alta) [![Visa: VIC via Airi](https://img.shields.io/badge/Visa-VIC_via_Airi-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0) [![Claude: Haiku, Sonnet, Opus](https://img.shields.io/badge/Claude-Haiku%2C_Sonnet%2C_Opus-ef9a76)](https://kit11.max-31b.workers.dev/claude)
+[![Airwallex: LIVE · sandbox](https://img.shields.io/badge/Airwallex-LIVE_%C2%B7_sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Alta (formerly Metal): LIVE · testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-LIVE_%C2%B7_testnet-2dd4bf)](https://kit11.max-31b.workers.dev/alta) [![Visa VIC via Airi: LIVE · sandbox](https://img.shields.io/badge/Visa_VIC_via_Airi-LIVE_%C2%B7_sandbox-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![T:0: LIVE · sandbox ledger](https://img.shields.io/badge/T%3A0-LIVE_%C2%B7_sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0) [![Claude: LIVE · 24 decisions](https://img.shields.io/badge/Claude-LIVE_%C2%B7_24_decisions-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![worst-case AI: 0 wrong payments](https://img.shields.io/badge/worst--case_AI-0_wrong_payments-0b7d43)](docs/worst-case-ai.md)
 
 </div>
 
@@ -22,7 +22,7 @@
 - **Agents negotiate:** on [/try/negotiate](https://purser-try.max-31b.workers.dev/try/negotiate), two Claude agents agree a deal; code holds the limits, you sign it ([the rails](src/negotiate/rails.ts)).
 - **The worst-case AI test:** a script that always says pay made 0 wrong payments; a payer with no rules made 35 ([docs/worst-case-ai.md](docs/worst-case-ai.md), [record](docs/evals/worst-case-summary.json)).
 - **Airwallex declines one cent over, live (15 Nov):** EUR 30.00 approved, EUR 30.01 declined, `LIMIT_EXCEEDED` ([record](docs/runs/airwallex-card-cent-2026-11-15.json)).
-- **154 Airwallex calls**, each with what came back and its record: [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls).
+- **Every Airwallex sandbox call**, listed with what came back and its record: [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls).
 - **Verify it yourself:** [/verify](https://kit11.max-31b.workers.dev/verify) checks a /try payment in your browser; the live report: 189 checks passed, 3 could not run here, 0 failed ([report](docs/evidence/verification-2026-11-15.md)).
 
 ## Kit 11, step by step
