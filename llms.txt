@@ -62,6 +62,8 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 - Connect any AI: Purser Cloud is a remote MCP server at https://purser-try.max-31b.workers.dev/mcp; the demo company's public, read-only token is purser-demo-read-only. Your AI reads and can propose a payment; it can never approve or pay: docs/connect-claude.md
 - src/audit/log.ts: the hash-chained audit log
 
+After the hackathon, the roadmap to real customer money (nothing on it is built yet): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/roadmap-v2.md
+
 ## For agents
 
 - Proof as JSON: https://kit11.max-31b.workers.dev/proof.json. A signed receipt you can check offline: https://kit11.max-31b.workers.dev/receipt-sample.json
