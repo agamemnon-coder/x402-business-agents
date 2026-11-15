@@ -48,6 +48,8 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format.
 
+Pay on [/try](https://kit11.max-31b.workers.dev/try), download the proof (JSON), and check it on [/verify](https://kit11.max-31b.workers.dev/verify) in your browser, or with `npm run verify-bundle -- purser-proof.json`: the same checks, the same code, no server ([samples](docs/proof/)).
+
 The full suite, `npm test` (about 8 to 9 min on a laptop): **6932 tests passing**, 4 skipped, in 618 files (the last full run, on commit `fdfabc5a`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.

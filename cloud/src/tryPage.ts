@@ -29,6 +29,7 @@ import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
+import { VERIFY_YOURSELF } from "./tryCopy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AMOUNT_JS } from "./try/amount.js";
 import { WHY_JS } from "./try/why.js";
@@ -50,6 +51,8 @@ import { VIS_CSS, visScript } from "./try/visuals.js";
 export const RUNS_URL = `${SITE_ORIGIN}/runs`;
 /** The site's proof page (src/redesign/proof.ts, served at /proof on the same origin): screen 6's last link. */
 export const PROOF_URL = new URL("/proof", RUNS_URL).href;
+/** "Verify this payment yourself" (15 Nov): the site's /verify, which checks the proof file in the visitor's browser. */
+export const VERIFY_URL = new URL("/verify", RUNS_URL).href;
 
 const CSS = `${TOKENS.replace("url(assets/inter.woff2)", "url(/assets/inter.woff2)")}
 * { box-sizing: border-box; }
@@ -660,7 +663,7 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx'];
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','proof'];
 const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
@@ -1398,6 +1401,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     idle();
     if(S.screen!=='approve')return;
     const j=r.json,o=r.status===200?j.outcome:null;
+    if(o==='paid'&&j.proof){S.proof=j.proof;save()}
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     // Any other answer: the engine's words, calmly, with the button for that outcome (as screen 4 has them).
     const sig=j.layers&&j.layers.signature&&typeof j.layers.signature.reason==='string'&&j.layers.signature.reason?j.layers.signature.reason:null;
@@ -1474,6 +1478,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
   }
   function outcome(r,ms,sent,intro){
     const j=r.json,o=r.status===200?j.outcome:null;
+    if(o==='paid'&&j.proof){S.proof=j.proof;save()}
     if(o==='paid'){S.settled=j.settled||null;S.awx=j.airwallex_payout&&typeof j.airwallex_payout==='object'?j.airwallex_payout:null;save();show('books',{settled:S.settled});return}
     if(o==='not_signed'){S.cred=null;save();show('approve',{});return}
     // 14 Nov (live QA): on a phone the refusal landed under the fold, the visitor saw only the field; it is brought into view.
@@ -1515,6 +1520,7 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const raw=el('pre','raw mono');raw.textContent=r.text;
     proof.append(el('details','',[el('summary','',Y.raw),raw]));
     card.append(proof);
+    const pdl=proofDl(j.proof);if(pdl)card.append(el('p','',pdl));
     const back=el('button','link',Y.putBack);back.type='button';back.addEventListener('click',()=>{reset();F.amount.focus()});
     card.append(el('p','',back));
     return card;
@@ -1536,6 +1542,9 @@ async function fetchFile(path){
   return {status:200,blob:await r.blob(),name:m?m[1].replace(/[^\w. -]+/g,'_'):null,json:{}};
 }
 const blobUrl=(blob)=>{const u=URL.createObjectURL(blob);BLOBS.push(u);return u};
+// "Verify it yourself" (15 Nov): the pay route's proof file, as a download made here (no server call); none without one.
+const proofDl=(bundle)=>{if(!bundle||typeof bundle!=='object')return null;const V=C.verifyYourself;const b=btn(V.download);b.classList.add('quiet','proofdl');
+  b.addEventListener('click',()=>{const a=el('a');a.href=blobUrl(new Blob([JSON.stringify(bundle,null,2)+'\n'],{type:'application/json'}));a.download=V.file;a.hidden=true;document.body.append(a);a.click();a.remove()});return b};
 // Every page of a list route of the read model (limit 200, its cursor): {status, items}.
 async function everyPage(path){let items=[],cursor=null;
   for(let n=0;n<50;n++){const r=await api('GET',path+(path.indexOf('?')>=0?'&':'?')+'limit=200'+(cursor?'&cursor='+encodeURIComponent(cursor):''));
@@ -1594,6 +1603,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
     if(g.status!==200||!g.blob){pdfSaid.hidden=false;pdfSaid.textContent=words(g.json||{},C.receipt.failed);return}pdfSaid.hidden=true;
     const a=el('a');a.href=blobUrl(g.blob);a.download=g.name||'purser-test-company-records.pdf';a.hidden=true;box.append(a);a.click();a.remove()});
   const tail=el('div','tail',[el('div','acts',[...(cheat?[cheat]:[]),another,what]),el('div','acts pdfl',[pdf]),pdfSaid,el('div','cloudl',[cloud,el('p','hint',B.cloudNote)])]);tail.hidden=true;
+  {const pdl=proofDl(S.proof);if(pdl)tail.querySelector('.pdfl').append(pdl)}
   // 14 Nov (round 3): the Airwallex line sits under the amount it paid, not above it.
   const awxPaid=payoutCard(S.awx,sha);
   box.append(el('div','paidstamp',[el('span','ring',icon('circle-check',30)),sha?el('span','hashpill mono',[icon('key-round',13),' '+sha.slice(0,12)+'…']):null]),paid,el('div','slot payout',awxPaid?[awxPaid]:[]),booked,filed,tail);
@@ -1696,6 +1706,7 @@ screen('company',{heading:C.company.heading,draw(box){
   const out=(cls,label,href)=>{const a=el('a',cls,label);a.href=href;a.rel='noopener';a.target='_blank';return a};
   const rails=out('btn primary big proofl',[el('span','',Y.rails),icon('arrow-right',18)],PROOF);
   const more=el('p','more',[out('',C.trailer.label,C.trailer.url),el('span','sep',' · '),out('',Y.cloud,C.finish.cloud),el('span','sep',' · '),out('',Y.star,C.finish.repo)]);
+  more.prepend(out('verifyl',C.verifyYourself.verify,C.verifyYourself.url),el('span','sep',' · '));
   // The records: the PDF a person reads, the JSON for developers.
   const dl=btn(Y.download);const line=el('p','muted');line.hidden=true;
   const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
@@ -1779,7 +1790,7 @@ export const testsPassing = (): string => (SUITE as { passed: number }).passed.t
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
 /** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
-  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE };
+  const copy = { run: RUN, same: SAME_STEP, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
