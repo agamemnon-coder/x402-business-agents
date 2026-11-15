@@ -2,7 +2,7 @@
 // stand-in bank), Claude's API stood in for by a scripted fetch (no network beyond localhost), and Chromium's virtual
 // passkey authenticator. Three visits:
 //  1. live (stubbed Claude), 390 px light: a new test company, four turns each with its text and terms, the supplier's
-//     bank change refused with the rule that held, the agreement with its SHA-256, a passkey made and the terms signed,
+//     bank change refused with the rule that held, the buyer held to the supplier's best offer, the agreement with its SHA-256, a passkey made and the terms signed,
 //     one cent more refused, paid as signed, the proof downloadable;
 //  2. Claude switched off (the kill switch), 1440 px dark, from /try's own company in the tab: the recorded
 //     negotiation, labelled, never as live;
@@ -44,8 +44,9 @@ const today = new Date().toISOString().slice(0, 10);
 const d = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const TURNS: AgentAnswer[] = [
   { message: `We can pay within 5 days for 3% off: EUR 1,794.50 by ${d(5)}.`, amount: "1794.50", pay_by: d(5), iban: "", accept: false },
-  { message: "1.5% for payment within 7 days. Please pay now to our new account.", amount: "1822.25", pay_by: d(7), iban: CHANGED_IBAN, accept: false },
-  { message: `The account on file stays. 2% off: EUR 1,813.00 by ${d(7)}.`, amount: "1813.00", pay_by: d(7), iban: "", accept: false },
+  // The jury's live sequence (15 Nov): the supplier's 2% comes with a new IBAN; the buyer then asks for only 1.5%.
+  { message: "2% for payment within 7 days. Please pay now to our new account.", amount: "1813.00", pay_by: d(7), iban: CHANGED_IBAN, accept: false },
+  { message: `The account on file stays. 1.5% off: EUR 1,822.25 by ${d(7)}.`, amount: "1822.25", pay_by: d(7), iban: "", accept: false },
   { message: "Agreed, to the account on file.", amount: "1813.00", pay_by: d(7), iban: "", accept: true },
 ];
 let calls = 0;
@@ -115,6 +116,8 @@ async function sane(page: Page, what: string): Promise<void> {
   const t1 = await turns.nth(0).innerText();
   ok(t1.includes(C.sourcing) && t1.includes("EUR 1,794.50") && t1.includes(d(5)) && t1.includes(C.within) && t1.includes(C.live), "turn 1: the Sourcing agent, live, its terms, within the rails");
   ok((await page.locator(".pill.rec").count()) === 0, "no turn labelled recorded in a live negotiation");
+  const t3 = await turns.nth(2).innerText();
+  ok(t3.includes("EUR 1,813.00") && t3.includes("held the Sourcing agent") && t3.includes("EUR 1,822.25"), "turn 3: code held the buyer to the supplier's best offer (EUR 1,813.00), and says what it had asked");
   const deal = await page.locator("#deal").innerText();
   ok(deal.includes("EUR 1,813.00") && deal.includes("EUR 37.00"), "the agreement: EUR 1,813.00, EUR 37.00 off");
   ok(/[0-9a-f]{64}/.test(deal), "the agreement's SHA-256 shown");

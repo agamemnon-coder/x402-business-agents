@@ -53,6 +53,7 @@ export const NEGOTIATE_COPY = {
   refused: "Refused by the rails",
   heldRule: "The rule that held:",
   scripted: "The simulation added this bank change (the model left it out), so you can see the rails refuse it.",
+  held: "Purser's code held the Sourcing agent to Bergtex's best offer on record: it had asked to pay {asked}; the best offer on record is {floor} (turn {turn}), its bank change dropped.",
   accepts: "Accepts",
   agreedHead: "The agreement",
   noDealHead: "No deal: the invoice as issued",
@@ -202,7 +203,7 @@ function turnCard(t,mode){
   const p=t.proposed||{};
   const chips=el('ul','chips',[el('li','',T.amount+': '+eur(p.amount)),el('li','',T.discount+': '+(p.discount==='—'?'—':eur(p.discount)+' ('+p.discount_pct+')')),el('li','',T.payBy+': '+p.pay_by),p.iban?el('li','',T.account+': '+p.iban):null,t.accept?el('li','',C.accepts):null]);
   const v=t.rails&&t.rails.ok?el('p','verdict ok',C.within):el('p','verdict no',[el('b','',C.refused+': '),(t.rails.refusals||[]).map((r)=>r.detail).join('; '),...(t.rails.refusals||[]).map((r)=>el('span','rule',C.heldRule+' '+r.says))]);
-  const card=el('li','turn '+t.who,[who,el('p','msg',t.message),chips,v,t.scripted_bank_change?el('p','note',C.scripted):null]);
+  const card=el('li','turn '+t.who,[who,el('p','msg',t.message),chips,v,t.scripted_bank_change?el('p','note',C.scripted):null,t.held_to_best_offer?el('p','note held',fill(C.held,{asked:eur(t.held_to_best_offer.asked),floor:eur(t.held_to_best_offer.floor),turn:t.held_to_best_offer.floor_turn})):null]);
   card.setAttribute('aria-label','Turn '+t.n+', '+(t.who==='sourcing'?C.sourcing:C.supplier));
   return card;
 }
