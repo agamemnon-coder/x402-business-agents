@@ -92,7 +92,9 @@ for (const [kind, script] of Object.entries(FAIL) as [keyof typeof FAIL, string]
   ok(labels.length === STEPS.order.length && labels.every((l) => l.trim().length > 0), `${kind}: every step's dot has its word (${labels.join(" · ")})`);
   ok((await page.locator('ol.prog li[aria-current="step"] .lbl').innerText()) === STEPS.names.approve, `${kind}: the current step is marked (${STEPS.names.approve})`);
   // The limit, plainly, where the approval is.
-  ok((await page.locator("main").innerText()).includes(APPROVE.limit), `${kind}: the approval says "${APPROVE.limit}"`);
+  // The line is drawn once the terms are read (GET /terms): wait for it rather than read the page at once (a race on CI).
+  const limitShown = await page.getByText(APPROVE.limit, { exact: false }).first().waitFor({ timeout: 10000 }).then(() => true, () => false);
+  ok(limitShown, `${kind}: the approval says "${APPROVE.limit}"`);
   await shot("1-approve");
 
   if (kind !== "none") {
