@@ -55,8 +55,15 @@ export const ACT_CURRENCIES: ReadonlySet<string> = new Set(["EUR", "USD", "GBP"]
 /** The simulated bank's own ids (ben_1, tr_2, q_3 …); anything else was made at Airwallex. */
 const SIM_ID = /^[a-z]+_\d+$/;
 
-/** An Airwallex refusal that moved nothing (4xx), as opposed to a lost answer. */
-export const refusedOutright = (e: unknown): boolean => e instanceof AirwallexError && e.status >= 400 && e.status < 500;
+/** Airwallex's answer that this request_id already made something: money may have moved, so it is not a refusal. */
+const DUPLICATE_CODES: ReadonlySet<string> = new Set(["duplicate_request_id", "request_id_duplicate", "duplicate_request"]);
+
+/**
+ * An Airwallex refusal that moved nothing (4xx), as opposed to a lost answer. A duplicate request_id is not one: the
+ * first send went through (security sweep, 15 Nov), so its amount stays spoken for under the caps.
+ */
+export const refusedOutright = (e: unknown): boolean =>
+  e instanceof AirwallexError && e.status >= 400 && e.status < 500 && !(e.code && DUPLICATE_CODES.has(e.code));
 
 /** Words for an Airwallex-side failure: its code or reason, never Airwallex's own message (it can name a payee). */
 export function failureWords(e: unknown): string {
