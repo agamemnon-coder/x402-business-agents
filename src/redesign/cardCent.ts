@@ -60,9 +60,10 @@ export function centHtml(r: { file: string; rec: CentRecord } | null): string {
 export const LIVE_CARDS_ID = "awx-live-cards";
 /** /airwallex's live block: filled in by LIVE_CARDS_JS from the sandbox; says so when the read is unavailable. */
 export function liveCardsHtml(): string {
-  return `<div class="card" id="${LIVE_CARDS_ID}"><h3>${icon("credit-card", 18)}${esc("The agents' cards at the Airwallex sandbox, now")}</h3>
+  // Folded (word budget of /airwallex): the summary line names it; the reading is inside.
+  return `<details class="card fold" id="${LIVE_CARDS_ID}"><summary>${esc("The agents' cards today, live")}</summary>
 <p id="awx-live-sum">${esc("Reading the sandbox…")}</p><ul class="awc" id="awx-live-list"></ul>
-<p class="src">${esc("GET /issuing/cards, read live when this page opens, at most once a minute for everyone · sandbox, test money · no card number beyond its last four digits · the same reading as Purser Cloud's Agents tab")}</p></div>`;
+<p class="src">${esc("GET /issuing/cards, read live when this page opens, at most once a minute for everyone · sandbox, test money · no card number beyond its last four digits · the same reading as Purser Cloud's Agents tab")}</p></details>`;
 }
 
 /** Fills the live block. Remote values only ever go in as text. */

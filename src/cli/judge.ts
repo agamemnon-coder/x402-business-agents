@@ -17,6 +17,7 @@ import { readFileSync } from "node:fs";
 import { loadRecord } from "../redesign/run.js";
 import { localTryAnswer } from "../try/local.js";
 import { METAL_INSPECTOR_PATH } from "../../worker/src/metalInspector.js";
+import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import { offlineAwxLive } from "../relay/awxLiveOffline.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
@@ -61,6 +62,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/alta", page(METAL_CSP, () => METAL_PAGE)); // /metal: 301 to /alta (MOVED, above)
   // /metal's read-only inspector, as a local copy answers it: the record's read of 12 November, no chain call, no secret.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
+  // /airwallex's live cards: the offline copy holds no sandbox key, and says so (worker/src/agentCardsLive.ts).
+  app.get(AGENT_CARDS_PATH, (_req, res) => { res.json({ source: "unavailable", reason: "this offline copy reads no sandbox", checked_at: new Date().toISOString() }); });
   // Live with Airwallex (/proof's block, Home's badge): this copy holds no Airwallex key and receives no webhook, so the
   // badge says "Airwallex unavailable" and the feed holds no event (src/relay/awxLiveOffline.ts). Nothing is made up.
   const awxLive = offlineAwxLive();
