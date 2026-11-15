@@ -12,6 +12,7 @@ import { initialsOf, looksLikePerson, publicNickname, publicPayeeName } from "..
 import { centHolds, centHtml, centLine, type CentRecord } from "../src/redesign/cardCent.js";
 import { TenantDb } from "../cloud/src/tenant.js";
 import { annotateBeneficiaries } from "../cloud/src/awxLive.js";
+import { WRITES_PER_DAY as WRITES_CAP } from "../cloud/src/agentCards.js";
 import { ORIGIN, RP, testCloud, type TestCloud, type TestTenant } from "./support/cloud.js";
 import { CVV, fakeSandbox, PAN } from "./support/awxCardsFake.js";
 
@@ -227,5 +228,30 @@ describe("live cards, sorted out and tested at the limit (Purser Cloud and /airw
     const signed = await c2.req("POST", `/v1/cards/actions/${act.id}/sign`, { key: t2.session, body: { credential_id: t2.ownerPasskey.credential_id, assertion: { authenticatorData: b64u(sig.authenticatorData), clientDataJSON: b64u(sig.clientDataJSON), signature: b64u(sig.signature) } } });
     expect(signed.json).toMatchObject({ status: "done", kind: "edge" });
     c2.close();
+  });
+
+  it("freezes many older cards in one signed action, outside the daily write caps, and the record names who signed", async () => {
+    for (let i = 0; i < 10; i++) s.seed({ nick_name: `sourcing agent: old run ${i}`, card_status: "ACTIVE", per: 45, month: 100, created_at: `2026-10-2${i % 9}T10:00:00.000+0000`, last4: String(7000 + i) });
+    await c.req("GET", "/v1/cards", { key: t.session });
+    // The day's write cap is used up: tidy still runs (it only lowers exposure); an edge test does not.
+    for (let i = 0; i < WRITES_CAP; i++) await c.env.sql.run("INSERT INTO card_actions (tenant_id, id, sha256, kind, agent, action_json, challenge, by_user, created_at, expires_at, status, day) VALUES (?, ?, ?, 'freeze', 'sourcing', '{}', 'x', 'u', 'x', 'x', 'done', '2026-11-08')", [t.id, `pad${i}`, `pad${i}`]);
+    expect((await ask("edge")).status).toBe(429);
+    const { signed } = await act("tidy");
+    expect(signed.json).toMatchObject({ status: "done", kind: "tidy" });
+    expect((signed.json.frozen as unknown[]).length).toBe(12);
+    expect([...s.cards.values()].filter((x) => x.nick_name.startsWith("sourcing") && x.card_status === "ACTIVE").map((x) => x.last4)).toEqual(["5550"]);
+    // One gateway call froze them: no read-back per card.
+    expect(s.calls.filter((x) => /^GET \/issuing\/cards\/card/.test(x)).length).toBeLessThan(3);
+  });
+
+  it("the run record names the owner who signed, and the page says so", async () => {
+    await c.req("GET", "/v1/cards", { key: t.session });
+    await act("edge");
+    const rec = (await c.req("GET", "/v1/cards/edge/latest", { key: null })).json as unknown as CentRecord;
+    expect(rec.signed_by?.role).toBe("owner");
+    expect(rec.signed_by?.name).toBeTruthy();
+    expect(rec.method).toContain("the company owner's passkey");
+    expect(rec.method).not.toContain("CFO");
+    expect(centHtml({ file: "docs/runs/airwallex-card-cent-2026-11-15.json", rec })).toContain(`Signed by ${rec.signed_by!.name}, the company's owner`);
   });
 });

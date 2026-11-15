@@ -18,6 +18,8 @@ export const CENT_PREFIX = "airwallex-card-cent";
 export interface CentAttempt { amount_cents: number; currency: string; id: string | null; at: string; status: string; approved: boolean; failure_reason: string | null }
 export interface CentRecord {
   run: string; ran_at: string; label: string; method: string; agent: string; action_sha256: string;
+  /** Who signed the action, as the company's records name them (15 Nov: a labelled software test passkey says so in its name). */
+  signed_by?: { name: string; role: string; how: string };
   card: { last4: string | null; card_id_last4: string; per_tx_cents: number; monthly_cents: number | null };
   attempts: CentAttempt[];
 }
@@ -54,6 +56,7 @@ export function centHtml(r: { file: string; rec: CentRecord } | null): string {
 <p>${esc(`Its limit is ${eur(r.rec.card.per_tx_cents)} a purchase. Two test purchases at the Airwallex sandbox: exactly the limit, then one cent more.`)}</p>
 <span class="awm ${ok ? "ok" : "bad"}">${icon(ok ? "circle-check" : "octagon-x", 16)}${esc(line)}</span>
 <ul class="awc">${items}</ul>
+${r.rec.signed_by ? `<p>${esc(`Signed by ${r.rec.signed_by.name}, the company's ${r.rec.signed_by.role}: ${r.rec.signed_by.how}.`)}</p>` : ""}
 <p class="src">${esc(`${r.rec.method} · ${r.rec.label} · signed action ${r.rec.action_sha256.slice(0, 12)}…`)} · <a href="${esc(REPO_BLOB + r.file)}">${esc(r.file)}</a></p></div>`;
 }
 

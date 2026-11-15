@@ -16,7 +16,7 @@
 // across all companies). Sandbox only, test money only.
 import { verifyAssertion, type AssertionB64 } from "../../worker/src/webauthn.js";
 import { CARD_ACTIVE_DAYS, CARDS as POLICY_CARDS } from "../../src/config/policy.js";
-import type { CardsAnswer, CardsPort, SafeCard, SafeTx } from "../../src/airwallex/cardGate.js";
+import { FREEZE_MANY_MAX, type CardsAnswer, type CardsPort, type SafeCard, type SafeTx } from "../../src/airwallex/cardGate.js";
 import { classifyAgentCards, type AgentCardSet, type CardAgentId, type CardLite } from "../../src/airwallex/agentCardSet.js";
 import { AuthError, type Caller } from "./auth.js";
 import { agentsOf } from "./consoleData.js";
@@ -81,7 +81,7 @@ const NAMES: Record<CardAgent, string> = { sourcing: "Sourcing agent", support: 
 export type CardActionKind = "issue" | "freeze" | "unfreeze" | "limits" | "test" | "tidy" | "edge";
 export const CARD_ACTION_KINDS: readonly CardActionKind[] = ["issue", "freeze", "unfreeze", "limits", "test", "tidy", "edge"];
 /** At most this many older cards frozen in one signed action. */
-const TIDY_MAX = 6;
+const TIDY_MAX = FREEZE_MANY_MAX;
 
 export class CardRefused extends Error {
   constructor(readonly status: number, message: string) { super(message); this.name = "CardRefused"; }
@@ -132,7 +132,8 @@ async function cardRow(sql: Sql, tenantId: string, agent: string): Promise<CardR
 }
 
 async function writesToday(sql: Sql, tenantId: string | null, now: Date): Promise<number> {
-  const r = await sql.first<{ n: number }>(`SELECT COUNT(*) AS n FROM card_actions WHERE day = ?${tenantId ? " AND tenant_id = ?" : ""}`, tenantId ? [day(now), tenantId] : [day(now)]);
+  // Freezing older test cards (tidy) only lowers exposure: it is passkey-signed like every write but not counted.
+  const r = await sql.first<{ n: number }>(`SELECT COUNT(*) AS n FROM card_actions WHERE day = ? AND kind <> 'tidy'${tenantId ? " AND tenant_id = ?" : ""}`, tenantId ? [day(now), tenantId] : [day(now)]);
   return Number(r?.n ?? 0);
 }
 
@@ -291,7 +292,7 @@ export async function startCardAction(o: { sql: Sql; caller: Caller; gateway?: C
   if (!isCardAgent(o.agent)) throw new CardRefused(404, "no such agent with a card");
   const p = (await policyLimits(o.sql, c.tenantId)).get(o.agent);
   if (!p) throw new CardRefused(404, "this company has no such agent");
-  if ((await writesToday(o.sql, c.tenantId, o.now)) >= WRITES_PER_DAY) throw new CardRefused(429, `the daily cap of ${WRITES_PER_DAY} card writes is reached for this company`);
+  if (o.kind !== "tidy" && (await writesToday(o.sql, c.tenantId, o.now)) >= WRITES_PER_DAY) throw new CardRefused(429, `the daily cap of ${WRITES_PER_DAY} card writes is reached for this company`);
   // A card the sandbox already has for this agent is adopted first (our records only), so the action fits what is there.
   const policyAll = await policyLimits(o.sql, c.tenantId);
   const listed = o.kind === "issue" || o.kind === "tidy" ? await cardSets(o.sql, c.tenantId, o.gateway, policyAll, o.now, true) : { sets: null, reason: null };
@@ -376,8 +377,8 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   // this agent). Two signatures at once cannot both pass a cap.
   const claim = await o.sql.run(
     `UPDATE card_actions SET status = 'running', day = ?, signed_at = ? WHERE tenant_id = ? AND id = ? AND status = 'pending'
-       AND (SELECT COUNT(*) FROM card_actions WHERE day = ? AND tenant_id = ?) < ?
-       AND (SELECT COUNT(*) FROM card_actions WHERE day = ?) < ?
+       ${r.kind === "tidy" ? "AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL AND ? IS NOT NULL" : `AND (SELECT COUNT(*) FROM card_actions WHERE day = ? AND tenant_id = ? AND kind <> 'tidy') < ?
+       AND (SELECT COUNT(*) FROM card_actions WHERE day = ? AND kind <> 'tidy') < ?`}
        ${r.kind === "issue" ? "AND (SELECT COUNT(*) FROM agent_cards WHERE tenant_id = ?) < ? AND NOT EXISTS (SELECT 1 FROM agent_cards WHERE tenant_id = ? AND agent = ?)" : ""}`,
     [today, iso, c.tenantId, r.id, today, c.tenantId, WRITES_PER_DAY, today, WRITES_PER_DAY_ALL, ...(r.kind === "issue" ? [c.tenantId, CARDS_PER_COMPANY, c.tenantId, r.agent] : [])],
   );
@@ -392,17 +393,16 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
   let result: Record<string, unknown>;
   if (r.kind === "tidy") {
     // Each older card frozen in turn; every answer kept, and the action is done only when all of them are.
-    const frozen: { card_id_last4: string; status: string | null; reason: string | null }[] = [];
-    for (const id of a.card_ids ?? []) {
-      const x = await ask({ op: "status", action_sha256: r.sha256, card_id: id, status: "INACTIVE" });
-      frozen.push({ card_id_last4: id.slice(-4), status: x.ok && "card" in x ? x.card.status : null, reason: x.ok ? null : x.reason });
-    }
+    // In one call to the gateway (up to FREEZE_MANY_MAX cards), each card's answer kept.
+    const x = await ask({ op: "freeze_many", action_sha256: r.sha256, card_ids: a.card_ids ?? [] });
+    const frozen = x.ok && x.op === "freeze_many" ? x.frozen.map((f) => ({ card_id_last4: f.card_id_last4, status: f.ok ? "INACTIVE" : null, reason: f.reason })) : (a.card_ids ?? []).map((id) => ({ card_id_last4: id.slice(-4), status: null, reason: x.ok ? "an unexpected answer" : x.reason }));
     const all = frozen.length > 0 && frozen.every((f) => f.status === "INACTIVE");
     result = { status: all ? "done" : "failed", kind: r.kind, agent: r.agent, sha256: r.sha256, frozen, ...(all ? {} : { reason: "not every older card was frozen" }), label: CARDS_LABEL };
     await o.sql.run("DELETE FROM card_reads WHERE tenant_id = '' AND key = 'list'");
   } else if (r.kind === "edge") {
     // Exactly the limit, then one cent over, one after the other: Airwallex's own answers, with their ids and times.
     const row = await cardRow(o.sql, c.tenantId, r.agent);
+    const signer = (await db.one<{ display_name: string }>("users", { id: c.principal }))?.display_name ?? "the company's owner";
     const tries: Record<string, unknown>[] = [];
     let failed: string | null = null;
     for (const cents of a.amounts_cents ?? []) {
@@ -413,7 +413,9 @@ export async function signCardAction(o: { sql: Sql; caller: Caller; gateway?: Ca
     if (!failed) {
       const record = {
         run: "card-cent", ran_at: iso, label: CARDS_LABEL, agent: r.agent, action_sha256: r.sha256,
-        method: "POST /api/v1/simulation/issuing/create, twice on one card, after the CFO's passkey signed the action in Purser Cloud",
+        method: "POST /api/v1/simulation/issuing/create, twice on one card, after the company owner's passkey signed the action in Purser Cloud",
+        // Who signed, as the company's records name them (a software test passkey's owner is labelled so in their name).
+        signed_by: { name: signer, role: "owner", how: "passkey with user verification, over the action's SHA-256" },
         card: { last4: row?.last4 ?? null, card_id_last4: (a.card_id ?? "").slice(-4), per_tx_cents: a.amounts_cents![0]!, monthly_cents: row?.monthly_cents ?? null },
         attempts: tries,
       };
