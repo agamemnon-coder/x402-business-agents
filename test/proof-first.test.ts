@@ -262,13 +262,17 @@ describe("/proof starts with the guarantees (jury, 12 Nov): guarantees, partners
   // fold, which opens with the guarantees.
   // Jury, 13 Nov (second round): the guarantees in sight again, under the band and the four cards; the fold after them.
   // The owner, 13 Nov ("the proof is what we need"): heading, lead line, proof chain, band, offline check, live runs.
-  it("has the heading, the chain, the band, the offline check and the live runs above \"What Purser guarantees\", the fold after it: no run label", () => {
+  // Jury panel, 15 Nov ("/proof is too long"): the heading, the lead, five facts a judge can check (each one link), the
+  // offline check and the film links; then three folds: every live run, how a payment is checked (the chain, the band
+  // and the guarantees), and all the rest.
+  it("has the heading, the lead, the five facts, the offline check and the film links, then the folds: no run label in sight", () => {
     const g = main.indexOf(guaranteesHtml());
     expect(g).toBeGreaterThan(0);
-    // Max, 14 Nov: the walkthrough and the strip of partners, under the lead; Live with Airwallex after the live runs, above the guarantees. 14 Nov (Max, Airwallex at the centre): one line under the partner tiles, to /try.
-    expect(main.slice(0, g).replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <p class="pwatch">[\s\S]*?<\/p> <p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul> <p class="pawx"><a href="try">[^<]+<\/a><\/p> <ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> <aside class="pverify"[\s\S]*?<\/aside> <section class="pruns"[\s\S]*<\/section> $/);
-    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
-    expect(main.slice(0, g)).not.toContain('<span class="pill run">');
+    expect(main.replace(/\s+/g, " ")).toMatch(/^<main class="proofp"><div class="wrap"> <h1>Proof<\/h1> <p class="plead">[^<]+<\/p> <section class="pfacts"[\s\S]*?<\/section> <aside class="pverify"[\s\S]*?<\/aside> <p class="pwatch">[\s\S]*?<\/p> <details class="sumd" id="runs-fold"><summary>Every live run, by partner<\/summary><p class="ptnote">[^<]+<\/p><ul class="ptiles"[\s\S]*?<\/ul> <p class="pawx"><a href="try">[^<]+<\/a><\/p> <section class="pruns"[\s\S]*?<details class="sumd" id="how-checked"><summary>[^<]+<\/summary><ol class="pchain"[^>]*>(?:<li>[\s\S]*?<\/li>){4}<\/ol> <ul class="scale"[^>]*>(?:<li[^>]*>[\s\S]*?<\/li>){4,6}<\/ul> /);
+    expect(main.slice(g + guaranteesHtml().length).trimStart()).toMatch(/^<\/details>\s*<details class="sumd" id="details"><summary>[^<]+<\/summary>/);
+    const facts = /<section class="pfacts"[\s\S]*?<\/section>/.exec(main)![0];
+    expect(facts.match(/<li[^>]*><a href="[^"]+"/g)).toHaveLength(5);
+    expect(main.slice(0, main.indexOf('<details class="sumd"'))).not.toContain('<span class="pill run">');
   });
 
   it("orders the page: heading, guarantees, partners, the run's label with its numbers, the folds, the utility links", () => {
