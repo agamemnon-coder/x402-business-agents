@@ -46,11 +46,12 @@ export function facts() {
   const alta = /\| (\d+): (\d+) Alta payments \+ 1 card charge/.exec(claims)?.[2];
   const faceId = /\| Signed with Face ID \| (\d+) times, by the CFO/.exec(claims)?.[1];
   const stops = /\| Stops \| (\d+) stops, nothing paid over a limit/.exec(claims)?.[1];
-  if (!decisions || !alta || !faceId || !stops) throw new Error("uth: a main-run figure is not in docs/claims.md as expected");
+  const alone = /\| Payments within the limits, no approval at the time \| (\d+): /.exec(claims)?.[1];
+  if (!decisions || !alta || !faceId || !stops || !alone) throw new Error("uth: a main-run figure is not in docs/claims.md as expected");
   const refused = rec.pays.find((p) => p.answer.outcome === "refused")!.answer;
   const paid = rec.pays.find((p) => p.answer.outcome === "paid")!.answer;
   const replay = rec.pays.find((p) => p.answer.outcome === "paid_once")!.answer;
-  return { rec, xfer: xfer.transfer, xferReadAt: xfer.read_at, reconFlows: Number(recon[1]), anchor, anchorFile, tests: Number(tests), decisions: Number(decisions), alta: Number(alta), faceId: Number(faceId), stops: Number(stops), refused, paid, replay };
+  return { rec, xfer: xfer.transfer, xferReadAt: xfer.read_at, reconFlows: Number(recon[1]), anchor, anchorFile, tests: Number(tests), decisions: Number(decisions), alta: Number(alta), alone: Number(alone), faceId: Number(faceId), stops: Number(stops), refused, paid, replay };
 }
 
 const fmt = (n: number) => n.toLocaleString("en-GB");
@@ -73,21 +74,31 @@ export function scenes(): Scene[] {
   const jsonLines = JSON.stringify(shown, null, 2).split("\n").map((l) => esc(l).replace(/("quote_id": )("[^"]+")/, '$1<b class="hl">$2</b>').replace(/("amount": )("[^"]+")/, '$1<b class="hl">$2</b>')).join("\n");
   const diff = (x: string, y: string) => [...x].map((c, i) => (c === y[i] ? c : `<mark>${c}</mark>`)).join("");
   return [
-    { id: "u01", title: "The question", min: 9,
-      vo: "An AI agent can pay a supplier. So who signs the terms, and how can anyone check it later?",
-      segments: [{ card: `<div class="hero"><p class="kicker">Purser, under the hood</p><h1>An agent can pay.<br>Who signs the terms?</h1><p class="sub">Every claim in this film is shown with its id or hash. Test money only.</p></div>` }] },
-    { id: "u02", title: "The terms, hashed", min: 24,
-      vo: "Every payment becomes one set of terms: the payee, the account, the amount, the exchange-rate quote and a deadline. Purser writes them as canonical JSON and takes its SHA-256. This is the real hash from a run on the live demo.",
+    // Part one (15 Nov, the main hand-in film): the product in plain words, shown live on /try, for a judge who has never
+    // seen Purser. Part two is under the hood.
+    { id: "a01", title: "What Purser is", min: 10,
+      vo: "Purser lets AI agents pay a company's supplier invoices, but only within limits the CFO signs. It is built on Airwallex. Everything you see runs in its sandbox, with test money.",
+      segments: [{ card: `<div class="hero"><p class="kicker">Purser · built on Airwallex</p><h1>AI agents pay supplier invoices.<br>Only within limits the CFO signs.</h1><p class="sub">Airwallex sandbox · test money only · every claim shown with its id or hash</p></div>` }] },
+    { id: "a02", title: "Live on /try", min: 28,
+      vo: `An agent reads the invoice and checks it: not paid before, bank details on file, a known supplier. Within the CFO's limits, the agents pay alone: ${f.alone} payments in the main run, with no approval needed. Above them, the CFO signs the exact terms with Face ID. Then it is paid, booked and filed.`,
       segments: [
-        { clip: "try-walk", from: Math.max(0, m.inbox! - 0.5), to: m.inbox! + 3.5 },
-        { clip: "try-walk", from: m.sheet! - 0.3, to: m["sheet-held"]! },
+        { clip: "try-walk", from: Math.max(0, m.inbox! - 0.3), to: m.inbox! + 2.2 },
+        { clip: "try-walk", from: m.checked! - 1.2, to: m.checked! + 2.4 },
+        { clip: "try-walk", from: m.sheet! - 0.2, to: m.sheet! + 3.2 },
+        { clip: "try-walk", from: m.sign! - 0.6, to: m["paid-held"]! },
+        { card: `<div class="hero small-hero"><p class="kicker">Main run, 3 Nov · Airwallex sandbox and Alta (formerly Metal) testnet · test money</p><h2>${f.alone} payments within the CFO's limits, with no approval needed</h2><p class="sub">Above a limit, the CFO signs the exact terms with Face ID or a passkey. On /try every invoice is above the agents' limit (EUR 0 in that demo), so you sign each one.</p></div>`, seconds: 5 }] },
+    { id: "a03", title: "Under the hood", min: 6,
+      vo: "So how can anyone check that the CFO signed exactly this, and nothing else? Here is what happens under the hood.",
+      segments: [{ card: `<div class="hero"><p class="kicker">Under the hood</p><h1>Who signed what,<br>and how anyone can check it.</h1></div>` }] },
+    { id: "u02", title: "The terms, hashed", min: 16,
+      vo: "Every payment becomes one set of terms: the payee, the account, the amount, the exchange-rate quote and a deadline. Purser writes them as canonical JSON and takes its SHA-256. This is the real hash from the run you just saw.",
+      segments: [
         { card: `<div class="two"><div class="pane"><p class="lab">The signed terms (canonical JSON, excerpt)</p><pre class="code">${jsonLines}</pre></div><div class="pane"><p class="lab">SHA-256 of the whole canonical JSON</p><p class="hash big">${t.terms_sha256}</p><p class="ok">✓ recomputed from the canonical text: equal</p><p class="src">/try on ${esc(host)}, ${f.rec.recorded_at.slice(0, 10)} · test company, test money</p></div></div>` }] },
-    { id: "u03", title: "The passkey signs the hash", min: 30,
+    { id: "u03", title: "The passkey signs the hash", min: 22,
       vo: "That hash is the WebAuthn challenge. The CFO's passkey signs it after Face ID, and the flags say so: user present, user verified. The browser binds the signature to Purser's own domain, so a lookalike site gets nothing it can use. A PIN, a code or a click can be phished; this cannot.",
       note: "Recorded with a virtual test passkey (a browser authenticator with user verification), not a person's Face ID.",
       segments: [
-        { card: `<div class="grid3"><div class="pane"><p class="lab">clientDataJSON</p><dl><dt>type</dt><dd>${esc(a.client_data.type)}</dd><dt>challenge</dt><dd class="mono">${a.challenge_hex}</dd><dt>origin</dt><dd class="mono">${esc(a.client_data.origin)}</dd></dl><p class="ok">✓ challenge = the terms' SHA-256</p></div><div class="pane"><p class="lab">authenticatorData</p><dl><dt>rpIdHash</dt><dd class="mono">${short(a.authenticator_data.rp_id_hash, 32)}</dd><dt>flags</dt><dd class="mono">${a.authenticator_data.flags_byte} · UP ${a.authenticator_data.user_present ? 1 : 0} · UV ${a.authenticator_data.user_verified ? 1 : 0}</dd><dt>counter</dt><dd class="mono">${a.authenticator_data.sign_count}</dd></dl><p class="ok">✓ rpIdHash = SHA-256("${esc(host)}")</p></div><div class="pane why"><p class="lab">Why it can't be phished</p><p>The signature is bound to Purser's domain by the browser. A lookalike site gets a signature that is useless anywhere else.</p></div></div><p class="foot">Recorded with a virtual test passkey (user verification on), not a person's Face ID.</p>` },
-        { clip: "try-walk", from: m.sign! - 0.5, to: m["paid-held"]! }] },
+        { card: `<div class="grid3"><div class="pane"><p class="lab">clientDataJSON</p><dl><dt>type</dt><dd>${esc(a.client_data.type)}</dd><dt>challenge</dt><dd class="mono">${a.challenge_hex}</dd><dt>origin</dt><dd class="mono">${esc(a.client_data.origin)}</dd></dl><p class="ok">✓ challenge = the terms' SHA-256</p></div><div class="pane"><p class="lab">authenticatorData</p><dl><dt>rpIdHash</dt><dd class="mono">${short(a.authenticator_data.rp_id_hash, 32)}</dd><dt>flags</dt><dd class="mono">${a.authenticator_data.flags_byte} · UP ${a.authenticator_data.user_present ? 1 : 0} · UV ${a.authenticator_data.user_verified ? 1 : 0}</dd><dt>counter</dt><dd class="mono">${a.authenticator_data.sign_count}</dd></dl><p class="ok">✓ rpIdHash = SHA-256("${esc(host)}")</p></div><div class="pane why"><p class="lab">Why it can't be phished</p><p>The signature is bound to Purser's domain by the browser. A lookalike site gets a signature that is useless anywhere else.</p></div></div><p class="foot">Recorded with a virtual test passkey (user verification on), not a person's Face ID.</p>` }] },
     { id: "u04", title: "One cent", min: 26,
       vo: "Change one cent and the terms hash to something else entirely. The signature no longer matches, so nothing moves: zero transfers. Send the paid terms again, and the executor refuses to pay twice.",
       segments: [
@@ -108,9 +119,9 @@ export function scenes(): Scene[] {
     { id: "u09", title: "An agent's own card", min: 18,
       vo: "A second use: each agent has its own card for the software it buys, with limits the CFO sets. The CFO can freeze a card with Face ID from Purser Cloud.",
       segments: [{ clip: "cloud-agents", from: 0, to: 10 }, { card: `<div class="hero small-hero"><p class="kicker">Purser Cloud · Agents</p><h2>Each agent's card: per purchase, per month, the kind of shop</h2><p class="sub">The CFO changes a limit or freezes a card with Face ID. In the public demo company these actions are switched off; the cards shown are simulated.</p></div>` }] },
-    { id: "u10", title: "Close", min: 10,
-      vo: "Agents act. People sign the exact terms. Every step can be checked. Try it yourself.",
-      segments: [{ card: `<div class="hero"><h1>Agents act.<br>People sign.<br>Every step can be checked.</h1><p class="links">kit11.max-31b.workers.dev/try · /proof · github.com/agamemnon-coder/x402-business-agents</p><p class="sub">Test money only · Airwallex sandbox · Alta (formerly Metal) testnet</p><p class="credit">Music: AI-generated (ElevenLabs)</p></div>` }] },
+    { id: "u10", title: "Close", min: 12,
+      vo: "Purser: AI agents pay the bills, the CFO signs the exceptions, and every step can be checked. Built on Airwallex, with test money only. Try it yourself.",
+      segments: [{ card: `<div class="hero"><p class="kicker">Purser · built on Airwallex</p><h1>Agents pay the bills.<br>The CFO signs the exceptions.<br>Every step can be checked.</h1><p class="links">kit11.max-31b.workers.dev/try · /proof · github.com/agamemnon-coder/x402-business-agents</p><p class="sub">Test money only · Airwallex sandbox · Alta (formerly Metal) testnet</p><p class="credit">Music: AI-generated (ElevenLabs)</p></div>` }] },
   ];
 }
 

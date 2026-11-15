@@ -1,147 +1,187 @@
 1
-00:00:00,600 --> 00:00:03,145
-An AI agent can pay a supplier.
+00:00:00,600 --> 00:00:04,437
+Purser lets AI agents pay a company's supplier invoices,
 
 2
-00:00:03,145 --> 00:00:07,908
-So who signs the terms, and how can anyone check it later?
+00:00:04,437 --> 00:00:06,973
+but only within limits the CFO signs.
 
 3
-00:00:09,700 --> 00:00:15,004
-Every payment becomes one set of terms: the payee, the account, the amount,
+00:00:06,973 --> 00:00:08,686
+It is built on Airwallex.
 
 4
-00:00:15,004 --> 00:00:17,761
-the exchange-rate quote and a deadline.
+00:00:08,686 --> 00:00:12,523
+Everything you see runs in its sandbox, with test money.
 
 5
-00:00:17,761 --> 00:00:21,934
-Purser writes them as canonical JSON and takes its SHA-256.
+00:00:14,333 --> 00:00:20,163
+An agent reads the invoice and checks it: not paid before, bank details on file,
 
 6
-00:00:21,934 --> 00:00:25,469
-This is the real hash from a run on the live demo.
+00:00:20,163 --> 00:00:21,402
+a known supplier.
 
 7
-00:00:33,733 --> 00:00:36,364
-That hash is the WebAuthn challenge.
+00:00:21,402 --> 00:00:26,868
+Within the CFO's limits, the agents pay alone: 87 payments in the main run,
 
 8
-00:00:36,364 --> 00:00:41,989
-The CFO's passkey signs it after Face ID, and the flags say so: user present,
+00:00:26,868 --> 00:00:28,617
+with no approval needed.
 
 9
-00:00:41,989 --> 00:00:43,012
-user verified.
+00:00:28,617 --> 00:00:32,625
+Above them, the CFO signs the exact terms with Face ID.
 
 10
-00:00:43,012 --> 00:00:47,031
-The browser binds the signature to Purser's own domain,
+00:00:32,625 --> 00:00:35,103
+Then it is paid, booked and filed.
 
 11
-00:00:47,031 --> 00:00:50,246
-so a lookalike site gets nothing it can use.
+00:00:42,367 --> 00:00:47,824
+So how can anyone check that the CFO signed exactly this, and nothing else?
 
 12
-00:00:50,246 --> 00:00:54,118
-A PIN, a code or a click can be phished; this cannot.
+00:00:47,824 --> 00:00:50,444
+Here is what happens under the hood.
 
 13
-00:01:03,767 --> 00:01:07,844
-Change one cent and the terms hash to something else entirely.
+00:00:52,233 --> 00:00:57,454
+Every payment becomes one set of terms: the payee, the account, the amount,
 
 14
-00:01:07,844 --> 00:01:12,184
-The signature no longer matches, so nothing moves: zero transfers.
+00:00:57,454 --> 00:01:00,169
+the exchange-rate quote and a deadline.
 
 15
-00:01:12,184 --> 00:01:16,459
-Send the paid terms again, and the executor refuses to pay twice.
+00:01:00,169 --> 00:01:04,276
+Purser writes them as canonical JSON and takes its SHA-256.
 
 16
-00:01:29,767 --> 00:01:35,711
-The exchange-rate quote inside the signed terms is a live quote from Airwallex's sandbox,
+00:01:04,276 --> 00:01:07,618
+This is the real hash from the run you just saw.
 
 17
-00:01:35,711 --> 00:01:36,379
-by its id.
+00:01:09,433 --> 00:01:12,064
+That hash is the WebAuthn challenge.
 
 18
-00:01:36,379 --> 00:01:41,655
-In the main run, the transfer Airwallex made carries the hash the CFO approved,
+00:01:12,064 --> 00:01:17,689
+The CFO's passkey signs it after Face ID, and the flags say so: user present,
 
 19
-00:01:41,655 --> 00:01:45,596
-in its own metadata, and Purser reads it back and compares.
+00:01:17,689 --> 00:01:18,712
+user verified.
 
 20
-00:01:45,596 --> 00:01:52,074
-Then every money flow was reconciled to the cent against Airwallex and the chain: no differences.
+00:01:18,712 --> 00:01:22,731
+The browser binds the signature to Purser's own domain,
 
 21
-00:02:01,767 --> 00:02:03,396
-Agents also pay by card.
+00:01:22,731 --> 00:01:25,946
+so a lookalike site gets nothing it can use.
 
 22
-00:02:03,396 --> 00:02:08,215
-When a charge goes over the card's limit, Airwallex itself declines it,
+00:01:25,946 --> 00:01:29,818
+A PIN, a code or a click can be phished; this cannot.
 
 23
-00:02:08,215 --> 00:02:09,844
-whatever the agent asks.
+00:01:31,633 --> 00:01:35,711
+Change one cent and the terms hash to something else entirely.
 
 24
-00:02:16,767 --> 00:02:21,357
-Every step lands in an audit log where each row hashes the one before.
+00:01:35,711 --> 00:01:40,051
+The signature no longer matches, so nothing moves: zero transfers.
 
 25
-00:02:21,357 --> 00:02:26,276
-Its head is written into a transaction on Alta, formerly Metal, on testnet.
+00:01:40,051 --> 00:01:44,326
+Send the paid terms again, and the executor refuses to pay twice.
 
 26
-00:02:26,276 --> 00:02:30,997
-Anyone can recompute it from the repository: verify-anchor prints match.
+00:01:57,633 --> 00:02:03,578
+The exchange-rate quote inside the signed terms is a live quote from Airwallex's sandbox,
 
 27
-00:02:40,767 --> 00:02:42,327
-Only measured numbers.
+00:02:03,578 --> 00:02:04,245
+by its id.
 
 28
-00:02:42,327 --> 00:02:47,928
-In the main run: 24 decisions by Claude, 86 payments on Alta within the limits,
+00:02:04,245 --> 00:02:09,522
+In the main run, the transfer Airwallex made carries the hash the CFO approved,
 
 29
-00:02:47,928 --> 00:02:51,970
-5 signatures with Face ID, and nothing paid over a limit.
+00:02:09,522 --> 00:02:13,462
+in its own metadata, and Purser reads it back and compares.
 
 30
-00:02:51,970 --> 00:02:53,459
-And 6,932 tests pass.
+00:02:13,462 --> 00:02:19,941
+Then every money flow was reconciled to the cent against Airwallex and the chain: no differences.
 
 31
-00:03:00,767 --> 00:03:06,128
-A second use: each agent has its own card for the software it buys,
+00:02:29,633 --> 00:02:31,262
+Agents also pay by card.
 
 32
-00:03:06,128 --> 00:03:08,129
-with limits the CFO sets.
+00:02:31,262 --> 00:02:36,081
+When a charge goes over the card's limit, Airwallex itself declines it,
 
 33
-00:03:08,129 --> 00:03:12,690
-The CFO can freeze a card with Face ID from Purser Cloud.
+00:02:36,081 --> 00:02:37,710
+whatever the agent asks.
 
 34
-00:03:18,767 --> 00:03:19,550
-Agents act.
+00:02:44,633 --> 00:02:49,224
+Every step lands in an audit log where each row hashes the one before.
 
 35
-00:03:19,550 --> 00:03:21,544
-People sign the exact terms.
+00:02:49,224 --> 00:02:54,142
+Its head is written into a transaction on Alta, formerly Metal, on testnet.
 
 36
-00:03:21,544 --> 00:03:23,396
-Every step can be checked.
+00:02:54,142 --> 00:02:58,864
+Anyone can recompute it from the repository: verify-anchor prints match.
 
 37
-00:03:23,396 --> 00:03:24,536
+00:03:08,633 --> 00:03:10,193
+Only measured numbers.
+
+38
+00:03:10,193 --> 00:03:15,795
+In the main run: 24 decisions by Claude, 86 payments on Alta within the limits,
+
+39
+00:03:15,795 --> 00:03:19,837
+5 signatures with Face ID, and nothing paid over a limit.
+
+40
+00:03:19,837 --> 00:03:21,326
+And 6,932 tests pass.
+
+41
+00:03:28,633 --> 00:03:33,995
+A second use: each agent has its own card for the software it buys,
+
+42
+00:03:33,995 --> 00:03:35,995
+with limits the CFO sets.
+
+43
+00:03:35,995 --> 00:03:40,556
+The CFO can freeze a card with Face ID from Purser Cloud.
+
+44
+00:03:46,633 --> 00:03:50,954
+Purser: AI agents pay the bills, the CFO signs the exceptions,
+
+45
+00:03:50,954 --> 00:03:53,045
+and every step can be checked.
+
+46
+00:03:53,045 --> 00:03:55,903
+Built on Airwallex, with test money only.
+
+47
+00:03:55,903 --> 00:03:57,018
 Try it yourself.
