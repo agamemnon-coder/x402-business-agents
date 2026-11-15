@@ -125,5 +125,10 @@ describe("the committed record", () => {
     expect(html).toContain("With Purser vs Claude alone");
     expect(html).toContain(`commit ${summary.commit}`);
     expect(html.replace(/<[^>]+>/g, " ")).not.toMatch(/\b\d+\s*\/\s*\d+\b/);
+    // Its figures are the summary's, each payer's worse run.
+    const naive = worstRun("naive_script")!, alone = worstRun("claude_alone")!;
+    expect(html).toContain(`${naive.wrong_payments} wrong payments`);
+    expect(html).toContain(alone.to_cfo_not_held ? `${alone.to_cfo_not_held} sent to the CFO that had to be held` : "none sent to the CFO that had to be held");
+    expect(html).toContain(`USD ${alone.cost_usd.toFixed(4)} a run`);
   });
 });

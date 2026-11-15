@@ -1,11 +1,11 @@
-// npm run scorecard -- [--runs 2] [--max-usd 4] [--concurrency 4] [--case a,b]
+// npm run scorecard -- [--runs 2] [--max-usd 4] [--concurrency 4] [--case a,b] | [--from docs/evals/scorecard-<day>.json]
 // The scorecard, "with Purser vs Claude alone" (src/evals/scorecard.ts): the payables eval set plus one cent changed
 // after the CFO's approval, through Claude alone, Purser, Purser with a script that always says pay in the model's
 // place, and a naive script, each Claude payer with real Claude calls. Never in CI. Without KIT11_ANTHROPIC_API_KEY it
 // says "not run" and writes nothing. Writes docs/evals/scorecard-<day>.json (every row, totals per run, model, cost,
 // commit), docs/evals/scorecard-summary.json (what the site reads) and docs/scorecard.md.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { claudeClient } from "../claude/reader.js";
 import { evalCommit } from "../evals/commit.js";
@@ -17,38 +17,44 @@ import {
 const ROOT = resolve(import.meta.dirname, "../..");
 const args = process.argv.slice(2);
 const opt = (name: string) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
-const runs = Number(opt("--runs") ?? "2");
+let runs = Number(opt("--runs") ?? "2");
 const maxUsd = Number(opt("--max-usd") ?? "4");
 const concurrency = Number(opt("--concurrency") ?? "4");
 const only = opt("--case")?.split(",");
-const model = opt("--model") ?? SCORECARD_MODEL;
+let model = opt("--model") ?? SCORECARD_MODEL;
 
-const client = claudeClient();
-if (!client) {
+// --from <record>: the docs and the summary written again from a recorded run's rows (no Claude call, nothing re-run).
+const from = opt("--from");
+interface Recorded { model: string; runs: number; ran_at: string; finished_at: string; commit: string; dirty: boolean; stopped_by_budget: boolean; cost_usd: number; rows: ScoreRow[] }
+const recorded = from ? JSON.parse(readFileSync(resolve(ROOT, from), "utf8")) as Recorded : null;
+const client = recorded ? null : claudeClient();
+if (!recorded && !client) {
   console.log("scorecard: not run (no KIT11_ANTHROPIC_API_KEY). Nothing is published.");
   process.exit(0);
 }
-const startedAt = new Date();
+const startedAt = recorded ? new Date(recorded.ran_at) : new Date();
 const day = startedAt.toISOString().slice(0, 10);
-const OUT = `docs/evals/scorecard-${day}.json`;
+const OUT = from ?? `docs/evals/scorecard-${day}.json`;
 const SUMMARY = "docs/evals/scorecard-summary.json";
 const DOC = "docs/scorecard.md";
 
 const cases = SCORECARD_CASES.filter((k) => !only || only.includes(k.id));
-const withCent = !only || only.includes(CENT.id);
+const withCent = recorded ? recorded.rows.some((r) => r.case === CENT.id) : !only || only.includes(CENT.id);
 type Job = () => Promise<ScoreRow>;
 const jobs: Job[] = [];
-for (let run = 1; run <= runs; run++) {
-  for (const k of cases) {
-    jobs.push(
-      () => aloneRow(k, run, client, model), () => purserRow(k, run, client, model),
-      () => purserRow(k, run, alwaysPay(), "always-pay-script", "purser_script"), async () => naiveRow(k, run),
-    );
+if (client) {
+  for (let run = 1; run <= runs; run++) {
+    for (const k of cases) {
+      jobs.push(
+        () => aloneRow(k, run, client, model), () => purserRow(k, run, client, model),
+        () => purserRow(k, run, alwaysPay(), "always-pay-script", "purser_script"), async () => naiveRow(k, run),
+      );
+    }
+    if (withCent) jobs.push(() => centAloneRow(run, client, model), async () => centPurserRow(run), async () => centPurserRow(run, undefined, "purser_script"), async () => centNaiveRow(run));
   }
-  if (withCent) jobs.push(() => centAloneRow(run, client, model), async () => centPurserRow(run), async () => centPurserRow(run, undefined, "purser_script"), async () => centNaiveRow(run));
 }
-const rows: ScoreRow[] = [];
-let spent = 0, stopped = false;
+const rows: ScoreRow[] = recorded ? [...recorded.rows] : [];
+let spent = recorded ? Math.round(recorded.cost_usd * 1e6) : 0, stopped = recorded?.stopped_by_budget ?? false;
 async function worker() {
   for (;;) {
     const j = jobs.shift();
@@ -67,16 +73,17 @@ const byRun = totalsByRun(rows);
 const all = Object.fromEntries(ARMS.map((a) => [a, totals(rows.filter((r) => r.arm === a))])) as Record<Arm, ArmTotals>;
 // The line counts the worse of the runs for each payer, so no run is picked.
 const worst = (a: Arm) => Object.values(byRun).map((x) => x[a]).sort((x, y) => y.wrong_payments - x.wrong_payments || y.to_cfo_not_held - x.to_cfo_not_held)[0]!;
-const perRun = cases.length + (withCent ? 1 : 0);
+if (recorded) { runs = recorded.runs; model = recorded.model; }
+const perRun = recorded ? rows.filter((r) => r.run === 1 && r.arm === "purser").length : cases.length + (withCent ? 1 : 0);
 const line = scorecardLine({ claude_alone: worst("claude_alone"), purser: worst("purser"), purser_script: worst("purser_script"), cases: perRun });
-const { commit, dirty } = evalCommit([OUT, SUMMARY, DOC]);
+const { commit, dirty } = recorded ? { commit: recorded.commit, dirty: recorded.dirty } : evalCommit([OUT, SUMMARY, DOC]);
 const record = {
   what: "The scorecard, with Purser vs Claude alone: the payables eval set (src/evals/apAgentCases.ts) and one cent changed after the CFO's approval, through Claude alone (same model, same records as raw data, its decision carried out as it is), Purser (the Checker with code's checks, enforce and the signature gate), Purser with a script that always says pay in the model's place, and a naive script that pays everything. Scored by plain code from what each did. Test data only; no money moved anywhere.",
-  model, runs, cases_per_run: perRun, ran_at: startedAt.toISOString(), finished_at: new Date().toISOString(), commit, dirty, stopped_by_budget: stopped,
+  model, runs, cases_per_run: perRun, ran_at: startedAt.toISOString(), finished_at: recorded?.finished_at ?? new Date().toISOString(), commit, dirty, stopped_by_budget: stopped,
   command: `npm run scorecard -- --runs ${runs}`, line, cost_usd: Number((spent / 1e6).toFixed(4)), totals: all, by_run: byRun, rows,
 };
 mkdirSync(dirname(resolve(ROOT, OUT)), { recursive: true });
-writeFileSync(resolve(ROOT, OUT), `${JSON.stringify(record, null, 2)}\n`);
+if (!recorded) writeFileSync(resolve(ROOT, OUT), `${JSON.stringify(record, null, 2)}\n`);
 const pick = (t: ArmTotals) => ({ wrong_payments: t.wrong_payments, wrong_money: t.wrong_money, paid_past_cfo: t.paid_past_cfo, to_cfo_not_held: t.to_cfo_not_held, right: t.right, missed: t.missed, unsourced_kept: t.unsourced_kept, cost_usd: t.cost_usd });
 writeFileSync(resolve(ROOT, SUMMARY), `${JSON.stringify({
   file: OUT, model, runs, cases_per_run: perRun, ran_at: record.ran_at, commit, line, cost_usd: record.cost_usd,
@@ -109,6 +116,7 @@ const aloneWrong = rows.filter((r) => r.arm === "claude_alone" && r.wrong_money)
 const aloneLoose = rows.filter((r) => r.arm === "claude_alone" && r.to_cfo_not_held);
 const unsourced = rows.filter((r) => (r.arm === "claude_alone" || r.arm === "purser") && r.unsourced_kept.length);
 const w = (n: number) => countWord(n);
+const plural = (n: number, noun: string) => (n === 0 ? `no ${noun}` : `${w(n)} ${noun}${n === 1 ? "" : "s"}`);
 writeFileSync(resolve(ROOT, DOC), `# Scorecard: with Purser vs Claude alone
 
 ${line}
@@ -132,10 +140,10 @@ ${aloneWrong.length
     : `## Claude alone made no wrong payment\n\nIn ${runs === 2 ? "both runs" : "every run"}, Claude alone paid no invoice that had to be stopped, paid nothing past the CFO, and did not pay the changed cent. Said plainly: on this set, with this prompt and these records, the model on its own did well.\n`}
 ## Where Claude alone and Purser differ
 
-${aloneLoose.length ? `Claude alone sent ${w(aloneLoose.length)} invoices that had to be held to the CFO as approvals instead (both runs together): nothing was paid, but the CFO was asked to sign them.\n\n${[...new Set(aloneLoose.map((r) => r.case))].map((c) => `- ${c}: ${aloneLoose.filter((r) => r.case === c).map((r) => `run ${r.run}`).join(", ")}`).join("\n")}\n` : "Claude alone held every invoice that had to be held.\n"}
-With Purser, the same model ended as the case says in ${w(all.purser.right)} of the rows (both runs together); Claude alone in ${w(all.claude_alone.right)}.
+${aloneLoose.length ? `Claude alone sent ${w(aloneLoose.length)} ${aloneLoose.length === 1 ? "invoice" : "invoices"} that had to be held to the CFO as approvals instead (both runs together): nothing was paid, but the CFO was asked to sign them.\n\n${[...new Set(aloneLoose.map((r) => r.case))].map((c) => `- ${c}: ${aloneLoose.filter((r) => r.case === c).map((r) => `run ${r.run}`).join(", ")}`).join("\n")}\n` : "Claude alone held every invoice that had to be held.\n"}
+With Purser, the same model ended as the case says in ${all.purser.right === all.purser.cases ? `every one of its ${all.purser.cases} rows` : `${w(all.purser.right)} of its ${all.purser.cases} rows`} (both runs together); Claude alone in ${w(all.claude_alone.right)} of its ${all.claude_alone.cases}.
 
-With a script in the model's place that says pay on every invoice, Purser's code made ${w(all.purser_script.wrong_payments)} wrong payment${all.purser_script.wrong_payments === 1 ? "" : "s"} and paid ${w(all.purser_script.paid_past_cfo)} past the CFO; a payer with no rules pays everything (the naive script: ${w(all.naive_script.wrong_payments)} wrong payments over both runs). That is the difference in kind: Claude alone is as safe as the model's judgement on the day; Purser's checks hold when the model is wrong.
+With a script in the model's place that says pay on every invoice, Purser's code made ${plural(all.purser_script.wrong_payments, "wrong payment")}, paid ${w(all.purser_script.paid_past_cfo)} ${all.purser_script.paid_past_cfo === 1 ? "invoice" : "invoices"} past the CFO, and sent ${w(all.purser_script.to_cfo_not_held)} that had to be held to the CFO (both runs together): those are the cases only a reader catches (such as an instruction hidden in the text, pressure in the mail, an amount that is not what the order says), which code alone sends to the CFO rather than holding. A payer with no rules pays everything (the naive script: ${plural(all.naive_script.wrong_payments, "wrong payment")} over both runs). That is the difference in kind: Claude alone is as safe as the model's judgement on the day; Purser's checks hold when the model is wrong, and the model with them held every one.
 
 ## Numbers not in what the payer was shown
 

@@ -583,12 +583,12 @@ export function proofPage(run: AgentRun = agentRun()): string {
   <p class="pawx"><a href="try">${esc(AWX_LIVE_LINE)}</a></p>
   ${proofChainHtml()}
   ${scaleBandHtml(proofScaleStats(), "What ran, in numbers", { strip: true })}
-  ${scorecardCardHtml()}
   ${verifyCalloutHtml()}
   ${proofRunsHtml()}
   ${awxLiveHtml()}
   ${guaranteesHtml()}
-  ${detailsFold("details", "All the proof: partners, numbers and every check", `${lifeVisual("wide")}
+  ${detailsFold("details", "All the proof: partners, numbers and every check", `${scorecardCardHtml()}
+  ${lifeVisual("wide")}
   ${railsVisual("wide")}
   <h2 class="sec">The partners</h2>
   ${partnerCards(run)}
