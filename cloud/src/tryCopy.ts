@@ -129,7 +129,7 @@ export const INVOICE = {
   loading: "Setting up your test company…",
   /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
   hints: {
-    clean: "Ready to pay once you sign",
+    clean: "Ready to pay · the agents can negotiate a discount",
     again: "The same file again: Purser holds it",
     renumbered: "A paid invoice, new number: held",
     bank: "New bank details: held for your check",
@@ -943,7 +943,7 @@ export const VISIBLE = {
 // 15 Nov ("what does Claude add?"): every answer with an invoice also shows the Checker's steps' fold summary and the
 // script button, +13 words each ("work 2" to "work 6", "work 10" to "work 12", "work 15"; "work 7" newly over at 57);
 // "work 16" is the comparison opened, carrying the worst-case record's own line verbatim (WORST_CASE_LINE).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 83, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 83, "books 1": 75, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 79 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 168, "company 5": 201 , "work 7": 57, "work 16": 219 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
