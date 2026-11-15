@@ -162,6 +162,8 @@ for (const width of [1440, 390]) {
     const v = await verdict();
     ok(v.ok === "true" && v.lines >= 10 && v.pass === v.lines, `${tag}: the ${name} proof from /try passes every line (${v.pass}/${v.lines})`);
     if (name === "refused") ok((await page.locator('#v-checks li[data-check="asked terms"]').innerText()).includes("cannot cover them"), `${tag}: the refusal's line shows the asked terms hash differently`);
+    const refusalLine = await page.locator("#v-means-refusal").evaluate((li) => !(li as HTMLElement).hidden);
+    ok(refusalLine === (name === "refused"), `${tag}: "What this proves" names the refusal ${name === "refused" ? "for the refused proof" : "not for the paid proof"}`);
   }
   await page.click("#v-sample");
   let v = await verdict();

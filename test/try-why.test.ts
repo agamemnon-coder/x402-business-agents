@@ -85,15 +85,22 @@ describe("the refused payment: signed beside asked", () => {
     expect(kit.tamperRows(signed, { ...signed, amount: "2000.00", iban_last4: "1111" }, null, labels, fmt)).toEqual([["Amount", "EUR 1850.00", "EUR 2000.00"], ["Account ending", "…3000", "…1111"]]);
   });
   it("says it plainly", () => {
-    expect(TAMPER.head).toBe("Refused: the terms changed after you signed.");
-    expect(TAMPER.line).toBe("{method} signs the exact terms. Change one cent and the signature no longer matches, so nothing is paid.");
+    expect(`${TAMPER.refused}: ${TAMPER.head}`).toBe("Refused: the terms changed after you signed.");
+    expect(TAMPER.rule).toBe("The rule that held: your signature covers these exact terms.");
+    // "Read back" is said nowhere: the transfer's status is read back, its metadata is not.
+    expect(TAMPER.signAwx).toBe("Signed with your passkey{via}, not a PIN or a click. The hash of the exact terms travels in the Airwallex sandbox transfer's metadata.");
+    expect(TAMPER.signSim).toBe("Signed with your passkey{via}, not a PIN or a click. Purser checks the hash of the exact terms before the simulated bank moves anything.");
+    for (const v of Object.values(TAMPER)) expect(v).not.toMatch(/read back/i);
     expect(TAMPER.proof).toBe("Show the proof");
   });
   it("the page draws the reason first and folds the stamp, the layers and the fingerprints under Show the proof", () => {
     const html = tryPage("n0nce", { origin: "https://purser-try.example", rpId: "purser-try.example" });
-    expect(html).toContain("const card=el('section','why refuse card refusal shake',[el('p','head',[icon('triangle-alert',22),el('span','',X.head)]),d,el('p','rule',cap1(fill(X.line,{method:method()})))]);");
+    // 15 Nov (owner: "it glows red"): one red word, the diff, the rule that held and the signature line; no shake.
+    expect(html).toContain("const card=el('section','why refuse card refusal',[el('p','head',el('span','',[el('span','no',X.refused),': '+X.head])),diff,el('p','rule',X.rule),el('p','sigl',fill(awx?X.signAwx:X.signSim,{via:method()===C.method.other?'':' ('+method()+')'}))]);");
+    expect(html).toContain("const li=el('li','',[el('span','dk',k),el('s','old',a),el('span','arr',' → '),el('mark','new',b)]);");
+    expect(html).not.toMatch(/card refusal shake|animation: glow/);
     expect(html).toContain("const proof=el('details','',[el('summary','',X.proof),el('p','stamp',Y.stamp)]);");
-    expect(html).toContain("proof.append(line(Y.signed,h.a),line(Y.sent,h.b));");
+    expect(html).toContain("diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));");
   });
 });
 

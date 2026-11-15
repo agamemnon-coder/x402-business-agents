@@ -62,7 +62,7 @@ const whyKit=(()=>{
     return {tone:toneOf(f.code,f.level,W),code:f.code,head,rows,said,rule,words};
   }
   function tamperRows(signed,sent,changed,labels,fmt){
-    const keys=['amount','beneficiary_name','iban_last4'];
+    const keys=['amount','currency','beneficiary_name','iban_last4','bic','invoice_no'];
     const named=Array.isArray(changed)?changed.map((x)=>typeof x==='string'?x:x&&typeof x.field==='string'?x.field:'').filter(Boolean):null;
     let ks=keys.filter((k)=>str(signed[k])!==str(sent[k]));
     if(named)ks=ks.filter((k)=>named.indexOf(k)>=0);

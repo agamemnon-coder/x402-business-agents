@@ -28,7 +28,7 @@ export const STAGE_SCHEMA = [
 export const STAGE_KINDS = ["read", "signed", "paid", "refused"] as const;
 export type StageKind = (typeof STAGE_KINDS)[number];
 /** The fields a visitor may change on the pay screen (src/engine/host.ts CHANGEABLE_TERMS), in the ticker's words. */
-const CHANGED_WORDS: Record<string, string> = { amount: "the amount", beneficiary_name: "the payee", iban_last4: "the account" };
+const CHANGED_WORDS: Record<string, string> = { amount: "the amount", currency: "the currency", beneficiary_name: "the payee", iban_last4: "the account", bic: "the BIC", invoice_no: "the invoice number" };
 
 const ready = new WeakMap<Sql, Promise<void>>();
 export function stageTable(sql: Sql): Promise<void> {
