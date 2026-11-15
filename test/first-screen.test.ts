@@ -65,10 +65,14 @@ describe("the first screen (section D, 6 Nov)", () => {
     const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: LIVE"));
     // 15 Nov (Max): "At a glance" under the badges, six lines, each with its record (test/readme-glance.test.ts), then Kit 11.
     const glance = lines.indexOf("## At a glance");
-    expect(lines.slice(5, glance)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    // 15 Nov (readme-wow): two GitHub alerts between the centred top and "At a glance": Try it (/try), then test money only.
+    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(glance - 6, glance)).toEqual(["> [!TIP]", lines[glance - 5]!, "", "> [!IMPORTANT]", lines[glance - 2]!, ""]);
+    expect(lines[glance - 5]).toContain("(https://kit11.max-31b.workers.dev/try)");
+    expect(lines[glance - 2]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
     expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(35);
+    expect(kit).toBeLessThan(40); // 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -104,7 +108,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(200); // 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(250); // 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with the idea, its proof line, the hands-on demo as the one primary button, the film second, one reassurance line", () => {
