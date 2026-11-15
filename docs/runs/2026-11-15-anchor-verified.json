@@ -1,0 +1,27 @@
+{
+  "record": "verify-anchor, run live on 15 Nov",
+  "command": "npm run verify-anchor",
+  "ran_at": "2026-11-15T03:50:40Z",
+  "finished_at": "2026-11-15T03:50:43Z",
+  "network": "Alta (formerly Metal) testnet",
+  "chain_id": 63825,
+  "anchor_record": "docs/runs/2026-11-13-anchor.json",
+  "tx": "0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1",
+  "block": 27469355,
+  "sender": "0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+  "head": "aaaf56a1616d6e1210bfbe27d23c9aa58d40930675148b6f6870aaba28fd816f",
+  "height": 701,
+  "result": "MATCH",
+  "checks": [
+    "ok decision log (recorded run, 30 Oct) 194 at ee0732445a717f73\u2026",
+    "ok audit chain (main run, 3 Nov) 412 at f8d2a633d27316c3\u2026",
+    "ok books (main run journal, 3 Nov) 95 at 7b0d846919757154\u2026",
+    "ok repo head recomputed aaaf56a1616d6e1210bfbe27d23c9aa58d40930675148b6f6870aaba28fd816f",
+    "ok chain chain id 63825",
+    "ok transaction 0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1 success, block 27469355",
+    "ok block 27469355",
+    "ok sender 0xe62ddb110aa0d9123bac397487e1a70c92db0d93",
+    "ok calldata head aaaf56a1616d6e1210bfbe27d23c9aa58d40930675148b6f6870aaba28fd816f, height 701"
+  ],
+  "calls": "Read only: the transaction and its receipt read from the chain over METAL_RPC_URL. Nothing was signed or sent; no key was used."
+}

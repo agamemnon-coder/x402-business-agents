@@ -13,6 +13,7 @@
 // material sits in one closed fold at the very end, labelled as outside the entry (Visa, 5 Nov: TAP is not Visa tooling
 // for this hackathon). assertVicFirst fails the page build if any of that is lost.
 
+import { altaFacts, altaFactsHtml, ALTA_FACTS_CSS, NO_ENDORSEMENT_ALTA } from "./altaFacts.js";
 import { quotedNote } from "../ui/formerly.js";
 import { WATCH_IN_MENU } from "../config/film.js";
 import { existsSync, readFileSync } from "node:fs";
@@ -155,8 +156,10 @@ export function metalPage(run: AgentRun = agentRun(), tokenize: TokenizeRun | nu
     + fold("What is simulated", [plainLi("Test money on Alta testnet only (*USDZ)."), plainLi("Stockline, the supplier, and Summit, the customer whose agent buys from us, are simulated; their payments are real testnet transactions."),
       plainLi("The second approver on the mandate change is a labelled test passkey; in production it is a second person."), plainLi("Passkeys as the account's owners ran on 1 November with software passkeys, not a phone."), ...(holdState(readFileSync(new URL(`../../${METAL_HOLD_RECORD}`, import.meta.url), "utf8"))?.finished === false ? [plainLi(`${HOLD_NOT_FINISHED}.`)] : [])])
     + fold("Archive", [`<li><a class="pf" href="metal/report">The Dispute desk's evidence report (30 October)</a></li>`]);
-  const body = metalBody(run.record, { logo: LOGO.metal, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
-  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
+  // The opening (Metal Award, 15 Nov): three facts with their explorer links and records, then the main run's count.
+  const intro = altaFactsHtml(altaFacts(), { count: metalTxs().length, list: METAL_TX_LIST });
+  const body = metalBody(run.record, { logo: LOGO.metal, logoNote: intro ? NO_ENDORSEMENT_ALTA : undefined, intro, label: run.label, folds, proofHash: "metal", after: `\n  ${faceIdOnChainSection()}${tokenize ? `\n  ${tokenizeRunBlock(tokenize)}` : ""}` });
+  return page({ title: "Alta", description: "How Purser uses Alta: each agent's limit is a mandate on chain, read live; payments per query over x402; a payment over the cap is refused on chain.", tab: "metal", css: `${CSS}\n${METAL_CSS}\n${METAL_ONCHAIN_CSS}\n${STATS_CSS}\n${ALTA_FACTS_CSS}`, body, source: SOURCE(run), js: METAL_INSPECT_JS + COUNT_JS, stage: false, builtOn: builtOnHtml(run) });
 }
 
 export function airwallexPage(run: AgentRun = agentRun()): string {
