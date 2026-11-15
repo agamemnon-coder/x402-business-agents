@@ -6,8 +6,8 @@
 // 1. Tests passing: the last full run's summary (docs/assets/test-summary.json, written by `npm run readme-draft --
 //    --tests <vitest json>`), with the commit it ran on.
 // 2. Live runs: /runs' own count (src/redesign/runs.ts isLive: no rehearsal, control test or partial run).
-// 3. Airwallex sandbox API calls: the sum of the call logs the run records keep (an endpoint's count, a log's total, a
-//    purchase's own count); a record without a call log adds nothing, so this is a floor.
+// 3. Airwallex sandbox API calls: since 15 Nov (the live jury run: /proof showed 150 here and 154 on its trail link),
+//    the trail's own count, the one /airwallex/calls lists call by call (src/airwallex/apiTrail.ts apiTrail).
 // 4. Alta testnet transactions: distinct transaction hashes linked to Alta's testnet explorer from the run records and
 //    run logs (docs/runs, docs/demo).
 // 5. Claude calls on record: distinct Anthropic request ids (req_011…) in the run and eval records under docs/.
@@ -16,6 +16,9 @@
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { liveRunCount } from "./runs.js";
+import { apiTrail } from "../airwallex/apiTrail.js";
+/** The band's words for the Airwallex figure: the same count as /airwallex/calls. */
+export const AWX_CALLS_LABEL = "Airwallex sandbox API calls in the run records";
 import { REPO_BLOB } from "./metalStory.js";
 import { esc, icon } from "./ui.js";
 
@@ -78,8 +81,7 @@ export interface ScaleFigures {
 /** Every figure of the band, computed from the files now. */
 export function scaleFigures(): ScaleFigures {
   const records = RECORDS();
-  let calls = 0, callRecords = 0;
-  for (const f of records) { const n = airwallexCallsIn(json(f)); if (n) { calls += n; callRecords++; } }
+  const trail = apiTrail(), calls = trail.calls, callRecords = trail.runs.length;
   const tx = new Set<string>();
   for (const f of [...records, ...filesIn("docs/runs", /\.md$/)]) for (const m of read(f).matchAll(TX)) tx.add(m[1]!);
   const req = new Set<string>();
@@ -112,7 +114,7 @@ export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   const out: ScaleStat[] = [];
   if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
   if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Alta's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
-  if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: "Airwallex sandbox API calls logged", title: `Airwallex sandbox API calls in the call logs of ${f.airwallexCalls.records} run records; runs without a call log add none`, icon: "landmark", href: "airwallex" });
+  if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: AWX_CALLS_LABEL, title: `Airwallex sandbox API calls in ${f.airwallexCalls.records} committed run records, each listed on /airwallex/calls with what came back`, icon: "landmark", href: "airwallex/calls" });
   if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
   if (f.claudeCalls) out.push({ n: f.claudeCalls, label: "Claude calls with request ids", title: "Distinct Anthropic request ids in the run and eval records", icon: "bot", href: "claude" });
   if (f.refusals) out.push({ n: f.refusals, label: "refusals on record", title: "Audit rows of a refusal, a decline, a rejection or a fraud stop in the run records: over a limit, at the rail, on chain", icon: "ban", href: "proof#stops", tone: "bad" });
