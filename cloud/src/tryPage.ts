@@ -136,6 +136,8 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .result .big { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
 /* 15 Nov: the Checker's own steps (folded, one line each) and the same invoice through the always-pay script. Tokens only. */
 .agentic { margin-top: 16px; display: grid; gap: 10px; }
+/* 15 Nov (jury, 1440 px): the step bar shown after the answer (cloud/src/try/visuals.ts) kept clear of the script button. */
+.screen.work > .vflow { margin-top: 24px; }
 .agentic details.trace { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 0 14px; }
 .agentic details.trace > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); }
 .agentic ol.trace { list-style: none; margin: 0 0 10px; padding: 0; }
@@ -1032,9 +1034,11 @@ function livePanel(){
   // yet says so, nothing keeps counting, and the rows stand in the order the engine wrote them (its timestamps).
   const rows=[];const shown=new Set();const asks=[];let done=null,n=0;const READ={row:null};
   function answer(k){const a=asks.find((x)=>x.k===k&&!x.answered);if(!a)return;a.answered=true;askClose(a.id);if(!(a.row&&a.row.read))a.what.textContent=W.asked}
+  // 15 Nov (jury): rows stand in the engine's write order (seq), not by timestamp: a decision row is stamped with the
+  // moment its filing began, before the reader it waited on, so by time the Checker stood above the Reader.
   function order(){
     const lis=[...list.children];let carry=-Infinity;
-    const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.ts!==null)carry=r.ts;return {li,ts:carry,i}});
+    const keyed=lis.map((li,i)=>{const r=rows.find((x)=>x.li===li);if(r&&r.seq!==null)carry=r.seq;return {li,ts:carry,i}});
     keyed.sort((a,b)=>a.ts-b.ts||a.i-b.i);
     if(keyed.some((x,i)=>x.li!==lis[i]))for(const x of keyed)list.append(x.li);
   }
@@ -1072,7 +1076,7 @@ function livePanel(){
       const li=el('li',[l.tag||'',l.fold?'fold':'',l.lead?'agent':''].filter(Boolean).join(' '),[whoEl,what,l.enforced?el('span','enf',l.enforced):null,t]);
       list.append(li);
       if(keyOf(e)==='reader'&&!l.fold&&(l.asking||e.event==='claude.read')){const base=l.asking?l.who:C.live.reader+' · '+l.who;whoEl.textContent=base;READ.row={who:whoEl,what,t,base,calls:1,read:e.event==='claude.read'}}
-      if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null});
+      if(t0!==undefined)rows.push({t,li,ts:typeof e.ts==='string'&&!isNaN(Date.parse(e.ts))?Date.parse(e.ts):null,seq:typeof e.seq==='number'&&isFinite(e.seq)?e.seq:null});
       if(l.asking){const id='live#'+(++n);asks.push({id,k:keyOf(e),what,answered:false,row:READ.row&&READ.row.what===what?READ.row:null});askOpen(id,t)}
       if(!l.fold)say(l.who+' · '+l.text);
     }

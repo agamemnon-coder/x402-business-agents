@@ -144,4 +144,20 @@ describe("the always-pay script on the visitor's same invoice", () => {
     expect(compareOf([{ seq: 1, ts: "x", actor: "a", event: "ap.checker_decided", subject: null, fields: { source: "claude", outcome: "hold" } }]).verdict).toBe("missing");
     expect(compareOf([{ seq: 1, ts: "x", actor: "a", event: "ap.checker_decided", subject: null, fields: { source: "fallback", action: "hold", outcome: "hold", script_outcome: "hold" } }]).verdict).toBe("fallback");
   });
+
+  it("/try's trace and comparison with no concerns (15 Nov, jury): the decision says so, and the rule is the zero agent limit", () => {
+    const at = (seq: number, event: string, fields: Record<string, unknown>) => ({ seq, ts: "2026-11-15T10:37:20.000Z", actor: "checker", event, subject: event === "ap.checker_decided" ? "AP-0002" : "ap.check.x", fields });
+    const items = [
+      at(1, "agent.tool", { agent: "checker", tool: "policy_limits", turn: 1, model: "claude-haiku-5-5", ms: 0, answer: "Nothing is paid without the CFO: you may pay no invoice alone.", inputs: 0 }),
+      at(2, "agent.run", { agent: "checker", model: "claude-haiku-5-5", status: "done", turns: 1, cost_usd_micros: 300, latency_ms: 1500, claude_ms: "1400" }),
+      at(3, "ap.checker_decided", { source: "claude", action: "ask_cfo", outcome: "ask_cfo", overridden: false, overridden_by: null, code_requires: "ask_cfo", codes: "", concerns: 0, reason: "It checks out.", script_outcome: "ask_cfo", script_overridden_by: "no_alone_limit" }),
+    ];
+    const rows = traceOf(items);
+    expect(rows.find((r) => r.kind === "decision")!.text).toBe("Decision: no concerns found; the CFO signs");
+    expect(rows.find((r) => r.kind === "rails")!.sub).toBe("rule: the agent limit is zero, so the CFO signs");
+    const c = compareOf(items);
+    expect(c.claude).toMatchObject({ action: "no concerns found", rule: "rule: the agent limit is zero, so the CFO signs" });
+    expect(c.script!.rule).toBe("rule: the agent limit is zero, so the CFO signs");
+    expect(c.verdict).toBe("same");
+  });
 });

@@ -259,6 +259,11 @@ export const TRACE = {
   rails: { pay: "Purser's rails: allowed to pay", ask_cfo: "Purser's rails: sent on to the CFO to sign with Face ID", hold: "Purser's rails: held for a person", reject: "Purser's rails: refused" } as Record<string, string>,
   rule: "rule: {rule}",
   ownRule: "rule: the agent's own call, within code's checks",
+  /** 15 Nov (jury): rules in plain words where the code's own name reads oddly (policy.aloneLimit null in /try). */
+  rules: { no_alone_limit: "the agent limit is zero, so the CFO signs" } as Record<string, string>,
+  /** 15 Nov (jury): the agent found no concern and asked the CFO only because the rails require it. */
+  decidedClear: "Decision: no concerns found; the CFO signs",
+  noConcerns: "no concerns found",
   run: "{turns} Claude calls, {s} s in all, USD {usd}",
 };
 
@@ -990,11 +995,15 @@ export const LIVE = {
    *  what Purser's code enforced, on a muted line under it. */
   lead: {
     "ap.checker_decided": "Decided: {action}, because", "ap.checker_decided_plain": "Decided: {action}.",
+    // 15 Nov (jury): no concern of its own, and the CFO step is the rails' (see railsClear): said so, not "because".
+    "ap.checker_decided_clear": "No concerns found:",
     "ap.coded": "{account} expense, VAT {vat}:", "ap.coded_plain": "{account} expense, VAT {vat}.",
     "ap.payer_proposed": "Proposed: pay on {pay_on} by {rail} from {currency}, because", "ap.payer_proposed_plain": "Proposed: pay on {pay_on} by {rail} from {currency}.",
   } as Record<string, string>,
   ownWords: "its own words",
   enforced: "Purser's code enforced: {enforced}",
+  /** 15 Nov (jury): beside "No concerns found": the CFO step is the rails', not the agent's doubt. */
+  railsClear: "Purser's rails: the agent limit is zero, so the CFO signs.",
   /** Round 4 (14 Nov): code's outcome differs from what the agent decided. */
   overrode: "Purser's code overrode it: {enforced}",
   /**
