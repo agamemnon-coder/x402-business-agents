@@ -5,7 +5,7 @@
 
 import { esc, icon, iconSet, page } from "../redesign/ui.js";
 import { REPO_URL } from "../submission/deck.js";
-import { PROOF_FORMAT, PROOF_MEANS, PROOF_VERIFY_JS } from "./bundle.js";
+import { PROOF_FORMAT, PROOF_MEANS, PROOF_REFUSAL_MEANS, PROOF_VERIFY_JS } from "./bundle.js";
 
 /** The line under the heading, word for word. */
 export const VERIFY_BUNDLE_LEAD = "Don't trust our server: check the payment yourself.";
@@ -73,6 +73,8 @@ const JS = `
         row("Account", t.iban_last4 ? "···· " + t.iban_last4 : null), row("Proposal", b && b.proposal_id), row("Site (rpId)", b && b.rp_id),
         b && b.asked && b.asked.terms ? row("Asked amount", (b.asked.terms.currency || "") + " " + b.asked.terms.amount) : []));
       $("v-terms").hidden = false;
+      // The refusal's line of "What this proves" only for a refusal's bundle (one with the asked terms).
+      $("v-means-refusal").hidden = !(b && b.asked);
       status(name ? "Checked " + name + " in this browser; nothing was sent anywhere." : "");
     });
   }
@@ -117,7 +119,7 @@ export function verifyBundlePage(samples: ProofSamples): string {
   <div class="vv" id="v-verdict" hidden></div>
   <dl class="terms" id="v-terms" hidden></dl>
   <ol class="checks" id="v-checks"></ol>
-  <details class="more"><summary>What this proves</summary><ul>${PROOF_MEANS.map((l) => `<li>${esc(l)}</li>`).join("")}<li>The same checks, the same code, offline: <code>npm run verify-bundle -- purser-proof.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}. The samples are <code>docs/proof/</code> there.</li></ul></details>
+  <details class="more"><summary>What this proves</summary><ul>${PROOF_MEANS.map((l) => (l === PROOF_REFUSAL_MEANS ? `<li id="v-means-refusal" hidden>${esc(l)}</li>` : `<li>${esc(l)}</li>`)).join("")}<li>The same checks, the same code, offline: <code>npm run verify-bundle -- purser-proof.json</code> in the repository, ${esc(REPO_URL.replace(/^https:\/\//, ""))}. The samples are <code>docs/proof/</code> there.</li></ul></details>
 </section>
 <p class="small muted"><a href="/try">${icon("arrow-right", 16)}Make a payment on /try, then download its proof</a> · <a href="/proof">${icon("arrow-right", 16)}Proof</a></p>
 </div></main>`;

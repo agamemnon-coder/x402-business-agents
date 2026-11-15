@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isoCBOR } from "@simplewebauthn/server/helpers";
 import { canonicalTerms, termsHash, type Terms } from "../src/lib/terms.js";
 import { challengeFor } from "../src/passkey/webauthn.js";
-import { PROOF_FORMAT, verifyProofBundle, type ProofBundle, type ProofResult } from "../src/proof/bundle.js";
+import { PROOF_FORMAT, PROOF_REFUSAL_MEANS, proofMeans, verifyProofBundle, type ProofBundle, type ProofResult } from "../src/proof/bundle.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -77,6 +77,13 @@ describe("the bundle the pay route hands back", () => {
   });
 });
 
+it("says what a bundle proves: the refusal's line only for a refusal", () => {
+  expect(proofMeans(paid)).not.toContain(PROOF_REFUSAL_MEANS);
+  expect(proofMeans(paid)).toHaveLength(2);
+  expect(proofMeans(refused)).toContain(PROOF_REFUSAL_MEANS);
+  expect(proofMeans(refused)).toHaveLength(3);
+});
+
 describe("a change fails", () => {
   it("one cent changed in the terms", async () => {
     const b = copy(paid);
@@ -138,6 +145,9 @@ it("npm run verify-bundle: 0 on the committed sample, 1 on a copy with one cent 
     const ok = run(f);
     expect(ok.code, ok.out).toBe(0);
     expect(ok.out).toContain(`VALID: ${f}`);
+    // "A refusal: …" only for the refused bundle (the one with asked terms), never under a paid one.
+    if (f.endsWith("try-paid.json")) expect(ok.out).not.toContain("A refusal");
+    else expect(ok.out).toContain(PROOF_REFUSAL_MEANS);
   }
   const b = JSON.parse(readFileSync("docs/proof/try-paid.json", "utf8")) as ProofBundle;
   b.terms.amount = "1850.01";
@@ -157,6 +167,8 @@ describe("/verify, and the links to it", () => {
     expect(VERIFY_BUNDLE_CSP).toContain("connect-src 'none'");
     expect(VERIFY_BUNDLE_CSP).not.toMatch(/unsafe-inline|unsafe-eval/);
     expect(VERIFY_BUNDLE_PAGE).not.toMatch(/\son[a-z]+=/i);
+    // "What this proves": the refusal's line is in the page, hidden until a refusal's bundle is checked.
+    expect(VERIFY_BUNDLE_PAGE).toContain(`<li id="v-means-refusal" hidden>${PROOF_REFUSAL_MEANS}</li>`);
     // The checks are the same text the command line runs, and both samples are in the page.
     const { PROOF_VERIFY_JS } = await import("../src/proof/bundle.js");
     expect(script).toContain(PROOF_VERIFY_JS);

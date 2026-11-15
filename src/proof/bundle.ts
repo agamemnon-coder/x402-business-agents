@@ -20,6 +20,13 @@ export const PROOF_MEANS = [
   "A refusal: the terms that were asked hash differently, so this signature cannot cover them.",
   "Does not prove: who holds the key, or that it was Face ID (no attestation is checked). A test company: test money only.",
 ] as const;
+/** The line of PROOF_MEANS that only a refusal's bundle (one with asked terms) bears out. */
+export const PROOF_REFUSAL_MEANS = PROOF_MEANS[1];
+/** What a valid bundle proves, for this bundle: the refusal line only when it carries the asked terms. */
+export function proofMeans(bundle: unknown): string[] {
+  const refusal = typeof bundle === "object" && bundle !== null && (bundle as { asked?: unknown }).asked !== undefined;
+  return PROOF_MEANS.filter((l) => refusal || l !== PROOF_REFUSAL_MEANS);
+}
 
 /** One WebAuthn assertion, base64url, as a browser hands it over. */
 export interface ProofAssertion { credential_id: string; authenticatorData: string; clientDataJSON: string; signature: string }
