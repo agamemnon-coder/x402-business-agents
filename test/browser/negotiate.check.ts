@@ -103,6 +103,9 @@ async function sane(page: Page, what: string): Promise<void> {
   await page.getByRole("heading", { name: C.head }).waitFor();
   ok((await page.locator("main").innerText()).includes(C.band), "the test-money line is on the page");
   await sane(page, "live, before");
+  // 15 Nov (Max, 1440 px): a card's heading sits at the card's own padding, top as on the side.
+  const pads = await page.$$eval("section.card", (cs) => cs.map((c) => { const h = c.querySelector("h2")!; const cr = c.getBoundingClientRect(), hr = h.getBoundingClientRect(); return [Math.round(hr.top - cr.top), Math.round(hr.left - cr.left)]; }));
+  ok(pads.length === 2 && pads.every(([t, l]) => Math.abs(t! - l!) <= 2), `the cards' headings sit at the same padding top and side (${JSON.stringify(pads)})`);
   await shot("1-start");
   await page.getByRole("button", { name: C.start }).click();
   await page.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
@@ -159,6 +162,8 @@ async function sane(page: Page, what: string): Promise<void> {
   let started = 0;
   page.on("request", (q) => { if (q.url().endsWith("/v1/try/start")) started++; });
   await page.goto(`${ORIGIN}/try/negotiate`);
+  const pads2 = await page.$$eval("section.card", (cs) => cs.map((c) => { const h = c.querySelector("h2")!; const cr = c.getBoundingClientRect(), hr = h.getBoundingClientRect(); return [Math.round(hr.top - cr.top), Math.round(hr.left - cr.left)]; }));
+  ok(pads2.length === 2 && pads2.every(([t, l]) => Math.abs(t! - l!) <= 2), `1440 px: the cards' headings sit at the same padding top and side (${JSON.stringify(pads2)})`);
   await page.getByRole("button", { name: C.start }).click();
   await page.getByRole("heading", { name: C.agreedHead }).waitFor({ timeout: 30_000 });
   const talk = await page.locator("#talk").innerText();

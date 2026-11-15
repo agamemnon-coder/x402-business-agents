@@ -103,7 +103,9 @@ p { margin: 0 0 12px; }
 .lede, .muted { color: var(--muted); }
 .band { display: inline-flex; gap: 6px; align-items: center; margin: 12px 0 0; padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted); font-size: 13px; }
 .band::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
-.card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 14px 16px; margin: 0 0 12px; }
+.card { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 16px; margin: 0 0 12px; }
+/* 15 Nov (Max, 1440 px): a card's first heading sits at the card's own padding, as on its sides. */
+.card > h2:first-child { margin-top: 0; }
 .rails { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .rails li { display: flex; gap: 8px; align-items: baseline; font-size: 15px; }
 .rails li::before { content: "■"; color: var(--accent); font-size: 10px; }
