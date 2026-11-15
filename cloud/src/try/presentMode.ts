@@ -19,6 +19,9 @@
 // Every value from an answer is put on the page as text (textContent), never as HTML.
 
 import { INVOICE } from "../tryCopy.js";
+import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
+import { LOGO_FILES } from "./logos.gen.js";
+import { SYSTEM_MAP_DATA_URL } from "./systemMap.gen.js";
 
 const NEG_HINT = INVOICE.hints.clean ?? "";
 
@@ -33,6 +36,24 @@ export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact 
  * screen shown) and Claude's usage in this run, call by call (model, time, cost, Anthropic's request id), read from the
  * engine's own events. ?shell=0 turns it off.
  */
+/** "How Purser works": plain words, for someone who has never seen a payment system (Max, 15 Nov). */
+export const PRESENT_HOW = {
+  eyebrow: "How Purser works",
+  heading: "AI agents pay the invoices. You approve the exceptions with Face ID.",
+  tabFlow: "One payment", tabMap: "The whole system", close: "Close",
+  steps: [
+    { h: "An invoice comes in", p: "A supplier sends it, by email or as an upload." },
+    { h: "AI agents read and check it", p: "Claude reads it. The agents check the supplier, the bank account and whether it was paid before.", logo: "claude" },
+    { h: "Your rules decide", p: "Below your limit, an agent pays it on its own. Above it, the agent asks you." },
+    { h: "You approve with Face ID", p: "You sign the exact amount, supplier and bank account, with Face ID, Touch ID or Windows Hello." },
+    { h: "The money is sent", p: "Through Airwallex, then booked and filed for you.", logo: "airwallex" },
+  ],
+  cut: { h: "Changed by one cent after you approved?", p: "Refused. Your approval no longer matches, so nothing is sent." },
+  mapAlt: "The whole Purser system: who uses it, the screens, the Claude agents, the rules in code, the money rails (Airwallex sandbox, Alta testnet) and the proof anyone can check.",
+  built: "Built with",
+  foot: "Test money only · Airwallex sandbox · Alta testnet · no endorsement implied",
+} as const;
+
 export const PRESENT_SHELL = {
   workspace: "Your test company",
   tag: "Test money · sandbox",
@@ -43,6 +64,7 @@ export const PRESENT_SHELL = {
   user: "CFO",
   userSub: "Signs with a passkey",
   reader: "Reader",
+  how: "How it works",
 } as const;
 /** The figures of the outcome card, by name; each is filled from an answer or says NOT_IN_RUN. */
 export const PRESENT_OUTCOME = {
@@ -124,17 +146,24 @@ body.present:has(.screen.approve) .pv-lane, body.present:has(.screen.pay) .pv-la
 @keyframes pvin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* The app shell (?shell=0 turns it off): the site's menu and step bar give way to a product frame. */
 @media (min-width: 1200px) {
-  body.present.pv-shell { padding-left: 276px; }
-  body.present.pv-shell header.top, body.present.pv-shell .progw { display: none !important; }
+  body.pv-shell { padding-left: 276px; }
+  body.pv-shell header.top, body.pv-shell .progw { display: none !important; }
   body.present.pv-shell .pv-money { top: 22px; }
-  body.present.pv-shell .acts.pdfl { display: flex !important; }
-  body.present.pv-shell .acts.pdfl .btn:not(.proofdl) { display: none; }
-  body.present.pv-noneg .negcard { display: none !important; }
-  body.present.pv-noneg .payrow { justify-content: flex-start; gap: 16px; }
+  body.pv-shell .acts.pdfl { display: flex !important; }
+  body.pv-shell .acts.pdfl .btn:not(.proofdl) { display: none; }
 }
 .pv-side { display: none; }
+/* Blocked: the moment of the demo, in full view (Max, 15 Nov): red frame, a big headline, the money that moved. */
+.card.refusal { border: 2px solid var(--bad); background: color-mix(in srgb, var(--bad) 8%, var(--surface)); }
+.card.refusal > .head { font-size: 30px; line-height: 1.15; font-weight: 780; letter-spacing: -.01em; }
+.card.refusal > .head .no { color: var(--bad); }
+.card.refusal .diff { font-size: 19px; }
+.card.refusal > .rule { font-weight: 650; color: var(--text); }
+.card.refusal > .proof.xfer { font: 750 18px/1.3 Inter, system-ui, sans-serif; color: var(--text); }
+body.pv-noneg .negcard { display: none !important; }
+body.pv-noneg .payrow { justify-content: flex-start; gap: 16px; }
 @media (min-width: 1200px) {
-  body.present.pv-shell .pv-side { display: flex; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 252px; flex-direction: column; gap: 18px; padding: 22px 16px; background: color-mix(in srgb, var(--bg) 82%, #000); border-right: 1px solid var(--border); font: 500 14px/1.35 Inter, system-ui, sans-serif; color: var(--text); }
+  body.pv-shell .pv-side { display: flex; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 252px; flex-direction: column; gap: 18px; padding: 22px 16px; background: color-mix(in srgb, var(--bg) 82%, #000); border-right: 1px solid var(--border); font: 500 14px/1.35 Inter, system-ui, sans-serif; color: var(--text); }
 }
 .pv-side .brand { display: flex; align-items: center; gap: 10px; font-weight: 750; font-size: 19px; color: var(--text); text-decoration: none; }
 .pv-side .brand .mk { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--text); color: var(--bg); }
@@ -143,10 +172,10 @@ body.present:has(.screen.approve) .pv-lane, body.present:has(.screen.pay) .pv-la
 .pv-ws span { display: inline-block; margin-top: 4px; font-size: 12px; font-weight: 650; color: var(--ok); }
 .pv-nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .pv-nav li { padding: 9px 12px; border-radius: 9px; color: var(--muted); font-weight: 600; }
-body.present:has(.screen.invoice, .screen.work, .screen.start) .pv-nav li:nth-child(1),
-body.present:has(.screen.approve) .pv-nav li:nth-child(2),
-body.present:has(.screen.books, .screen.pay) .pv-nav li:nth-child(3),
-body.present:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+body.pv-shell:has(.screen.invoice, .screen.work, .screen.start) .pv-nav li:nth-child(1),
+body.pv-shell:has(.screen.approve) .pv-nav li:nth-child(2),
+body.pv-shell:has(.screen.books, .screen.pay) .pv-nav li:nth-child(3),
+body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
 .pv-use { margin-top: auto; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
 .pv-use h3 { margin: 0 0 6px; font: 700 11px/1.2 Inter, system-ui, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .pv-use .tot { font: 750 24px/1.15 Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
@@ -160,6 +189,108 @@ body.present:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgro
 .pv-me .av { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: var(--bg); font: 750 12px/1 Inter, system-ui, sans-serif; }
 .pv-me small { display: block; color: var(--muted); font-size: 12px; }
 
+
+/* "How Purser works" (M in recording mode, the sidebar's button on the page). */
+.pv-how { overflow: auto; }
+.pv-how .in { max-width: 1400px; }
+.hw-top { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+.hw-eb { font: 750 15px/1.2 Inter, system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+.hw-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--sunken); border: 1px solid var(--border); margin-left: auto; }
+.hw-tab, .hw-x { appearance: none; border: 0; background: none; color: var(--muted); font: 650 14px/1 Inter, system-ui, sans-serif; padding: 9px 16px; border-radius: 999px; cursor: pointer; }
+.hw-tab[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px #0003; }
+.hw-x { border: 1px solid var(--border); }
+.pv-how h2 { font-size: 44px; max-width: 1100px; margin-bottom: 30px; }
+.hw-map { display: none; }
+.pv-how.map .hw-one { display: none; }
+.pv-how.map .hw-map { display: block; }
+.pv-how.map h2 { display: none; }
+.hw-map img { display: block; width: 100%; max-height: calc(100vh - 300px); object-fit: contain; border-radius: 18px; border: 1px solid var(--border); background: #0b1020; }
+.hw-flow { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; position: relative; }
+.hw-flow::before { content: ""; position: absolute; left: 4%; right: 4%; top: 31px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--ok)); transform-origin: left; opacity: .55; }
+.hw-flow::after { content: ""; position: absolute; top: 26px; left: 4%; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 24px var(--accent); }
+.hw-flow li { position: relative; padding: 76px 22px 24px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); min-width: 0; }
+.hw-flow .n { position: absolute; top: 12px; left: 22px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--bg); border: 2px solid var(--accent); color: var(--text); font: 750 17px/1 Inter, system-ui, sans-serif; z-index: 1; }
+.hw-flow li:nth-child(4) .n { border-color: var(--ok); }
+.hw-flow li:nth-child(5) .n { border-color: var(--ok); background: var(--ok); color: #04130d; }
+.hw-flow b { display: block; font: 750 21px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
+.hw-flow p { margin: 10px 0 0; color: var(--muted); font: 500 16px/1.45 Inter, system-ui, sans-serif; }
+.hw-logo { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; border-radius: 8px; background: #fff; }
+.hw-logo img { display: block; height: 16px; width: auto; }
+.hw-logo.hw-alta img { height: 18px; }
+.hw-flow .hw-logo { margin-top: 14px; }
+.hw-cut { margin: 22px 0 0 auto; width: calc(40% - 7px); padding: 18px 22px; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--bad) 55%, var(--border)); background: color-mix(in srgb, var(--bad) 9%, var(--surface)); }
+.hw-cut b { display: block; color: var(--bad); font: 750 19px/1.25 Inter, system-ui, sans-serif; }
+.hw-cut p { margin: 6px 0 0; color: var(--text); font: 500 16px/1.4 Inter, system-ui, sans-serif; }
+.hw-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border); }
+.hw-built { font: 700 12px/1 Inter, system-ui, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); margin-right: 4px; }
+.hw-note { margin-left: auto; color: var(--faint); font: 500 13px/1.3 Inter, system-ui, sans-serif; }
+@media (prefers-reduced-motion: no-preference) {
+  .pv-how.on .hw-flow li { animation: hwin .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: calc(var(--i) * .32s + .2s); }
+  .pv-how.on .hw-flow::before { animation: hwline 1.8s ease-out both .2s; }
+  .pv-how.on .hw-flow::after { animation: hwdot 3.2s cubic-bezier(.6,0,.4,1) infinite 2s; opacity: 0; }
+  .pv-how.on .hw-cut { animation: hwin .5s ease-out both 2.1s, hwshake .45s ease-in-out 2.7s; }
+}
+@keyframes hwin { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes hwline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hwdot { 0% { left: 4%; opacity: 0; } 8% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(96% - 13px); opacity: 0; } }
+@keyframes hwshake { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (max-width: 1199px) { .hw-flow { grid-template-columns: 1fr; } .hw-flow::before, .hw-flow::after { display: none; } .hw-cut { width: auto; } .pv-how h2 { font-size: 28px; } .hw-top { flex-wrap: wrap; } .hw-note { margin-left: 0; } }
+.pv-howbtn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font: 650 14px/1.2 Inter, system-ui, sans-serif; cursor: pointer; text-align: left; }
+.pv-howbtn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+.pv-howbtn:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+`;
+
+const SHARED = String.raw`
+// --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
+const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
+const CALLS=new Map();
+const usd=(m)=>'$'+(m/1e6).toFixed(4);
+const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
+const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
+// One Claude call from the engine's own events (claude.read: the invoice reader; agent.run: an agent's run).
+function takeCall(e,f){if((e.event==='claude.read'||e.event==='agent.run')&&!CALLS.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)CALLS.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:''})}}
+const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
+const SH=PC.shell;let useBox=null;
+// "How Purser works": the flow in five steps, and the whole system's map (the README's), as a card over the page.
+const H=PC.how;
+const logoChip=(k)=>{const i=document.createElement('img');i.src=PC.logos[k].src;i.alt=PC.logos[k].alt;i.decoding='async';return mk('span','hw-logo hw-'+k,i)};
+const how=mk('section','pv-card pv-how');how.setAttribute('role','dialog');how.setAttribute('aria-label',H.eyebrow);
+{
+  const flow=mk('ol','hw-flow',H.steps.map((st,i)=>{const li=mk('li','',[mk('span','n',String(i+1)),mk('b','',st.h),mk('p','',st.p)].concat(st.logo?[logoChip(st.logo)]:[]));li.style.setProperty('--i',String(i));return li}));
+  const cut=mk('div','hw-cut',[mk('b','',H.cut.h),mk('p','',H.cut.p)]);
+  const img=document.createElement('img');img.src=PC.map;img.alt=H.mapAlt;img.decoding='async';
+  const tF=mk('button','hw-tab',H.tabFlow),tM=mk('button','hw-tab',H.tabMap),x=mk('button','hw-x',H.close);
+  for(const b of [tF,tM,x])b.type='button';
+  const setTab=(m)=>{how.classList.toggle('map',m);tF.setAttribute('aria-pressed',String(!m));tM.setAttribute('aria-pressed',String(m))};
+  tF.addEventListener('click',()=>setTab(false));tM.addEventListener('click',()=>setTab(true));x.addEventListener('click',()=>how.classList.remove('on'));
+  setTab(false);
+  how.append(mk('div','in',[mk('div','hw-top',[mk('span','hw-eb',H.eyebrow),mk('div','hw-tabs',[tF,tM]),x]),mk('h2','',H.heading),mk('div','hw-body',[mk('div','hw-one',[flow,cut]),mk('div','hw-map',img)]),
+    mk('div','hw-foot',[mk('span','hw-built',H.built),logoChip('claude'),logoChip('airwallex'),logoChip('alta'),mk('span','hw-note',H.foot)])]));
+  how.addEventListener('click',(e)=>{if(e.target===how)how.classList.remove('on')});
+  document.body.append(how);
+}
+// The negotiation is left out of /try unless &neg=1 (Max, 15 Nov: until it is mastered): "Pay this invoice" becomes the step's main button (→ clicks it).
+if(new URLSearchParams(location.search).get('neg')!=='1'){
+  document.body.classList.add('pv-noneg');
+  const promote=()=>{for(const b of document.querySelectorAll('#main .payrow > button.btn:not(.primary)'))b.classList.add('primary','big');for(const el of document.querySelectorAll('#main *'))if(el.childElementCount===0&&el.textContent===PC.negHint)el.textContent=PC.negHintShort};
+  promote();new MutationObserver(promote).observe(document.body,{childList:true,subtree:true});
+}
+const showHow=()=>{how.classList.remove('on');void how.offsetWidth;how.classList.add('on')};
+// The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
+if(SHELL){
+  document.body.classList.add('pv-shell');
+  const hb=document.querySelector('header.top .brand');const brand=hb?hb.cloneNode(true):mk('span','brand','Purser');
+  useBox=mk('section','pv-use');
+  const howBtn=mk('button','pv-howbtn',[mk('span','dot',''),SH.how]);howBtn.type='button';howBtn.addEventListener('click',showHow);
+  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
+}
+function drawUse(){
+  if(!useBox)return;
+  const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
+  const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
+  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
+}
+drawUse();
 `;
 
 /**
@@ -170,12 +301,13 @@ body.present:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgro
 const SCRIPT = String.raw`
 const PC=__PRESENT_CFG__;
 document.body.classList.add('present');
+__SHARED__
+
 // An event or jury token in the link (#e= or #j=, read by the page's own script): kept in this tab only, so R starts
 // again in the same pool (retakes do not run into the public pool's per-address limit).
 const POOLTAG=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.hash);try{if(m)sessionStorage.setItem('purser.present.pool',m[0]);return m?m[0]:sessionStorage.getItem('purser.present.pool')||''}catch(e){return m?m[0]:''}})();
-const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 // The run's own numbers, from the answers this page gets.
-const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,refused:null,calls:new Map()};
+const RUN={startAt:null,paidAt:null,seqs:new Set(),claude:new Set(),paid:null,refused:null};
 try{const o=JSON.parse(sessionStorage.getItem('purser.present')||'null');if(o&&typeof o==='object'){RUN.startAt=o.startAt??null;RUN.paidAt=o.paidAt??null;RUN.paid=o.paid??null;RUN.refused=o.refused??null;for(const s of o.seqs||[])RUN.seqs.add(s);for(const s of o.claude||[])RUN.claude.add(s)}}catch(e){}
 const keep=()=>{try{sessionStorage.setItem('purser.present',JSON.stringify({startAt:RUN.startAt,paidAt:RUN.paidAt,paid:RUN.paid,refused:RUN.refused,seqs:[...RUN.seqs],claude:[...RUN.claude]}))}catch(e){}};
 const AMT=/^\d{1,9}\.\d{2}$/,CUR=/^[A-Z]{3}$/;
@@ -189,8 +321,8 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();RUN.calls.clear()}
-        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);if((e.event==='claude.read'||e.event==='agent.run')&&!RUN.calls.has(e.seq)){const c=Number(f.cost_usd_micros);if(isFinite(c)&&c>=0)RUN.calls.set(e.seq,{who:e.event==='claude.read'?PC.shell.reader:title(f.agent),model:modelName(f.model),cost:c,ms:Number(f.latency_ms)||0,req:typeof f.request_id==='string'&&/^req_[A-Za-z0-9]{6,64}$/.test(f.request_id)?f.request_id:''})}}}}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear()}
+        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
           const t=sent&&sent.terms||{};
@@ -208,31 +340,6 @@ document.body.append(mk('div','pv-money',PC.money));
 // The phone lane, unless ?phone=0 (a recording on a laptop that signs with its own passkey, e.g. Windows Hello).
 const NOPHONE=new URLSearchParams(location.search).get('phone')==='0';
 if(!NOPHONE)document.body.append(mk('aside','pv-lane',[mk('div','pv-phone',mk('span','',PC.laneSpot)),mk('p','',PC.lane)]));
-// The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
-const SHELL=new URLSearchParams(location.search).get('shell')!=='0';
-const SH=PC.shell;let useBox=null;
-if(SHELL){
-  document.body.classList.add('pv-shell');
-  const hb=document.querySelector('header.top .brand');const brand=hb?hb.cloneNode(true):mk('span','brand','Purser');
-  useBox=mk('section','pv-use');
-  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
-}
-// In the app shell the negotiation is left out unless &neg=1: "Pay this invoice" becomes the step's main button (→ clicks it).
-if(SHELL&&new URLSearchParams(location.search).get('neg')!=='1'){
-  document.body.classList.add('pv-noneg');
-  const promote=()=>{for(const b of document.querySelectorAll('#main .payrow > button.btn:not(.primary)'))b.classList.add('primary','big');for(const el of document.querySelectorAll('#main *'))if(el.childElementCount===0&&el.textContent===PC.negHint)el.textContent=PC.negHintShort};
-  promote();new MutationObserver(promote).observe(document.body,{childList:true,subtree:true});
-}
-const usd=(m)=>'$'+(m/1e6).toFixed(4);
-const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
-const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
-function drawUse(){
-  if(!useBox)return;
-  const calls=[...RUN.calls.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
-  const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
-  useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
-}
-drawUse();
 // The opener: Before and After.
 const opener=mk('section','pv-card',mk('div','in',[mk('div','pv-money',PC.money),mk('h2','',PC.openerHeading),mk('div','pv-ba',[mk('div','before',[mk('b','',PC.beforeLabel),mk('p','',PC.before)]),mk('div','after',[mk('b','',PC.afterLabel),mk('p','',PC.after)])]),mk('p','pv-go',PC.go)]));
 opener.setAttribute('role','dialog');opener.setAttribute('aria-label',PC.openerHeading);
@@ -282,6 +389,7 @@ opener.addEventListener('click',()=>close(opener));
 outcome.addEventListener('click',()=>close(outcome));
 // → : the step's own main button, the same click a person makes. On the invoice step with nothing chosen, the first sample.
 function next(){
+  if(isOn(how)){close(how);return}
   if(isOn(opener)){close(opener);return}
   if(isOn(outcome)){close(outcome);return}
   const main=document.getElementById('main');if(!main)return;
@@ -298,21 +406,51 @@ document.addEventListener('keydown',(e)=>{
   if(e.key==='ArrowRight'){e.preventDefault();next()}
   else if(e.key==='r'||e.key==='R'){try{sessionStorage.removeItem('purser.try');sessionStorage.removeItem('purser.present')}catch(x){}location.href=location.pathname+'?present=1'+(NOPHONE?'&phone=0':'')+POOLTAG;location.reload()}
   else if(e.key==='o'||e.key==='O'){drawOutcome();outcome.classList.add('on')}
-  else if(e.key==='Escape'){close(opener);close(outcome)}
+  else if(e.key==='m'||e.key==='M'){if(isOn(how))close(how);else{close(opener);close(outcome);showHow()}}
+  else if(e.key==='Escape'){close(opener);close(outcome);close(how)}
 });
+`;
+
+const b64 = (k: string) => { const f = LOGO_FILES[k]; return f ? `data:${f.type};base64,${f.b64}` : ""; };
+/** The partners' own files, unaltered (logos.gen.ts, awxLogo.gen.ts), on a white chip as on the README. */
+const LOGOS = {
+  claude: { src: b64("/assets/logo-claude-slate.svg"), alt: "Claude" },
+  airwallex: { src: AIRWALLEX_LOGO_DATA_URL, alt: "Airwallex" },
+  alta: { src: b64("/assets/logo-alta.svg"), alt: "Alta (formerly Metal)" },
+};
+
+/**
+ * The public page (no ?present=1): the same app shell and "How Purser works", nothing of recording mode (no opener, no
+ * outcome card, no keys, no zoom). Claude's usage is read from the same answers, a copy, never changed.
+ */
+const PUBLIC_SCRIPT = String.raw`
+const PC=__PRESENT_CFG__;
+__SHARED__
+const real=window.fetch.bind(window);
+window.fetch=async(input,init)=>{
+  const res=await real(input,init);
+  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
+    if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
+      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number')takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});
+      drawUse()}).catch(()=>{});
+  }catch(e){}
+  return res;
+};
+addEventListener('keydown',(e)=>{if(e.key==='Escape')how.classList.remove('on')});
 `;
 
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 /** The style and the script /try adds with ?present=1. */
-export function presentExtra(): { css: string; script: string } {
+export function presentExtra(kind: "present" | "public" = "present"): { css: string; script: string } {
   const cfg = {
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL,
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS,
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
-  return { css: CSS, script: SCRIPT.replace("__PRESENT_CFG__", () => json(cfg)) };
+  const body = (kind === "public" ? PUBLIC_SCRIPT : SCRIPT).replace("__SHARED__", () => SHARED);
+  return { css: CSS, script: body.replace("__PRESENT_CFG__", () => json(cfg)) };
 }

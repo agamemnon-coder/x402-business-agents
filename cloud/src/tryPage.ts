@@ -1680,7 +1680,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     // 15 Nov (judges): the two hashes in view, signed above asked, every differing character marked.
     const h=hashDiff(typeof j.signed_sha256==='string'?j.signed_sha256:'',typeof j.sent_sha256==='string'?j.sent_sha256:'');
     const line=(label,runs)=>el('p','hash mono',[el('span','hl',label),...runs.map((x)=>x[1]?el('mark','',x[0]):x[0])]);
-    diff.after(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));
+    // 15 Nov (Max, plain words): the two fingerprints in the technical proof, not in the visitor's way.
+    proof.append(el('div','hashes',[line(Y.signed,h.a),line(Y.sent,h.b)]));
     proof.append(el('p','verdict',verdict(Y,T.terms,sent,j.changed)));
     proof.append(el('p','proof',fill(Y.roundTrip,{n:Math.round(ms)})));
     const made=Number(j.transfers_after)-Number(j.transfers_before);
@@ -1972,7 +1973,7 @@ const BAND_LINE: { head: string; line: string; href: string } | null = { head: W
 const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json";
 
 /** The page: one document, its config in a meta tag (the origin and the passkey RP id, for the screens that sign). */
-/** extra: recording mode's style and script (cloud/src/try/presentMode.ts, /try?present=1); none on the normal page. */
+/** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }): string {
   const copy = { run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
@@ -2008,5 +2009,5 @@ const PAGE_HEADERS = {
 export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Response {
   const n = nonce();
   // Recording mode for the Demo Day walkthrough (cloud/src/try/presentMode.ts): a flag only; the page is otherwise the same.
-  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, url.searchParams.get("present") === "1" ? presentExtra() : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
+  return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, presentExtra(url.searchParams.get("present") === "1" ? "present" : "public")), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
 }

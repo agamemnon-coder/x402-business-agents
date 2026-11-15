@@ -1,6 +1,8 @@
-// Recording mode (/try?present=1, cloud/src/try/presentMode.ts): a flag only. Without it /try is byte for byte the
-// page it was; with it, one more style block and one more script under the same nonce, which reads the page's own API
-// answers and calls nothing. The browser run is test/browser/present.check.ts.
+// Recording mode (/try?present=1, cloud/src/try/presentMode.ts): a flag. Every /try has the app shell and "How Purser
+// works" (one more style block and one more script under the same nonce, which read the page's own API answers and call
+// nothing); ?present=1 adds the recording mode's cards, keys and zoom. The browser run is test/browser/present.check.ts.
+import { readFileSync } from "node:fs";
+import { SYSTEM_MAP_DATA_URL } from "../cloud/src/try/systemMap.gen.js";
 import { describe, expect, it } from "vitest";
 import { tryPage } from "../cloud/src/tryPage.js";
 import { presentExtra, PRESENT_AFTER, PRESENT_BEFORE, PRESENT_MONEY, PRESENT_TRY } from "../cloud/src/try/presentMode.js";
@@ -50,9 +52,16 @@ describe("recording mode", () => {
     expect(script).toContain("get('shell')!=='0'");
     expect(script).toContain("get('neg')!=='1'");
     expect(script).toContain("e.event==='claude.read'||e.event==='agent.run'");
-    expect(css).toContain(".pv-noneg .negcard { display: none !important; }");
-    expect(css).toContain("body.present.pv-shell .acts.pdfl { display: flex !important; }");
+        expect(css).toContain("body.pv-shell .acts.pdfl { display: flex !important; }");
+    expect(css).toContain("body.pv-noneg .negcard { display: none !important; }");
     for (const w of ["Inbox", "Approvals", "Payments", "Books", "Agents", "Claude · this run"]) expect(script).toContain(w);
+  });
+
+  it("explains Purser in plain words with the partners' own logos and the README's system map, byte for byte", () => {
+    const { script } = presentExtra("public");
+    for (const w of ["AI agents pay the invoices. You approve the exceptions with Face ID.", "Changed by one cent after you approved?", "The whole system"]) expect(script).toContain(w);
+    expect(SYSTEM_MAP_DATA_URL).toBe("data:image/svg+xml;base64," + readFileSync("docs/assets/readme/system-map-dark.svg").toString("base64"));
+    expect(script).not.toContain("document.body.classList.add('present');");
   });
 
   it("is served by /try?present=1 and only then", async () => {
@@ -61,8 +70,10 @@ describe("recording mode", () => {
       expect((await c.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "starts", value: "on" } })).status).toBe(200);
       const on = await (await c.fetch(`${ORIGIN}/try?present=1`)).text();
       const off = await (await c.fetch(`${ORIGIN}/try?present=0`)).text();
-      expect(on).toContain("pv-lane");
-      expect(off).not.toContain("pv-lane");
+      // Recording mode only with ?present=1; the app shell and "How Purser works" on both.
+      expect(on).toContain("document.body.classList.add('present');");
+      expect(off).not.toContain("document.body.classList.add('present');");
+      for (const page of [on, off]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); }
     } finally { c.close(); }
   });
 });
