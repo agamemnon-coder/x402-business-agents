@@ -27,3 +27,13 @@ describe("the proof band's figures", () => {
   });
 });
 
+
+describe("the band's worst-case line", () => {
+  it("is the worst-case test's own headline and line, linked to its record", async () => {
+    const { tryPage } = await import("../cloud/src/tryPage.js");
+    const { WORST_CASE_HEADLINE, WORST_CASE_LINE, WORST_CASE_DOC } = await import("../src/evals/worstCase.js");
+    const html = tryPage("n", { origin: "https://x.test", rpId: "x.test" });
+    expect(html).toContain(`const BAND_LINE=${JSON.stringify({ head: WORST_CASE_HEADLINE, line: WORST_CASE_LINE, href: `${REPO_BLOB}${WORST_CASE_DOC}` }).replace(/</g, "\\u003c")};`);
+    expect(existsSync(WORST_CASE_DOC)).toBe(true);
+  });
+});

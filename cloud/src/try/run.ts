@@ -151,7 +151,7 @@ function proofBand(){
   for(const f of PROOF_FIGS)if(P.labels[f.key])item(String(f.n),P.labels[f.key],f.href);
   if(TESTS_PASSING)item(TESTS_PASSING,P.labels.tests,TESTS_HREF);
   // One more line from a record, across the band, when there is one (BAND_LINE: a slot, empty until it lands).
-  if(BAND_LINE){const a=el('a','',el('span','pk',BAND_LINE.line));a.href=BAND_LINE.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
+  if(BAND_LINE){const a=el('a','',[el('span','ph2',BAND_LINE.head),el('span','pk',BAND_LINE.line)]);a.href=BAND_LINE.href;a.target='_blank';a.rel='noopener';ul.append(el('li','wide',a))}
   const s=el('section','real proofband',[el('p','rh',P.head),ul]);s.setAttribute('aria-label',P.head);return s;
 }
 function runScore(){
@@ -321,7 +321,8 @@ body:has(.screen.start) main > h1 { grid-area: h1; margin: 12px 0 10px; font-siz
 .proofband .pv { font-size: 22px; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .proofband .pk { color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.3; }
 .proofband li:last-child:nth-child(odd), .proofband li.wide { grid-column: 1 / -1; }
-.proofband li.wide .pk { color: var(--text); font-size: 13px; }
+.proofband li.wide .ph2 { font-size: 15px; font-weight: 700; line-height: 1.3; }
+.proofband li.wide .pk { font-size: 12.5px; }
 @media (min-width: 1024px) { .start .proofband { margin-top: 22px; } .proofband .rl { grid-template-columns: repeat(5, minmax(0, 1fr)); } .proofband li:last-child:nth-child(odd):not(.wide) { grid-column: auto; } .proofband .pv { font-size: 24px; } }
 /* The steps light one after another, each icon filling, then the refusal shakes (a loop; still with reduced motion). */
 .start .fs .fi { animation: fifill 7.2s ease-in-out infinite; }

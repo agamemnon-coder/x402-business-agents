@@ -886,6 +886,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
     && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one primary way on to the live sandbox runs, four secondary buttons ("Verify this payment yourself" first), no form`);
   const band6 = await page.locator(".screen.company .proofband li:not(.wide) a").evaluateAll((as) => as.map((a) => [a.querySelector(".pv")?.textContent, (a as HTMLAnchorElement).href.startsWith("https://github.com/agamemnon-coder/x402-business-agents/blob/main/")]));
   ok(band6.length === 5 && band6.every(([v, linked]) => /^[\d,]+$/.test(String(v)) && linked), `${tag}: the finish's proof band: five measured figures, each linked to its record (${band6.map((b) => b[0]).join(", ")})`);
+  ok(await page.locator('.screen.company .proofband li.wide a[href="https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/worst-case-ai.md"]').count() === 1, `${tag}: the band's worst-case line, linked to its record`);
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);

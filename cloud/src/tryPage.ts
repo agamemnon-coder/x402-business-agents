@@ -37,6 +37,7 @@ import { DID_CSS, DID_KIT_JS, DID_SCREEN_JS, didGlobals } from "./try/books.js";
 import SUITE from "../../docs/assets/test-summary.json" with { type: "json" };
 import { RUN_JS, RUN_UI_JS, START_CSS, START_JS, START_LOGOS, STEP_PROOF, TOUR_JS } from "./try/run.js";
 import { PROOF_FIGURES } from "./try/proof.gen.js";
+import { WORST_CASE_DOC, WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TOKENS } from "../../src/redesign/ui.js";
 import { ICONS } from "../../src/ui/icons.js";
 import { MORE } from "../../src/ui/payablesKit.js";
@@ -1892,10 +1893,10 @@ export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read an
 /** The suite's count from its last full run (docs/assets/test-summary.json, written by npm run test-count), as words. */
 export const testsPassing = (): string => (SUITE as { passed: number }).passed.toLocaleString("en-US");
 /**
- * One more line across the proof band, from a record and linked to it ({ line, href }), or none. A slot (15 Nov): the
- * worst-case line (branch worst-case-1115) goes here once it lands; until then the band has no such line.
+ * One more line across the proof band, from a record and linked to it: the worst-case AI test (#368), its headline and
+ * the line its own record wrote (src/evals/worstCase.ts, docs/worst-case-ai.md). No words of the page's own.
  */
-const BAND_LINE: { line: string; href: string } | null = null;
+const BAND_LINE: { head: string; line: string; href: string } | null = { head: WORST_CASE_HEADLINE, line: WORST_CASE_LINE, href: `https://github.com/agamemnon-coder/x402-business-agents/blob/main/${WORST_CASE_DOC}` };
 /** The suite's record, which the band's test figure links to. */
 const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/assets/test-summary.json";
 

@@ -3,6 +3,7 @@
 // page's script reads them from here; it has no words of its own. This page does not use the shared catalogue
 // (src/ui/i18n.ts). Honest words only: "test company", "test money", "simulated bank"; "Claude" only where Claude ran.
 
+import { WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
 import { FX_QUOTE_MAX_MARKUP_BPS } from "../../src/config/policy.js";
 
@@ -666,7 +667,7 @@ export const ENDED = {
  * after the start, the band. The server's own sentences and the invoice's data are not copy.
  */
 /** The proof band as shown (the figures are data from the records, counted as words; the test count is an example). */
-const PROOF_WORDS = [PROOF_BAND.head, "25", PROOF_BAND.labels.runs!, "24", PROOF_BAND.labels.claude!, "86", PROOF_BAND.labels.alta!, "0", PROOF_BAND.labels.overLimit!, "6,932", PROOF_BAND.labels.tests!];
+const PROOF_WORDS = [PROOF_BAND.head, "25", PROOF_BAND.labels.runs!, "24", PROOF_BAND.labels.claude!, "86", PROOF_BAND.labels.alta!, "0", PROOF_BAND.labels.overLimit!, "6,932", PROOF_BAND.labels.tests!, WORST_CASE_HEADLINE, WORST_CASE_LINE];
 /** The form's own words ("write your own", 15 Nov): its labels, the IBAN hint and the note's trick link. */
 /** Screen 4's six signed fields, as labelled. */
 const PAY_FIELDS = [PROPOSAL_FIELDS.amount, INVOICE.currency, PROPOSAL_FIELDS.account, PROPOSAL_FIELDS.payee, PROPOSAL_FIELDS.bic, PROPOSAL_FIELDS.invoiceNo];
@@ -862,7 +863,7 @@ export const VISIBLE = {
 // that held and the signature line, and two ways on ("pay 1" to "pay 10"); the finish has one primary way on and three
 // secondary ones ("company 0" to "company 4"); screen 2's progress line and the flagged line ("work 13" to "work 15").
 // Each pinned at its count, for the lead to decide.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 113, "start 1": 109, "start 2": 114, "start 3": 108, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 119, "company 1": 109, "company 2": 125, "company 3": 135, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 120, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 131 };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 183, "start 1": 179, "start 2": 184, "start 3": 178, "pay 7": 105, "pay 8": 155, "invoice 4": 60, "invoice 5": 61, "books 0": 77, "books 1": 75, "work 4": 70, "work 5": 52, "work 6": 64, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 76, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 104, "pay 1": 62, "pay 2": 66, "pay 3": 66, "pay 4": 90, "pay 5": 61, "pay 6": 71, "pay 9": 104, "work 2": 85, "work 3": 60, "work 10": 91, "work 11": 73, "work 12": 88, "invoice 7": 67, "pay 10": 168, "company 5": 201 };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
