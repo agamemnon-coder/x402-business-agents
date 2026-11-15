@@ -3,6 +3,7 @@
 // a text budget per page; no forbidden words on any public page; one Face ID number from one source; the split between
 // Claude's decisions and code's routine payments, both counted from the record; the Claude call badge from each trace;
 // every internal link answers (old addresses redirect, anything else gets the clean 404).
+import { LIVE_CARDS_JS } from "../src/redesign/cardCent.js";
 import { WATCH_IN_MENU } from "../src/config/film.js";
 import { COUNT_JS } from "../src/redesign/stats.js";
 import { cardSceneData, VISA_CARD_SCENE_JS } from "../src/redesign/visaCardScene.js";
@@ -291,7 +292,7 @@ describe("the site after v4", () => {
       // /metal's (src/redesign/metalMandates.ts METAL_INSPECT_JS: the spend read live from its own origin, 12 Nov).
       // Since 12 Nov the partner pages' figures count up once in view (src/redesign/stats.ts COUNT_JS; nothing moves with
       // reduced motion), so /airwallex, /metal and /visa add that script.
-      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}${COUNT_JS}</script>`] : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}${COUNT_JS}</script>`] : name === "visa" ? [`<script type="application/json" id="run-data">${JSON.stringify(cardSceneData()).replace(/</g, "\\u003c")}</script>`, `<script>\n${COUNT_JS}\n${OPEN_TARGET_JS}\n${VISA_CARD_SCENE_JS}</script>`] /* partner scan, 14 Nov: the live credential check, its data block and its script */ : []);
+      expect(scriptBlocks(html)).toEqual(name === "airwallex" ? [`<script>\n${OPEN_TARGET_JS}${COUNT_JS}${LIVE_CARDS_JS}</script>`] /* 15 Nov: the agents' cards read live from its own origin */ : name === "metal" ? [`<script>\n${METAL_INSPECT_JS}${COUNT_JS}</script>`] : name === "visa" ? [`<script type="application/json" id="run-data">${JSON.stringify(cardSceneData()).replace(/</g, "\\u003c")}</script>`, `<script>\n${COUNT_JS}\n${OPEN_TARGET_JS}\n${VISA_CARD_SCENE_JS}</script>`] /* partner scan, 14 Nov: the live credential check, its data block and its script */ : []);
       // Each page is labelled with the run it shows: the main run; on /visa that label sits inside the TAP fold, with
       // the main run's own TAP-signed card buy (the separate TAP run of 2 Nov is named there too, under its own label).
       // (/airwallex shows several runs, each dated on its own block: its label is true for all of them.)

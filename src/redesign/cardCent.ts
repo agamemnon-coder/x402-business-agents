@@ -71,7 +71,7 @@ export const LIVE_CARDS_JS = `(function () {
   if (!sum || !list || !window.fetch) return;
   var eur = function (c) { return typeof c === "number" ? "EUR " + (c / 100).toFixed(2) : "no limit read"; };
   var li = function (text, bad) { var x = document.createElement("li"); if (bad) x.className = "no"; x.textContent = text; list.appendChild(x); };
-  fetch("${AGENT_CARDS_PATH.slice(1)}", { headers: { accept: "application/json" } }).then(function (r) { return r.ok ? r.json() : null; }).then(function (a) {
+  fetch("${AGENT_CARDS_PATH.slice(1)}", { headers: { accept: "application/json" } }).then(function (r) { return r.ok ? r.json() : false; }).then(function (a) {
     if (!a || a.source !== "airwallex-sandbox" || !a.summary || !a.agents) { sum.textContent = "The sandbox did not answer just now" + (a && a.reason ? " (" + a.reason + ")" : "") + "; nothing is shown in its place."; return; }
     sum.textContent = a.summary.text + ". Read " + String(a.read_at).slice(11, 16) + " UTC.";
     a.agents.forEach(function (s) {
