@@ -16,7 +16,7 @@ import { SITE_HEADER_CSS, siteHeader } from "../siteHeader.js";
 import { SIGN_JS } from "../tryPage.js";
 import { VERIFY_YOURSELF } from "../tryCopy.js";
 import { TOKENS } from "../../../src/redesign/ui.js";
-import { RECORDED_LABEL, SOURCING_LABEL, SUPPLIER_LABEL } from "../../../src/negotiate/negotiate.js";
+import { NEG_COPY, NEG_CSS, negKitJs } from "./negotiateKit.js";
 import { BOT_SOLVER_JS } from "./botCheck.js";
 
 export const NEGOTIATE_PATH = "/try/negotiate";
@@ -25,6 +25,7 @@ export const NEGOTIATE_LINK = "Watch agents negotiate";
 
 /** Every word of the page (tests read them). */
 export const NEGOTIATE_COPY = {
+  ...NEG_COPY,
   title: "Purser · agents negotiate",
   band: "Test money · test passkey · simulated bank · nothing real moves",
   head: "Two agents negotiate. Code holds the limits. You sign the deal.",
@@ -40,28 +41,15 @@ export const NEGOTIATE_COPY = {
     payee_unchanged: "Only to the account on file (ending {last4})",
   },
   start: "Start the negotiation",
-  starting: "Starting a test company…",
+  starting: "Starting… Purser's agent is thinking",
   talking: "The agents are negotiating…",
-  live: "Live · Claude",
-  recorded: "Recorded",
-  recordedLabel: RECORDED_LABEL,
-  why: "Why: {reason}",
-  sourcing: SOURCING_LABEL,
-  supplier: SUPPLIER_LABEL,
-  terms: { amount: "Amount", discount: "Discount", payBy: "Pay by", account: "Account" },
-  within: "Within the rails",
-  refused: "Refused by the rails",
-  heldRule: "The rule that held:",
-  scripted: "The simulation added this bank change (the model left it out), so you can see the rails refuse it.",
-  held: "Purser's code held the Sourcing agent to Bergtex's best offer on record: it had asked to pay {asked}; the best offer on record is {floor} (turn {turn}), its bank change dropped.",
-  accepts: "Accepts",
-  agreedHead: "The agreement",
-  noDealHead: "No deal: the invoice as issued",
-  noDeal: "The agents did not agree within 4 turns, so the invoice stands as issued, by its due date.",
-  agreement: { amount: "Pay", discount: "Discount", payBy: "By", payee: "To", ref: "Reference" },
-  canonical: "Show the canonical JSON",
-  sha: "SHA-256 of the agreement",
-  shaNote: "The agreed invoice carries the first 8 characters of this hash as its reference, so the terms your passkey signs name this agreement and no other.",
+  again: "Start again",
+  limitRecorded: "Today's live limit is reached; showing the recorded negotiation.",
+  pausedRecorded: "The live demo is paused right now; showing the recorded negotiation.",
+  startFailed: "A test company could not be started ({status}); showing the recorded negotiation.",
+  companyLimit: "This test company has negotiated 3 times, its limit; showing the recorded negotiation. Start again for a new test company.",
+  gone: "Your test company has ended; starting a new one.",
+  nothingToSign: "A recording has nothing to sign. Start again to watch the agents live.",
   sign: "Sign the agreed terms with your passkey",
   makeKey: "Make your test passkey",
   steps: {
@@ -80,7 +68,6 @@ export const NEGOTIATE_COPY = {
   downloadDeal: "Download the negotiation (JSON)",
   verify: VERIFY_YOURSELF.verify,
   back: "Back to /try",
-  again: "Watch them negotiate again",
   noPasskey: "This browser can't make a passkey here. Open this page in Safari or Chrome to sign.",
   cancelled: "The passkey was not used. Nothing was signed or paid.",
   failed: "Something went wrong. Nothing was paid.",
@@ -114,20 +101,8 @@ p { margin: 0 0 12px; }
 .btn:disabled { opacity: .55; cursor: progress; }
 .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
-.turns { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.turn { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); padding: 12px 14px; }
-.turn.supplier { border-style: dashed; }
-.turn .who { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
-.turn .who b { color: var(--text); }
-.pill { display: inline-block; padding: 0 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; line-height: 20px; }
-.pill.rec { border-style: dashed; }
-.msg { margin: 0 0 8px; overflow-wrap: anywhere; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; padding: 0; list-style: none; }
-.chips li { font-size: 13px; padding: 2px 8px; border-radius: 8px; background: var(--sunken); overflow-wrap: anywhere; }
-.verdict { font-size: 14px; margin: 0; padding: 6px 10px; border-radius: 10px; }
-.verdict.ok { background: var(--ok-soft); color: var(--text); }
-.verdict.no { background: var(--bad-soft); color: var(--text); border: 1px solid var(--bad); }
-.verdict .rule { display: block; font-weight: 600; margin-top: 2px; }
+ol.steps li.stop { color: var(--text); border-left: 3px solid var(--bad); padding-left: 8px; }
+ol.steps li.stop::marker { color: var(--bad); }
 .note { font-size: 14px; color: var(--muted); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; }
 pre.mono { white-space: pre-wrap; background: var(--sunken); padding: 10px; border-radius: 10px; margin: 8px 0 0; }
@@ -138,13 +113,14 @@ ol.steps { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
 ol.steps li.done::marker { color: var(--ok); }
 ol.steps li.bad::marker { color: var(--bad); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@media (prefers-reduced-motion: no-preference) { .turn { animation: rise .35s ease-out both; } @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } } }
+${NEG_CSS}
 `;
 
 const SCRIPT = String.raw`
 const C=__COPY__;const CFG=__CFG__;
 __SIGN__
 __SOLVER__
+__NEG__
 const {fromB64u,registrationOf,signedOf}=signKit;
 const $=(id)=>document.getElementById(id);
 const el=(tag,cls,kids)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(kids!==undefined&&kids!==null)for(const k of [].concat(kids))if(k!==null&&k!==undefined&&k!==false)n.append(typeof k==='string'?document.createTextNode(k):k);return n};
@@ -155,8 +131,10 @@ const eur=(s)=>{const m=/^(\d+)\.(\d{2})$/.exec(String(s));if(!m)return String(s
 // The company: /try's own in this tab (its key), else one this page started (its own key). Read only from storage;
 // written back only to the key it came from (a renewed session).
 const KEYS=['purser.try','purser.negotiate'];
+// After Start again (or a company that ended), /try's company in this tab is not used again: a fresh one is started.
+const FRESH=()=>{try{return sessionStorage.getItem('purser.negotiate.fresh')==='1'}catch(e){return false}};
 let S=null,FROM=null;
-for(const k of KEYS){try{const o=JSON.parse(sessionStorage.getItem(k)||'null');if(o&&o.session&&o.visitor_token&&o.tenant){S=o;FROM=k;break}}catch(e){}}
+for(const k of KEYS){if(k==='purser.try'&&FRESH())continue;try{const o=JSON.parse(sessionStorage.getItem(k)||'null');if(o&&o.session&&o.visitor_token&&o.tenant){S=o;FROM=k;break}}catch(e){}}
 const save=()=>{if(!S||!FROM)return;try{const o=JSON.parse(sessionStorage.getItem(FROM)||'{}')||{};o.session=S.session;o.expires_at=S.expires_at;if(FROM==='purser.negotiate'){o.tenant=S.tenant;o.visitor_token=S.visitor_token}sessionStorage.setItem(FROM,JSON.stringify(o))}catch(e){}};
 const tenantId=()=>S&&(typeof S.tenant==='string'?S.tenant:S.tenant&&S.tenant.id);
 
@@ -179,67 +157,78 @@ async function api(method,path,body){
 }
 // A company of the visitor's own: /try's, or a new one through /try's start route (its bot check and its limits).
 async function company(){
-  if(S&&S.expires_at&&Date.parse(S.expires_at)>Date.now()+60000)return true;
-  if(S&&await renew())return true;
+  if(S&&S.expires_at&&Date.parse(S.expires_at)>Date.now()+60000)return {ok:true};
+  if(S&&await renew())return {ok:true};
   S=null;FROM=null;
   let proof;
   const ch=await call('POST','/v1/try/challenge');
-  if(ch.status===200&&ch.json.required===true){const p=solveProof(String(ch.json.challenge),Number(ch.json.difficulty));if(!p)return false;proof={challenge:String(ch.json.challenge),nonce:p.nonce}}
+  if(ch.status===200&&ch.json.required===true){const p=solveProof(String(ch.json.challenge),Number(ch.json.difficulty));if(!p)return {ok:false,status:0};proof={challenge:String(ch.json.challenge),nonce:p.nonce}}
   const r=await call('POST','/v1/try/start',proof?{proof}:{});
   if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
     S={tenant:r.json.tenant,session:r.json.session,visitor_token:r.json.visitor_token,expires_at:r.json.expires_at||null};FROM='purser.negotiate';
     try{sessionStorage.setItem(FROM,JSON.stringify(S))}catch(e){}
-    return true;
+    return {ok:true};
   }
-  return r.json&&typeof r.json.message==='string'?r.json.message:false;
+  return {ok:false,status:r.status,code:r.json&&r.json.code,message:r.json&&typeof r.json.message==='string'?r.json.message:''};
 }
 
-const box=$('flow');
+let N=null;
 const rails=(b)=>{
   const R=C.rails;const last4=String(b.payee_iban||'').slice(-4);
-  return el('ul','rails',[el('li','',fill(R.max_amount,{max:eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
+  return el('ul','rails',[el('li','',fill(R.max_amount,{max:NEG.eur((b.max_pay_cents/100).toFixed(2)).slice(4)})),el('li','',fill(R.pay_by_window,{from:b.earliest_pay_by,to:b.latest_pay_by})),el('li','',fill(R.invoice_only,{no:b.invoice_no})),el('li','',fill(R.payee_unchanged,{last4}))]);
 };
-function turnCard(t,mode){
-  const T=C.terms;
-  const who=el('p','who',[el('b','',t.who==='sourcing'?C.sourcing:C.supplier),el('span','pill'+(mode==='recorded'?' rec':''),mode==='recorded'?C.recorded:C.live+(t.model?' · '+t.model:'')),t.ms>=100?el('span','',(t.ms/1000).toFixed(1)+' s'):null,el('span','','Turn '+t.n)]);
-  const p=t.proposed||{};
-  const chips=el('ul','chips',[el('li','',T.amount+': '+eur(p.amount)),el('li','',T.discount+': '+(p.discount==='—'?'—':eur(p.discount)+' ('+p.discount_pct+')')),el('li','',T.payBy+': '+p.pay_by),p.iban?el('li','',T.account+': '+p.iban):null,t.accept?el('li','',C.accepts):null]);
-  const v=t.rails&&t.rails.ok?el('p','verdict ok',C.within):el('p','verdict no',[el('b','',C.refused+': '),(t.rails.refusals||[]).map((r)=>r.detail).join('; '),...(t.rails.refusals||[]).map((r)=>el('span','rule',C.heldRule+' '+r.says))]);
-  const card=el('li','turn '+t.who,[who,el('p','msg',t.message),chips,v,t.scripted_bank_change?el('p','note',C.scripted):null,t.held_to_best_offer?el('p','note held',fill(C.held,{asked:eur(t.held_to_best_offer.asked),floor:eur(t.held_to_best_offer.floor),turn:t.held_to_best_offer.floor_turn})):null]);
-  card.setAttribute('aria-label','Turn '+t.n+', '+(t.who==='sourcing'?C.sourcing:C.supplier));
-  return card;
+const busy=(btn,words)=>{btn.disabled=true;btn.hidden=false;btn.replaceChildren(el('span','negspin'),document.createTextNode(' '+words))};
+const errBox=(words)=>el('p','neg-err',words);
+function againRow(){
+  const b=el('button','btn',C.again);b.type='button';b.id='again';
+  b.addEventListener('click',()=>{
+    // A clean slate: this tab's negotiate company forgotten, /try's not reused, the page's state cleared.
+    try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
+    S=null;FROM=null;N=null;F.inv=null;F.p=null;F.eng=null;F.cred=null;
+    $('deal').replaceChildren();$('end').replaceChildren();$('talk').replaceChildren();$('more').replaceChildren();
+    const go=$('go');go.hidden=false;negotiate(go);
+  });
+  return el('div','row',[b]);
 }
-const sleep=(ms)=>new Promise((r)=>setTimeout(r,ms));
-let N=null;
-
+// The recording, played at once, when the live path turned the visitor away; nothing to sign in it.
+async function fallback(words,why){
+  const talk=$('talk');const box=el('div','');talk.replaceChildren(errBox(words),box);
+  await NEG.recorded({box,why,say});
+  $('more').replaceChildren(el('p','note',C.nothingToSign),againRow());
+}
 async function negotiate(btn){
-  btn.disabled=true;btn.textContent=C.starting;say(C.starting);
-  const okc=await company();
-  if(okc!==true){btn.disabled=false;btn.textContent=C.start;$('talk').replaceChildren(el('p','note',typeof okc==='string'?okc:C.limit));return}
-  btn.textContent=C.talking;say(C.talking);
-  const r=await api('POST','/v1/try/negotiate');
-  if(r.status!==200||!Array.isArray(r.json.turns)){btn.disabled=false;btn.textContent=C.start;$('talk').replaceChildren(el('p','note',typeof r.json.message==='string'?r.json.message:C.failed));return}
-  N=r.json;btn.hidden=true;
-  $('rails').replaceChildren(rails(N.bounds));
-  const talk=$('talk');talk.replaceChildren();
-  if(N.mode==='recorded')talk.append(el('p','card note',[el('b','',N.label||C.recordedLabel),N.reason?el('span','',' '+fill(C.why,{reason:N.reason})):null]));
-  const list=el('ol','turns');talk.append(list);
-  let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}
-  for(const t of N.turns){list.append(turnCard(t,N.mode));say('Turn '+t.n);if(!calm)await sleep(700)}
-  deal();
+  $('deal').replaceChildren();$('end').replaceChildren();$('more').replaceChildren();
+  busy(btn,C.starting);say(C.starting);
+  const talk=$('talk');
+  NEG.thinking(talk);
+  let okc=await company();
+  if(!okc.ok){btn.hidden=true;
+    if(okc.status===429)return fallback(C.limitRecorded,'limit');
+    if(okc.status===503)return fallback(C.pausedRecorded,'paused');
+    return fallback(fill(C.startFailed,{status:okc.status||'no answer'}),'start')}
+  busy(btn,C.talking);say(C.talking);
+  let res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
+  if(!res.ok&&(res.status===410||res.status===401)){
+    // The company this tab held has ended: a new one, once.
+    try{sessionStorage.removeItem('purser.negotiate');sessionStorage.setItem('purser.negotiate.fresh','1')}catch(e){}
+    S=null;FROM=null;say(C.gone);okc=await company();
+    if(okc.ok)res=await NEG.run({box:talk,auth:()=>S&&S.session,renew,say});
+  }
+  btn.hidden=true;
+  if(!res.ok){
+    if(res.status===429)return fallback(res.code==='limit'?C.companyLimit:C.limitRecorded,'limit');
+    if(res.status===503)return fallback(C.pausedRecorded,'paused');
+    talk.prepend(errBox(res.message||C.failed));$('more').replaceChildren(againRow());return;
+  }
+  N=res.n;$('rails').replaceChildren(rails(N.bounds));deal();
 }
-
 function deal(){
-  const A=C.agreement,a=N.agreement;const d=$('deal');
-  const h=el('h2','',N.outcome==='agreed'?C.agreedHead:C.noDealHead);h.tabIndex=-1;
-  const dl=el('dl','deal',[el('dt','',A.amount),el('dd','',eur(a.amount)),el('dt','',A.discount),el('dd','',eur(a.discount)+' off '+eur(a.invoice_amount)),el('dt','',A.payBy),el('dd','',a.pay_by),el('dt','',A.payee),el('dd','',a.supplier+' · account ending '+a.payee_iban_last4),el('dt','',A.ref),el('dd','mono',N.compose.invoice_no)]);
-  const det=el('details','',[el('summary','',C.canonical),el('pre','mono',N.canonical)]);
-  const sha=el('p','',[el('span','muted',C.sha+': '),el('span','mono',N.sha256)]);
   const go=el('button','btn primary',C.sign);go.type='button';go.id='sign';
+  const {card,heading}=NEG.agreed(N,[go]);
   const steps=el('ol','steps');steps.id='steps';
   const out=el('div','');out.id='out';out.setAttribute('role','status');
-  d.replaceChildren(...[h,N.outcome==='agreed'?null:el('p','note',C.noDeal),el('div','card',[dl,sha,el('p','note',C.shaNote),det]),el('div','row',[go]),steps,out].filter(Boolean));
-  h.focus();
+  $('deal').replaceChildren(card,steps,out);heading.focus();
+  $('more').replaceChildren(againRow());
   go.addEventListener('click',()=>sign(go));
 }
 
@@ -257,7 +246,7 @@ async function sign(go){
   go.disabled=true;
   try{
     if(!F.inv){
-      const f=await api('POST','/v1/engine/compose',N.compose);
+      const f=await api('POST','/v1/try/negotiate/agreed',{agreement_sha256:N.sha256,compose:N.compose,turns:N.turns.length});
       const inv=f.json&&f.json.invoice;
       if(f.status!==200||!inv||!inv.id){out.append(el('p','note',words(f.json,C.failed)));go.disabled=false;return}
       F.inv=inv;step(C.steps.file+' ('+N.compose.invoice_no+')','done');
@@ -296,7 +285,7 @@ async function sign(go){
     const cent=Math.floor(v/100)+'.'+String(v%100).padStart(2,'0');
     const bad=await api('POST','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/pay',signKit.payBody(terms,Object.assign({},terms,{amount:cent}),cred));
     const refused=bad.status===200&&bad.json.outcome!=='paid'&&bad.json.outcome!=='paid_once';
-    step([C.steps.tamper+' ('+eur(terms.amount)+' → '+eur(cent)+'): ',el('b','',refused?C.tamperRefused:C.tamperOther)],refused?'done':'bad');
+    {const li=step([C.steps.tamper+' ('+eur(terms.amount)+' → '+eur(cent)+'): ',el('b','',refused?C.tamperRefused:C.tamperOther)],refused?'stop':'bad');if(refused)NEG.shake(li)}
     const good=await api('POST','/v1/engine/proposals/'+encodeURIComponent(F.p.id)+'/pay',signKit.payBody(terms,terms,cred));
     if(good.status!==200||(good.json.outcome!=='paid'&&good.json.outcome!=='paid_once')){out.append(el('p','note',words(good.json,C.failed)));return}
     step(C.steps.paid+' ('+eur(terms.amount)+')','done');
@@ -325,7 +314,7 @@ export interface NegotiatePageCfg { rpId: string; verify: string }
 export function negotiatePage(n: string, cfg: NegotiatePageCfg): string {
   const C = NEGOTIATE_COPY;
   const script = SCRIPT.replace("__COPY__", () => json(C)).replace("__CFG__", () => json({ ...cfg, proofFile: VERIFY_YOURSELF.file }))
-    .replace("__SIGN__", () => SIGN_JS).replace("__SOLVER__", () => BOT_SOLVER_JS);
+    .replace("__SIGN__", () => SIGN_JS).replace("__SOLVER__", () => BOT_SOLVER_JS).replace("__NEG__", () => negKitJs());
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${ICON_LINKS}
 <meta name="color-scheme" content="light dark">
@@ -344,6 +333,7 @@ ${siteHeader("try")}
 <section id="talk" aria-live="polite"></section>
 <section id="deal"></section>
 <section id="end"></section>
+<section id="more"></section>
 </main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>
 <script type="module" nonce="${n}">${script}</script>

@@ -169,6 +169,9 @@ export interface InvoiceView {
   proposal: ProposalView | null;
 }
 
+/** What a negotiation agreed, as the hands-on demo's route hands it to the engine (EngineHost.negotiated). */
+export interface NegotiatedFacts { original_id: string | null; original_invoice_no: string; original_amount: string; agreement_sha256: string; turns: number }
+
 /** The checks examine() (src/ap/checkerCore.ts) ran on an invoice that left no finding: InvoiceView.checks_passed. */
 function checksPassed(inv: ApInvoiceRow): NonNullable<InvoiceView["checks_passed"]> {
   const codes = new Set(inv.findings.map((f) => f.code));
@@ -476,9 +479,18 @@ export class EngineHost {
     return out;
   }
 
+  /** An invoice the negotiation replaced says so, naming its replacement (supersede, below). */
+  private supersededBy(inv: ApInvoiceRow): string | null {
+    if (inv.status !== "rejected") return null;
+    const row = this.deps.db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.superseded' AND subject = ? ORDER BY seq DESC LIMIT 1").get(inv.id) as { payload_json: string } | undefined;
+    if (!row) return null;
+    const p = JSON.parse(row.payload_json) as { by?: string; invoice_no?: string };
+    return `Superseded by the negotiated terms (${p.by ?? "?"}, ${p.invoice_no ?? "?"})`;
+  }
+
   private view(inv: ApInvoiceRow): InvoiceView {
     return {
-      id: inv.id, status: inv.status, status_words: t(this.deps.company.lang, `status.${inv.status}`), payable: actionsFor(inv).pay.allowed,
+      id: inv.id, status: inv.status, status_words: this.supersededBy(inv) ?? t(this.deps.company.lang, `status.${inv.status}`), payable: actionsFor(inv).pay.allowed,
       vendor: inv.vendor, invoice_no: inv.invoice_no, currency: inv.currency, total: inv.total, due_date: inv.due_date, read_by: inv.read_by,
       issue_date: inv.issue_date, paid_at: inv.paid_at, received_at: inv.received_at,
       findings: inv.findings.map((f) => this.findingView(f)),
@@ -826,6 +838,52 @@ export class EngineHost {
       } catch (e) {
         return { ok: false as const, reason: message(e) };
       }
+    });
+  }
+
+  /**
+   * A negotiation's agreed invoice, filed (15 Nov, jury run). It records what was negotiated (ap.negotiated, on the
+   * agreed invoice: the original amount, the agreed amount, the discount, the agreement's SHA-256 and the turns), which
+   * the proof file carries beside the signed terms. With an original (the negotiation inside /try), the agreed invoice
+   * REPLACES it: the original's unsigned payment proposal is SUPERSEDED (it can never be signed), the original leaves the
+   * books with its reason ("superseded by the negotiated terms") and the ledger is synced at once, so its accrual is
+   * reversed: one payable and one expense remain, the agreed ones. Only a replacement from the same supplier, numbered as
+   * the original plus the agreement's reference, for less, ready to pay; never an original that is paid, signed or gone.
+   */
+  negotiated(replacementId: string, n: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string }> {
+    return this.act(async () => {
+      const { db } = this.deps;
+      const now = this.now();
+      const r = apInvoice(db, replacementId);
+      const o = n.original_id ? apInvoice(db, n.original_id) : null;
+      const c = (x: string) => Math.round(Number(x) * 100);
+      if (!r || (n.original_id && !o)) return { ok: false as const, reason: "no such invoice" };
+      if (!/^[0-9a-f]{64}$/.test(n.agreement_sha256) || r.status !== "ready" || !r.invoice_no.endsWith(`-${n.agreement_sha256.slice(0, 8)}`) || !(c(r.total) < c(n.original_amount)))
+        return { ok: false as const, reason: `${r.id} is not an agreed invoice of this negotiation` };
+      if (o) {
+        if (o.id === r.id) return { ok: false as const, reason: "an invoice cannot replace itself" };
+        if (!["ready", "waiting_cfo"].includes(o.status)) return { ok: false as const, reason: `${o.id} is ${o.status.replace(/_/g, " ")}; only an open invoice can be replaced` };
+        if (r.vendor !== o.vendor || r.currency !== o.currency || !r.invoice_no.startsWith(`${o.invoice_no}-`) || c(o.total) !== c(n.original_amount))
+          return { ok: false as const, reason: `${r.id} is not the agreed replacement of ${o.id}` };
+        const p = o.proposal_id ? db.prepare("SELECT status FROM proposals WHERE proposal_id = ?").get(o.proposal_id) as { status: string } | undefined : undefined;
+        if (p && p.status !== "PENDING_APPROVAL" && p.status !== "SUPERSEDED") return { ok: false as const, reason: `${o.id}'s payment is ${p.status.toLowerCase().replace(/_/g, " ")}; it cannot be replaced` };
+      }
+      const off = c(n.original_amount) - c(r.total);
+      const facts = {
+        original_invoice_id: o?.id ?? null, original_invoice_no: o?.invoice_no ?? n.original_invoice_no, original_amount: n.original_amount,
+        agreed_amount: r.total, discount: `${Math.floor(off / 100)}.${String(off % 100).padStart(2, "0")}`, currency: r.currency,
+        agreement_sha256: n.agreement_sha256, turns: n.turns, superseded: !!o,
+      };
+      db.transaction(() => {
+        if (o) {
+          if (o.proposal_id) db.prepare("UPDATE proposals SET status = 'SUPERSEDED' WHERE proposal_id = ? AND status = 'PENDING_APPROVAL'").run(o.proposal_id);
+          setStatus(db, o.id, "rejected", "human", { reason: `superseded by the negotiated terms: ${r.id} (${r.invoice_no}, ${r.currency} ${r.total}), agreement SHA-256 ${n.agreement_sha256}` }, now);
+          audit(db, "human", "ap.superseded", o.id, { by: r.id, invoice_no: r.invoice_no, total: r.total, agreement_sha256: n.agreement_sha256, ...(o.proposal_id ? { proposal_id: o.proposal_id } : {}) }, now);
+        }
+        audit(db, "human", "ap.negotiated", r.id, facts, now);
+      }).immediate();
+      if (o) syncLedger(db, now);
+      return { ok: true as const, invoice: this.view(apInvoice(db, r.id)!), superseded: o ? this.view(apInvoice(db, o.id)!) : null };
     });
   }
 

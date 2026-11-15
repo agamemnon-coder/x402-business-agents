@@ -6,7 +6,7 @@
 //
 // Only types are imported here: nothing of the engine reaches the Worker's bundle through this file.
 import type { EngineEvent } from "../../../src/engine/events.js";
-import type { InvoiceView, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
+import type { InvoiceView, NegotiatedFacts, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
 import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
 import type { NameCheckView } from "../../../src/engine/host.js";
 import type { AwxView } from "../../../src/engine/awxActions.js";
@@ -70,6 +70,8 @@ export interface EngineApi {
   uploadSample(key: string): Promise<UploadResult | null>;
   /** The hands-on demo's sandbox override of a possible duplicate by the same total (src/engine/host.ts clearHold). */
   clearHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
+  /** A negotiation's agreed invoice: recorded, and replacing the original when there is one (src/engine/host.ts negotiated). */
+  negotiated(replacementId: string, facts: NegotiatedFacts): Promise<{ ok: true; invoice: InvoiceView; superseded: InvoiceView | null } | { ok: false; reason: string }>;
   /** The hands-on demo's Reject of a held invoice (src/engine/host.ts rejectHold). */
   rejectHold(id: string): Promise<{ ok: true; invoice: InvoiceView } | { ok: false; reason: string }>;
   /** The suppliers the seed put on file (test IBANs). */
@@ -117,4 +119,4 @@ export const EVENTS_PER_SECOND = 2;
 const everyMethod = <T extends readonly (keyof EngineApi)[]>(names: keyof EngineApi extends T[number] ? T : never): T => names;
 
 /** What a caller across a boundary may ask a company's engine for (the Worker's stub of its Durable Object passes the name on). */
-export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);
+export const ENGINE_METHODS = everyMethod(["status", "seed", "upload", "invoices", "invoice", "propose", "proposal", "passkeyStart", "passkeyFinish", "securityKeyStart", "securityKeyFinish", "proposeSecondKey", "approve", "retry", "sync", "events", "vaultFiles", "vaultFile", "forgetPasskey", "wipe", "samples", "uploadSample", "suppliers", "compose", "terms", "paySigned", "clearHold", "rejectHold", "negotiated", "payoutSimulate", "exportBatch", "exportPdf", "addSupplier", "proposeBatch", "depositIn", "airwallex"] as const);

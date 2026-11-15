@@ -73,6 +73,24 @@ describe("the route and its caps", () => {
     expect(spent!.micros).toBeGreaterThan(0);
     expect(spent!.micros).toBeLessThan(50_000);
   });
+  it("?stream=1: a line a turn as Claude answers it, then the whole negotiation; recorded sends no live start", async () => {
+    script = LIVE; asked.length = 0;
+    const r = await c.req("POST", "/v1/try/negotiate?stream=1", { key: await visitor() });
+    expect(r.res.headers.get("content-type")).toMatch(/application\/x-ndjson/);
+    const text = await r.res.clone().text().catch(() => "");
+    const ev = (text || JSON.stringify(r.json)).trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; turn?: { n: number }; best?: { amount: string } | null; negotiation?: { mode: string; outcome: string } });
+    expect(ev.map((e) => e.type)).toEqual(["start", "turn", "turn", "turn", "turn", "done"]);
+    expect(ev.filter((e) => e.type === "turn").map((e) => e.turn!.n)).toEqual([1, 2, 3, 4]);
+    expect(ev[2]!.best).toEqual({ amount: "1822.25", pay_by: d(7), turn: 2 });
+    expect(ev[5]!.negotiation).toMatchObject({ mode: "live", outcome: "agreed" });
+    expect((await admin("claude", "off")).status).toBe(200);
+    const rec = await c.req("POST", "/v1/try/negotiate?stream=1", { key: await visitor() });
+    const recText = await rec.res.clone().text().catch(() => "");
+    const recEv = (recText || "").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l) as { type: string; negotiation?: { mode: string } });
+    expect(recEv.map((e) => e.type)).toEqual(["done"]);
+    expect(recEv[0]!.negotiation!.mode).toBe("recorded");
+    expect((await admin("claude", "on")).status).toBe(200);
+  });
   it("the kill switch: Claude off, the recorded negotiation, labelled, and no model call", async () => {
     expect((await admin("claude", "off")).status).toBe(200);
     asked.length = 0;
@@ -140,5 +158,77 @@ describe("the agreed terms, signed with /try's own flow", () => {
     const good = await c.req("POST", `/v1/engine/proposals/${proposal.id}/pay`, { key: s, body: { terms: t.terms, credential: cred } });
     expect(good.json.outcome, JSON.stringify(good.json).slice(0, 400)).toBe("paid");
     expect(good.json.proof).toBeTruthy();
+  });
+});
+
+// Jury run (15 Nov): after a deal the original stayed open and booked beside the agreed one (6200 twice, creditors
+// overstated), and Pay still paid the original. The agreed invoice now replaces it, and the proof says what was agreed.
+describe("the negotiation on the visitor's own invoice, in /try", () => {
+  it("the agreed invoice replaces the original: its payment superseded, its booking reversed, one payable, the books balanced", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const filed = await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} });
+    expect(filed.status, JSON.stringify(filed.json)).toBe(200);
+    const orig = filed.json.invoice as { id: string; invoice_no: string; total: string; status: string };
+    expect(orig).toMatchObject({ invoice_no: "BTX-2026-21", total: "1850.00", status: "ready" });
+    // /try prepares the original's payment while its result is on screen.
+    const prep = await c.req("POST", `/v1/engine/invoices/${orig.id}/pay`, { key: s });
+    const origProposal = (prep.json.proposal as { id: string }).id;
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; outcome: string; turns: unknown[]; compose: Record<string, string>; agreement: { amount: string } };
+    expect(n.outcome).toBe("agreed");
+    expect(n.compose.invoice_no).toBe(`BTX-2026-21-${n.sha256.slice(0, 8)}`);
+    // Terms that are not the agreement are refused, and nothing is filed or superseded.
+    const wrong = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: { ...n.compose, amount: "1850.00" } } });
+    expect(wrong.status).toBe(409);
+    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+    expect(ok.status, JSON.stringify(ok.json)).toBe(200);
+    const agreed = ok.json.invoice as { id: string; total: string; status: string };
+    const sup = ok.json.superseded as { id: string; status: string; status_words: string; payable: boolean };
+    expect(agreed).toMatchObject({ total: "1813.00", status: "ready" });
+    expect(sup).toMatchObject({ id: orig.id, status: "rejected", payable: false });
+    expect(sup.status_words).toContain("Superseded by the negotiated terms");
+    // The original's payment can never be signed now.
+    const ot = (await c.req("GET", `/v1/engine/proposals/${origProposal}/terms`, { key: s })).json as { status: string };
+    expect(ot.status).toBe("SUPERSEDED");
+    expect((await c.req("POST", `/v1/engine/invoices/${orig.id}/pay`, { key: s })).status).not.toBe(200);
+    // Twice is refused: the original is gone.
+    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: 4, compose: n.compose } })).status).toBe(409);
+
+    // Sign and pay the agreed invoice with /try's own flow.
+    const p = await c.req("POST", `/v1/engine/invoices/${agreed.id}/pay`, { key: s });
+    const proposal = p.json.proposal as { id: string; challenge: string; terms_sha256: string };
+    const t = (await c.req("GET", `/v1/engine/proposals/${proposal.id}/terms`, { key: s })).json as { terms: Record<string, unknown> };
+    const phone = new FakeAuthenticator();
+    const st = await c.req("POST", "/v1/engine/passkey/start", { key: s });
+    await c.req("POST", "/v1/engine/passkey/finish", { key: s, body: { code: st.json.code, credential: phone.register({ challenge: st.json.challenge as string, origin: ORIGIN, rpId: RP }) } });
+    const cred = phone.sign({ challenge: proposal.challenge, origin: ORIGIN, rpId: RP, counter: 1 });
+    await c.req("POST", `/v1/engine/proposals/${proposal.id}/approve`, { key: s, body: { terms_sha256: proposal.terms_sha256, credential: cred } });
+    const good = await c.req("POST", `/v1/engine/proposals/${proposal.id}/pay`, { key: s, body: { terms: t.terms, credential: cred } });
+    expect(good.json.outcome, JSON.stringify(good.json).slice(0, 300)).toBe("paid");
+
+    // The books: every entry balanced; the original's accrual reversed, so one expense and one payable remain, the agreed
+    // ones, and the payable is settled by the payment.
+    const ledger = (await c.req("GET", "/v1/ledger/entries", { key: s })).json as { items?: { lines: { account: string; debit_cents?: number; credit_cents?: number; debit?: number; credit?: number }[] }[]; entries?: unknown[] };
+    const entries = (ledger.items ?? ledger.entries ?? []) as { lines: Record<string, unknown>[] }[];
+    expect(entries.length).toBeGreaterThan(0);
+    const num = (v: unknown) => (typeof v === "number" ? v : typeof v === "string" ? Math.round(Number(v) * 100) : 0);
+    const dr = (l: Record<string, unknown>) => num(l.debit_cents ?? l.debit), cr = (l: Record<string, unknown>) => num(l.credit_cents ?? l.credit);
+    for (const e of entries) expect(e.lines.reduce((a, l) => a + dr(l) - cr(l), 0)).toBe(0);
+    // This invoice's entries only (the company's seeded history holds an earlier, paid Bergtex invoice): the original
+    // BTX-2026-21 and the agreed BTX-2026-21-<ref>.
+    const mine = entries.filter((e) => JSON.stringify(e).includes("BTX-2026-21"));
+    const net = (acct: string) => mine.flatMap((e) => e.lines).filter((l) => String(l.account) === acct).reduce((a, l) => a + dr(l) - cr(l), 0);
+    const expense = net("6200"), vat = net("1510") + net("1515");
+    // Booked once, at the agreed amount: net and VAT add up to EUR 1,813.00 (EUR 1,850.00 would mean the original stayed).
+    expect(expense + vat).toBe(181_300);
+    expect(mine.flatMap((e) => e.lines).filter((l) => String(l.account) === "6200" && dr(l) > 0).length - mine.flatMap((e) => e.lines).filter((l) => String(l.account) === "6200" && cr(l) > 0).length).toBe(1);
+    // Nothing owed on either: the original's payable reversed, the agreed one settled by the payment.
+    expect(net("2100")).toBe(0);
+    // The proof file carries what was negotiated, beside the signed terms.
+    const proof = good.json.proof as { negotiation?: Record<string, unknown>; terms: Record<string, unknown> };
+    expect(proof.negotiation).toEqual({ original_invoice_id: orig.id, original_invoice_no: "BTX-2026-21", original_amount: "1850.00", agreed_amount: "1813.00", discount: "37.00", currency: "EUR", agreement_sha256: n.sha256, turns: 4, superseded: true });
+    expect(proof.terms.amount).toBe("1813.00");
+    const { verifyProofBundle } = await import("../src/proof/bundle.js");
+    expect((await verifyProofBundle(proof)).ok).toBe(true);
   });
 });

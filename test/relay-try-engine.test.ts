@@ -28,7 +28,7 @@ const PAGE_CALLS: [string, string][] = [
   ["POST", "/v1/engine/passkey/finish"], ["GET", "/v1/engine/vault"], ["GET", "/v1/engine/vault/file?path=a.pdf"], ["GET", "/v1/engine/export"], ["GET", "/v1/engine/export.pdf"],
   ["GET", "/v1/payments?cursor=x"], ["GET", "/v1/transactions"], ["GET", "/v1/ledger/entries"],
   // 15 Nov: /try/negotiate, linked from /try's finish, its route, and the start's bot check it may need.
-  ["GET", "/try/negotiate"], ["HEAD", "/try/negotiate"], ["POST", "/v1/try/negotiate"], ["POST", "/v1/try/challenge"],
+  ["GET", "/try/negotiate"], ["HEAD", "/try/negotiate"], ["POST", "/v1/try/negotiate"], ["POST", "/v1/try/challenge"], ["GET", "/v1/try/negotiate/recorded?why=limit"], ["POST", "/v1/try/negotiate/agreed"],
 ];
 
 /** The site's own: never passed on, bound or not. */
@@ -55,7 +55,7 @@ describe("the paths the site passes to purser-try", () => {
     expect(named).toEqual([
       "/assets/inter.woff2", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/try/negotiate", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
       "/v1/engine/passkey/finish", "/v1/engine/passkey/start", "/v1/engine/proposals/", "/v1/engine/samples", "/v1/engine/samples/", "/v1/engine/suppliers",
-      "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/session", "/v1/try/start",
+      "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/negotiate", "/v1/try/negotiate/agreed", "/v1/try/negotiate/recorded", "/v1/try/session", "/v1/try/start",
     ]);
     // The start's partner logos (14 Nov) are the site's own files too, the same bytes purser-try serves (logos.gen.ts).
     for (const p of named.filter((x) => x.startsWith("/assets/logo-"))) {

@@ -7,8 +7,8 @@ import { worstCaseMicros } from "../src/engine/budget.js";
 import { HAIKU } from "../src/try/claude.js";
 import { termsHash, type Terms } from "../src/lib/terms.js";
 import { actionBudget, claudeSpeak, costMicros, NEGOTIATE_MODEL, TurnFailed, worstMicros } from "../src/negotiate/claude.js";
-import { CHANGED_IBAN, MAX_TURNS, negotiate, recordedNegotiation, sceneOf, TURN_MAX_TOKENS, type AgentAnswer, type Speak } from "../src/negotiate/negotiate.js";
-import { agreedInvoiceNo, agreementOf, agreementSha256, asksNewAccount, boundsOf, canonicalAgreement, checkTurn, foreignIbans, signedMatches } from "../src/negotiate/rails.js";
+import { CHANGED_IBAN, MAX_TURNS, negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, TURN_MAX_TOKENS, type AgentAnswer, type Speak } from "../src/negotiate/negotiate.js";
+import { agreedInvoiceNo, agreementOf, isAccountOnFile, agreementSha256, asksNewAccount, boundsOf, canonicalAgreement, checkTurn, foreignIbans, signedMatches } from "../src/negotiate/rails.js";
 
 const TODAY = "2026-11-15";
 const scene = sceneOf(TODAY);
@@ -235,5 +235,62 @@ describe("the buyer never asks for less than the supplier's best offer (jury che
     const n = await recordedNegotiation(TODAY, "x");
     expect(n.turns.every((t) => t.held_to_best_offer === null)).toBe(true);
     expect(n.agreement.amount).toBe("1813.00");
+  });
+});
+
+// 15 Nov (Max): the negotiation inside /try's flow takes the visitor's own invoice as its scene.
+describe("the scene from /try's invoice", () => {
+  const today = "2026-11-15";
+  const inv = { vendor: "Bergtex Textil GmbH", invoice_no: "BTX-2026-21", currency: "EUR", total: "1850.00", due_date: "2026-11-30", issue_date: "2026-11-09", status: "ready", payable: true, proposal: null };
+  it("a ready Bergtex invoice, not yet due: the scene with the payee on file", () => {
+    const sc = sceneFromInvoice(inv, today);
+    expect(sc).toEqual({ supplier: { name: "Bergtex Textil GmbH", iban: sceneOf(today).supplier.iban, bic: sceneOf(today).supplier.bic }, invoice_no: "BTX-2026-21", currency: "EUR", amount_cents: 185_000, issue_date: "2026-11-09", due_date: "2026-11-30" });
+  });
+  it("still open while its payment waits for the passkey (/try prepares the terms with the result on screen)", () => {
+    expect("refused" in sceneFromInvoice({ ...inv, status: "awaiting_approval", payable: false, proposal: { status: "PENDING_APPROVAL" } }, today)).toBe(false);
+  });
+  it("refuses, saying why: another supplier, approved or paid, held, not euros, out of range, already due", () => {
+    const why = (x: Partial<typeof inv> & Record<string, unknown>) => { const r = sceneFromInvoice({ ...inv, ...x } as typeof inv, today); return "refused" in r ? r.refused : null; };
+    expect(why({ vendor: "Someone Else Ltd" })).toMatch(/supplier on file/);
+    expect(why({ proposal: { status: "APPROVED" } } as never)).toMatch(/already under way/);
+    expect(why({ status: "needs_review", payable: false })).toMatch(/ready to pay/);
+    expect(why({ currency: "USD" })).toMatch(/euro/);
+    expect(why({ total: "50.00" })).toMatch(/EUR 100 to EUR 5,000/);
+    expect(why({ due_date: today })).toMatch(/not yet due/);
+  });
+});
+
+// Jury run (15 Nov): turn 3 was refused with "the IBAN DE89 … 3000 is not the one on file (DE89 … 3000)": the model had
+// echoed the page's mask. The account on file in any spelling is the account on file; another account never is.
+describe("the account on file, however it is written", () => {
+  const ok = { amount: "1813.00", pay_by: "2026-11-22" };
+  for (const s of ["DE89 … 3000", "DE89 \u2026 3000", "DE89…3000", "DE89...3000", "DE89 ... 3000", "DE89****3000", "de89 3704 0044 0532 0130 00", "DE89 3704 0044 0532 0130 00", "DE89-3704-0044-0532-0130-00", "de89370400440532013000", "DE89\u00a03704\u00a00044\u00a00532\u00a00130\u00a000"]) {
+    it(`"${s}" is the account on file: no refusal`, () => {
+      expect(isAccountOnFile(s, b.payee_iban)).toBe(true);
+      expect(checkTurn({ ...ok, iban: s }, "The account on file stays. 2% off.", b)).toMatchObject({ ok: true, refusals: [] });
+    });
+  }
+  for (const s of ["DE44 … 4931", "DE89 … 4931", "DE44 … 3000", "DE8 … 3000", "DE89 … 300", "DE44500105175407324931", "de44 5001 0517 5407 3249 31", "DE89 … 3000 … 1234", "DE89370400440532013001"]) {
+    it(`"${s}" is not: refused under payee_unchanged`, () => {
+      expect(isAccountOnFile(s, b.payee_iban)).toBe(false);
+      const c = checkTurn({ ...ok, iban: s }, "Pay here.", b);
+      expect(c.ok).toBe(false);
+      expect(c.refusals.map((r) => r.rule)).toContain("payee_unchanged");
+    });
+  }
+  it("a live turn that echoes the mask is within the rails, its account the one on file", async () => {
+    const answers: AgentAnswer[] = [
+      { message: "3% off for payment in 5 days.", amount: "1794.50", pay_by: "2026-11-20", iban: "", accept: false },
+      { message: "2% within 7 days, to our new account.", amount: "1813.00", pay_by: "2026-11-22", iban: CHANGED_IBAN, accept: false },
+      { message: "The account on file stays: EUR 1,813.00 by 2026-11-22.", amount: "1813.00", pay_by: "2026-11-22", iban: "DE89 … 3000", accept: false },
+      { message: "Agreed.", amount: "1813.00", pay_by: "2026-11-22", iban: "", accept: true },
+    ];
+    let i = 0;
+    const speak: Speak = async () => ({ answer: answers[i++]!, model: "stub", ms: 1, micros: 0 });
+    const n = await negotiate({ today: TODAY, speak, mode: "live" });
+    expect(n.turns[2]!.rails).toEqual({ ok: true, refusals: [] });
+    expect(n.turns[2]!.proposed.iban).toBeNull();
+    expect(n.outcome).toBe("agreed");
+    expect(n.agreement).toMatchObject({ amount: "1813.00", payee_iban_last4: "3000" });
   });
 });

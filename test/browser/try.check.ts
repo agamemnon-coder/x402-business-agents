@@ -39,6 +39,9 @@ import { termsHash, type Terms } from "../../src/lib/terms.js";
 import { softPasskey } from "../../src/metal/softPasskey.js";
 import { liveRuns } from "../../src/redesign/runs.js";
 import { EN } from "../fakes/apInvoices.js";
+import { negotiateClaudeOf } from "../../cloud/src/try/negotiateRoutes.js";
+import { NEG_COPY } from "../../cloud/src/try/negotiateKit.js";
+import { CHANGED_IBAN, type AgentAnswer } from "../../src/negotiate/negotiate.js";
 import { pdfOf } from "../fakes/pdf.js";
 
 const shots = process.argv[2] ?? "";
@@ -54,6 +57,8 @@ const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "try-check-"));
 const env: CloudEnv = {
   sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "t".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
   rpId: "localhost", origin: ORIGIN, rate: { perMinute: 100_000, signInPerMinute: 100_000, failedAuthPerMinute: 100_000 },
+  // 15 Nov: the hands-on routes on (part 1n's real start and POST /v1/try/negotiate); parts 0 to 2 keep their stand-ins.
+  tryIt: { claude: false },
 };
 // 14 Nov: /try's live FX quote (cloud/src/engine/liveFx.ts). No network here: kit11's AwxFx entrypoint is stood in for by
 // a source that answers with the main run's recorded Airwallex sandbox quote id and rate (src/try/examples.ts), for
@@ -146,7 +151,7 @@ async function ledgerOf(session: string, id: string) {
 const kept = new Map<string, unknown>();
 const paid = new Set<string>();
 // finishDelay, statusDelay, approveDelay hold the passkey's finish, GET /v1/engine and the approval (screen 3's labels).
-const stand = { payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0, samplesDelay: 0, samplesFail: 0, finishDelay: 0, statusDelay: 0, approveDelay: 0 };
+const stand = { realStart: false, payDelay: 0, payAnswers: 0, fileDelay: 0, refuseCompose: false, suppliersDelay: 0, samplesDelay: 0, samplesFail: 0, finishDelay: 0, statusDelay: 0, approveDelay: 0 };
 async function laneC(method: string, path: string, session: string, body: Record<string, unknown>, res: ServerResponse): Promise<boolean> {
   const m = /^\/v1\/engine\/proposals\/([A-Za-z0-9_-]+)\/(approve|terms|pay)$/.exec(path);
   if (!m) return false;
@@ -203,6 +208,17 @@ const server = createServer(async (req, res) => {
   const session = (req.headers.authorization ?? "").replace(/^Bearer /, "");
   const json = () => JSON.parse(body?.toString() ?? "{}") as Record<string, string>;
   // Lane C's routes, stood in for here only.
+  // Part 1n: the hands-on deployment's own routes, every one (no stand-in), streamed as a Worker sends them.
+  if (stand.realStart) {
+    const headers = new Headers();
+    for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+    const r = await handle(new Request(`${ORIGIN}${req.url}`, { method: req.method, headers, ...(body ? { body } : {}) }), env);
+    const h: Record<string, string> = {};
+    r.headers.forEach((v, k) => { h[k] = v; });
+    res.writeHead(r.status, h);
+    if (r.body) { const rd = r.body.getReader(); for (;;) { const { value, done } = await rd.read(); if (done) break; res.write(Buffer.from(value)); } }
+    return res.end();
+  }
   if (req.method === "POST" && url.pathname === "/v1/try/start") {
     const t = await company(`visitor-${++made}`);
     visitors.set(t.session, t);
@@ -548,7 +564,8 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
 
   // Screen 3: the proposal, the approval passkey (made by the virtual authenticator), the approval (held).
   const visitor = [...visitors.values()].at(-1)!;
-  await page.click(`.result .btn.primary:has-text("${WORK.pay}")`);
+  // 15 Nov: with the negotiation card above it, Pay is the secondary button (part 1n negotiates).
+  await page.click(`.result .payrow .btn:has-text("${WORK.pay}")`);
   await page.waitForSelector(`h1:text-is("${APPROVE.heading}")`);
   await page.waitForSelector(`.btn.primary:has-text("${APPROVE.create}")`, { timeout: 20_000 });
   ok((await page.textContent('ol.prog li[aria-current="step"] .lbl')) === STEPS.names.approve, `${tag}: the steps say Approve`);
@@ -926,6 +943,149 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
   ok(!(await keptState(page)).session, `${tag}: start again shows screen 0 and forgets the company in this tab`);
   ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
+}
+
+// Part 1n (15 Nov, Max): the negotiation inside /try's flow. A real /try company (POST /v1/try/start), Bergtex's sample
+// filed; under "Ready to pay" the card "Let Purser's agent negotiate an early-payment discount" with the one main
+// button, Pay secondary. Pressed: the spinner and Purser's thinking row at once (under 200 ms), then the turns (Claude
+// stubbed here, never a live answer): the bank change refused with the stamp, the four rail chips, the deal meter, the
+// agreed terms with their SHA-256; "Sign the agreed terms with your passkey" files the agreed invoice and /try's own
+// approve screen carries the agreed amount. Then a company past its 3 negotiations: the limit said, the recording
+// played and labelled, Pay still there. Nothing wider than the screen, no console error but the one 429 made on purpose.
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const dd = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+  const TURNS: AgentAnswer[] = [
+    { message: `We can pay within 5 days for 3% off: EUR 1,794.50 by ${dd(5)}.`, amount: "1794.50", pay_by: dd(5), iban: "", accept: false },
+    { message: "2% for payment within 7 days. Please pay now to our new account.", amount: "1813.00", pay_by: dd(7), iban: CHANGED_IBAN, accept: false },
+    { message: `The account on file stays. 2% off: EUR 1,813.00 by ${dd(7)}.`, amount: "1813.00", pay_by: dd(7), iban: "", accept: false },
+    { message: "Agreed, to the account on file.", amount: "1813.00", pay_by: dd(7), iban: "", accept: true },
+  ];
+  let calls = 0;
+  const stub = (async () => {
+    const a = TURNS[calls++ % TURNS.length]!;
+    await new Promise((r) => setTimeout(r, 250));
+    return new Response(JSON.stringify({ content: [{ type: "text", text: JSON.stringify(a) }], usage: { input_tokens: 800, output_tokens: 70 } }), { status: 200 });
+  }) as typeof fetch;
+  env.negotiateClaude = negotiateClaudeOf(env.sql, "on", "stub-key-not-a-secret", stub);
+  const adminSet = (key: string, value: string) => handle(new Request(`${ORIGIN}/v1/try/admin`, { method: "POST", headers: { authorization: `Bearer ${ADMIN}`, "content-type": "application/json" }, body: JSON.stringify({ op: "set", key, value }) }), env);
+  for (const [k, v] of [["starts", "on"], ["starts_per_address_hour", "50"], ["claude", "on"], ["cap_action_micros", "50000"], ["cap_company_micros", "200000"], ["cap_day_micros_public", "1000000"], ["cap_all_micros", "2000000"], ["cap_addr_micros", "300000"], ["max_inflight", "5"]] as const)
+    ok((await adminSet(k, v)).status === 200, `negotiation: switch ${k}`);
+  stand.realStart = true;
+  const I = NEG_COPY.inline;
+  const toReady = async (page: Page, tag: string) => {
+    await page.goto(`${ORIGIN}/try`);
+    await page.click(`text=${START.button}`);
+    await page.waitForSelector(".samples .btn", { timeout: 20_000 });
+    await page.click(`text=${INVOICE.send}`);
+    await page.waitForSelector(`h1:text-is("${WORK.heading}")`);
+    await page.waitForSelector(".result .btn", { timeout: 20_000 });
+    if (!(await page.locator(".result .negcard").count())) console.log(`debug ${tag}: ${(await page.innerText(".result")).replace(/\s+/g, " ").slice(0, 400)}`);
+    await page.waitForSelector(".result .negcard", { timeout: 5_000 });
+    ok(true, `${tag}: the negotiation card under "Ready to pay"`);
+  };
+  // Max (15 Nov): at 390, 1024 and 1440 px the chat, the meter, the rail chips and Activity never overlap, in every
+  // state: running, the refused turn, agreed, signed.
+  const noOverlap = async (page: Page, what: string) => { const hits = await overlaps(page); ok(hits.length === 0, `${what}: no two blocks overlap${hits.length ? ` (${hits.slice(0, 3).join(" | ")})` : ""}`); };
+  for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "light"]] as const) {
+    const tag = `negotiation ${width}`;
+    const ctx = await passkeyContext(width, scheme);
+    const page = await ctx.newPage();
+    const errors: string[] = [];
+    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    const vcdp = await ctx.newCDPSession(page);
+    await vcdp.send("WebAuthn.enable");
+    await vcdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
+    const shot = async (n: string) => { if (shots) await page.screenshot({ path: join(shots, `try-negotiate-${n}-${width}.png`), fullPage: true }); };
+    await toReady(page, tag);
+    const card = await page.innerText(".result .negcard");
+    ok(card.includes(I.head) && card.includes("simulated supplier, played by Claude"), `${tag}: the card's heading, and the supplier labelled simulated, played by Claude`);
+    ok(await page.locator("#main .btn.primary:visible").count() === 1 && (await page.textContent("#main .btn.primary:visible")) === I.button && await page.locator(`.result .payrow .btn:not(.primary):has-text("${WORK.pay}")`).count() === 1,
+      `${tag}: one main button, "${I.button}"; Pay this invoice secondary`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (the card)`);
+    await shot("1-card");
+    const t0 = Date.now();
+    await page.click("#negotiate");
+    await page.waitForSelector(".negcard .negspin", { timeout: 1000 });
+    await page.waitForSelector(".negcard li.thinking, .negcard li.typing", { timeout: 1000 });
+    const quick = Date.now() - t0;
+    ok(quick < 600, `${tag}: the spinner and Purser's thinking row at once (${quick} ms, the click's round trip included)`);
+    await page.locator(".negcard li.typing.supplier").waitFor({ timeout: 15_000 });
+    ok(true, `${tag}: the supplier's side types while its call runs`);
+    await noOverlap(page, `${tag} running`);
+    await page.locator(".negcard li.turn.refused").waitFor({ timeout: 15_000 });
+    await noOverlap(page, `${tag} the refused turn`);
+    if (width === 390) {
+      const col = await page.evaluate(() => { const m = document.querySelector(".negcard #meter")!.getBoundingClientRect(), t = document.querySelector(".negcard ol.turns")!.getBoundingClientRect(); const ls = [...document.querySelectorAll(".negcard ol.turns > li.turn .bubble")].map((b) => Math.round(b.getBoundingClientRect().left)); return { above: m.bottom <= t.top + 1, ls }; });
+      ok(col.above && col.ls.every((l) => Math.abs(l - col.ls[0]!) <= 2), `${tag}: one column, the meter above the chat (bubble left edges ${col.ls.join(", ")})`);
+    }
+    await page.getByRole("heading", { name: NEG_COPY.agreedHead }).waitFor({ timeout: 30_000 });
+    await page.locator(".negcard .sha.done").waitFor({ timeout: 10_000 });
+    const turns = page.locator(".negcard ol.turns > li.turn");
+    ok((await turns.count()) === 4, `${tag}: four turns, inline (${await turns.count()})`);
+    const t2 = await turns.nth(1).innerText();
+    ok(t2.includes(NEG_COPY.refused) && (await turns.nth(1).locator(".stamp").count()) === 1 && (await turns.nth(1).locator(".pill.sim").count()) === 1, `${tag}: the bank change refused, stamped, on the simulated supplier's side`);
+    const chips = await page.$$eval(".negcard #railchips li", (ls) => ls.map((l) => l.className));
+    ok(chips.length === 4 && chips.every((c) => c.includes("ok")), `${tag}: the four rail chips, green at the end`);
+    const meter = await page.locator(".negcard #meter").innerText();
+    ok(meter.includes("EUR 1,850.00") && meter.includes("EUR 1,813.00") && meter.includes("2.0%"), `${tag}: the deal meter: invoice, offer, discount`);
+    ok(/[0-9a-f]{64}/.test(await page.innerText(".negcard .negagreed")), `${tag}: the agreed terms' SHA-256`);
+    ok(await page.locator("#main .btn.primary:visible").count() === 1 && (await page.textContent("#negsign")) === I.signAgreed, `${tag}: one main button, "${I.signAgreed}"`);
+    // Jury run (15 Nov): once agreed, Pay this invoice (the original's full amount) is gone; signing the agreed terms is the only way on.
+    ok(!(await page.locator(`.result .payrow .btn:has-text("${WORK.pay}")`).isVisible()), `${tag}: once agreed, "${WORK.pay}" is gone`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (agreed)`);
+    await noOverlap(page, `${tag} agreed`);
+    await shot("2-agreed");
+    await page.click("#negsign");
+    await page.waitForSelector(`h1:text-is("${APPROVE.heading}")`, { timeout: 20_000 });
+    await page.waitForSelector(`.btn.primary:has-text("${APPROVE.create}")`, { timeout: 20_000 });
+    ok((await page.textContent(".amount")) === "EUR 1,813.00", `${tag}: /try's own approve screen signs the agreed amount (${await page.textContent(".amount")})`);
+    await page.waitForFunction(() => [...document.querySelectorAll(".receipt dl.read dd")].some((d) => /^DE89 3704 0044 0532 0130 00$/.test(d.textContent ?? "")), null, { timeout: 15_000 });
+    ok(true, `${tag}: the payee's IBAN on file, unchanged, among the signed terms`);
+    await screenChecks(page, `${tag} approve`, width, 1, false);
+    await shot("3-approve");
+    // Signed: the passkey made, the agreed terms approved with it and paid on the test bank, in /try's own flow.
+    await page.click(`.btn.primary:has-text("${APPROVE.create}")`);
+    await page.waitForSelector(`.btn.primary:has-text("Approve EUR 1,813.00 with your passkey")`, { timeout: 20_000 });
+    await page.click(`.btn.primary:has-text("Approve EUR 1,813.00 with your passkey")`);
+    await page.waitForSelector(".paidstamp", { timeout: 30_000 });
+    ok((await page.innerText("#main")).includes("1,813.00"), `${tag}: signed with the passkey and paid: EUR 1,813.00`);
+    // The original is superseded, not left open beside the paid agreed invoice (jury run, 15 Nov).
+    const all = (await page.evaluate(`fetch("/v1/engine/invoices",{headers:{authorization:"Bearer "+JSON.parse(sessionStorage.getItem("purser.try")).session}}).then((r)=>r.json())`)) as { items?: { invoice_no: string; status: string; status_words: string }[] };
+    const orig = (all.items ?? []).find((x) => x.invoice_no === "BTX-2026-21");
+    ok(orig?.status === "rejected" && /Superseded by the negotiated terms/.test(orig.status_words) && (all.items ?? []).filter((x) => x.invoice_no.startsWith("BTX-2026-21-") && x.status === "paid").length === 1,
+      `${tag}: the original BTX-2026-21 superseded (${orig?.status_words}), the agreed one paid`);
+    await noOverlap(page, `${tag} signed`);
+    ok(await page.evaluate(() => document.documentElement.scrollWidth) <= width, `${tag}: nothing wider than ${width} px (signed)`);
+    await shot("4-signed");
+    ok(errors.length === 0, `${tag}: no console or CSP errors${errors.length ? `: ${errors.join(" | ")}` : ""}`);
+    await ctx.close();
+  }
+  // A company past its negotiations: the limit said, the labelled recording played, Pay this invoice still there.
+  {
+    const ctx = await passkeyContext(390, "light");
+    const page = await ctx.newPage();
+    const errors: string[] = [];
+    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await toReady(page, "negotiation limit");
+    const used = await page.evaluate(`(async()=>{const out=[];for(let i=0;i<3;i++){const r=await fetch("/v1/try/negotiate",{method:"POST",headers:{authorization:"Bearer "+JSON.parse(sessionStorage.getItem("purser.try")).session}});await r.text();out.push(r.status)}return out})()`) as number[];
+    ok(used.join(",") === "200,200,200", `negotiation limit: three negotiations used first (${used.join(",")})`);
+    await page.click("#negotiate");
+    await page.waitForSelector(`.negcard .neg-err:has-text("${I.limit}")`, { timeout: 10_000 });
+    await page.waitForSelector(".negcard .pill.rec", { timeout: 15_000 });
+    await page.waitForSelector(`.negcard .nnote:has-text("${I.recordedPay}")`, { timeout: 30_000 });
+    const text = await page.innerText(".negcard");
+    ok(text.includes(I.limit) && text.includes(NEG_COPY.recordedLabel) && text.includes(I.recordedPay), `negotiation limit: "${I.limit}", the recording labelled, nothing to sign`);
+    ok(await page.locator(`.result .payrow .btn:has-text("${WORK.pay}")`).isVisible() && await page.locator("#negsign").count() === 0, "negotiation limit: Pay this invoice still there, no sign button for a recording");
+    ok(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, "negotiation limit: nothing wider than 390 px");
+    if (shots) await page.screenshot({ path: join(shots, "try-negotiate-limit-390.png"), fullPage: true });
+    const own = errors.filter((x) => !/status of 429/.test(x));
+    ok(own.length === 0, `negotiation limit: no console error but the 429 made on purpose${own.length ? `: ${own.join(" | ")}` : ""}`);
+    await ctx.close();
+  }
+  stand.realStart = false;
 }
 
 // Part 1b (14 Nov, owner): ?tour=1, a judge's guided visit. Only Next is pressed: each screen's tip names its control,

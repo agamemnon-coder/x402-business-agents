@@ -247,8 +247,10 @@ export function recordsPdf(x: CompanyExport, site: string): Promise<Buffer> {
 
   // The audit log.
   y += 14;
-  heading("Audit log", "Every step Purser recorded, in order. Each row is chained to the one before it by its hash.");
-  for (const a of r.audit) {
+  // By time (jury run, 15 Nov: the seeded history's rows are dated before the visit but written during it), then by
+  // the order written; the chain itself is by that order, which the appendix's hashes check.
+  heading("Audit log", "Every step Purser recorded, by time. Each row is chained to the one written before it by its hash.");
+  for (const a of [...r.audit].sort((x, y) => (x.ts < y.ts ? -1 : x.ts > y.ts ? 1 : x.seq - y.seq))) {
     room(16);
     doc.font("Helvetica").fontSize(8).fillColor(FAINT).text(`${day(a.ts)} ${time(a.ts)}`, L, y, { width: 92 });
     doc.circle(L + 100, y + 3.5, 2.5).fill(ACCENT);

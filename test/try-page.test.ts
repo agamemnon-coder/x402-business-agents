@@ -13,6 +13,7 @@ import { ICONS } from "../src/ui/icons.js";
 import { icon } from "../src/redesign/ui.js";
 import { siteHeader } from "../cloud/src/siteHeader.js";
 import { START_CSS } from "../cloud/src/try/run.js";
+import { NEG_TRY_JS, negKitJs } from "../cloud/src/try/negotiateKit.js";
 import { scriptBlocks, scriptBody, textOutsideTags, withoutBlocks } from "./support/scriptBlocks.js";
 import { ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
 
@@ -88,14 +89,19 @@ describe("the page", () => {
 
   // 14 Nov (in-app browsers): also the passkey prompt's 30 s limit and Copy link's 1.5 s wait for the clipboard.
   it("uses a timer only for polling, the session's renewal, the running time of an open Claude call, the passkey's limit, Copy link and the live quote's countdown", () => {
-    const uses = [...script.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
+    // 15 Nov: the negotiation's shared view (cloud/src/try/negotiateKit.ts, one block of the script) has its own display
+    // timers (the bars' count-up and the hash typing out; none under prefers-reduced-motion), test/negotiate-*.ts's.
+    const kit = `${negKitJs()}\n${NEG_TRY_JS}`;
+    expect(script).toContain(kit);
+    const own = script.replace(kit, "");
+    const uses = [...own.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
     expect(uses.length).toBeGreaterThanOrEqual(3);
     for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer|quoteTimer|runTimer)$/);
     expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},30000\)/);
     expect(script).toMatch(/pollTimer=setTimeout\(/);
     expect(script).toMatch(/renewTimer=setTimeout\(/);
     expect(script).toMatch(/askTimer=setInterval\(/);
-    expect(script).not.toMatch(/requestAnimationFrame/);
+    expect(own).not.toMatch(/requestAnimationFrame/);
   });
 
   it("warms the company's engine right after the start answers, and starts a company only on the start button's click", () => {

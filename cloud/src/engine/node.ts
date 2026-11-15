@@ -128,6 +128,7 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       uploadSample: async (key) => (await host()).uploadSample(key),
       clearHold: async (id) => (await host()).clearHold(id),
       rejectHold: async (id) => (await host()).rejectHold(id),
+      negotiated: async (r, f) => (await host()).negotiated(r, f),
       suppliers: async () => (await host()).suppliers(),
       compose: async (input) => (await host()).compose(input),
       terms: async (id) => {

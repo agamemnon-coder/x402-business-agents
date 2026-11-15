@@ -10,7 +10,7 @@ import { PROOF_FORMAT, PROOF_MEANS, PROOF_REFUSAL_MEANS, PROOF_SAMPLES, PROOF_VE
 /** The line under the heading, word for word. */
 export const VERIFY_BUNDLE_LEAD = "Don't trust our server: check the payment yourself.";
 /** The verdicts, word for word. */
-export const VERIFY_BUNDLE_VERDICT = { valid: "Every check passes", invalid: "Not valid" } as const;
+export const VERIFY_BUNDLE_VERDICT = { valid: "VALID", invalid: "NOT VALID", count: "every check passes ({n} of {n})" } as const;
 /** The largest file the page reads. */
 export const VERIFY_BUNDLE_MAX = 262_144;
 
@@ -33,6 +33,7 @@ textarea { width: 100%; min-height: 96px; box-sizing: border-box; font: 500 13.5
 .vv[hidden] { display: none; }
 .vv.ok { background: var(--sunken); color: var(--ok); } .vv.bad { background: var(--bad-soft); color: var(--bad); }
 .vv span { overflow-wrap: anywhere; min-width: 0; }
+.vv b { font-weight: 800; letter-spacing: .02em; } .vv small { display: block; font-size: 13.5px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
 dl.terms { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 6px 12px; margin: 0; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--sunken); font-size: 15px; }
 dl.terms dt { color: var(--muted); } dl.terms dd { margin: 0; font-weight: 650; overflow-wrap: anywhere; min-width: 0; }
 dl.terms[hidden] { display: none; }
@@ -58,21 +59,27 @@ const JS = `
   function el(tag, cls, kids) { var n = document.createElement(tag); if (cls) n.className = cls; (kids || []).forEach(function (k) { if (k !== null && k !== undefined) n.appendChild(typeof k === "string" ? document.createTextNode(k) : k); }); return n; }
   function ic(name) { var s = document.createElement("span"); s.innerHTML = D.icons[name]; var n = s.firstChild; n.setAttribute("class", "i"); return n; }
   function status(text, bad) { $("v-status").textContent = text; $("v-status").className = "status" + (bad ? " bad" : ""); }
+  // Money as people read it: EUR 1,794.50.
+  function eur(cur, a) { var n = Number(a); if (a === undefined || a === null || a === "" || !isFinite(n)) return null; return (cur || "") + " " + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function row(label, val) { return val === undefined || val === null || val === "" ? [] : [el("dt", "", [label]), el("dd", "", [String(val)])]; }
   function show(b, name) {
     return verifyProofBundle(b).then(function (v) {
       var box = $("v-verdict"), bad = v.checks.filter(function (c) { return !c.ok; });
       box.className = "vv " + (v.ok ? "ok" : "bad");
-      box.replaceChildren(ic(v.ok ? "circle-check" : "octagon-x"), el("span", "", [v.ok ? D.verdict.valid + " (" + v.checks.length + ")" : D.verdict.invalid + ": " + bad.map(function (c) { return c.check; }).join(", ")]));
+      box.replaceChildren(ic(v.ok ? "circle-check" : "octagon-x"), el("span", "", [el("b", "", [v.ok ? D.verdict.valid : D.verdict.invalid]), " ", el("small", "", [v.ok ? D.verdict.count.split("{n}").join(String(v.checks.length)) : "failed: " + bad.map(function (c) { return c.check; }).join(", ")])]));
       box.hidden = false; box.dataset.ok = String(v.ok); box.dataset.failed = bad.map(function (c) { return c.check; }).join(",");
       $("v-checks").replaceChildren.apply($("v-checks"), v.checks.map(function (c) {
         var li = el("li", c.ok ? "ok" : "bad", [ic(c.ok ? "check" : "octagon-x"), el("b", "", [c.ok ? "pass" : "FAIL"]), el("span", "", [el("em", "", [c.check + ": "]), c.detail])]);
         li.dataset.check = c.check; return li;
       }));
       var t = b && typeof b.terms === "object" && b.terms ? b.terms : {}, d = b && b.decision ? b.decision : {};
-      $("v-terms").replaceChildren.apply($("v-terms"), [].concat(row("Decision", d.outcome), row("Payee", t.beneficiary_name || t.vendor), row("Amount", t.amount !== undefined ? (t.currency || "") + " " + t.amount : null),
+      $("v-terms").replaceChildren.apply($("v-terms"), [].concat(row("Decision", d.outcome), row("Payee", t.beneficiary_name || t.vendor), row("Amount", eur(t.currency, t.amount)),
         row("Account", t.iban_last4 ? "···· " + t.iban_last4 : null), row("Proposal", b && b.proposal_id), row("Site (rpId)", b && b.rp_id),
-        b && b.asked && b.asked.terms ? row("Asked amount", (b.asked.terms.currency || "") + " " + b.asked.terms.amount) : []));
+        b && b.asked && b.asked.terms ? row("Asked amount", eur(b.asked.terms.currency, b.asked.terms.amount)) : [],
+        // A negotiated payment (15 Nov): what the agents agreed, beside the signed terms (not part of what is checked).
+        b && b.negotiation ? [].concat(row("Negotiated", "invoice " + b.negotiation.original_invoice_no + ": " + eur(b.negotiation.currency, b.negotiation.original_amount) + " to " + eur(b.negotiation.currency, b.negotiation.agreed_amount)),
+          row("Discount", eur(b.negotiation.currency, b.negotiation.discount)), row("Agreement SHA-256", b.negotiation.agreement_sha256), row("Turns", b.negotiation.turns),
+          b.negotiation.superseded ? row("Original", "superseded by the negotiated terms") : []) : []));
       $("v-terms").hidden = false;
       // The refusal's line of "What this proves" only for a refusal's bundle (one with the asked terms).
       $("v-means-refusal").hidden = !(b && b.asked);

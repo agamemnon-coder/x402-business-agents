@@ -70,6 +70,12 @@ export interface ProofBundle {
   };
   /** A refusal only: the terms that were asked, and their hash. */
   asked?: { terms: Record<string, unknown>; canonical: string; sha256: string };
+  /**
+   * A negotiated payment only (15 Nov): what the agents agreed, as the engine recorded it when the agreed invoice was
+   * filed. Context beside the signed terms, not part of them: the signed terms carry the agreed amount and the agreement's
+   * reference (its SHA-256's first 8 characters), which is how they name it.
+   */
+  negotiation?: { original_invoice_id: string | null; original_invoice_no: string; original_amount: string; agreed_amount: string; discount: string; currency: string; agreement_sha256: string; turns: number; superseded: boolean };
   /** The ledger entries of this payment's invoice, and the whole ledger's head (the last entry's hash) and length. */
   ledger: { entries: ProofLedgerEntry[]; head: string | null; count: number };
 }

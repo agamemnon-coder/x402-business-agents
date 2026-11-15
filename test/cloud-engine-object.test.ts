@@ -178,7 +178,7 @@ describe("the Worker's stub of a company's engine", () => {
   it("has every action of the interface, each one call across the stub with the company's id", async () => {
     const engine = engineStubs(ns)(A);
     expect(Object.keys(engine).sort()).toEqual([...ENGINE_METHODS].sort());
-    expect(ENGINE_METHODS).toHaveLength(35); // 14 Nov: exportPdf, the records as a PDF; clearHold and rejectHold, /try's sandbox override; payoutSimulate, Sandbox: move to PAID; then the Airwallex actions (addSupplier, proposeBatch, depositIn, airwallex)
+    expect(ENGINE_METHODS).toHaveLength(36); // 15 Nov: negotiated, a negotiation's agreed invoice replacing the original. 14 Nov: exportPdf, the records as a PDF; clearHold and rejectHold, /try's sandbox override; payoutSimulate, Sandbox: move to PAID; then the Airwallex actions (addSupplier, proposeBatch, depositIn, airwallex)
     expect(ENGINE_METHODS).toContain("retry");
     answer = { ok: true, value: { items: [], next: 7 } };
     expect(await engine.events(7, 50)).toEqual({ items: [], next: 7 });

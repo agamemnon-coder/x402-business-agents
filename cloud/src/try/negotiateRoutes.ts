@@ -14,7 +14,11 @@ import { actionBudget, claudeSpeak, type Budget } from "../../../src/negotiate/c
 import { d1Spend } from "../engine/spend.js";
 import type { Sql } from "../store.js";
 import { readSwitches } from "./switches.js";
-import { negotiate, recordedNegotiation, type Speak } from "../../../src/negotiate/negotiate.js";
+import { z } from "zod";
+import { negotiate, recordedNegotiation, sceneFromInvoice, sceneOf, type BestOffer, type Negotiation, type Speak, type Turn } from "../../../src/negotiate/negotiate.js";
+import type { Scene } from "../../../src/negotiate/rails.js";
+import { agreedInvoiceNo, boundsOf, cents, money, normIban } from "../../../src/negotiate/rails.js";
+import { supplierKey } from "../../../src/config/trySample.js";
 import type { EngineKit, EngineRoute } from "../engine/routes.js";
 import type { TryEngineCtx } from "./engineRoutes.js";
 import { isTryTenant, tryScopes, TryRefused } from "./start.js";
@@ -47,7 +51,7 @@ export function negotiateClaudeOf(sql: Sql, engineClaude: string | undefined, ke
 }
 
 /** What the route needs of the request's context: /try's engine context, and Claude for the company when it is set up. */
-export interface NegotiateCtx extends TryEngineCtx { env: TryEngineCtx["env"] & { negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined } }
+export interface NegotiateCtx extends TryEngineCtx { env: TryEngineCtx["env"] & { negotiateClaude?: (tenantId: string) => NegotiateClaude | undefined; waitUntil?: (p: Promise<unknown>) => void } }
 
 /** Why the recorded negotiation is shown, in words a visitor reads. */
 export function reasonWords(reason: CappedReason | "not_set_up" | "failed", detail?: string): string {
@@ -61,6 +65,20 @@ export function reasonWords(reason: CappedReason | "not_set_up" | "failed", deta
 }
 
 export const NEGOTIATE_ROUTE = "POST /v1/try/negotiate";
+const Body = z.object({ invoice_id: z.string().min(1).max(80).optional() }).strict();
+const Agreed = z.object({
+  invoice_id: z.string().min(1).max(80).optional(),
+  turns: z.number().int().min(1).max(4),
+  agreement_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  compose: z.object({ supplier_key: z.string().max(40), invoice_no: z.string().max(64), amount: z.string().max(32), issue_date: z.string().max(32), due_date: z.string().max(32), iban: z.string().max(64) }).strict(),
+}).strict();
+
+/** Why the public recording is shown (GET /v1/try/negotiate/recorded?why=): the page's own words, never the caller's. */
+export const RECORDED_WHY = {
+  limit: "Today's live limit is reached, so the recorded negotiation is shown.",
+  paused: "The live demo is paused right now, so the recorded negotiation is shown.",
+  start: "A test company could not be started right now, so the recorded negotiation is shown.",
+} as const;
 
 export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): EngineRoute<C>[] {
   const { json, err } = kit;
@@ -73,20 +91,99 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       if ((await bump(c.env.sql, `negotiate:${tenant}`, born, 1)) > NEGOTIATIONS_PER_COMPANY)
         throw new TryRefused(429, "limit", `This test company has negotiated ${NEGOTIATIONS_PER_COMPANY} times, its limit. Start a new one to watch again.`);
       const today = c.now.toISOString().slice(0, 10);
-      const claude = c.env.negotiateClaude?.(tenant);
-      if (!claude) return json(200, await recordedNegotiation(today, reasonWords("not_set_up")));
-      const got = await claude.reserve();
-      if (!got.ok) return json(200, await recordedNegotiation(today, reasonWords(got.reason)));
-      const budget = actionBudget(got.reservation.micros);
-      try {
-        const n = await negotiate({ today, speak: claude.speak(budget), mode: "live" });
-        await got.reservation.settle(n.micros);
-        return json(200, n);
-      } catch (x) {
-        // What the turns may have cost: every sent turn's worst case, as the budget counted it.
-        await got.reservation.settle(got.reservation.micros - Math.max(0, budget.left()));
-        return json(200, await recordedNegotiation(today, reasonWords("failed", x instanceof Error ? x.message.slice(0, 120) : undefined)));
+      // { invoice_id } (15 Nov, the negotiation inside /try's flow): the visitor's own invoice, if it can be negotiated.
+      let scene: Scene = sceneOf(today);
+      if ((c.req.headers.get("content-type") ?? "").includes("json")) {
+        const b = await kit.body(c, Body, 1_000);
+        if (b.invoice_id) {
+          const inv = await c.env.engine?.(tenant)?.invoice(b.invoice_id);
+          if (!inv) return err(404, "no invoice");
+          const sc = sceneFromInvoice(inv, today);
+          if ("refused" in sc) throw new TryRefused(409, "not_negotiable", sc.refused);
+          scene = sc;
+        }
       }
+      const claude = c.env.negotiateClaude?.(tenant);
+      // The whole negotiation; onTurn hears each live turn as Claude answers it, and reset that the live turns are dropped.
+      const run = async (onTurn?: (t: Turn, best: BestOffer | null) => void, reset?: (reason: string) => void, onLive?: () => void): Promise<Negotiation> => {
+        if (!claude) return recordedNegotiation(today, reasonWords("not_set_up"), scene);
+        const got = await claude.reserve();
+        if (!got.ok) return recordedNegotiation(today, reasonWords(got.reason), scene);
+        const budget = actionBudget(got.reservation.micros);
+        onLive?.();
+        try {
+          const n = await negotiate({ today, scene, speak: claude.speak(budget), mode: "live", ...(onTurn ? { onTurn } : {}) });
+          await got.reservation.settle(n.micros);
+          return n;
+        } catch (x) {
+          // What the turns may have cost: every sent turn's worst case, as the budget counted it.
+          await got.reservation.settle(got.reservation.micros - Math.max(0, budget.left()));
+          const reason = reasonWords("failed", x instanceof Error ? x.message.slice(0, 120) : undefined);
+          reset?.(reason);
+          return recordedNegotiation(today, reason, scene);
+        }
+      };
+      if (c.url.searchParams.get("stream") !== "1") return json(200, await run());
+      // ?stream=1 (15 Nov, the page's chat): one JSON object a line, as it happens. {type: "start", live: true, bounds} once live Claude is reserved, then {type: "turn", turn, best} for each
+      // live turn the moment Claude has answered it and the rails have checked it; {type: "reset", reason} when Claude
+      // failed mid-way and the live turns are dropped; then {type: "done", negotiation}, the same object as without it.
+      const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+      const w = writable.getWriter();
+      const enc = new TextEncoder();
+      const line = (o: unknown) => { void w.write(enc.encode(`${JSON.stringify(o)}\n`)).catch(() => undefined); };
+      const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(scene, today) }))
+        .then((negotiation) => line({ type: "done", negotiation }), () => line({ type: "error", message: "The negotiation could not finish. Nothing was paid." }))
+        .finally(() => { void w.close().catch(() => undefined); });
+      c.env.waitUntil?.(done);
+      return new Response(readable, { status: 200, headers: { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
     } },
+    // 15 Nov (jury run): the agreed terms filed. On the visitor's own invoice the agreed invoice REPLACES it (one payable,
+    // one expense); on the page's seeded scene it is filed as the agreed one. Either way what was negotiated is recorded
+    // with it, and the proof file carries it beside the signed terms.
+    { method: "POST", path: "/v1/try/negotiate/agreed", summary: "File a negotiation's agreed terms (a test company only): { agreement_sha256, compose, turns, invoice_id? } with compose as the negotiation answered it. The agreed invoice is filed (as POST /v1/engine/compose) and what was negotiated is recorded with it (the original and agreed amounts, the discount, the agreement's SHA-256, the turns), carried by the proof file beside the signed terms. With invoice_id (the visitor's own invoice) it replaces the original: the original's unsigned payment is superseded and it leaves the books with that reason, its accrual reversed. Only terms that fit the invoice negotiated: the same supplier and account on file, numbered as it plus the agreement's reference, for less, paid no later than it is due. Answers { invoice (the agreed one, ready to sign), superseded (the original, or null) }.", need: "admin", run: async (c) => {
+      const tenant = c.caller!.tenantId;
+      if (!isTryTenant(tenant)) return err(403, "only a test company of the hands-on demo negotiates here");
+      const e = c.env.engine?.(tenant);
+      if (!e) return err(503, "the demo's engine is not set up");
+      const b = await kit.body(c, Agreed, 2_000);
+      const today = c.now.toISOString().slice(0, 10);
+      let sc: Scene = sceneOf(today);
+      if (b.invoice_id) {
+        const inv = await e.invoice(b.invoice_id);
+        if (!inv) return err(404, "no invoice");
+        const s2 = sceneFromInvoice(inv, today);
+        if ("refused" in s2) throw new TryRefused(409, "not_negotiable", s2.refused);
+        sc = s2;
+      }
+      const x = b.compose, amt = cents(x.amount);
+      const fits = x.supplier_key === supplierKey(sc.supplier.name) && normIban(x.iban) === normIban(sc.supplier.iban) && x.invoice_no === agreedInvoiceNo(sc, b.agreement_sha256)
+        && Number.isFinite(amt) && amt > 0 && amt < sc.amount_cents && /^\d{4}-\d{2}-\d{2}$/.test(x.due_date) && x.due_date >= today && x.due_date <= sc.due_date;
+      if (!fits) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement on this invoice: the same supplier and account, the agreement's reference, less than the invoice, paid by its due date.");
+      const out = await e.compose(x);
+      if ("refused" in out) return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field });
+      const agreed = out.invoice;
+      if (!agreed || agreed.status !== "ready") return json(409, { error: "the agreed invoice was not filed as ready to pay", code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(agreed ? { invoice: agreed } : {}) });
+      const done = await e.negotiated(agreed.id, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns });
+      if (!done.ok) return json(409, { error: done.reason, code: "not_recorded", message: `The agreed invoice could not replace the original: ${done.reason}.` });
+      return json(200, { invoice: done.invoice, superseded: done.superseded });
+    } },
+  ];
+}
+
+/**
+ * GET /v1/try/negotiate/recorded (public, the hands-on deployment's /v1/try block): the recorded negotiation on the
+ * seeded scene, labelled, for a visitor the live path turned away (a start limit, a pause): no company, no Claude, no
+ * cost, nothing signable. ?why= picks one of RECORDED_WHY's sentences.
+ */
+export function tryNegotiatePublicRoutes<C extends { now: Date; url?: URL; req: Request }>(kit: { json(status: number, body: unknown): Response }, live: (run: (c: C) => Promise<Response>) => (c: C) => Promise<Response>): { method: "GET"; path: string; summary: string; need: "public"; run: (c: C) => Promise<Response> }[] {
+  return [
+    { method: "GET", path: "/v1/try/negotiate/recorded", summary: "The recorded negotiation (public): the seeded scene's four turns, written in advance and labelled as such, checked by the rails live. For a visitor the live path turned away; nothing to sign. ?why=limit|paused|start says why in the page's own words.", need: "public", run: live(async (c) => {
+      const why = new URL(c.req.url).searchParams.get("why");
+      const reason = why && why in RECORDED_WHY ? RECORDED_WHY[why as keyof typeof RECORDED_WHY] : RECORDED_WHY.start;
+      const today = c.now.toISOString().slice(0, 10);
+      const r = kit.json(200, { ...(await recordedNegotiation(today, reason)), signable: false });
+      r.headers.set("cache-control", "no-store");
+      return r;
+    }) },
   ];
 }

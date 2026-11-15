@@ -47,6 +47,7 @@ import type { CloudEnv } from "./app.js";
 import { FILM_URL, TRAILER_LINK, TRAILER_URL } from "../../src/config/brand.js";
 import { presentExtra } from "./try/presentMode.js";
 import { VIS_CSS, visScript } from "./try/visuals.js";
+import { NEG_CSS, NEG_TRY_JS, negKitJs } from "./try/negotiateKit.js";
 
 /**
  * Recorded real runs on the site (kit11, package.json's homepage): its /runs, for when the demo is busy or paused, and
@@ -685,6 +686,7 @@ const booksKit=(()=>{
 const SCRIPT = String.raw`
 const C=__COPY__;
 const W=C.live;
+__NEG__
 __EVENT_LINE__
 __AGENT_TRACE__
 __SIGN__
@@ -1189,7 +1191,8 @@ function drawResult(box,r,ms){
     main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
     // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
-    box.append(...(took?[took]:[]),card.node,el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
+    // 15 Nov (Max): before the passkey, Purser's agent may negotiate an early-payment discount (cloud/src/try/negotiateKit.ts NEGI).
+    box.append(...(took?[took]:[]),card.node,...(NEGI.eligible(inv)?[NEGI.card(inv,main)]:[]),el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
@@ -1825,7 +1828,8 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
       const tr=mine.flatMap((e)=>(e.lines||[]).filter((l)=>String(l.account)==='1590')),sold=tr.find((l)=>l.debit_cents),bought=tr.find((l)=>l.credit_cents);
       if(sold&&bought&&sold.currency!==bought.currency){const c=el('td','en conv',fill(B.conv,{out:sold.currency+' '+fromCents(sold.debit_cents),in:bought.currency+' '+fromCents(bought.credit_cents)}));c.colSpan=3;tb.append(el('tr','',[c]))}
       const table=el('table','lines',[el('thead','',[el('tr','',[el('th','',B.account),el('th','r',B.debit),el('th','r',B.credit)])]),tb]);
-      const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?'#'+e.entry_id:'').filter(Boolean);
+      // In posting order (jury run, 15 Nov: "#10, #3, #4").
+      const ids=mine.map((e)=>e&&e.entry_id!==undefined&&e.entry_id!==null?Number(e.entry_id):NaN).filter((n)=>isFinite(n)).sort((a,b)=>a-b).filter((n,i,a)=>a.indexOf(n)===i).map((n)=>'#'+n);
       booked.replaceChildren(block('booked',B.booked,[el('div','scroll',table),ids.length?el('p','ids',[el('span','muted',C.receipt.entries+' '),el('span','mono',ids.join(', '))]):null,el('p','bal '+(bal.even?'ok':'bad'),[icon(bal.even?'check':'triangle-alert',16),el('span','',bal.even?B.even:B.uneven)]),
         head?el('details','',[el('summary','',B.head),el('p','hash mono',[el('span','hl','#'+head.entry_id),' ',String(head.entry_hash||'')])]):null],bal.even?'ok':'bad'));
     }));
@@ -1975,7 +1979,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
     feather: ICONS.feather, "arrow-right": ICONS["arrow-right"], sparkles: ICONS.sparkles, "scan-face": ICONS["scan-face"], "file-check": ICONS["file-check"],
     "external-link": ICONS["external-link"], "shield-check": ICONS["shield-check"], ban: ICONS.ban, play: ICONS.play, "arrow-up-right": MORE["arrow-up-right"] };
-  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__AGENT_TRACE__", () => AGENT_TRACE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
+  const script = SCRIPT.replace("__COPY__", () => json(copy)).replace("__NEG__", () => `${negKitJs()}\n${NEG_TRY_JS}`).replace("__EVENT_LINE__", () => EVENT_LINE_JS).replace("__AGENT_TRACE__", () => AGENT_TRACE_JS).replace("__SIGN__", () => `${SIGN_JS}\n${WHY_JS}`).replace("__BOOKS__", () => BOOKS_JS)
     .replace("__DID__", () => `${didGlobals(json)}\n${DID_KIT_JS}\n${DID_SCREEN_JS}`)
     .replace("__ICONS__", () => json(icons)).replace("__RUNS__", () => json(RUNS_URL)).replace("__PROOF__", () => json(PROOF_URL))
     .replace("__RUN__", () => `${RUN_JS}\nconst STEP_PROOF=${json(STEP_PROOF)};\nconst LOGOS=${json(START_LOGOS)};\nconst TESTS_PASSING=${json(testsPassing())};\nconst TESTS_HREF=${json(TESTS_HREF)};\nconst PROOF_FIGS=${json(PROOF_FIGURES)};\nconst BAND_LINE=${json(BAND_LINE)};\n${RUN_UI_JS}`).replace("__START__", () => START_JS).replace("__TOUR__", () => TOUR_JS);
@@ -1985,7 +1989,7 @@ export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?
 <meta name="description" content="${escAttr(TRY_DESCRIPTION)}">
 <meta name="purser-try" content="${escAttr(JSON.stringify(cfg))}">
 <title>Purser · hands-on</title>
-<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${extra ? extra.css : ""}</style></head><body>
+<style nonce="${n}">${CSS}${START_CSS}${DID_CSS}${SITE_HEADER_CSS}${VIS_CSS}${NEG_CSS}${extra ? extra.css : ""}</style></head><body>
 ${siteHeader("try")}
 <main id="main"></main>
 <p class="sr" id="say" role="status" aria-live="polite"></p>

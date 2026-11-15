@@ -11,6 +11,7 @@ import { adminOp, AdminOp } from "./admin.js";
 import { challengeAnswer, gateStart } from "./botCheck.js";
 import { tryExtraRoutes } from "./extraRoutes.js";
 import { tryStageRoutes } from "./stageRoutes.js";
+import { tryNegotiatePublicRoutes } from "./negotiateRoutes.js";
 import { on, readSwitches } from "./switches.js";
 import { renewSession, startCompany, TryRefused, type TryConfig } from "./start.js";
 
@@ -60,6 +61,7 @@ export function tryRoutes<C extends TryCtx>(kit: TryKit<C>): TryRoute<C>[] {
     }) },
     ...tryExtraRoutes(kit, live),
     ...tryStageRoutes(kit, live),
+    ...tryNegotiatePublicRoutes<C>(kit, (run) => live((c) => run(c))),
   ];
 }
 
