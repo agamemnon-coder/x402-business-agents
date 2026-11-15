@@ -296,7 +296,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
     else ok(flow.x >= h1.x + h1.width - 1 && flow.y < main.y + main.height && partners!.y + partners!.height <= height + 1, `${tag}: a laptop: the steps beside the words, the partners in view`);
   }
   const logos = await page.locator(".start .logos img").evaluateAll((im) => im.map((i) => [(i as HTMLImageElement).alt, (i as HTMLImageElement).complete && (i as HTMLImageElement).naturalWidth > 0]));
-  ok(JSON.stringify(logos) === JSON.stringify([["Alta", true], ["Claude", true]]), `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
+  ok(JSON.stringify(logos) === JSON.stringify([["Alta (formerly Metal)", true], ["Claude", true]]) /* alt, judge panel 15 Nov */, `${tag}: the partners' logos are loaded (${JSON.stringify(logos)})`);
   const ptext = (await page.textContent(".start .partners"))!;
   ok(ptext.includes(`Alta${START.formerly}`) || ptext.includes(START.formerly) && ptext.includes(START.visa) && ptext.includes("No endorsement implied"), `${tag}: Alta (formerly Metal), Visa in text, no endorsement implied`);
   ok(await page.getAttribute(".start .trailer", "href") === TRAILER_URL, `${tag}: the trailer link`);
@@ -848,7 +848,7 @@ for (const [width, scheme] of [[390, "light"], [1440, "dark"]] as const) {
   // Judge scan, 15 Nov: the time is the engine's upload to paid, and says so.
   ok(/^Done: EUR 1,850\.00 read, checked, signed and paid, (\d+ s|\d+ min( \d+ s)?) from upload to paid\. Nothing real moved\.$/.test(done6), `${tag}: the finish says what the run did, from its record (${done6})`);
   const outs = await page.locator(".more a").evaluateAll((as) => as.map((a) => (a as HTMLAnchorElement).href));
-  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/" && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
+  ok(await page.locator("a.btn.primary.proofl").getAttribute("href") === PROOF_URL && outs.length === 3 && outs[0] === TRAILER_URL && outs[1] === "https://purser-try.max-31b.workers.dev/#/guest" /* judge panel 15 Nov: the guest route */ && outs[2] === "https://github.com/agamemnon-coder/x402-business-agents" && await page.locator("main form, main input[type=email]").count() === 0, `${tag}: one way on to the real runs, three quiet links, no form`);
   await page.click(`button:has-text("${COMPANY.again}")`);
   await page.click(`button:has-text("${COMPANY.againYes}")`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
