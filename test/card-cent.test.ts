@@ -9,7 +9,9 @@ import { beneficiariesOf } from "../worker/src/awxRead.js";
 import { cardCallCheck } from "../src/airwallex/cardGate.js";
 import { agentOfCard, cardSetSummary, classifyAgentCards, type CardLite } from "../src/airwallex/agentCardSet.js";
 import { initialsOf, looksLikePerson, publicNickname, publicPayeeName } from "../src/airwallex/personName.js";
-import { centHolds, centHtml, centLine, type CentRecord } from "../src/redesign/cardCent.js";
+import { centHolds, centHtml, centLine, centRecord as centRecordOf, type CentRecord } from "../src/redesign/cardCent.js";
+import { proofPage } from "../src/redesign/proof.js";
+import { buildPages } from "../src/relay/assets.js";
 import { TenantDb } from "../cloud/src/tenant.js";
 import { annotateBeneficiaries } from "../cloud/src/awxLive.js";
 import { WRITES_PER_DAY as WRITES_CAP } from "../cloud/src/agentCards.js";
@@ -244,6 +246,18 @@ describe("live cards, sorted out and tested at the limit (Purser Cloud and /airw
     expect(s.calls.filter((x) => /^GET \/issuing\/cards\/card/.test(x)).length).toBeLessThan(3);
   });
 
+  it("freezes every older card in one signed action, in calls of 40, until none is left (15 Nov: about 50 per agent)", async () => {
+    for (let i = 0; i < 88; i++) s.seed({ nick_name: `sourcing agent: old run ${i}`, card_status: "ACTIVE", per: 45, month: 100, created_at: `2026-10-2${i % 9}T10:00:00.000+0000`, last4: String(8000 + i) });
+    await c.req("GET", "/v1/cards", { key: t.session });
+    const { action, signed } = await act("tidy");
+    expect(JSON.parse(action.signed_text).card_ids).toHaveLength(90);
+    expect(signed.json).toMatchObject({ status: "done", kind: "tidy" });
+    expect((signed.json.frozen as unknown[]).length).toBe(90);
+    expect([...s.cards.values()].filter((x) => x.nick_name.startsWith("sourcing") && x.card_status === "ACTIVE").map((x) => x.last4)).toEqual(["5550"]);
+    expect(s.calls.filter((x) => /^POST \/issuing\/cards\/.+\/update$/.test(x)).length).toBe(90);
+    expect((await ask("tidy")).status).toBe(409);
+  });
+
   it("the run record names the owner who signed, and the page says so", async () => {
     await c.req("GET", "/v1/cards", { key: t.session });
     await act("edge");
@@ -253,5 +267,31 @@ describe("live cards, sorted out and tested at the limit (Purser Cloud and /airw
     expect(rec.method).toContain("the company owner's passkey");
     expect(rec.method).not.toContain("CFO");
     expect(centHtml({ file: "docs/runs/airwallex-card-cent-2026-11-15.json", rec })).toContain(`Signed by ${rec.signed_by!.name}, the company's owner`);
+  });
+});
+
+// 15 Nov, the live run of 09:31 UTC: the committed record, and what /airwallex and /proof say from it.
+describe("the recorded one-cent-over run (docs/runs/airwallex-card-cent-<date>.json)", () => {
+  const r = centRecordOf();
+  it("is exactly the limit then one cent over, at Airwallex, and the limit held", () => {
+    expect(r).not.toBeNull();
+    expect(centLine(r!.rec)).toMatch(/^Airwallex itself: EUR \d+\.\d\d approved, EUR \d+\.\d\d declined \(LIMIT_EXCEEDED\)$/);
+    expect(centHolds(r!.rec)).toBe(true);
+    expect(JSON.stringify(r!.rec)).not.toMatch(/\b\d{13,19}\b|"cvv"|"card_number"/i);
+  });
+  it("names its signer honestly: the company owner's software test passkey, never Face ID or the CFO", () => {
+    expect(r!.rec.signed_by).toMatchObject({ role: "owner" });
+    expect(r!.rec.signed_by!.name).toMatch(/software test passkey/);
+    expect(`${r!.rec.method} ${JSON.stringify(r!.rec.signed_by)}`).not.toMatch(/Face ID|CFO/);
+  });
+  it("is on /airwallex and /proof with its line, both ids and the signer", () => {
+    const pages = buildPages();
+    for (const html of [pages.airwallex!, proofPage()]) {
+      const block = html.match(/<div class="card" id="awx-cent">[\s\S]*?<\/div>/)?.[0] ?? "";
+      expect(block).toContain(centLine(r!.rec)!);
+      for (const a of r!.rec.attempts) expect(block).toContain(a.id!);
+      expect(block).toContain(`Signed by ${r!.rec.signed_by!.name}, the company's owner`);
+      expect(block).not.toMatch(/Face ID|CFO/);
+    }
   });
 });
