@@ -1,6 +1,7 @@
 // The partner pages (/airwallex, /claude): every id, tx and figure on them comes from the recorded files, every
 // agent's model from code; each is short with its details folded; the nav keeps its tabs (Home, Try, Proof; Watch once
 // the film is set) and lists the partner pages under "More" (12 Nov).
+import { LIVE_CARDS_JS } from "../src/redesign/cardCent.js";
 import { COUNT_JS } from "../src/redesign/stats.js";
 import { readFileSync } from "node:fs";
 import { TRY_URL } from "../src/redesign/ui.js";
@@ -119,7 +120,7 @@ describe("the partner pages", () => {
       expect(page).not.toMatch(/\b(null|undefined|NaN)\b/);
       // No script on /claude; /airwallex has one, the shared OPEN_TARGET_JS (a link into its cards' fold opens it).
       // Since 12 Nov /airwallex's figures count up too (src/redesign/stats.ts COUNT_JS), in that same one script.
-      expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS + COUNT_JS}</script>`] : []);
+      expect(scriptBlocks(page)).toEqual(page === AIRWALLEX_PAGE ? [`<script>\n${OPEN_TARGET_JS + COUNT_JS + LIVE_CARDS_JS}</script>`] /* 15 Nov: the agents' cards, live from its own origin */ : []);
     }
     expect(scriptBlocks(CLAUDE_PAGE)).toEqual([]);
     for (const f of airwallexData().features) for (const d of f.docs) expect(d.href.startsWith("https://www.airwallex.com/docs/")).toBe(true);
@@ -150,8 +151,8 @@ describe("the partner pages", () => {
     expect(pages.airwallex).toBe(AIRWALLEX_PAGE);
     expect(pages.claude).toBe(CLAUDE_PAGE);
     expect(pages.csp.claude).toMatch(/^default-src 'none'; style-src 'sha256-/);
-    // /airwallex: its one script, hashed like its style; it connects nowhere.
-    expect(pages.csp.airwallex).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
+    // /airwallex: its one script, hashed like its style; since 15 Nov it reads the agents' cards from its own origin only.
+    expect(pages.csp.airwallex).toMatch(/^default-src 'none'; script-src 'sha256-[A-Za-z0-9+/=]+'; style-src 'sha256-[A-Za-z0-9+/=]+'; connect-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'$/);
     // Live QA (7 Nov, Lighthouse): on the jury's pages no heading skips a level (/airwallex went h1 to h3), Proof's
     // "More" links each name their partner for screen readers, /metal's tx links are at least 24 px tall, and the
     // stage never fades its words below readable contrast (it greys them instead).

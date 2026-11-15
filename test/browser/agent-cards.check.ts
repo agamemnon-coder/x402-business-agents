@@ -28,6 +28,10 @@ let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
 
 const sandbox = fakeSandbox();
+// An older Support card from an earlier run, at an older limit (15 Nov: the sandbox held two or three per agent), and a
+// frozen one: the Support agent adopts its live card from the sandbox, and the older active card is frozen in one action.
+sandbox.seed({ nick_name: "support agent: helpdesk software (3efefc)", card_status: "ACTIVE", per: 60, month: 150, created_at: "2026-11-03T06:06:29.394+0000", last4: "6203" });
+sandbox.seed({ nick_name: "support agent: helpdesk tools", card_status: "ACTIVE", per: 75, month: 150, created_at: "2026-10-29T15:53:00.000+0000", last4: "6949" });
 const desk = new AwxCardsDesk({ AIRWALLEX_CLIENT_ID: "stand-in", AIRWALLEX_API_KEY: "stand-in", AWX_CARDS_WRITE: "on" }, { fetchImpl: sandbox.fetchImpl });
 const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "agent-cards-check-"));
 const env: CloudEnv = { sql: sqliteSql(":memory:"), blobs: dirBlobs(join(dir, "blobs")), sessionSecret: "c".repeat(48), adminTokenSha256: createHash("sha256").update(ADMIN).digest("hex"),
@@ -92,11 +96,22 @@ ok(sandbox.calls.includes("POST /issuing/cards/create"), "the signed action crea
 await settle();
 ok((await sourcing.innerText()).includes("1902") && (await sourcing.innerText()).includes("Limits match the CFO policy"), "the new card shows its last four and the policy's limits");
 
-await sourcing.locator("button", { hasText: "Test: buy for" }).click();
-await page.waitForSelector("text=declined the test purchase", { timeout: 20_000 });
+// One cent over: the limit, then the limit and EUR 0.01, at the sandbox, with Face ID.
+await sourcing.locator("button", { hasText: "Test: EUR 30.00, then EUR 30.01" }).click();
+await page.waitForSelector("text=Airwallex itself: EUR 30.00 approved, EUR 30.01 declined (LIMIT_EXCEEDED)", { timeout: 20_000 });
+ok((await (await fetch(`${ORIGIN}/v1/cards/edge/latest`)).json() as { attempts: { approved: boolean }[] }).attempts.map((a) => a.approved).join() === "true,false", "the run record says what Airwallex said: approved, then declined");
 await settle();
 const afterTest = await sourcing.innerText();
 ok(afterTest.includes("LIMIT_EXCEEDED") && /ctx_\d+/.test(afterTest), "the decline shows with its reason and its id");
+// The Support agent: its live card adopted from the sandbox, its older active card frozen in one signed action.
+const support = page.locator(".card.agent").filter({ hasText: "Support" }).first();
+ok((await support.innerText()).includes("6203") && (await support.innerText()).includes("still active: to be frozen"), "an adopted live card, and the older card still to be frozen");
+await support.locator("button", { hasText: "Freeze older test cards (1)" }).click();
+await page.waitForSelector("text=Older test cards frozen: 1", { timeout: 20_000 });
+await settle();
+ok([...sandbox.cards.values()].find((x) => x.last4 === "6949")?.card_status === "INACTIVE" && [...sandbox.cards.values()].find((x) => x.last4 === "6203")?.card_status === "ACTIVE", "the older card is frozen at the sandbox; the live card is not");
+await support.scrollIntoViewIfNeeded();
+await shot("cloud-agents-card-older-1440");
 await sourcing.scrollIntoViewIfNeeded();
 await shot("cloud-agents-card-decline-1440");
 

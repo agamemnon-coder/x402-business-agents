@@ -269,7 +269,7 @@ export const METAL_INSPECT_JS = `(function () {
   }).catch(function () {});
 })();`;
 
-export interface MetalBody { logo: string; label: string; folds: string; proofHash: string; /** Blocks of other runs shown under the folds (the invoice-token run, when its record exists). */ after?: string }
+export interface MetalBody { logo: string; label: string; folds: string; proofHash: string; /** The opening facts (src/redesign/altaFacts.ts), right under the heading. */ intro?: string; /** Beside the logo (the Metal Award, 15 Nov): "No endorsement implied". */ logoNote?: string; /** Blocks of other runs shown under the folds (the invoice-token run, when its record exists). */ after?: string }
 
 /** A paid Alta payment from the main run's trace: the kind, its number, its amount and its transaction. */
 interface TracePayment { kind: string; ref: string; amount: string; rail: string; rail_id: string | null; origin?: { agent?: string } }
@@ -390,8 +390,8 @@ ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.bloc
 <pre class="mcmd">${esc(`npm run metal-inspect -- refusal ${decoded.tx}`)}</pre></details>` : "";
 
   return `<main class="pp mtp"><div class="wrap">
-  <div class="phd">${o.logo}<span class="pill run">${icon("database", 14)}${esc(o.label)}</span><h1>${esc("A limit the agent cannot talk past")}</h1></div>
-  <p class="mnote">${esc(METAL_AWARD_LINE)}</p>
+  <div class="phd">${o.logo}${o.logoNote ? `<span class="noend">${esc(o.logoNote)}</span>` : ""}<span class="pill run">${icon("database", 14)}${esc(o.label)}</span><h1>${esc("A limit the agent cannot talk past")}</h1></div>
+  ${o.intro ?? ""}<p class="mnote">${esc(METAL_AWARD_LINE)}</p>
   ${hero}
   <div class="mcharts">${budgetChart}${payChart}${moment}</div>
   ${cards}

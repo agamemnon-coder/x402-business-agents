@@ -7,13 +7,16 @@ export const CVV = "737";
 /** A small Airwallex sandbox: login, cardholders, cards, transactions, the purchase simulation. It leaks a PAN and a CVV on purpose. */
 export function fakeSandbox(o: { issuing?: boolean } = {}) {
   const calls: string[] = [];
-  const cards = new Map<string, { card_id: string; card_status: string; nick_name: string; per: number; month: number }>();
+  type FakeCard = { card_id: string; card_status: string; nick_name: string; per: number; month: number; created_at?: string; last4?: string };
+  const cards = new Map<string, FakeCard>();
   const byRequest = new Map<string, string>();
   const holders: { cardholder_id: string; email: string }[] = [];
   const txs: Record<string, unknown>[] = [];
   let n = 0;
-  const cardJson = (c: { card_id: string; card_status: string; nick_name: string; per: number; month: number }) => ({
-    card_id: c.card_id, cardholder_id: "ch_secret_holder", card_number: PAN, cvv: CVV, card_status: c.card_status, nick_name: c.nick_name, brand: "VISA",
+  // Each card's own full number (the default PAN, or PAN with another last four): it must never get past kit11.
+  const cardJson = (c: FakeCard) => ({
+    card_id: c.card_id, cardholder_id: "ch_secret_holder", card_number: c.last4 ? PAN.slice(0, 12) + c.last4 : PAN, cvv: CVV, card_status: c.card_status, nick_name: c.nick_name, brand: "VISA",
+    created_at: c.created_at ?? "2026-11-15T03:00:00.000+0000",
     authorization_controls: { transaction_limits: { currency: "EUR", limits: [{ amount: c.per, interval: "PER_TRANSACTION" }, { amount: c.month, interval: "MONTHLY" }] } },
   });
   const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
@@ -60,6 +63,8 @@ export function fakeSandbox(o: { issuing?: boolean } = {}) {
     }
     return new Response("{}", { status: 404 });
   }) as typeof fetch;
-  return { calls, cards, fetchImpl };
+  /** An older card already at the sandbox (a run before this one). */
+  const seed = (c: Omit<FakeCard, "card_id"> & { card_id?: string }) => { const id = c.card_id ?? `card_seed_${String(++n).padStart(4, "0")}`; cards.set(id, { ...c, card_id: id }); return id; };
+  return { calls, cards, fetchImpl, seed };
 }
 

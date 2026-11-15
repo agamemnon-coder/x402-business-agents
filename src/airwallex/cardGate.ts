@@ -45,6 +45,7 @@ export const SIM_MAX_EUR = 600;
 type J = Record<string, unknown>;
 const obj = (v: unknown): J | null => (typeof v === "object" && v !== null && !Array.isArray(v) ? v as J : null);
 const keysAre = (o: J, keys: string[]) => Object.keys(o).length === keys.length && keys.every((k) => k in o);
+// Whole cents only, to a rounding hair: 19.99 or 30.01 times 100 is not an exact integer in floating point.
 const amountOk = (v: unknown, max: number) => typeof v === "number" && Number.isFinite(v) && v > 0 && v <= max && Math.abs(v * 100 - Math.round(v * 100)) < 1e-6;
 
 /** The transaction limits a write may carry: EUR, one per purchase and one a month, within the ceilings. */
@@ -175,6 +176,7 @@ type Signed = { action_sha256: string };
 export type CardsAsk =
   | { op: "scope" }
   | { op: "card"; card_id: string }
+  | { op: "list" }
   | { op: "transactions"; card_id: string }
   | ({ op: "create"; holder: { email: string; first_name: string; last_name: string }; nickname: string; created_by: string; limits: { per_tx_cents: number; monthly_cents: number }; mccs: string[]; active_days: number } & Signed)
   | ({ op: "status"; card_id: string; status: "ACTIVE" | "INACTIVE" } & Signed)
@@ -187,6 +189,8 @@ export type CardsAnswer =
   | { ok: true; op: "scope"; issuing: "ok" }
   | { ok: true; op: "card" | "create" | "status" | "limits"; card: SafeCard }
   | { ok: true; op: "transactions"; items: SafeTx[] }
+  /** Every agent card (by nickname) the sandbox lists, with its limits; cut: more pages than were read. */
+  | { ok: true; op: "list"; cards: SafeCard[]; cut: boolean }
   | { ok: true; op: "simulate"; tx: SafeTx }
   | CardsRefusal;
 

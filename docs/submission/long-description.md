@@ -125,6 +125,7 @@ The same runs as [/proof](https://kit11.max-31b.workers.dev/proof), each with it
 
 | Date | What ran | Id | Record |
 |---|---|---|---|
+| 15 Nov | The anchor checked again: `npm run verify-anchor`, run live, MATCH (read only, no new transaction) | Anchor: [`0xaa93f270…e6c1`](https://testnet.metalntwx.com/tx/0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1) | [record](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-15-anchor-verified.md) |
 | 13 Nov | Records anchored on chain | Anchor: [`0xaa93f270…e6c1`](https://testnet.metalntwx.com/tx/0xaa93f270a37c66e8be033949b8a6dc89278e47722ca0be5067a744a32b20e6c1) | [record (JSON)](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-13-anchor.json) |
 | 12 Nov | An approved invoice becomes a token, is pre-financed, then settled (prototype) | mint: [`0xefc68319…b575`](https://testnet.metalntwx.com/tx/0xefc6831934784df1ae4b65a0d03d5f2e9e08c1d009ef4bd73d07844b5559b575) | [record (JSON)](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-tokenize.json) |
 | 12 Nov | Passkeys sign on chain (P-256): the agent's limit changes only when two passkeys sign | Passkey account: `0xb5A370DCdFb60F1Ede241C9c3B28135Ac4216a3c` | [record (JSON)](https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-12-faceid-onchain.json) |

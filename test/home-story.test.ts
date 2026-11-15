@@ -4,14 +4,14 @@
 // (who decides, who enforces); one stat row, every figure from a run record; the last buttons. The honesty rules of the
 // jury panel (A1 to A10) still hold: no recorded run called live, simulated and test money said once each outside the
 // fold, one note line, every figure from a record, every amount with its currency, no fetch, no award wording.
-import { FILM_LINK, FILM_URL, TRAILER_LINK } from "../src/config/brand.js";
+import { FILM_URL } from "../src/config/brand.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CAVEAT_LINE, CHAIN_TEST, DESIGN_PARTNER_LABEL, HERO, SECOND_APPROVER, SMALL_COMPANY_DEMO_URL } from "../src/config/brand.js";
 import { BOOKED, FLOW, FLOW_NOTE, TRY_SAMPLE_RECORD } from "../src/redesign/heroFlow.js";
 import { AP_ACCOUNTS, dutchVat } from "../src/ap/books.js";
 import { homeScaleStats, scaleStats } from "../src/redesign/scale.js";
-import { HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
+import { FILM_BUTTON, HOME_SUB, LOCKS_HEAD, NEXT_NEXT, PROOF_BUTTON, REASSURE, START, STAT_RECORDS, VERIFY_BUTTON, WHATS_REAL, homePage, homeStats, proofRows } from "../src/redesign/home.js";
 import { agentRun } from "../src/redesign/run.js";
 import { TRY_URL } from "../src/redesign/ui.js";
 import { buildPages } from "../src/relay/assets.js";
@@ -46,7 +46,8 @@ describe("Home, the enterprise pass", () => {
     for (const html of [ON, OFF]) {
       const main = mainOf(html);
       const at = [
-        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, `<a class="btn primary big start" href="${TRY_URL}">`, '<a class="btn big ghost" href="proof">', '<p class="reassure">', '<div class="trust">',
+        // 15 Nov (clarity): the idea, then its proof line, then Try (primary) and the film (secondary).
+        '<h1 class="h-hero">', `<p class="what">${HOME_SUB}</p>`, '<p class="proofl"', `<a class="btn primary big start" href="${TRY_URL}">`, `<a class="btn big ghost film" href="${FILM_URL}"`, '<p class="reassure">', '<div class="trust">',
         '<figure class="hf"', '<p class="hf-note">', '<ul class="feat">', '<ol class="flow', '<ul class="stats">', '<a class="btn big primary" href="proof">',
       ].map((s) => ({ s, i: main.indexOf(s) }));
       expect(at.filter((x) => x.i < 0)).toEqual([]);
@@ -56,11 +57,16 @@ describe("Home, the enterprise pass", () => {
     }
   });
 
-  // 13 Nov, evening (owner): the product tour is gone, so the hero is again the hands-on demo (primary), then the proof.
-  it("has two buttons in the hero (Try it live to the hands-on demo, See the proof), and the same proof button with Books at the end", () => {
-    const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)">([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
-    expect([START, PROOF_BUTTON]).toEqual(["Try it live", "See the proof"]);
-    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], ["proof", PROOF_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+  // 13 Nov, evening (owner): the product tour is gone, so the hero is again the hands-on demo (primary). 15 Nov (clarity):
+  // the film is the hero's second button; "Verify a payment yourself" joins it once the site serves /verify; the proof
+  // button stays at the end, with Books.
+  it("has Try it in 2 minutes (primary) and Watch the film in the hero, the proof button with Books at the end", () => {
+    const buttons = (html: string) => [...mainOf(html).matchAll(/<a class="btn[^"]*" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], text(m[2]!)]);
+    expect([START, FILM_BUTTON, PROOF_BUTTON]).toEqual(["Try it in 2 minutes", "Watch the film", "See the proof"]);
+    // 15 Nov: /verify is live (#364), so "Verify a payment yourself" is the hero's third button; "" hides it.
+    for (const html of [ON, OFF]) expect(buttons(html)).toEqual([[TRY_URL, START], [FILM_URL, FILM_BUTTON], ["/verify", VERIFY_BUTTON], ["proof", PROOF_BUTTON], ["books", "Books"]]);
+    for (const html of [ON, OFF]) expect(html).toContain(`<a class="btn big ghost" href="/verify">${VERIFY_BUTTON}</a></div>`);
+    expect(homePage(undefined, { verifyUrl: "" })).not.toContain(VERIFY_BUTTON);
     for (const html of [ON, OFF]) expect(mainOf(html).match(/class="btn primary/g)).toHaveLength(1);
     expect(OFF).not.toContain('href="try/sign"');
     expect(mainOf(buildPages({ TRY_SIGN_ENABLED: "on" } as NodeJS.ProcessEnv).home!)).toBe(mainOf(ON));
@@ -70,9 +76,10 @@ describe("Home, the enterprise pass", () => {
   });
 
   it("A6: one reassurance line under the buttons, saying only what the page behind the first one does", () => {
-    expect(REASSURE).toEqual({ sign: "Your own test company, test money, deleted after 24 hours.", world: "Your own test company, test money, deleted after 24 hours." });
+    // 15 Nov: "test money" is said once outside the fold, in the hero's proof line.
+    expect(REASSURE).toEqual({ sign: "Your test company, deleted after 24 hours.", world: "Your test company, deleted after 24 hours." });
     for (const html of [ON, OFF]) expect(mainOf(html).match(/<p class="reassure">/g)).toHaveLength(1);
-    expect(ON).toMatch(new RegExp(`${PROOF_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
+    expect(ON).toMatch(new RegExp(`${VERIFY_BUTTON}</a></div>\\s*<p class="reassure">${REASSURE.sign}</p>`));
   });
 
   it("A1: no heading says live; outside the fold, live is said only by the button to the hands-on demo, which runs live", () => {
@@ -165,14 +172,17 @@ describe("Home, the enterprise pass", () => {
     const changes = owners.proposals.filter((p) => ["bind", "replace", "revoke"].includes(p.what) && p.status === "EXECUTED").length;
     expect(homeStats(run).map((s) => [s.n, s.label])).toEqual([[changes, `limit changes, each signed by two passkeys on chain (Alta testnet, ${new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(owners.ran_at))}; one a test key)`]]);
     expect(homeStats(run, [], null)).toEqual([]);
-    // Then the scale band (src/redesign/scale.ts), every figure computed from the records, each a link to its source.
-    const band = /<ul class="scale"[\s\S]*?<\/ul>/.exec(mainOf(ON))?.[0] ?? "";
-    expect(band).not.toBe("");
-    expect(mainOf(ON).indexOf('<article class="e-statrec"')).toBeLessThan(mainOf(ON).indexOf('<ul class="scale"'));
+    // The three measured figures (src/redesign/scale.ts), each computed from the records and a link to its source. Since
+    // 15 Nov (clarity) they lead the hero, in its proof line under the idea, and the band under the stat row is gone.
+    const line = /<p class="proofl"[\s\S]*?<\/p>/.exec(mainOf(ON))?.[0] ?? "";
+    expect(line).not.toBe("");
+    expect(mainOf(ON)).not.toContain('<ul class="scale"');
+    expect(mainOf(ON).indexOf('<p class="proofl"')).toBeLessThan(mainOf(ON).indexOf('<div class="ctas">'));
+    expect(text(line).startsWith("Built on Airwallex · test money · ")).toBe(true);
     // Judge panel, 13 Nov: six figures read as number soup; Home keeps three, each with its link (/proof keeps them all).
     expect(homeScaleStats().map((x) => x.label)).toEqual(["tests passing", "sandbox and testnet runs", "refusals on record"]);
-    expect([...band.matchAll(/data-count="(\d+)"/g)].map((m) => Number(m[1]))).toEqual(homeScaleStats().map((x) => x.n));
-    expect([...band.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(homeScaleStats().map((x) => x.href));
+    expect([...line.matchAll(/<b>([\d,]+)<\/b>/g)].map((m) => Number(m[1]!.replace(/,/g, "")))).toEqual(homeScaleStats().map((x) => x.n));
+    expect([...line.matchAll(/<a href="([^"]+)"/g)].map((m) => m[1])).toEqual(homeScaleStats().map((x) => x.href));
     for (const s of homeScaleStats()) expect(scaleStats()).toContainEqual(s);
     for (const html of [ON, OFF]) expect(mainOf(html)).toContain(`<article class="e-statrec" data-rec="${STAT_RECORDS}">`);
     expect(proofRows(undefined, null, null).map((r) => r.partner)).toEqual(["Alta"]);
@@ -201,10 +211,10 @@ describe("Home, the enterprise pass", () => {
 
   it("names no TAP, no Watch block, no awards on Home", () => {
     for (const html of [ON, OFF]) {
-      // The walkthrough on YouTube (13 Nov) is the one "Watch" on Home: its own link, to FILM_URL; no Watch block or tab.
-      expect(html).toContain(`<a class="film" href="${FILM_URL}" target="_blank" rel="noopener">`);
-      // 14 Nov: the trailer (TRAILER_LINK) beside it is the other "Watch".
-      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_LINK, " ").replace(TRAILER_LINK, " ");
+      // The walkthrough on YouTube is the one "Watch" on Home: since 15 Nov the hero's second button (FILM_BUTTON), to
+      // FILM_URL; no Watch block or tab, and the trailer's link left the hero.
+      expect(html).toContain(`<a class="btn big ghost film" href="${FILM_URL}" target="_blank" rel="noopener">`);
+      const rest = html.replace(/<header class="top">[\s\S]*?<\/header>/, " ").replace(FILM_BUTTON, " ");
       expect(rest).not.toMatch(/\bWatch\b|href="watch"/);
       expect(rest).not.toMatch(/TAP\b|Visa TAP|single-use Visa/);
       expect(html).not.toMatch(/Extra, not an award entry|What comes next/);

@@ -11,6 +11,7 @@ import { isTrySignPath, trySignNotFound, trySignRoute, TrySignDesk } from "./try
 import { SandboxQuotes } from "./fxQuote.js";
 import { AwxFxDesk, type AwxFxAnswer, type AwxFxAsk } from "./awxFx.js";
 import { AwxCardsDesk } from "./awxCards.js";
+import { AGENT_CARDS_PATH, agentCardsLive } from "./agentCardsLive.js";
 import type { CardsAnswer, CardsAsk } from "../../src/airwallex/cardGate.js";
 import { AwxPayoutDesk, SandboxPayouts, type PayoutAnswer, type PayoutAsk, type SimulateAnswer } from "./awxPayout.js";
 import { invoiceReaderSource, treasuryAdvisorSource } from "./agentLine.js";
@@ -273,6 +274,13 @@ export default {
     // /go: the short URL under the QR code, 302 to the hands-on demo (TRY_GO_URL, or its default).
     const go = goResponse(req, env.TRY_GO_URL);
     if (go) return go;
+    // /airwallex's live block: the agents' cards at the Airwallex sandbox, read only, last four digits only (./agentCardsLive.ts).
+    if (new URL(req.url).pathname === AGENT_CARDS_PATH && req.method === "GET") {
+      cardsDesk ??= new AwxCardsDesk({ AIRWALLEX_CLIENT_ID: env.AIRWALLEX_CLIENT_ID, AIRWALLEX_API_KEY: env.AIRWALLEX_API_KEY, AWX_CARDS_WRITE: env.AWX_CARDS_WRITE });
+      const desk = cardsDesk;
+      const body = await agentCardsLive((a) => desk.ask(a), { off: (env.AWX_READ ?? "").trim().toLowerCase() === "off" });
+      return Response.json(body, { headers: { "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    }
     // /try and its page's calls, to purser-try when the binding is there (./tryEngine.ts): the request as it came.
     const tryEngine = tryEngineResponse(req, env.TRY_ENGINE);
     if (tryEngine) return tryEngine;

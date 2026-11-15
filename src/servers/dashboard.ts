@@ -7,6 +7,7 @@ import { T0_READBACK_FILE, T0_READBACK_PATH } from "../accounting/t0Readback.js"
 import { airwallexPage, booksPage, claudePage, metalPage, notFoundPage, t0Page, visaPage } from "../redesign/partners.js";
 import { inspectorRecord } from "../redesign/metalMandates.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
+import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import { WORLD_CHANGES } from "../try/world.js";
 import { localTryAnswer } from "../try/local.js";
 import { buildFilm } from "../film/film.js";
@@ -281,11 +282,12 @@ export const METAL_CSP = cspFor(METAL_PAGE);
 export const VISA_PAGE = visaPage();
 export const AIRWALLEX_PAGE = airwallexPage();
 export const CLAUDE_PAGE = claudePage();
-// /airwallex has one inline script (OPEN_TARGET_JS: a link into its cards' fold opens it), hashed like its style; it
-// connects nowhere, so no connect-src.
+// /airwallex has one inline script (OPEN_TARGET_JS: a link into its cards' fold opens it), hashed like its style. Since
+// 15 Nov it also reads the agents' cards live from this origin (GET /api/awx/agent-cards, src/redesign/cardCent.ts), so
+// its policy allows requests to the site itself only (connect-src 'self'), as /metal's and /status's do.
 const styleAndScriptCsp = (page: string) => ["default-src 'none'", `script-src ${inlineHash(page, "script")}`, `style-src ${inlineHash(page, "style")}`, "font-src 'self'", "img-src 'self'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join("; ");
 export const VISA_CSP = VISA_PAGE.includes("<script>") ? styleAndScriptCsp(VISA_PAGE) : styleOnlyCsp(VISA_PAGE);
-export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? styleAndScriptCsp(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
+export const AIRWALLEX_CSP = AIRWALLEX_PAGE.includes("<script>") ? cspFor(AIRWALLEX_PAGE) : styleOnlyCsp(AIRWALLEX_PAGE);
 export const CLAUDE_CSP = styleOnlyCsp(CLAUDE_PAGE);
 /** /security (12 Nov), the product page under "More" (src/ui/more.ts): no script, so a style-only policy. /pricing went on 13 Nov (owner). */
 export const SECURITY_PAGE = securityPage();
@@ -451,6 +453,8 @@ export function dashboardApp(db: DB, opts: DashboardOptions) {
   });
   // /metal's inspector, as a local copy answers it: the record's read of 12 November, no chain call.
   app.get(METAL_INSPECTOR_PATH, (_req, res) => { void sendInspector(res); });
+  // /airwallex's live cards: this machine holds no sandbox key, so the answer says so (worker/src/agentCardsLive.ts).
+  app.get(AGENT_CARDS_PATH, (_req, res) => { res.json({ source: "unavailable", reason: "no sandbox key on this machine", checked_at: new Date().toISOString() }); });
   app.get("/visa", (_req, res) => {
     res.setHeader("Content-Security-Policy", VISA_CSP);
     res.type("html").send(VISA_PAGE);

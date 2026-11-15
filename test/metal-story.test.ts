@@ -30,7 +30,9 @@ const story = metalStory(record);
 const insp = inspectorRecord();
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#39;/g, "'").replace(/&quot;/g, "\"").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 const main = /<main[\s\S]*<\/main>/.exec(METAL_PAGE)![0];
-const top = main.slice(0, main.indexOf('<div class="folds card">'));
+// The opening facts (15 Nov, src/redesign/altaFacts.ts) come from other records (12 Nov, 1 Nov, 13 and 15 Nov) and are
+// checked against them in test/alta-facts.test.ts; here, the main run's story under them.
+const top = main.slice(0, main.indexOf('<div class="folds card">')).replace(/<section class="afacts"[\s\S]*?<\/section>/, "");
 const hero = /<section class="mhero card"[\s\S]*?<\/section>/.exec(main)![0];
 const table = /<section class="mt"[\s\S]*?<\/section>/.exec(main)![0];
 // The mandate cards with their spend's source and the read to repeat, the table inside their "Details" fold.

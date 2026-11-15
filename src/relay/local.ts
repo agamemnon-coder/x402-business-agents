@@ -10,6 +10,7 @@ import type { AddressInfo } from "node:net";
 import { notFoundResponse, pageResponse, Relay, type Sql } from "../../worker/src/core.js";
 import { isTrySignPath, trySignNotFound, TrySignDesk } from "../../worker/src/trySign.js";
 import { METAL_INSPECTOR_PATH, localInspector } from "../../worker/src/metalInspector.js";
+import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import type { FxSource } from "../../worker/src/fxQuote.js";
 import type { InvoiceReadSource } from "../try/claude.js";
 import type { AgentAsk } from "../try/world.js";
@@ -54,6 +55,8 @@ export async function startLocalRelay(opts: { port: number; token: string; /** /
           const response = pageResponse(request, pages)
             ?? (isTrySignPath(path) ? await (trySign ? trySign.fetch(request) : trySignNotFound()) : null)
             ?? (path === METAL_INSPECTOR_PATH ? await metal.fetch(request) : null)
+            // /airwallex's live cards: no sandbox key here, said so (worker/src/agentCardsLive.ts).
+            ?? (path === AGENT_CARDS_PATH ? Response.json({ source: "unavailable", reason: "no sandbox key on this machine", checked_at: new Date().toISOString() }) : null)
             ?? (awxLive.paths.includes(path) ? await awxLive.fetch(request) : null)
             ?? (path.startsWith("/api/") || path === "/health" || path === "/health/live" ? await relay.fetch(request) : notFoundResponse(pages));
           res.writeHead(response.status, Object.fromEntries(response.headers));
