@@ -848,7 +848,9 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   if((g==='pay'||g==='refused')&&PAYAT.seq<0)PAYAT.seq=INJ.max;if(g!=='pay'&&g!=='refused'&&g!=='done')PAYAT.seq=-1;
   const extra=PAYAT.seq>=0?calls.filter(([s])=>s>PAYAT.seq).length:-1;
   railHead.querySelector('.sum').textContent=calls.length?usd(tot)+' · '+calls.length+' calls':'no Claude call yet';
-  const key=JSON.stringify([g,calls.length,tot,extra,INJ.flag,aloneRun()]);if(rail.dataset.k===key)return;rail.dataset.k=key;
+  // The Airwallex transfer's status is in the key: "Sandbox: move to PAID" changes it after the paid screen is drawn.
+  let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const awx=st.awx&&typeof st.awx==='object'?st.awx:null;
+  const key=JSON.stringify([g,calls.length,tot,extra,INJ.flag,aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;rail.dataset.k=key;
   // 1. Claude: the run's cumulative cost, its calls, each with model, tokens, time and Anthropic's request id.
   const list=mk('ol','',calls.slice(-10).reverse().map(([,c])=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.tin||c.tout?(c.tin+c.tout)+' tokens':'',c.ms?(c.ms/1000).toFixed(1)+' s':'',c.req?c.req.slice(0,10)+'…'+c.req.slice(-4):''].filter(Boolean).join(' · '))])));
   const det=mk('details','',[mk('summary','','Each call'),list]);
@@ -860,7 +862,6 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   const mode=al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO Face ID required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO Face ID');
   rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',n),mk('span','',state(i)==='wait'?'waiting for the CFO’s Face ID':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
   // 3. Partner rails: lit when this run used them; the recorded runs said as such.
-  let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const awx=st.awx&&typeof st.awx==='object'?st.awx:null;
   const fx=EVT.some((e)=>e.event==='fx.rate_checked'||e.event==='airwallex.quote');
   const row=(cls,logo,name,txt,on)=>mk('li',(on?'on ':'')+cls,[logo,mk('div','',[mk('b','',name),mk('span','',txt)])]);
   const awxTxt=awx&&awx.source==='airwallex-sandbox'?'transfer '+String(awx.status||'').replace(/_/g,' ')+' · approval_sha256 attached':fx?'FX quote checked for this payment':'sandbox · standing by';
