@@ -735,7 +735,7 @@ function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who==
     c(s12(sa)+' !== '+s12(sb)+'  →  refused · EUR 0.00 moved','the signature only fits the exact terms','bad')}
   else if(g==='done'){const lg=pr&&pr.ledger&&typeof pr.ledger==='object'?pr.ledger:null;c('audit_log: row_hash = sha256(prev_hash + row)','a later edit breaks the chain');if(lg&&lg.head)c('ledger head '+s12(lg.head)+' · '+lg.count+' entries','this company\'s books','ok');c('proof.json → verify in your browser','no need to trust us','ok')}
   return L}
-function hood(m){const g=cap.dataset.k||'';
+function hood(m){const g=cap.dataset.k||'';const now=performance.now();if(g===HOOD.g&&now-(HOOD.t||0)<250)return;HOOD.t=now;HOOD.g=g;
   {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh){const hp=sh.querySelector('.hashpill');const t=hp&&(hp.title||hp.textContent||'');const mm=/[0-9a-f]{8,}/.exec(t);if(mm)HOOD.fp=mm[0].slice(0,12);
     const amt=sh.querySelector('.amount');if(amt)HOOD.amount=(amt.textContent||'').trim();
     for(const dt of sh.querySelectorAll('dt')){const k=(dt.textContent||'').trim();const v=dt.nextElementSibling?(dt.nextElementSibling.textContent||'').trim():'';if(k==='Payee')HOOD.payee=v;if(k==='IBAN')HOOD.iban='…'+v.replace(/\s/g,'').slice(-4)}}}
