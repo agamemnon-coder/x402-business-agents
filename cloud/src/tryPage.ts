@@ -1306,9 +1306,10 @@ function openCard(){
   });
   return el('div','openl',[b,said]);
 }
-// A passkey prompt given up after 30 s: some in-app web views leave it open without ever showing it.
+// A passkey prompt given up after 2 min: some in-app web views leave it open without ever showing it. Windows Hello
+// (where to save the passkey, then face or PIN) can take longer than 30 s (Max, 16 Nov), so the wait is 2 min.
 async function withTimeout(fn){
-  const ac=new AbortController();let late=false;const passkeyTimer=setTimeout(()=>{late=true;ac.abort()},30000);
+  const ac=new AbortController();let late=false;const passkeyTimer=setTimeout(()=>{late=true;ac.abort()},120000);
   try{return await fn(ac.signal)}catch(e){if(late){const x=new Error('timeout');x.name='PasskeyTimeout';throw x}throw e}finally{clearTimeout(passkeyTimer)}
 }
 const method=()=>methodOf(C.method,navigator.userAgent||'');
@@ -1317,7 +1318,7 @@ const cap1=(s)=>s?s[0].toUpperCase()+s.slice(1):s;
 const inView=(n)=>{const r=n.getBoundingClientRect();if(r.top>=0&&r.top<innerHeight*0.6)return;let calm=false;try{calm=matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){}n.scrollIntoView({block:'start',behavior:calm?'auto':'smooth'})};
 // The engine's approval passkey signs the proposal's challenge (the SHA-256 of its exact terms).
 async function signTerms(challenge,credentialId,signal){
-  const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:30000}});
+  const c=await navigator.credentials.get({signal,publicKey:{challenge:fromB64u(challenge),rpId:CFG.rpId,allowCredentials:[{type:'public-key',id:fromB64u(credentialId)}],userVerification:'required',timeout:120000}});
   return signedOf(c);
 }
 // The one pay request (screen 3's pay as signed, screen 4's fields): POST .../pay with payBody's {terms, credential}.
@@ -1519,7 +1520,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     let made;busy(A.waiting);const t0=performance.now();
     try{made=await withTimeout((signal)=>navigator.credentials.create({signal,publicKey:{rp:{id:s.json.rp.id,name:s.json.rp.name},user:{id:new TextEncoder().encode(s.json.user.id),name:s.json.user.name,displayName:s.json.user.displayName},
       challenge:fromB64u(s.json.challenge),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],excludeCredentials:(s.json.exclude||[]).map((id)=>({type:'public-key',id:fromB64u(id)})),
-      authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:30000}}))}
+      authenticatorSelection:{userVerification:'required',residentKey:'discouraged'},attestation:'none',timeout:120000}}))}
     catch(e){failedPasskey(e,t0);return}
     busy(A.saving);saves.hidden=true;
     const f=await track(api('POST','/v1/engine/passkey/finish',{code:s.json.code,credential:registrationOf(made)}));

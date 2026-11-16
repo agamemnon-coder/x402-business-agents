@@ -97,7 +97,7 @@ describe("the page", () => {
     const uses = [...own.matchAll(/(\w*)\s*=\s*(setTimeout|setInterval|requestAnimationFrame)\s*\(|(setTimeout|setInterval|requestAnimationFrame)\s*\(/g)];
     expect(uses.length).toBeGreaterThanOrEqual(3);
     for (const u of uses) expect(u[1], u[0]).toMatch(/^(pollTimer|renewTimer|askTimer|passkeyTimer|copyTimer|quoteTimer|runTimer)$/);
-    expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},30000\)/);
+    expect(script).toMatch(/passkeyTimer=setTimeout\(\(\)=>\{late=true;ac\.abort\(\)\},120000\)/);
     expect(script).toMatch(/pollTimer=setTimeout\(/);
     expect(script).toMatch(/renewTimer=setTimeout\(/);
     expect(script).toMatch(/askTimer=setInterval\(/);
