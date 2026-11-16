@@ -256,8 +256,7 @@ body.present:has(.screen.approve) .pv-lane, body.present:has(.screen.pay) .pv-la
 @keyframes pvin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 /* The app shell (?shell=0 turns it off): the site's menu and step bar give way to a product frame. */
 @media (min-width: 1200px) {
-  body.pv-shell { padding-left: 276px; }
-  body.pv-shell header.top, body.pv-shell .progw { display: none !important; }
+  body.present.pv-shell header.top, body.pv-shell .progw { display: none !important; }
   body.present.pv-shell .pv-money { top: 22px; }
   body.pv-shell .acts.pdfl { display: flex !important; }
   body.pv-shell .acts.pdfl .btn:not(.proofdl) { display: none; }
@@ -352,8 +351,8 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 /* v2 (/try?v=2 and recording mode): the four stages, the status tags, the partners' proof. */
 .pv-stages { display: none; }
 @media (min-width: 1200px) {
-  body.pv-shell.pv-staged { padding-top: 64px; }
-  body.pv-shell.pv-staged .pv-stages { display: flex; position: fixed; z-index: 35; top: 0; left: 252px; right: 0; height: 58px; align-items: center; gap: 6px; margin: 0; padding: 0 24px; list-style: none; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  body.present.pv-shell.pv-staged { padding-top: 64px; }
+  body.pv-shell.pv-staged .pv-stages:not(.inmain) { display: flex; position: fixed; z-index: 35; top: 0; left: 0; right: 0; height: 58px; align-items: center; gap: 6px; margin: 0; padding: 0 24px; list-style: none; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
   body.present.pv-shell.pv-staged .pv-money { top: 12px; }
 }
 .pv-stages li { display: flex; align-items: center; gap: 9px; padding: 7px 14px 7px 8px; border-radius: 999px; color: var(--faint); font: 650 14px/1 Inter, system-ui, sans-serif; }
@@ -571,6 +570,17 @@ body.pv-shell #main p.band { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .pv-hood.fresh li { animation: none; } }
 @media (max-width: 700px) { .pv-hood-h span { display: none; } .pv-hood-h::before { flex: none; } .pv-hood li { font-size: 11.5px; } }
 .pv-word { color: #14171f; font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; }
+
+/* The step card's last row (16 Nov, no sidebar): Claude's usage on the left; the money line and How it works on the right. */
+.pv-cap .pv-caprow { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border); }
+.pv-cap .pv-caprow .pv-usechip { margin: 0; padding: 0; border: 0; flex: 1 1 260px; }
+.pv-meta { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.pv-meta .pv-sm { padding: 5px 11px; border-radius: 999px; background: var(--ok-soft); color: var(--ok); font: 650 12px/1.2 Inter, system-ui, sans-serif; white-space: nowrap; }
+.pv-meta .pv-howbtn { margin: 0; padding: 5px 11px; font-size: 12px; white-space: nowrap; }
+body.pv-shell:not(.present) > .pv-money { display: none !important; }
+body.present .pv-meta .pv-sm { display: none; }
+@media (max-width: 699px) { .pv-meta .pv-howbtn { display: none; } }
+@media (min-width: 900px) { .pv-stages.inmain .t { display: inline; } .pv-stages.inmain .ts { display: none; } }
 .pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
 .pv-warn.small { padding: 10px 14px; }
 .pv-warn.small p { font-size: 13px; }
@@ -579,16 +589,16 @@ body.pv-shell #main p.band { display: none !important; }
 .pv-warn b::before { content: "⚠  "; }
 .pv-warn p { margin: 6px 0 0; color: var(--text); font: 500 14.5px/1.45 Inter, system-ui, sans-serif; }
 @media (prefers-color-scheme: dark) { .pv-warn b { color: #f5b544; } }
-/* The phone: the four stages and Claude's usage at the top of the page. */
+/* The four stages and Claude's usage at the top of the page, on every screen (16 Nov: no sidebar). */
 .pv-stages .ts, .pv-usechip { display: none; }
-@media (max-width: 1199px) {
+@media all {
   .pv-stages.inmain { display: flex; justify-content: space-between; gap: 4px; margin: 4px 0 10px; padding: 8px 10px; list-style: none; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
   .pv-stages.inmain li { height: auto; padding: 4px 6px; gap: 6px; font-size: 12.5px; }
   .pv-stages.inmain li + li::before { display: none; }
   .pv-stages.inmain .t { display: none; }
   .pv-stages.inmain .ts { display: inline; }
   .pv-stages.inmain .n { width: 20px; height: 20px; font-size: 11px; }
-  .pv-cap .pv-usechip { display: block; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border); font: 500 13px/1.35 Inter, system-ui, sans-serif; }
+  .pv-cap .pv-usechip { display: block; margin: 0; padding-top: 0; font: 500 13px/1.35 Inter, system-ui, sans-serif; }
   .pv-usechip summary { display: flex; align-items: center; gap: 8px; padding: 0; cursor: pointer; list-style: none; color: var(--muted); }
   .pv-usechip summary::-webkit-details-marker { display: none; }
   .pv-usechip summary b { color: var(--text); font-weight: 700; }
@@ -606,6 +616,7 @@ const SHARED = String.raw`
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 const CALLS=new Map();
 const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
+const capMeta=mk('div','pv-meta');const capRow=mk('div','pv-caprow',[chip,capMeta]);
 // The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
 const INJ={since:-1,flag:false,max:0};
 function noteEvent(e){if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
@@ -691,16 +702,16 @@ function hood(m){const g=cap.dataset.k||'';
   const ol=mk('ol','',L.map((x,i)=>{const li=mk('li',x.cls||'',[mk('code','',x.code),x.note?mk('span','nt','// '+x.note):null].filter(Boolean));li.style.setProperty('--i',String(i));return li}));
   hoodBox.className='pv-hood'+(HOOD.open?' open':'')+(fresh?' fresh':'');hoodBox.replaceChildren(mk('div','pv-hood-h',[mk('b','',PC.hood.h),mk('span','',PC.hood.tag),tog]),ol)}
 function v2(){
-  {const mm=document.getElementById('main');const small=innerWidth<1200;
+  {const mm=document.getElementById('main');const small=innerWidth<1200||!document.body.classList.contains('present');
    if(mm&&small&&stages.parentElement!==mm){stages.classList.add('inmain');mm.prepend(stages)}else if(!small&&stages.parentElement!==document.body){stages.classList.remove('inmain');document.body.append(stages)}
    if(mm&&small&&stages.parentElement===mm&&mm.firstElementChild!==stages)mm.prepend(stages);
    // 16 Nov (Max: "two bars"): Claude's cost rides in the step card, not as a second bar under the steps.
-   if(chip.parentElement!==cap)cap.append(chip);
+   if(capRow.parentElement!==cap)cap.append(capRow);
    const res=mm&&mm.querySelector('.screen.work .result');if(res&&INJ.flag&&!res.querySelector('.pv-warn')){const w=mk('div','pv-warn',[mk('b','',PC.inj.h),mk('p','',PC.inj.p)]);const big=res.querySelector('p.big');if(big)res.insertBefore(w,big);else res.prepend(w)}}
   {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
    if(m0&&g){const anchor=stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
-  [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
+  [...stages.querySelectorAll(':scope > li:not(.x)')].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
   const m=document.getElementById('main');if(!m)return;
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
@@ -747,16 +758,16 @@ let v2t=0;new MutationObserver(()=>{if(!v2t)v2t=requestAnimationFrame(()=>{v2t=0
 const showHow=()=>{how.classList.remove('on');void how.offsetWidth;how.classList.add('on')};
 // The app shell, unless ?shell=0: a sidebar with the workspace, the sections and Claude's usage in this run.
 if(SHELL){
+  // 16 Nov (Max: no fake navigation): no sidebar. The money line and How it works ride at the end of the step bar;
+  // Claude's usage is the pill in the step card.
   document.body.classList.add('pv-shell');
-  const hb=document.querySelector('header.top .brand');const brand=hb?hb.cloneNode(true):mk('span','brand','Purser');
-  useBox=mk('section','pv-use');
   const howBtn=mk('button','pv-howbtn',[mk('span','dot',''),SH.how]);howBtn.type='button';howBtn.addEventListener('click',showHow);
-  document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('p','pv-guide',SH.guide),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
+  capMeta.append(mk('span','pv-sm',PC.money),howBtn);
 }
 function drawUse(){
   const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
   const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
-  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',calls.length?calls.length+' '+SH.calls+' · '+usd(tot):SH.none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-6).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':''))])))}
+  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',calls.length?calls.length+' '+SH.calls+' · '+usd(tot):SH.none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-8).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':'')+(c.req?' · '+c.req.slice(0,8)+'…'+c.req.slice(-5):''))])))}
   if(!useBox)return;
   const flash=calls.length&&useBox.dataset.tot!==String(tot);useBox.dataset.tot=String(tot);
   useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
