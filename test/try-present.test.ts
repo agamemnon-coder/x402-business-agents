@@ -77,6 +77,24 @@ describe("recording mode", () => {
     for (const w of ["Step 1 of 4", "The AI agent read the invoice and checked it.", "You are the CFO. Approve this exact payment.", "Blocked. Not a cent moved."]) expect(script).toContain(w);
   });
 
+  it("defines what its first run reads before the run (a temporal dead zone stopped the whole frame on 16 Nov)", () => {
+    const { script } = presentExtra("public");
+    expect(script.indexOf("const chip=")).toBeGreaterThan(-1);
+    expect(script.indexOf("const chip=")).toBeLessThan(script.indexOf("function v2(){"));
+    expect(script.indexOf("const chip=")).toBeLessThan(script.indexOf("drawUse();"));
+    // Each script must also parse: run it as a function body in a scope without a DOM, and only the DOM may be missing.
+    for (const kind of ["public", "present"] as const) {
+      const body = presentExtra(kind).script;
+      expect(() => new Function(body)).not.toThrow();
+    }
+  });
+
+  it("says a note that gives the AI orders out loud, from the engine's own flag", () => {
+    const { script } = presentExtra("public");
+    expect(script).toContain("e.event==='document.injection_flagged'");
+    expect(script).toContain("Hidden instruction found in this invoice, and ignored");
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {

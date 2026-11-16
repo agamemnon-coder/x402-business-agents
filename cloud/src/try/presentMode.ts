@@ -111,6 +111,7 @@ export const PRESENT_PARTNERS = {
 /** One plain sentence per moment, above the screen (15 Nov, Max: "people need to understand what's happening"). */
 export const PRESENT_GUIDE = {
   invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. An AI agent will read it and check it for you." },
+  workInj: { k: "Step 1 of 4", t: "The AI agent caught a hidden instruction in the invoice.", d: "It was ignored: an AI can't be told to pay. The invoice is checked like any other and still needs the CFO." },
   work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
   approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
   books: { k: "Step 3 of 4", t: "Approved, so the money went out.", d: "Paid with test money, booked in the accounts and filed. Next: try to cheat." },
@@ -119,7 +120,15 @@ export const PRESENT_GUIDE = {
   done: { k: "Done", t: "That's Purser.", d: "AI agents do the work. You approve the exceptions. Nobody can change what you approved." },
 } as const;
 
+/** A note that tries to give the AI orders (the engine's own flag, document.injection_flagged): said, never hidden. */
+export const PRESENT_INJ = {
+  h: "Hidden instruction found in this invoice, and ignored",
+  p: "Someone wrote an order to the AI into the invoice. It changes nothing: the AI can't pay on its own, and this payment still needs the CFO's approval.",
+} as const;
+
 export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
+/** The same four on a phone. */
+export const PRESENT_STAGES_SHORT = ["Agent", "CFO", "Transfer", "Tamper test"] as const;
 
 export const PRESENT_SHELL = {
   workspace: "Your test company",
@@ -470,12 +479,58 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 body.pv-shell #main > .band { opacity: .7; }
 /* The guide says what the heading said, in the visitor's words: the heading stays for screen readers only. */
 body.pv-shell #main:has(> .pv-cap.on) > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Simple (16 Nov, Max: "too much text, too much happening"): one story per screen; the rest stays on plain /try. */
+body.pv-shell .vflow, body.pv-shell .progw, body.pv-shell #main .card.activity { display: none !important; }
+body.pv-shell .screen.start .partners, body.pv-shell .screen.start li.wide { display: none; }
+body.pv-shell .screen.work .result > p.meta, body.pv-shell .screen.work ul.checks li.next, body.pv-shell .screen.work .agentic, body.pv-shell .screen.work .negcard { display: none !important; }
+body.pv-shell .screen.approve p.limit, body.pv-shell .screen.approve > div > details, body.pv-shell .screen.approve > div > p.muted, body.pv-shell .screen.approve .openl { display: none !important; }
+body.pv-shell .screen.books .slot:has(.blk.filed), body.pv-shell .screen.books .tail .pdfl, body.pv-shell .screen.books .tail > p.hint, body.pv-shell .screen.books .tail .cloudl, body.pv-shell .screen.books .tail .acts .btn:not(.primary) { display: none !important; }
+body.pv-shell .screen.pay .tryform > .two, body.pv-shell .screen.pay .attacks, body.pv-shell .screen.pay > p:has(> .link) { display: none !important; }
+body.pv-shell .screen.company .vis-charts, body.pv-shell .screen.company .proofband, body.pv-shell .screen.company .records, body.pv-shell .screen.company > details, body.pv-shell .screen.company .acts.more a:not(.verifyl), body.pv-shell .screen.company .hint.shared { display: none !important; }
+/* One column where the side panel was; the blocked card says it once. */
+@media (min-width: 1200px) { body.pv-shell:not(.present) #main:has(> .screen.pay), body.pv-shell:not(.present) #main:has(> .screen.approve) { max-width: 640px; } }
+body.pv-shell .screen.pay, body.pv-shell .screen.approve { grid-template-columns: 1fr !important; }
+body.pv-shell .card.refusal > .sigl, body.pv-shell .card.refusal > .proof.xfer { display: none !important; }
+/* The note that tried to give orders: said once, at the top, in amber (the page's own line below the button goes). */
+body.pv-shell .screen.work .result > p.flagged { display: none !important; }
+body:not(.pv-staged) .pv-stages.inmain { display: none !important; }
+@media (max-width: 760px) { body.pv-shell .screen.start ol.flow { grid-template-columns: 1fr !important; } }
+/* The note that tried to give orders: said plainly, in amber. */
+.pv-warn { margin: 0 0 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); background: color-mix(in srgb, #f5b544 12%, var(--surface)); }
+.pv-warn b { display: block; color: #b87500; font: 750 16px/1.3 Inter, system-ui, sans-serif; }
+.pv-warn b::before { content: "⚠  "; }
+.pv-warn p { margin: 6px 0 0; color: var(--text); font: 500 14.5px/1.45 Inter, system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { .pv-warn b { color: #f5b544; } }
+/* The phone: the four stages and Claude's usage at the top of the page. */
+.pv-stages .ts, .pv-usechip { display: none; }
+@media (max-width: 1199px) {
+  .pv-stages.inmain { display: flex; justify-content: space-between; gap: 4px; margin: 4px 0 10px; padding: 8px 10px; list-style: none; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+  .pv-stages.inmain li { height: auto; padding: 4px 6px; gap: 6px; font-size: 12.5px; }
+  .pv-stages.inmain li + li::before { display: none; }
+  .pv-stages.inmain .t { display: none; }
+  .pv-stages.inmain .ts { display: inline; }
+  .pv-stages.inmain .n { width: 20px; height: 20px; font-size: 11px; }
+  .pv-usechip { display: block; margin: 0 0 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); font: 500 13px/1.35 Inter, system-ui, sans-serif; }
+  .pv-usechip summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; list-style: none; color: var(--muted); }
+  .pv-usechip summary::-webkit-details-marker { display: none; }
+  .pv-usechip summary b { color: var(--text); font-weight: 700; }
+  .pv-usechip summary .sp { color: #d97757; }
+  .pv-usechip ol { list-style: none; margin: 0; padding: 0 12px 10px; display: grid; gap: 4px; }
+  .pv-usechip li { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pv-usechip li b { color: var(--text); font-weight: 600; }
+}
 `;
 
 const SHARED = String.raw`
 // --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 const CALLS=new Map();
+const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
+// The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
+const INJ={since:-1,flag:false,max:0};
+function noteEvent(e){if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
+function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false}}
 const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
@@ -518,18 +573,23 @@ if(new URLSearchParams(location.search).get('neg')!=='1'){
 
 // v2: the test-money pill, the four stages on top, the partners' proof on the start screen and the way to it at the end.
 if(!document.querySelector('body > .pv-money'))document.body.append(mk('div','pv-money',PC.money));
-const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),t])));
+const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),mk('span','t',t),mk('span','ts',PC.stagesShort[i])])));
 document.body.append(stages);
 document.body.prepend(mk('div','pv-aurora',''));
 function stageOf(){const m=document.getElementById('main');if(!m)return -1;const has=(c)=>!!m.querySelector('.screen.'+c);
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
 function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
-  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?'work':'';if(has('approve'))return 'approve';if(has('books'))return 'books';
+  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?(INJ.flag?'workInj':'work'):'';if(has('approve'))return 'approve';if(has('books'))return 'books';
   if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 function v2(){
-  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g;void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
-   if(m0&&cap.parentElement!==m0&&g)m0.prepend(cap);else if(m0&&cap.parentElement===m0&&m0.firstElementChild!==cap)m0.prepend(cap)}
+  {const mm=document.getElementById('main');const small=innerWidth<1200;
+   if(mm&&small&&stages.parentElement!==mm){stages.classList.add('inmain');mm.prepend(stages)}else if(!small&&stages.parentElement!==document.body){stages.classList.remove('inmain');document.body.append(stages)}
+   if(mm&&small&&stages.parentElement===mm&&mm.firstElementChild!==stages)mm.prepend(stages);
+   if(mm&&chip.parentElement!==mm&&mm.querySelector('.screen:not(.start)'))(stages.parentElement===mm?stages:mm.firstElementChild)?.after?.(chip);
+   const res=mm&&mm.querySelector('.screen.work .result');if(res&&INJ.flag&&!res.querySelector('.pv-warn')){const w=mk('div','pv-warn',[mk('b','',PC.inj.h),mk('p','',PC.inj.p)]);const big=res.querySelector('p.big');if(big)res.insertBefore(w,big);else res.prepend(w)}}
+  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
+   if(m0&&g){const anchor=chip.parentElement===m0?chip:stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
   [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
   const m=document.getElementById('main');if(!m)return;
@@ -546,8 +606,6 @@ function v2(){
   if(document.body.classList.contains('pv-noneg'))for(const a of m.querySelectorAll('.screen.company a, .screen.company button, .screen.did a, .screen.did button'))if(/negotiat/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;
   // The finish: one main way on, the rest quiet; nothing repeated from the landing.
   for(const sc of m.querySelectorAll('.screen.company, .screen.did')){for(const a of sc.querySelectorAll('a, button'))if(/star on github|open purser cloud|download as json|watch agents negotiate/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;for(const x of sc.querySelectorAll('li.wide'))x.hidden=true}
-  // Works with: the host's own rail too (its official logo, unaltered).
-  const ww=[...m.querySelectorAll('.screen.start *')].find((e)=>e.childElementCount===0&&/^works with$/i.test((e.textContent||'').trim()));if(ww&&!ww.parentElement.querySelector('.hw-airwallex'))ww.after(logoChip('airwallex'));
   // Recording mode: the refusal's proof open, the two fingerprints large.
   if(document.body.classList.contains('present')){const rc=m.querySelector('.card.refusal');const hs=rc&&rc.querySelector('details .hashes');const df=rc&&rc.querySelector(':scope > .diff');if(hs&&df)df.after(hs)}
   const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'));const ch=mk('p','pv-chain',[PC.partners.chain+' ']);const l=mk('a','',PC.partners.chainLink);l.href=PC.partners.chainHref;l.target='_blank';l.rel='noopener';ch.append(l);const x2=rf.querySelector('.proof.xfer');(x2||rf.querySelector('.rule')||rf.lastChild).after(ch)}
@@ -563,9 +621,10 @@ if(SHELL){
   document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('p','pv-guide',SH.guide),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
 }
 function drawUse(){
-  if(!useBox)return;
   const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
   const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
+  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',calls.length?calls.length+' '+SH.calls+' · '+usd(tot):SH.none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-6).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':''))])))}
+  if(!useBox)return;
   const flash=calls.length&&useBox.dataset.tot!==String(tot);useBox.dataset.tot=String(tot);
   useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
 }
@@ -595,13 +654,13 @@ const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
   const res=await real(input,init);
   try{
-    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
+    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'||/^\/v1\/engine\/proposals\/[^/]+\/pay$/.test(p))){
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
         if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear()}
-        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);}}}
+        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
           const t=sent&&sent.terms||{};
@@ -708,9 +767,9 @@ __SHARED__
 const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
   const res=await real(input,init);
-  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
+  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
-      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number')takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});
+      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
   }catch(e){}
   return res;
@@ -726,7 +785,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, guide: PRESENT_GUIDE, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
