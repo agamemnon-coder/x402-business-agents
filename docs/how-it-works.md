@@ -5,7 +5,7 @@ Moved from the [README](../README.md) on 15 November, to keep it short.
 <details><summary><b>The code in 5 files, one payment end to end, and the worst case the policy allows</b></summary>
 
 Northwind Outdoor, the example company, is an outdoor wholesaler that sells live stock data to retailers per query: the
-kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Alta on-chain mandate. Alta holds
+kit's data business. Purser gives each AI agent of a small company its own Airwallex card and its own Alta (formerly Metal) on-chain mandate. Alta holds
 each agent's on-chain budget, Airwallex holds each card's limit, Purser's code holds the rest; the CFO approves anything
 beyond them, with a passkey (Face ID on iPhone) on the exact terms.
 

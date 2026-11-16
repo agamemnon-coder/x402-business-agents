@@ -26,7 +26,7 @@ const OTHERS = /\b(Pleo|Ramp|Brex|Spendesk|Payhawk|Expensify|Mercury|Revolut|Wis
 
 // The README's banner (13 Nov, evening, owner): drawn from scripts/readme-banner.html, dark and light; Home's own
 // picture (hero-*.webp) moved to the gallery.
-const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Audit log anchored on chain" width="100%"></picture></a>`;
+const BANNER = `<a href="https://kit11.max-31b.workers.dev/"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/banner-dark.png"><img src="docs/assets/readme/banner-light.png" alt="Purser: AI agents spend. You sign off. Face ID on the exact terms · Limits enforced in 3 layers · Books matched to the cent" width="100%"></picture></a>`;
 
 const README_BUILT_ON = "**Built on Airwallex.** Purser's agent cards and payments run on Airwallex's API (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).";
 

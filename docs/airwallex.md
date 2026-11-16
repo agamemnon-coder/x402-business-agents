@@ -17,6 +17,7 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 | 10 Nov | Three test companies on connected accounts | [log](runs/2026-11-10-platform-e2e.md), [facts](runs/2026-11-10-platform-e2e/facts.json), [calls](runs/2026-11-10-platform-e2e/calls.jsonl) |
 | 10 Nov | Payment acceptance: an invoice paid by test card | [log](runs/2026-11-10-payment-acceptance-sandbox.md) |
 | 10 Nov | Two locks: Airwallex's approval workflow | [log](runs/2026-11-10-airwallex-two-locks.md) |
+| 12 Nov | Two locks: approved, then PAID | [log](runs/2026-11-12-airwallex-two-locks-paid.md) |
 
 Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).
 
@@ -181,7 +182,7 @@ Run of record: [two locks on one payout, 10 November](runs/2026-11-10-airwallex-
 |---|---|
 | 1. Signed in Purser | Proposal P-0001, EUR 240.00 by SWIFT, signed by a labelled virtual test passkey (no person's Face ID in this run). Terms hash `f9ba0fe8758eadbef3b48f23e571ea92e3208f4ebd802703b413a414d444ac28`. |
 | 2. Held at Airwallex | `POST /transfers/create`, once: transfer `4074d684-4704-406c-a527-2832753baf4f`, answered `IN_APPROVAL`, with the signed hash in its metadata. A read-back a few minutes later still said `IN_APPROVAL`. Purser did not simulate past it and did not send it again. |
-| 3. Approved in the web app | State at the time of writing, 12 November, in the record's words: "Not completed." and "It stays `IN_APPROVAL`: without a person approving it in Airwallex it cannot be paid." The record is updated if that changes; the record is what counts. |
+| 3. Approved in the web app (12 Nov) | The owner approved it; then `PAID`, settlement simulated: [record](runs/2026-11-12-airwallex-two-locks-paid.md). |
 
 What Purser does with the wait (`src/airwallex/approvals.ts`, `test/airwallex-approvals.test.ts`): it follows the transfer with `GET /transfers/{id}` and only reads. `SCHEDULED` and then `PAID` are booked; `APPROVAL_REJECTED`, `APPROVAL_RECALLED` and `APPROVAL_BLOCKED` are shown as not paid. If the amount at Airwallex no longer matches what the CFO signed, Purser raises an alarm and does not book it.
 

@@ -2,7 +2,7 @@
 
 Moved from the [README](../README.md) on 15 November, to keep it short.
 
-The Starter Kit 11 brief's flow ("x402 Business Agents", the builder guide), step by step, run live once on 3 November on Alta testnet and the Airwallex sandbox with test money. Every id opens on the explorer or in its record.
+The Starter Kit 11 brief's flow ("x402 Business Agents", the builder guide), step by step, run live once on 3 November on Alta (formerly Metal) testnet and the Airwallex sandbox with test money. Every id opens on the explorer or in its record.
 
 | Kit 11 step, in the brief's words | What Purser does | Proof, 3 Nov main run |
 |---|---|---|

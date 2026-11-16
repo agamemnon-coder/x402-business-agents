@@ -41,7 +41,7 @@ describe("the README's At a glance", () => {
 
   // The final audit (15 Nov): /proof's band and /airwallex/calls count the calls differently, so the README names no count.
   it("names no Airwallex call count, links every call, and quotes the verification report's summary", () => {
-    expect(lines[4]).toContain("**Every Airwallex sandbox call**, listed with what came back and its record: [/airwallex/calls]");
+    expect(lines[4]).toContain("**The Airwallex sandbox calls in the run records**, listed with what came back and its record: [/airwallex/calls]");
     expect(GLANCE).not.toMatch(/\b(?:150|154)\b/);
     const v = JSON.parse(read("docs/evidence/verification-2026-11-15.json")) as { summary: string };
     expect(lines[5]).toContain(`the live report: ${v.summary} (`);
@@ -54,6 +54,6 @@ describe("the README's At a glance", () => {
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
     expect(row).toContain(`Claude-LIVE_%C2%B7_${split(agentRun().record).byClaude}_decisions`);
     const w = JSON.parse(read("docs/evals/worst-case-summary.json")) as { purser_script: Record<string, { wrong_payments: number }> };
-    expect(row).toContain(`worst--case_AI-${Math.max(...Object.values(w.purser_script).map((r) => r.wrong_payments))}_wrong_payments`);
+    expect(row).toContain(`worst--case_AI_%28offline_eval%29-${Math.max(...Object.values(w.purser_script).map((r) => r.wrong_payments))}_wrong_payments`);
   });
 });
