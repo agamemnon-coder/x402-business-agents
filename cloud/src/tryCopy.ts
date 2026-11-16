@@ -710,7 +710,7 @@ export const COMPANY = {
  * "Verify it yourself" (15 Nov): on Paid and on the refusal, the payment's proof file (the pay route's own bundle,
  * src/proof/bundle.ts); on the finish, the site's /verify, where the visitor's browser checks it without our server.
  */
-export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json" };
+export const VERIFY_YOURSELF = { download: "Download the proof (JSON)", verify: "Verify this payment yourself", file: "purser-proof.json", cmd: "In a clone of the repo: npm run verify-bundle -- purser-proof.json" };
 
 export const FINISH_LINKS = { cloud: "https://purser-try.max-31b.workers.dev/#/guest", repo: "https://github.com/agamemnon-coder/x402-business-agents",
   // 15 Nov: the agents' negotiation (cloud/src/try/negotiatePage.ts), a page of its own; same tab, so it finds this company.

@@ -734,7 +734,7 @@ const TOKEN=(()=>{const m=/^#([ej])=([A-Za-z0-9_.~-]{1,256})$/.exec(location.has
 
 // The state: one object, kept in this tab (sessionStorage), or in memory only where storage throws.
 const KEY='purser.try';
-const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','cost','proof'];
+const KEEP=['tenant','session','visitor_token','expires_at','pool','mode','screen','after','proposal','cred','settled','t0','t1','passed','awx','cost','proof','refusedProof'];
 const S={tenant:null,session:null,visitor_token:null,expires_at:null,pool:null,mode:null,screen:null,after:0,proposal:null,cred:null,settled:null,t0:null,t1:null,passed:null};
 const save=()=>{const o={};for(const k of KEEP)o[k]=S[k];try{sessionStorage.setItem(KEY,JSON.stringify(o))}catch(e){}};
 const restore=()=>{try{const o=JSON.parse(sessionStorage.getItem(KEY)||'null');if(o&&typeof o==='object')for(const k of KEEP)if(o[k]!==undefined)S[k]=o[k]}catch(e){}};
@@ -1701,6 +1701,8 @@ screen('pay',{heading:C.pay.heading,draw(box){
     const raw=el('pre','raw mono');raw.textContent=r.text;
     proof.append(el('details','',[el('summary','',Y.raw),raw]));
     card.append(proof);
+    // 16 Nov (Max): the refusal's proof is kept, so the end screen offers it again beside "Verify this payment yourself".
+    if(j.proof&&typeof j.proof==='object'){S.refusedProof=j.proof;save()}
     const pdl=proofDl(j.proof);if(pdl)card.append(el('p','',pdl));
     card.append(endActs());
     return card;
@@ -1896,6 +1898,9 @@ screen('company',{heading:C.company.heading,draw(box){
   const rails=out('btn primary big proofl',[el('span','',Y.rails),icon('arrow-right',18)],PROOF);
   const more=el('div','acts more',[out('btn quiet verifyl',[el('span','',C.verifyYourself.verify),icon('external-link',14)],C.verifyYourself.url),out('btn quiet',[icon('play',14),el('span','',Y.film)],C.film),out('btn quiet',[el('span','',Y.cloud),icon('external-link',14)],C.finish.cloud),out('btn quiet',[el('span','',Y.star),icon('external-link',14)],C.finish.repo)]);
   {const n=C.finish.negotiate;if(n){const a=el('a','btn quiet negl',[el('span','',n.label),icon('arrow-right',14)]);a.href=n.href;more.append(a)}}
+  // 16 Nov (Max: "after the run we receive an option to download the json and put it in the terminal"): this run's proof
+  // (the refusal's when the one cent was tried, else the payment's), first among the ways on, with the command beside it.
+  {const dl=proofDl(S.refusedProof||S.proof);if(dl){dl.classList.add('finishdl');more.prepend(dl);more.append(el('p','hint mono cmdl',C.verifyYourself.cmd))}}
   // The records: the PDF a person reads, the JSON for developers.
   const dl=btn(Y.download);const line=el('p','muted');line.hidden=true;
   const json=el('button','link json',Y.json);json.type='button';json.addEventListener('click',()=>download(true));
