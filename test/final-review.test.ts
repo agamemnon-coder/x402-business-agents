@@ -70,7 +70,7 @@ describe("the final review (13 Nov)", () => {
     const handMade = ["trailer-thumb.jpg", "walkthrough-thumb.jpg", "film-thumb.jpg" /* 15 Nov: the film's YouTube thumbnail */,
       "architecture-dark.svg", "architecture-light.svg", "deployment-dark.svg", "deployment-light.svg" /* 15 Nov: the Architecture section's two diagrams */,
       ...["stats", "terminal-verify", "system-map"].flatMap((n) => [`${n}-dark.svg`, `${n}-light.svg`]) /* 15 Nov (readme-wow): drawn by scripts/readme-wow-svg.ts */,
-      "promo.webp" /* 15 Nov (Max): the animated system map and payment steps, rendered from the LinkedIn promo */];
+      "promo.webp" /* 16 Nov (Max): the animated payment story at 30 fps, rendered from scripts/readme-promo.html with the live /try run's values */];
     const shots = [...readme.matchAll(/(?:src|srcset)="docs\/assets\/readme\/([\w-]+\.(?:webp|gif|png|svg))"/g)].map((m) => m[1]!);
     const script = read("scripts/readme-shots.ts");
     expect(shots.length).toBeGreaterThanOrEqual(13); // the banner, the 2x2 gallery, Home's picture and the partner pages
