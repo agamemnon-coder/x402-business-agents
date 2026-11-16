@@ -30,8 +30,10 @@ if (!token) throw new Error("no relay token");
 
 writeFileSync(resolve(worker, "src/pages.gen.ts"), pagesModule(buildPages()));
 if (!existsSync(wrangler)) run("npm", ["ci", "--no-audit", "--no-fund"]);
-run(process.execPath, [wrangler, "deploy"]);
-run(process.execPath, [wrangler, "secret", "put", "RELAY_TOKEN"], token);
+/** wrangler with these arguments, through node. */
+const wr = (args: string[], input?: string) => run(process.execPath, [wrangler, ...args], input);
+wr(["deploy"]);
+wr(["secret", "put", "RELAY_TOKEN"], token);
 
 const cfg = await relayConfig();
 const res = await fetch(`${cfg.url}/api/snapshot`).catch((e: Error) => ({ status: 0, statusText: e.message }));
