@@ -97,6 +97,12 @@ export const FX_QUOTE_MAX_MARKUP_BPS = 50;
  * company's seed (setting fx.max_markup_bps, src/world/settings.ts fxMarkupLimitBps); every other company keeps 50.
  */
 export const TRY_FX_QUOTE_MAX_MARKUP_BPS = 150;
+/**
+ * The hands-on demo's test companies (t_try_*) only (owner, 16 Nov: visitors must see an agent pay an invoice on its
+ * own): the CFO's limit an agent may pay a supplier invoice alone up to, in EUR only. Set by the company's seed
+ * (setting ap.alone_eur, src/world/settings.ts aloneLimit); every other company has none, so the CFO signs every invoice.
+ */
+export const TRY_ALONE_LIMIT = { currency: "EUR", amount: "500.00" } as const;
 
 /** A card works this many days from issue; Airwallex declines everything after (its end date, `active_to`). */
 export const CARD_ACTIVE_DAYS = 90;

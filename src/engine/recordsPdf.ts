@@ -68,6 +68,7 @@ const EVENT_WORDS: Record<string, string> = {
   "policy.version": "The CFO's policy was recorded",
   "proposal.created": "A payment was filed for approval",
   "proposal.approved": "The CFO signed the exact terms with the passkey",
+  "proposal.within_limit": "Within the CFO's limit, Purser's code approved the exact terms for the agent to pay alone",
   "proposal.executing": "The signed payment started",
   "proposal.executed": "The signed payment was made",
   "fx.converted": "Currency was converted on the simulated bank",

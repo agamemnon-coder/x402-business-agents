@@ -128,7 +128,7 @@ const EVENTS: Record<string, Pick> = {
   // the agent's one-line reason (masked, its first sentence), what code required, enforced or overrode, and the request
   // that gave the answer. The codes of code's findings, never their words; never the payment's terms.
   "ap.checker_decided": (p) => ({
-    ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires")(p), codes: codes(p.code_findings),
+    ...copy("source", "model", "action", "outcome", "overridden", "overridden_by", "code_requires", "code_rule")(p), codes: codes(p.code_findings),
     reason: firstSentence(p.reason, 160), enforced: firstSentence(p.why, 160), request_id: lastRequest(p.request_ids),
     // 15 Nov (jury): how many concerns the agent itself named (its findings: a count, never their words), so /try can
     // say "no concerns found" only when the agent found none.
@@ -173,6 +173,8 @@ const EVENTS: Record<string, Pick> = {
   // Proposals and approvals (src/policy/approvals.ts).
   "proposal.created": copy("kind"),
   "proposal.approved": copy("method"),
+  // 16 Nov: a payment within the CFO's limit to pay alone, approved by code (src/policy/approvals.ts approveWithinLimit): the limit.
+  "proposal.within_limit": copy("method", "limit"),
   "proposal.rejected": copy("method"),
   "proposal.cosigned": copy("method"),
   "proposal.executing": NONE,

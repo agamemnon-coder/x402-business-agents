@@ -80,6 +80,9 @@ export const PAID_ORIGINAL: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-17"
 export const PAID_SAMPLE = "again";
 /** The clean sample: a second run in the same company files a fresh invoice (src/engine/host.ts uploadSample). */
 export const CLEAN_SAMPLE = "clean";
+/** The sample the agent pays alone: Bergtex's small invoice, EUR 120.00, within the test company's limit (owner, 16 Nov). */
+export const ALONE_SAMPLE = "within";
+const WITHIN_LIMIT: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-23", amountCents: 12_000 };
 
 /**
  * The tray, in order. Each outcome holds in a fresh test company, in any order: the duplicates meet the seeded paid
@@ -91,6 +94,9 @@ export const SAMPLE_SOURCES: { key: string; title: string; filename: string; tex
   { key: "renumbered", title: "A paid invoice under a new number", filename: "bergtex-BTX-2026-17A.pdf", text: invoiceText({ ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }), fields: { ...PAID_ORIGINAL, invoiceNo: "BTX-2026-17A" }, expect: { kind: "invoice", status: "needs_review", finding: "possible_duplicate" } },
   { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf", text: invoiceText({ ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }), fields: { ...CLEAN, invoiceNo: "BTX-2026-22", amountCents: 238_000, iban: "DE44500105175407324931" }, expect: { kind: "invoice", status: "blocked", finding: "possible_fraud" } },
   { key: "unknown", title: "An invoice from a new supplier", filename: "zeeland-ZV-4471.pdf", text: NEW_SUPPLIER, expect: { kind: "invoice", status: "needs_vendor", finding: "new_supplier" } },
+  // 16 Nov (owner): a small invoice from the supplier on file, to its account on file, inside the agent's limit to pay
+  // alone (TRY_ALONE_LIMIT, EUR 500.00): ready like the clean one, and on Pay the agent pays it alone (src/ap/pay.ts payAlone).
+  { key: ALONE_SAMPLE, title: "A small invoice inside the agent's limit", filename: "bergtex-BTX-2026-23.pdf", text: invoiceText(WITHIN_LIMIT), fields: WITHIN_LIMIT, expect: { kind: "invoice", status: "ready" } },
 ];
 
 /** Who a demo invoice is billed to: the visitor's test company (a sample is made once, for any company). */

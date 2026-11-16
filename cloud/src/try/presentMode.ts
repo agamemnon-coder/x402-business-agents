@@ -75,7 +75,7 @@ export const V2_COPY = {
   approve: {
     heading: "Approve the transfer.",
     sheet: "Locked payment terms",
-    limit: "Above the agent's limit, so it waits for the CFO. In this demo the limit is EUR 0; below a CFO's limit, agents pay on their own.",
+    limit: "Above the agent's limit, so it waits for the CFO. In this demo the limit is EUR 500.00; at or below it, the agent pays on its own.",
     signs: "Your approval locks exactly these terms.",
     approve: "Approve & sign {amount} with {method}",
   },

@@ -12,13 +12,13 @@
 // host is made over it, so no file is ever written.
 import type Anthropic from "@anthropic-ai/sdk";
 import { seedTreasury } from "../agents/euroBill.js";
-import { payableAccount } from "../ap/checkerCore.js";
-import { fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
+import { limitRule, payableAccount } from "../ap/checkerCore.js";
+import { aloneLimit, fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
 import { SEEDED_PAID_REASON } from "../ap/books.js";
 import { docStoreOf } from "../ap/docStore.js";
 import { clearPossibleDuplicate, ingestDocument, type IngestResult } from "../ap/inbox.js";
-import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments } from "../ap/pay.js";
+import { earlyPayer, payApInvoice, rejectApInvoice, syncPayments, type PaidAlone } from "../ap/pay.js";
 import type { EarlyPayer } from "../ap/payerAgent.js";
 import type { Asker } from "../ap/read.js";
 import { apInvoice, apInvoices, setStatus, type ApInvoiceRow } from "../ap/store.js";
@@ -117,6 +117,11 @@ export interface EngineDeps {
    * as its setting fx.max_markup_bps. Absent: FX_QUOTE_MAX_MARKUP_BPS. Only a try company sets it (TRY_FX_QUOTE_MAX_MARKUP_BPS).
    */
   fxMarkupBps?: number;
+  /**
+   * The CFO's limit an agent may pay a supplier invoice alone up to (owner, 16 Nov), written by the seed as the company's
+   * setting ap.alone_eur. Absent: none, and the CFO signs every invoice. Only a try company sets it (TRY_ALONE_LIMIT).
+   */
+  aloneLimit?: { currency: "EUR"; amount: string };
 }
 
 /** What an upload, a sample or a composed invoice answers. */
@@ -167,6 +172,12 @@ export interface InvoiceView {
   checks_passed?: ("not_paid_before" | "bank_on_file" | "known_supplier")[];
   doc_sha256: string;
   proposal: ProposalView | null;
+  /**
+   * 16 Nov: the company's limit to pay an invoice alone, and whether this invoice's total is within it (src/ap/checkerCore.ts
+   * limitRule); null when the company sets none (the CFO signs every invoice). Within it, Pay lets the agent pay alone
+   * when the agents and code's checks say pay (src/ap/pay.ts payAlone).
+   */
+  alone_limit?: { currency: string; amount: string; within: boolean } | null;
 }
 
 /** What a negotiation agreed, as the hands-on demo's route hands it to the engine (EngineHost.negotiated). */
@@ -421,6 +432,8 @@ export class EngineHost {
       const { db, rails } = this.deps;
       const fx = this.deps.fxMarkupBps;
       if (fx !== undefined && getSetting(db, "fx.max_markup_bps", "") !== String(fx)) setSetting(db, "system", "fx.max_markup_bps", String(fx), this.now());
+      const alone = this.deps.aloneLimit;
+      if (alone && alone.currency === "EUR" && getSetting(db, "ap.alone_eur", "") !== alone.amount) setSetting(db, "system", "ap.alone_eur", alone.amount, this.now());
       try { await seedTreasury(db, rails.rail, rails.sim); } finally { this.deps.afterMoney?.(); }
       if (this.deps.seedPaid) await this.seedPaidOriginal();
     });
@@ -497,11 +510,22 @@ export class EngineHost {
       checks_passed: checksPassed(inv),
       doc_sha256: inv.doc_sha256,
       proposal: inv.proposal_id ? this.proposal(inv.proposal_id) : null,
+      alone_limit: this.aloneLimitOf(inv),
     };
   }
 
-  /** Files the invoice's payment for the CFO's approval. A reason not to (the engine's own words) comes back, and no proposal is made. */
-  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }> {
+  private aloneLimitOf(inv: ApInvoiceRow): { currency: string; amount: string; within: boolean } | null {
+    const limit = aloneLimit(this.deps.db);
+    return limit && { ...limit, within: limitRule(limit, inv.currency, inv.total).rule === null };
+  }
+
+  /**
+   * Files the invoice's payment for the CFO's approval. A reason not to (the engine's own words) comes back, and no
+   * proposal is made. Within the company's limit to pay alone, when the agents and code's checks say pay (src/ap/pay.ts
+   * payAlone), code approves the exact terms and the agent's payment runs at once, like an approved one: `alone` says
+   * so, and `settled` what followed (the proposal comes back EXECUTED, or FAILED with the reason in settled.error).
+   */
+  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView; alone?: PaidAlone; settled?: Settled } | { ok: false; reason: string }> {
     return this.act(async () => {
       const { db, rails } = this.deps;
       try {
@@ -511,9 +535,11 @@ export class EngineHost {
         const early = this.takeEarlyPayer(invoiceId);
         const out = await this.withClaude(`engine.propose:${invoiceId}`, (reader, agents) => payApInvoice(db, rails.rail, invoiceId, this.now(), this.deps.reviewNoteOnPay === false ? undefined : reader, { on: agents.on, claude: agents.client, planStands: true, ...(early ? { early } : {}) }));
         if (out.kind !== "proposed") return { ok: false, reason: out.reason };
+        // The agent pays it alone: approved by code within the limit, run now as any approved payment is.
+        const settled = out.alone ? await this.pay(out.proposal.proposal_id) : null;
         const proposal = this.proposal(out.proposal.proposal_id);
         if (!proposal) return { ok: false, reason: `${out.proposal.proposal_id} was filed but is not in the ledger` };
-        return { ok: true, proposal };
+        return { ok: true, proposal, ...(out.alone && settled ? { alone: out.alone, settled } : {}) };
       } catch (e) {
         return { ok: false, reason: message(e) };
       } finally {

@@ -39,7 +39,7 @@ export interface CheckerOutcome {
   /** Whether code made the outcome stricter than what Claude decided. Code's own fallback is never overridden. */
   overridden: boolean;
   /** What code alone requires for this invoice, and why, in code's words (codeRequires). */
-  required: { action: string; why: string };
+  required: { action: string; by?: string | null; why: string };
   run: AgentRun;
   task: string;
   provenance: RunProvenance;
@@ -98,7 +98,7 @@ export async function runChecker(db: DB, c: InvoiceCase, findings: Finding[], op
   const enforced = enforce(c, decision, findings);
   const provenance = runProvenance(db, CHECKER_AGENT, opts.task, run, source === "claude", "the payables checks decide alone (the Checker agent was unavailable or did not decide)");
   const need = codeRequires(c, findings);
-  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, run, task: opts.task, provenance, precedents: (c.precedents ?? []).map((p) => p.case.ref), script: scriptOn(c, findings) };
+  return { source, decision, enforced, overridden: source === "claude" && enforced.overridden_by !== null, required: { action: need.action, by: need.by, why: need.why }, run, task: opts.task, provenance, precedents: (c.precedents ?? []).map((p) => p.case.ref), script: scriptOn(c, findings) };
 }
 
 /**
@@ -110,7 +110,7 @@ export function enforceAgain(out: CheckerOutcome, c: InvoiceCase, findings: Find
   const decision: CheckerDecision = out.source === "claude" ? out.decision : { action: fallback.action, reason: fallback.reason, findings: fallback.findings };
   const enforced = enforce(c, decision, findings);
   const need = codeRequires(c, findings);
-  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null, required: { action: need.action, why: need.why }, script: scriptOn(c, findings) };
+  return { ...out, decision, enforced, overridden: out.source === "claude" && enforced.overridden_by !== null, required: { action: need.action, by: need.by, why: need.why }, script: scriptOn(c, findings) };
 }
 
 /**
@@ -139,6 +139,8 @@ export function recordChecked(db: DB, invoiceId: string, out: CheckerOutcome, st
     action: out.decision.action, reason: out.decision.reason, agent_findings: out.decision.findings,
     code_findings: out.enforced.findings.map((f) => ({ code: f.code, level: f.level })) as unknown as Json,
     outcome: out.enforced.outcome, overridden_by: out.enforced.overridden_by, overridden: out.overridden, code_requires: out.required.action, why: out.required.why.slice(0, 600), status,
+    // 16 Nov: the rule or finding code's requirement rests on (a limit's rule such as above_alone_limit, a finding's code), so a page names it.
+    ...(out.required.by ? { code_rule: out.required.by } : {}),
     task: out.task, run_id: out.provenance.run_id, request_ids: out.provenance.request_ids, origin: out.provenance.origin as Json | null,
     ...(out.run.note ? { note: out.run.note } : {}),
     // The always-pay script on the same case (scriptOn): what code would have done had the script decided.

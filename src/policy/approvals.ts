@@ -229,6 +229,61 @@ export function decide(db: DB, args: DecideArgs, now = new Date()): ProposalStat
   }).immediate();
 }
 
+/** The kinds an agent may pay alone within the CFO's limit: a supplier invoice's payment, nothing else. */
+const ALONE_KINDS = new Set(["invoice_payment", "supplier_payment"]);
+/** The audit row of a payment approved by code within the CFO's limit to pay alone (no person signed it). */
+export const WITHIN_LIMIT = "proposal.within_limit";
+/** The approval method of such a payment: the CFO's policy, applied by code (approvals.method). */
+export const POLICY_METHOD = "policy";
+
+/**
+ * A supplier invoice's payment approved by code, without a person, because its exact terms are within the CFO's limit
+ * to pay alone (owner, 16 Nov: on /try a visitor sees an agent pay an invoice on its own). Only for an invoice payment
+ * that waits for approval on its own (no batch), whose stored terms still hash to its hash and ask a plain amount at or
+ * below the limit in the limit's own currency, and that needs no second person or second key: anything else is left to
+ * the CFO, untouched, with the reason. The caller decides whether the agents and code's checks said pay
+ * (src/ap/pay.ts payAlone); this is the last check, on the terms that will run. The approval is recorded as the policy's
+ * (method "policy", approver "Purser's code"), the executor runs it like any approved payment, and every money step
+ * records code's rule as its origin (src/executors/index.ts approvalOrigin).
+ */
+export function approveWithinLimit(db: DB, args: { proposalId: string; limit: { currency: string; amount: string }; rule: string; agent: string }, now = new Date()): { ok: true } | { ok: false; reason: string } {
+  const plain = /^\d{1,9}\.\d{2}$/;
+  const cents = (a: string) => Math.round(Number(a) * 100);
+  return db.transaction((): { ok: true } | { ok: false; reason: string } => {
+    const no = (reason: string) => ({ ok: false as const, reason });
+    const p = get(db, args.proposalId);
+    if (p.status !== "PENDING_APPROVAL") return no(`${p.proposal_id} is ${p.status}, not waiting for approval`);
+    if (!ALONE_KINDS.has(p.kind)) return no(`${p.proposal_id} is a ${p.kind}: only an invoice's payment may be paid alone`);
+    let terms: { kind?: unknown; amount?: unknown; currency?: unknown };
+    try { terms = JSON.parse(p.terms_json) as typeof terms; } catch { return no(`${p.proposal_id}'s terms cannot be read`); }
+    let same: boolean;
+    try { same = terms.kind === p.kind && termsHash(terms as Terms) === p.terms_sha256; } catch { same = false; }
+    if (!same) return no(`${p.proposal_id}'s stored terms are not the ones filed`);
+    if (BATCHABLE.has(p.kind) && openBatchOf(db, p.proposal_id)) return no(`${p.proposal_id} is in a batch: the CFO signs the batch`);
+    if (expireIfDue(db, p, now)) return no(`${p.proposal_id} expired at ${p.expires_at}`);
+    const { amount, currency } = terms;
+    if (!plain.test(args.limit.amount) || cents(args.limit.amount) <= 0) return no("no limit to pay alone is set");
+    if (typeof amount !== "string" || !plain.test(amount) || currency !== args.limit.currency || cents(amount) > cents(args.limit.amount)) {
+      return no(`${String(currency)} ${String(amount)} is not within the ${args.limit.currency} ${args.limit.amount} the agent may pay alone`);
+    }
+    if (fourEyes(db, p)) return no(`${p.proposal_id} needs two people's approval (four eyes)`);
+    const highRisk = secondKeyReasons(db, p, now);
+    if (highRisk.length) return no(`${p.proposal_id} is high-risk (${highRisk.join("; ")}): the CFO signs it with two keys`);
+    const policy = policyVersion(db, now);
+    const approver = "Purser's code";
+    db.prepare(
+      `INSERT INTO approvals (proposal_id, decision, approved_sha256, approver, method, typed_prefix, note, created_at, policy_version)
+       VALUES (?, 'APPROVED', ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(p.proposal_id, p.terms_sha256, approver, POLICY_METHOD, p.terms_sha256.slice(0, 8), args.rule.slice(0, 600), now.toISOString(), policy.version);
+    transition(db, p.proposal_id, "PENDING_APPROVAL", "APPROVED");
+    audit(db, "system", WITHIN_LIMIT, p.proposal_id, {
+      terms_sha256: p.terms_sha256, approver, method: POLICY_METHOD, agent: args.agent, rule: args.rule.slice(0, 600),
+      amount, currency, limit: `${args.limit.currency} ${args.limit.amount}`, policy_version: policy.version,
+    }, now);
+    return { ok: true };
+  }).immediate();
+}
+
 /**
  * The lines of a batch the CFO just decided: each line's own proposal gets the same decision, recorded against its own
  * terms hash with the batch's id and hash beside it (so a line's approval proves which signed list it was in). Runs in
