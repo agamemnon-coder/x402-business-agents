@@ -25,7 +25,7 @@ Test money only. Live: Claude's decisions, Airwallex sandbox calls, Alta testnet
 - Verify it yourself: every /try payment hands over a proof file; https://kit11.max-31b.workers.dev/verify checks the passkey signature in the browser with no server call; `npm run verify-bundle` does it offline. One live verification report, 15 November: 189 checks passed, 3 could not run here, 0 failed: https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/evidence/verification-2026-11-15.md
 - Alta: the audit log's anchor on chain read back MATCH on 15 November (`npm run verify-anchor`): https://github.com/agamemnon-coder/x402-business-agents/blob/main/docs/runs/2026-11-15-anchor-verified.md
 - Reconciled to the cent: the main run's 95 journal entries posted to T:0's sandbox ledger (10 November) and read back on 14 November, every account to the cent, with 0 differences: https://kit11.max-31b.workers.dev/t0
-- Engineering: 7,044 tests passing (docs/assets/test-summary.json); CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 pages (docs/evidence/live-measurement-2026-11-15.json).
+- Engineering: 7,166 tests passing (docs/assets/test-summary.json); CI on every change runs unit tests, the judge replay, Firefox and WebKit browser checks, a secrets scan, a security audit and CodeQL; measured on 15 November: Lighthouse Accessibility and Best Practices 100 on 12 pages (docs/evidence/live-measurement-2026-11-15.json).
 
 ## Proofs you can check
 
