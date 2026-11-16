@@ -540,6 +540,7 @@ body.pv-shell #main p.band { display: none !important; }
 .pv-verify li a { display: inline-block; margin-top: 4px; font-size: 14px; font-weight: 600; }
 .pv-verify .pv-all { display: inline-flex; }
 .pv-verify .foot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+@media (max-width: 1199px) { body.pv-shell.pv-staged .awx-badge { display: none !important; } }
 .pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
 .pv-warn.small { padding: 10px 14px; }
 .pv-warn.small p { font-size: 13px; }
@@ -660,6 +661,12 @@ function v2(){
       const href=r.href==='verify'?(vh&&vh.getAttribute('href')):r.href;if(r.link&&href){const l=mk('a','',r.link+' →');l.href=href;l.target='_blank';l.rel='noopener';kids[1].append(l)}return mk('li','',kids)}));
     const all=mk('a','btn primary big pv-all',V.all+' →');all.href=V.allHref;all.target='_blank';all.rel='noopener';
     const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),ol,all,mk('p','foot',V.foot)]);const pp=sc.querySelector('.pp');if(pp)pp.before(card);else sc.append(card)}
+  // 16 Nov (review of the full run): three figures on the landing, not five; the warning in the green line too; terms are
+  // locked by the Face ID, not before; no raw transfer ids on the paid card (they stay in the proof).
+  for(const pk of m.querySelectorAll('.screen.start ul.rl li .pk'))if(/live runs|decisions by Claude/.test(pk.textContent||'')){const li=pk.closest('li');if(li)li.hidden=true}
+  {const big=m.querySelector('.screen.work .result p.big');if(big&&INJ.flag&&!big.dataset.v2&&/^Checks passed/.test((big.textContent||'').trim())){big.dataset.v2='1';big.textContent='Checks passed · hidden instruction ignored · waiting for your approval.'}}
+  {const sh=m.querySelector('.screen.approve p.sheet-h');if(sh&&!sh.dataset.v2){sh.dataset.v2='1';sh.textContent='Payment terms · your Face ID locks them'}}
+  for(const x of m.querySelectorAll('.screen.books dt, .screen.books span, .screen.books b'))if(!x.closest('details')&&(x.textContent||'').trim()==='Transfer'){const v=x.nextElementSibling;if(v&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test((v.textContent||'').trim())&&!x.hidden){x.hidden=true;v.hidden=true}}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
   const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
