@@ -37,6 +37,8 @@ export const OFFLINE_WORDS: readonly (readonly [hosted: string, offline: string]
   ["'Claude reads the PDF'", "'code reads the PDF (offline: no Claude)'"],
   ["'what Claude read'", "'what code read (offline: no Claude call)'"],
   ["'Airwallex sandbox · test money'", "'simulated bank · test money'"],
+  // Offline the end screen's main button opens this computer's /proof, the recorded sandbox runs: not "live".
+  ["See it run on a live Airwallex sandbox", "See the recorded Airwallex sandbox runs"],
 ];
 
 /** The hosted site's pages and files this server has too (src/cli/judge.ts): the page's links to them stay on this computer. */
