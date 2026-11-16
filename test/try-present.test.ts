@@ -116,6 +116,9 @@ describe("recording mode", () => {
     // A new run clears the kept calls in sessionStorage too, so a reload never shows an earlier run's calls.
     for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toMatch(/CALLS\.clear\(\);keepCalls\(\)/);
   });
+  it("redraws the rail's Airwallex line when the transfer's status changes (16 Nov live run: SCHEDULED beside a PAID card)", () => {
+    for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toContain("aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;");
+  });
   it("starts the hidden-instruction watch before the filing request, so a flag that arrives during it stays (16 Nov live run)", () => {
     for (const kind of ["public", "present"] as const) {
       const { script } = presentExtra(kind);
