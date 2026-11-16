@@ -95,6 +95,16 @@ describe("recording mode", () => {
     expect(script).toContain("Hidden instruction found in this invoice, and ignored");
   });
 
+  it("starts the hidden-instruction watch before the filing request, so a flag that arrives during it stays (16 Nov live run)", () => {
+    for (const kind of ["public", "present"] as const) {
+      const { script } = presentExtra(kind);
+      const wrap = script.slice(script.indexOf("window.fetch=async(input,init)=>{"));
+      expect(wrap.indexOf("noteFiling(")).toBeGreaterThan(-1);
+      expect(wrap.indexOf("noteFiling(")).toBeLessThan(wrap.indexOf("await real(input,init)"));
+      expect(wrap.slice(wrap.indexOf("await real(input,init)"), wrap.indexOf("return res;"))).not.toContain("noteFiling(");
+    }
+  });
+
   it("says a transfer waiting in Airwallex's approval workflow is the second lock, and drops the button that cannot move it", () => {
     const { script } = presentExtra("public");
     expect(script).toContain("Second lock: Airwallex's own approval.");
