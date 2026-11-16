@@ -18,7 +18,7 @@ if (!apiKey) throw new Error("KIT11_ANTHROPIC_API_KEY is not set: the outside ag
 
 const env = Object.fromEntries(Object.entries({ ...process.env, KIT11_AGENT: name }).filter((e): e is [string, string] => typeof e[1] === "string"));
 const mcp = new Client({ name: `${name}-agent`, version: "1.0.0" });
-await mcp.connect(new StdioClientTransport({ command: "npx", args: ["tsx", "src/cli/mcp.ts"], env, stderr: "inherit" }));
+await mcp.connect(new StdioClientTransport({ command: process.execPath, args: ["--import", "tsx", "src/cli/mcp.ts"], env, stderr: "inherit" }));
 const { tools } = await mcp.listTools();
 console.log(`${name}: connected to the agent API; tools: ${tools.map((t) => t.name).join(", ")}`);
 

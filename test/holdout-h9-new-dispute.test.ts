@@ -30,8 +30,9 @@ vi.mock("node:child_process", async (orig) => {
   const real = await orig<typeof import("node:child_process")>();
   return { ...real, spawnSync: (cmd: string, args: string[], o: Parameters<typeof real.spawnSync>[2]) => {
     // s2's own process tests below run tsx for real; the profile's flow (npx tsx src/cli/s2.ts) is stubbed.
-    if (cmd !== "npx") return real.spawnSync(cmd, args, o);
-    spawned.calls.push(args);
+    // The runner starts its CLIs as node --import tsx (16 Nov: npx and the .bin shim do not start on Windows).
+    if (!(cmd === process.execPath && args[0] === "--import" && args[1] === "tsx")) return real.spawnSync(cmd, args, o);
+    spawned.calls.push(args.slice(1));
     return { status: spawned.status, stdout: spawned.stdout, stderr: "" };
   } };
 });
@@ -229,7 +230,7 @@ describe("H9: a dispute that never opened stays refused (live-14)", () => {
     const s2 = (file: string, ...args: string[]) => {
       const env: NodeJS.ProcessEnv = { ...process.env, KIT11_DB: file };
       for (const k of ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "METAL_RPC_URL", "KIT11_AGENTS"]) delete env[k];
-      const r = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
+      const r = spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
       return { code: r.status, out: `${r.stdout}${r.stderr}` };
     };
     const ledger = () => { const dir = mkdtempSync(join(tmpdir(), "kit11-s2h9-")); dirs.push(dir); return join(dir, "world.sqlite"); };

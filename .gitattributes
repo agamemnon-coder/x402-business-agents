@@ -1,0 +1,19 @@
+# Check every text file out with LF line endings, on Windows too (16 Nov: a Windows clone with core.autocrlf=true got
+# CRLF files, and the docs parsers, the README checks and npm run judge read each line with its trailing \r).
+* text=auto eol=lf
+# Kept byte for byte: the ISO 20022 schema is stored with CRLF as published.
+test/fixtures/iso20022/*.xsd -text
+# Binary, never converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.mp4 binary
+*.webm binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.sqlite binary

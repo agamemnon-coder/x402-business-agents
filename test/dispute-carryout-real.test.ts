@@ -205,7 +205,7 @@ describe("s2's early paths as a real process (no Claude, no chain, no keys)", ()
   const s2 = (file: string, ...args: string[]) => {
     const env: NodeJS.ProcessEnv = { ...process.env, KIT11_DB: file };
     for (const k of ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "METAL_RPC_URL", "KIT11_AGENTS"]) delete env[k];
-    const r = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
+    const r = spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
     return { code: r.status, out: `${r.stdout}${r.stderr}` };
   };
   const disputeId = `D-${sha256Hex(readFileSync(resolve(repo, "fixtures/summit-dispute-email.txt"), "utf8")).slice(0, 8)}`;

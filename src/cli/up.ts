@@ -13,7 +13,8 @@ import { osProcesses } from "../ops/processes.js";
 import { asWorldGroup, holdRunnerLock } from "../ops/runnerLock.js";
 
 const root = resolve(import.meta.dirname, "../..");
-const tsx = resolve(root, "node_modules/.bin/tsx");
+const tsx = process.execPath;
+const tsxCli = resolve(root, "node_modules/tsx/dist/cli.mjs"); // node + tsx's own entry: works on Windows too (no .bin shim)
 const MAX_RESTARTS = 5;
 const WINDOW_MS = 10 * 60_000;
 const at = () => new Date().toISOString().slice(11, 19);
@@ -31,7 +32,7 @@ const ledger = openDb();
 holdRunnerLock(ledger, ledger.name, "up", group, osProcesses);
 
 console.log(`${at()} up       health checks`);
-const health = spawnSync(tsx, [resolve(root, "src/cli/health.ts")], { stdio: "inherit", env: process.env, cwd: root });
+const health = spawnSync(tsx, [tsxCli, resolve(root, "src/cli/health.ts")], { stdio: "inherit", env: process.env, cwd: root });
 if (health.status !== 0) {
   console.error(`${at()} up       a required check failed; the runner is not started. The recorded run stays at /demo.`);
   process.exit(1);
@@ -44,7 +45,7 @@ const firstArgs = process.argv.slice(2);
 
 function start(first: boolean): void {
   starts.push(Date.now());
-  child = spawn(tsx, [resolve(root, "src/cli/relay.ts"), ...(first ? firstArgs : [])], { stdio: "inherit", env: envWithoutOrigin(), cwd: root });
+  child = spawn(tsx, [tsxCli, resolve(root, "src/cli/relay.ts"), ...(first ? firstArgs : [])], { stdio: "inherit", env: envWithoutOrigin(), cwd: root });
   console.log(`${at()} up       runner started (pid ${child.pid})`);
   child.on("exit", (code, signal) => {
     child = null;

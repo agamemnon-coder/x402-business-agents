@@ -189,7 +189,7 @@ describe("L2: the CFO can mark a dispute it holds resolved, once; the alert clea
     const s2 = (file: string, ...args: string[]) => {
       const env: NodeJS.ProcessEnv = { ...process.env, KIT11_DB: file };
       for (const k of ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "METAL_RPC_URL", "KIT11_AGENTS"]) delete env[k];
-      const r = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
+      const r = spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/s2.ts"), ...args], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
       return { code: r.status, out: `${r.stdout}${r.stderr}` };
     };
 

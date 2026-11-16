@@ -435,7 +435,7 @@ describe("npm run owners -- record", () => {
     await setup(w.d);
     const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(OWNERS_|KIT11_RELAY_|CLOUDFLARE_|METAL_RPC_URL$)/.test(k)));
     const run = (env: Record<string, string>) => new Promise<{ code: number | null; out: string; err: string }>((done) => {
-      execFile(join(REPO, "node_modules/.bin/tsx"), ["src/cli/ownersExecute.ts", "record"], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, "world.sqlite"), ...env }, timeout: 220_000 }, (err, stdout, stderr) => {
+      execFile(process.execPath, [join(REPO, "node_modules/tsx/dist/cli.mjs"), "src/cli/ownersExecute.ts", "record"], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, "world.sqlite"), ...env }, timeout: 220_000 }, (err, stdout, stderr) => {
         done({ code: err ? (typeof err.code === "number" ? err.code : null) : 0, out: stdout, err: stderr });
       });
     });

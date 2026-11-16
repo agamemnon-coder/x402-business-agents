@@ -110,7 +110,7 @@ function snapshot(step: string): void {
 }
 
 function cli(script: string, ...args: string[]): string {
-  const r = spawnSync("npx", ["tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, ["--import", "tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const text = `${r.stdout ?? ""}${r.stderr ?? ""}`.split("\n").filter((l) => !/ExperimentalWarning|trace-warnings/.test(l)).join("\n");
   for (const l of text.split("\n").slice(-40)) if (l.trim()) say(`  ${l}`);
   if (r.status !== 0) throw new Error(`${script} ${args.join(" ")} exited ${r.status}`);
@@ -120,7 +120,7 @@ function cli(script: string, ...args: string[]): string {
 let viewer = "";
 function startRunner(): Promise<void> {
   return new Promise((ok, fail) => {
-    const p = spawn("npx", ["tsx", "src/cli/relay.ts", "--local"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const p = spawn(process.execPath, ["--import", "tsx", "src/cli/relay.ts", "--local"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     const runLog = createWriteStream(join(out, "runner.log"), { flags: "a" });
     let buf = "";
     p.stdout!.on("data", (d: Buffer) => {
@@ -267,7 +267,7 @@ try {
   // ---- 1, 1b first (dry-179, holdouts point a): the shop and its suppliers run before the agents start; then the runner ----
   let noticeEvent = 0, noticeFrom = 0;
   await timed("S1 world serve --every 15", async () => {
-    serve = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    serve = spawn(process.execPath, ["--import", "tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     const wl = createWriteStream(join(out, "world.log"), { flags: "a" });
     serve.stdout!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
     serve.stderr!.on("data", (d: Buffer) => wl.write(clean(d.toString())));
@@ -324,7 +324,7 @@ try {
     await until("#16 sold", () => maxSold() >= 16 || undefined, 900_000);
     facts.let_through_requested_at = new Date().toISOString();
     letThroughDone = new Promise<void>((done) => {
-      const p = spawn("npx", ["tsx", "src/cli/world.ts", "let-one-through"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] });
+      const p = spawn(process.execPath, ["--import", "tsx", "src/cli/world.ts", "let-one-through"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"] });
       let text = "";
       p.stdout!.on("data", (d: Buffer) => { text += d.toString(); });
       p.stderr!.on("data", (d: Buffer) => { text += d.toString(); });
@@ -443,7 +443,7 @@ facts.page_errors = errors;
 await sleep(20_000);
 const checks: Record<string, number | null> = {};
 function check8(name: string, script: string, ...args: string[]): void {
-  const r = spawnSync("npx", ["tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, ["--import", "tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const text = clean(`${r.stdout ?? ""}${r.stderr ?? ""}`.split("\n").filter((l) => !/ExperimentalWarning|trace-warnings/.test(l)).join("\n"));
   writeFileSync(join(out, `check-${name}.txt`), text);
   checks[name] = r.status;
@@ -461,7 +461,7 @@ await timed("C Checks: verify, reconcile, data-qa, origins, dashboard-vs-chain, 
 });
 facts.checks = checks;
 await timed(`X npm run stop -- ${world}`, async () => {
-  const r = spawnSync("npx", ["tsx", "src/cli/stop.ts", world], { cwd: repo, env, encoding: "utf8" });
+  const r = spawnSync(process.execPath, ["--import", "tsx", "src/cli/stop.ts", world], { cwd: repo, env, encoding: "utf8" });
   const text = clean(`${r.stdout ?? ""}${r.stderr ?? ""}`);
   writeFileSync(join(out, "check-stop.txt"), text);
   checks.stop = r.status;

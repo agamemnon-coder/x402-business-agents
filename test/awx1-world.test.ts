@@ -23,7 +23,7 @@ describe("npm run verify in an Airwallex-only world", () => {
     openDb(ledger).close();
     const env: NodeJS.ProcessEnv = { ...process.env, KIT11_DB: ledger, KIT11_KEYS_DIR: join(dir, "keys") };
     for (const k of ["KIT11_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY", "AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY"]) delete env[k];
-    const r = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/verify.ts")], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
+    const r = spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/verify.ts")], { cwd: repo, env, encoding: "utf8", timeout: 60_000 });
     expect(r.stderr).not.toMatch(/no business account/);
     expect(r.stdout).toMatch(/^ok +audit log hash chain/m);
     expect(r.status).toBe(0);

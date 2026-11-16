@@ -133,7 +133,7 @@ let stopping = false;
 // Support agent never carries out a dispute decision while the runner's own resume does.
 let agentProcs: ChildProcess[] = [];
 const startAgents = () => autonomyOn() ? (["sourcing", "support", "treasury"] as const).map((n) => {
-  const child = spawn("npx", ["tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, ["--import", "tsx", resolve(import.meta.dirname, "agent.ts"), n], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"] });
   const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`agent    ${redactSecrets(l).slice(0, 400)}`); };
   child.stdout.on("data", out);
   child.stderr.on("data", out);
@@ -277,7 +277,7 @@ async function quarantineTick(): Promise<void> {
     console.log(`${stamp()} recover  dispute decision(s) not fully carried out: ${undone.map((d) => d.dispute_id).join(", ")}; carrying out what is left`);
     // At most ten minutes: a hung refund or review must not keep the runner from starting (the alarm stays on /health).
     const code = await new Promise<number | string | null>((ok) => {
-      const child = spawn(resolve(import.meta.dirname, "../../node_modules/.bin/tsx"), [resolve(import.meta.dirname, "s2.ts"), "--resume-only"], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"], timeout: 10 * 60_000 });
+      const child = spawn(process.execPath, [resolve(import.meta.dirname, "../../node_modules/tsx/dist/cli.mjs"), resolve(import.meta.dirname, "s2.ts"), "--resume-only"], { env: envWithoutOrigin(), stdio: ["ignore", "pipe", "pipe"], timeout: 10 * 60_000 });
       const out = (b: Buffer) => { for (const l of b.toString().split("\n")) if (l.trim() && !/ExperimentalWarning|trace-warnings/.test(l)) console.log(`${stamp()} recover  ${redactSecrets(l).slice(0, 300)}`); };
       child.stdout.on("data", out);
       child.stderr.on("data", out);

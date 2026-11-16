@@ -140,7 +140,7 @@ describe("npm run coder-evals", () => {
     let out = "";
     let code = 0;
     try {
-      execFileSync(resolve(root, "node_modules/.bin/tsx"), ["src/cli/coderEvals.ts", "--models", "haiku", "--cases", "nl-books-9"], { cwd: root, env, encoding: "utf8", stdio: "pipe" });
+      execFileSync(process.execPath, [resolve(root, "node_modules/tsx/dist/cli.mjs"), "src/cli/coderEvals.ts", "--models", "haiku", "--cases", "nl-books-9"], { cwd: root, env, encoding: "utf8", stdio: "pipe" });
     } catch (e) {
       const x = e as { status: number; stderr: string };
       code = x.status;

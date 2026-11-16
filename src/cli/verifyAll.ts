@@ -233,13 +233,13 @@ function figures(pages: Record<string, string>) {
 
   // The partner tiles and the note above them: they must add up.
   const tiles = [...proofHtml.matchAll(/<span class="pt-n">([^<]+)<\/span><b class="pt-c">(\d+)<\/b>/g)].map((m) => [m[1]!, Number(m[2])] as const);
-  const note = /(\d+) live runs: (\d+) below, each listed once \((\d+) in the tiles, plus the main run\)(?:; (\d+) on \/visa)?/.exec(proof);
+  // The note's wording since 15 Nov (src/redesign/proofRuns.ts): "25 live runs: 23 by partner in the tiles, the main run and 1 on /visa."
+  const note = /(\d+) live runs: (\d+) by partner in the tiles,? (?:and )?the main run(?:,? and (\d+) on \/visa)?\./.exec(proof);
   const tileSum = tiles.reduce((k, [, n]) => k + n, 0);
   if (!note) add(G, "FAIL", "/proof: the live-runs note", "not found on the page", "/proof");
   else {
-    cmp("/proof: the partner tiles add up to the note's count", tileSum, Number(note[3]), `the tiles: ${tiles.map(([n, c]) => `${n} ${c}`).join(", ")}`);
-    cmp("/proof: runs listed = tiles + the main run", tileSum + 1, Number(note[2]), "/proof");
-    cmp("/proof: live runs = listed + on /visa", Number(note[2]) + Number(note[4] ?? 0), Number(note[1]), "/proof");
+    cmp("/proof: the partner tiles add up to the note's count", tileSum, Number(note[2]), `the tiles: ${tiles.map(([n, c]) => `${n} ${c}`).join(", ")}`);
+    cmp("/proof: live runs = tiles + the main run + on /visa", tileSum + 1 + Number(note[3] ?? 0), Number(note[1]), "/proof");
     cmp("/proof: the note's live runs = the band's", proofBand.get("sandbox and testnet runs") ?? -1, Number(note[1]), "/proof");
   }
 

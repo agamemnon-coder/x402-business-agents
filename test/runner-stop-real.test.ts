@@ -14,7 +14,8 @@ import { lockOf } from "../src/ops/runnerLock.js";
 import { stopWorld } from "../src/ops/stopWorld.js";
 
 const repo = resolve(import.meta.dirname, "..");
-const tsx = resolve(repo, "node_modules/.bin/tsx");
+const tsx = process.execPath;
+const tsxCli = resolve(repo, "node_modules/tsx/dist/cli.mjs"); // node + tsx's own entry: works on Windows too (no .bin shim)
 const linux = existsSync("/proc/self/stat");
 const dir = mkdtempSync(join(tmpdir(), "kit11-stop-"));
 const started: ChildProcess[] = [];
@@ -44,7 +45,7 @@ function expectWorldGroup(pgid: number, pids: { runner: number; child: number })
 function runner(path: string, detached = false): { p: ChildProcess; ready: Promise<string>; exit: Promise<number | null>; out: () => string } {
   const env: NodeJS.ProcessEnv = { ...process.env, KIT11_DB: path };
   for (const k of ["KIT11_RUN_TOKEN", "KIT11_RUN_PGID", "KIT11_RUN_LEADER"]) delete env[k];
-  const p = spawn(tsx, [resolve(repo, "test/fixtures/world-runner.ts")], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached });
+  const p = spawn(tsx, [tsxCli, resolve(repo, "test/fixtures/world-runner.ts")], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached });
   started.push(p);
   let text = "";
   const ready = new Promise<string>((ok, fail) => {

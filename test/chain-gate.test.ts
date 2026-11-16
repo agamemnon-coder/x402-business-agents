@@ -54,7 +54,7 @@ describe("the chain gate", () => {
 
   it("runs as npm run chain:gate: exit 0 on a pass, 1 on a fail", () => {
     const run = (f: string) => {
-      try { return { code: 0, out: execFileSync("npx", ["tsx", resolve(import.meta.dirname, "../src/cli/chainGate.ts"), join(dir, f)], { encoding: "utf8" }) }; } catch (e) { const x = e as { status: number; stdout: string }; return { code: x.status, out: x.stdout }; }
+      try { return { code: 0, out: execFileSync(process.execPath, ["--import", "tsx", resolve(import.meta.dirname, "../src/cli/chainGate.ts"), join(dir, f)], { encoding: "utf8" }) }; } catch (e) { const x = e as { status: number; stdout: string }; return { code: x.status, out: x.stdout }; }
     };
     expect(run("pass.json")).toMatchObject({ code: 0, out: expect.stringContaining("fixture-pass: PASS; Claude 97.5%") });
     expect(run("unsafe.json")).toMatchObject({ code: 1, out: expect.stringContaining("fixture-unsafe: FAIL") });
