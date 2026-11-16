@@ -26,7 +26,7 @@ export const STEP_UP_HEADER = "x-purser-step-up";
 
 /**
  * Sensitive settings: alert targets, the signed webhook, connector tokens (Claude and OAuth connections), API keys, team
- * members and their passkeys, the company's export and closing, its Airwallex account and onboarding link, and its name
+ * members and their passkeys, the approval passkey, the company's export and closing, its Airwallex account and onboarding link, and its name
  * and language. "METHOD path" as in the route table.
  * Spending limits are not set in Purser Cloud (they live in the CFO's policy on the runner, changed with the CFO's own
  * passkey there): when a route that changes a limit is added here, it belongs on this list.
@@ -41,6 +41,8 @@ export const STEP_UP_ROUTES: ReadonlySet<string> = new Set([
   "POST /v1/export/staged", "POST /v1/close",
   "POST /v1/airwallex/account", "POST /v1/airwallex/onboarding-link", "POST /v1/company",
   "POST /v1/engine/security-key/start", "POST /v1/engine/security-key/finish",
+  // The approval passkey itself: enrolling one replaces the person's earlier one (security review, 16 Nov).
+  "POST /v1/engine/passkey/start", "POST /v1/engine/passkey/finish",
 ]);
 /** Step-up routes a key may not call at all: a signed-in owner only. */
 export const SESSION_ONLY_ROUTES: ReadonlySet<string> = new Set(["POST /v1/alerts/targets", "DELETE /v1/alerts/targets/{id}", "POST /v1/security/settings"]);

@@ -80,22 +80,36 @@ export const RECORDED_WHY = {
   start: "A test company could not be started right now, so the recorded negotiation is shown.",
 } as const;
 
+/**
+ * What /v1/try/negotiate agreed, kept so /agreed files only that (security review, 16 Nov: the hash, the turns and the
+ * amount came from the client, so a negotiation that never took place could be filed as agreed). A row in rate_hits
+ * under the company's start time, kept as long as the company's other lifetime counters: 1 while it may be filed, 0
+ * once it was. The key holds everything the invoice is filed with, so another amount or date is another key.
+ */
+const agreedKey = (tenant: string, invoiceId: string | null, sha256: string, turns: number, x: { invoice_no: string; amount: string; due_date: string; iban: string }) =>
+  `agreed:${tenant}:${invoiceId ?? ""}:${sha256}:${turns}:${x.invoice_no}:${x.amount}:${x.due_date}:${normIban(x.iban)}`;
+const bornOf = async (sql: Sql, tenant: string, now: Date) => {
+  const row = await sql.first<{ created_at: string }>("SELECT created_at FROM try_companies WHERE tenant_id = ?", [tenant]);
+  return Math.floor(Date.parse(row?.created_at ?? now.toISOString()) / 1000);
+};
+
 export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): EngineRoute<C>[] {
   const { json, err } = kit;
   return [
     { method: "POST", path: "/v1/try/negotiate", summary: "Agents negotiate (the hands-on demo, a test company only): Purser's Sourcing agent and a simulated supplier's agent, both Claude, negotiate an early-payment discount on a test invoice of Bergtex Textil GmbH (EUR 1,850.00, net 30), at most 4 turns, each through the CFO's rails in code (the most it may pay, the latest pay-by date, nothing beyond the invoice, the payee's bank details unchanged). Answers { mode (live or recorded), label, reason, scene, bounds, rules, turns, outcome, agreement, canonical, sha256, compose, micros }; compose is the invoice POST /v1/engine/compose files for the agreed terms. Claude off, capped or failing: the recorded negotiation, labelled. 3 a company.", need: "admin", run: async (c) => {
       const tenant = c.caller!.tenantId;
       if (!isTryTenant(tenant)) return err(403, "only a test company of the hands-on demo negotiates here");
-      const row = await c.env.sql.first<{ created_at: string }>("SELECT created_at FROM try_companies WHERE tenant_id = ?", [tenant]);
-      const born = Math.floor(Date.parse(row?.created_at ?? c.now.toISOString()) / 1000);
+      const born = await bornOf(c.env.sql, tenant, c.now);
       if ((await bump(c.env.sql, `negotiate:${tenant}`, born, 1)) > NEGOTIATIONS_PER_COMPANY)
         throw new TryRefused(429, "limit", `This test company has negotiated ${NEGOTIATIONS_PER_COMPANY} times, its limit. Start a new one to watch again.`);
       const today = c.now.toISOString().slice(0, 10);
       // { invoice_id } (15 Nov, the negotiation inside /try's flow): the visitor's own invoice, if it can be negotiated.
       let scene: Scene = sceneOf(today);
+      let invoiceId: string | null = null;
       if ((c.req.headers.get("content-type") ?? "").includes("json")) {
         const b = await kit.body(c, Body, 1_000);
         if (b.invoice_id) {
+          invoiceId = b.invoice_id;
           const inv = await c.env.engine?.(tenant)?.invoice(b.invoice_id);
           if (!inv) return err(404, "no invoice");
           const sc = sceneFromInvoice(inv, today);
@@ -123,7 +137,12 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
           return recordedNegotiation(today, reason, scene);
         }
       };
-      if (c.url.searchParams.get("stream") !== "1") return json(200, await run());
+      // An agreement is kept for /agreed, live or recorded alike (both are the terms the rails let stand).
+      const kept = async (n: Negotiation): Promise<Negotiation> => {
+        if (n.outcome === "agreed") await c.env.sql.run("INSERT INTO rate_hits (bucket, window_start, count) VALUES (?, ?, 1) ON CONFLICT(bucket, window_start) DO NOTHING", [agreedKey(tenant, invoiceId, n.sha256, n.turns.length, n.compose), born]);
+        return n;
+      };
+      if (c.url.searchParams.get("stream") !== "1") return json(200, await kept(await run()));
       // ?stream=1 (15 Nov, the page's chat): one JSON object a line, as it happens. {type: "start", live: true, bounds} once live Claude is reserved, then {type: "turn", turn, best} for each
       // live turn the moment Claude has answered it and the rails have checked it; {type: "reset", reason} when Claude
       // failed mid-way and the live turns are dropped; then {type: "done", negotiation}, the same object as without it.
@@ -132,6 +151,7 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const enc = new TextEncoder();
       const line = (o: unknown) => { void w.write(enc.encode(`${JSON.stringify(o)}\n`)).catch(() => undefined); };
       const done = run((turn, best) => line({ type: "turn", turn, best }), (reason) => line({ type: "reset", reason }), () => line({ type: "start", live: true, bounds: boundsOf(scene, today) }))
+        .then(kept)
         .then((negotiation) => line({ type: "done", negotiation }), () => line({ type: "error", message: "The negotiation could not finish. Nothing was paid." }))
         .finally(() => { void w.close().catch(() => undefined); });
       c.env.waitUntil?.(done);
@@ -159,10 +179,17 @@ export function tryNegotiateRoutes<C extends NegotiateCtx>(kit: EngineKit<C>): E
       const fits = x.supplier_key === supplierKey(sc.supplier.name) && normIban(x.iban) === normIban(sc.supplier.iban) && x.invoice_no === agreedInvoiceNo(sc, b.agreement_sha256)
         && Number.isFinite(amt) && amt > 0 && amt < sc.amount_cents && /^\d{4}-\d{2}-\d{2}$/.test(x.due_date) && x.due_date >= today && x.due_date <= sc.due_date;
       if (!fits) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement on this invoice: the same supplier and account, the agreement's reference, less than the invoice, paid by its due date.");
+      // The agreement /v1/try/negotiate answered for this company and invoice, not filed yet: taken in one write, so two
+      // filings at once cannot both have it. Given back when the filing below does not go through.
+      const key = agreedKey(tenant, b.invoice_id ?? null, b.agreement_sha256, b.turns, x);
+      const born = await bornOf(c.env.sql, tenant, c.now);
+      const taken = await c.env.sql.first<{ count: number }>("UPDATE rate_hits SET count = 0 WHERE bucket = ? AND window_start = ? AND count = 1 RETURNING count", [key, born]);
+      if (!taken) throw new TryRefused(409, "not_the_agreement", "These terms are not an agreement this company negotiated, or they were filed already.");
+      const giveBack = () => c.env.sql.run("UPDATE rate_hits SET count = 1 WHERE bucket = ? AND window_start = ?", [key, born]);
       const out = await e.compose(x);
-      if ("refused" in out) return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field });
+      if ("refused" in out) { await giveBack(); return json(400, { error: out.refused.message, code: `invalid_${out.refused.field}`, message: out.refused.message, field: out.refused.field }); }
       const agreed = out.invoice;
-      if (!agreed || agreed.status !== "ready") return json(409, { error: "the agreed invoice was not filed as ready to pay", code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(agreed ? { invoice: agreed } : {}) });
+      if (!agreed || agreed.status !== "ready") { await giveBack(); return json(409, { error: "the agreed invoice was not filed as ready to pay", code: "not_ready", message: "The agreed invoice could not be filed as ready to pay; the original stands. Pay the invoice as issued instead.", ...(agreed ? { invoice: agreed } : {}) }); }
       const done = await e.negotiated(agreed.id, { original_id: b.invoice_id ?? null, original_invoice_no: sc.invoice_no, original_amount: money(sc.amount_cents), agreement_sha256: b.agreement_sha256, turns: b.turns });
       if (!done.ok) return json(409, { error: done.reason, code: "not_recorded", message: `The agreed invoice could not replace the original: ${done.reason}.` });
       return json(200, { invoice: done.invoice, superseded: done.superseded });

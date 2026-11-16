@@ -141,6 +141,12 @@ export async function startCompany(a: { sql: Sql; engine: (tenantId: string) => 
     if (wide && (await bump(sql, `trystart-48:${await sha256Hex(`${await saltOf(sql, now)}:${wide}`)}`, hour, 1)) > num(s, "starts_per_48_hour")) {
       throw new TryRefused(429, "limit", "Enough test companies were started from this network in the last hour. Please try again in an hour.");
     }
+  } else {
+    // The event and jury pools keep no address with the company, but a start still counts against its keyed address.
+    const hour = Math.floor(now.getTime() / 3_600_000) * 3_600;
+    if ((await bump(sql, `trystart-pooled:${await addressKey(sql, a.ip, now)}`, hour, 1)) > num(s, "starts_per_address_hour_pooled")) {
+      throw new TryRefused(429, "limit", "Enough test companies were started from this network in the last hour. Please try again in an hour.");
+    }
   }
   const dayStart = Math.floor(now.getTime() / 86_400_000) * 86_400;
   if ((await bump(sql, `trystart-day:${pool}`, dayStart, 1)) > num(s, `starts_per_day_${pool}`)) {

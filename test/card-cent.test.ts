@@ -295,3 +295,17 @@ describe("the recorded one-cent-over run (docs/runs/airwallex-card-cent-<date>.j
     }
   });
 });
+
+// Security review, 16 Nov: a burst of public reads when the minute's cache ran out made one full card list each, and
+// used up the reads owners' card actions share. Reads at the same moment now share one list.
+describe("the public card block's reads at the same moment", () => {
+  afterEach(() => resetAgentCardsCache());
+  it("share one list at the card desk", async () => {
+    resetAgentCardsCache();
+    let lists = 0;
+    const ask = async () => { lists++; await new Promise((r) => setTimeout(r, 5)); return { ok: true as const, op: "list" as const, cards: [], cut: false }; };
+    const all = await Promise.all(Array.from({ length: 8 }, () => agentCardsLive(ask as never)));
+    expect(lists).toBe(1);
+    expect(new Set(all.map((a) => a.source)).size).toBe(1);
+  });
+});

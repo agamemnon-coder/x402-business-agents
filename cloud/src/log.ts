@@ -8,8 +8,8 @@ const SECRET_NAME = /(secret|token|authorization|password|cookie|api_key|^key$|s
 const ACCOUNT_NAME = /^(iban|account|account_number|bank_account)$/i;
 /** An IBAN, with or without its groups of four (two letters, two digits, 11–30 more letters, digits and spaces). */
 const IBAN = /\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/g;
-/** Purser's own keys and session tokens (pck_…, pcs_…), whsec_ webhook secrets, and a Bearer value. */
-const TOKEN = /\b(?:pck|pcs|whsec)_[A-Za-z0-9_-]{6,}|Bearer\s+\S+/g;
+/** Purser's own keys (pck_…, pcs_…), its signed tokens (pcs., pca., pcc., pcf., pcu.: payload.signature), whsec_ webhook secrets, and a Bearer value. */
+const TOKEN = /\b(?:pck|pcs|whsec)_[A-Za-z0-9_-]{6,}|\bpc[a-z]\.[A-Za-z0-9_-]{6,}(?:\.[A-Za-z0-9_-]+)?|Bearer\s+\S+/g;
 const EMAIL = /\b[A-Za-z0-9._%+-]+@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g;
 
 const last4 = (s: string) => `…${s.replace(/\s+/g, "").slice(-4)}`;

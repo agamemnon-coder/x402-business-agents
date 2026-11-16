@@ -213,3 +213,27 @@ describe("the entrypoint and the keys", () => {
     expect(index).toMatch(/AIRWALLEX_CLIENT_ID: id, AIRWALLEX_API_KEY: key \} = this\.env;\n\s+this\.awxFx/);
   });
 });
+
+describe("payouts asked at the same time (security review, 16 Nov)", () => {
+  it("are decided one after another: the company cap, the day cap and the balance hold under concurrent asks", async () => {
+    // A slow balance read: before the fix every concurrent ask passed the counts while the first one still waited.
+    let balance = 400_000;
+    const created: string[] = [];
+    const rail: PayoutRail = {
+      availableCents: async () => { await new Promise((r) => setTimeout(r, 5)); return balance; },
+      createTransfer: async (t) => { await new Promise((r) => setTimeout(r, 5)); created.push(t.approvalSha256); balance -= 185_000; return { id: `4074d684-4704-406c-a527-${String(created.length).padStart(12, "0")}`, status: "IN_APPROVAL" }; },
+      transfer: async (id) => ({ id, status: "IN_APPROVAL" }),
+      simulate: async (id, to) => ({ id, status: to }),
+    };
+    const d = desk(rail, { day: 3 });
+    const shas = ["1", "2", "3", "4", "5", "6"].map((c) => c.repeat(64));
+    // One company, six approved terms at once: the company cap (2) holds.
+    const one = await Promise.all(shas.map((s) => d.payout(ask({ terms_sha256: s }))));
+    expect(one.filter((r) => r.ok)).toHaveLength(AWX_PAYOUT_PER_COMPANY);
+    expect(one.filter((r) => !r.ok).map((r) => !r.ok && r.reason)).toEqual(Array(6 - AWX_PAYOUT_PER_COMPANY).fill("company_cap"));
+    // Other companies at once: the balance left (EUR 300.00 after two payouts of EUR 1,850.00) refuses them all.
+    const others = await Promise.all(["t_try_b", "t_try_c", "t_try_d"].map((c, i) => d.payout(ask({ company: c, terms_sha256: String(7 + i).repeat(64).slice(0, 64) }))));
+    expect(others.every((r) => !r.ok)).toBe(true);
+    expect(created).toHaveLength(2);
+  });
+});

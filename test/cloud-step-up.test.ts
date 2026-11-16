@@ -131,3 +131,18 @@ describe("step-up switched on", () => {
     expect(o.paths["/v1/invoices"]!.get!["x-purser-step-up"]).toBeUndefined();
   });
 });
+
+// Security review, 16 Nov: with step-up on, a stolen session could still replace the company's approval passkey with
+// its own (the engine's passkey routes were not on the list) and then approve with it. They are now.
+describe("step-up switched on covers the approval passkey's enrolment", () => {
+  it("refuses an older session at /v1/engine/passkey/start and /finish, and takes it after the person's own passkey check", async () => {
+    c.close();
+    c = testCloud({ engine: true });
+    t = await c.tenant("acme");
+    await askAgain();
+    later(6);
+    for (const path of ["/v1/engine/passkey/start", "/v1/engine/passkey/finish"]) expect((await c.req("POST", path, { key: t.session, body: {} })).json.code, path).toBe("step_up_required");
+    const up = await stepUp(t.session);
+    expect((await c.req("POST", "/v1/engine/passkey/start", { key: t.session, headers: { [STEP_UP_HEADER]: up.token } })).status).toBe(200);
+  });
+});

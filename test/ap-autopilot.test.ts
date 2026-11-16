@@ -9,11 +9,13 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFile
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { rmTemp } from "./support/rmTemp.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { autopilotPass, drain, LEASE_MS, parkedItems, retryItem, takeLease, withinAloneLimit, type AloneGate, type AutopilotDeps } from "../src/ap/autopilot.js";
 import { CsvFileSink, type ApEntry, type BookkeepingSink } from "../src/ap/books.js";
 import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
+import { usePdfReader } from "../src/ap/pdfText.js";
+import { readPdfInline } from "../src/ap/pdfTextInline.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoices } from "../src/ap/store.js";
 import { executePayeeAdd, recordPayeeAddVerification } from "../src/ap/vendors.js";
@@ -674,6 +676,13 @@ async function stoppedRun(kill?: { point: string; nth: number }): Promise<{ poin
 }
 
 describe("stopped between any two steps", () => {
+  // The PDFs are read on this thread, as the engine in a Durable Object reads them. In the worker thread, a read slower
+  // than its 10 s limit (a laptop busy with the whole suite) failed a step, which then waits a minute to be retried: a
+  // run that ends in another state for a reason that is not the restart this test is about (Windows, 16 Nov). The
+  // worker thread's time limit has its own test (ap-redteam2).
+  beforeAll(() => usePdfReader(readPdfInline));
+  afterAll(() => usePdfReader(null));
+
   it("every cut point: a restart reaches the same end state, with no second payment, booking or document", async () => {
     const clean = await stoppedRun();
     // The clean run pays both invoices, codes them, books, files and syncs them.

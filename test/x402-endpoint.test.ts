@@ -6,7 +6,7 @@ import { decodePaymentRequiredHeader, decodePaymentResponseHeader, encodePayment
 import { USDZ as METAL_USDZ } from "@metalntwx/metal-pay";
 import { describe, expect, it } from "vitest";
 import { sqlOver } from "./support/trySign.js";
-import { DAILY_SETTLE_CAP, DEFAULT_PAY_TO, NETWORK, PRICE_BASE_UNITS, STAND_IN_LABEL, USDZ_EXTRA, X402Desk, X402_PATH, type Facilitator } from "../worker/src/x402.js";
+import { DAILY_SETTLE_CAP, DEFAULT_PAY_TO, NETWORK, PRICE_BASE_UNITS, STAND_IN_LABEL, STAND_IN_PER_DAY, USDZ_EXTRA, X402Desk, X402_PATH, type Facilitator } from "../worker/src/x402.js";
 import { USDZ } from "../src/metal/network.js";
 
 const URL0 = `https://kit11.example${X402_PATH}`;
@@ -133,5 +133,26 @@ describe("the x402 endpoint a juror can call", () => {
   it("answers only GET and HEAD on its own path", async () => {
     expect((await desk().fetch(new Request(URL0, { method: "POST" }))).status).toBe(405);
     expect((await desk().fetch(new Request(`https://kit11.example/x402/other`))).status).toBe(404);
+  });
+});
+
+// Security review, 16 Nov: every public stand-in proof with a new nonce added a row, forever. Stand-in rows are now
+// kept two days (long enough to refuse a replay) and at most STAND_IN_PER_DAY a day are served.
+describe("stand-in proofs keep bounded storage", () => {
+  it("drops stand-in rows older than two days, and refuses past the day's stand-in cap", async () => {
+    const db = new Database(":memory:");
+    let at = new Date("2026-11-16T10:00:00Z");
+    const d = new X402Desk(sqlOver(db), { now: () => at });
+    expect((await get(d, standIn("old-nonce-1"))).status).toBe(200);
+    at = new Date("2026-11-19T10:00:00Z");
+    expect((await get(d, standIn("new-nonce-1"))).status).toBe(200);
+    const rows = db.prepare("SELECT nonce FROM x402_payments ORDER BY nonce").all() as { nonce: string }[];
+    expect(rows.map((r) => r.nonce)).toEqual(["new-nonce-1"]);
+    // A replay inside the two days is still refused.
+    expect((await get(d, standIn("new-nonce-1"))).status).toBe(409);
+    db.prepare("UPDATE x402_payments SET day = '2026-11-19'").run();
+    const fill = db.prepare("INSERT INTO x402_payments (nonce, kind, amount, status, day, at) VALUES (?, 'stand-in', '1', 'served', '2026-11-19', ?)");
+    for (let i = 0; i < STAND_IN_PER_DAY; i++) fill.run(`fill-${i}-xxxxxxxx`, at.toISOString());
+    expect((await get(d, standIn("one-more-nonce"))).status).toBe(429);
   });
 });
