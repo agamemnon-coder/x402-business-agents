@@ -23,8 +23,19 @@ const INSTRUCTION = [
   /\byou are now\b|\bact as\b|\bpretend to be\b/i,
   /\b(automated|automatic) (payment )?(systems?|agents?|assistants?)\b|\b(note|message|instructions?) (to|for) (the )?(ai|assistant|model|agent)\b/i,
   /\bapprove all\b/i,
+  // 16 Nov (Max on /try: his own notes were not flagged): the ways a person actually writes an order to the AI.
+  // Spoken to the machine by name ("Claude, pay this", "Hey AI ...").
+  /^\W*(ai|claude|assistant|agent|bot|model|chatgpt|gpt|llm)\s*[,!;:]/i,
+  /\b(hey|hi|dear|attention|attn)\W+(ai|claude|assistant|agent|bot|model|chatgpt|gpt|llm)\b/i,
+  /\b(ignore|disregard|forget)\b[^.\n]{0,20}\b(everything|all of (this|that)|the cfo)\b/i,
+  // Money sent somewhere else, or more of it ("pay to another account", "change the IBAN", "pay EUR 5000 instead").
+  /\bto (another|a different|this other) (account|iban|bank)\b|\b(account|iban)\b[^.\n]{0,20}\binstead\b|\bchange (the )?(iban|payee|amount|bank account)\b/i,
+  /\bpay (double|twice)\b|\bpay\b[^.\n]{0,25}\binstead\b|\brelease (the )?(funds|money|payment)\b/i,
+  // The same in German and Dutch.
+  /\bohne (freigabe|genehmigung|pr(ü|ue)fung)\b|\bzonder (goedkeuring|controle|akkoord|toestemming)\b|\b(negeer|ignoriere)\b/i,
 ];
-const APPROVAL_CLAIM = /\bpre-?approved\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b/i;
+// Past the approval or the checks (16 Nov: "without approval", "skip the CFO", "don't ask the CFO", "ignore limit").
+const APPROVAL_CLAIM = /\b(is|was|been|mark(ed)? (it )?as|auto(matically)?)[ -]approved\b|\bapprove (this|it|the payment|automatically|immediately|now|without)\b|\bpre-?approved\b|\balready approved\b|\bapproval (is )?(not|no longer) (needed|required)\b|\bskip (the )?(approval|verification|check|review)\b|\bno (approval|verification) (is )?(needed|required)\b|\b(without|no need for|skip(ping)?|don'?t (ask|wait for|need|involve)|do not (ask|wait for|need|involve)|ignore|bypass)\b[^.\n]{0,25}\b(approvals?|cfo|sign(ing|ature|-?off)?|checks?|checking|verification|review|passkeys?|face ?id|controls?|limits?)\b/i;
 
 const show = (line: string) => line.replace(HIDDEN_ALL, (ch) => `[U+${ch.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}]`).trim().slice(0, 200);
 

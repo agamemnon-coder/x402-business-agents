@@ -124,6 +124,8 @@ export const PRESENT_GUIDE = {
 export const PRESENT_INJ = {
   h: "Hidden instruction found in this invoice, and ignored",
   p: "Someone wrote an order to the AI into the invoice. It changes nothing: the AI can't pay on its own, and this payment still needs the CFO's approval.",
+  h2: "This invoice had a hidden instruction for the AI",
+  p2: "It was ignored. Check the terms below: only your Face ID can approve them.",
 } as const;
 
 export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
@@ -502,6 +504,8 @@ body:not(.pv-staged) .pv-stages.inmain { display: none !important; }
 body.pv-shell #main p.band { display: none !important; }
 .pv-rd { font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; }
 .pv-rd::before { content: "· "; }
+.pv-warn.small { padding: 10px 14px; }
+.pv-warn.small p { font-size: 13px; }
 .pv-warn { margin: 0 0 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); background: color-mix(in srgb, #f5b544 12%, var(--surface)); }
 .pv-warn b { display: block; color: #b87500; font: 750 16px/1.3 Inter, system-ui, sans-serif; }
 .pv-warn b::before { content: "⚠  "; }
@@ -603,6 +607,7 @@ function v2(){
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
   {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
   for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
+  {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh&&INJ.flag&&!m.querySelector('.screen.approve .pv-warn')){const w=mk('div','pv-warn small',[mk('b','',PC.inj.h2),mk('p','',PC.inj.p2)]);const box=sh.parentElement;if(box)box.before(w)}}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
   const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
