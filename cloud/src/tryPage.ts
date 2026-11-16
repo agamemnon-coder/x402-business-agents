@@ -508,6 +508,9 @@ ul.checks li.next .i { color: var(--accent); }
 .samples.inbox .due { color: var(--muted); font-size: 14px; }
 @media (min-width: 1024px) { body:has(.samples.inbox) main { max-width: 880px; } }
 .rchip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; white-space: nowrap; border: 1px solid transparent; }
+/* 16 Nov: the samples Purser holds on purpose, under their own heading; "Start here" never breaks. */
+.samples.inbox .igroup { padding: 14px 16px 8px; border-top: 1px solid var(--border); background: var(--sunken); color: var(--muted); font-size: 13px; font-weight: 600; }
+.samples.inbox .vn .here { white-space: nowrap; margin-left: 8px; vertical-align: 1px; }
 .rchip.ok { background: var(--ok-soft); color: var(--ok); }
 .rchip.warn { background: var(--sunken); color: var(--text); border-color: var(--border); }
 .rchip.bad { background: var(--bad-soft); color: var(--bad); }
@@ -921,7 +924,11 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
     pick.replaceChildren(el('p','sr',C.invoice.loading),sk);
     (r0||api('GET','/v1/engine/samples')).then((r)=>{
       if(S.screen!=='invoice')return;
-      const items=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
+      const all=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
+      // 16 Nov (owner: the held ones read as "not working"): the two that get paid first, the agent's own first; then,
+      // under their own heading, the ones Purser holds on purpose.
+      const paid=(s)=>s.key==='within'||s.key==='clean';
+      const items=[...all.filter(paid).sort((a,b)=>(a.key==='within'?0:1)-(b.key==='within'?0:1)),...all.filter((s)=>!paid(s))];
       if(!items.length){
         // Calmly, with a retry that reads them again; a kept tap is dropped, the button stays off.
         queued=false;gate();
@@ -933,17 +940,18 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       for(const s of items){
         // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
         const hint=C.invoice.hints[s.key];const first=!list.children.length;
+        if(!paid(s)&&!list.querySelector('.igroup'))list.append(el('div','igroup',C.invoice.heldGroup));
         const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
         // 14 Nov (inbox table): the row is the button: supplier (with the sample's title and its line), number, amount,
         // due date and the risk the engine measured for it.
         const rw=s.row&&typeof s.row==='object'?s.row:null,rk=riskOf(s.expect);
-        const b=btn([el('span','c sup',[el('span','vn',rw?String(rw.vendor):title),el('span','st',[rw?title:'',first?el('span','here',C.invoice.startHere):null]),sh]),
+        const b=btn([el('span','c sup',[el('span','vn',[rw?String(rw.vendor):title,first?el('span','here',C.invoice.startHere):null]),sh]),
           el('span','c no mono',rw?String(rw.invoice_no):''),el('span','c amt',rw?cash(rw.currency,rw.amount):''),el('span','c due',rw&&rw.due_date?dateOf(rw.due_date):''),
           el('span','c risk',rk?el('span','rchip '+rk.tone,rk.label):'')]);if(rw)b.classList.add('row');b.setAttribute('aria-pressed','false');
         // The title is the button's name; its line is its description.
         b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
-        b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
-        list.append(b);if(!picked||(wantAbove&&!aboveSet&&isAbove(s))){if(wantAbove&&isAbove(s))aboveSet=true;picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))}}
+        b.addEventListener('click',()=>{picked=s;for(const x of list.querySelectorAll('button'))x.setAttribute('aria-pressed',String(x===b))});
+        list.append(b);if(!picked||(wantAbove&&!aboveSet&&isAbove(s))){if(wantAbove&&isAbove(s))aboveSet=true;picked=s;for(const x of list.querySelectorAll('button'))x.setAttribute('aria-pressed',String(x===b))}}
       if(aboveSet)send.focus();
       // 15 Nov (owner: "it feels staged"): under the samples, the other tab said for what it lets you set.
       const go=el('button','link',C.invoice.tabWrite);go.type='button';go.addEventListener('click',()=>{choose(true);sup.focus()});

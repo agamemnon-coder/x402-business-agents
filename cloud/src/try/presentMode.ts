@@ -565,6 +565,7 @@ body.pv-shell #main p.band { display: none !important; }
 .pv-hood-h b { color: #fff; letter-spacing: .02em; }
 .pv-hood-h span { color: #8b90a8; }
 .pv-hood-h::before { content: ""; flex: none; width: 34px; height: 8px; background: radial-gradient(circle, #ff5f57 3.5px, transparent 4px) 0 0/12px 8px repeat-x; opacity: .9; }
+.pv-hood-h b, .pv-hood-t { white-space: nowrap; }
 .pv-hood-t { margin-left: auto; border: 0; background: #ffffff14; color: #e6e8f2; border-radius: 999px; padding: 3px 10px; font: 600 12px/1.3 Inter, system-ui, sans-serif; cursor: pointer; }
 .pv-hood ol { display: none; list-style: none; margin: 0; padding: 10px 12px 12px; counter-reset: ln; }
 .pv-hood.open ol { display: grid; gap: 5px; }
@@ -661,6 +662,7 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-rails li span { color: var(--muted); font-size: 11.5px; }
 .pv-m-rails .hw-logo { flex: none; width: 96px; height: auto; min-height: 28px; padding: 5px 8px; justify-content: center; box-sizing: border-box; }
 .pv-m-rails .hw-logo img { height: auto; max-height: 14px; max-width: 100%; }
+.pv-m-rails .hw-logo.hw-alta img { width: auto; height: 16px; max-height: 16px; margin: 0 auto; } /* 16 Nov: the SVG's own width sat it to the left */
 .pv-m-rails .pv-word, .pv-rail .pv-m-rails li span.pv-word { font-size: 10.5px; line-height: 1.2; white-space: normal; text-align: center; color: #14171f; font-weight: 700; display: inline-flex; }
 .pv-m-rails li.on .hw-logo { box-shadow: 0 0 0 2px var(--ok); }
 @media (prefers-reduced-motion: no-preference) { .pv-m-agents li.cur::before { animation: mvDot 1.6s infinite; } .pv-rail-h .dot { animation: mvDot 2.2s infinite; } }
@@ -680,9 +682,10 @@ body.pv-shell .screen.work .payrow .btn { white-space: nowrap; }
 body.pv-shell .screen.company .cmdl { display: block !important; flex-basis: 100%; order: 9; margin: 2px 0 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 /* The inbox in the 640 px column: four columns (the due date is in the invoice), risk chips may wrap. */
 @media (min-width: 721px) {
-  body.pv-shell .ihead, body.pv-shell .samples.inbox .btn.row { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+  body.pv-shell .ihead, body.pv-shell .samples.inbox .btn.row { grid-template-columns: minmax(0, 1fr) 96px 100px 118px; column-gap: 12px; }
   body.pv-shell .ihead .due, body.pv-shell .samples.inbox .due { display: none; }
-  body.pv-shell .samples.inbox .rchip { white-space: normal; text-align: center; }
+  body.pv-shell .samples.inbox .rchip { white-space: nowrap; font-size: 11.5px; }
+  body.pv-shell .samples.inbox .no { white-space: nowrap; font-size: 12px; }
 }
 .pv-cap.workAlone .k, .pv-cap.booksAlone .k { background: var(--ok); color: #04130d; }
 .pv-cap.workAlone, .pv-cap.booksAlone { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
@@ -851,7 +854,7 @@ function hood(m){const g=cap.dataset.k||'';const now=performance.now();if(g===HO
     for(const dt of sh.querySelectorAll('dt')){const k=(dt.textContent||'').trim();const v=dt.nextElementSibling?(dt.nextElementSibling.textContent||'').trim():'';if(k==='Payee')HOOD.payee=v;if(k==='IBAN')HOOD.iban='…'+v.replace(/\s/g,'').slice(-4)}}}
   if(!g||!cap.classList.contains('on')){hoodBox.remove();return}
   if(hoodBox.parentElement!==rHood)rHood.append(hoodBox);
-  const L=hoodLines(g,m);const key=g+'|'+L.map((x)=>x.code+x.note).join('|');if(hoodBox.dataset.k===key)return;const fresh=hoodBox.dataset.g!==g;hoodBox.dataset.k=key;hoodBox.dataset.g=g;
+  const L=hoodLines(g,m);if(!L.length){hoodBox.remove();return}const key=g+'|'+L.map((x)=>x.code+x.note).join('|');if(hoodBox.dataset.k===key)return;const fresh=hoodBox.dataset.g!==g;hoodBox.dataset.k=key;hoodBox.dataset.g=g;
   const tog=mk('button','pv-hood-t',HOOD.open?PC.hood.hide:PC.hood.show);tog.type='button';tog.addEventListener('click',()=>{HOOD.open=!HOOD.open;hoodBox.classList.toggle('open',HOOD.open);tog.textContent=HOOD.open?PC.hood.hide:PC.hood.show});
   const ol=mk('ol','',L.map((x,i)=>{const li=mk('li',x.cls||'',[mk('code','',x.code),x.note?mk('span','nt','// '+x.note):null].filter(Boolean));li.style.setProperty('--i',String(i));return li}));
   hoodBox.className='pv-hood'+(HOOD.open?' open':'')+(fresh?' fresh':'');hoodBox.replaceChildren(mk('div','pv-hood-h',[mk('b','',PC.hood.h),mk('span','',PC.hood.tag),tog]),ol)}
