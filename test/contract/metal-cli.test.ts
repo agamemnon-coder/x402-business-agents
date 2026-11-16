@@ -16,7 +16,8 @@ const h = vi.hoisted(() => ({ next: { status: 0, stdout: "", stderr: "" }, args:
 
 vi.mock("node:child_process", async (importOriginal) => ({
   ...(await importOriginal<typeof import("node:child_process")>()),
-  spawnSync: (_bin: string, args: string[]) => { h.args.push(args); return { ...h.next }; },
+  // metal-agent runs as node <its dist/index.js> (16 Nov, Windows): the CLI's own arguments follow that path.
+  spawnSync: (_bin: string, args: string[]) => { h.args.push(/metal-agent[\\/]dist[\\/]index\.js$/.test(args[0] ?? "") ? args.slice(1) : args); return { ...h.next }; },
 }));
 vi.mock("../../src/metal/mandate.js", () => ({
   activeMandate: async (agent: string) => ({ agent, credentialPath: `/keys/${agent}.credential.json`, keyFile: `/keys/${agent}.key.json`, reference: `0x${"0a".repeat(32)}` }),
