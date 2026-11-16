@@ -28,7 +28,7 @@ const NEG_HINT = INVOICE.hints.clean ?? "";
 export const PRESENT_BEFORE = "An agent's invoice lands in a queue. An approve button anyone can click pays it, whatever was changed on the way.";
 export const PRESENT_AFTER = "The CFO signs the exact terms with Face ID. Change one cent and the signature is refused: nothing moves.";
 export const PRESENT_TRY = "kit11.max-31b.workers.dev/try";
-export const PRESENT_MONEY = "Sandbox mode · test money · Airwallex sandbox";
+export const PRESENT_MONEY = "Test money · no real money moves · Airwallex sandbox";
 export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact terms";
 /**
  * The app shell (15 Nov, Max: "it needs to look like the actual product"): in recording mode, the site's menu and the
@@ -95,14 +95,14 @@ export const PRESENT_PARTNERS = {
   heading: "Tested on partner sandboxes and testnet",
   sub: "The same controls, on each partner's own rails, each from a recorded run you can open. Test money only.",
   cards: [
-    { logo: "airwallex", label: "Airwallex · sandbox", h: "The CFO's approval travels with the money", p: "Purser writes the hash the CFO signed into the transfer's metadata (approval_sha256 797d4483…) on a EUR 240.00 SWIFT test transfer. Card limits enforced by Airwallex itself: EUR 30.00 approved, 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
-    { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "The agent's mandate holds on chain", p: "86 x402 payments on Alta testnet in the main run. When an agent went over its per-payment cap, Alta refused purchase #24 on chain: MandateRefused, OverPerPaymentCap.", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
-    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own credential, bound to the exact amount. When a credential was used again, Purser refused it before any Airwallex call. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
+    { logo: "airwallex", label: "Airwallex · sandbox", h: "Your approval travels with the money", p: "Each bank transfer carries the fingerprint of exactly what the CFO approved (797d4483… on a EUR 240.00 test transfer). Agent card limits are enforced by Airwallex itself: EUR 30.00 approved, EUR 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "Agent spending limits, enforced on chain", p: "86 agent payments on Alta testnet in the main run. When an agent tried to pay more than its limit allows, the chain itself refused it (purchase #24).", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
+    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own card credential, bound to the exact amount. Used again, or for another amount, Purser refuses it before any payment is tried. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
   ],
   all: "View live partner proof & architecture",
   allHref: "https://kit11.max-31b.workers.dev/proof",
   foot: "Alta (formerly Metal), Visa Intelligent Commerce via Airwallex Airi, Airwallex: no endorsement implied.",
-  chain: "The same rule on chain: Alta (formerly Metal) refused an agent's purchase #24 over its cap, MandateRefused · OverPerPaymentCap.",
+  chain: "The same rule on chain: Alta (formerly Metal) refused an agent's purchase #24 because it was over the agent's limit.",
   chainLink: "See the transaction →",
   chainHref: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
 } as const;
@@ -337,6 +337,8 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pv-tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); font-size: 13px; }
 .hashpill[data-v2] { font-family: Inter, system-ui, sans-serif; font-weight: 650; color: var(--ok); background: var(--ok-soft); }
 .hashpill[data-v2]::before { content: "✓ "; }
+.screen.approve .hashpill[data-v2] { color: var(--accent); background: var(--accent-soft); }
+.screen.approve .hashpill[data-v2]::before { content: none; }
 .pp { margin-top: 28px; }
 .pp h2 { margin: 0; font: 760 26px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
 .pp-sub { margin: 6px 0 16px; color: var(--muted); font: 500 15px/1.45 Inter, system-ui, sans-serif; }
@@ -497,6 +499,9 @@ body.pv-shell .screen.work .result > p.flagged { display: none !important; }
 body:not(.pv-staged) .pv-stages.inmain { display: none !important; }
 @media (max-width: 760px) { body.pv-shell .screen.start ol.flow { grid-template-columns: 1fr !important; } }
 /* The note that tried to give orders: said plainly, in amber. */
+body.pv-shell #main p.band { display: none !important; }
+.pv-rd { font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; }
+.pv-rd::before { content: "· "; }
 .pv-warn { margin: 0 0 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); background: color-mix(in srgb, #f5b544 12%, var(--surface)); }
 .pv-warn b { display: block; color: #b87500; font: 750 16px/1.3 Inter, system-ui, sans-serif; }
 .pv-warn b::before { content: "⚠  "; }
@@ -596,10 +601,12 @@ function v2(){
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
+  {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
+  for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
-  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Terms sealed · any change breaks the seal'}
+  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
-  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Terms sealed · any change breaks the seal'}
+  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Sealed by your Face ID · any change breaks the seal'}
   const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
   if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
