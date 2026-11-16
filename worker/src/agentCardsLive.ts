@@ -20,12 +20,19 @@ export type AgentCardsAnswer =
   | { source: "unavailable"; reason: string; checked_at: string };
 
 let cache: { at: number; body: AgentCardsAnswer } | null = null;
+/** The list under way, if any: reads at the same moment share it (security review, 16 Nov). */
+let inflight: Promise<AgentCardsAnswer> | null = null;
 
 /** The live answer, cached a minute. `ask` is the card desk's one method. */
 export async function agentCardsLive(ask: (a: CardsAsk) => Promise<CardsAnswer>, opts: { off?: boolean; now?: () => number } = {}): Promise<AgentCardsAnswer> {
   const now = opts.now ?? Date.now;
   if (opts.off) return { source: "unavailable", reason: "live reads are switched off", checked_at: new Date(now()).toISOString() };
   if (cache && now() - cache.at < TTL_MS) return cache.body;
+  inflight ??= readOnce(ask, now).finally(() => { inflight = null; });
+  return inflight;
+}
+
+async function readOnce(ask: (a: CardsAsk) => Promise<CardsAnswer>, now: () => number): Promise<AgentCardsAnswer> {
   const a = await ask({ op: "list" });
   let body: AgentCardsAnswer;
   if (!a.ok || a.op !== "list") body = { source: "unavailable", reason: a.ok ? "an unexpected answer" : a.reason, checked_at: new Date(now()).toISOString() };
@@ -39,4 +46,4 @@ export async function agentCardsLive(ask: (a: CardsAsk) => Promise<CardsAnswer>,
   cache = { at: now(), body };
   return body;
 }
-export const resetAgentCardsCache = () => { cache = null; };
+export const resetAgentCardsCache = () => { cache = null; inflight = null; };

@@ -21,6 +21,8 @@ export const PRICE_BASE_UNITS = "10000000000000000";
 /** Hard caps for testnet settlement: the most one request may settle, and how many may settle in one UTC day. */
 export const PER_REQUEST_CAP_BASE_UNITS = 10_000_000_000_000_000n;
 export const DAILY_SETTLE_CAP = 20;
+/** Stand-in proofs served a UTC day; their rows are kept two days, long enough to refuse a replay (security review, 16 Nov). */
+export const STAND_IN_PER_DAY = 2_000;
 export const STAND_IN_LABEL = "local stand-in payment, test money, nothing moves";
 export const MONEY_LABEL = "test money, Alta testnet (*USDZ); no real money";
 /** The token's EIP-712 domain as Alta's scheme names it (@metalntwx/metal-pay USDZ; test/x402-endpoint.test.ts holds them equal). */
@@ -119,6 +121,10 @@ export class X402Desk {
     const day = at.toISOString().slice(0, 10);
 
     if (standIn) {
+      // Bounded storage: stand-in rows older than two days go, and a day serves at most STAND_IN_PER_DAY of them.
+      this.sql.exec("DELETE FROM x402_payments WHERE kind = 'stand-in' AND day < ?", new Date(at.getTime() - 2 * 86_400_000).toISOString().slice(0, 10));
+      const served = this.sql.exec("SELECT COUNT(*) AS n FROM x402_payments WHERE kind = 'stand-in' AND day = ?", day).toArray()[0] as { n: number };
+      if (served.n >= STAND_IN_PER_DAY) return json(429, { error: `the day's ${STAND_IN_PER_DAY} stand-in payments are served; come back tomorrow`, money: MONEY_LABEL });
       this.sql.exec("INSERT INTO x402_payments (nonce, kind, amount, status, day, at) VALUES (?, 'stand-in', ?, 'served', ?, ?)", nonce, a.amount, day, at.toISOString());
       return json(200, { paid_with: STAND_IN_LABEL, money: MONEY_LABEL, resource: receipt },
         { "PAYMENT-RESPONSE": encodePaymentResponseHeader({ success: true, transaction: "", network: NETWORK, payer: "stand-in" } as never) });
