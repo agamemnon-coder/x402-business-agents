@@ -95,6 +95,13 @@ describe("recording mode", () => {
     expect(script).toContain("Hidden instruction found in this invoice, and ignored");
   });
 
+  it("says a transfer waiting in Airwallex's approval workflow is the second lock, and drops the button that cannot move it", () => {
+    const { script } = presentExtra("public");
+    expect(script).toContain("Second lock: Airwallex's own approval.");
+    expect(script).toContain("/^IN APPROVAL$/");
+    expect(script).toContain("This invoice had a hidden instruction for the AI");
+  });
+
   it("is served by /try?present=1 and only then", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {

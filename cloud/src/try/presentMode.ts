@@ -121,6 +121,12 @@ export const PRESENT_GUIDE = {
 } as const;
 
 /** A note that tries to give the AI orders (the engine's own flag, document.injection_flagged): said, never hidden. */
+/** Airwallex's own approval workflow on the sandbox account: a second, independent lock after the CFO's Face ID. */
+export const PRESENT_AWX2 = {
+  h: "Second lock: Airwallex's own approval.",
+  p: "This test account asks a person to approve each transfer inside Airwallex too. Purser never does that step itself, so here the test transfer waits there.",
+} as const;
+
 export const PRESENT_INJ = {
   h: "Hidden instruction found in this invoice, and ignored",
   p: "Someone wrote an order to the AI into the invoice. It changes nothing: the AI can't pay on its own, and this payment still needs the CFO's approval.",
@@ -504,6 +510,7 @@ body:not(.pv-staged) .pv-stages.inmain { display: none !important; }
 body.pv-shell #main p.band { display: none !important; }
 .pv-rd { font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; }
 .pv-rd::before { content: "· "; }
+.pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
 .pv-warn.small { padding: 10px 14px; }
 .pv-warn.small p { font-size: 13px; }
 .pv-warn { margin: 0 0 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); background: color-mix(in srgb, #f5b544 12%, var(--surface)); }
@@ -608,6 +615,13 @@ function v2(){
   {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
   for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
   {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh&&INJ.flag&&!m.querySelector('.screen.approve .pv-warn')){const w=mk('div','pv-warn small',[mk('b','',PC.inj.h2),mk('p','',PC.inj.p2)]);const box=sh.parentElement;if(box)box.before(w)}}
+  // The Airwallex card on Paid: a transfer waiting in Airwallex's own approval workflow is the second lock, said so; the
+  // sandbox button cannot move it (Purser never approves at Airwallex), so it goes; the fingerprint shortened (full on hover).
+  for(const ax of m.querySelectorAll('section.awx.live')){if(ax.dataset.v2)continue;const dds=[...ax.querySelectorAll('dd')];
+    for(const dd of dds)if(/^[0-9a-f]{64}$/.test((dd.textContent||'').trim())){dd.title=dd.textContent.trim();dd.textContent=dd.title.slice(0,12)+'…'}
+    const st=dds.find((d)=>/^IN APPROVAL$/.test((d.textContent||'').trim()));
+    if(st){ax.dataset.v2='1';st.textContent='Waiting for approval in Airwallex';for(const b of ax.querySelectorAll('button'))(b.closest('p')||b).hidden=true;for(const h of ax.querySelectorAll('p.hint'))h.hidden=true;ax.append(mk('p','pv-lock2',[mk('b','',PC.awx2.h),' ',PC.awx2.p]))}
+    else if(dds.length)ax.dataset.v2='1'}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
   const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
@@ -797,7 +811,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, awx2: PRESENT_AWX2, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
