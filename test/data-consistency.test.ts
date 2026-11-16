@@ -4,7 +4,7 @@
 // src/config/policy.ts, the separate test-world figures against their run files in docs/runs/, and every relative
 // markdown link in README.md and docs/ against the files and headings it points to. Offline: files only.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { INITIAL_MANDATES, LICENCE_FEE_EUR_CENTS, TOTAL_BUDGET_CENTS, type Agent } from "../src/config/policy.js";
 import { AGENT_DISPLAY } from "../src/config/brand.js";
@@ -342,7 +342,7 @@ function mdFiles(dir: string): string[] {
   const out: string[] = [];
   for (const name of readdirSync(join(ROOT, dir))) {
     if (name === "node_modules") continue;
-    const path = join(dir, name);
+    const path = posix.join(dir, name);
     if (statSync(join(ROOT, path)).isDirectory()) out.push(...mdFiles(path));
     else if (name.endsWith(".md")) out.push(path);
   }
@@ -386,7 +386,7 @@ function brokenLinks(file: string, md: string, exists: (path: string) => boolean
     if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("//") || target.startsWith("/")) continue;
     checked++;
     const [rawPath, anchor] = target.split("#", 2) as [string, string | undefined];
-    const dest = rawPath ? join(dirname(file), decodeURIComponent(rawPath)) : file;
+    const dest = rawPath ? posix.join(posix.dirname(file), decodeURIComponent(rawPath)) : file; // "/" on Windows too
     if (!exists(dest)) { broken.push(`${file}: ${target} (no file ${dest})`); continue; }
     if (anchor && dest.endsWith(".md") && !anchors(dest === file ? md : read(dest)).has(decodeURIComponent(anchor).toLowerCase())) broken.push(`${file}: ${target} (no heading #${anchor} in ${dest})`);
   }

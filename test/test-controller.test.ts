@@ -143,7 +143,7 @@ describe("where the virtual passkey's credential is kept", () => {
     expect(loadCredential(file).credential.signCount).toBe(2);
     // A file someone made readable by others is not read, and is closed again by the next save.
     chmodSync(file, 0o644);
-    expect(() => loadCredential(file)).toThrow(/readable by others/);
+    if (process.platform !== "win32") expect(() => loadCredential(file)).toThrow(/readable by others/); // Windows has no POSIX file modes
     saveCredential(file, stored);
     if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
   });

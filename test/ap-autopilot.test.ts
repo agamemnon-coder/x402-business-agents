@@ -7,7 +7,7 @@ import { standInBank } from "./support/standInBank.js";
 import { FakePayeeNames } from "../src/airwallex/payeeName.js";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { autopilotPass, drain, LEASE_MS, parkedItems, retryItem, takeLease, withinAloneLimit, type AloneGate, type AutopilotDeps } from "../src/ap/autopilot.js";
@@ -222,7 +222,7 @@ describe("a batch of twelve documents, from the folder to the end, with no manua
     expect(verifyLedger(w.db).ok).toBe(true);
     expect(originsCheck(w.db).missing).toEqual([]);
     const files = walk(join(w.root, "vault"));
-    expect(files.filter((f) => f.includes("/Betalingen/"))).toHaveLength(5);
+    expect(files.filter((f) => f.split(sep).join("/").includes("/Betalingen/"))).toHaveLength(5);
     expect(new Set(files).size).toBe(files.length);
     expect([...w.erp.objects.values()].every((n) => n === 1)).toBe(true);
     expect(w.erp.objects.size).toBeGreaterThan(0);

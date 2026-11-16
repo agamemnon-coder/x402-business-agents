@@ -62,7 +62,8 @@ export function rowOf(db: Database.Database, key: string): RunnerLock | null {
 
 const live = (p: Proc) => !p.state.startsWith("Z");
 /** device:inode of a ledger file: a row copied into another file does not match, a second path to this one does. */
-export const fileId = (path: string) => { const st = statSync(path); return `${st.dev}:${st.ino}`; };
+// bigint: a Windows file id is 64 bits, and as a number two files made one after the other can round to the same id.
+export const fileId = (path: string) => { const st = statSync(path, { bigint: true }); return `${st.dev}:${st.ino}`; };
 /** Whether a lock row is about this ledger file. */
 export const sameLedger = (held: RunnerLock, real: string) => (held.file ? held.file === fileId(real) : held.db === real);
 const describe = (l: RunnerLock) => `pid ${l.pid} (process group ${l.pgid}, ${l.role}) on ${l.host}, since ${l.started_at}`;

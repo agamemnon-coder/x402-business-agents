@@ -34,7 +34,10 @@ const xmllint = (xml: string) => {
 describe("the pacs.008 export of a paid invoice", () => {
   const p = pacs008ForInvoice(ledger(), "BTX-2026-11", new Date("2026-10-30T08:00:00Z"));
 
-  it("is valid against the official pacs.008.001.08 schema", () => {
+  // CI (Linux) always runs this with xmllint installed. A Windows laptop without xmllint skips this one check; the
+  // export's content is still checked by the tests below.
+  const noXmllint = process.platform === "win32" && spawnSync("xmllint", ["--version"]).error !== undefined;
+  it.skipIf(noXmllint)("is valid against the official pacs.008.001.08 schema", () => {
     const r = xmllint(p.xml);
     expect(r.error, "xmllint is needed: apt-get install libxml2-utils").toBeUndefined();
     expect(`${r.stdout}${r.stderr}`).toMatch(/validates/);

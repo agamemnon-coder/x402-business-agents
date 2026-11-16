@@ -13,7 +13,7 @@ const NEEDS_SOURCE: readonly LiveCommand[] = ["preflight", "fund", "mint", "veri
 const NEEDS_KEYS: readonly LiveCommand[] = ["preflight", "fund", "deploy", "mint", "finance", "settle"];
 
 const REPO = resolve(import.meta.dirname, "../..");
-export const insideRepo = (path: string, repo = REPO): boolean => { const p = resolve(path); return p === repo || p.startsWith(repo + sep); };
+export const insideRepo = (path: string, repo = REPO): boolean => { const p = resolve(path), r = resolve(repo); return p === r || p.startsWith(r + sep); }; // both resolved: on Windows "/work/repo" becomes "C:\work\repo"
 const wholeNumber = (v: string | undefined) => !!v && /^\d+$/.test(v) && Number(v) >= 1;
 
 export function liveRefusals(cmd: LiveCommand, env: Record<string, string | undefined>, repo = REPO): string[] {
@@ -22,7 +22,7 @@ export function liveRefusals(cmd: LiveCommand, env: Record<string, string | unde
   if (!wholeNumber(env.TOKENIZE_CALL_BUDGET)) why.push("TOKENIZE_CALL_BUDGET (a whole number of Metal RPC calls for this command)");
   if (!wholeNumber(env.TOKENIZE_CALL_BUDGET_TOTAL)) why.push("TOKENIZE_CALL_BUDGET_TOTAL (a whole number of Metal RPC calls for the whole run, held against the call log)");
   if (!env.TOKENIZE_CALL_LOG) why.push("TOKENIZE_CALL_LOG (a file each call is appended to)");
-  if (!/(^|\/)tokenize[^/]*\.sqlite$/.test(env.TOKENIZE_DB ?? "")) why.push("TOKENIZE_DB=…/tokenize*.sqlite (this run's own ledger)");
+  if (!/(^|[\\/])tokenize[^\\/]*\.sqlite$/.test(env.TOKENIZE_DB ?? "")) why.push("TOKENIZE_DB=…/tokenize*.sqlite (this run's own ledger)");
   if (!env.METAL_RPC_URL) why.push("METAL_RPC_URL");
   if (NEEDS_KEYS.includes(cmd)) {
     if (!env.KIT11_KEYS_DIR) why.push("KIT11_KEYS_DIR (the directory of this run's four test keys, outside the repository)");

@@ -17,6 +17,8 @@ import { buildOwnersRecord, CLI_NOTE, DEVICE_NOTE, NO_STAND_IN, RecordRefused, r
 import { PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { loadVerifier } from "../src/metal/verifierCompile.js";
 import { ownersWorld, T0, type TestWorld } from "./support/ownersWorld.js";
+/** A path as a regex: Windows paths hold backslashes. */
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 vi.setConfig({ testTimeout: 30_000 });
 const REPO = resolve(import.meta.dirname, "..");
@@ -453,7 +455,7 @@ describe("npm run owners -- record", () => {
     expect(ok.code, ok.err).toBe(0);
     const base = join(out, "2026-11-12-faceid-onchain");
     const calls = readOwnersCalls(w.log).length;
-    expect(ok.out.trimEnd().split("\n").at(-1)).toMatch(new RegExp(`^RECORD           ${base}\\.json and ${base}\\.md written from \\d+ audit rows and ${calls} call-log lines; no call was made$`));
+    expect(ok.out.trimEnd().split("\n").at(-1)).toMatch(new RegExp(`^RECORD           ${esc(base)}\\.json and ${esc(base)}\\.md written from \\d+ audit rows and ${calls} call-log lines; no call was made$`));
     const written = JSON.parse(readFileSync(`${base}.json`, "utf8")) as OwnersRecord;
     expect(written.account).toBe(rows("owners.account_created")[0]!.p.account);
     expect(readFileSync(`${base}.md`, "utf8")).toMatch(/^# The passkey account on chain: run record\n/);

@@ -4,7 +4,7 @@
 // service), which a test puts in place of fetch. No network.
 import { mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { agentOf, describeTerms, whyYou } from "../src/approve/client.js";
 import { readCallLog } from "../src/airwallex/callBudget.js";
@@ -118,7 +118,7 @@ describe("the stand-in stays under test/", () => {
     for (const file of rail) expect(readFileSync(file, "utf8"), file).not.toMatch(/from\s+["'][^"']*\/test\/|import\(["'][^"']*\/test\//);
     // The rail's own code makes requests and reads answers; it builds no answer and holds no emulator of the API.
     const icc = sources(join(ROOT, "src/icc"));
-    expect(icc.map((f) => f.slice(ROOT.length))).toEqual(expect.arrayContaining(["src/icc/auth.ts", "src/icc/callBudget.ts", "src/icc/client.ts", "src/icc/config.ts", "src/icc/deps.ts", "src/icc/instruction.ts", "src/icc/policy.ts", "src/icc/purchase.ts"]));
+    expect(icc.map((f) => relative(ROOT, f).split(sep).join("/"))).toEqual(expect.arrayContaining(["src/icc/auth.ts", "src/icc/callBudget.ts", "src/icc/client.ts", "src/icc/config.ts", "src/icc/deps.ts", "src/icc/instruction.ts", "src/icc/policy.ts", "src/icc/purchase.ts"]));
     for (const file of icc) expect(readFileSync(file, "utf8"), file).not.toMatch(/new Response\(|createServer|stand-?in|emulat|mock/i);
   });
 });

@@ -36,7 +36,7 @@ describe("credential file", () => {
   });
 
   it("refuses a file others can read, a symlink, and a shape it does not know, naming keys and never values", () => {
-    expect(() => readCredentialFile(credFile({ tokenNumber: PAN }, 0o644))).toThrow(/readable by others/);
+    if (process.platform !== "win32") expect(() => readCredentialFile(credFile({ tokenNumber: PAN }, 0o644))).toThrow(/readable by others/); // Windows has no POSIX file modes
     const f = goodCred();
     const link = join(mkdtempSync(join(tmpdir(), "airi-link-")), "credential.json");
     symlinkSync(f, link);

@@ -113,7 +113,7 @@ export function saveCredential(file: string, c: StoredCredential): void {
 
 export function loadCredential(file: string): StoredCredential {
   if (!existsSync(file) || statSync(file).size === 0) throw new Refused(`no credential of the ${LABEL} in the keys folder (${CREDENTIAL_FILE}): run enrol first`);
-  if (statSync(file).mode & 0o077) throw new Refused(`${CREDENTIAL_FILE} in the keys folder is readable by others; it holds a private key: chmod 600 it, or enrol again`);
+  if (process.platform !== "win32" && statSync(file).mode & 0o077) /* Windows has no POSIX modes (ACLs are not read here) */ throw new Refused(`${CREDENTIAL_FILE} in the keys folder is readable by others; it holds a private key: chmod 600 it, or enrol again`);
   let c: Partial<StoredCredential>;
   try { c = JSON.parse(readFileSync(file, "utf8")) as Partial<StoredCredential>; } catch { c = {}; }
   const k = c.credential;

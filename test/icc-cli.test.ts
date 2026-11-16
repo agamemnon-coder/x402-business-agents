@@ -219,7 +219,7 @@ describe("preflight", () => {
     expectNothingPrinted(w);
   });
 
-  it("refuses a key file others can read: no call at all", async () => {
+  it.skipIf(process.platform === "win32")("refuses a key file others can read: no call at all" /* Windows has no POSIX file modes */, async () => {
     const w = world();
     chmodSync(w.env.ICC_JWT_PRIVATE_KEY_FILE!, 0o644);
     expect(await iccCli(["preflight"], w.io)).toBe(1);

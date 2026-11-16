@@ -197,7 +197,7 @@ describe("key files", () => {
   it("refuses a key file that others can read, a missing file and a file that is no key, naming the variable and never the content", () => {
     const f = writeIccKeyFiles(keys);
     chmodSync(f.jwtKey, 0o640);
-    expect(() => readPrivateKeyFile(f.jwtKey, undefined, "ICC_JWT_PRIVATE_KEY_FILE")).toThrow(/ICC_JWT_PRIVATE_KEY_FILE.*readable by others/);
+    if (process.platform !== "win32") expect(() => readPrivateKeyFile(f.jwtKey, undefined, "ICC_JWT_PRIVATE_KEY_FILE")).toThrow(/ICC_JWT_PRIVATE_KEY_FILE.*readable by others/); // Windows has no POSIX file modes
     expect(() => readPrivateKeyFile(join(f.dir, "none.pem"), undefined, "ICC_JWT_PRIVATE_KEY_FILE")).toThrow(/ICC_JWT_PRIVATE_KEY_FILE.*could not be opened/);
     const junk = join(f.dir, "junk.pem");
     writeFileSync(junk, "not-a-key-marker", { mode: 0o600 });

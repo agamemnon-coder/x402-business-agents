@@ -167,7 +167,8 @@ describe("the runner lock: one runner per world", () => {
 });
 
 describe("the runner lock: the same ledger file by another path", () => {
-  it("a second path (a symlink) to the same ledger is the same world: refused, not treated as a copied row", () => {
+  // Windows: a symlink needs Developer Mode and resolves differently; the runner it guards (npm run up) is POSIX-only.
+  it.skipIf(process.platform === "win32")("a second path (a symlink) to the same ledger is the same world: refused, not treated as a copied row", () => {
     const a = ledger("world-a");
     const t = new FakeTable();
     t.add({ pid: 100, pgid: 100, token: "run-a" });
