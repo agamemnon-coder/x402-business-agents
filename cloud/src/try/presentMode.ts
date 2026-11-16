@@ -682,7 +682,8 @@ body.pv-shell .screen.work .payrow .btn { white-space: nowrap; }
 body.pv-shell .screen.company .cmdl { display: block !important; flex-basis: 100%; order: 9; margin: 2px 0 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
 /* The inbox in the 640 px column: four columns (the due date is in the invoice), risk chips may wrap. */
 @media (min-width: 721px) {
-  body.pv-shell .ihead, body.pv-shell .samples.inbox .btn.row { grid-template-columns: minmax(0, 1fr) 96px 100px 118px; column-gap: 12px; }
+  body.pv-shell .ihead, body.pv-shell .samples.inbox .btn.row { grid-template-columns: minmax(0, 1fr) 92px 116px 118px; column-gap: 12px; }
+  body.pv-shell .samples.inbox .amt { white-space: nowrap; }
   body.pv-shell .ihead .due, body.pv-shell .samples.inbox .due { display: none; }
   body.pv-shell .samples.inbox .rchip { white-space: nowrap; font-size: 11.5px; }
   body.pv-shell .samples.inbox .no { white-space: nowrap; font-size: 12px; }
