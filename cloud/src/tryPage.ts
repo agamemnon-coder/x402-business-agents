@@ -1204,7 +1204,22 @@ function drawResult(box,r,ms){
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
-    main=btn(alone?C.work.payAlone:C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
+    main=btn(alone?C.work.payAlone:C.work.pay,true);main.addEventListener('click',()=>{
+      if(!alone){show('approve',{invoice:inv});return}
+      // 16 Nov (owner): within the limit nobody signs, so the CFO's screen is never shown. The agent's payment is the
+      // request filed above (PREP); its answer goes straight to the books. Anything else: the approve screen, as before.
+      if(main.classList.contains('asking'))return;
+      main.textContent=C.pay.paying;main.classList.add('asking');
+      const req=PREP.get(inv.id)||api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay');PREP.delete(inv.id);
+      req.then((r)=>{
+        if(S.screen!=='work')return;
+        const p=r&&r.status===200&&r.json&&r.json.proposal;
+        if(p&&typeof p.id==='string'&&r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){
+          S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv.id,alone:true};S.cred=null;S.settled=r.json.settled;
+          S.awx=r.json.airwallex_payout&&typeof r.json.airwallex_payout==='object'?r.json.airwallex_payout:null;save();show('books',{settled:S.settled});catchUp();return}
+        if(p&&typeof p.id==='string'&&p.status==='PENDING_APPROVAL'){show('approve',{invoice:Object.assign({},inv,{proposal:p})});return}
+        show('approve',{invoice:inv,again:true})});
+    });
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
     // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
     // 15 Nov (Max): before the passkey, Purser's agent may negotiate an early-payment discount (cloud/src/try/negotiateKit.ts NEGI).
