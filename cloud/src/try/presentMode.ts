@@ -18,7 +18,7 @@
 //   company), O the outcome card, Escape closes a card.
 // Every value from an answer is put on the page as text (textContent), never as HTML.
 
-import { INVOICE, WORK } from "../tryCopy.js";
+import { INVOICE, PAY, WORK } from "../tryCopy.js";
 import { TRY_ALONE_LIMIT } from "../../../src/config/policy.js";
 import { AIRWALLEX_LOGO_DATA_URL } from "../awxLogo.gen.js";
 import { LOGO_FILES } from "./logos.gen.js";
@@ -794,7 +794,7 @@ function stageOf(){const m=document.getElementById('main');if(!m)return -1;const
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
 function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
-  if(has('invoice'))return 'invoice';if(has('work')){if(m.querySelector('.screen.work .skel'))return 'reading';const pb=m.querySelector('.screen.work .payrow .btn');if(!pb)return '';return (pb.textContent||'').trim()===PC.payAlone?'workAlone':INJ.flag?'workInj':'work'}if(has('approve'))return 'approve';if(has('books'))return aloneRun()?'booksAlone':'books';
+  if(has('invoice'))return 'invoice';if(has('work')){if(m.querySelector('.screen.work .skel'))return 'reading';const pb=m.querySelector('.screen.work .payrow .btn');if(!pb)return '';const pt=(pb.textContent||'').trim();return pt===PC.payAlone||pt===PC.payingAlone?'workAlone':INJ.flag?'workInj':'work'}if(has('approve'))return 'approve';if(has('books'))return aloneRun()?'booksAlone':'books';
   if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 
 // "Under the hood": the step's real flow in a few lines, this run's own values filled in as they appear.
@@ -1118,7 +1118,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, payAlone: WORK.payAlone, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, payAlone: WORK.payAlone, payingAlone: PAY.paying, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
