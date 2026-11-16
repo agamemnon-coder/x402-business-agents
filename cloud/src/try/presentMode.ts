@@ -516,7 +516,6 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 .pv-cap.books { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
 .pv-cap.approve .k { background: #f5b544; color: #241500; }
 .pv-cap.approve { border-color: color-mix(in srgb, #f5b544 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, #f5b544 12%, var(--surface)), var(--surface) 70%); }
-@media (min-width: 1200px) { body.pv-shell .pv-cap.on { position: sticky; top: 66px; z-index: 30; backdrop-filter: blur(10px); } }
 @media (prefers-reduced-motion: no-preference) { .pv-cap.in { animation: mvUp .5s cubic-bezier(.2,.8,.2,1) both; } }
 @media (max-width: 700px) { .pv-cap.on { grid-template-columns: 1fr; } .pv-cap .k { grid-row: auto; justify-self: start; margin-bottom: 8px; } .pv-cap .d { grid-column: 1; } .pv-cap b { font-size: 18px; } }
 body.pv-shell #main > .band { opacity: .7; }
@@ -530,7 +529,7 @@ body.pv-shell .screen.work .result > p.meta, body.pv-shell .screen.work ul.check
 body.pv-shell .screen.approve p.limit, body.pv-shell .screen.approve > div > details, body.pv-shell .screen.approve > div > p.muted, body.pv-shell .screen.approve .openl { display: none !important; }
 body.pv-shell .screen.books .slot:has(.blk.filed), body.pv-shell .screen.books .tail .pdfl, body.pv-shell .screen.books .tail > p.hint, body.pv-shell .screen.books .tail .cloudl, body.pv-shell .screen.books .tail .acts .btn:not(.primary) { display: none !important; }
 body.pv-shell .screen.pay .tryform > .two, body.pv-shell .screen.pay .attacks, body.pv-shell .screen.pay > p:has(> .link) { display: none !important; }
-body.pv-shell .screen.company .vis-charts, body.pv-shell .screen.company .proofband, body.pv-shell .screen.company .records, body.pv-shell .screen.company > details, body.pv-shell .screen.company .acts.more a:not(.verifyl), body.pv-shell .screen.company .hint.shared { display: none !important; }
+body.pv-shell .screen.company .vis-charts, body.pv-shell .screen.company .proofband, body.pv-shell .screen.company .records, body.pv-shell .screen.company > details, body.pv-shell .screen.company .acts.more a:not(.verifyl) { display: none !important; }
 /* One column where the side panel was; the blocked card says it once. */
 @media (min-width: 1200px) { body.pv-shell:not(.present) #main:has(> .screen.pay), body.pv-shell:not(.present) #main:has(> .screen.approve) { max-width: 640px; } }
 body.pv-shell .screen.pay, body.pv-shell .screen.approve { grid-template-columns: 1fr !important; }
@@ -655,23 +654,36 @@ body.pv-shell.pv-staged .pv-rail { display: block; }
 .pv-m-agents li.bad::before { background: var(--bad); border-color: var(--bad); }
 .pv-m-agents li.bad span { color: var(--bad); }
 .pv-m-rails ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.pv-m-rails li { display: flex; align-items: center; gap: 10px; opacity: .62; transition: opacity .3s ease; }
-.pv-m-rails li.on { opacity: 1; }
+.pv-m-rails li { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.pv-m-rails li > div { opacity: .7; transition: opacity .3s ease; }
+.pv-m-rails li.on > div { opacity: 1; }
 .pv-m-rails li b { display: block; font-size: 12.5px; }
 .pv-m-rails li span { color: var(--muted); font-size: 11.5px; }
-.pv-m-rails .hw-logo { flex: none; height: 24px; padding: 0 8px; }
-.pv-m-rails .hw-logo img { height: 13px; }
-.pv-m-rails .pv-word { font-size: 10.5px; }
+.pv-m-rails .hw-logo { flex: none; width: 96px; height: auto; min-height: 28px; padding: 5px 8px; justify-content: center; box-sizing: border-box; }
+.pv-m-rails .hw-logo img { height: auto; max-height: 14px; max-width: 100%; }
+.pv-m-rails .pv-word, .pv-rail .pv-m-rails li span.pv-word { font-size: 10.5px; line-height: 1.2; white-space: normal; text-align: center; color: #14171f; font-weight: 700; display: inline-flex; }
 .pv-m-rails li.on .hw-logo { box-shadow: 0 0 0 2px var(--ok); }
 @media (prefers-reduced-motion: no-preference) { .pv-m-agents li.cur::before { animation: mvDot 1.6s infinite; } .pv-rail-h .dot { animation: mvDot 2.2s infinite; } }
 @media (min-width: 1280px) {
-  body.pv-shell.pv-staged #main { max-width: 640px !important; margin-left: max(16px, calc(50% - 495px)) !important; margin-right: auto !important; }
-  body.pv-shell.pv-staged .pv-rail.side { position: fixed; z-index: 30; top: 76px; left: min(calc(50% + 165px), calc(100% - 326px)); width: 310px; max-height: calc(100vh - 92px); overflow: auto; }
+  body.pv-shell.pv-staged #main { max-width: 640px !important; margin-left: max(16px, calc(50% - 525px)) !important; margin-right: auto !important; }
+  body.pv-shell.pv-staged .pv-rail.side { position: fixed; z-index: 30; top: 76px; left: min(calc(50% + 185px), calc(100% - 326px)); width: 310px; max-height: calc(100vh - 92px); overflow: auto; }
   .pv-rail.side .pv-rail-h { pointer-events: none; }
   .pv-rail.side .pv-rail-h::after { content: none; }
   .pv-rail.side .pv-rail-b { display: grid; gap: 10px; }
 }
 @media (max-width: 1279px) { .pv-rail { margin: 0 0 16px; } }
+/* 16 Nov (Max: "things out of the text box"): in the v2 frame the work, approve and pay screens are one column (the
+   old two-column grid kept a right column for a panel the frame hides, and squeezed the answer and its button). */
+body.pv-shell .screen.work, body.pv-shell .screen.approve, body.pv-shell .screen.pay { display: flex !important; flex-direction: column; }
+body.pv-shell .screen.work > .card, body.pv-shell .screen.approve > .card, body.pv-shell .screen.pay > .card { grid-column: auto; grid-row: auto; margin-top: 16px; }
+body.pv-shell .screen.work .payrow .btn { white-space: nowrap; }
+body.pv-shell .screen.company .cmdl { display: block !important; flex-basis: 100%; order: 9; margin: 2px 0 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+/* The inbox in the 640 px column: four columns (the due date is in the invoice), risk chips may wrap. */
+@media (min-width: 721px) {
+  body.pv-shell .ihead, body.pv-shell .samples.inbox .btn.row { grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr) minmax(0, 1.1fr) minmax(0, 1fr); }
+  body.pv-shell .ihead .due, body.pv-shell .samples.inbox .due { display: none; }
+  body.pv-shell .samples.inbox .rchip { white-space: normal; text-align: center; }
+}
 .pv-cap.workAlone .k, .pv-cap.booksAlone .k { background: var(--ok); color: #04130d; }
 .pv-cap.workAlone, .pv-cap.booksAlone { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); background: linear-gradient(135deg, color-mix(in srgb, var(--ok) 12%, var(--surface)), var(--surface) 70%); }
 .pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
@@ -865,7 +877,7 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   const fx=EVT.some((e)=>e.event==='fx.rate_checked'||e.event==='airwallex.quote');
   const row=(cls,logo,name,txt,on)=>mk('li',(on?'on ':'')+cls,[logo,mk('div','',[mk('b','',name),mk('span','',txt)])]);
   const awxTxt=awx&&awx.source==='airwallex-sandbox'?'transfer '+String(awx.status||'').replace(/_/g,' ')+' · approval_sha256 attached':fx?'FX quote checked for this payment':'sandbox · standing by';
-  rRails.replaceChildren(mk('h3','','Partner rails'),mk('ul','',[row('awx',logoChip('airwallex'),'Airwallex',awxTxt,!!awx||fx),row('alta',logoChip('alta'),'Alta (formerly Metal)',g==='refused'?'the same rule on chain: purchase #24 refused (recorded run)':'on-chain mandate limits · recorded run',g==='refused'),row('visa',mk('span','hw-logo pv-word','Visa Intelligent Commerce'),'via Airwallex Airi','one credential per purchase · recorded runs',false)]))}
+  rRails.replaceChildren(mk('h3','','Partner rails'),mk('ul','',[row('r-awx',logoChip('airwallex'),'Airwallex',awxTxt,!!awx||fx),row('r-alta',logoChip('alta'),'Alta (formerly Metal)',g==='refused'?'the same rule on chain: purchase #24 refused (recorded run)':'on-chain mandate limits · recorded run',g==='refused'),row('r-visa',mk('span','hw-logo pv-word','Visa Intelligent Commerce'),'via Airwallex Airi','one credential per purchase · recorded runs',false)]))}
 function v2(){
   {const mm=document.getElementById('main');const small=innerWidth<1200||!document.body.classList.contains('present');
    if(mm&&small&&stages.parentElement!==mm){stages.classList.add('inmain');mm.prepend(stages)}else if(!small&&stages.parentElement!==document.body){stages.classList.remove('inmain');document.body.append(stages)}

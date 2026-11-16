@@ -119,6 +119,20 @@ describe("recording mode", () => {
   it("redraws the rail's Airwallex line when the transfer's status changes (16 Nov live run: SCHEDULED beside a PAID card)", () => {
     for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toContain("aloneRun(),awx&&awx.status||'']);if(rail.dataset.k===key)return;");
   });
+  it("ends with this run's proof to download and the command to check it, a Share that says what it did, and no sticky step bar (16 Nov, Max)", () => {
+    const html = tryPage("n0nce", cfg, presentExtra("public"), V2_COPY as unknown as Record<string, Record<string, unknown>>);
+    expect(html).toContain("'proof','refusedProof'];");
+    expect(html).toContain("S.refusedProof=j.proof;save()");
+    expect(html).toContain("proofDl(S.refusedProof||S.proof)");
+    expect(html).toContain("In a clone of the repo: npm run verify-bundle -- purser-proof.json");
+    const css = presentExtra("public").css;
+    expect(css).not.toContain(".hint.shared { display: none");
+    expect(css).not.toMatch(/pv-cap\.on \{ position: sticky/);
+    expect(css).toContain("body.pv-shell .screen.work, body.pv-shell .screen.approve, body.pv-shell .screen.pay { display: flex !important;");
+    // The partner rows are not the Airwallex payout card (class .awx), and their logos are never dimmed.
+    expect(presentExtra("public").script).toContain("row('r-awx',logoChip('airwallex')");
+    expect(css).not.toMatch(/\.pv-m-rails li \{[^}]*opacity/);
+  });
   it("starts the hidden-instruction watch before the filing request, so a flag that arrives during it stays (16 Nov live run)", () => {
     for (const kind of ["public", "present"] as const) {
       const { script } = presentExtra(kind);

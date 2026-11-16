@@ -103,6 +103,12 @@ function moduleChecks(g: Geo, tag: string) {
   ok(/Auto-pay ≤ EUR 500\.00/.test(g.text), `/try 1280: the mandate reads "Auto-pay ≤ EUR 500.00"`);
   ok(/amount <= agent_limit/.test(g.text) && /120\.00/.test(g.text), "/try 1280: the code window shows amount <= agent_limit with 120.00");
   ok(await page.getByText("Checks passed. Approved by your policy.").isVisible(), "/try 1280: the heading says the policy approved it");
+  // 16 Nov (Max: "out of the text box"): the answer uses the whole step column, the button on one line.
+  const cols = await page.evaluate(() => { const m = document.querySelector("#main")!.getBoundingClientRect(), r = document.querySelector(".screen.work .result")!.getBoundingClientRect(), b = document.querySelector(".screen.work .payrow .btn")!.getBoundingClientRect(); return { main: m.width, res: r.width, btnH: b.height }; });
+  ok(cols.res >= cols.main * 0.85, `/try 1280: the work answer fills the column (${Math.round(cols.res)} of ${Math.round(cols.main)} px)`);
+  ok(cols.btnH <= 64, `/try 1280: the pay button is one line (${Math.round(cols.btnH)} px high)`);
+  ok(await page.evaluate(() => getComputedStyle(document.querySelector(".pv-cap")!).position !== "sticky"), "/try 1280: the step bar does not stick over the page");
+  ok(await page.evaluate(() => [...document.querySelectorAll(".pv-m-rails .hw-logo")].every((e) => Number(getComputedStyle(e).opacity) === 1 && Number(getComputedStyle(e.parentElement!).opacity) === 1)), "/try 1280: the partner logos are not dimmed");
   ok(!(await page.getByText("Waiting for your approval").count()), "/try 1280: no \"Waiting for your approval\" within the limit");
   await page.screenshot({ path: join(shots, "desktop-1280-work.png") });
   await page.getByRole("button", { name: "See the agent pay it" }).click();
