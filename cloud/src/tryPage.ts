@@ -856,12 +856,14 @@ function remember(name,arg,how){if(how==='pop')return;const st={screen:name,arg:
 window.addEventListener('popstate',(ev)=>{
   const st=ev.state;if(!st||typeof st.screen!=='string'||!SCREENS[st.screen])return;
   if(!S.session&&st.screen!=='start'){show('start',null,'pop');return}
+  // A company is running: Back to the start screen stays in it (a new company would spend the start limits).
+  if(st.screen==='start'&&S.session){show('invoice',null,'pop');return}
   const a=st.arg||null;
   if(st.screen==='work'){
     if(a&&a.invoice){show('work',a,'pop');return}
     api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];const last=items[items.length-1];if(last)show('work',{kind:'reload',invoice:last},'pop');else show('invoice',null,'pop')});return}
   // Paid already: Back to the approval shows the payment, never a second approval.
-  if(st.screen==='approve'&&S.settled){show('books',{settled:S.settled},'pop');return}
+  if(st.screen==='approve'&&S.settled&&S.proposal&&a&&a.invoice&&S.proposal.invoice===a.invoice.id){show('books',{settled:S.settled},'pop');return}
   if(st.screen==='books'){show('books',{settled:S.settled},'pop');return}
   show(st.screen,a,'pop');
 });
@@ -1194,7 +1196,7 @@ function drawResult(box,r,ms){
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
     // 16 Nov (owner): within the company's limit to pay alone (the engine's alone_limit), the agent pays it on its own: the
     // Pay filed below runs it when the agents and code's checks say pay (its answer carries alone and settled).
-    const alone=!!(inv.alone_limit&&inv.alone_limit.within===true);
+    let alone=!!(inv.alone_limit&&inv.alone_limit.within===true)&&!(Array.isArray(inv.findings)&&inv.findings.some((f)=>f&&f.code==='instructions_in_document'));
     box.append(el('p','big ok',alone?C.work.readyAlone:C.work.ready));
     // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
     const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
@@ -1204,6 +1206,10 @@ function drawResult(box,r,ms){
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
+    // 16 Nov (review): within the limit, the agents may still decline to pay alone (the answer has no alone): then the
+    // screen says what happens next, the CFO's signature, before the button is pressed.
+    if(alone&&PREP.has(inv.id))PREP.get(inv.id).then((r)=>{if(S.screen!=='work'||!main||!main.isConnected||main.classList.contains('asking'))return;const j=r&&r.status===200&&r.json;if(j&&j.alone)return;
+      const big=box.querySelector('p.big.ok');if(big)big.textContent=C.work.ready;const nx=box.querySelector('ul.checks li.next span');if(nx&&inv.total)nx.textContent=fill(C.work.signNeeded,{money:cash(inv.currency,inv.total)});main.textContent=C.work.pay;alone=false});
     main=btn(alone?C.work.payAlone:C.work.pay,true);main.addEventListener('click',()=>{
       if(!alone){show('approve',{invoice:inv});return}
       // 16 Nov (owner): within the limit nobody signs, so the CFO's screen is never shown. The agent's payment is the
@@ -1218,7 +1224,8 @@ function drawResult(box,r,ms){
           S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv.id,alone:true};S.cred=null;S.settled=r.json.settled;
           S.awx=r.json.airwallex_payout&&typeof r.json.airwallex_payout==='object'?r.json.airwallex_payout:null;save();show('books',{settled:S.settled});catchUp();return}
         if(p&&typeof p.id==='string'&&p.status==='PENDING_APPROVAL'){show('approve',{invoice:Object.assign({},inv,{proposal:p})});return}
-        show('approve',{invoice:inv,again:true})});
+        // Already paid (Back to a stale screen): its paid screen; filed for the CFO: those terms; else file it again.
+        invoiceNow(inv.id).then((cur)=>{if(S.screen!=='work')return;if(paidGo(cur))return;if(cur&&cur.proposal&&cur.proposal.status==='PENDING_APPROVAL'){show('approve',{invoice:cur});return}show('approve',{invoice:inv,again:true})})});
     });
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
     // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
@@ -1265,12 +1272,18 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     const mine=(e)=>!(typeof e.subject==='string'&&/^AP-\d+$/.test(e.subject)&&arg.invoice&&e.subject!==arg.invoice.id);
     call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it);ag.add(it)}});
     // A copy caught as the same file comes back as that answer (kept with the page's history), never as its paid original.
-    drawResult(result,{status:200,json:Object.assign({invoice:arg.invoice},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{})},null);
-    result.append(ag.node);
+    const drawIt=(inv)=>{if(S.screen!=='work'||!box.isConnected)return;result.replaceChildren();
+      drawResult(result,{status:200,json:Object.assign({invoice:inv},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{})},null);
+      result.append(ag.node)};
+    // 16 Nov (review): the invoice as the server has it now, not as it was filed: paid since (the agent's payment runs in
+    // the background) opens its paid screen; filed for the CFO since carries its terms, so Send to CFO opens them.
+    const was=arg.invoice;
+    if(!was||typeof was.id!=='string'){drawIt(was);return}
+    invoiceNow(was.id).then((cur)=>{if(S.screen!=='work'||!box.isConnected)return;if(cur&&was.status!=='paid'&&paidGo(cur,'replace'))return;drawIt(cur||was)});
     return;
   }
   const sk=skeleton();result.append(sk.node);
-  S.cost={micros:0,models:[],invoice:null};save();
+  S.cost={micros:0,models:[],invoice:null};S.settled=null;S.cred=null;S.awx=null;save();
   const t0=performance.now();
   // A line aimed at the AI that the engine flagged while it filed this invoice (its own event, read by the poller):
   // said under the answer once both are in. The answer is the engine's as for any invoice (the line changed nothing).
@@ -1280,6 +1293,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items);ag.add(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
+    if(!box.isConnected)return;
     const ms=performance.now()-t0;
     pollDone();askClose('skeleton');live.settle(ms);
     if(S.screen!=='work')return;
@@ -1338,6 +1352,11 @@ let SUPP=null;
 const suppliersOnFile=()=>(SUPP||(SUPP=api('GET','/v1/engine/suppliers').then((r)=>r.status===200&&Array.isArray(r.json.items)?r.json.items:[]).catch(()=>[]))).then((x)=>{if(!x.length)SUPP=null;return x});
 // The terms being prepared for an invoice (started from screen 2's answer), taken once by screen 3.
 const PREP=new Map();
+// 16 Nov (review): an invoice the server says is paid (the agent paid it in the background, or the CFO's signature did)
+// opens on its paid screen after Back or a reload, never as a fresh decision. False when it is not paid.
+const paidGo=(inv,how)=>{if(!inv||inv.status!=='paid'||!inv.proposal||typeof inv.proposal.id!=='string')return false;if(!(S.proposal&&S.proposal.id===inv.proposal.id)){S.proposal={id:inv.proposal.id,challenge:inv.proposal.challenge,terms_sha256:inv.proposal.terms_sha256,invoice:inv.id,alone:!!(inv.alone_limit&&inv.alone_limit.within)};S.settled={};S.cred=null;S.awx=null;save()}show('books',{settled:S.settled||{}},how);return true};
+// The server's current view of one invoice (null when it cannot be read).
+const invoiceNow=(id)=>api('GET','/v1/engine/invoices').then((r)=>{const items=r.status===200&&Array.isArray(r.json.items)?r.json.items:[];return items.find((x)=>x&&x.id===id)||null}).catch(()=>null);
 // 3 Approve: the proposal's facts, its short hash and the exact terms in a fold; one button in two labelled stages.
 function factRows(p,inv,terms){
   const facts=Array.isArray(p.facts)?p.facts.filter((f)=>Array.isArray(f)&&f.length===2):[];
@@ -1472,11 +1491,13 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     const pre=!ready&&!arg.again&&inv&&inv.id&&PREP.has(inv.id)?PREP.get(inv.id):null;if(inv&&inv.id)PREP.delete(inv.id);
     // The engine's status (is there a passkey?) is read beside the proposal, not after it.
     const stq=api('GET','/v1/engine');
-    const r=ready?{status:200,json:{proposal:ready}}
+    let r=ready?{status:200,json:{proposal:ready}}
       :pre?await track(pre)
       :inv&&inv.id?await track(api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'))
       :S.proposal?await api('GET','/v1/engine/proposals/'+encodeURIComponent(S.proposal.id)):{status:0,json:{}};
     const st=await stq;
+    // 16 Nov (review): already filed (Back, then Send again) or already paid: the server's own state, never a loop of 409s.
+    if(r.status===409&&inv&&inv.id){const cur=await invoiceNow(inv.id);if(S.screen!=='approve')return;if(paidGo(cur))return;if(cur&&cur.proposal&&cur.proposal.status==='PENDING_APPROVAL')r={status:200,json:{proposal:cur.proposal}}}
     if(S.screen!=='approve')return;
     if(r.status!==200||!r.json.proposal||typeof r.json.proposal.id!=='string'){said.replaceChildren();const why=words(r.json,A.failed),fxw=fxHoldOf(why);
       if(fxw){top.replaceChildren(whyNode(fxw,[el('p','',why)]));main.set(C.fxHold.button,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
@@ -1507,7 +1528,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
   // A failed prompt: a plain line (timed out, cancelled or failed) and Try again; refused at once, before a prompt could
   // show: this browser cannot sign here, so open the page in Safari or Chrome (and its address to copy).
   function failedPasskey(e,t0){
-    idle();const fast=e&&e.name!=='PasskeyTimeout'&&performance.now()-t0<1500;if(fast)stuck=true;
+    idle();const fast=e&&e.name!=='PasskeyTimeout'&&(/^(NotSupportedError|SecurityError)$/.test(e.name)||(e.name==='NotAllowedError'&&performance.now()-t0<400));if(fast)stuck=true;
     said.replaceChildren(note(e&&e.name==='PasskeyTimeout'?A.timeout:fast?A.noPasskey:cancelled(e)?A.cancelled:A.failed));stage(true);
   }
   // Two taps, each opening its own prompt: create (it uses up the tap's user activation, so Safari would refuse a
@@ -1983,6 +2004,8 @@ async function boot(){
   if(S.screen==='pay'&&S.proposal){show('pay');return}
   if(S.screen==='approve'&&last){show('approve',{invoice:last});return}
   if(S.screen==='invoice'||S.screen==='start'){show('invoice');return}
+  // 16 Nov (review): the visitor's own invoice, paid since (the agent pays in the background): its paid screen.
+  if(last&&S.cost&&S.cost.invoice===last.id&&paidGo(last))return;
   if(last)show('work',{kind:'reload',invoice:last});else show('invoice');
 }
 __TOUR__

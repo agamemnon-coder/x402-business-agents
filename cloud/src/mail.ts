@@ -57,10 +57,16 @@ export async function receiveEmail(sql: Sql, blobs: Blobs, msg: InboundEmail, op
   const day = Math.floor(opts.now.getTime() / 86_400_000) * 86_400;
   // Counted first, then checked (red team round 4: checked first and counted after, sixty deliveries at once all saw
   // the same "used" and got in); a delivery that is refused or turns out to be a duplicate gives its count back.
+  // The message count is checked before the bytes are counted (16 Nov: with sixty at once, deliveries already past the
+  // message quota still counted their bytes, so the first ten could all see the byte quota used and none got in).
   const giveBack = async () => { await bump(sql, `mail:${tenant.id}`, day, -1); await bump(sql, `mailbytes:${tenant.id}`, day, -bytes.length); };
   const n = await bump(sql, `mail:${tenant.id}`, day, 1);
+  if (n > quota.messagesPerDay) {
+    await bump(sql, `mail:${tenant.id}`, day, -1);
+    return refuse("this address's daily quota is used up; try again tomorrow");
+  }
   const b = await bump(sql, `mailbytes:${tenant.id}`, day, bytes.length);
-  if (n > quota.messagesPerDay || b > quota.bytesPerDay) {
+  if (b > quota.bytesPerDay) {
     await giveBack();
     return refuse("this address's daily quota is used up; try again tomorrow");
   }
