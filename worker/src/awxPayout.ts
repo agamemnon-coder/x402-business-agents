@@ -192,7 +192,19 @@ export class AwxPayoutDesk {
     else this.sql.exec("UPDATE awx_payouts_v2 SET status = ? WHERE terms_sha256 = ?", status, termsSha256);
   }
 
-  async payout(a: PayoutAsk): Promise<PayoutAnswer> {
+  /**
+   * One payout at a time. A Durable Object takes new calls while it awaits Airwallex, so without this every ask made at
+   * the same moment counted the caps and read the balance before any of them wrote its row (security review, 16 Nov).
+   */
+  private queue: Promise<unknown> = Promise.resolve();
+
+  payout(a: PayoutAsk): Promise<PayoutAnswer> {
+    const run = this.queue.then(() => this.payoutNow(a));
+    this.queue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  private async payoutNow(a: PayoutAsk): Promise<PayoutAnswer> {
     if (!a || typeof a !== "object" || typeof a.company !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(a.company) || typeof a.terms_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(a.terms_sha256)
       || typeof a.amount !== "string" || centsOf(a.amount) === null || typeof a.currency !== "string" || !/^[A-Z]{3}$/.test(a.currency)
       || typeof a.reference !== "string" || a.reference.length > 140 || /[^\x20-\x7e]/.test(a.reference)) return { ok: false, reason: "bad_request" };
