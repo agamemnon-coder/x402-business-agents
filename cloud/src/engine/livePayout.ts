@@ -86,6 +86,21 @@ export async function sandboxPayout(o: {
   return note;
 }
 
+/**
+ * 16 Nov (owner): the agent's own payment within the CFO's limit, paid alone on Pay (src/engine/host.ts propose: alone,
+ * the proposal EXECUTED on the simulated bank), is asked of the Airwallex sandbox as the signed one is, with the
+ * approval fingerprint of the policy-approved terms (their terms_sha256). Pay's answer carries the note as
+ * airwallex_payout, where the pay route's answer has it. Anything else Pay answers is returned as it is.
+ */
+export async function withAlonePayout<T extends { ok: boolean; proposal?: { id: string; status: string }; alone?: unknown }>(
+  out: T, terms: (proposalId: string) => { terms_sha256: string; terms: unknown } | null, payout: (proposalId: string, termsSha256: string, terms: Record<string, unknown>) => Promise<PayoutNote>,
+): Promise<T & { airwallex_payout?: PayoutNote }> {
+  if (!out.ok || !out.alone || !out.proposal || out.proposal.status !== "EXECUTED") return out;
+  const t = terms(out.proposal.id);
+  if (!t) return out;
+  return { ...out, airwallex_payout: await payout(out.proposal.id, t.terms_sha256, t.terms as Record<string, unknown>) };
+}
+
 /** Why "Sandbox: move to PAID" did not move it, as a fixed code. */
 export const SIMULATE_REASONS = ["switched_off", "no_binding", "no_key", "no_transfer", "in_approval", "refused", "unavailable", "timeout", "bad_answer", "bad_request"] as const;
 export type SimulateReason = (typeof SIMULATE_REASONS)[number];

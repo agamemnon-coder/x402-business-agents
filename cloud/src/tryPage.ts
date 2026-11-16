@@ -1460,7 +1460,8 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // 16 Nov: paid by the agent alone, within the limit (Pay's answer: alone, settled): nothing to sign; on to the books.
-    if(r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){S.proposal.alone=true;S.settled=r.json.settled;save();show('books',{settled:S.settled});catchUp();return}
+    // Its Airwallex sandbox transfer (or why the simulated bank alone paid) comes as the pay route's does: airwallex_payout.
+    if(r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){S.proposal.alone=true;S.settled=r.json.settled;S.awx=r.json.airwallex_payout&&typeof r.json.airwallex_payout==='object'?r.json.airwallex_payout:null;save();show('books',{settled:S.settled});catchUp();return}
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;

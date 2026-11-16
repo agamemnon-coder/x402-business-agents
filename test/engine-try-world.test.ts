@@ -2,8 +2,11 @@
 // on file and "write your own", through the cloud's routes on the Node engine (the parser reads; test money on a
 // simulated bank). Every outcome asserted here is the engine's own answer, measured, never written into the sample.
 import { readFileSync } from "node:fs";
+import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pdfOf } from "../src/e2e/documents.js";
+import { sqlOver } from "../src/relay/local.js";
+import { AwxPayoutDesk, requestIdOf, type PayoutRail } from "../worker/src/awxPayout.js";
 import { rowOf, SAMPLE_SOURCES, samplePdf, samplesFile } from "../src/engine/tryWorld.js";
 import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import { ADMIN_TOKEN, ORIGIN, RP, testCloud, type TestCloud } from "./support/cloud.js";
@@ -327,5 +330,69 @@ describe("one document cap per company", () => {
       const pdf = (await pdfOf(`Note ${i}`)).toString("base64");
       expect((await c.req("POST", "/v1/engine/documents", { key: T.session, body: { filename: `n${i}.pdf`, mime: "application/pdf", base64: pdf } })).status).toBe(200);
     }
+  });
+});
+
+// 16 Nov (owner): both /try payments go to the Airwallex sandbox with the approval's fingerprint: the agent's own
+// EUR 120.00 within the limit (the policy-approved terms' hash) and the Face ID-signed EUR 1,850.00. kit11's payout desk
+// (worker/src/awxPayout.ts) stands in for the AwxFx entrypoint, over a fake sandbox rail: no network.
+describe("the Airwallex sandbox payout of both payments (agent alone, then Face ID)", () => {
+  let d: TestCloud;
+  const creates: { requestId: string; amount: string; approvalSha256: string }[] = [];
+  const rail: PayoutRail = {
+    availableCents: async () => 1_000_000,
+    createTransfer: async (t) => { creates.push(t); return { id: `4074d684-4704-406c-a527-00000000000${creates.length}`, status: "PROCESSING" }; },
+    transfer: async (id) => ({ id, status: "PROCESSING" }),
+    simulate: async (id, to) => ({ id, status: to }),
+  };
+  const desk = new AwxPayoutDesk(sqlOver(new Database(":memory:")), { rail, off: false });
+  beforeAll(async () => {
+    d = testCloud({ engine: true, tryIt: {}, livePayout: { source: { payout: (a) => desk.payout(a), payoutSimulate: (a) => desk.simulatePaid(a) }, allowed: async () => true } });
+    expect((await d.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "starts", value: "on" } })).status).toBe(200);
+  });
+  afterAll(() => d.close());
+
+  it("the agent's own payment carries its Airwallex sandbox transfer, with the policy-approved terms' hash; the signed one makes the company's second", async () => {
+    const st = await d.req("POST", "/v1/try/start", { body: {}, headers: { "cf-connecting-ip": "198.51.100.200" } });
+    const s = st.json.session as string;
+    const small = (await d.req("POST", "/v1/engine/samples/within", { key: s })).json.invoice as { id: string };
+    const p = await d.req("POST", `/v1/engine/invoices/${small.id}/pay`, { key: s });
+    expect(p.status, JSON.stringify(p.json)).toBe(200);
+    const proposal = p.json.proposal as { id: string; status: string; terms_sha256: string };
+    expect(p.json).toMatchObject({ alone: { limit: "EUR 500.00" }, settled: { invoice_status: "paid" }, proposal: { status: "EXECUTED" } });
+    expect(p.json.airwallex_payout).toEqual({ source: "airwallex-sandbox", transfer_id: "4074d684-4704-406c-a527-000000000001", status: "PROCESSING", amount: "120.00", currency: "EUR", request_id: requestIdOf(proposal.terms_sha256), terms_sha256: proposal.terms_sha256 });
+    expect(creates[0]).toMatchObject({ amount: "120.00", approvalSha256: proposal.terms_sha256 });
+    const ev = (await d.req("GET", "/v1/engine/events?after=0&limit=200", { key: s })).json.items as { event: string; subject: string | null; fields: Record<string, unknown> }[];
+    expect(ev.find((e) => e.event === "airwallex.transfer" && e.subject === proposal.id)!.fields).toMatchObject({ transfer_id: "4074d684-4704-406c-a527-000000000001", status: "PROCESSING" });
+    // Sandbox: move to PAID works on the agent's own proposal (its note is kept by proposal id).
+    const sim = await d.req("POST", `/v1/engine/proposals/${proposal.id}/payout/simulate`, { key: s });
+    expect(sim.json).toMatchObject({ ok: true, note: { transfer_id: "4074d684-4704-406c-a527-000000000001", status: "PAID", terms_sha256: proposal.terms_sha256 } });
+
+    // The CFO's EUR 1,850.00: Face ID, then the one pay route: the company's second sandbox transfer, its own hash.
+    const clean = (await d.req("POST", "/v1/engine/samples/clean", { key: s })).json.invoice as { id: string };
+    const phone = new FakeAuthenticator();
+    const ps = await d.req("POST", "/v1/engine/passkey/start", { key: s });
+    expect((await d.req("POST", "/v1/engine/passkey/finish", { key: s, body: { code: ps.json.code, credential: phone.register({ challenge: ps.json.challenge as string, origin: ORIGIN, rpId: RP }) } })).status).toBe(200);
+    const q = (await d.req("POST", `/v1/engine/invoices/${clean.id}/pay`, { key: s })).json as { proposal: { id: string; terms_sha256: string; challenge: string }; airwallex_payout?: unknown };
+    expect(q.airwallex_payout).toBeUndefined();
+    const cred = phone.sign({ challenge: q.proposal.challenge, origin: ORIGIN, rpId: RP, counter: 1 });
+    expect((await d.req("POST", `/v1/engine/proposals/${q.proposal.id}/approve`, { key: s, body: { terms_sha256: q.proposal.terms_sha256, credential: cred } })).json).toMatchObject({ status: "approved", held: true });
+    const t = (await d.req("GET", `/v1/engine/proposals/${q.proposal.id}/terms`, { key: s })).json.terms as Record<string, unknown>;
+    const paid = await d.req("POST", `/v1/engine/proposals/${q.proposal.id}/pay`, { key: s, body: { terms: t, credential: cred } });
+    expect(paid.json).toMatchObject({ outcome: "paid", airwallex_payout: { source: "airwallex-sandbox", transfer_id: "4074d684-4704-406c-a527-000000000002", amount: "1850.00", terms_sha256: q.proposal.terms_sha256 } });
+    expect(creates.map((c) => [c.amount, c.approvalSha256])).toEqual([["120.00", proposal.terms_sha256], ["1850.00", q.proposal.terms_sha256]]);
+  });
+});
+
+describe("the agent's own payment without the sandbox payout bound", () => {
+  it("says why the simulated bank alone paid it, and logs airwallex.payout_skipped", async () => {
+    const s = await visitor();
+    const small = (await c.req("POST", "/v1/engine/samples/within", { key: s })).json.invoice as { id: string };
+    const p = await c.req("POST", `/v1/engine/invoices/${small.id}/pay`, { key: s });
+    const proposal = p.json.proposal as { id: string; terms_sha256: string };
+    expect(p.json.airwallex_payout).toEqual({ source: "simulated", reason: "no_binding", terms_sha256: proposal.terms_sha256 });
+    const ev = (await c.req("GET", "/v1/engine/events?after=0&limit=200", { key: s })).json.items as { event: string; subject: string | null; fields: Record<string, unknown> }[];
+    expect(ev.find((e) => e.event === "airwallex.payout_skipped" && e.subject === proposal.id)!.fields).toEqual({ reason: "no_binding" });
+    expect(ev.some((e) => e.event === "airwallex.transfer")).toBe(false);
   });
 });

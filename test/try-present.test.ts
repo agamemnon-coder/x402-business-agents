@@ -108,7 +108,7 @@ describe("recording mode", () => {
     expect(html).toContain("Checks passed. Waiting for your approval.");
     expect(html).toContain("box.append(el('p','big ok',alone?C.work.readyAlone:C.work.ready));");
     // The agents' calls on Pay are read before the paid screen stays (no poll runs there).
-    expect(html).toContain("show('books',{settled:S.settled});catchUp();return}");
+    expect(html).toContain("show('books',{settled:S.settled});catchUp();return}"); // after S.awx (the agent's own Airwallex transfer) is kept
     // The paid screen leads on to an invoice above the limit, which is picked for the visitor.
     expect(html).toContain("Try an invoice above EUR 500 →");
     expect(html).toContain('"limitAmount":"500.00","limitCurrency":"EUR"');

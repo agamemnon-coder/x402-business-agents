@@ -13,7 +13,8 @@
 // Any other method, path or host throws before fetch is reached. The payout key is its own (AIRWALLEX_PAYOUT_CLIENT_ID,
 // AIRWALLEX_PAYOUT_API_KEY): the quote key (fxQuote.ts) stays as it is. The key and the token never leave this module.
 //
-// Limits: one payout per test company (its first signed payment), AWX_PAYOUT_DAY a UTC day in all, at most
+// Limits: at most AWX_PAYOUT_PER_COMPANY payouts per test company, one per distinct approved terms (16 Nov, owner: the
+// agent's own payment within the CFO's limit and the Face ID-signed one), AWX_PAYOUT_DAY a UTC day in all, at most
 // AWX_PAYOUT_MAX_CENTS, EUR only, and never more than the sandbox's available EUR balance. The same signed terms asked
 // again answer the stored transfer: never a second one.
 import type { Sql } from "./core.js";
@@ -30,6 +31,8 @@ export const AWX_PAYOUT_ALLOWED: readonly { method: "GET" | "POST"; path: RegExp
 /** The sandbox beneficiary of the main runs (docs/runs/2026-11-10-airwallex-two-locks.md): the only payee. */
 export const AWX_PAYOUT_BENEFICIARY = "46c2bbca-8b37-4ac9-ad3e-ef975dd35eeb";
 export const AWX_PAYOUT_DAY = 100;
+/** A test company's payouts: the agent's own within the limit, and the CFO's signed one (16 Nov). */
+export const AWX_PAYOUT_PER_COMPANY = 2;
 /** The demo's invoices go up to EUR 5,000 (src/engine/tryWorld.ts); nothing larger is ever sent. */
 export const AWX_PAYOUT_MAX_CENTS = 500_000;
 const TIMEOUT_MS = 6_000;
@@ -157,13 +160,36 @@ export type SimulateAnswer = { ok: true; transfer_id: string; status: string } |
 const utcDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const centsOf = (s: string): number | null => (/^\d{1,9}\.\d{2}$/.test(s) ? Number(s.replace(".", "")) : null);
 
-/** The desk in the "awx-payout" instance: the counts, the one row per company, the switch and the key's client. */
+/** One kept payout: the approved terms it pays, for which company, and what Airwallex answered. */
+interface Kept { company: string; terms_sha256: string; request_id: string; transfer_id: string | null; status: string | null; amount: string; currency: string }
+
+/**
+ * The desk in the "awx-payout" instance: the counts, one row per approved terms (at most AWX_PAYOUT_PER_COMPANY per
+ * company), the switch and the key's client.
+ */
 export class AwxPayoutDesk {
   private readonly now: () => number;
 
   constructor(private readonly sql: Sql, private readonly opts: { rail: PayoutRail | null; off: boolean; now?: () => number; day?: number }) {
     this.now = opts.now ?? (() => Date.now());
-    sql.exec("CREATE TABLE IF NOT EXISTS awx_payouts (company TEXT PRIMARY KEY, terms_sha256 TEXT NOT NULL UNIQUE, request_id TEXT NOT NULL, transfer_id TEXT, status TEXT, amount TEXT NOT NULL, currency TEXT NOT NULL, day TEXT NOT NULL)");
+    sql.exec("CREATE TABLE IF NOT EXISTS awx_payouts_v2 (terms_sha256 TEXT PRIMARY KEY, company TEXT NOT NULL, request_id TEXT NOT NULL, transfer_id TEXT, status TEXT, amount TEXT NOT NULL, currency TEXT NOT NULL, day TEXT NOT NULL)");
+    sql.exec("CREATE INDEX IF NOT EXISTS awx_payouts_v2_company ON awx_payouts_v2 (company)");
+    sql.exec("CREATE INDEX IF NOT EXISTS awx_payouts_v2_day ON awx_payouts_v2 (day)");
+    // 16 Nov: deployed instances keep one row per company (awx_payouts, company PRIMARY KEY). Its rows are copied once
+    // into the table keyed by terms, then it is dropped; a copy cut short is finished on the next construct (OR IGNORE).
+    if (sql.exec("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'awx_payouts'").toArray().length) {
+      sql.exec("INSERT OR IGNORE INTO awx_payouts_v2 (terms_sha256, company, request_id, transfer_id, status, amount, currency, day) SELECT terms_sha256, company, request_id, transfer_id, status, amount, currency, day FROM awx_payouts");
+      sql.exec("DROP TABLE awx_payouts");
+    }
+  }
+
+  private keptOf(termsSha256: string): Kept | undefined {
+    return this.sql.exec("SELECT company, terms_sha256, request_id, transfer_id, status, amount, currency FROM awx_payouts_v2 WHERE terms_sha256 = ?", termsSha256).toArray()[0] as Kept | undefined;
+  }
+
+  private setStatus(termsSha256: string, status: string, transferId?: string): void {
+    if (transferId) this.sql.exec("UPDATE awx_payouts_v2 SET transfer_id = ?, status = ? WHERE terms_sha256 = ?", transferId, status, termsSha256);
+    else this.sql.exec("UPDATE awx_payouts_v2 SET status = ? WHERE terms_sha256 = ?", status, termsSha256);
   }
 
   async payout(a: PayoutAsk): Promise<PayoutAnswer> {
@@ -173,14 +199,19 @@ export class AwxPayoutDesk {
     if (this.opts.off) return { ok: false, reason: "switched_off" };
     if (!this.opts.rail) return { ok: false, reason: "no_key" };
     const rail = this.opts.rail;
-    const kept = this.sql.exec("SELECT * FROM awx_payouts WHERE company = ?", a.company).toArray()[0] as { terms_sha256: string; request_id: string; transfer_id: string | null; status: string | null; amount: string; currency: string } | undefined;
-    if (kept && kept.terms_sha256 !== a.terms_sha256) return { ok: false, reason: "company_cap" };
+    const kept = this.keptOf(a.terms_sha256);
+    // Another company's terms are never this company's payout.
+    if (kept && kept.company !== a.company) return { ok: false, reason: "bad_request" };
     if (kept?.status === "REFUSED") return { ok: false, reason: "refused" };
     if (kept?.transfer_id) {
-      // The same signed terms again: the stored transfer, its status read back; never a second create.
+      // The same approved terms again: the stored transfer, its status read back; never a second create.
       let status = kept.status ?? "UNKNOWN";
-      try { status = (await rail.transfer(kept.transfer_id)).status; this.sql.exec("UPDATE awx_payouts SET status = ? WHERE company = ?", status, a.company); } catch { /* the stored status stands */ }
+      try { status = (await rail.transfer(kept.transfer_id)).status; this.setStatus(a.terms_sha256, status); } catch { /* the stored status stands */ }
       return { ok: true, transfer_id: kept.transfer_id, status, amount: kept.amount, currency: kept.currency, request_id: kept.request_id, again: true };
+    }
+    if (!kept) {
+      const mine = (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts_v2 WHERE company = ?", a.company).toArray()[0] as { n: number }).n;
+      if (mine >= AWX_PAYOUT_PER_COMPANY) return { ok: false, reason: "company_cap" };
     }
     const cents = centsOf(a.amount)!;
     if (a.currency !== "EUR") return { ok: false, reason: "not_eur" };
@@ -188,49 +219,49 @@ export class AwxPayoutDesk {
     const day = utcDay(this.now());
     const requestId = requestIdOf(a.terms_sha256);
     if (!kept) {
-      const today = (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts WHERE day = ?", day).toArray()[0] as { n: number }).n;
+      const today = (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts_v2 WHERE day = ?", day).toArray()[0] as { n: number }).n;
       if (today >= (this.opts.day ?? AWX_PAYOUT_DAY)) return { ok: false, reason: "day_cap" };
       try {
         if ((await rail.availableCents(a.currency)) < cents) return { ok: false, reason: "balance_low" };
       } catch {
         return { ok: false, reason: "unavailable" };
       }
-      // The row first: from here on this company's one payout is these terms, also if the create's answer is lost.
-      this.sql.exec("INSERT INTO awx_payouts (company, terms_sha256, request_id, amount, currency, day) VALUES (?, ?, ?, ?, ?, ?)", a.company, a.terms_sha256, requestId, a.amount, a.currency, day);
+      // The row first: from here on these terms have their payout, also if the create's answer is lost.
+      this.sql.exec("INSERT INTO awx_payouts_v2 (terms_sha256, company, request_id, amount, currency, day) VALUES (?, ?, ?, ?, ?, ?)", a.terms_sha256, a.company, requestId, a.amount, a.currency, day);
     }
     let t: SandboxTransfer;
     try {
       t = await rail.createTransfer({ requestId, amount: a.amount, currency: a.currency, reference: a.reference, approvalSha256: a.terms_sha256 });
     } catch (e) {
       const code = e instanceof PayoutFailed ? e.code : "ambiguous";
-      // Refused outright: nothing was made; the row stays, marked, so this company's one payout is spent and never retried.
-      if (code === "refused") this.sql.exec("UPDATE awx_payouts SET status = 'REFUSED' WHERE company = ?", a.company);
+      // Refused outright: nothing was made; the row stays, marked, so these terms' payout is spent and never retried.
+      if (code === "refused") this.setStatus(a.terms_sha256, "REFUSED");
       return { ok: false, reason: code };
     }
-    this.sql.exec("UPDATE awx_payouts SET transfer_id = ?, status = ? WHERE company = ?", t.id, t.status, a.company);
+    this.setStatus(a.terms_sha256, t.status, t.id);
     return { ok: true, transfer_id: t.id, status: t.status, amount: a.amount, currency: a.currency, request_id: requestId, again: false };
   }
 
   /**
-   * The visitor's "Sandbox: move to PAID": the company's own transfer, for the same signed terms, moved by the sandbox's
+   * The visitor's "Sandbox: move to PAID": the company's own transfer for these approved terms, moved by the sandbox's
    * simulation to SENT and then PAID. A transfer still IN_APPROVAL waits for a person in Airwallex and is not moved.
    */
   async simulatePaid(a: { company: string; terms_sha256: string }): Promise<SimulateAnswer> {
     if (!a || typeof a.company !== "string" || !/^[A-Za-z0-9_-]{1,64}$/.test(a.company) || typeof a.terms_sha256 !== "string" || !/^[0-9a-f]{64}$/.test(a.terms_sha256)) return { ok: false, reason: "bad_request" };
     if (this.opts.off) return { ok: false, reason: "switched_off" };
     if (!this.opts.rail) return { ok: false, reason: "no_key" };
-    const kept = this.sql.exec("SELECT terms_sha256, transfer_id FROM awx_payouts WHERE company = ?", a.company).toArray()[0] as { terms_sha256: string; transfer_id: string | null } | undefined;
-    if (!kept?.transfer_id || kept.terms_sha256 !== a.terms_sha256) return { ok: false, reason: "no_transfer" };
+    const kept = this.keptOf(a.terms_sha256);
+    if (!kept?.transfer_id || kept.company !== a.company) return { ok: false, reason: "no_transfer" };
     const rail = this.opts.rail, id = kept.transfer_id;
     try {
       let t = await rail.transfer(id);
-      if (t.status === "IN_APPROVAL") { this.sql.exec("UPDATE awx_payouts SET status = ? WHERE company = ?", t.status, a.company); return { ok: false, reason: "in_approval", status: t.status }; }
+      if (t.status === "IN_APPROVAL") { this.setStatus(a.terms_sha256, t.status); return { ok: false, reason: "in_approval", status: t.status }; }
       for (const to of ["SENT", "PAID"] as const) {
         if (t.status === "PAID") break;
         if (to === "SENT" && t.status === "SENT") continue;
         t = await rail.simulate(id, to);
       }
-      this.sql.exec("UPDATE awx_payouts SET status = ? WHERE company = ?", t.status, a.company);
+      this.setStatus(a.terms_sha256, t.status);
       return { ok: true, transfer_id: id, status: t.status };
     } catch (e) {
       return { ok: false, reason: e instanceof PayoutFailed && e.code === "refused" ? "refused" : "unavailable" };
@@ -239,6 +270,6 @@ export class AwxPayoutDesk {
 
   /** Today's payouts in all, for a check. */
   payoutsToday(): number {
-    return (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts WHERE day = ?", utcDay(this.now())).toArray()[0] as { n: number }).n;
+    return (this.sql.exec("SELECT COUNT(*) AS n FROM awx_payouts_v2 WHERE day = ?", utcDay(this.now())).toArray()[0] as { n: number }).n;
   }
 }

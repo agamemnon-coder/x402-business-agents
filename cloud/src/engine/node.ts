@@ -25,7 +25,7 @@ import type { PayeeNameVerifier } from "../../../src/airwallex/payeeName.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type FxQuoteNote, type LiveFxSource } from "./liveFx.js";
-import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
+import { sandboxPayout, simulatePayout, withAlonePayout, type PayoutSource } from "./livePayout.js";
 
 export interface NodeEngineEnv {
   sql: Sql;
@@ -110,7 +110,15 @@ export function nodeEngines(env: NodeEngineEnv): (tenantId: string) => EngineApi
       upload: async (doc) => (await host()).upload(doc),
       invoices: async () => (await host()).invoices(),
       invoice: async (id) => (await host()).invoice(id),
-      propose: async (invoiceId) => (await acts()).propose(invoiceId),
+      // 16 Nov: the agent's own payment within the limit, once paid, also asked of the Airwallex sandbox (./livePayout.ts withAlonePayout).
+      propose: async (invoiceId) => {
+        const out = await (await acts()).propose(invoiceId);
+        const { host: h, db, payoutNotes } = await engines.get(tenantId)!;
+        return withAlonePayout(out, (id) => h.terms(id), (proposalId, termsSha256, terms) => sandboxPayout({
+          company: tenantId, proposalId, termsSha256, terms, source: env.livePayout?.source ?? null, allowed: env.livePayout?.allowed ?? (async () => false), db,
+          keep: { get: (pid) => payoutNotes.get(pid) ?? null, set: (pid, n) => { payoutNotes.set(pid, n); } },
+        }));
+      },
       proposal: async (id) => (await host()).proposal(id),
       passkeyStart: async (rp) => (await host()).passkeyStart(rp && rpAllowed(rp, env) ? { rpId: rp.rpId, origin: rp.origin } : undefined),
       passkeyFinish: async (a) => (await host()).passkeyFinish(a),
