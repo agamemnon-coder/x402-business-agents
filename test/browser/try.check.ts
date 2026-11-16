@@ -251,7 +251,7 @@ const server = createServer(async (req, res) => {
     // The records as a PDF (14 Nov), built by the engine's own renderer from the same batches.
     const db = dbOf.get(session);
     if (!db) return send(res, 404, { error: "no company" });
-    const pdf = await recordsPdf({ format: "purser.cloud-sync/v1", company: "Try check company (test)", made_at: new Date().toISOString(), batches: batchesFor(db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }) }, `${ORIGIN}/try`);
+    const pdf = await recordsPdf({ format: "purser.cloud-sync/v1", company: "Try check company (test)", made_at: new Date().toISOString(), batches: batchesFor(db, { audit: { seq: 0, hash: null }, ledger: { entry_id: 0, hash: null }, documents: [] }) }, `${ORIGIN}/try?v=1`);
     res.writeHead(200, { "content-type": "application/pdf", "content-disposition": 'attachment; filename="purser-test-company-records.pdf"' });
     return res.end(pdf);
   }
@@ -329,7 +329,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
   const tag = `start ${width}x${height} ${scheme}`;
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   await page.waitForTimeout(900);
   const box = (sel: string) => page.locator(sel).first().boundingBox();
@@ -356,7 +356,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   // With reduced motion the start stands still, the refusal in sight.
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
   const page = await ctx.newPage();
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.waitForSelector(".start .flow");
   const still = await page.evaluate(() => [...document.querySelectorAll(".start *")].every((e) => getComputedStyle(e).animationName === "none")
     && getComputedStyle(document.querySelector(".start .fend")!).opacity === "1");
@@ -377,7 +377,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   const order: string[] = [];
   page.on("request", (r) => { const u = new URL(r.url()); if (r.method() === "POST" && u.pathname.startsWith("/v1/engine/samples/")) { filed.push(u.pathname); order.push("file"); } });
   page.on("response", (r) => { if (new URL(r.url()).pathname === "/v1/engine/samples") order.push("samples"); });
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   stand.samplesDelay = 800;
   const t0 = Date.now();
@@ -396,7 +396,7 @@ for (const [width, height, scheme] of [[390, 844, "light"], [390, 844, "dark"], 
   // A failed read: calm words and Retry; Retry reads them again and the button comes on.
   stand.samplesFail = 1;
   await page.evaluate(() => sessionStorage.clear());
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   await page.click(`text=${START.button}`);
   await page.waitForSelector(`h1:text-is("${INVOICE.heading}")`);
@@ -436,7 +436,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
     await page.screenshot({ path: join(shots, `try-${n}-${width}-${scheme}.png`) });
     if (o.full) await page.screenshot({ path: join(shots, `try-${n}-${width}-${scheme}-full.png`), fullPage: true });
   };
-  await page.goto(`${ORIGIN}/try#j=jury-token-123`);
+  await page.goto(`${ORIGIN}/try?v=1#j=jury-token-123`);
   await page.waitForSelector(`h1:text-is("${START.heading}")`);
   ok(new URL(page.url()).hash === "", `${tag}: the token is gone from the address bar`);
   ok(await page.evaluate(() => document.activeElement?.tagName) === "H1", `${tag}: focus is on the heading`);
@@ -974,7 +974,7 @@ for (const [width, scheme] of [[390, "light"], [1024, "light"], [1440, "dark"]] 
   stand.realStart = true;
   const I = NEG_COPY.inline;
   const toReady = async (page: Page, tag: string) => {
-    await page.goto(`${ORIGIN}/try`);
+    await page.goto(`${ORIGIN}/try?v=1`);
     await page.click(`text=${START.button}`);
     await page.waitForSelector(".samples .btn", { timeout: 20_000 });
     await page.click(`text=${INVOICE.send}`);
@@ -1165,7 +1165,7 @@ Object.defineProperty(Document.prototype,'visibilityState',{configurable:true,ge
     if (o) return fulfil(route, o.status, o.body);
     return fulfil(route, 404, { error: "no such stub" });
   });
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   // The clock stands still from here: only run() moves it.
   await page.clock.pauseAt(T0 + 1000);
   await page.click(`text=${START.button}`);

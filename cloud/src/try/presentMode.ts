@@ -28,7 +28,7 @@ const NEG_HINT = INVOICE.hints.clean ?? "";
 export const PRESENT_BEFORE = "An agent's invoice lands in a queue. An approve button anyone can click pays it, whatever was changed on the way.";
 export const PRESENT_AFTER = "The CFO signs the exact terms with Face ID. Change one cent and the signature is refused: nothing moves.";
 export const PRESENT_TRY = "kit11.max-31b.workers.dev/try";
-export const PRESENT_MONEY = "Sandbox mode · test money · Airwallex sandbox";
+export const PRESENT_MONEY = "Test money · no real money moves · Airwallex sandbox";
 export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact terms";
 /**
  * The app shell (15 Nov, Max: "it needs to look like the actual product"): in recording mode, the site's menu and the
@@ -62,11 +62,11 @@ export const V2_COPY = {
   start: {
     eyebrow: "Live demo · about 2 minutes",
     heading: "AI agents prepare the transfer. Your Face ID releases the funds.",
-    text: "AI agents read and check every supplier invoice within your limits. Above the limit, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
+    text: "Claude reads and checks every supplier invoice. Inside your limits, the agents pay on their own. Above them, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
     flow: [
-      { name: "The AI agent prepares", line: "Claude reads the invoice and proposes the payment." },
-      { name: "Your rules check it", line: "Above the agent's limit, it waits for you." },
-      { name: "You release it", line: "Face ID on the exact amount, supplier and account." },
+      { name: "Claude reads the invoice", line: "Supplier, amount, bank account, due date: checked against what is on file." },
+      { name: "Your rules decide", line: "Inside your limits the agent pays. Above them, it asks you." },
+      { name: "You sign the exact payment", line: "Face ID on this amount, this supplier, this account. Not a budget." },
     ],
     flowEnd: "Changed by one cent: blocked",
     button: "Launch the live transfer demo",
@@ -95,14 +95,14 @@ export const PRESENT_PARTNERS = {
   heading: "Tested on partner sandboxes and testnet",
   sub: "The same controls, on each partner's own rails, each from a recorded run you can open. Test money only.",
   cards: [
-    { logo: "airwallex", label: "Airwallex · sandbox", h: "The CFO's approval travels with the money", p: "Purser writes the hash the CFO signed into the transfer's metadata (approval_sha256 797d4483…) on a EUR 240.00 SWIFT test transfer. Card limits enforced by Airwallex itself: EUR 30.00 approved, 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
-    { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "The agent's mandate holds on chain", p: "86 x402 payments on Alta testnet in the main run. When an agent went over its per-payment cap, Alta refused purchase #24 on chain: MandateRefused, OverPerPaymentCap.", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
-    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own credential, bound to the exact amount. When a credential was used again, Purser refused it before any Airwallex call. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
+    { logo: "airwallex", label: "Airwallex · sandbox", h: "Your approval travels with the money", p: "Each bank transfer carries the fingerprint of exactly what the CFO approved (797d4483… on a EUR 240.00 test transfer). Agent card limits are enforced by Airwallex itself: EUR 30.00 approved, EUR 30.01 declined.", link: "154 sandbox calls on /airwallex", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { logo: "alta", label: "Alta (formerly Metal) · testnet · x402", h: "Agent spending limits, enforced on chain", p: "86 agent payments on Alta testnet in the main run. When an agent tried to pay more than its limit allows, the chain itself refused it (purchase #24).", link: "tx 0x2e92f9cb…1871", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
+    { logo: "", label: "Visa Intelligent Commerce · via Airwallex Airi · sandbox", h: "One credential, one purchase", p: "Each agent purchase gets its own card credential, bound to the exact amount. Used again, or for another amount, Purser refuses it before any payment is tried. 6 purchases paid across 4 sandbox runs.", link: "See it on /visa", href: "https://kit11.max-31b.workers.dev/visa" },
   ],
   all: "View live partner proof & architecture",
   allHref: "https://kit11.max-31b.workers.dev/proof",
   foot: "Alta (formerly Metal), Visa Intelligent Commerce via Airwallex Airi, Airwallex: no endorsement implied.",
-  chain: "The same rule on chain: Alta (formerly Metal) refused an agent's purchase #24 over its cap, MandateRefused · OverPerPaymentCap.",
+  chain: "The same rule on chain: Alta (formerly Metal) refused an agent's purchase #24 because it was over the agent's limit.",
   chainLink: "See the transaction →",
   chainHref: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871",
 } as const;
@@ -111,6 +111,7 @@ export const PRESENT_PARTNERS = {
 /** One plain sentence per moment, above the screen (15 Nov, Max: "people need to understand what's happening"). */
 export const PRESENT_GUIDE = {
   invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. An AI agent will read it and check it for you." },
+  workInj: { k: "Step 1 of 4", t: "The AI agent caught a hidden instruction in the invoice.", d: "It was ignored: an AI can't be told to pay. The invoice is checked like any other and still needs the CFO." },
   work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
   approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
   books: { k: "Step 3 of 4", t: "Approved, so the money went out.", d: "Paid with test money, booked in the accounts and filed. Next: try to cheat." },
@@ -119,7 +120,42 @@ export const PRESENT_GUIDE = {
   done: { k: "Done", t: "That's Purser.", d: "AI agents do the work. You approve the exceptions. Nobody can change what you approved." },
 } as const;
 
+/** A note that tries to give the AI orders (the engine's own flag, document.injection_flagged): said, never hidden. */
+/** The finish (16 Nov, Max: "tell the jury and partners what is happening and how everything is verified"): each step of
+ * the run and how anyone checks it without trusting us. Every line is a fact of the code or a recorded run. */
+export const PRESENT_VERIFY = {
+  h: "How every step is verified",
+  sub: "What happened in your run, and how anyone can check it without trusting us.",
+  rows: [
+    { k: "claude", h: "Claude read the invoice", p: "Each call is logged with its model, time, cost and Anthropic's request id.", run: "This run: {n} calls, {cost}." },
+    { k: "sign", h: "Your Face ID signed the exact terms", p: "Your passkey signed a fingerprint (SHA-256) of this amount, supplier and bank account. The server checks that signature before any money moves.", link: "Verify this payment yourself", href: "verify" },
+    { k: "cent", h: "One cent changed: refused", p: "A changed payment has a different fingerprint, so your signature no longer fits. Nothing moved." },
+    { k: "bank", h: "The bank keeps the fingerprint", p: "The Airwallex sandbox transfer carries the fingerprint of what you approved, and Airwallex's own approval is a second lock.", link: "Airwallex sandbox runs", href: "https://kit11.max-31b.workers.dev/airwallex" },
+    { k: "chain", h: "Agent limits, enforced on chain", p: "On Alta (formerly Metal) testnet the chain itself refused an agent payment over its limit. Anyone can look it up.", link: "See the transaction", href: "https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871" },
+    { k: "log", h: "A log nobody can quietly rewrite", p: "Every step is hash-chained to the one before it, so a later edit shows. The records and the proof are yours to download." },
+    { k: "code", h: "Open and tested", p: "The code is public, with more than 7,000 automated tests on every change.", link: "The code on GitHub", href: "https://github.com/agamemnon-coder/x402-business-agents" },
+  ],
+  all: "See all the proof",
+  allHref: "https://kit11.max-31b.workers.dev/proof",
+  foot: "Test money only. Partner names and marks belong to their owners; no endorsement implied.",
+} as const;
+
+/** Airwallex's own approval workflow on the sandbox account: a second, independent lock after the CFO's Face ID. */
+export const PRESENT_AWX2 = {
+  h: "Second lock: Airwallex's own approval.",
+  p: "This test account asks a person to approve each transfer inside Airwallex too. Purser never does that step itself, so here the test transfer waits there.",
+} as const;
+
+export const PRESENT_INJ = {
+  h: "Hidden instruction found in this invoice, and ignored",
+  p: "Someone wrote an order to the AI into the invoice. It changes nothing: the AI can't pay on its own, and this payment still needs the CFO's approval.",
+  h2: "This invoice had a hidden instruction for the AI",
+  p2: "It was ignored. Check the terms below: only your Face ID can approve them.",
+} as const;
+
 export const PRESENT_STAGES = ["The AI agent prepares", "The CFO approves", "The transfer", "The tamper test"] as const;
+/** The same four on a phone. */
+export const PRESENT_STAGES_SHORT = ["Agent", "CFO", "Transfer", "Tamper test"] as const;
 
 export const PRESENT_SHELL = {
   workspace: "Your test company",
@@ -328,6 +364,8 @@ body.pv-shell:has(.screen.company, .screen.did) .pv-nav li:nth-child(4) { backgr
 .pv-tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); font-size: 13px; }
 .hashpill[data-v2] { font-family: Inter, system-ui, sans-serif; font-weight: 650; color: var(--ok); background: var(--ok-soft); }
 .hashpill[data-v2]::before { content: "✓ "; }
+.screen.approve .hashpill[data-v2] { color: var(--accent); background: var(--accent-soft); }
+.screen.approve .hashpill[data-v2]::before { content: none; }
 .pp { margin-top: 28px; }
 .pp h2 { margin: 0; font: 760 26px/1.2 Inter, system-ui, sans-serif; letter-spacing: -.01em; color: var(--text); }
 .pp-sub { margin: 6px 0 16px; color: var(--muted); font: 500 15px/1.45 Inter, system-ui, sans-serif; }
@@ -470,12 +508,77 @@ body.present .card.refusal .hashes .hash + .hash::before { content: "≠  "; fon
 body.pv-shell #main > .band { opacity: .7; }
 /* The guide says what the heading said, in the visitor's words: the heading stays for screen readers only. */
 body.pv-shell #main:has(> .pv-cap.on) > h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Simple (16 Nov, Max: "too much text, too much happening"): one story per screen; the rest stays on plain /try. */
+body.pv-shell .vflow, body.pv-shell .progw, body.pv-shell #main .card.activity { display: none !important; }
+body.pv-shell .screen.start .partners, body.pv-shell .screen.start li.wide { display: none; }
+body.pv-shell .screen.work .result > p.meta, body.pv-shell .screen.work ul.checks li.next, body.pv-shell .screen.work .agentic, body.pv-shell .screen.work .negcard { display: none !important; }
+body.pv-shell .screen.approve p.limit, body.pv-shell .screen.approve > div > details, body.pv-shell .screen.approve > div > p.muted, body.pv-shell .screen.approve .openl { display: none !important; }
+body.pv-shell .screen.books .slot:has(.blk.filed), body.pv-shell .screen.books .tail .pdfl, body.pv-shell .screen.books .tail > p.hint, body.pv-shell .screen.books .tail .cloudl, body.pv-shell .screen.books .tail .acts .btn:not(.primary) { display: none !important; }
+body.pv-shell .screen.pay .tryform > .two, body.pv-shell .screen.pay .attacks, body.pv-shell .screen.pay > p:has(> .link) { display: none !important; }
+body.pv-shell .screen.company .vis-charts, body.pv-shell .screen.company .proofband, body.pv-shell .screen.company .records, body.pv-shell .screen.company > details, body.pv-shell .screen.company .acts.more a:not(.verifyl), body.pv-shell .screen.company .hint.shared { display: none !important; }
+/* One column where the side panel was; the blocked card says it once. */
+@media (min-width: 1200px) { body.pv-shell:not(.present) #main:has(> .screen.pay), body.pv-shell:not(.present) #main:has(> .screen.approve) { max-width: 640px; } }
+body.pv-shell .screen.pay, body.pv-shell .screen.approve { grid-template-columns: 1fr !important; }
+body.pv-shell .card.refusal > .sigl, body.pv-shell .card.refusal > .proof.xfer { display: none !important; }
+/* The note that tried to give orders: said once, at the top, in amber (the page's own line below the button goes). */
+body.pv-shell .screen.work .result > p.flagged { display: none !important; }
+body:not(.pv-staged) .pv-stages.inmain { display: none !important; }
+@media (max-width: 760px) { body.pv-shell .screen.start ol.flow { grid-template-columns: 1fr !important; } }
+/* The note that tried to give orders: said plainly, in amber. */
+body.pv-shell #main p.band { display: none !important; }
+.pv-rd { font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; }
+.pv-rd::before { content: "· "; }
+.pv-verify { margin: 22px 0; padding: 22px; border-radius: 18px; border: 1px solid var(--border); background: var(--surface); }
+.pv-verify h2 { margin: 0; font: 750 22px/1.25 Inter, system-ui, sans-serif; }
+.pv-verify .sub { margin: 6px 0 14px; color: var(--muted); }
+.pv-verify ol { list-style: none; margin: 0 0 16px; padding: 0; display: grid; gap: 12px; }
+.pv-verify li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; }
+.pv-verify li .n { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-soft); color: var(--ok); font: 700 12px/1 Inter, system-ui, sans-serif; }
+.pv-verify li b { display: block; font-weight: 700; }
+.pv-verify li p { margin: 2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.pv-verify li a { display: inline-block; margin-top: 4px; font-size: 14px; font-weight: 600; }
+.pv-verify .pv-all { display: inline-flex; }
+.pv-verify .foot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+.pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
+.pv-warn.small { padding: 10px 14px; }
+.pv-warn.small p { font-size: 13px; }
+.pv-warn { margin: 0 0 14px; padding: 14px 16px; border-radius: 14px; border: 1px solid color-mix(in srgb, #f5b544 55%, var(--border)); background: color-mix(in srgb, #f5b544 12%, var(--surface)); }
+.pv-warn b { display: block; color: #b87500; font: 750 16px/1.3 Inter, system-ui, sans-serif; }
+.pv-warn b::before { content: "⚠  "; }
+.pv-warn p { margin: 6px 0 0; color: var(--text); font: 500 14.5px/1.45 Inter, system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { .pv-warn b { color: #f5b544; } }
+/* The phone: the four stages and Claude's usage at the top of the page. */
+.pv-stages .ts, .pv-usechip { display: none; }
+@media (max-width: 1199px) {
+  .pv-stages.inmain { display: flex; justify-content: space-between; gap: 4px; margin: 4px 0 10px; padding: 8px 10px; list-style: none; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); }
+  .pv-stages.inmain li { height: auto; padding: 4px 6px; gap: 6px; font-size: 12.5px; }
+  .pv-stages.inmain li + li::before { display: none; }
+  .pv-stages.inmain .t { display: none; }
+  .pv-stages.inmain .ts { display: inline; }
+  .pv-stages.inmain .n { width: 20px; height: 20px; font-size: 11px; }
+  .pv-cap .pv-usechip { display: block; margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--border); font: 500 13px/1.35 Inter, system-ui, sans-serif; }
+  .pv-usechip summary { display: flex; align-items: center; gap: 8px; padding: 0; cursor: pointer; list-style: none; color: var(--muted); }
+  .pv-usechip summary::-webkit-details-marker { display: none; }
+  .pv-usechip summary b { color: var(--text); font-weight: 700; }
+  .pv-cap .pv-usechip b, .pv-cap .pv-usechip span { display: inline; margin: 0; font: inherit; font-size: 13px; }
+  .pv-cap .pv-usechip summary b { font-weight: 700; }
+  .pv-usechip summary .sp { color: #d97757; }
+  .pv-usechip ol { list-style: none; margin: 0; padding: 8px 0 0; display: grid; gap: 4px; }
+  .pv-usechip li { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pv-usechip li b { color: var(--text); font-weight: 600; }
+}
 `;
 
 const SHARED = String.raw`
 // --- Shared by recording mode and the public page: the app shell, Claude's usage per call, "How Purser works". ---
 const mk=(tag,cls,kids)=>{const e=document.createElement(tag);if(cls)e.className=cls;for(const k of [].concat(kids==null?[]:kids))e.append(k instanceof Node?k:document.createTextNode(String(k)));return e};
 const CALLS=new Map();
+const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
+// The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
+const INJ={since:-1,flag:false,max:0};
+function noteEvent(e){if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
+function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false}}
 const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
@@ -518,36 +621,55 @@ if(new URLSearchParams(location.search).get('neg')!=='1'){
 
 // v2: the test-money pill, the four stages on top, the partners' proof on the start screen and the way to it at the end.
 if(!document.querySelector('body > .pv-money'))document.body.append(mk('div','pv-money',PC.money));
-const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),t])));
+const stages=mk('ol','pv-stages',PC.stages.map((t,i)=>mk('li','',[mk('span','n',String(i+1)),mk('span','t',t),mk('span','ts',PC.stagesShort[i])])));
 document.body.append(stages);
 document.body.prepend(mk('div','pv-aurora',''));
 function stageOf(){const m=document.getElementById('main');if(!m)return -1;const has=(c)=>!!m.querySelector('.screen.'+c);
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
 function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
-  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?'work':'';if(has('approve'))return 'approve';if(has('books'))return 'books';
+  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?(INJ.flag?'workInj':'work'):'';if(has('approve'))return 'approve';if(has('books'))return 'books';
   if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 function v2(){
-  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g;void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
-   if(m0&&cap.parentElement!==m0&&g)m0.prepend(cap);else if(m0&&cap.parentElement===m0&&m0.firstElementChild!==cap)m0.prepend(cap)}
+  {const mm=document.getElementById('main');const small=innerWidth<1200;
+   if(mm&&small&&stages.parentElement!==mm){stages.classList.add('inmain');mm.prepend(stages)}else if(!small&&stages.parentElement!==document.body){stages.classList.remove('inmain');document.body.append(stages)}
+   if(mm&&small&&stages.parentElement===mm&&mm.firstElementChild!==stages)mm.prepend(stages);
+   // 16 Nov (Max: "two bars"): Claude's cost rides in the step card, not as a second bar under the steps.
+   if(chip.parentElement!==cap)cap.append(chip);
+   const res=mm&&mm.querySelector('.screen.work .result');if(res&&INJ.flag&&!res.querySelector('.pv-warn')){const w=mk('div','pv-warn',[mk('b','',PC.inj.h),mk('p','',PC.inj.p)]);const big=res.querySelector('p.big');if(big)res.insertBefore(w,big);else res.prepend(w)}}
+  {const g=guideKey();const m0=document.getElementById('main');if(cap.dataset.k!==g){cap.dataset.k=g;if(g&&PC.guide[g]){const G=PC.guide[g];cap.children[0].textContent=G.k;cap.children[1].textContent=G.t;cap.children[2].textContent=G.d;cap.className='pv-cap on '+g.replace('workInj','work refused');void cap.offsetWidth;cap.classList.add('in')}else cap.className='pv-cap'}
+   if(m0&&g){const anchor=stages.parentElement===m0?stages:null;if(anchor){if(anchor.nextElementSibling!==cap)anchor.after(cap)}else if(m0.firstElementChild!==cap)m0.prepend(cap)}}
   const k=stageOf();document.body.classList.toggle('pv-staged',k>=0);
   [...stages.children].forEach((li,i)=>{li.className=i<k?'done':i===k?'cur':''});
   const m=document.getElementById('main');if(!m)return;
   const h1=m.querySelector(':scope > h1');if(h1&&m.querySelector('.screen.start')&&!h1.querySelector('.pv-grad')){const t=h1.textContent||'';const i=t.indexOf('. ');if(i>0&&i<t.length-2)h1.replaceChildren(t.slice(0,i+2),mk('span','pv-grad',t.slice(i+2)))}
   const st=m.querySelector('.screen.start');if(st&&!st.querySelector('.pp'))st.append(partners(true));
   for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pp'))sc.append(partners(true));
+  {const ch=m.querySelector('.screen.work .card.inv .slot .chip');const rd=[...CALLS.values()].find((c)=>c.who===PC.shell.reader);if(ch&&rd&&!ch.querySelector('.pv-rd')){const sp=ch.querySelector(':scope > span:not(.mono)');if(sp)sp.textContent='Read by Claude'+(rd.model?' · '+rd.model:'');const mo=ch.querySelector('.mono');if(mo)mo.hidden=true;ch.append(mk('span','pv-rd',[rd.ms?(rd.ms/1000).toFixed(1)+' s':'',rd.ms?' · ':'',usd(rd.cost)].join('')))}}
+  for(const dt of m.querySelectorAll('.screen.approve .receipt dt'))if(/^(Conversion|Sign before)$/.test((dt.textContent||'').trim())&&!dt.hidden){dt.hidden=true;const dd=dt.nextElementSibling;if(dd&&dd.tagName==='DD')dd.hidden=true;const row=dt.parentElement;if(row&&row.tagName==='DIV'&&row.children.length===2)row.hidden=true}
+  {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh&&INJ.flag&&!m.querySelector('.screen.approve .pv-warn')){const w=mk('div','pv-warn small',[mk('b','',PC.inj.h2),mk('p','',PC.inj.p2)]);const box=sh.parentElement;if(box)box.before(w)}}
+  // The Airwallex card on Paid: a transfer waiting in Airwallex's own approval workflow is the second lock, said so; the
+  // sandbox button cannot move it (Purser never approves at Airwallex), so it goes; the fingerprint shortened (full on hover).
+  for(const ax of m.querySelectorAll('section.awx.live')){if(ax.dataset.v2)continue;const dds=[...ax.querySelectorAll('dd')];
+    for(const dd of dds)if(/^[0-9a-f]{64}$/.test((dd.textContent||'').trim())){dd.title=dd.textContent.trim();dd.textContent=dd.title.slice(0,12)+'…'}
+    const st=dds.find((d)=>/^IN APPROVAL$/.test((d.textContent||'').trim()));
+    if(st){ax.dataset.v2='1';st.textContent='Waiting for approval in Airwallex';for(const b of ax.querySelectorAll('button'))(b.closest('p')||b).hidden=true;for(const h of ax.querySelectorAll('p.hint'))h.hidden=true;ax.append(mk('p','pv-lock2',[mk('b','',PC.awx2.h),' ',PC.awx2.p]))}
+    else if(dds.length)ax.dataset.v2='1'}
+  for(const sc of m.querySelectorAll('.screen.company, .screen.did'))if(!sc.querySelector('.pv-verify')){const V=PC.verify;const calls=[...CALLS.values()];const tot=calls.reduce((x,c)=>x+c.cost,0);
+    const vh=sc.querySelector('a.verifyl');const ol=mk('ol','',V.rows.map((r,i)=>{const kids=[mk('span','n',String(i+1)),mk('div','',[mk('b','',r.h),mk('p','',r.p+(r.run&&calls.length?' '+r.run.replace('{n}',String(calls.length)).replace('{cost}',usd(tot)):''))])];
+      const href=r.href==='verify'?(vh&&vh.getAttribute('href')):r.href;if(r.link&&href){const l=mk('a','',r.link+' →');l.href=href;l.target='_blank';l.rel='noopener';kids[1].append(l)}return mk('li','',kids)}));
+    const all=mk('a','btn primary big pv-all',V.all+' →');all.href=V.allHref;all.target='_blank';all.rel='noopener';
+    const card=mk('section','pv-verify',[mk('h2','',V.h),mk('p','sub',V.sub),ol,all,mk('p','foot',V.foot)]);const pp=sc.querySelector('.pp');if(pp)pp.before(card);else sc.append(card)}
   const ap=m.querySelector('.screen.approve .receipt.sheet');if(ap&&!ap.querySelector('.pv-tag'))ap.prepend(mk('span','pv-tag amber','Awaiting CFO approval'));
-  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Terms sealed · any change breaks the seal'}
+  const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok','Signed & paid · test money'));
-  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Terms sealed · any change breaks the seal'}
+  for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent='Sealed by your Face ID · any change breaks the seal'}
   const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
   if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}
   if(document.body.classList.contains('pv-noneg'))for(const a of m.querySelectorAll('.screen.company a, .screen.company button, .screen.did a, .screen.did button'))if(/negotiat/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;
   // The finish: one main way on, the rest quiet; nothing repeated from the landing.
   for(const sc of m.querySelectorAll('.screen.company, .screen.did')){for(const a of sc.querySelectorAll('a, button'))if(/star on github|open purser cloud|download as json|watch agents negotiate/i.test(a.textContent||'')&&!a.hidden)a.hidden=true;for(const x of sc.querySelectorAll('li.wide'))x.hidden=true}
-  // Works with: the host's own rail too (its official logo, unaltered).
-  const ww=[...m.querySelectorAll('.screen.start *')].find((e)=>e.childElementCount===0&&/^works with$/i.test((e.textContent||'').trim()));if(ww&&!ww.parentElement.querySelector('.hw-airwallex'))ww.after(logoChip('airwallex'));
   // Recording mode: the refusal's proof open, the two fingerprints large.
   if(document.body.classList.contains('present')){const rc=m.querySelector('.card.refusal');const hs=rc&&rc.querySelector('details .hashes');const df=rc&&rc.querySelector(':scope > .diff');if(hs&&df)df.after(hs)}
   const rf=m.querySelector('.card.refusal');if(rf&&!rf.querySelector('.pv-tag')){const x=rf.querySelector('.proof.xfer');const zero=x&&/:\s*0\b/.test(x.textContent);rf.prepend(mk('span','pv-tag bad',zero?'Payment blocked · EUR 0.00 moved':'Payment blocked'));const ch=mk('p','pv-chain',[PC.partners.chain+' ']);const l=mk('a','',PC.partners.chainLink);l.href=PC.partners.chainHref;l.target='_blank';l.rel='noopener';ch.append(l);const x2=rf.querySelector('.proof.xfer');(x2||rf.querySelector('.rule')||rf.lastChild).after(ch)}
@@ -563,9 +685,10 @@ if(SHELL){
   document.body.append(mk('aside','pv-side',[brand,mk('div','pv-ws',[mk('b','',SH.workspace),mk('span','',SH.tag)]),mk('p','pv-guide',SH.guide),mk('ul','pv-nav',SH.nav.map((n)=>mk('li','',n))),howBtn,useBox,mk('div','pv-me',[mk('span','av',SH.user),mk('span','',[SH.user,mk('small','',SH.userSub)])])]));
 }
 function drawUse(){
-  if(!useBox)return;
   const calls=[...CALLS.values()];const tot=calls.reduce((a,c)=>a+c.cost,0);
   const rows=calls.slice(-5).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','c',usd(c.cost)),mk('span','m',[c.ms?(c.ms/1000).toFixed(1)+' s':'',c.ms&&c.req?' · ':'',c.req?c.req.slice(0,8)+'…'+c.req.slice(-5):''].join(''))]));
+  if(chip){chip.querySelector('summary').replaceChildren(mk('span','sp','✦'),mk('b','',SH.usage),mk('span','',calls.length?calls.length+' '+SH.calls+' · '+usd(tot):SH.none));const ol=chip.querySelector('ol');ol.replaceChildren(...calls.slice(-6).reverse().map((c)=>mk('li','',[mk('b','',c.who+(c.model?' · '+c.model:'')),mk('span','',usd(c.cost)+(c.ms?' · '+(c.ms/1000).toFixed(1)+' s':''))])))}
+  if(!useBox)return;
   const flash=calls.length&&useBox.dataset.tot!==String(tot);useBox.dataset.tot=String(tot);
   useBox.replaceChildren(mk('h3','',SH.usage),mk('div','tot'+(flash?' flash':''),calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' '+SH.calls:SH.none),mk('ol','',rows));
 }
@@ -595,13 +718,13 @@ const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
   const res=await real(input,init);
   try{
-    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
+    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'||/^\/v1\/engine\/proposals\/[^/]+\/pay$/.test(p))){
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
         if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear()}
-        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);}}}
+        else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
           const t=sent&&sent.terms||{};
@@ -708,9 +831,9 @@ __SHARED__
 const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
   const res=await real(input,init);
-  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
+  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
-      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number')takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});
+      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
   }catch(e){}
   return res;
@@ -726,7 +849,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, guide: PRESENT_GUIDE, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };

@@ -83,7 +83,7 @@ for (const [kind, script] of Object.entries(FAIL) as [keyof typeof FAIL, string]
   const shot = async (name: string) => { if (shots) await page.screenshot({ path: join(shots, `${kind}-${name}.png`), fullPage: true }); };
   const copyRow = page.locator(".openl");
 
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   ok(!(await page.locator("main").innerText()).includes("WhatsApp"), `${kind}: the start screen names no messaging app`);
   ok((await copyRow.count()) === 0, `${kind}: and shows no "open elsewhere" advice before anything failed`);
   await toApprove(page);
@@ -114,7 +114,7 @@ for (const [kind, script] of Object.entries(FAIL) as [keyof typeof FAIL, string]
     await copyRow.getByRole("button", { name: OPEN.copy }).click();
     await copyRow.locator(".hint").filter({ hasText: /\S/ }).waitFor({ timeout: 5_000 }).catch(() => undefined);
     const after = await copyRow.locator(".hint").innerText();
-    ok(after === OPEN.copied || after === `${ORIGIN}/try`, `${kind}: "${OPEN.copy}" says "${OPEN.copied}" or shows the address (${after})`);
+    ok(after === OPEN.copied || after === `${ORIGIN}/try?v=1`, `${kind}: "${OPEN.copy}" says "${OPEN.copied}" or shows the address (${after})`);
   }
   await shot("2-after");
   await ctx.close();

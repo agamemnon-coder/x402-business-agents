@@ -157,7 +157,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!fold.open || fold.rows < 10 || !fold.chips || !fold.more || fold.head < 44) fail(`/replay ${tag}: the fold does not open to every step with its tools (${JSON.stringify(fold)})`);
     await look(page, `/replay, fold open ${tag}`, w);
 
-    await page.goto(`${base}/try`, { waitUntil: "load" });
+    await page.goto(`${base}/try?v=1`, { waitUntil: "load" });
     await page.waitForTimeout(600);
     if ((await page.locator("nav > a, nav summary").allInnerTexts()).map((t) => t.trim()).slice(0, 3).join() !== "Home,Try,Proof" || (await page.locator("nav > a, nav summary").count()) > 5 || (await page.locator('nav a[href*="watch"]').count())) fail(`/try ${tag}: the menu is not Home, Try, Proof (at most five, no Watch)`);
     if (w < 500) await checkTaps(page, { name: `/try ${tag}, header and footer`, scopes: CHROME, fail });
