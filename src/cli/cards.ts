@@ -149,7 +149,7 @@ if (cmd === "status") {
   const w = await createWebhook(api, { url, events, version: process.env.AIRWALLEX_WEBHOOK_VERSION ?? "2025-11-11" });
   // The Worker's copy, through stdin like the relay token: never on a command line, never printed.
   const worker = resolve(import.meta.dirname, "../../worker");
-  const r = spawnSync(resolve(worker, "node_modules/.bin/wrangler"), ["secret", "put", "AIRWALLEX_WEBHOOK_SECRET"], {
+  const r = spawnSync(process.execPath, [resolve(worker, "node_modules/wrangler/bin/wrangler.js"), "secret", "put", "AIRWALLEX_WEBHOOK_SECRET"], { // node, not the .bin shim (Windows)
     cwd: worker, input: w.secret, env: { ...process.env, WRANGLER_SEND_METRICS: "false" }, stdio: ["pipe", "inherit", "inherit"],
   });
   if (r.status !== 0) {

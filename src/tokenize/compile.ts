@@ -4,10 +4,11 @@
 // compiles again and must get the same bytecode, so the committed artifact is exactly what the source makes.
 // Run: npx tsx src/tokenize/compile.ts
 
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { Abi, Hex } from "viem";
 
 const require = createRequire(import.meta.url);
@@ -38,7 +39,7 @@ export function compileContract(name: ContractName): TokenArtifact {
 
 export const loadContract = (name: ContractName): TokenArtifact => JSON.parse(readFileSync(artifactUrl(name), "utf8")) as TokenArtifact;
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()!)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   for (const n of ["PurserInvoiceToken", "TestUsdStandIn"] as const) {
     const a = compileContract(n);
     writeFileSync(artifactUrl(n), JSON.stringify(a, null, 2) + "\n");

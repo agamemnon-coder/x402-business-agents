@@ -3,6 +3,7 @@
 // integrated loudness, loudness range and true peak (ffmpeg ebur128), pace in words a minute, and the longest pause.
 // The film picks a line's take by these numbers (no clipping, steady loudness, natural pace). Not in git (out/).
 
+import { pathToFileURL } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -31,7 +32,7 @@ export function score(file: string, text: string): Score {
   return { dur: +dur.toFixed(2), wpm: Math.round(text.split(/\s+/).length / dur * 60), I: last(/I:\s+(-?[\d.]+) LUFS/g), LRA: last(/LRA:\s+([\d.]+) LU/g), TP: last(/Peak:\s+(-?[\d.]+) dBFS/g), maxGap: Math.max(0, ...gaps) };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   mkdirSync(dir!, { recursive: true });
   const all: Record<string, Score> = {};
   for (const l of lines) {

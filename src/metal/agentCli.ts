@@ -74,7 +74,7 @@ function parse(out: string): Map<string, string[]> {
 /** Exit codes that are outcomes, not errors (mandate pull: 1 refused, 3 pending, 4 held). */
 export function metalAgent(args: string[], okCodes: number[] = [0]): CliResult {
   const r = spawnSync(process.execPath, [CLI, ...args, "--network", "testnet"], {
-    env: { ...process.env, HOME: join(keysDir(), "home") },
+    env: { ...process.env, HOME: join(keysDir(), "home"), USERPROFILE: join(keysDir(), "home") }, // Windows: os.homedir() reads USERPROFILE
     encoding: "utf8",
     timeout: 180_000,
   });
@@ -97,7 +97,7 @@ function outcome(args: string[], okCodes: number[], code: number, raw: string): 
 export function metalAgentAsync(args: string[], okCodes: number[] = [0], bin?: string): Promise<CliResult> {
   return new Promise((resolveRun, reject) => {
     // A stand-in bin (tests) runs as given; the real CLI runs with this Node.
-    execFile(bin ?? process.execPath, [...(bin ? [] : [CLI]), ...args, "--network", "testnet"], { env: { ...process.env, HOME: join(keysDir(), "home") }, encoding: "utf8", timeout: 180_000, killSignal: "SIGKILL", maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(bin ?? process.execPath, [...(bin ? [] : [CLI]), ...args, "--network", "testnet"], { env: { ...process.env, HOME: join(keysDir(), "home"), USERPROFILE: join(keysDir(), "home") }, encoding: "utf8", timeout: 180_000, killSignal: "SIGKILL", maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
       // As spawnSync's status: the exit code, or -1 when the CLI did not exit by itself (not started, killed, timed out).
       const code = !err ? 0 : typeof err.code === "number" ? err.code : -1;
       try { resolveRun(outcome(args, okCodes, code, `${stdout ?? ""}${stderr ?? ""}`)); } catch (e) { reject(e as Error); }

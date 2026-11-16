@@ -12,7 +12,7 @@ export function twoLocksRefusals(cmd: string, env: Record<string, string | undef
   const why: string[] = [];
   if (env.TWO_LOCKS_GO !== "yes") why.push("TWO_LOCKS_GO=yes (Max's go)");
   if (!env.AIRWALLEX_CALL_BUDGET || !env.AIRWALLEX_CALL_LOG) why.push("AIRWALLEX_CALL_BUDGET and AIRWALLEX_CALL_LOG");
-  if (!/two-locks[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB=…/two-locks*.sqlite (this run's own ledger)");
+  if (!/two-locks[^\\/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB=…/two-locks*.sqlite (this run's own ledger)");
   if (cmd === "create" && invoiceNo !== TWO_LOCKS_DEFAULT_INVOICE) {
     why.push("create only pays SLL-2026-11B with the virtual test passkey; a TWO_LOCKS_INVOICE ledger was planned elsewhere and is signed by a person");
   }

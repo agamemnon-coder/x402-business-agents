@@ -70,8 +70,8 @@ export function ownPgid(): number {
   const p = procOf(process.pid);
   if (p) return p.pgid;
   const r = spawnSync("ps", ["-o", "pgid=", "-p", String(process.pid)], { encoding: "utf8" });
-  const n = Number(r.stdout.trim());
-  if (!Number.isSafeInteger(n) || n <= 0) throw new Error("cannot read this process's group id (no /proc, no ps)");
+  const n = Number((r.stdout ?? "").trim()); // no ps (Windows): no stdout, refused below in plain words
+  if (!Number.isSafeInteger(n) || n <= 0) throw new Error("cannot read this process's group id (no /proc, no ps): the runner commands need Linux or macOS");
   return n;
 }
 

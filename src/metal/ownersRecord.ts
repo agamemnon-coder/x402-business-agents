@@ -536,7 +536,7 @@ export function recordRun(db: DB, env: Record<string, string | undefined>, say: 
   const record = buildOwnersRecord(db, calls, {
     budget: Number(env.OWNERS_CALL_BUDGET), env,
     devices: { cfo: env.OWNERS_DEVICE_CFO, controller: env.OWNERS_DEVICE_CONTROLLER },
-    deviations: env.OWNERS_DEVIATIONS ? readFileSync(env.OWNERS_DEVIATIONS, "utf8").split("\n").filter((l) => l.trim()) : null,
+    deviations: env.OWNERS_DEVIATIONS ? readFileSync(env.OWNERS_DEVIATIONS, "utf8").split(/\r?\n/).filter((l) => l.trim()) : null,
   });
   const written = writeOwnersRecord(record, dir);
   const shown = (path: string) => { const rel = relative(process.cwd(), path); return rel.startsWith("..") ? path : rel; };

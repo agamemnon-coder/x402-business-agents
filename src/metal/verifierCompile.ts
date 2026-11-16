@@ -3,10 +3,11 @@
 // contracts/ERC7913WebAuthnVerifier.json. test/passkey-verifier.test.ts compiles it again and must get the same bytecode,
 // so the committed artifact is exactly OpenZeppelin's source. Run: npx tsx src/metal/verifierCompile.ts
 
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import type { Abi, Hex } from "viem";
 
 const require = createRequire(import.meta.url);
@@ -36,7 +37,7 @@ export function compileVerifier(): VerifierArtifact {
 
 export const loadVerifier = (): VerifierArtifact => JSON.parse(readFileSync(VERIFIER_ARTIFACT, "utf8")) as VerifierArtifact;
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()!)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const a = compileVerifier();
   writeFileSync(VERIFIER_ARTIFACT, JSON.stringify(a, null, 2) + "\n");
   console.log(`contracts/ERC7913WebAuthnVerifier.json: OpenZeppelin ${a.openzeppelin}, ${a.compiler}, ${(a.bytecode.length - 2) / 2} bytes`);

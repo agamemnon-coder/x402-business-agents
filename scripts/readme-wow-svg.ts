@@ -8,6 +8,8 @@
 //   stats-*            four figures that roll up once, each read from its record here.
 //   system-map-*       everything Purser is, in six zones, with dots on the path of one payment and a red one refused.
 // Written by `npx tsx scripts/readme-wow-svg.ts`; test/readme-animations.test.ts redraws each and compares.
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { readFileSync, writeFileSync } from "node:fs";
 import { loadRecord, payments, split } from "../src/redesign/run.js";
 
@@ -363,6 +365,6 @@ export function wowSvgs(): Record<string, string> {
   return out;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   for (const [f, svg] of Object.entries(wowSvgs())) { writeFileSync(f, svg); console.log(`wrote ${f} (${Buffer.byteLength(svg)} bytes)`); }
 }

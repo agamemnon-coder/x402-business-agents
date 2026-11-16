@@ -7,7 +7,7 @@
 // (iccClientFromEnv) and go nowhere else. Device and assurance data are read later still, at the moment of use
 // (readAssuranceFile), and are never stored.
 
-import { closeSync, fstatSync, openSync, readSync, constants as fsConstants } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readSync, constants as fsConstants } from "node:fs";
 import { readPrivateKeyFile, readRequestCertificate, sharedSecretKey, type IccAuthScheme, type IccDateHeader, type IccDigestForm, type IccSigner } from "./auth.js";
 import { ICC_PATH_PREFIXES, ICC_TEST_HOST, IccClient, type IccMle, type IccPathPrefix } from "./client.js";
 import type { IccPassthrough } from "./instruction.js";
@@ -157,6 +157,8 @@ const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v =
  */
 export function readAssuranceFile(file: string): IccPassthrough {
   let fd: number;
+  // O_NOFOLLOW refuses a symlink atomically where it exists; Windows has none, so look first there too.
+  try { if (lstatSync(file).isSymbolicLink()) throw new IccAssuranceFileError("the file is a symlink; refused"); } catch (e) { if (e instanceof IccAssuranceFileError) throw e; }
   try {
     fd = openSync(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
   } catch (e) {

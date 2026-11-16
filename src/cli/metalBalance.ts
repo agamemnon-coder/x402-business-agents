@@ -3,6 +3,8 @@
 // in *USDZ, so the *USDZ balance is also the gas balance. Nothing is signed or sent; the RPC URL is never printed.
 // wallets.json: [{ "label": "...", "address": "0x...", "source": "the record that names it" }]
 
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createPublicClient, erc20Abi, getAddress, type Address } from "viem";
 import { baseUnitsToCents, centsToBaseUnits, fromCents } from "../lib/money.js";
@@ -40,7 +42,7 @@ export function balanceRecord(at: Date, block: bigint, rows: BalanceRow[], calls
   ].join("\n");
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const [file, flag, out] = process.argv.slice(2);
   if (!file || (flag && flag !== "--out")) { console.error("usage: npm run metal-balance -- <wallets.json> [--out <file.md>]"); process.exit(2); }
   const wallets = JSON.parse(readFileSync(file, "utf8")) as Wallet[];
