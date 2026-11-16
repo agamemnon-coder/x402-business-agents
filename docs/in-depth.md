@@ -2,7 +2,7 @@
 
 Back to the [README](../README.md). The README's first screen in full: what ran live with one id per rail, where each
 judging criterion is proven, how a payment flows, the site in pictures, the proof per partner, the Kit 11 runs with
-every id, Try step by step, what is real and what is mock, and the words. Every live run: [runs/README.md](runs/README.md). Test money only throughout: the Airwallex sandbox and Alta testnet.
+every id, Try step by step, what is real and what is mock, and the words. Every live run: [runs/README.md](runs/README.md). Test money only throughout: the Airwallex sandbox and Alta (formerly Metal) testnet.
 
 ## What ran live, one id per rail
 

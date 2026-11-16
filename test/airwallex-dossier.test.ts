@@ -237,19 +237,16 @@ describe("the three sections added after the jury panel of 12 November", () => {
     }
   });
 
-  // Another stream may publish the finished two-locks run. The dossier therefore dates its statement of the state and
-  // quotes the record; while the record still says the approval was not completed, the quotes must be its own words.
-  it("transfer approvals: the state is dated, quoted from the record and linked", () => {
+  // 16 Nov: the finished two-locks run is published (docs/runs/2026-11-12-airwallex-two-locks-paid.md). The dossier says
+  // the transfer was held IN_APPROVAL, then approved in Airwallex's web app on 12 November and PAID, and links that record.
+  it("transfer approvals: held IN_APPROVAL, then approved in the web app and PAID, with the record linked", () => {
     const text = section(/^Transfer approvals/);
-    const record = RECORDS.get("docs/runs/2026-11-10-airwallex-two-locks.md")!;
-    expect(text).toMatch(/at the time of writing, 12 November/);
+    const paid = read("docs/runs/2026-11-12-airwallex-two-locks-paid.md");
+    expect(paid).toMatch(/PAID/);
     expect(text).toContain("`IN_APPROVAL`");
-    const quotes = [...text.matchAll(/"([^"]{12,})"/g)].map((m) => m[1]!);
-    expect(quotes.length).toBeGreaterThan(0);
-    if (record.includes("**Not completed.**")) {
-      const said = record.replace(/\*\*/g, "").replace(/\s+/g, " ");
-      expect(quotes.filter((q) => !said.includes(q.replace(/\s+/g, " ")))).toEqual([]);
-    }
+    expect(text).toMatch(/Approved in the web app \(12 Nov\)/);
+    expect(text).toContain("`PAID`");
+    expect(text).toContain("(runs/2026-11-12-airwallex-two-locks-paid.md)");
   });
 });
 
