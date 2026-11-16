@@ -23,7 +23,7 @@ if (holdoutId && (!holdout || !(holdoutId in HOLDOUT_LIVE_EVENTS || holdoutId ==
 const seed = holdout ? holdout.world.seed : Number(opt("--seed"));
 const ledger = opt("--ledger") ?? "";
 const label = opt("--label") ?? (holdout ? `live-${holdout.id}` : `live-${seed}`);
-if (!Number.isInteger(seed) || seed < 1 || !/(^|\/)dry-\d+\.sqlite$/.test(ledger) || !/^live-[\w-]+$/.test(label)) {
+if (!Number.isInteger(seed) || seed < 1 || !/(^|[\\/])dry-\d+\.sqlite$/.test(ledger) || !/^live-[\w-]+$/.test(label)) {
   console.error("usage: npm run variation-live -- --seed <n> --ledger data/dry-<m>.sqlite [--label live-<x>] (a dry-* test world only)");
   process.exit(2);
 }

@@ -5,9 +5,10 @@
 // without the CFO's approval of the exact terms.
 import { standInBank } from "./support/standInBank.js";
 import { FakePayeeNames } from "../src/airwallex/payeeName.js";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
+import { rmTemp } from "./support/rmTemp.js";
 import { afterEach, describe, expect, it } from "vitest";
 import { seedTreasury } from "../src/agents/euroBill.js";
 import { autopilotPass, drain, LEASE_MS, parkedItems, retryItem, takeLease, withinAloneLimit, type AloneGate, type AutopilotDeps } from "../src/ap/autopilot.js";
@@ -77,7 +78,7 @@ afterEach(() => {
   chaos.at = null;
   resuming.clear();
   delete process.env.KIT11_AP_AGENTS;
-  for (const r of roots.splice(0)) rmSync(r, { recursive: true, force: true });
+  for (const r of roots.splice(0)) rmTemp(r);
 });
 
 /** A stand-in for the outside books: it keeps what it was sent and finds an object it already holds by its id. */

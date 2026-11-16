@@ -86,8 +86,8 @@ if (cmd === "dry") {
   // Live commands: this world's own ledger and keys, the rail on, no Metal.
   const why: string[] = [];
   if (process.env.KIT11_AIRI_RAIL !== "on") why.push("KIT11_AIRI_RAIL=on");
-  if (!/vic-1[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-1*.sqlite)");
-  if (!/\/vic-1[^/]*$/.test(process.env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-1*)");
+  if (!/vic-1[^\\/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-1*.sqlite)");
+  if (!/[\\/]vic-1[^\\/]*$/.test(process.env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-1*)");
   if (process.env.METAL_RPC_URL) why.push("METAL_RPC_URL must be unset: vic-1 makes no Metal call");
   if (cmd !== "preflight") {
     if (!process.env.AIRWALLEX_CLIENT_ID || !process.env.AIRWALLEX_API_KEY) why.push("AIRWALLEX_CLIENT_ID and AIRWALLEX_API_KEY must be set");

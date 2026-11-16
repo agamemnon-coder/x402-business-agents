@@ -131,10 +131,10 @@ describe("tokenize live: fund", () => {
     expect({ code, out: out.join("\n") }).toMatchObject({ code: 0 });
     // The keys.
     const dir = w.env.KIT11_KEYS_DIR!;
-    expect(statSync(dir).mode & 0o777).toBe(0o700);
+    if (process.platform !== "win32") expect(statSync(dir).mode & 0o777).toBe(0o700); // Windows has no POSIX file modes
     expect(readdirSync(dir).sort()).toEqual(["creditor.key.json", "financier.key.json", "issuer.key.json", "payer.key.json"]);
     for (const r of ROLES) {
-      expect(statSync(keyFile(dir, r)).mode & 0o777).toBe(0o600);
+      if (process.platform !== "win32") expect(statSync(keyFile(dir, r)).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
       const k = JSON.parse(readFileSync(keyFile(dir, r), "utf8")) as { address: string; privateKey: Hex };
       expect(Object.keys(k).sort()).toEqual(["address", "privateKey"]);
       expect(privateKeyToAccount(k.privateKey).address).toBe(k.address);

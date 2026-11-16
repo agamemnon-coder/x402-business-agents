@@ -125,7 +125,7 @@ describe("npm run tokenize, each command its own process", () => {
     // record: the run record, written from the ledger and the call log with no request.
     const notes = join(dir, "notes.txt");
     writeFileSync(notes, "verify stopped once on an HTTP 500 and was run again.\n");
-    const rec = await step("record", 0, /RECORDED .*docs\/runs\/\d{4}-\d\d-\d\d-tokenize\.md\n {9}.*-tokenize\.json\n {9}11 transactions, 47 calls of 60; no request was made/, { TOKENIZE_DEVIATIONS: notes, TOKENIZE_GO_NOTE: "given in the test" });
+    const rec = await step("record", 0, /RECORDED .*docs[\\/]runs[\\/]\d{4}-\d\d-\d\d-tokenize\.md\n {9}.*-tokenize\.json\n {9}11 transactions, 47 calls of 60; no request was made/, { TOKENIZE_DEVIATIONS: notes, TOKENIZE_GO_NOTE: "given in the test" });
     expect(rec.requests).toEqual([]);
     const date = /(\d{4}-\d\d-\d\d)-tokenize\.md/.exec(rec.out)![1];
     const record = JSON.parse(readFileSync(join(dir, "repo/docs/runs", `${date}-tokenize.json`), "utf8")) as TokenizeRunRecord;

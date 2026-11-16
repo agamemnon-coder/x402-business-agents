@@ -5,9 +5,10 @@
 // reaches the record; if the command needs the owner's go or the endpoint, or runs without the call log; or if it
 // overwrites another world's record. Software passkeys and the stand-in chain; no network.
 import { execFile } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { rmTemp } from "./support/rmTemp.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
@@ -25,7 +26,7 @@ const REPO = resolve(import.meta.dirname, "..");
 let w: TestWorld;
 const temps: string[] = [];
 const temp = () => { const d = mkdtempSync(join(tmpdir(), "owners-record-")); temps.push(d); return d; };
-afterEach(() => { vi.useRealTimers(); w?.close(); for (const d of temps.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { vi.useRealTimers(); w?.close(); for (const d of temps.splice(0)) rmTemp(d); });
 async function world(o: Parameters<typeof ownersWorld>[0] = {}): Promise<TestWorld> {
   w = await ownersWorld(o);
   w.node.code.set(PASSKEY_VERIFIER.toLowerCase(), "0x60");

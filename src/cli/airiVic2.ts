@@ -83,8 +83,8 @@ if (cmd === "dry") {
   const why: string[] = [];
   if (!["preflight", "live", "recover"].includes(cmd)) why.push(`unknown command ${JSON.stringify(cmd)}`);
   if (process.env.KIT11_AIRI_RAIL !== "on") why.push("KIT11_AIRI_RAIL=on (the conductor's rail; the runner runs without it)");
-  if (!/vic-2[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-2*.sqlite)");
-  if (!/\/vic-2[^/]*$/.test(process.env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-2*)");
+  if (!/vic-2[^\\/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-2*.sqlite)");
+  if (!/[\\/]vic-2[^\\/]*$/.test(process.env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-2*)");
   for (const k of ["AIRWALLEX_CLIENT_ID", "AIRWALLEX_API_KEY", "METAL_RPC_URL", "METAL_ENDPOINT_SECRET", "T0_API_KEY", "HUB_DECISIONS_ENABLED"]) if (process.env[k]) why.push(`${k} must be unset: vic-2 calls nothing outside`);
   if (cmd === "live" && process.env.VIC2_GO !== "yes") why.push("VIC2_GO=yes (the CFO's go)");
   if (why.length) {

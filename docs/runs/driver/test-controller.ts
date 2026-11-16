@@ -26,7 +26,7 @@
 // The logic takes its phone as a parameter (ControllerPhone), so test/test-controller.test.ts runs it without a
 // browser; test/browser/test-controller.check.ts drives the real Chromium phone against a local relay.
 
-import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -108,6 +108,7 @@ export function saveCredential(file: string, c: StoredCredential): void {
   rmSync(tmp, { force: true });
   const fd = openSync(tmp, "wx", mode);
   try { writeSync(fd, `${JSON.stringify(c, null, 2)}\n`); fsyncSync(fd); } finally { closeSync(fd); }
+  if (process.platform === "win32" && existsSync(file)) chmodSync(file, 0o600); // Windows: a read-only file cannot be renamed over
   renameSync(tmp, file);
 }
 

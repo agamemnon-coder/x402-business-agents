@@ -7,7 +7,7 @@
 // expiryMonth, expiryYear, tokenType and tokenExpiration; the number and CVV fields are matched by the names below. A
 // file that matches none is refused with its key NAMES only (never a value), so the first live run shows what to add.
 
-import { closeSync, fstatSync, openSync, readSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { constants } from "node:fs";
 import { z } from "zod";
 import { CREDENTIAL_MAX_BYTES, CREDENTIAL_OTHERS_MASK } from "./cardData.js";
@@ -85,6 +85,8 @@ export function cardFromCredential(json: unknown): CardForCheckout {
  */
 export function readCredentialFile(file: string): CardForCheckout {
   let fd: number;
+  // O_NOFOLLOW refuses a symlink atomically where it exists; Windows has none, so look first there too.
+  try { if (lstatSync(file).isSymbolicLink()) throw new CredentialFileError("the credential file is a symlink; refused"); } catch (e) { if (e instanceof CredentialFileError) throw e; }
   try {
     fd = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW);
   } catch (e) {

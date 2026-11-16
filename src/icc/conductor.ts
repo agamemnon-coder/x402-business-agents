@@ -49,7 +49,7 @@ const line = (c: IccRunCheck): string => `${c.ok ? "ok  " : "FAIL"}  ${c.name}  
  */
 export function iccGuard(cmd: IccCommand, env: Env): string[] {
   const why: string[] = [];
-  if (!/icc[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (…/icc*.sqlite)");
+  if (!/icc[^\\/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (…/icc*.sqlite)");
   if (cmd === "record") {
     if (!env.ICC_CALL_LOG) why.push("ICC_CALL_LOG must name the run's call log");
     return why;
@@ -57,7 +57,7 @@ export function iccGuard(cmd: IccCommand, env: Env): string[] {
   if (env.KIT11_ICC_RAIL !== "on") why.push("KIT11_ICC_RAIL=on (the rail's switch)");
   if (env.ICC_GO !== "yes") why.push("ICC_GO=yes (the owner's go)");
   // The runner beside the run executes A after the CFO's Face ID, with the keys folder of this world.
-  if (cmd === "run" && !/\/icc[^/]*\/?$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/icc*), the one the runner uses");
+  if (cmd === "run" && !/[\\/]icc[^\\/]*[\\/]?$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/icc*), the one the runner uses");
   // The run's needs, for both commands: the preflight checks the keys the run will use. The assurance file is a
   // check of the preflight, not a reason to refuse it.
   const reading = readIccEnv(env, "purchase");
