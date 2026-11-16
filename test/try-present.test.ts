@@ -102,7 +102,7 @@ describe("recording mode", () => {
     expect(script).toContain("This invoice had a hidden instruction for the AI");
   });
 
-  it("is served by /try?present=1 and only then", async () => {
+  it("is /try itself; recording mode only with ?present=1; the release's page at ?v=1", async () => {
     const c = testCloud({ engine: true, tryIt: {} });
     try {
       expect((await c.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body: { op: "set", key: "starts", value: "on" } })).status).toBe(200);
@@ -112,11 +112,14 @@ describe("recording mode", () => {
       expect(on).toContain("document.body.classList.add('present');");
       expect(off).not.toContain("document.body.classList.add('present');");
       const v2 = await (await c.fetch(`${ORIGIN}/try?v=2`)).text();
-      // The product frame and its words on ?present=1 and ?v=2; plain /try stays the release's page, negotiation included.
-      for (const page of [on, v2]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your Face ID releases the funds."); }
-      expect(v2).not.toContain("document.body.classList.add('present');");
-      expect(off).not.toContain("pv-side");
-      expect(off).not.toContain("AI agents prepare the transfer.");
+      const plain = await (await c.fetch(`${ORIGIN}/try`)).text();
+      const v1 = await (await c.fetch(`${ORIGIN}/try?v=1`)).text();
+      const tour = await (await c.fetch(`${ORIGIN}/try?tour=1`)).text();
+      // 16 Nov (Max): the product frame and its words are /try itself (and ?v=2, ?present=0, ?present=1); the release's
+      // page, negotiation included, stays at ?v=1 and with the jury tour.
+      for (const page of [on, off, v2, plain]) { expect(page).toContain("pv-side"); expect(page).toContain("How Purser works"); expect(page).toContain("AI agents prepare the transfer. Your Face ID releases the funds."); }
+      for (const page of [off, v2, plain]) expect(page).not.toContain("document.body.classList.add('present');");
+      for (const page of [v1, tour]) { expect(page).not.toContain("pv-side"); expect(page).not.toContain("AI agents prepare the transfer."); }
     } finally { c.close(); }
   });
 });

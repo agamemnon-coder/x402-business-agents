@@ -33,8 +33,8 @@ afterEach(() => c.close());
 
 describe("GET /try", () => {
   it("is served with a fresh nonce on its one script and its one stylesheet, under the console's own policy and headers", async () => {
-    const a = await c.fetch(`${ORIGIN}/try`);
-    const b = await c.fetch(`${ORIGIN}/try`);
+    const a = await c.fetch(`${ORIGIN}/try?v=1`);
+    const b = await c.fetch(`${ORIGIN}/try?v=1`);
     expect(a.status).toBe(200);
     expect(a.headers.get("content-type")).toMatch(/text\/html/);
     const csp = a.headers.get("content-security-policy")!;
@@ -42,7 +42,7 @@ describe("GET /try", () => {
     expect(n).not.toBe(/'nonce-([^']+)'/.exec(b.headers.get("content-security-policy")!)![1]);
     expect(csp).toBe(consoleCsp(n));
     const page = await a.text();
-    expect(scriptBlocks(page)).toHaveLength(1); // plain /try: the release's page; ?v=2 and ?present=1 add the product frame
+    expect(scriptBlocks(page)).toHaveLength(1); // the release's page (?v=1); /try adds the product frame
     expect(page).toContain(`<script type="module" nonce="${n}">`);
     expect(page).toContain(`<style nonce="${n}">`);
     // The same headers as the console's page, the policy's nonce aside.

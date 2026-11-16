@@ -78,7 +78,7 @@ const browser = await launchBrowser("chromium");
 try {
   // Without the flag: the normal page, nothing of recording mode.
   const plain = await (await browser.newContext()).newPage();
-  await gotoLoaded(plain, `${ORIGIN}/try`);
+  await gotoLoaded(plain, `${ORIGIN}/try?v=1`);
   ok(await plain.locator(".pv-money, .pv-card, .pv-lane").count() === 0 && !(await plain.evaluate(() => document.body.classList.contains("present"))), "/try without ?present=1 is the normal page");
   await plain.context().close();
 

@@ -2010,8 +2010,10 @@ const PAGE_HEADERS = {
 /** GET /try: the page under the console's policy, with a fresh nonce. */
 export function tryPageResponse(_req: Request, url: URL, env: CloudEnv): Response {
   const n = nonce();
-  // Recording mode for the Demo Day walkthrough (?present=1) and the v2 preview (?v=2): the product frame and its words
-  // (cloud/src/try/presentMode.ts). Plain /try is the release's page, its negotiation included.
-  const mode = url.searchParams.get("present") === "1" ? "present" as const : url.searchParams.get("v") === "2" ? "public" as const : null;
+  // 16 Nov (Max: "make version 2 permanent"): /try is the product frame and its words (cloud/src/try/presentMode.ts);
+  // ?present=1 is recording mode on top. The release's page, its negotiation and the jury tour included, stays at ?v=1
+  // (and ?tour=1).
+  const q = url.searchParams;
+  const mode = q.get("present") === "1" ? "present" as const : q.get("v") === "1" || q.get("tour") === "1" ? null : "public" as const;
   return new Response(tryPage(n, { origin: env.origin, rpId: env.rpId }, mode ? presentExtra(mode) : undefined, mode ? (V2_COPY as unknown as Record<string, Record<string, unknown>>) : undefined), { status: 200, headers: { ...PAGE_HEADERS, "content-security-policy": consoleCsp(n) } });
 }

@@ -93,7 +93,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
   const shot = async (name: string) => { if (shots) { await page.waitForTimeout(600); await page.screenshot({ path: join(shots, `${tag}-${name}.png`), fullPage: true }); } };
 
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.getByRole("button", { name: /Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   const tenant = await page.evaluate(() => JSON.parse(sessionStorage.getItem("purser.try") ?? "{}").tenant);
@@ -269,7 +269,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   let page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.getByRole("button", { name: /Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await pick(page, "A supplier's invoice");
@@ -294,7 +294,7 @@ for (const width of [360, 390, 1440]) for (const scheme of ["light", "dark"] as 
   await page.close();
   page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(`${tag}: ${String(e)}`));
-  await page.goto(`${ORIGIN}/try`);
+  await page.goto(`${ORIGIN}/try?v=1`);
   await page.getByRole("button", { name: /Start with a test company/ }).click();
   await page.getByRole("heading", { name: /An invoice comes in/ }).waitFor();
   await pick(page, "An invoice with new bank details");
