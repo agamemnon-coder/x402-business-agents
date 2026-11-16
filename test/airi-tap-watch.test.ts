@@ -28,7 +28,7 @@ function standInRunner(dir: string, linkAfter: number, outcomeAfter: number | nu
   `);
   const file = join(dir, TAP_LINK_FILE);
   const statusFile = join(dir, "status");
-  const child = spawn(join(repo, "node_modules/.bin/tsx"), [script, file, statusFile, String(linkAfter), outcomeAfter === null ? "none" : String(outcomeAfter)], { stdio: "ignore" });
+  const child = spawn(process.execPath, [join(repo, "node_modules/tsx/dist/cli.mjs"), script, file, statusFile, String(linkAfter), outcomeAfter === null ? "none" : String(outcomeAfter)], { stdio: "ignore" });
   return { file, statusFile, child };
 }
 

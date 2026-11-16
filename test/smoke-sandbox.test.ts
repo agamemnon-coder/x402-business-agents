@@ -93,7 +93,7 @@ describe("smokeSandbox", () => {
 });
 
 describe("the CLI", () => {
-  const run = (env: Record<string, string>) => promisify(execFile)("npx", ["tsx", "src/cli/smokeSandbox.ts"], { env: { ...process.env, AIRWALLEX_CLIENT_ID: "", AIRWALLEX_API_KEY: "", AIRWALLEX_BASE_URL: "", ...env } })
+  const run = (env: Record<string, string>) => promisify(execFile)(process.execPath, ["--import", "tsx", "src/cli/smokeSandbox.ts"], { env: { ...process.env, AIRWALLEX_CLIENT_ID: "", AIRWALLEX_API_KEY: "", AIRWALLEX_BASE_URL: "", ...env } })
     .then(() => ({ code: 0, out: "" }), (e: { code: number; stdout: string; stderr: string }) => ({ code: e.code, out: e.stdout + e.stderr }));
 
   it("refuses a production base URL before reading any key, and prints no key", async () => {

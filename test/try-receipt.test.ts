@@ -103,7 +103,7 @@ describe("/try/sign's receipt", () => {
       const run = (r: unknown) => {
         const f = join(dir, "receipt.json");
         writeFileSync(f, JSON.stringify(r, null, 2));
-        return spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/verifyReceipt.ts"), f], { cwd: repo, encoding: "utf8", timeout: 60_000 });
+        return spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/verifyReceipt.ts"), f], { cwd: repo, encoding: "utf8", timeout: 60_000 });
       };
       const ok = run(receipt);
       expect(ok.status).toBe(0);
@@ -126,7 +126,7 @@ describe("/try/sign's receipt", () => {
     const repo = resolve(import.meta.dirname, "..");
     const awx = JSON.parse(readFileSync(resolve(repo, "docs/runs/2026-11-07-awx-1/receipt-P-0002.json"), "utf8")) as TryReceipt;
     expect(receiptOrigin(awx)).toBe("Airwallex sandbox approval of 7 Nov, test money.");
-    const run = spawnSync(resolve(repo, "node_modules/.bin/tsx"), [resolve(repo, "src/cli/verifyReceipt.ts"), resolve(repo, "docs/runs/2026-11-07-awx-1/receipt-P-0002.json")], { cwd: repo, encoding: "utf8", timeout: 60_000 });
+    const run = spawnSync(process.execPath, [resolve(repo, "node_modules/tsx/dist/cli.mjs"), resolve(repo, "src/cli/verifyReceipt.ts"), resolve(repo, "docs/runs/2026-11-07-awx-1/receipt-P-0002.json")], { cwd: repo, encoding: "utf8", timeout: 60_000 });
     expect(run.status).toBe(0);
     expect(run.stdout).toContain("Airwallex sandbox approval of 7 Nov, test money.");
     expect(run.stdout).not.toMatch(/test world/i);

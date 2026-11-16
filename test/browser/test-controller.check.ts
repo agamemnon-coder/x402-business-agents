@@ -147,7 +147,7 @@ check(new RegExp(`${dev} is a dev_test, not an owners_execute`).test(await refus
 const text = said.join("\n");
 check(!text.includes(TOKEN) && !text.includes(viewKey(TOKEN)) && !text.includes("#view=") && !text.includes(loadCredential(file).credential.privateKey), "nothing the driver printed holds the relay token, the viewer key or the private key");
 check(said.every((l) => l.includes(LABEL) || /^ {17}npm run passkey -- confirm /.test(l)), "every line the driver printed about itself says it is a virtual test passkey");
-const cli = (...args: string[]) => spawnSync("npx", ["tsx", "docs/runs/driver/test-controller.ts", ...args], { cwd: resolve(import.meta.dirname, "../.."), env: { ...process.env, ...env, KIT11_DB: join(dir, "world.sqlite") }, encoding: "utf8" });
+const cli = (...args: string[]) => spawnSync(process.execPath, ["--import", "tsx", "docs/runs/driver/test-controller.ts", ...args], { cwd: resolve(import.meta.dirname, "../.."), env: { ...process.env, ...env, KIT11_DB: join(dir, "world.sqlite") }, encoding: "utf8" });
 const other = cli("enrol", "anna");
 check(other.status === 2 && /REFUSED .*only ever test-controller/.test(other.stderr) && count("SELECT COUNT(*) AS n FROM passkey_enrolments WHERE status = 'OPEN'") === 0, `the command with another name exits ${other.status} and opens nothing`);
 const reject = cli("approve", bind, "--reject");

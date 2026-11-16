@@ -15,7 +15,7 @@ function owners(line: string, env: Record<string, string>): Promise<{ code: numb
   const [cmd, ...args] = line.split(" ") as [string, ...string[]];
   const clean = Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^(OWNERS_|KIT11_RELAY_|CLOUDFLARE_|METAL_RPC_URL$)/.test(k)));
   return new Promise((done) => {
-    execFile(join(REPO, "node_modules/.bin/tsx"), ["src/cli/ownersExecute.ts", cmd, ...args], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, `${cmd}.sqlite`), KIT11_KEYS_DIR: join(dir, "keys"), ...env }, timeout: 220_000 }, (err, stdout, stderr) => {
+    execFile(process.execPath, [join(REPO, "node_modules/tsx/dist/cli.mjs"), "src/cli/ownersExecute.ts", cmd, ...args], { cwd: REPO, env: { ...clean, KIT11_DB: join(dir, `${cmd}.sqlite`), KIT11_KEYS_DIR: join(dir, "keys"), ...env }, timeout: 220_000 }, (err, stdout, stderr) => {
       done({ code: err ? (typeof err.code === "number" ? err.code : null) : 0, text: `${stdout}${stderr}` });
     });
   });

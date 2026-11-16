@@ -218,7 +218,7 @@ if (cmd === "serve") {
 } else if (cmd === "deposit") {
   // D22: a retailer pays its invoice into Northwind's EUR Global Account (the sandbox's deposit simulation), in full
   // or short; the poll here (the webhook on the hosted relay) matches it, and the Treasury agent hears it as money in.
-  const out = execFileSync("npx", ["tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
+  const out = execFileSync(process.execPath, ["--import", "tsx", resolve(import.meta.dirname, "receivables.ts"), "customer-pays", ...(arg === "short" ? ["short"] : [])], { env: process.env, encoding: "utf8" });
   console.log(redactSecrets(out.trim()));
 } else {
   console.error("usage: npm run world -- setup [--upstream-cache off] [--free-eur x.xx] [--tap-rail on] | serve [--every 20] | price-rise [0.04] [--silent] | let-one-through | ridgeline-maintenance [hours|off] | ridgeline-price <x.xx> | dispute | invoice | packwise-pro | packwise-renewal | money-in | deposit [short] | report-offer | inject <channel> <file> --from <name> | holdout <" + Object.keys(HOLDOUT_LIVE_EVENTS).join("|") + ">");

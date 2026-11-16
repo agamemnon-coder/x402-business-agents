@@ -78,7 +78,7 @@ async function timed<T>(step: string, f: () => Promise<T>, note = ""): Promise<T
 
 /** One CLI step of the runbook, as Claude types it tomorrow; its output is redacted into the log. */
 function cli(script: string, ...args: string[]): string {
-  const r = spawnSync("npx", ["tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  const r = spawnSync(process.execPath, ["--import", "tsx", `src/cli/${script}`, ...args], { cwd: repo, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
   const text = `${r.stdout ?? ""}${r.stderr ?? ""}`.split("\n").filter((l) => !/ExperimentalWarning|trace-warnings/.test(l)).join("\n");
   for (const l of text.split("\n").slice(-40)) if (l.trim()) say(`  ${l}`);
   if (r.status !== 0) throw new Error(`${script} ${args.join(" ")} exited ${r.status}`);
@@ -91,7 +91,7 @@ let viewer = "";
 function startRunner(): Promise<void> {
   return new Promise((ok, fail) => {
     // Its own process group, so a kill reaches the runner itself, not only the npx wrapper around it.
-    const p = spawn("npx", ["tsx", "src/cli/relay.ts", "--local"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    const p = spawn(process.execPath, ["--import", "tsx", "src/cli/relay.ts", "--local"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     runner = p;
     const runLog = createWriteStream(join(out, "runner.log"), { flags: "a" });
     let buf = "";
@@ -310,7 +310,7 @@ if (process.env.DRYRUN_AUTONOMY) {
   // the Treasury agent recommends, both passkeys where four eyes applies.
   // The agents' company cards at Airwallex (the Sourcing agent pays its software on its card; Max, 1 Nov: card declines).
   await timed("A0 Cards: each agent its company card at Airwallex", async () => { cli("cards.ts", "setup"); });
-  const world = spawn("npx", ["tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  const world = spawn(process.execPath, ["--import", "tsx", "src/cli/world.ts", "serve", "--every", "15"], { cwd: repo, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
   const worldLog = createWriteStream(join(out, "world.log"), { flags: "a" });
   world.stdout!.on("data", (d: Buffer) => worldLog.write(redactSecrets(d.toString())));
   world.stderr!.on("data", (d: Buffer) => worldLog.write(redactSecrets(d.toString())));
@@ -589,7 +589,7 @@ await timed("2-4 Price rise, refusal on chain, two options with Opus's advice", 
   check(!!optA && !!optB, `options A (${optA}) and B (${optB}) proposed`);
 });
 await timed("5 Four eyes on chain (2-of-2 account in this world)", async () => {
-  const r = spawnSync("npx", ["tsx", "src/cli/fourEyes.ts"], { cwd: repo, env: { ...env, KIT11_KEYS_DIR: `${keys}/four-eyes`, RUN_OUT: `dry-run-four-eyes`, RUN_OUT_DIR: out }, encoding: "utf8" });
+  const r = spawnSync(process.execPath, ["--import", "tsx", "src/cli/fourEyes.ts"], { cwd: repo, env: { ...env, KIT11_KEYS_DIR: `${keys}/four-eyes`, RUN_OUT: `dry-run-four-eyes`, RUN_OUT_DIR: out }, encoding: "utf8" });
   const text = `${r.stdout}${r.stderr}`;
   check(/reverted.*CFO alone/.test(text.replace(/\n/g, " ")) || /reverted/.test(text), "the CFO's signature alone reverted on chain");
   check(r.status === 0, "four-eyes run finished");
@@ -817,7 +817,7 @@ await timed("13 Bank change for Bergtex in three steps (test identities)", async
 });
 await timed("14 Agent recognition (dev test)", async () => {
   cli("visa.ts", "setup");
-  const r = spawnSync("npx", ["tsx", "src/cli/visa.ts", "run"], { cwd: repo, env: { ...env, RUN_OUT: "dry-run-visa", RUN_OUT_DIR: out }, encoding: "utf8" });
+  const r = spawnSync(process.execPath, ["--import", "tsx", "src/cli/visa.ts", "run"], { cwd: repo, env: { ...env, RUN_OUT: "dry-run-visa", RUN_OUT_DIR: out }, encoding: "utf8" });
   check(/approved by Airwallex/.test(r.stdout) && /LIMIT_EXCEEDED/.test(r.stdout), "recognised and approved; over the limit declined by Airwallex");
 });
 await timed("Links: a private tab twice, and a phone that pinned another runner", linksStep);

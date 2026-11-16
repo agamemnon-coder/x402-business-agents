@@ -140,7 +140,7 @@ it("an RS256 passkey's signature verifies as well", async () => {
 });
 
 it("npm run verify-bundle: 0 on the committed sample, 1 on a copy with one cent changed", () => {
-  const run = (f: string) => { try { return { code: 0, out: execFileSync("npx", ["tsx", "src/cli/verifyBundle.ts", f], { encoding: "utf8" }) }; } catch (e) { const x = e as { status: number; stdout: string }; return { code: x.status, out: x.stdout }; } };
+  const run = (f: string) => { try { return { code: 0, out: execFileSync(process.execPath, ["--import", "tsx", "src/cli/verifyBundle.ts", f], { encoding: "utf8" }) }; } catch (e) { const x = e as { status: number; stdout: string }; return { code: x.status, out: x.stdout }; } };
   for (const f of ["docs/proof/try-paid.json", "docs/proof/try-refused.json"]) {
     const ok = run(f);
     expect(ok.code, ok.out).toBe(0);

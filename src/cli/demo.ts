@@ -12,11 +12,12 @@ import { openDb } from "../db/open.js";
 import { fromEnv } from "../airwallex/client.js";
 
 const root = resolve(import.meta.dirname, "../..");
-const tsx = resolve(root, "node_modules/.bin/tsx");
+const tsx = process.execPath;
+const tsxCli = resolve(root, "node_modules/tsx/dist/cli.mjs"); // node + tsx's own entry: works on Windows too (no .bin shim)
 
 function step(title: string, script: string, ...args: string[]): void {
   console.log(`\n━━━ ${title} ━━━`);
-  const r = spawnSync(tsx, [resolve(root, "src/cli", script), ...args], { stdio: "inherit", env: process.env, cwd: root });
+  const r = spawnSync(tsx, [tsxCli, resolve(root, "src/cli", script), ...args], { stdio: "inherit", env: process.env, cwd: root });
   if (r.status !== 0) {
     console.error(`\n${script} exited ${r.status}; the demo stops here. Fix it and rerun: every step is idempotent.`);
     process.exit(r.status ?? 1);

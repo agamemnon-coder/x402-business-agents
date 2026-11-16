@@ -34,7 +34,7 @@ describe("the README's animated SVGs", () => {
   });
 
   it("show the verifier's real output: VALID for the receipt, NOT VALID one cent higher", () => {
-    const run = (file: string, cwd?: string) => spawnSync(join(process.cwd(), "node_modules/.bin/tsx"), [join(process.cwd(), "src/cli/verifyReceipt.ts"), file], { cwd, encoding: "utf8" });
+    const run = (file: string, cwd?: string) => spawnSync(process.execPath, [join(process.cwd(), "node_modules/tsx/dist/cli.mjs"), join(process.cwd(), "src/cli/verifyReceipt.ts"), file], { cwd, encoding: "utf8" });
     const ok = run(RECEIPT);
     expect(ok.status).toBe(0);
     expect(ok.stdout.trimEnd()).toBe(APPROVAL_OUT);
