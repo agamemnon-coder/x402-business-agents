@@ -534,7 +534,7 @@ export const PAYOUT_CARD = {
   simulatedNote: "{why}. The payment was made on the simulated bank only.",
   why: {
     switched_off: "Sandbox transfers are switched off", no_binding: "Sandbox transfers are not set up here", no_key: "No Airwallex payout key is set",
-    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its one sandbox transfer", over_max: "The amount is above the demo's limit",
+    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its two sandbox transfers", over_max: "The amount is above the demo's limit",
     not_eur: "Only EUR is sent to the sandbox", balance_low: "The sandbox balance does not cover it", unavailable: "Airwallex did not answer", refused: "Airwallex refused the transfer",
     ambiguous: "Airwallex's answer was unclear; it is asked again, never paid twice", timeout: "Airwallex took too long", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The transfer could not be asked for",
   } as Record<string, string>,

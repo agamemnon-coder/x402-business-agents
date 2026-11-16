@@ -43,7 +43,7 @@ import type { Bank } from "../../../src/airwallex/routedRail.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
-import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
+import { sandboxPayout, simulatePayout, withAlonePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
 
 /** What the host needs of the object: its storage. */
@@ -179,7 +179,10 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     upload: async (doc) => host.upload(doc),
     invoices: async () => host.invoices(),
     invoice: async (id) => host.invoice(id),
-    propose: async (invoiceId) => kept(acts.propose(invoiceId)),
+    // 16 Nov: the agent's own payment within the limit, once paid on the simulated bank, also asked of the Airwallex
+    // sandbox as the signed one is (./livePayout.ts withAlonePayout); without the binding, the note says why not.
+    propose: async (invoiceId) => withAlonePayout(await kept(acts.propose(invoiceId)), (id) => host.terms(id),
+      (proposalId, termsSha256, terms) => sandboxPayout({ ...payoutKit, source: payoutOn ? payoutKit.source : null, proposalId, termsSha256, terms })),
     proposal: async (id) => host.proposal(id),
     // The Worker hands the request's relying party (../hostOrigin.ts); one it may not use is not taken: the object's own is.
     passkeyStart: async (rp) => host.passkeyStart(rp && rpAllowed(rp, own) ? { rpId: rp.rpId, origin: rp.origin } : undefined),

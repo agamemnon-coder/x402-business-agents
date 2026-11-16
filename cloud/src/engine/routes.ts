@@ -123,10 +123,10 @@ export function engineRoutes<C extends EngineCtx>(kit: EngineKit<C>): EngineRout
       }
     }) },
     { method: "GET", path: "/v1/engine/invoices", summary: "The engine's invoices: status, whether it can be paid, what the checks found, and its payment proposal if one was filed; { items }.", need: "read", run: on(async (_c, e) => json(200, { items: await e.invoices() })) },
-    { method: "POST", path: "/v1/engine/invoices/{id}/pay", summary: "File the invoice's payment for approval: answers { proposal } with the exact terms' hash and what the passkey signs; 409 with the engine's reason when it will not (the invoice is held, waiting or paid). Nothing is paid before the approval, except within the company's limit to pay alone (a test company of /try): when the agents and code's checks say pay, code approves the exact terms and the agent pays at once, and the answer adds { alone: { limit, by, why }, settled }.", need: "admin", run: on(async (c, e) => {
+    { method: "POST", path: "/v1/engine/invoices/{id}/pay", summary: "File the invoice's payment for approval: answers { proposal } with the exact terms' hash and what the passkey signs; 409 with the engine's reason when it will not (the invoice is held, waiting or paid). Nothing is paid before the approval, except within the company's limit to pay alone (a test company of /try): when the agents and code's checks say pay, code approves the exact terms and the agent pays at once, and the answer adds { alone: { limit, by, why }, settled, airwallex_payout (the Airwallex sandbox transfer of the policy-approved terms, or why the simulated bank alone paid) }.", need: "admin", run: on(async (c, e) => {
       if (!(await e.invoice(c.params[0]!))) return err(404, "no invoice");
       const out = await e.propose(c.params[0]!);
-      return out.ok ? json(200, { proposal: out.proposal, ...(out.alone ? { alone: out.alone, settled: out.settled ?? null } : {}) }) : err(409, out.reason);
+      return out.ok ? json(200, { proposal: out.proposal, ...(out.alone ? { alone: out.alone, settled: out.settled ?? null, ...(out.airwallex_payout ? { airwallex_payout: out.airwallex_payout } : {}) } : {}) }) : err(409, out.reason);
     }) },
     { method: "GET", path: "/v1/engine/proposals/{id}", summary: "One payment proposal: its status, the hash of its exact terms, the challenge a passkey signs and the facts a person reads; { proposal }.", need: "read", run: on(async (c, e) => {
       const proposal = await e.proposal(c.params[0]!);
