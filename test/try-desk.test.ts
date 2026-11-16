@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
-import { TRY_CALLS, TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TryDesk } from "../worker/src/try.js";
+import { TRY_CALLS, TRY_MODEL_PER_MINUTE, TRY_PER_DAY, TRY_PER_MINUTE, TRY_RESERVE_USD, TryDesk } from "../worker/src/try.js";
 
 const sql = () => {
   const db = new Database(":memory:");
@@ -126,5 +126,22 @@ describe("Try desk review fixes (1 Nov): world tries are weighed by their model 
     let clock = Date.parse("2026-11-05T10:00:00Z");
     const d = new TryDesk(sql(), { anthropicKey: "k", now: () => new Date(clock), fetcher: looping(() => { clock += 31_000; }) });
     expect(await (await world(d, "price-rise", "203.0.113.10")).json()).toMatchObject({ source: "code", calls: 1, why: "the agent took longer than 30 seconds" });
+  });
+});
+
+// Security review, 16 Nov: the budget was checked before the model calls and their cost added only after, so tries
+// sent at the same moment all passed a budget that was nearly spent. A try now holds its worst case while it runs.
+describe("tries at the same moment hold their worst case against the day's budget", () => {
+  it("of three text tries at once on an unspent budget smaller than one worst case, one uses the models and two read by code", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    const inner = api([{ kind: "flight" }, { item: "f", merchant: null, amount: "250", currency: "EUR", date: null, payee: null }]);
+    const slow = (async (u: string, init: RequestInit) => { await gate; return inner(u, init); }) as unknown as typeof fetch;
+    const d = new TryDesk(sql(), { anthropicKey: "k", budgetUsd: TRY_RESERVE_USD.text / 2, fetcher: slow });
+    const all = Promise.all(["203.0.113.31", "203.0.113.32", "203.0.113.33"].map((ip) => ask(d, "Book a flight to Berlin, max €250", { "cf-connecting-ip": ip })));
+    await new Promise((r) => setTimeout(r, 10));
+    release();
+    const modes = (await Promise.all((await all).map((r) => r.json()))).map((j) => (j as { mode: string }).mode).sort();
+    expect(modes).toEqual(["claude", "plain", "plain"]);
   });
 });

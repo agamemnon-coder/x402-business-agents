@@ -46,3 +46,39 @@ describe("N1: public /try starts count per IPv6 /64 and per /48, an IPv4 address
     expect(NUMBERS.starts_per_48_hour).toEqual({ ceiling: 200, fallback: 20 });
   });
 });
+
+// Security review, 16 Nov: the event and jury pools had no per-address start limit, and the event token is in the stage
+// QR, so one script could use up the room's starts. They now have their own, looser limit: a venue's Wi-Fi puts a whole
+// room behind one address, so the public pool's 5 an hour would lock the audience out.
+describe("event and jury starts count per address too, under their own looser limit", () => {
+  it("one address stops at starts_per_address_hour_pooled; another address and the next hour still start", async () => {
+    const t = testCloud({ engine: true, tryIt: { claude: false } });
+    t.clock.now = new Date("2026-11-19T10:00:00Z");
+    const admin = async (body: Record<string, unknown>) => { const r = await t.req("POST", "/v1/try/admin", { key: ADMIN_TOKEN, body }); expect(r.status, JSON.stringify(r.json)).toBe(200); return r.json; };
+    try {
+      await admin({ op: "set", key: "starts", value: "on" });
+      await admin({ op: "set", key: "starts_per_address_hour_pooled", value: 3 });
+      const token = (await admin({ op: "token", pool: "event", until: "2026-11-19T18:00:00Z" })).token as string;
+      const start = (ip: string) => t.req("POST", "/v1/try/start", { body: { token }, headers: { "cf-connecting-ip": ip } });
+      for (let i = 1; i <= 3; i++) {
+        const r = await start("198.51.100.20");
+        expect(r.status, `start ${i}`).toBe(201);
+        expect(r.json.pool).toBe("event");
+      }
+      expect((await start("198.51.100.20")).status).toBe(429);
+      expect((await start("198.51.100.21")).status).toBe(201);
+      t.clock.now = new Date(t.clock.now.getTime() + 3_600_000);
+      expect((await start("198.51.100.20")).status).toBe(201);
+      // The company still keeps no address (event and jury companies never did).
+      const rows = await t.env.sql.all<{ addr: string | null }>("SELECT addr FROM try_companies WHERE pool = 'event'");
+      expect(rows.every((r) => r.addr === null)).toBe(true);
+    } finally {
+      t.close();
+    }
+  });
+
+  it("has a default of 60 and a ceiling of 500", async () => {
+    const { NUMBERS } = await import("../cloud/src/try/switches.js");
+    expect(NUMBERS.starts_per_address_hour_pooled).toEqual({ ceiling: 500, fallback: 60 });
+  });
+});

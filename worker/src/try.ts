@@ -23,6 +23,12 @@ export const TRY_CALLS = { text: 2, world: 5 } as const;
 export const TRY_WORLD_DEADLINE_MS = 30_000;
 /** Model spend allowed per UTC day, in US dollars. */
 export const TRY_DAILY_BUDGET_USD = 3;
+/**
+ * What a try holds against the day's budget while it runs, its worst case (security review, 16 Nov): checked before the
+ * calls and settled to the real cost after, so tries sent at the same moment cannot all pass a nearly spent budget.
+ * A text try is two short calls (Haiku and Sonnet, at most 600 tokens out each); a wake at most five agent calls.
+ */
+export const TRY_RESERVE_USD = { text: 0.05, world: 0.75 } as const;
 
 // The relay's common headers (HSTS, nosniff, no-store, no-referrer) on every answer, as on the rest of the Worker (HF2).
 const headers = { ...COMMON_HEADERS, "content-type": "application/json; charset=utf-8" };
@@ -84,6 +90,9 @@ export class TryDesk {
     const spent = spentToday();
     const useModels = !!this.opts.anthropicKey && spent < budget && !crowded;
     if (useModels) this.sql.exec("INSERT INTO try_model (at, n) VALUES (?, ?)", nowMs, weight);
+    // Its worst case is held from here, in the same turn as the check (no await between), and settled below.
+    const held = useModels ? (world !== null ? TRY_RESERVE_USD.world : TRY_RESERVE_USD.text) : 0;
+    if (held) addSpend(held, 0);
     const why = !this.opts.anthropicKey ? "no model key is set on this relay" : spent >= budget ? "today's budget for model calls is spent" : "many visitors are trying it right now, so the models pause for a minute";
     if (world !== null) {
       // A wake makes several calls: each one's cost is recorded as it comes back, the budget is checked again before
@@ -92,14 +101,24 @@ export class TryDesk {
       const base = useModels ? claudeAgentAsk(this.opts.anthropicKey!, this.opts.fetcher) : null;
       const guarded: AgentAsk | null = base && (async (req) => {
         if (this.now().getTime() - nowMs > TRY_WORLD_DEADLINE_MS) throw new Error("the agent took longer than 30 seconds");
-        if (spentToday() >= budget) throw new Error("today's budget for model calls is spent");
+        // Its own hold is not spending: the day's budget is checked without it.
+        if (spentToday() - held >= budget) throw new Error("today's budget for model calls is spent");
         const r = await base(req);
         addSpend(r.costUsd, 0);
         return r;
       });
-      return answer(200, await tryWorld(world, guarded, this.now(), why));
+      try {
+        return answer(200, await tryWorld(world, guarded, this.now(), why));
+      } finally {
+        if (held) addSpend(-held, 0);
+      }
     }
-    const result = await tryPurserSafely(text, useModels ? claudeModels(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why);
+    let result: Awaited<ReturnType<typeof tryPurserSafely>>;
+    try {
+      result = await tryPurserSafely(text, useModels ? claudeModels(this.opts.anthropicKey!, this.opts.fetcher) : null, this.now(), why);
+    } finally {
+      if (held) addSpend(-held, 0);
+    }
     addSpend(result.costUsd, 1);
     return answer(200, result);
   }
