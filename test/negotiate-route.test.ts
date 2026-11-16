@@ -232,3 +232,23 @@ describe("the negotiation on the visitor's own invoice, in /try", () => {
     expect((await verifyProofBundle(proof)).ok).toBe(true);
   });
 });
+
+// Security review (16 Nov): /agreed took the agreement's hash, the turns and the amount from the client, so a visitor
+// could file an "agreed" invoice for a negotiation that never took place. Only what /v1/try/negotiate answered files now.
+describe("only a negotiation that took place files", () => {
+  it("a made-up agreement is refused; the real one files once", async () => {
+    script = LIVE;
+    const s = await visitor();
+    const filed = await c.req("POST", "/v1/engine/samples/clean", { key: s, body: {} });
+    const orig = filed.json.invoice as { id: string };
+    const n = (await c.req("POST", "/v1/try/negotiate", { key: s, body: { invoice_id: orig.id } })).json as { sha256: string; turns: unknown[]; compose: Record<string, string> };
+    const fake = "f".repeat(64);
+    const forged = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: fake, turns: 1, compose: { ...n.compose, invoice_no: `BTX-2026-21-${fake.slice(0, 8)}`, amount: "1000.00" } } });
+    expect(forged.status).toBe(409);
+    expect(forged.json.code).toBe("not_the_agreement");
+    // The real agreement, but at another amount: refused too.
+    expect((await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: { ...n.compose, amount: "1500.00" } } })).status).toBe(409);
+    const ok = await c.req("POST", "/v1/try/negotiate/agreed", { key: s, body: { invoice_id: orig.id, agreement_sha256: n.sha256, turns: n.turns.length, compose: n.compose } });
+    expect(ok.status, JSON.stringify(ok.json)).toBe(200);
+  });
+});

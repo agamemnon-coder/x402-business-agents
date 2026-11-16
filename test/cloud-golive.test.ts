@@ -136,6 +136,8 @@ describe("structured logs", () => {
     expect(line).toMatchObject({ level: "info", event: "test", authorization: "[redacted]", secret: "[redacted]", nested: { token: "[redacted]", iban: "…4300", key_id: "k_1" } });
     expect(out[0]).not.toMatch(/pck_abc|whsec_x|0532 0130 00|NL91ABNA/);
     expect(redact("key pck_live_0123456789abcdef0123")).not.toContain("0123456789abcdef");
+    // Session, access and other signed tokens are pcs./pca./… with a dot (security review, 16 Nov).
+    for (const p of ["pcs", "pca", "pcc", "pcf", "pcu"]) expect(redact(`failed for ${p}.eyJ0IjoidF90cnlfYWJjIn0.c2lnbmF0dXJlX2hlcmVfMTIz now`)).toBe("failed for [redacted] now");
   });
 
   it("a whole session of the API writes no key, session token, invite secret or account number to the log", async () => {
