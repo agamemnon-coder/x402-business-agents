@@ -68,7 +68,7 @@ describe("recording mode", () => {
     const { script } = presentExtra("public");
     expect(script).toContain("https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(script).toContain("797d4483");
-    expect(script).toContain("Visa Intelligent Commerce · via Airwallex Airi");
+    expect(script).toContain("\"word\":\"Visa Intelligent Commerce\",\"label\":\"via Airwallex Airi · sandbox\"");
     expect(script).toContain("no endorsement implied");
   });
 
@@ -93,6 +93,12 @@ describe("recording mode", () => {
     const { script } = presentExtra("public");
     expect(script).toContain("e.event==='document.injection_flagged'");
     expect(script).toContain("Hidden instruction found in this invoice, and ignored");
+  });
+
+  it("shows the real flow under the hood per step, and no menu that does nothing (16 Nov, Max: only real stuff)", () => {
+    const { script } = presentExtra("public");
+    for (const w of ["Under the hood", "fingerprint = sha256(terms)", "signature = faceId.sign(fingerprint)", "findInjections(text)", "approval_sha256: fingerprint", "→ refused · EUR 0.00 moved"]) expect(script).toContain(w);
+    expect(script).not.toContain("mk('ul','pv-nav'");
   });
 
   it("starts the hidden-instruction watch before the filing request, so a flag that arrives during it stays (16 Nov live run)", () => {
