@@ -24,7 +24,7 @@
 
 ## At a glance
 
-<a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/promo.webp" alt="The whole Purser system on one map, and one payment step by step: Claude reads the invoice, code checks the CFO policy, the exact terms are hashed, the CFO signs with a passkey, paid on the Airwallex sandbox or Alta testnet, anyone can verify it; one cent changed is refused. Test money only." width="100%"></a>
+<a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/promo.webp" alt="Animated, from a live /try run of 16 Nov 2026 (test money): the agent pays EUR 120.00 alone, within its EUR 500.00 limit; EUR 1,850.00 needs the CFO's Face ID on sha256 c0c8a884…, then Airwallex's sandbox marks it PAID; changed by one cent to EUR 1,850.01, its hash 664215b0… does not match: refused, EUR 0.00 moved." width="100%"></a>
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 7,044 tests passing in the last full run; 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
