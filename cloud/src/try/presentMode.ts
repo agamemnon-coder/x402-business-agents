@@ -81,7 +81,7 @@ export const V2_COPY = {
     approve: "Approve & sign {amount} with {method}",
   },
   books: { heading: "Transfer executed." },
-  work: { heading: "The AI agent prepares the transfer.", ready: "Checks passed. Waiting for your approval.", readySub: "Agents can't raise their own limit or pay above it.", pay: "Send to CFO for approval →", took: "Purser's checks answered in {s} s, measured in your browser." },
+  work: { heading: "The AI agent prepares the transfer.", ready: "Checks passed. Waiting for your approval.", readyAlone: "Checks passed. Approved by your policy.", readySub: "Agents can't raise their own limit or pay above it.", pay: "Send to CFO for approval →", took: "Purser's checks answered in {s} s, measured in your browser." },
   invoice: { send: "Give it to the AI agent →" },
   company: { heading: "Your run, start to finish." },
   pay: {
@@ -899,7 +899,7 @@ function v2(){
   // 16 Nov (review of the full run): three figures on the landing, not five; the warning in the green line too; terms are
   // locked by the Face ID, not before; no raw transfer ids on the paid card (they stay in the proof).
   for(const pk of m.querySelectorAll('.screen.start ul.rl li .pk'))if(/live runs|decisions by Claude/.test(pk.textContent||'')){const li=pk.closest('li');if(li)li.hidden=true}
-  {const big=m.querySelector('.screen.work .result p.big');const alone=cap.dataset.k==='workAlone';if(big&&(INJ.flag||alone)&&!big.dataset.v2&&/^Checks passed/.test((big.textContent||'').trim())){big.dataset.v2='1';big.textContent=alone?'Checks passed · inside the agent’s limit · the agent pays it.':'Checks passed · hidden instruction ignored · waiting for your approval.'}}
+  {const big=m.querySelector('.screen.work .result p.big');const alone=cap.dataset.k==='workAlone';if(big&&(INJ.flag||alone)&&!big.dataset.v2&&/^Checks passed/.test((big.textContent||'').trim())){big.dataset.v2='1';big.textContent=alone?'Checks passed. Approved by your policy.':'Checks passed · hidden instruction ignored · waiting for your approval.'}}
   {const sh=m.querySelector('.screen.approve p.sheet-h');if(sh&&!sh.dataset.v2){sh.dataset.v2='1';sh.textContent='Payment terms · your Face ID locks them'}}
   for(const x of m.querySelectorAll('.screen.books dt, .screen.books span, .screen.books b'))if(!x.closest('details')&&(x.textContent||'').trim()==='Transfer'){const v=x.nextElementSibling;if(v&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test((v.textContent||'').trim())&&!x.hidden){x.hidden=true;v.hidden=true}}
   hood(m);railDraw();
@@ -972,7 +972,7 @@ window.fetch=async(input,init)=>{
       const at=Date.now();
       res.clone().json().then((j)=>{
         if(!j||typeof j!=='object')return;
-        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear()}
+        if(p==='/v1/try/start'){RUN.startAt=at;RUN.paidAt=null;RUN.paid=null;RUN.refused=null;RUN.seqs.clear();RUN.claude.clear();CALLS.clear();keepCalls()}
         else if(p==='/v1/engine/events'){for(const e of Array.isArray(j.items)?j.items:[]){if(e&&typeof e.seq==='number'){RUN.seqs.add(e.seq);const f=e.fields&&typeof e.fields==='object'?e.fields:{};if(e.event==='claude.read'||(/^ap\.(checker_decided|coded|payer_proposed)$/.test(String(e.event))&&f.source==='claude'))RUN.claude.add(e.seq);takeCall(e,f);noteEvent(e);}}}
         else{
           let sent=null;try{sent=JSON.parse(String(init&&init.body||'null'))}catch(e){}
@@ -1085,7 +1085,7 @@ window.fetch=async(input,init)=>{
   const res=await real(input,init);
   try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
-      if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
+      if(p==='/v1/try/start'){CALLS.clear();keepCalls()}else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
   }catch(e){}
   return res;

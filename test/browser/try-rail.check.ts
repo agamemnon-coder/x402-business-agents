@@ -102,6 +102,8 @@ function moduleChecks(g: Geo, tag: string) {
   sideChecks(g, "/try 1280 (checks done)"); moduleChecks(g, "/try 1280 (checks done)");
   ok(/Auto-pay ≤ EUR 500\.00/.test(g.text), `/try 1280: the mandate reads "Auto-pay ≤ EUR 500.00"`);
   ok(/amount <= agent_limit/.test(g.text) && /120\.00/.test(g.text), "/try 1280: the code window shows amount <= agent_limit with 120.00");
+  ok(await page.getByText("Checks passed. Approved by your policy.").isVisible(), "/try 1280: the heading says the policy approved it");
+  ok(!(await page.getByText("Waiting for your approval").count()), "/try 1280: no \"Waiting for your approval\" within the limit");
   await page.screenshot({ path: join(shots, "desktop-1280-work.png") });
   await page.getByRole("button", { name: "See the agent pay it" }).click();
   await page.waitForFunction(() => /within_limit/.test(document.querySelector(".pv-rail")?.textContent ?? ""), null, { timeout: 60_000 }).catch(() => {});
@@ -111,6 +113,14 @@ function moduleChecks(g: Geo, tag: string) {
   ok(/within_limit/.test(g.text), "/try 1280 (paid): the code window shows the within_limit audit entry");
   ok(/Auto-pay ≤ EUR 500\.00/.test(g.text), "/try 1280 (paid): the mandate stays auto-pay");
   await page.screenshot({ path: join(shots, "desktop-1280-paid.png") });
+  // On to the invoice above the limit: the button says so and picks the EUR 1,850.00 sample.
+  const onward = page.getByRole("button", { name: "Try an invoice above EUR 500 →" });
+  await onward.waitFor({ timeout: 30_000 }).catch(() => {});
+  ok(await onward.isVisible(), "/try 1280 (paid): the main button reads \"Try an invoice above EUR 500 →\"");
+  await onward.click().catch(() => {});
+  await page.locator(".samples button[aria-pressed=true]").first().waitFor({ timeout: 30_000 }).catch(() => {});
+  const chosen = await page.locator(".samples button[aria-pressed=true]").first().innerText().catch(() => "");
+  ok(/1,850\.00/.test(chosen), `/try 1280: the invoice above the limit is picked (${chosen.replace(/\s+/g, " ").slice(0, 80)})`);
   await ctx.close();
 }
 

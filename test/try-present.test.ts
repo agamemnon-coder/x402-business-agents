@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { SYSTEM_MAP_DATA_URL } from "../cloud/src/try/systemMap.gen.js";
 import { describe, expect, it } from "vitest";
 import { tryPage } from "../cloud/src/tryPage.js";
-import { presentExtra, PRESENT_AFTER, PRESENT_BEFORE, PRESENT_MONEY, PRESENT_TRY } from "../cloud/src/try/presentMode.js";
+import { presentExtra, V2_COPY, PRESENT_AFTER, PRESENT_BEFORE, PRESENT_MONEY, PRESENT_TRY } from "../cloud/src/try/presentMode.js";
 import { ADMIN_TOKEN, ORIGIN, testCloud } from "./support/cloud.js";
 
 const cfg = { origin: "https://x.test", rpId: "x.test" };
@@ -101,6 +101,21 @@ describe("recording mode", () => {
     expect(script).not.toContain("mk('ul','pv-nav'");
   });
 
+  it("within the agent's limit: approved by policy, Claude's calls kept to the end, then on to an invoice above the limit (16 Nov, owner)", () => {
+    const html = tryPage("n0nce", cfg, presentExtra("public"), V2_COPY as unknown as Record<string, Record<string, unknown>>);
+    // The heading says who approved it: the policy within the limit; a person (Face ID) above it.
+    expect(html).toContain("Checks passed. Approved by your policy.");
+    expect(html).toContain("Checks passed. Waiting for your approval.");
+    expect(html).toContain("box.append(el('p','big ok',alone?C.work.readyAlone:C.work.ready));");
+    // The agents' calls on Pay are read before the paid screen stays (no poll runs there).
+    expect(html).toContain("show('books',{settled:S.settled});catchUp();return}");
+    // The paid screen leads on to an invoice above the limit, which is picked for the visitor.
+    expect(html).toContain("Try an invoice above EUR 500 →");
+    expect(html).toContain('"limitAmount":"500.00","limitCurrency":"EUR"');
+    expect(html).toContain("show('invoice',above?{above:true}:undefined)");
+    // A new run clears the kept calls in sessionStorage too, so a reload never shows an earlier run's calls.
+    for (const kind of ["public", "present"] as const) expect(presentExtra(kind).script).toMatch(/CALLS\.clear\(\);keepCalls\(\)/);
+  });
   it("starts the hidden-instruction watch before the filing request, so a flag that arrives during it stays (16 Nov live run)", () => {
     for (const kind of ["public", "present"] as const) {
       const { script } = presentExtra(kind);

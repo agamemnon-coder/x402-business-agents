@@ -31,6 +31,7 @@ import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import { SCRIPT as SCRIPT_COPY, TRACE } from "./tryCopy.js";
 import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROOF_BAND, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { VERIFY_YOURSELF } from "./tryCopy.js";
+import { TRY_ALONE_LIMIT } from "../../src/config/policy.js";
 import { EVENT_LINE_JS } from "./tryEvents.js";
 import { AGENT_TRACE_JS } from "./try/agentTrace.js";
 import { AMOUNT_JS } from "./try/amount.js";
@@ -908,6 +909,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
   catchUp();
   // Pick a sample: one button per sample, the title only; the first is picked.
   let picked=null;
+  // 16 Nov (owner): from the agent's own payment, "Try an invoice above the limit" picks the first clean sample above it.
+  const wantAbove=!!(arg&&arg.above);let aboveSet=false;
+  const isAbove=(s)=>!!(s.row&&s.expect&&s.expect.status==='ready'&&Number(s.row.amount)>Number(C.limitAmount)&&s.row.currency===C.limitCurrency);
   // The samples' read: the warm-up's, fired with the start (in parallel with GET /v1/engine), or a fresh one.
   const loadSamples=(r0)=>{
     samplesIn=false;gate();
@@ -939,7 +943,8 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
         // The title is the button's name; its line is its description.
         b.setAttribute('aria-label',title);if(sh){sh.id='sh-'+String(s.key).replace(/[^a-z0-9-]/gi,'');b.setAttribute('aria-describedby',sh.id)}
         b.addEventListener('click',()=>{picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))});
-        list.append(b);if(!picked){picked=s;b.setAttribute('aria-pressed','true')}}
+        list.append(b);if(!picked||(wantAbove&&!aboveSet&&isAbove(s))){if(wantAbove&&isAbove(s))aboveSet=true;picked=s;for(const x of list.children)x.setAttribute('aria-pressed',String(x===b))}}
+      if(aboveSet)send.focus();
       // 15 Nov (owner: "it feels staged"): under the samples, the other tab said for what it lets you set.
       const go=el('button','link',C.invoice.tabWrite);go.type='button';go.addEventListener('click',()=>{choose(true);sup.focus()});
       pick.replaceChildren(...(items.some((x)=>x&&x.row)?[head]:[]),list,el('p','hint writeh',[C.invoice.writeHint,' ',go]));samplesIn=true;gate();
@@ -1179,13 +1184,13 @@ function drawResult(box,r,ms){
       return;
     }
     // Ready to pay, or its terms already prepared and waiting for the signature (screen 2 prepares them early).
-    box.append(el('p','big ok',C.work.ready));
-    // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
-    const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
-    const ul=el('ul','checks',ran.map((k)=>el('li','ok',[icon('check',15),el('span','',C.workChecks[k])])));
     // 16 Nov (owner): within the company's limit to pay alone (the engine's alone_limit), the agent pays it on its own: the
     // Pay filed below runs it when the agents and code's checks say pay (its answer carries alone and settled).
     const alone=!!(inv.alone_limit&&inv.alone_limit.within===true);
+    box.append(el('p','big ok',alone?C.work.readyAlone:C.work.ready));
+    // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
+    const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
+    const ul=el('ul','checks',ran.map((k)=>el('li','ok',[icon('check',15),el('span','',C.workChecks[k])])));
     if(inv.total)ul.append(el('li','next',[icon('arrow-right',15),el('span','',fill(alone?C.work.aloneNeeded:C.work.signNeeded,{money:cash(inv.currency,inv.total)}))]));
     if(ul.children.length)box.append(ul);
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
@@ -1455,7 +1460,7 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
     // 16 Nov: paid by the agent alone, within the limit (Pay's answer: alone, settled): nothing to sign; on to the books.
-    if(r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){S.proposal.alone=true;S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
+    if(r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){S.proposal.alone=true;S.settled=r.json.settled;save();show('books',{settled:S.settled});catchUp();return}
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
@@ -1755,7 +1760,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
   // 14 Nov (owner's judges): the one-cent test is the main step on, a primary button; another invoice beside it.
-  const another=btn(B.another,!pid||!!S.proposal.alone);another.addEventListener('click',()=>show('invoice'));
+  const above=!!(pid&&S.proposal.alone);const another=btn(above?B.anotherAbove:B.another,!pid||above);another.addEventListener('click',()=>show('invoice',above?{above:true}:undefined));
   const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
@@ -1981,7 +1986,7 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 /** over: the v2 preview's words (cloud/src/try/presentMode.ts V2_COPY), merged over the copy key by key; none on plain /try. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
-  const copy = { run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
+  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
   if (over) for (const [k, v] of Object.entries(over)) { const c = copy as unknown as Record<string, Record<string, unknown>>; c[k] = { ...(c[k] ?? {}), ...v }; }
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
