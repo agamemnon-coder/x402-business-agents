@@ -21,12 +21,13 @@ import { MONEY_EVENTS } from "../src/provenance/origin.js";
 import { RAIL_LABELS } from "../src/money/registerShape.js";
 import { makeIccTestKeys, writeIccKeyFiles, type IccTestKeys } from "./support/iccKeys.js";
 import { IccStandIn } from "./support/iccStandIn.js";
+import { fileURLToPath } from "node:url";
 
 const T0 = new Date();
 /** A made-up instrument identifier of the documented length (32). Not a card number and not a real ID. */
 const INSTRUMENT = "A1B2C3D4".repeat(4);
 const SHOP = ICC_MERCHANTS[0]!;
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 let keys: IccTestKeys;
 beforeAll(() => { keys = makeIccTestKeys(); });

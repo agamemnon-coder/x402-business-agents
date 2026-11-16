@@ -10,8 +10,9 @@ import { INITIAL_MANDATES, LICENCE_FEE_EUR_CENTS, TOTAL_BUDGET_CENTS, type Agent
 import { AGENT_DISPLAY } from "../src/config/brand.js";
 import { fromCents } from "../src/lib/money.js";
 import { pdfText } from "../src/ap/pdfText.js";
+import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const text = (path: string) => readFileSync(join(ROOT, path), "utf8");
 const json = <T>(path: string) => JSON.parse(text(path)) as T;
 // Markdown wraps lines; the checks read prose with whitespace collapsed.

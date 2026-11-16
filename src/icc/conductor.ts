@@ -104,7 +104,7 @@ function keyFilesCheck(c: IccEnvConfig): IccRunCheck {
     let st;
     try { st = lstatSync(path); } catch (e) { wrong.push(`${name}: cannot be read (${(e as NodeJS.ErrnoException).code ?? "error"})`); continue; }
     if (!st.isFile()) wrong.push(`${name}: not a regular file`);
-    else if (isPrivate && (st.mode & 0o077) !== 0) wrong.push(`${name}: readable by others (chmod 600)`);
+    else if (isPrivate && process.platform !== "win32" && (st.mode & 0o077) !== 0) /* Windows has no POSIX modes (ACLs are not read here) */ wrong.push(`${name}: readable by others (chmod 600)`);
     else if (isPrivate && typeof process.getuid === "function" && st.uid !== process.getuid()) wrong.push(`${name}: belongs to another user`);
   }
   return wrong.length ? { name: "key files", ok: false, detail: wrong.join("; ") } : { name: "key files", ok: true, detail: "private to this user and outside the repository" };

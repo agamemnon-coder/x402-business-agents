@@ -5,7 +5,7 @@
 // reading Claude, the chain or any key. No network.
 import { spawnSync } from "node:child_process";
 import Database from "better-sqlite3";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -17,12 +17,13 @@ import { refundSale } from "../src/executors/refunds.js";
 import { sha256Hex } from "../src/lib/terms.js";
 import type { Puller } from "../src/metal/pull.js";
 import type { Origin } from "../src/provenance/origin.js";
+import { rmTemp } from "./support/rmTemp.js";
 
 const PAYER = "0x00000000000000000000000000000000000000c1" as const;
 const AGENT: Origin = { actor: "agent", agent: "support", model: "claude-sonnet-5-5", request_id: "req_1", run_id: "run_1" };
 const never = <T>() => new Promise<T>(() => undefined);
 const dirs: string[] = [];
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { for (const d of dirs.splice(0)) rmTemp(d); });
 
 function world() {
   const dir = mkdtempSync(join(tmpdir(), "kit11-carry-"));

@@ -4,7 +4,7 @@
 // old process's work never continues), and the restart is a new connection that runs the settlement again. Each run
 // must end with exactly one decision, each refund paid once, the CFO's proposal made once. Fake client only.
 import type Anthropic from "@anthropic-ai/sdk";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -17,6 +17,7 @@ import { wake } from "../src/autonomy/runtime.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { health } from "../src/ops/health.js";
 import { currentOrigin, type Origin } from "../src/provenance/origin.js";
+import { rmTemp } from "./support/rmTemp.js";
 
 const SEQS = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 const WRONG = new Set([7, 10, 13]);
@@ -25,7 +26,7 @@ const facts = { disputeId: "D-restart", customer: "Summit Outfitters", seqs: SEQ
 const never = <T>() => new Promise<T>(() => undefined);
 
 const dirs: string[] = [];
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { for (const d of dirs.splice(0)) rmTemp(d); });
 function ledgerFile(): string {
   const dir = mkdtempSync(join(tmpdir(), "kit11-dispute-"));
   dirs.push(dir);

@@ -237,7 +237,7 @@ function readKeyFileBytes(file: string, name: string, privateOnly: boolean): Buf
   try {
     const st = fstatSync(fd);
     if (!st.isFile()) throw new IccCryptoError(`${name}: not a regular file`);
-    if (privateOnly && (st.mode & 0o077) !== 0) throw new IccCryptoError(`${name}: the file is readable by others; refused (chmod 600)`);
+    if (privateOnly && process.platform !== "win32" && (st.mode & 0o077) !== 0) /* Windows has no POSIX modes (ACLs are not read here) */ throw new IccCryptoError(`${name}: the file is readable by others; refused (chmod 600)`);
     if (privateOnly && typeof process.getuid === "function" && st.uid !== process.getuid()) throw new IccCryptoError(`${name}: the file belongs to another user; refused`);
     if (st.size === 0 || st.size > MAX_KEY_FILE) throw new IccCryptoError(`${name}: the file is empty or too large`);
     const buf = Buffer.alloc(st.size);

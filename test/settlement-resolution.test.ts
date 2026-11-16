@@ -2,7 +2,7 @@
 // the runner from the ledger and Alta's facilitator, never left lowering the customer's figures for good.
 import Database from "better-sqlite3";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,6 +13,8 @@ import { reconcile } from "../src/finance/reconcile.js";
 import { RESOLVE_AFTER_MS, resolveSettlements, type SettlementLookup } from "../src/finance/settlements.js";
 import { centsToBaseUnits } from "../src/lib/money.js";
 import { mandateAvailability, mandatePayments } from "../src/policy/available.js";
+import { rmTemp } from "./support/rmTemp.js";
+import { pathToFileURL } from "node:url";
 
 const PAYER = "0xdeb2b72781c12b9d2cd66798f47161c88601dd5f";
 const BUSINESS = "0x00000000000000000000000000000000000000b1";
@@ -176,7 +178,7 @@ describe("ledgers from the first sale_settlements: the rebuild is one transactio
       expect(tables(path)).toEqual(["sale_settlements"]);
       expect(rowsOf(path)).toEqual([{ key: "a", status: "SETTLING" }, { key: "b", status: "WEIRD" }]);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmTemp(dir);
     }
   });
 
@@ -190,7 +192,7 @@ describe("ledgers from the first sale_settlements: the rebuild is one transactio
       expect(tables(path)).toEqual(["sale_settlements"]);
       expect(rowsOf(path)).toEqual([{ key: "a", status: "SETTLING" }, { key: "b", status: "DONE" }]);
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmTemp(dir);
     }
   });
 
@@ -201,7 +203,7 @@ describe("ledgers from the first sale_settlements: the rebuild is one transactio
       const { dir, path } = ledger(`${OLD}; INSERT INTO sale_settlements VALUES ('a', 'p', 'n1', 5, 'SETTLING', NULL, NULL, NULL, 't', 't');`);
       try {
         const script = join(dir, "open.mts");
-        writeFileSync(script, `import { openDb } from ${JSON.stringify(resolve("src/db/open.ts"))};\nconst at = Number(process.argv[3]);\nwhile (Date.now() < at) { /* the shared start */ }\nopenDb(process.argv[2]).close();\nconsole.log("opened");\n`);
+        writeFileSync(script, `import { openDb } from ${JSON.stringify(pathToFileURL(resolve("src/db/open.ts")).href)};\nconst at = Number(process.argv[3]);\nwhile (Date.now() < at) { /* the shared start */ }\nopenDb(process.argv[2]).close();\nconsole.log("opened");\n`);
         const startAt = Date.now() + 2500;
         const run = () => new Promise<{ code: number | null; out: string }>((done) => {
           const c = spawn(process.execPath, ["--import", "tsx", script, path, String(startAt)], { cwd: process.cwd(), stdio: ["ignore", "pipe", "pipe"] });
@@ -215,7 +217,7 @@ describe("ledgers from the first sale_settlements: the rebuild is one transactio
         expect(tables(path)).toEqual(["sale_settlements"]);
         expect(rowsOf(path)).toEqual([{ key: "a", status: "SETTLING" }]);
       } finally {
-        rmSync(dir, { recursive: true, force: true });
+        rmTemp(dir);
       }
     }
   }, 90_000);
@@ -237,7 +239,7 @@ describe("ledgers from the first sale_settlements", () => {
       db.close();
       expect(openDb(path).prepare("SELECT status FROM sale_settlements").get()).toEqual({ status: "CHARGED" });
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      rmTemp(dir);
     }
   });
 });

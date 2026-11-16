@@ -101,7 +101,8 @@ describe("the Treasury agent's position names whether each supplier answers (age
   });
 });
 
-describe("metalAgentAsync: the CLI runs without blocking the process (the world keeps serving)", () => {
+// Its stand-in CLIs are /bin/sh scripts, which Windows cannot start (spawn EFTYPE); the wrapper itself runs there too.
+describe.skipIf(process.platform === "win32")("metalAgentAsync: the CLI runs without blocking the process (the world keeps serving)", () => {
   const dir = mkdtempSync(join(tmpdir(), "metal-async-"));
   beforeAll(() => { vi.stubEnv("KIT11_KEYS_DIR", join(dir, "keys")); });
   afterAll(() => { vi.unstubAllEnvs(); });

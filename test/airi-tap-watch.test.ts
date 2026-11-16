@@ -10,6 +10,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { assertNoSecrets } from "../src/airi/vic1.js";
 import { TAP_LINK_FILE, awaitWithTap, consoleLinkSink, takeTapLink } from "../src/airi/deps.js";
+import { pathToFileURL } from "node:url";
 
 const LINK = "https://app.airi.com/approve/standin-not-a-real-link";
 const repo = resolve(import.meta.dirname, "..");
@@ -19,7 +20,7 @@ function standInRunner(dir: string, linkAfter: number, outcomeAfter: number | nu
   const script = join(dir, "runner.ts");
   writeFileSync(script, `
     import { writeFileSync } from "node:fs";
-    import { fileLinkSink } from ${JSON.stringify(join(repo, "src/airi/deps.ts"))};
+    import { fileLinkSink } from ${JSON.stringify(pathToFileURL(join(repo, "src/airi/deps.ts")).href)};
     const [file, statusFile, linkAfter, outcomeAfter] = process.argv.slice(2);
     const sink = fileLinkSink(() => {}, () => file);
     setTimeout(() => { writeFileSync(statusFile + ".linkAt", String(Date.now())); sink.showPasskeyUrl(${JSON.stringify(LINK)}, { actionId: "P-0001", amount: "45.00", currency: "EUR", merchant: "Northwind Outdoor test shop" }); }, Number(linkAfter));

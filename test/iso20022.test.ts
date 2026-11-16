@@ -8,8 +8,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { pacs008ForInvoice } from "../src/finance/iso20022.js";
+import { fileURLToPath } from "node:url";
 
-const XSD = new URL("./fixtures/iso20022/pacs.008.001.08.xsd", import.meta.url).pathname;
+const XSD = fileURLToPath(new URL("./fixtures/iso20022/pacs.008.001.08.xsd", import.meta.url));
 const TX = "0x808f913345b176d20a1a319c1fd29965c283980c7616a9c838ccc522341fa94f";
 
 function ledger() {

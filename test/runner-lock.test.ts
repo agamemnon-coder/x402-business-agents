@@ -2,7 +2,7 @@
 // wrapper; the runner of another world kept running until 11:03). A fake process table here: the lock refuses a second
 // runner, joins the runner `up` starts, clears a stale lock, and the stop signals only the locked world's process group,
 // only when every process in it is that run's, then checks with "ps" before it removes the lock.
-import { existsSync, mkdtempSync, rmSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -10,9 +10,10 @@ import { openDb, type DB } from "../src/db/open.js";
 import type { Proc, ProcessTable } from "../src/ops/processes.js";
 import { acquireRunnerLock, lockOf, releaseRunnerLock, rowOf, type Me } from "../src/ops/runnerLock.js";
 import { stopWorld, type StopDeps } from "../src/ops/stopWorld.js";
+import { rmTemp } from "./support/rmTemp.js";
 
 const dirs: string[] = [];
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { for (const d of dirs.splice(0)) rmTemp(d); });
 function ledger(name: string): { path: string; db: DB } {
   const dir = mkdtempSync(join(tmpdir(), "kit11-lock-"));
   dirs.push(dir);

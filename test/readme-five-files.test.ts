@@ -8,8 +8,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readmeFull } from "./readmeFull.js";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const README = readmeFull(); // 15 Nov: the section moved to docs/how-it-works.md (test/readmeFull.ts)
 

@@ -19,10 +19,11 @@ import { finishRun } from "../src/e2e/finish.js";
 import { refusedFields } from "../src/executors/supplierPayment.js";
 import { retryCompany } from "../src/e2e/retry.js";
 import { WORLD } from "../src/e2e/world.js";
+import { rmTemp } from "./support/rmTemp.js";
 
 let dir: string;
 beforeEach(() => { dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "e2e-platform-")); });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => rmTemp(dir));
 const now = () => new Date("2026-11-10T10:00:00Z");
 
 describe("the platform end-to-end, dry run", () => {

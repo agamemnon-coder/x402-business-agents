@@ -26,7 +26,8 @@ function life(w: World, scenario: string, phase: string, crashAt = "-"): Promise
     const kid = fork(join(import.meta.dirname, "support/chaos-worker.ts"), [w.db, w.outside, w.chain, scenario, phase, crashAt], { execArgv: ["--import", "tsx"], stdio: ["ignore", "ignore", "pipe", "ipc"] });
     let err = "";
     kid.stderr!.on("data", (d: Buffer) => { err += d.toString(); });
-    kid.on("exit", (code, signal) => done(signal === "SIGKILL" ? "killed" : code === 0 ? "ok" : err.split("\n").filter((l) => /Error/.test(l)).slice(0, 2).join(" ") || `exit ${code}`));
+    // Windows reports a process that killed itself as exit code 1 with no signal (and no error printed); Linux as SIGKILL.
+    kid.on("exit", (code, signal) => done(signal === "SIGKILL" || (process.platform === "win32" && code === 1 && !/Error/.test(err)) ? "killed" : code === 0 ? "ok" : err.split("\n").filter((l) => /Error/.test(l)).slice(0, 2).join(" ") || `exit ${code}`));
   });
 }
 
