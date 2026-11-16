@@ -97,7 +97,7 @@ describe("recording mode", () => {
 
   it("shows the real flow under the hood per step, and no menu that does nothing (16 Nov, Max: only real stuff)", () => {
     const { script } = presentExtra("public");
-    for (const w of ["Under the hood", "fingerprint = sha256(terms)", "signature = faceId.sign(fingerprint)", "findInjections(text)", "approval_sha256: fingerprint", "→ refused · EUR 0.00 moved"]) expect(script).toContain(w);
+    for (const w of ["Under the hood", "sha256(canonical(terms))", "signature = faceId.sign(fingerprint)", "findInjections(text)", "approval_sha256: ", "refused · EUR 0.00 moved", "amount <= agent_limit", "ledger.append(entry)", "sessionStorage.getItem('purser.try')"]) expect(script).toContain(w);
     expect(script).not.toContain("mk('ul','pv-nav'");
   });
 

@@ -111,6 +111,7 @@ export const PRESENT_PARTNERS = {
 /** One plain sentence per moment, above the screen (15 Nov, Max: "people need to understand what's happening"). */
 export const PRESENT_GUIDE = {
   invoice: { k: "Step 1 of 4", t: "A supplier's invoice arrives.", d: "Pick one. An AI agent will read it and check it for you." },
+  reading: { k: "Step 1 of 4", t: "The AI agent is reading the invoice.", d: "Claude reads the PDF; code checks what it read. Each step below is the engine's own event, as it happens." },
   workInj: { k: "Step 1 of 4", t: "The AI agent caught a hidden instruction in the invoice.", d: "It was ignored: an AI can't be told to pay. The invoice is checked like any other and still needs the CFO." },
   work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
   approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
@@ -142,6 +143,9 @@ export const PRESENT_VERIFY = {
 
 /** "Under the hood" (16 Nov, Max: "small screens of the code and what is happening, simple"): per step, the real flow
  * in a few simplified lines, with this run's own values (Claude's call, the terms, their fingerprint, the refused one). */
+/** The agent's own limit in a /try company (EUR), as the engine sets it; the code window compares the invoice with it. */
+export const PRESENT_AGENT_LIMIT = "0.00";
+
 export const PRESENT_HOOD = {
   h: "Under the hood", tag: "simplified from the real code", show: "Show the code", hide: "Hide the code",
 } as const;
@@ -569,6 +573,21 @@ body.pv-shell #main p.band { display: none !important; }
 @keyframes hoodIn { from { opacity: 0; transform: translateX(-6px); filter: blur(2px); } to { opacity: 1; transform: none; filter: none; } }
 @media (prefers-reduced-motion: reduce) { .pv-hood.fresh li { animation: none; } }
 @media (max-width: 700px) { .pv-hood-h span { display: none; } .pv-hood-h::before { flex: none; } .pv-hood li { font-size: 11.5px; } }
+.pv-hood li.cur code { color: #c9d1ff; animation: hoodBlink 1s steps(2) infinite; }
+@keyframes hoodBlink { 50% { opacity: 0; } }
+/* Motion (16 Nov, CSS only): the seal stamps on when paid, the refused line pulses, the code window settles in. */
+@media (prefers-reduced-motion: no-preference) {
+  body.pv-shell .screen.books .paidstamp .hashpill[data-v2] { animation: sealStamp .75s cubic-bezier(.2,.8,.2,1) .25s both, sealGlow 2.2s ease-out 1s 1; }
+  body.pv-shell .screen.books .paidstamp .ring { animation: sealRing .9s cubic-bezier(.2,.8,.2,1) both; }
+  .pv-hood.fresh li.bad:last-child code { animation: hoodBad 1.1s ease-out 1.1s 2; }
+  .pv-hood.fresh li.ok code { animation: hoodOk 1s ease-out .9s 1; }
+  .pv-cap.in .pv-caprow { animation: mvUp .5s cubic-bezier(.2,.8,.2,1) .15s both; }
+}
+@keyframes sealStamp { 0% { opacity: 0; transform: scale(1.7) rotate(-6deg); } 60% { opacity: 1; transform: scale(.94) rotate(1deg); } 100% { transform: none; } }
+@keyframes sealGlow { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
+@keyframes sealRing { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.12); opacity: 1; } 100% { transform: none; } }
+@keyframes hoodBad { 0%, 100% { background: transparent; } 30% { background: #ff6b6b33; } }
+@keyframes hoodOk { 0%, 100% { background: transparent; } 30% { background: #6ee7a826; } }
 .pv-word { color: #14171f; font: 700 13px/1 Inter, system-ui, sans-serif; letter-spacing: -.01em; }
 
 /* The step card's last row (16 Nov, no sidebar): Claude's usage on the left; the money line and How it works on the right. */
@@ -619,8 +638,10 @@ const chip=mk('details','pv-usechip',[mk('summary',''),mk('ol','')]);
 const capMeta=mk('div','pv-meta');const capRow=mk('div','pv-caprow',[chip,capMeta]);
 // The engine's own flag on a document that tries to give orders (document.injection_flagged), since the last filing.
 const INJ={since:-1,flag:false,max:0};
-function noteEvent(e){if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
-function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false}}
+const EVT=[];
+function noteEvent(e){if(e&&typeof e.seq==='number'&&e.seq>INJ.since&&!EVT.some((x)=>x.seq===e.seq)){EVT.push({seq:e.seq,event:String(e.event||''),f:e.fields&&typeof e.fields==='object'?e.fields:{}});EVT.sort((a,b)=>a.seq-b.seq);if(EVT.length>60)EVT.splice(0,EVT.length-60)}
+  if(e&&typeof e.seq==='number'){if(e.seq>INJ.max)INJ.max=e.seq;if(e.event==='document.injection_flagged'&&e.seq>INJ.since)INJ.flag=true}}
+function noteFiling(p,m){if(m==='POST'&&/^\/v1\/engine\/(compose$|samples\/)/.test(p)){INJ.since=INJ.max;INJ.flag=false;EVT.length=0}}
 const usd=(m)=>'$'+(m/1e6).toFixed(4);
 const title=(s)=>String(s||'').replace(/[^a-z0-9 _-]/gi,'').replace(/[_-]+/g,' ').replace(/\b\w/g,(c)=>c.toUpperCase());
 const modelName=(m)=>{const x=/^claude-([a-z]+)-(\d+)-(\d+)/.exec(String(m||''));return x?title(x[1])+' '+x[2]+'.'+x[3]:''};
@@ -670,7 +691,7 @@ function stageOf(){const m=document.getElementById('main');if(!m)return -1;const
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
 function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
-  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .payrow')?(INJ.flag?'workInj':'work'):'';if(has('approve'))return 'approve';if(has('books'))return 'books';
+  if(has('invoice'))return 'invoice';if(has('work'))return m.querySelector('.screen.work .skel')?'reading':m.querySelector('.screen.work .payrow')?(INJ.flag?'workInj':'work'):'';if(has('approve'))return 'approve';if(has('books'))return 'books';
   if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 
 // "Under the hood": the step's real flow in a few lines, this run's own values filled in as they appear.
@@ -678,18 +699,41 @@ const HOOD={fp:'',amount:'',payee:'',iban:'',due:'',open:innerWidth>=1200};
 const hoodBox=mk('div','pv-hood');
 function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who===PC.shell.reader);const n=C.length;const usdS=(x)=>usd(x);
   const q=(v)=>v?'"'+v+'"':'…';const L=[];const c=(code,note,cls)=>L.push({code,note,cls});
+  let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}
+  const pr=st.proof&&typeof st.proof==='object'?st.proof:null;const sha=(st.proposal&&typeof st.proposal.terms_sha256==='string'?st.proposal.terms_sha256:'')||(pr&&pr.terms_sha256)||'';
+  const s12=(x)=>typeof x==='string'&&x?x.slice(0,12)+'…':'…';
+  const inv=()=>{const o={};for(const r of m.querySelectorAll('.screen.work .card.inv dl > div')){const k=(r.children[0]||{}).textContent||'';const v=((r.children[1]||{}).textContent||'').trim();if(/Supplier/.test(k))o.supplier=v;if(/Invoice number/.test(k))o.number=v;if(/Amount/.test(k))o.amount=v;if(/Due/.test(k))o.due=v}return o};
+  const amt=(v)=>{const mm=/([A-Z]{3})\s*([\d,]+\.\d{2})/.exec(v||'');return mm?{cur:mm[1],n:mm[2].replace(/,/g,'')}:null};
   if(g==='invoice'){c('invoice = inbox.receive(pdf)','a supplier\'s invoice arrives');c('agent = claude.agent("payables")','an AI agent picks it up')}
-  else if(g==='work'||g==='workInj'){c('reading = claude.read(invoice)',rd?(rd.model||'Claude')+' · '+(rd.ms?(rd.ms/1000).toFixed(1)+' s · ':'')+usdS(rd.cost):'Claude reads the PDF');
+  else if(g==='reading'){const lab={'ap.received':'inbox.receive(pdf) → sha256 of the file','claude.asking':'claude.read(invoice) …','claude.read':'claude.read(invoice) ✓','document.injection_flagged':'findInjections(text) → found, ignored','agent.tool':'agent.check()','agent.run':'agent.decide()','ap.checker_decided':'checker.decide() ✓','ap.coded':'ledger.code(invoice) ✓','ap.payer_proposed':'payer.propose() ✓','fx.rate_checked':'treasury.rate() ✓','airwallex.quote':'airwallex.quote() ✓','invoice.escalated':'escalate(CFO)','invoice.fraud_suspected':'fraud check → held','ap.status':'invoice.status()'};
+    const seen=[];for(const e of EVT){const l=lab[e.event];if(!l)continue;const tool=e.event==='agent.tool'&&typeof e.f.tool==='string'?'agent.'+e.f.tool+'()':l;const last=seen[seen.length-1];if(last&&last.code===tool){last.k++;continue}
+      const who=typeof e.f.model==='string'?modelName(e.f.model):'';seen.push({code:tool,k:1,note:e.event==='claude.read'&&rd?(rd.model||'Claude')+(rd.ms?' · '+(rd.ms/1000).toFixed(1)+' s':'')+' · '+usdS(rd.cost):who,cls:e.event==='document.injection_flagged'?'bad':/✓/.test(tool)?'ok':''})}
+    for(const x of seen.slice(-7))c(x.code+(x.k>1?' ×'+x.k:''),x.note,x.cls);if(!seen.length)c('waiting for the engine…','the first step arrives in a moment');c('▍','','cur')}
+  else if(g==='work'||g==='workInj'){const o=inv();const a=amt(o.amount);
+    c('reading = '+JSON.stringify({supplier:o.supplier||'…',invoice:o.number||'…',amount:a?a.n:'…',currency:a?a.cur:'…',due:o.due||'…'}),rd?'Claude '+(rd.model?'· '+rd.model+' ':'')+(rd.ms?'· '+(rd.ms/1000).toFixed(1)+' s ':'')+'· '+usdS(rd.cost):'what Claude read');
     if(g==='workInj')c('findInjections(text) → 1 found','an order to the AI: logged, ignored','bad');
-    c('checks = [notPaidBefore, ibanOnFile, knownSupplier]','code checks it, not the AI');c('limitRule(amount) → ask_cfo','above the agent’s limit: the CFO decides','warn');
+    c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
+    if(a&&PC.limit)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  '+(Number(a.n)<=Number(PC.limit)?'true':'false'),Number(a.n)<=Number(PC.limit)?'the agent may pay it alone':'above the limit: the CFO decides',Number(a.n)<=Number(PC.limit)?'ok':'warn');
+    else c('limitRule(amount) → ask_cfo','above the agent’s limit: the CFO decides','warn');
     if(n)c('// '+n+' Claude calls so far · '+usdS(C.reduce((x,y)=>x+y.cost,0)),'')}
-  else if(g==='approve'){c('terms = { amount: '+q(HOOD.amount)+', payee: '+q(HOOD.payee)+', iban: '+q(HOOD.iban)+' }','exactly what you see');
-    c('fingerprint = sha256(terms)',HOOD.fp?HOOD.fp+'…':'one number for these terms');c('signature = faceId.sign(fingerprint)','your passkey, on this device','ok')}
-  else if(g==='books'){c('verify(signature, fingerprint)','matches what you approved','ok');c('bank.transfer(terms, { approval_sha256: fingerprint })','Airwallex sandbox · test money');c('ledger.book(payment)','the books balance')}
-  else if(g==='pay'){c('changed = { ...terms, amount: +0.01 }','one cent more');c('pay(changed, signature)','with the earlier approval')}
-  else if(g==='refused'){const hs=[...m.querySelectorAll('.card.refusal .hashes p.hash')].map((p)=>{const t=(p.textContent||'');const l=(p.querySelector('.hl')||{}).textContent||'';return t.slice(l.length).trim().slice(0,12)});
-    c('sha256(changed) = '+(hs[1]||'…')+'…','the changed payment');c('≠ signed '+(hs[0]||HOOD.fp||'…')+'…','not what you approved','bad');c('→ refused · EUR 0.00 moved','nothing reaches the bank','bad')}
-  else if(g==='done'){c('every step → audit_log (hash-chained)','a later edit shows');c('proof.json → verify in your browser','no need to trust us','ok')}
+  else if(g==='approve'){const pre=m.querySelector('.screen.approve pre.terms');const d=pre&&pre.closest('details');if(d&&!d.open&&!pre.textContent){d.open=true}
+    let t=null;try{t=pre&&pre.textContent?JSON.parse(pre.textContent):null}catch(e){}
+    if(t){const pick={};for(const k of ['amount','currency','beneficiary_name','iban_last4','invoice_no','due_date'])if(k in t)pick[k]=t[k];c('terms = '+JSON.stringify(pick),'the canonical payload (RFC 8785), part of it')}
+    else c('terms = { amount: '+q(HOOD.amount)+', payee: '+q(HOOD.payee)+', iban: '+q(HOOD.iban)+' }','exactly what you see');
+    c('sha256(canonical(terms)) = '+(sha?sha.slice(0,16)+'…':(HOOD.fp?HOOD.fp+'…':'…')),'one fingerprint for these exact terms');c('signature = faceId.sign(fingerprint)','your passkey, on this device','ok')}
+  else if(g==='books'){c('verify(signature, '+s12(sha)+') ✓','the server checks your Face ID signature','ok');
+    const awx=st.awx&&typeof st.awx==='object'&&st.awx.source==='airwallex-sandbox'?st.awx:null;
+    c('airwallex.transfer({ … metadata: { approval_sha256: '+s12(sha)+' } })',awx?'transfer '+String(awx.transfer_id).slice(0,8)+'… · '+String(awx.status||''):'Airwallex sandbox · test money');
+    const lg=pr&&pr.ledger&&typeof pr.ledger==='object'?pr.ledger:null;c('ledger.append(entry) → head '+(lg&&lg.head?s12(lg.head):'…'),lg?lg.count+' entries, each hash-chained to the one before':'the books balance','ok')}
+  else if(g==='pay'){c('changed = { ...terms, amount: '+(HOOD.amount?'+0.01':'…')+' }','one cent more');c('pay(changed, signature)','with the earlier approval')}
+  else if(g==='refused'){const ask=pr&&pr.asked&&typeof pr.asked==='object'?pr.asked:null;const dec=pr&&pr.decision&&typeof pr.decision==='object'?pr.decision:null;
+    const hs=[...m.querySelectorAll('.card.refusal .hashes p.hash')].map((p)=>{const t=(p.textContent||'');const l=(p.querySelector('.hl')||{}).textContent||'';return t.slice(l.length).trim()});
+    const sa=hs[0]||(dec&&dec.signed_sha256)||sha,sb=hs[1]||(ask&&ask.sha256)||'';const newAmt=(()=>{const d=m.querySelector('.card.refusal .diff');const mm=d&&/([\d,]+\.\d{2})\s*$/.exec((d.textContent||'').trim());return mm?mm[1].replace(/,/g,''):''})();
+    const am=(o)=>o&&o.terms&&typeof o.terms==='object'?String(o.terms.amount??''):'';
+    if(pr&&am(pr))c('signed: { amount: "'+am(pr)+'" }  →  '+s12(sa),'what you approved');else c('signed  →  '+s12(sa),'what you approved');
+    const na=(ask&&am(ask))||newAmt;if(na)c('asked:  { amount: "'+na+'" }  →  '+s12(sb),'one cent changed','bad');else c('asked   →  '+s12(sb),'the changed payment','bad');
+    c(s12(sa)+' !== '+s12(sb)+'  →  refused · EUR 0.00 moved','the signature only fits the exact terms','bad')}
+  else if(g==='done'){const lg=pr&&pr.ledger&&typeof pr.ledger==='object'?pr.ledger:null;c('audit_log: row_hash = sha256(prev_hash + row)','a later edit breaks the chain');if(lg&&lg.head)c('ledger head '+s12(lg.head)+' · '+lg.count+' entries','this company\'s books','ok');c('proof.json → verify in your browser','no need to trust us','ok')}
   return L}
 function hood(m){const g=cap.dataset.k||'';
   {const sh=m.querySelector('.screen.approve .receipt.sheet');if(sh){const hp=sh.querySelector('.hashpill');const t=hp&&(hp.title||hp.textContent||'');const mm=/[0-9a-f]{8,}/.exec(t);if(mm)HOOD.fp=mm[0].slice(0,12);
@@ -935,7 +979,7 @@ export function presentExtra(kind: "present" | "public" = "present"): { css: str
     money: PRESENT_MONEY, lane: PRESENT_LANE, laneSpot: "Mirrored phone", tryUrl: PRESENT_TRY,
     openerHeading: "Paying suppliers, with AI agents", beforeLabel: "Before", afterLabel: "After with Purser",
     before: PRESENT_BEFORE, after: PRESENT_AFTER, go: "Press → to start", openerMs: 5_000,
-    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
+    out: PRESENT_OUTCOME, shell: PRESENT_SHELL, how: PRESENT_HOW, map: SYSTEM_MAP_DATA_URL, logos: LOGOS, partners: PRESENT_PARTNERS, stages: PRESENT_STAGES, stagesShort: PRESENT_STAGES_SHORT, guide: PRESENT_GUIDE, inj: PRESENT_INJ, awx2: PRESENT_AWX2, verify: PRESENT_VERIFY, hood: PRESENT_HOOD, limit: PRESENT_AGENT_LIMIT, payButton: V2_COPY.pay.button, ledgerFold: "Show the bookkeeping entries",
     // Without the negotiation the Clean sample's hint keeps only its first part ("Ready to pay").
     negHint: NEG_HINT, negHintShort: NEG_HINT.split(" · ")[0],
   };
