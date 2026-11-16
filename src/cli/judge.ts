@@ -5,6 +5,10 @@
 //   /month  a month in 90 seconds (simulated, seeded)
 //   /?autonomy  the main run's CFO dashboard (docs/demo/main-run.json, the run every page plays)
 //   /?recorded  the CFO's dashboard at the end of the 30 October run, an earlier recording (docs/demo/snapshot.json)
+//   /try    the hands-on demo, as hosted: pick an invoice, the agent pays within its limit, above it you approve with your
+//           own passkey, one changed cent is refused, and the proof downloads (./judgeTry.ts: Purser Cloud in this
+//           process, code reads the invoice, the simulated bank pays)
+//   /tasks  the earlier offline task demo (give an agent a task; code reads it)
 // and opens the browser. `--no-open` only serves; `--check` serves, fetches each page once and exits.
 
 import { spawn } from "node:child_process";
@@ -19,6 +23,7 @@ import { localTryAnswer } from "../try/local.js";
 import { METAL_INSPECTOR_PATH } from "../../worker/src/metalInspector.js";
 import { AGENT_CARDS_PATH } from "../../worker/src/agentCardsLive.js";
 import { offlineAwxLive } from "../relay/awxLiveOffline.js";
+import { offlineTry, type OfflineTry } from "./judgeTry.js";
 
 export async function startJudge(port: number): Promise<{ server: Server; url: string }> {
   const app = express();
@@ -53,7 +58,15 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
   app.get("/live", page(LIVE_CSP, () => live));
   const film = filmPage();
   app.get("/film", page(FILM_CSP, () => film));
-  app.get("/try", page(TRY_CSP, () => TRY_PAGE_OFFLINE));
+  // /try: the hands-on demo, answered by Purser Cloud in this process (./judgeTry.ts), with its API under /v1 and the
+  // pages and files it asks for. Made once the port is known, since its passkeys belong to http://localhost:<port>.
+  let tryCloud: OfflineTry | null = null;
+  const cloud = (req: express.Request, res: express.Response, next: express.NextFunction) => { if (tryCloud) tryCloud.express(req, res); else next(); };
+  app.get(["/try", "/try/negotiate", "/pdfview"], cloud);
+  app.all(/^\/v1\//, cloud);
+  // The earlier offline task demo (give an agent a task; code reads it), at its own address: one level down from the
+  // root, as /try was, since its links are relative (href="proof").
+  app.get("/tasks", page(TRY_CSP, () => TRY_PAGE_OFFLINE));
   // Try Purser without keys: code reads the request; the hosted relay page asks Claude.
   app.post("/api/try", express.json({ limit: "2kb" }), async (req, res) => {
     const a = await localTryAnswer(req.body, "this offline copy asks no model; the hosted page does");
@@ -97,6 +110,8 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
     res.type("html").send(LIVE_ONLY_PAGE);
   };
   app.get(["/policy", "/enrol", "/approve", "/approve/:id"], liveOnly);
+  // The hands-on page's own files (the partners' logos on its start screen) that the judge's pages do not serve.
+  app.get(/^\/assets\//, cloud);
   // Nothing live here: anything else is the clean 404 page, with the four tabs.
   app.use((_req, res) => { res.status(404).setHeader("Content-Security-Policy", NOT_FOUND_CSP); res.type("html").send(NOT_FOUND_PAGE); });
   const server = await new Promise<Server>((resolve, reject) => {
@@ -104,7 +119,14 @@ export async function startJudge(port: number): Promise<{ server: Server; url: s
     s.once("error", reject);
   });
   const addr = server.address();
-  return { server, url: `http://localhost:${typeof addr === "object" && addr ? addr.port : port}` };
+  const url = `http://localhost:${typeof addr === "object" && addr ? addr.port : port}`;
+  try {
+    tryCloud = await offlineTry(url);
+  } catch (e) {
+    server.close();
+    throw e;
+  }
+  return { server, url };
 }
 
 const LIVE_ONLY_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -125,7 +147,7 @@ a{display:inline-block;margin-top:4px;padding:10px 16px;border-radius:8px;backgr
 const LIVE_ONLY_CSP = `default-src 'none'; style-src 'sha256-${createHash("sha256").update(/<style>([\s\S]*?)<\/style>/.exec(LIVE_ONLY_PAGE)![1]!, "utf8").digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
 /** The pages `--check` fetches once each: every page a juror reaches, both CFO dashboards included. */
-export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/verify", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/alta", "/metal/report", "/visa", "/airwallex", "/airwallex/calls", "/claude", "/security", "/docs", "/status", "/t0", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/month", "/lab"];
+export const CHECK_PATHS = ["/", "/home", "/watch", "/replay", "/proof", "/verify", "/trace", "/runs", "/agents/sourcing", "/agents/support", "/agents/treasury", "/alta", "/metal/report", "/visa", "/airwallex", "/airwallex/calls", "/claude", "/security", "/docs", "/status", "/t0", "/books", "/?autonomy", "/?recorded", "/demo", "/live", "/film", "/try", "/tasks", "/month", "/lab"];
 
 /**
  * The menu printed at start. The main run's CFO dashboard comes first, and each dashboard is named by its own run, its
@@ -143,7 +165,8 @@ export function judgeMenu(url: string): string[] {
     `  ${url}/runs          every live run, newest first, with its ids and records`,
     `  ${url}/metal         how Purser uses Metal, every proof linked to the explorer`,
     `  ${url}/live          the working day on two rails, Airwallex and Metal`,
-    `  ${url}/try           the earlier offline task demo; the hands-on demo is live at https://kit11.max-31b.workers.dev/try`,
+    `  ${url}/try           the hands-on demo: the agent pays EUR 120 alone, EUR 1,850 needs your passkey, one cent more is refused; download the proof`,
+    `  ${url}/tasks         the earlier offline task demo: give an agent a task`,
     `  ${url}/airwallex     how Purser uses Airwallex, with this week's proof`,
     `  ${url}/claude        how Purser uses Claude: each agent's model, cost and decisions`,
     `  ${url}/visa          agent recognition, then the agent's own Airwallex Visa card`,
@@ -166,6 +189,10 @@ function openBrowser(url: string): void {
 
 if (process.argv[1] && /judge\.ts$/.test(process.argv[1])) {
   const args = process.argv.slice(2);
+  // The hands-on /try logs each API request as Purser Cloud does (one JSON line, cloud/src/log.ts); in this terminal only
+  // its warnings and errors are shown, so the menu below stays readable.
+  const log = console.log.bind(console);
+  console.log = (...a: unknown[]) => { if (typeof a[0] === "string" && a[0].startsWith('{"ts":') && a[0].includes('"level":"info"')) return; log(...a); };
   const { server, url } = await startJudge(Number(process.env.PORT ?? 4311));
   if (args.includes("--check")) {
     let ok = true;
