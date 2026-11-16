@@ -4,7 +4,7 @@
 //  1. no WebAuthn at all: "open this page in Safari or Chrome", its address to copy, and a button;
 //  2. refused at once (NotAllowedError before a prompt could show): the same, and Try again;
 //  3. cancelled after a while (the person closed the prompt): a plain line and Try again, no Safari advice;
-//  4. a prompt that never answers: after 30 s it is given up, a plain line and Try again.
+//  4. a prompt that never answers: after 2 min it is given up, a plain line and Try again.
 // Also: a visible word under each step's dot (the current one marked), and the approval saying plainly that every
 // invoice waits for a signature, whatever its amount.
 // npx tsx test/browser/try-passkey.check.ts [screenshot dir]
@@ -99,7 +99,7 @@ for (const [kind, script] of Object.entries(FAIL) as [keyof typeof FAIL, string]
 
   if (kind !== "none") {
     await page.getByRole("button", { name: APPROVE.create }).click();
-    if (kind === "hangs") await page.waitForTimeout(31_000);
+    if (kind === "hangs") await page.waitForTimeout(121_000);
     if (kind === "cancelled") await page.waitForTimeout(3_000);
     await page.locator('[role="status"] .note, [role="status"] p').first().waitFor({ timeout: 40_000 });
   }

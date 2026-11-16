@@ -466,7 +466,7 @@ export const APPROVE = {
   approved: "Approved. Nothing is paid yet.",
   cancelled: "Nothing was signed. Try again when you are ready.",
   noPasskey: "This device cannot make a passkey here. Open this page in Safari or Chrome on your phone.",
-  /** The passkey's prompt gave no answer in 30 s (in-app browsers can leave it open without showing it): given up. */
+  /** The passkey's prompt gave no answer in 2 min (in-app browsers can leave it open without showing it): given up. */
   timeout: "Your passkey did not answer.",
   /** The main button after a passkey failed or timed out, or when this browser has none: never a dead end. */
   again: "Try again",
