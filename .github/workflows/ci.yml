@@ -101,6 +101,8 @@ jobs:
         run: npx tsx test/browser/awx-proof.check.ts test-results/awx-proof && npx tsx test/browser/awx-live.check.ts test-results/awx-live
       - name: /try when the passkey fails (no WebAuthn, refused, cancelled, a silent prompt) in Chromium at phone size
         run: npx tsx test/browser/try-passkey.check.ts test-results/try-passkey
+      - name: /try after Back, Forward and a reload (the agent's background payment, Send to CFO again) in Chromium
+        run: npx tsx test/browser/try-nav.check.ts test-results/try-nav
       - name: /try's Live engine rail beside the steps at 1280 px (also ?present=1&phone=0) and a drawer on a phone, in Chromium
         run: npx tsx test/browser/try-rail.check.ts test-results/try-rail
       - name: npm run judge's hands-on /try, offline, in Chromium (EUR 120 by the agent, EUR 1,850 with a virtual passkey, one cent refused, the proof downloaded and VALID)

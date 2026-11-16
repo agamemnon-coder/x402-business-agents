@@ -101,7 +101,7 @@ screen('start',{heading:C.start.heading,band:false,draw(box){
     if((r.status===201||r.status===200)&&typeof r.json.session==='string'){
       for(const k of ['tenant','session','visitor_token','expires_at','pool','mode'])S[k]=r.json[k]??null;
       // The run's clock starts with the company.
-      S.t0=Date.now();S.t1=null;S.passed=[];
+      S.t0=Date.now();S.t1=null;S.passed=[];S.proposal=null;S.settled=null;S.cred=null;S.awx=null;S.proof=null;S.refusedProof=null;S.cost=null;
       // Warm the company's engine while screen 1 is read: its status (which loads the engine object) and the samples, in
       // parallel and not awaited, so the engine is warm when the visitor files an invoice. Only here, after the click:
       // never on load or on hover, which would start a company for every crawler and spend the start limits.
