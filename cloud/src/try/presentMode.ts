@@ -28,7 +28,7 @@ const NEG_HINT = INVOICE.hints.clean ?? "";
 export const PRESENT_BEFORE = "An agent's invoice lands in a queue. An approve button anyone can click pays it, whatever was changed on the way.";
 export const PRESENT_AFTER = "The CFO signs the exact terms with Face ID. Change one cent and the signature is refused: nothing moves.";
 export const PRESENT_TRY = "kit11.max-31b.workers.dev/try";
-export const PRESENT_MONEY = "Test money · no real money moves · Airwallex sandbox";
+export const PRESENT_MONEY = "Test money only · Airwallex sandbox";
 export const PRESENT_LANE = "The CFO's phone, mirrored: Face ID signs the exact terms";
 /**
  * The app shell (15 Nov, Max: "it needs to look like the actual product"): in recording mode, the site's menu and the
@@ -541,6 +541,8 @@ body.pv-shell #main p.band { display: none !important; }
 .pv-verify .pv-all { display: inline-flex; }
 .pv-verify .foot { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
 @media (max-width: 1199px) { body.pv-shell.pv-staged .awx-badge { display: none !important; } }
+/* 16 Nov (Max): at laptop widths the money badge covered step 4; the steps take their short names there. */
+@media (min-width: 1200px) and (max-width: 1599px) { .pv-stages:not(.inmain) .t { display: none; } .pv-stages:not(.inmain) .ts { display: inline; } }
 .pv-lock2 { margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 13.5px; line-height: 1.45; }
 .pv-warn.small { padding: 10px 14px; }
 .pv-warn.small p { font-size: 13px; }
