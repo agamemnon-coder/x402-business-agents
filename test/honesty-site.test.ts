@@ -154,10 +154,11 @@ describe("2. What's real?, on each page its own", () => {
     expect(block<{ offline: { example: string } }>(TRY_PAGE_OFFLINE, "try-data").offline.example).toContain("in this offline copy code alone reads it");
   });
 
-  it("npm run judge serves the offline copy at /try; the relay bundle carries the hosted page", async () => {
+  // Since 16 Nov /try on the judge is the hands-on demo (src/cli/judgeTry.ts, test/judge-try.test.ts); this page moved.
+  it("npm run judge serves the offline copy at /tasks; the relay bundle carries the hosted page", async () => {
     const { server, url } = await startJudge(0);
     try {
-      expect(await (await fetch(`${url}/try`)).text()).toBe(TRY_PAGE_OFFLINE);
+      expect(await (await fetch(`${url}/tasks`)).text()).toBe(TRY_PAGE_OFFLINE);
     } finally {
       server.close();
     }

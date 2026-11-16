@@ -60,7 +60,7 @@ async function look(page: Page, name: string, width: number): Promise<void> {
 // Every internal link on the tabs and the replay answers 200 (after a redirect, for an old address).
 {
   const seen = new Set<string>();
-  for (const path of ["/home", "/watch", "/replay", "/try", "/proof"]) {
+  for (const path of ["/home", "/watch", "/replay", "/try", "/tasks", "/proof"]) {
     const html = await (await fetch(`${base}${path}`)).text();
     for (const m of html.matchAll(/href="([^"#]*)(#[^"]*)?"/g)) {
       const href = m[1]!;
@@ -157,7 +157,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     if (!fold.open || fold.rows < 10 || !fold.chips || !fold.more || fold.head < 44) fail(`/replay ${tag}: the fold does not open to every step with its tools (${JSON.stringify(fold)})`);
     await look(page, `/replay, fold open ${tag}`, w);
 
-    await page.goto(`${base}/try?v=1`, { waitUntil: "load" });
+    // The earlier task demo, at /tasks on the judge since 16 Nov (/try is the hands-on demo there, src/cli/judgeTry.ts).
+    await page.goto(`${base}/tasks`, { waitUntil: "load" });
     await page.waitForTimeout(600);
     if ((await page.locator("nav > a, nav summary").allInnerTexts()).map((t) => t.trim()).slice(0, 3).join() !== "Home,Try,Proof" || (await page.locator("nav > a, nav summary").count()) > 5 || (await page.locator('nav a[href*="watch"]').count())) fail(`/try ${tag}: the menu is not Home, Try, Proof (at most five, no Watch)`);
     if (w < 500) await checkTaps(page, { name: `/try ${tag}, header and footer`, scopes: CHROME, fail });

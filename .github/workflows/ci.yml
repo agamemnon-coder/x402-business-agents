@@ -103,6 +103,8 @@ jobs:
         run: npx tsx test/browser/try-passkey.check.ts test-results/try-passkey
       - name: /try's Live engine rail beside the steps at 1280 px (also ?present=1&phone=0) and a drawer on a phone, in Chromium
         run: npx tsx test/browser/try-rail.check.ts test-results/try-rail
+      - name: npm run judge's hands-on /try, offline, in Chromium (EUR 120 by the agent, EUR 1,850 with a virtual passkey, one cent refused, the proof downloaded and VALID)
+        run: npx tsx test/browser/judge-try.check.ts test-results/judge-try
       - name: Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client)
         run: npx tsx test/browser/connector.check.ts test-results/connector
       - name: /visa's live credential check and /t0's close check in Chromium (390 and 1440 px)
