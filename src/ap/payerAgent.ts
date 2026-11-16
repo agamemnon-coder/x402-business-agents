@@ -20,6 +20,7 @@ import type { GateAnswer, PlanGate, PlannedPayment } from "../payouts/planGate.j
 import { parseOrigin } from "../provenance/origin.js";
 import { runProvenance, type RunProvenance } from "./agentRun.js";
 import { apInvoice } from "./store.js";
+import { aloneLimit } from "../world/settings.js";
 import {
   answerPayerTool, enforceProposal, fallbackProposal, PAYER_EFFORT, PAYER_MODEL, PAYER_MAX_TURNS, PAYER_SYSTEM, PAYER_UNFINISHED, payerInputs, payerPrompt, payerTools, railFromRoute,
   type EnforcedProposal, type PaymentCase, type PaymentProposal, type PayerToolName,
@@ -113,16 +114,17 @@ export function onPayCase(c: PaymentCase, early: PayerOutcome): PayerOutcome {
 
 /**
  * The payment case of a plan the engine worked out: the same balances, floors, fee reserve and quote, and the one
- * rail the supplier's account on file is paid by. No payment is made without the CFO's Face ID, so the agent has no
- * limit to pay alone, and the CFO's policy has no rule that allows paying after the due date.
+ * rail the supplier's account on file is paid by. The agent's limit to pay alone is the company's (src/world/settings.ts
+ * aloneLimit: none unless a test company of /try sets one, so the CFO's Face ID), and the CFO's policy has no rule that
+ * allows paying after the due date.
  */
-export function paymentCase(plan: PlannedPayment, about: { invoiceId: string | null; invoiceNo: string; today: string }): PaymentCase {
+export function paymentCase(plan: PlannedPayment, about: { invoiceId: string | null; invoiceNo: string; today: string }, alone: { currency: string; amount: string } | null = null): PaymentCase {
   return {
     invoice: { id: about.invoiceId, invoiceNo: about.invoiceNo, payee: plan.payee, iban: plan.account, amount: plan.amount, currency: plan.currency, dueDate: plan.due_date },
     company: { name: process.env.KIT11_COMPANY ?? COMPANY },
     balances: plan.balances,
     spokenFor: plan.spoken_for,
-    policy: { aloneLimit: null, cashFloors: plan.floors, payLate: null },
+    policy: { aloneLimit: alone && { ...alone }, cashFloors: plan.floors, payLate: null },
     rails: [railFromRoute({ method: plan.method, currency: plan.currency, ...(plan.clearing ? { clearing: plan.clearing } : {}) }, plan.fee_reserve)],
     fx: plan.quote && { quoteId: plan.quote.quote_id, sellCurrency: plan.quote.sell_currency, sellAmount: plan.quote.sell_amount, buyCurrency: plan.quote.buy_currency, buyAmount: plan.quote.buy_amount, rate: plan.quote.client_rate, validTo: plan.quote.valid_to },
     today: about.today,
@@ -148,12 +150,15 @@ export function recordProposed(db: DB, about: { invoiceId: string; invoiceNo: st
  * pays today on the plan's own route and funding. `last()` is what the gate decided, or null when the engine stopped
  * before the plan reached it.
  */
-export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null; planStands?: boolean; early?: EarlyPayer }): { gate: PlanGate; last(): PayerOutcome | null } {
+export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string; now: Date; claude?: Anthropic | null; planStands?: boolean; early?: EarlyPayer }): { gate: PlanGate; last(): PayerOutcome | null; alone(): boolean } {
   let last: PayerOutcome | null = null;
+  // Whether what is filed is the Payer's own proposal, enforced by code as "pay": within the agent's limit to pay alone,
+  // on the plan's own route and funding, today (never code's plan standing in for a proposal that was held or off it).
+  let alone = false;
   // The invoice as the pay call found it: ready, with the proposal it had (none).
   const before = apInvoice(db, about.invoiceId);
   const gate: PlanGate = async (plan): Promise<GateAnswer> => {
-    const c = paymentCase(plan, { invoiceId: about.invoiceId, invoiceNo: about.invoiceNo, today: about.now.toISOString().slice(0, 10) });
+    const c = paymentCase(plan, { invoiceId: about.invoiceId, invoiceNo: about.invoiceNo, today: about.now.toISOString().slice(0, 10) }, aloneLimit(db));
     // The Payer's early answer, when it proposed on this very case while the invoice was filed (speed, 13 Nov): no second
     // call. Code enforces it on this plan as on any answer. A case that changed since (balances, a rate, the day): it runs now.
     const early = about.early && about.early.out.source === "claude" && earlyCaseKey(about.early.case) === earlyCaseKey(c) ? about.early : null;
@@ -180,7 +185,8 @@ export function payerGate(db: DB, about: { invoiceId: string; invoiceNo: string;
     }
     // Code's own plan, under code's rule (the reason is in the decision row above; an origin's rule is at most 200 characters).
     if (off) return { go: true, origin: parseOrigin(JSON.stringify({ actor: "code", rule: "the engine's own plan stands: the Payer agent's proposal was held or off the plan", agent: PAYER_AGENT })) };
+    alone = out.next === "file_for_cfo" && out.enforced.outcome === "pay";
     return { go: true, origin: out.provenance.origin };
   };
-  return { gate, last: () => last };
+  return { gate, last: () => last, alone: () => alone };
 }

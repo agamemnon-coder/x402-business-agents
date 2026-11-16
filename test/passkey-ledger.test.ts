@@ -51,6 +51,8 @@ describe("approvals migration", () => {
     expect(db.prepare("SELECT proposal_id, approver, method FROM approvals").all()).toEqual([{ proposal_id: "P-0009", approver: "max", method: "cli" }]);
     const ddl = (db.prepare("SELECT sql FROM sqlite_master WHERE name = 'approvals'").get() as { sql: string }).sql;
     expect(ddl).toContain("'passkey'");
+    // 16 Nov: and a payment approved by code within the CFO's limit to pay alone (src/policy/approvals.ts approveWithinLimit).
+    expect(ddl).toContain("'passkey', 'policy'");
     expect(db.pragma("foreign_key_check")).toEqual([]);
     expect(db.pragma("foreign_keys", { simple: true })).toBe(1);
     db.close();

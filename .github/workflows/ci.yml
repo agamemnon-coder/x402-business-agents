@@ -101,6 +101,8 @@ jobs:
         run: npx tsx test/browser/awx-proof.check.ts test-results/awx-proof && npx tsx test/browser/awx-live.check.ts test-results/awx-live
       - name: /try when the passkey fails (no WebAuthn, refused, cancelled, a silent prompt) in Chromium at phone size
         run: npx tsx test/browser/try-passkey.check.ts test-results/try-passkey
+      - name: /try's Live engine rail beside the steps at 1280 px (also ?present=1&phone=0) and a drawer on a phone, in Chromium
+        run: npx tsx test/browser/try-rail.check.ts test-results/try-rail
       - name: Connect Claude end to end (registration, a cross-site redirect into the consent page, PKCE, MCP with the token; the MCP SDK's own client)
         run: npx tsx test/browser/connector.check.ts test-results/connector
       - name: /visa's live credential check and /t0's close check in Chromium (390 and 1440 px)

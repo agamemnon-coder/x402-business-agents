@@ -5,7 +5,10 @@
 
 import { WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
-import { FX_QUOTE_MAX_MARKUP_BPS } from "../../src/config/policy.js";
+import { FX_QUOTE_MAX_MARKUP_BPS, TRY_ALONE_LIMIT } from "../../src/config/policy.js";
+
+/** The test company's limit to pay alone as the page writes an amount ("EUR 500.00"; src/config/policy.ts TRY_ALONE_LIMIT). */
+const ALONE = `${TRY_ALONE_LIMIT.currency} ${TRY_ALONE_LIMIT.amount}`;
 
 /**
  * The page's frame: the brand mark.
@@ -134,6 +137,7 @@ export const INVOICE = {
     renumbered: "A paid invoice, new number: held",
     bank: "New bank details: held for your check",
     unknown: "A new supplier: held until checked",
+    within: "Inside the agent's limit: paid by the agent alone",
   } as Record<string, string>,
   startHere: "Start here",
   /** The skip link, first in the tab order (judges, 14 Nov). */
@@ -184,6 +188,8 @@ export const WORK = {
   /** The engine flagged a line aimed at the AI (document.injection_flagged); the invoice's answer is as for any other. */
   injected: "Flagged: a line in this invoice tries to instruct the AI. It changed nothing: paying still needs your passkey.",
   ready: "Ready to pay.",
+  /** 16 Nov (owner): within the agent's limit nothing waits for a person: the policy approves it. */
+  readyAlone: "Checks passed. Approved by your policy.",
   readySub: "Nothing is paid until you sign the exact terms.",
   /** 14 Nov: an invoice that cannot be paid as it is says why (WHY, below), in place of "Not ready to pay:" and the list. */
   noInvoice: "No invoice was found in it.",
@@ -205,10 +211,16 @@ export const WORK = {
   rejected: "Rejected. Nothing is paid.",
   /**
    * 14 Nov (jury): under "Ready to pay", the checks the engine ran that passed (InvoiceView.checks_passed, never a fixed
-   * list), then why the CFO signs ({money}: the invoice's total; the agents pay no supplier invoice alone here).
+   * list), then why the CFO signs ({money}: the invoice's total).
    */
-  /** 15 Nov (judges): what is true of this test company: its agent limit is zero; with a CFO's limit, agents pay alone below it. */
-  signNeeded: "{money} is paid only with your signature: this test company's agent limit is zero. With a CFO's limit set, agents pay alone below it.",
+  /** 16 Nov (owner): what is true of this test company: the agent pays alone up to its limit (TRY_ALONE_LIMIT), the CFO signs the rest. */
+  signNeeded: `{money} is paid only with your signature: the agent pays alone only up to ${ALONE}.`,
+  /**
+   * 16 Nov (owner: "visitors must see an agent pay on its own"): an invoice within the limit (InvoiceView.alone_limit.within).
+   * Pay (filed while this shows) lets the agent pay it alone when the agents and code's checks say pay; the button opens the result.
+   */
+  aloneNeeded: `{money} is within your ${ALONE} limit: the agent pays it on its own, with no signature.`,
+  payAlone: "See the agent pay it",
   /** The time line with the model that read it ({model}: "Claude Haiku 4.5"), when Claude did. */
   tookBy: "{model} read it; answered in {s} s, measured in your browser.",
 };
@@ -260,7 +272,7 @@ export const TRACE = {
   rule: "rule: {rule}",
   ownRule: "rule: the agent's own call, within code's checks",
   /** 15 Nov (jury): rules in plain words where the code's own name reads oddly (policy.aloneLimit null in /try). */
-  rules: { no_alone_limit: "the agent limit is zero, so the CFO signs" } as Record<string, string>,
+  rules: { no_alone_limit: "no agent limit is set, so the CFO signs", above_alone_limit: `above the agent's ${ALONE} limit, so the CFO signs`, alone_limit_other_currency: `the agent's limit is in ${TRY_ALONE_LIMIT.currency} only, so the CFO signs` } as Record<string, string>,
   /** 15 Nov (jury): the agent found no concern and asked the CFO only because the rails require it. */
   decidedClear: "Decision: no concerns found; the CFO signs",
   noConcerns: "no concerns found",
@@ -457,14 +469,10 @@ export const APPROVE = {
   /** The main button after a passkey failed or timed out, or when this browser has none: never a dead end. */
   again: "Try again",
   /**
-   * Tester, 14 Nov: "is the limit per transaction or a total?" Here, every supplier invoice waits for the CFO: the
-   * agents have no amount they may pay alone (src/ap/checks.ts, policy.aloneLimit: null). Said where the approval is.
+   * Tester, 14 Nov: "is the limit per transaction or a total?" Said where the approval is. 16 Nov (owner): the test
+   * company's agent limit is per invoice (TRY_ALONE_LIMIT): at or below it the agent pays alone; above it, the passkey.
    */
-  /**
-   * 14 Nov (judges: this read as if agents never pay alone, against the headline): in this demo the limit is zero, so
-   * every invoice waits; with a CFO's limit set, an agent pays alone below it (the main run on /proof, run live).
-   */
-  limit: "Agent limit EUR 0 in this demo · above it, your passkey. With a CFO's limit set, agents pay alone below it.",
+  limit: `Agent limit ${ALONE} per invoice in this demo · above it, your passkey. At or below it, the agent pays alone.`,
   /** 14 Nov (approval sheet): its label, and the way back without signing (nothing is signed or paid; the terms expire). */
   sheet: "Approval sheet", notNow: "Don't sign",
   /** Once the receipt is in: the start of the exact terms' SHA-256 ({sha}: its first 8 hex characters). */
@@ -528,7 +536,7 @@ export const PAYOUT_CARD = {
   simulatedNote: "{why}. The payment was made on the simulated bank only.",
   why: {
     switched_off: "Sandbox transfers are switched off", no_binding: "Sandbox transfers are not set up here", no_key: "No Airwallex payout key is set",
-    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its one sandbox transfer", over_max: "The amount is above the demo's limit",
+    day_cap: "Today's limit of sandbox transfers is used", company_cap: "This test company already made its two sandbox transfers", over_max: "The amount is above the demo's limit",
     not_eur: "Only EUR is sent to the sandbox", balance_low: "The sandbox balance does not cover it", unavailable: "Airwallex did not answer", refused: "Airwallex refused the transfer",
     ambiguous: "Airwallex's answer was unclear; it is asked again, never paid twice", timeout: "Airwallex took too long", bad_answer: "Airwallex's answer did not match the payment", bad_request: "The transfer could not be asked for",
   } as Record<string, string>,
@@ -642,6 +650,8 @@ export const BOOKS = {
   cloudNote: "A demo company, read only: not your test company.",
   /** The main button: another invoice, in this same test company. */
   another: "File another invoice",
+  /** 16 Nov (owner): after the agent paid alone, the main button leads on to an invoice above the limit (Face ID, then the one-cent test). */
+  anotherAbove: `Try an invoice above ${ALONE.replace(/\.00$/, "")} →`,
   /** For screen readers, on a block's skeleton while its reads run. */
   loading: "Loading",
   /** On a phone each ledger line stacks: its side in a word before the amount. */
@@ -798,6 +808,8 @@ export const VISIBLE = {
     // the record's line with the close (each side's said and rails line; a rule is data). Pinned at its count.
     [WORK.heading, WORK.ready, WORK.readySub, ...Object.values(WORK_CHECKS), WORK.signNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.pay, TRACE.summary,
       SCRIPT.claude, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.script, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.same, SCRIPT.line, SCRIPT.close],
+    // 16 Nov (owner): an invoice within the agent's limit: the agent pays it on its own (no "until you sign" line).
+    [WORK.heading, WORK.readyAlone, ...Object.values(WORK_CHECKS), WORK.aloneNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.payAlone, ...AGENTIC],
   ],
   approve: [
     [APPROVE.heading, APPROVE.filing],
@@ -865,6 +877,8 @@ export const VISIBLE = {
     // settled.error: the engine's words (data), the retry as the main button, the next screen beside it; no blocks
     // until a payment that went through is drawn again from the retry's answer.
     [BOOKS.headingError, BOOKS.retry, BOOKS.what],
+    // 16 Nov (owner): paid by the agent within its limit: nothing signed to change; on to an invoice above the limit.
+    [BOOKS.heading, BOOKS.paid, BOOKS.fee, BOOKS.feeWhy, BOOKS.booked, BOOKS.account, BOOKS.debit, BOOKS.credit, BOOKS.dr, BOOKS.cr, BOOKS.conv, BOOKS.even, BOOKS.head, BOOKS.filed, BOOKS.original, BOOKS.receipt, BOOKS.anotherAbove, BOOKS.what, BOOKS.next, BOOKS.cloudNote],
   ],
   company: [
     // 14 Nov (owner): the finish. The result (its figures are data), the three steps, the way on and its quiet links,
@@ -943,7 +957,10 @@ export const VISIBLE = {
 // 15 Nov ("what does Claude add?"): every answer with an invoice also shows the Checker's steps' fold summary and the
 // script button, +13 words each ("work 2" to "work 6", "work 10" to "work 12", "work 15"; "work 7" newly over at 57);
 // "work 16" is the comparison opened, carrying the worst-case record's own line verbatim (WORST_CASE_LINE).
-export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 79 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 117, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 98, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 101, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 219 };
+// 16 Nov (owner: the agent pays alone up to EUR 500.00 in a test company): "Ready to pay" says who signs in fewer words
+// (-8: "work 2", "work 12", "work 15", "work 16"); "work 17" is an invoice within the limit, which the agent pays on its
+// own; "invoice 6" carries the sample inside the limit (+9). Each pinned at its count.
+export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 88 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 73 /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */ };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
@@ -1005,7 +1022,7 @@ export const LIVE = {
   ownWords: "its own words",
   enforced: "Purser's code enforced: {enforced}",
   /** 15 Nov (jury): beside "No concerns found": the CFO step is the rails', not the agent's doubt. */
-  railsClear: "Purser's rails: the agent limit is zero, so the CFO signs.",
+  railsClear: `Purser's rails: outside the agent's ${ALONE} limit, so the CFO signs.`,
   /** Round 4 (14 Nov): code's outcome differs from what the agent decided. */
   overrode: "Purser's code overrode it: {enforced}",
   /**
@@ -1075,6 +1092,7 @@ export const LIVE = {
     "proposal.created": "The payment was filed for approval. Nothing is paid before a person signs.",
     "proposal.approved": "You approved the exact terms {method}.",
     "proposal.approved_plain": "You approved the exact terms.",
+    "proposal.within_limit": "Within your limit, Purser's code approved the exact terms. The agent pays it, with no signature.",
     "proposal.rejected": "You rejected the payment {method}. Nothing is paid.",
     "proposal.rejected_plain": "You rejected the payment. Nothing is paid.",
     "proposal.cosigned": "The first of two signatures is in. A second person must sign too.",

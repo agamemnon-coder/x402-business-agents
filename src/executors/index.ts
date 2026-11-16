@@ -4,6 +4,7 @@ import { LiveReceivePolicy } from "../metal/receivePolicy.js";
 import { keyPath } from "../metal/agentCli.js";
 import type { DB } from "../db/open.js";
 import { withOrigin, type Origin } from "../provenance/origin.js";
+import { POLICY_METHOD } from "../policy/approvals.js";
 import { executeMandateReplace } from "./mandateReplace.js";
 import { executeRefundBatch } from "./refundBatch.js";
 import { executeInvoicePayment } from "./invoicePayment.js";
@@ -31,10 +32,15 @@ export type Rails = NonNullable<Awaited<ReturnType<typeof airwallexFromEnv>>> & 
   batches?: import("../airwallex/batchTransfers.js").BatchTransferRail;
 };
 
+/** The rule an invoice payment within the CFO's limit runs under, without a person (the origin of its money steps). */
+export const ALONE_RULE = "an invoice payment within the CFO's limit to pay alone";
+
 /** D24: the origin of every money movement an approved proposal makes: its approval, and with four eyes the cosigner. */
 export function approvalOrigin(db: DB, proposalId: string): Origin | null {
   const a = db.prepare("SELECT approval_id, approver, method FROM approvals WHERE proposal_id = ? AND decision = 'APPROVED'").get(proposalId) as { approval_id: number; approver: string; method: string } | undefined;
   if (!a) return null;
+  // Approved by code within the CFO's limit to pay alone (src/policy/approvals.ts approveWithinLimit): code's rule, not a person.
+  if (a.method === POLICY_METHOD) return { actor: "code", rule: ALONE_RULE, agent: "payer" };
   const co = db.prepare("SELECT approver FROM cosignatures WHERE proposal_id = ? ORDER BY created_at, rowid LIMIT 1").get(proposalId) as { approver: string } | undefined;
   return { actor: "cfo", proposal_id: proposalId, approval_id: String(a.approval_id), method: a.method, approver: a.approver, ...(co && co.approver !== a.approver ? { cosigner: co.approver } : {}) };
 }

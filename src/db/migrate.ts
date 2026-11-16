@@ -18,6 +18,7 @@ export function prepareDb(db: DB, schema: string, ledger: string): void {
     migrate(db);
   }).immediate();
   allowPasskeyApprovals(db);
+  allowPolicyApprovals(db);
   allowPasskeyRejections(db);
 }
 
@@ -168,6 +169,34 @@ function allowPasskeyApprovals(db: DB): void {
       db.exec("INSERT INTO approvals_v2 SELECT * FROM approvals");
       db.exec("DROP TABLE approvals");
       db.exec("ALTER TABLE approvals_v2 RENAME TO approvals");
+      const dangling = db.pragma("foreign_key_check(approvals)") as unknown[];
+      if (dangling.length > 0) throw new Error(`foreign key check failed after migrating approvals: ${JSON.stringify(dangling)}`);
+    }).immediate();
+  } finally {
+    db.pragma("foreign_keys = ON");
+  }
+}
+
+/**
+ * Ledgers from before payments approved within the CFO's limit (16 Nov, src/policy/approvals.ts approveWithinLimit):
+ * the approvals table's method CHECK gains 'policy' (rebuilt once, as for passkey approvals above).
+ */
+function allowPolicyApprovals(db: DB): void {
+  const before = "CHECK (method IN ('web', 'cli', 'telegram', 'passkey'))";
+  const { sql } = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'approvals'").get() as { sql: string };
+  if (sql.includes("'policy'")) return;
+  const ddl = sql
+    .replace(/^CREATE TABLE "?approvals"?/, "CREATE TABLE approvals_v3")
+    .replace(before, "CHECK (method IN ('web', 'cli', 'telegram', 'passkey', 'policy'))");
+  if (!ddl.startsWith("CREATE TABLE approvals_v3") || !ddl.includes("'policy'")) throw new Error("the approvals table has an unexpected shape; not migrating it");
+  db.pragma("foreign_keys = OFF");
+  try {
+    db.transaction(() => {
+      if (((db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'approvals'").get() as { sql: string }).sql).includes("'policy'")) return;
+      db.exec(ddl);
+      db.exec("INSERT INTO approvals_v3 SELECT * FROM approvals");
+      db.exec("DROP TABLE approvals");
+      db.exec("ALTER TABLE approvals_v3 RENAME TO approvals");
       const dangling = db.pragma("foreign_key_check(approvals)") as unknown[];
       if (dangling.length > 0) throw new Error(`foreign key check failed after migrating approvals: ${JSON.stringify(dangling)}`);
     }).immediate();

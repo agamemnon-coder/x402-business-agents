@@ -53,7 +53,7 @@ const agentTraceOf=(T,S,W)=>{
   const money=(t)=>t.replace(/\b([A-Z]{3}) (\d{4,})(\.\d{2})\b/g,(_,c,n,d)=>c+' '+n.replace(/\B(?=(\d{3})+(?!\d))/g,',')+d);
   const act=(v)=>code(v)?(own(W.actions,v)?W.actions[v]:words(v)):'';
   const rails=(o)=>code(o)&&own(T.rails,o)?T.rails[o]:'';
-  // A rule in the trace's words where it has them (the zero agent limit), else the code in plain words.
+  // A rule in the trace's words where it has them (the agent's limit), else the code in plain words.
   const ruleOf=(by)=>code(by)?fill(T.rule,{rule:own(T.rules,by)?T.rules[by]:words(by)}):'';
   // 15 Nov (jury): no concern of the agent's own and none of code's, and the CFO step is the rails' (as tryEvents.ts).
   const clearOf=(f)=>f.source==='claude'&&f.action==='ask_cfo'&&f.code_requires==='ask_cfo'&&f.outcome==='ask_cfo'&&f.concerns===0&&!code(f.codes)&&f.overridden!==true;
@@ -92,7 +92,7 @@ const agentTraceOf=(T,S,W)=>{
       rows.push(claude?{kind:'decision',text:clear?T.decidedClear:fill(T.decided,{action:act(f.action)}),sub:'',own:said(f.reason),time:'',refused:false}
         :{kind:'decision',text:T.fallback,sub:fill(T.decided,{action:act(f.action)}),own:'',time:'',refused:false});
       // The rule: what overrode the decision when something did (with code's why); else, Claude's own call within code's checks.
-      const rule=code(f.overridden_by)?ruleOf(f.overridden_by):clear?ruleOf('no_alone_limit'):claude?T.ownRule:'';
+      const rule=code(f.overridden_by)?ruleOf(f.overridden_by):clear?ruleOf(code(f.code_rule)||'no_alone_limit'):claude?T.ownRule:'';
       if(rails(f.outcome))rows.push({kind:'rails',text:rails(f.outcome),sub:[rule,code(f.overridden_by)||!claude?said(f.enforced):''].filter(Boolean).join(' · '),own:'',time:'',refused:false});
     }
     if(run){const t=num(run.f.turns),l=num(run.f.latency_ms),c=num(run.f.cost_usd_micros);
@@ -103,7 +103,7 @@ const agentTraceOf=(T,S,W)=>{
     const dec=last(mine(items),'ap.checker_decided');
     const f=dec?dec.f:{};
     if(!dec||!rails(f.script_outcome)||!rails(f.outcome))return {verdict:'missing',claude:null,script:null,say:S.missing};
-    const claude={action:clearOf(f)?T.noConcerns:act(f.action),outcome:f.outcome,rails:rails(f.outcome),rule:code(f.overridden_by)?ruleOf(f.overridden_by):clearOf(f)?ruleOf('no_alone_limit'):f.source==='claude'?T.ownRule:''};
+    const claude={action:clearOf(f)?T.noConcerns:act(f.action),outcome:f.outcome,rails:rails(f.outcome),rule:code(f.overridden_by)?ruleOf(f.overridden_by):clearOf(f)?ruleOf(code(f.code_rule)||'no_alone_limit'):f.source==='claude'?T.ownRule:''};
     const script={action:act('pay'),outcome:f.script_outcome,rails:rails(f.script_outcome),rule:ruleOf(f.script_overridden_by)};
     const stop=(o)=>o==='hold'||o==='reject';
     const verdict=f.source!=='claude'?'fallback':f.outcome===f.script_outcome?'same':stop(f.outcome)&&!stop(f.script_outcome)?'stopped':'stricter';

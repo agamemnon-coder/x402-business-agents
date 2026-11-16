@@ -16,7 +16,7 @@ import HelveticaBold from "pdfkit/standard-fonts/HelveticaBold";
 import HelveticaOblique from "pdfkit/standard-fonts/HelveticaOblique";
 import Courier from "pdfkit/standard-fonts/Courier";
 import CourierBold from "pdfkit/standard-fonts/CourierBold";
-import { TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
+import { TRY_ALONE_LIMIT, TRY_FX_QUOTE_MAX_MARKUP_BPS } from "../../../src/config/policy.js";
 import { useDocStore } from "../../../src/ap/docStore.js";
 import { usePdfReader } from "../../../src/ap/pdfText.js";
 import { readPdfInline } from "../../../src/ap/pdfTextInline.js";
@@ -43,7 +43,7 @@ import type { Bank } from "../../../src/airwallex/routedRail.js";
 import { cloudGuard } from "./awxGuard.js";
 import { wireAirwallex } from "./awxWire.js";
 import { withLiveFx, type LiveFxSource } from "./liveFx.js";
-import { sandboxPayout, simulatePayout, type PayoutSource } from "./livePayout.js";
+import { sandboxPayout, simulatePayout, withAlonePayout, type PayoutSource } from "./livePayout.js";
 import { on, readSwitches } from "../try/switches.js";
 
 /** What the host needs of the object: its storage. */
@@ -160,7 +160,7 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     ...withClaude(env, sql, tenantId),
     // The hands-on demo: the sample invoices, and a visitor's test company holds at most 8 documents.
     // Speed (12 Nov): on Pay no Claude review note for a try company; code writes it (the Payer agent's reason is on screen).
-    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS } : {}),
+    samples: SAMPLES, ...(tenantId.startsWith("t_try_") ? { maxDocuments: 8, reviewNoteOnPay: false, seedPaid: true, fxMarkupBps: TRY_FX_QUOTE_MAX_MARKUP_BPS, aloneLimit: TRY_ALONE_LIMIT } : {}),
     // Speed (13 Nov, the owner's yes): the Payer proposes while the invoice is filed; Pay reads that answer when it is
     // finished and the plan is the same case. Its calls count against the same caps, and it runs only with room to spare.
     earlyPayer: true,
@@ -179,7 +179,10 @@ export async function openHost(ctx: HostCtx, env: HostEnv, tenantId: string): Pr
     upload: async (doc) => host.upload(doc),
     invoices: async () => host.invoices(),
     invoice: async (id) => host.invoice(id),
-    propose: async (invoiceId) => kept(acts.propose(invoiceId)),
+    // 16 Nov: the agent's own payment within the limit, once paid on the simulated bank, also asked of the Airwallex
+    // sandbox as the signed one is (./livePayout.ts withAlonePayout); without the binding, the note says why not.
+    propose: async (invoiceId) => withAlonePayout(await kept(acts.propose(invoiceId)), (id) => host.terms(id),
+      (proposalId, termsSha256, terms) => sandboxPayout({ ...payoutKit, source: payoutOn ? payoutKit.source : null, proposalId, termsSha256, terms })),
     proposal: async (id) => host.proposal(id),
     // The Worker hands the request's relying party (../hostOrigin.ts); one it may not use is not taken: the object's own is.
     passkeyStart: async (rp) => host.passkeyStart(rp && rpAllowed(rp, own) ? { rpId: rp.rpId, origin: rp.origin } : undefined),

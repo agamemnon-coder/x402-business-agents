@@ -94,6 +94,8 @@ describe("the chain: one supplier invoice from upload to paid, booked and archiv
       due_date: "2026-11-16", read_by: "parser", issue_date: "2026-11-02", paid_at: null, received_at: expect.any(String) as string, findings: [], doc_sha256: sha256(bytes), proposal: null,
       // The checks that ran and passed (14 Nov, jury): /try lists them under "Ready to pay".
       checks_passed: ["not_paid_before", "bank_on_file", "known_supplier"],
+      // No limit to pay alone in this company (only a /try test company sets one): the CFO signs every invoice.
+      alone_limit: null,
     });
 
     // The passkey: created against the engine's own challenge, and confirmed by the host itself.

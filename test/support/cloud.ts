@@ -1,5 +1,6 @@
 // Purser Cloud in a test: the Worker's own request handler over better-sqlite3 and a temporary directory (no network,
 // no Cloudflare). The platform admin token is a test value; its hash is what the cloud is configured with.
+import type { PayoutSource } from "../../cloud/src/engine/livePayout.js";
 import { createHash } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -45,7 +46,8 @@ const b64u = (u: Uint8Array) => Buffer.from(u).toString("base64url");
 
 /** { tryIt }: the hands-on demo's routes (/v1/try, cloud/src/try/), with { engine: true }. */
 /** { engine: true }: every company gets an engine in this process (cloud/src/engine/node.ts), so the /v1/engine routes answer. */
-export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; tryIt?: CloudEnv["tryIt"] } = {}): TestCloud {
+/** { livePayout }: /try's sandbox payout with a stand-in source (cloud/src/engine/livePayout.ts), handed to every engine. */
+export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; tryIt?: CloudEnv["tryIt"]; livePayout?: { source: PayoutSource; allowed: () => Promise<boolean> } } = {}): TestCloud {
   const dir = mkdtempSync(join(process.env.TMPDIR ?? tmpdir(), "cloud-"));
   // npm run test:d1 (CLOUD_DB=d1, test/support/d1.ts): a fresh local D1 database instead of better-sqlite3.
   const d1 = globalThis.__cloudD1?.next();
@@ -60,7 +62,7 @@ export function testCloud(opts: { rate?: CloudEnv["rate"]; engine?: boolean; try
   if (opts.engine) {
     // Loaded on first use: the engine is a large graph, and a cloud test that never asks for it does not pay for it.
     let engines: Promise<(tenantId: string) => EngineApi> | null = null;
-    const load = () => (engines ??= import("../../cloud/src/engine/node.js").then((m) => m.nodeEngines({ sql, blobs: env.blobs, rpId: RP, origin: ORIGIN, now: () => clock.now })));
+    const load = () => (engines ??= import("../../cloud/src/engine/node.js").then((m) => m.nodeEngines({ sql, blobs: env.blobs, rpId: RP, origin: ORIGIN, now: () => clock.now, ...(opts.livePayout ? { livePayout: opts.livePayout } : {}) })));
     // Every method passes the call on, as the Worker's stub of a company's Durable Object does.
     env.engine = (tenantId) => new Proxy({} as EngineApi, {
       get: (_t, method) => async (...args: unknown[]) => ((await load())(tenantId)[method as keyof EngineApi] as (...a: unknown[]) => unknown)(...args),

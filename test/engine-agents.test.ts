@@ -16,6 +16,8 @@ import { bankToText, standInBank } from "../src/engine/standInBank.js";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
 import { eventLine } from "../cloud/src/tryEvents.js";
+import { TRY_ALONE_LIMIT } from "../src/config/policy.js";
+import { ALONE_SAMPLE, SAMPLE_SOURCES, samplePdf } from "../src/engine/tryWorld.js";
 
 type Block = { type: "tool_use"; id: string; name: string; input: unknown } | { type: "text"; text: string };
 interface Req { model: string; max_tokens: number; tools?: { name: string }[]; messages: { role: string; content: unknown }[] }
@@ -94,7 +96,7 @@ function access(o: { refuse?: CappedReason; refuseSpare?: CappedReason; micros?:
   return { access: a, log };
 }
 
-function host(claude?: ClaudeAccess, opts: { earlyPayer?: boolean } = {}) {
+function host(claude?: ClaudeAccess, opts: { earlyPayer?: boolean; aloneLimit?: { currency: "EUR"; amount: string } } = {}) {
   const db = openDb(":memory:");
   const docs = new Map<string, Buffer>();
   useDocStore(db, { put: (sha, b) => { docs.set(`mem:${sha}`, Buffer.from(b)); return `mem:${sha}`; }, get: (p) => docs.get(p)! });
@@ -103,7 +105,7 @@ function host(claude?: ClaudeAccess, opts: { earlyPayer?: boolean } = {}) {
   const h = new EngineHost({
     db, reader: parserOnly, rails: { rail: bank, sim: bank }, afterMoney: () => store.save(bankToText(bank)),
     rp: { rpId: "engine.example.invalid", origin: "https://engine.example.invalid" }, company: { name: "Agents Test Co", lang: "en" }, vault: null, feed: null,
-    ...(claude ? { claude } : {}), ...(opts.earlyPayer ? { earlyPayer: true } : {}),
+    ...(claude ? { claude } : {}), ...(opts.earlyPayer ? { earlyPayer: true } : {}), ...(opts.aloneLimit ? { aloneLimit: opts.aloneLimit } : {}),
   });
   return { db, host: h, bank };
 }
@@ -155,6 +157,45 @@ describe("the payables agents in the cloud engine (task A6)", () => {
       // Filed for the CFO's Face ID: code let the agent's proposal through on the engine's own plan.
       expect(p).toMatchObject({ ok: true });
     }
+  });
+
+  // Owner, 16 Nov: with a limit to pay alone (a /try test company's, EUR 500.00), the agents pay a small invoice on their
+  // own: the Checker decides pay, the Payer proposes it, code approves the exact terms within the limit and the payment
+  // runs on the simulated bank and is booked; no passkey. Above the limit, the CFO still signs.
+  it("within the company's limit the agents pay alone, without a passkey; above it the Payer's pay goes to the CFO", async () => {
+    const s = standInClaude();
+    const { access: a } = access({ client: s.client });
+    const { db, host: h } = host(a, { aloneLimit: { ...TRY_ALONE_LIMIT } });
+    await h.seed();
+    const small = SAMPLE_SOURCES.find((x) => x.key === ALONE_SAMPLE)!;
+    const up = await h.upload({ bytes: await samplePdf(small), filename: small.filename });
+    expect(up.invoice).toMatchObject({ status: "ready", total: "120.00", alone_limit: { currency: "EUR", amount: "500.00", within: true } });
+    const check = decided(db, "ap.checker_decided").at(-1)!;
+    expect(check.fields).toMatchObject({ source: "claude", action: "pay", outcome: "pay", overridden: false, code_requires: "pay" });
+    const p = await h.propose(up.invoice!.id);
+    expect(p).toMatchObject({ ok: true, alone: { limit: "EUR 500.00", by: "agents" }, settled: { invoice_status: "paid", error: null }, proposal: { status: "EXECUTED" } });
+    const payer = decided(db, "ap.payer_proposed").at(-1)!;
+    expect(payer.fields).toMatchObject({ source: "claude", outcome: "pay", overridden: false });
+    expect(String(payer.fields.enforced)).toMatch(/EUR 120\.00 is within the EUR 500\.00 the agent may pay alone/);
+    const pid = (p as { proposal: { id: string } }).proposal.id;
+    const names = events(db).filter((e) => e.subject === pid).map((e) => e.event);
+    expect(names.slice(0, 3)).toEqual(["proposal.created", "proposal.within_limit", "proposal.executing"]);
+    expect(names).toContain("proposal.executed");
+    expect(events(db).some((e) => e.event === "proposal.approved" || e.event.startsWith("passkey."))).toBe(false);
+    // The approval is the policy's, by code; every money step records code's rule as its origin, not a person.
+    expect(db.prepare("SELECT approver, method FROM approvals WHERE proposal_id = ?").get(pid)).toEqual({ approver: "Purser's code", method: "policy" });
+    const origin = JSON.parse((db.prepare("SELECT origin_json FROM transfers ORDER BY rowid DESC LIMIT 1").get() as { origin_json: string }).origin_json) as Record<string, unknown>;
+    expect(origin).toMatchObject({ actor: "code", agent: "payer" });
+    expect(eventLine(events(db).find((e) => e.event === "proposal.within_limit")!).text).toBe("Within your limit, Purser's code approved the exact terms. The agent pays it, with no signature.");
+
+    // EUR 1,850.00 from the same supplier: the Checker's pay and the Payer's pay both become "ask the CFO", above the limit.
+    const big = await h.upload({ bytes: await pdfOf(EN), filename: "bergtex.pdf" });
+    expect(decided(db, "ap.checker_decided").at(-1)!.fields).toMatchObject({ action: "pay", outcome: "ask_cfo", overridden_by: "above_alone_limit" });
+    const q = await h.propose(big.invoice!.id);
+    expect(q).toMatchObject({ ok: true, proposal: { status: "PENDING_APPROVAL" } });
+    expect((q as { alone?: unknown }).alone).toBeUndefined();
+    expect(decided(db, "ap.payer_proposed").at(-1)!.fields).toMatchObject({ outcome: "ask_cfo", overridden_by: "above_alone_limit" });
+    expect(h.invoice(big.invoice!.id)!.status).toBe("waiting_cfo");
   });
 
   it("with the switch off, nothing is sent: code decides, labelled, and the status says code", async () => {

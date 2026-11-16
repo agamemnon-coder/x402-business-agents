@@ -1,12 +1,13 @@
 // /try's sandbox payout (step 2, 14 Nov), on the kit11 Worker's side (worker/src/awxPayout.ts): four calls on the
-// sandbox host and nothing else; one transfer per test company, keyed by the signed terms' hash, never twice; a day cap,
+// sandbox host and nothing else; at most two transfers per test company (16 Nov: the agent's own payment within the
+// CFO's limit and the Face ID-signed one), each keyed by its approved terms' hash, never twice; a day cap,
 // an amount cap, EUR only, and never more than the sandbox's available balance. No network: Airwallex is a fake fetch.
 import { readFileSync } from "node:fs";
 import Database from "better-sqlite3";
 import { describe, expect, it, vi } from "vitest";
 import { sqlOver } from "../src/relay/local.js";
 import {
-  AWX_PAYOUT_ALLOWED, AWX_PAYOUT_BENEFICIARY, AWX_PAYOUT_DAY, AWX_PAYOUT_HOST, AwxPayoutDesk, PayoutCallNotAllowed, PayoutFailed, SandboxPayouts, payoutUrl, requestIdOf,
+  AWX_PAYOUT_ALLOWED, AWX_PAYOUT_BENEFICIARY, AWX_PAYOUT_DAY, AWX_PAYOUT_HOST, AWX_PAYOUT_PER_COMPANY, AwxPayoutDesk, PayoutCallNotAllowed, PayoutFailed, SandboxPayouts, payoutUrl, requestIdOf,
   type PayoutRail, type SandboxTransfer,
 } from "../worker/src/awxPayout.js";
 
@@ -83,8 +84,8 @@ describe("the payout client: four calls, one host, nothing else", () => {
   });
 });
 
-describe("the payout desk: one per company, never twice, capped", () => {
-  it("pays once; the same signed terms again answer the stored transfer and read its status back, with no second create", async () => {
+describe("the payout desk: two per company, never twice, capped", () => {
+  it("pays once per approved terms; the same terms again answer the stored transfer and read its status back, with no second create", async () => {
     const { rail, calls } = fakeRail();
     const d = desk(rail);
     const first = await d.payout(ask());
@@ -92,9 +93,47 @@ describe("the payout desk: one per company, never twice, capped", () => {
     expect(calls.find((c) => c.what === "create")!.arg).toEqual({ requestId: requestIdOf(SHA), amount: "1850.00", currency: "EUR", reference: "BTX-2026-21", approvalSha256: SHA });
     expect(await d.payout(ask())).toMatchObject({ ok: true, again: true, status: "SCHEDULED" });
     expect(calls.filter((c) => c.what === "create")).toHaveLength(1);
-    // Other terms for the same company: its one payout is spent.
-    expect(await d.payout(ask({ terms_sha256: SHA2 }))).toEqual({ ok: false, reason: "company_cap" });
     expect(d.payoutsToday()).toBe(1);
+  });
+
+  it(`at most ${AWX_PAYOUT_PER_COMPANY} per company (the agent's own within the limit, then the signed one): a third is refused, each again answers its own`, async () => {
+    expect(AWX_PAYOUT_PER_COMPANY).toBe(2);
+    let n = 0;
+    const { rail, calls } = fakeRail({ create: () => ({ id: `4074d684-4704-406c-a527-00000000000${++n}`, status: "PROCESSING" }) });
+    const d = desk(rail);
+    const alone = await d.payout(ask({ amount: "120.00", reference: "BTX-2026-23" }));
+    expect(alone).toEqual({ ok: true, transfer_id: "4074d684-4704-406c-a527-000000000001", status: "PROCESSING", amount: "120.00", currency: "EUR", request_id: requestIdOf(SHA), again: false });
+    const signed = await d.payout(ask({ terms_sha256: SHA2 }));
+    expect(signed).toMatchObject({ ok: true, transfer_id: "4074d684-4704-406c-a527-000000000002", amount: "1850.00", request_id: requestIdOf(SHA2), again: false });
+    expect(await d.payout(ask({ terms_sha256: "d".repeat(64) }))).toEqual({ ok: false, reason: "company_cap" });
+    expect(await d.payout(ask({ amount: "120.00", reference: "BTX-2026-23" }))).toMatchObject({ ok: true, transfer_id: "4074d684-4704-406c-a527-000000000001", again: true });
+    expect(await d.payout(ask({ terms_sha256: SHA2 }))).toMatchObject({ ok: true, transfer_id: "4074d684-4704-406c-a527-000000000002", again: true });
+    expect(calls.filter((c) => c.what === "create")).toHaveLength(2);
+    // Another company never gets these terms' transfer; it has its own two.
+    expect(await d.payout(ask({ company: "t_try_b" }))).toEqual({ ok: false, reason: "bad_request" });
+    expect(await d.payout(ask({ company: "t_try_b", terms_sha256: "e".repeat(64) }))).toMatchObject({ ok: true, again: false });
+    // Each moves to PAID on its own, per (company, terms).
+    expect(await d.simulatePaid({ company: "t_try_a", terms_sha256: SHA2 })).toMatchObject({ ok: true, transfer_id: "4074d684-4704-406c-a527-000000000002", status: "PAID" });
+    expect(await d.simulatePaid({ company: "t_try_b", terms_sha256: SHA2 })).toEqual({ ok: false, reason: "no_transfer" });
+    expect(d.payoutsToday()).toBe(3);
+  });
+
+  it("moves a deployed instance's one-row-per-company table into the table keyed by terms, once, on construct", async () => {
+    const db = new Database(":memory:");
+    db.exec("CREATE TABLE awx_payouts (company TEXT PRIMARY KEY, terms_sha256 TEXT NOT NULL UNIQUE, request_id TEXT NOT NULL, transfer_id TEXT, status TEXT, amount TEXT NOT NULL, currency TEXT NOT NULL, day TEXT NOT NULL)");
+    db.prepare("INSERT INTO awx_payouts VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run("t_try_a", SHA, requestIdOf(SHA), "4074d684-4704-406c-a527-2832753baf4f", "IN_APPROVAL", "1850.00", "EUR", "2026-11-14");
+    const { rail, calls } = fakeRail();
+    const at = () => Date.parse("2026-11-14T12:00:00Z");
+    const d = new AwxPayoutDesk(sqlOver(db), { rail, off: false, now: at });
+    expect(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'awx_payouts%' ORDER BY name").all()).toEqual([{ name: "awx_payouts_v2" }]);
+    expect(db.prepare("SELECT company, terms_sha256, transfer_id, status, amount FROM awx_payouts_v2").all()).toEqual([{ company: "t_try_a", terms_sha256: SHA, transfer_id: "4074d684-4704-406c-a527-2832753baf4f", status: "IN_APPROVAL", amount: "1850.00" }]);
+    // The kept transfer answers again; the company has room for its second.
+    expect(await d.payout(ask())).toMatchObject({ ok: true, again: true, transfer_id: "4074d684-4704-406c-a527-2832753baf4f" });
+    expect(await d.payout(ask({ terms_sha256: SHA2 }))).toMatchObject({ ok: true, again: false });
+    expect(calls.filter((c) => c.what === "create")).toHaveLength(1);
+    // Constructed again (every request makes the desk): nothing to move, nothing lost.
+    new AwxPayoutDesk(sqlOver(db), { rail, off: false, now: at });
+    expect((db.prepare("SELECT COUNT(*) AS n FROM awx_payouts_v2").get() as { n: number }).n).toBe(2);
   });
 
   it("checks the sandbox balance first: too little, or no answer, and no transfer is asked for", async () => {
@@ -113,6 +152,7 @@ describe("the payout desk: one per company, never twice, capped", () => {
     expect(await d.payout(ask({ company: "t_try_a", terms_sha256: SHA }))).toMatchObject({ ok: true });
     expect(await d.payout(ask({ company: "t_try_b", terms_sha256: SHA2 }))).toMatchObject({ ok: true });
     expect(await d.payout(ask({ company: "t_try_c", terms_sha256: "d".repeat(64) }))).toEqual({ ok: false, reason: "day_cap" });
+    expect(await d.payout(ask({ company: "t_try_a", terms_sha256: "f".repeat(64) }))).toEqual({ ok: false, reason: "day_cap" });
     expect(await desk(rail).payout(ask({ currency: "USD" }))).toEqual({ ok: false, reason: "not_eur" });
     expect(await desk(rail).payout(ask({ amount: "5000.01" }))).toEqual({ ok: false, reason: "over_max" });
     const before = calls.length;
@@ -122,7 +162,7 @@ describe("the payout desk: one per company, never twice, capped", () => {
     expect(calls.length).toBe(before);
   });
 
-  it("refused: spent, never retried; ambiguous: asked again with the same request_id, and only once made", async () => {
+  it("refused: these terms' payout spent, never retried; ambiguous: asked again with the same request_id, and only once made", async () => {
     let n = 0;
     const refused = fakeRail({ create: () => { throw new PayoutFailed("refused", "x"); } });
     const d1 = desk(refused.rail);
