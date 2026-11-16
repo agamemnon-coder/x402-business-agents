@@ -13,7 +13,7 @@
 //   with a refund that throws. It now carries out only a decision it recorded itself.
 // The rails are stand-ins (no chain, no Airwallex, no Claude); the refund executor, the decision code and s2 are real.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -43,6 +43,7 @@ import { refundThresholds } from "../src/policy/rules.js";
 import { AUTO_REFUND } from "../src/provenance/origin.js";
 import { openDisputeCase } from "../src/seller/desk.js";
 import { setSetting } from "../src/world/settings.js";
+import { rmTemp } from "./support/rmTemp.js";
 
 const repo = resolve(import.meta.dirname, "..");
 const PAYER = "0x00000000000000000000000000000000000000c1" as Address;
@@ -53,7 +54,7 @@ const T0 = new Date("2026-11-04T10:00:00.000Z");
 const HALF_HOUR_AGO = () => new Date(Date.now() - 31 * 60_000);
 const idOf = (email: string) => (email.trim() ? disputeKey(email) : null);
 const dirs: string[] = [];
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { for (const d of dirs.splice(0)) rmTemp(d); });
 const tempDir = (tag: string) => { const d = mkdtempSync(join(tmpdir(), `kit11-review2-${tag}-`)); dirs.push(d); return d; };
 
 /** Stock checks #1..#n sold to Summit at 0.05 each (sale id = stock check number). */

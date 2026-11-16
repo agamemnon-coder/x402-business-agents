@@ -134,18 +134,18 @@ describe("where the virtual passkey's credential is kept", () => {
   it("writes it readable by its owner only, and never widens a file that is there", () => {
     const file = join(mkdtempSync(join(tmpdir(), "kit11-test-controller-")), CREDENTIAL_FILE);
     saveCredential(file, stored);
-    expect(statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
     expect(loadCredential(file).credential.signCount).toBe(1);
     // A file someone made stricter stays as strict when the sign counter is saved.
     chmodSync(file, 0o400);
     saveCredential(file, { ...stored, credential: { ...stored.credential, signCount: 2 } });
-    expect(statSync(file).mode & 0o777).toBe(0o400);
+    if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o400); // Windows has no POSIX file modes
     expect(loadCredential(file).credential.signCount).toBe(2);
     // A file someone made readable by others is not read, and is closed again by the next save.
     chmodSync(file, 0o644);
-    expect(() => loadCredential(file)).toThrow(/readable by others/);
+    if (process.platform !== "win32") expect(() => loadCredential(file)).toThrow(/readable by others/); // Windows has no POSIX file modes
     saveCredential(file, stored);
-    expect(statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
   });
 
   it("reads only a credential that says it is the virtual test-controller", () => {
@@ -200,7 +200,7 @@ describe("enrol", () => {
     expect(pendingPasskeys(w.db, t0).map((p) => [p.label, p.fingerprint])).toEqual([[NAME, out.fingerprint]]);
     expect((w.db.prepare("SELECT label, credential_id FROM passkeys WHERE status = 'ACTIVE'").all() as { label: string; credential_id: string }[])).toEqual([{ label: "max", credential_id: max.credentialId }]);
     const file = credentialFile(w.env);
-    expect(statSync(file).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(file).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
     expect(loadCredential(file)).toMatchObject({ label: NAME, virtual: true, credential: { rpId: RP, signCount: 1 } });
     const text = w.lines.join("\n");
     expect(text).toContain(`npm run passkey -- confirm ${out.fingerprint}`);

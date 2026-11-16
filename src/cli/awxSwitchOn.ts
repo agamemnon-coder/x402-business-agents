@@ -33,7 +33,7 @@ export function switchOnRefusals(env: Record<string, string | undefined>): strin
   if (env.AWX_SWITCH_ON_GO !== "yes") why.push("AWX_SWITCH_ON_GO=yes (the go for this run's sandbox calls)");
   if (!env.AIRWALLEX_CALL_BUDGET || !env.AIRWALLEX_CALL_LOG) why.push("AIRWALLEX_CALL_BUDGET and AIRWALLEX_CALL_LOG (every call counted in one log)");
   else if (!/^\d+$/.test(env.AIRWALLEX_CALL_BUDGET) || Number(env.AIRWALLEX_CALL_BUDGET) > MAX_BUDGET) why.push(`AIRWALLEX_CALL_BUDGET at most ${MAX_BUDGET}`);
-  if (!/awx-switch-on[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB=…/awx-switch-on*.sqlite (this run's own ledger)");
+  if (!/awx-switch-on[^\\/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB=…/awx-switch-on*.sqlite (this run's own ledger)");
   if (!env.KIT11_KEYS_DIR || resolve(env.KIT11_KEYS_DIR).startsWith(repo)) why.push("KIT11_KEYS_DIR outside this repository");
   if (env.AIRWALLEX_PLATFORM === "on") why.push("AIRWALLEX_PLATFORM off (the company's own sandbox account only)");
   for (const f of FLAGS) if (env[f] !== undefined) why.push(`${f} unset: the run shows each product on by default`);
@@ -252,7 +252,7 @@ if (cmd === "stand-in") {
 } else if (cmd === "deposit-follow") {
   // A later read of the last day's deposits (the first read, right after the simulated deposit, found none), recorded and
   // checked against Airwallex's ledger. Same ledger, log and budget as deposit-live.
-  if (!/awx-switch-on-deposit[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "") || process.env.AWX_SWITCH_ON_GO !== "yes" || !process.env.AIRWALLEX_CALL_BUDGET) { console.error("REFUSED  the deposit run's own KIT11_DB, AWX_SWITCH_ON_GO=yes and its call budget"); process.exit(2); }
+  if (!/awx-switch-on-deposit[^\\/]*\.sqlite$/.test(process.env.KIT11_DB ?? "") || process.env.AWX_SWITCH_ON_GO !== "yes" || !process.env.AIRWALLEX_CALL_BUDGET) { console.error("REFUSED  the deposit run's own KIT11_DB, AWX_SWITCH_ON_GO=yes and its call budget"); process.exit(2); }
   const db = openDb();
   const { fromEnv, Airwallex } = await import("../airwallex/client.js");
   const cfg = fromEnv();
@@ -280,7 +280,7 @@ if (cmd === "stand-in") {
   const db = openDb();
   if (cmd === "deposit-live") {
     const why = switchOnRefusals(process.env).filter((w) => !w.startsWith("KIT11_DB"));
-    if (!/awx-switch-on-deposit[^/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB=…/awx-switch-on-deposit*.sqlite (this run's own ledger)");
+    if (!/awx-switch-on-deposit[^\\/]*\.sqlite$/.test(process.env.KIT11_DB ?? "")) why.push("KIT11_DB=…/awx-switch-on-deposit*.sqlite (this run's own ledger)");
     if (why.length) { for (const w of why) console.error(`REFUSED  ${w}`); process.exit(2); }
     const { fromEnv, Airwallex } = await import("../airwallex/client.js");
     const cfg = fromEnv();

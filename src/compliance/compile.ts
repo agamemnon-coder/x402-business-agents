@@ -3,6 +3,8 @@
 // test/compliance-contract.test.ts compiles it again and must get the same bytecode, so the committed artifact is
 // exactly what this source makes. npm run contracts writes it.
 
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -32,7 +34,7 @@ export function compileSendPolicy(): Artifact {
 
 export const loadArtifact = (): Artifact => JSON.parse(readFileSync(ARTIFACT, "utf8")) as Artifact;
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1].split("/").pop()!)) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const a = compileSendPolicy();
   writeFileSync(ARTIFACT, JSON.stringify(a, null, 2) + "\n");
   console.log(`contracts/ComplianceSendPolicy.json: ${a.compiler}, ${(a.bytecode.length - 2) / 2} bytes`);

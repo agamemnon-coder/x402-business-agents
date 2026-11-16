@@ -127,7 +127,7 @@ describe("iccClientFromEnv", () => {
     expect(() => iccClientFromEnv(full({ ICC_MERCHANT_ID: undefined }))).toThrow("the ICC rail cannot start (not set: ICC_MERCHANT_ID); nothing was called");
     const open = writeIccKeyFiles(keys);
     chmodSync(open.responseKey, 0o644);
-    expect(() => iccClientFromEnv(full({ ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: open.responseKey }))).toThrow(/ICC_MLE_RESPONSE_PRIVATE_KEY_FILE.*readable by others/);
+    if (process.platform !== "win32") expect(() => iccClientFromEnv(full({ ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: open.responseKey }))).toThrow(/ICC_MLE_RESPONSE_PRIVATE_KEY_FILE.*readable by others/); // Windows has no POSIX file modes
     const locked = writeIccKeyFiles(keys, { passphrase: "a test passphrase" });
     expect(() => iccClientFromEnv(full({ ICC_JWT_PRIVATE_KEY_FILE: locked.jwtKey }))).toThrow(/ICC_JWT_PRIVATE_KEY_FILE/);
     expect(() => iccClientFromEnv(full({ ICC_JWT_PRIVATE_KEY_FILE: locked.jwtKey, ICC_JWT_PRIVATE_KEY_PASSPHRASE: "a test passphrase", ICC_MLE_RESPONSE_PRIVATE_KEY_FILE: locked.responseKey, ICC_MLE_RESPONSE_PRIVATE_KEY_PASSPHRASE: "a test passphrase" }))).not.toThrow();
@@ -143,7 +143,7 @@ describe("the assurance file", () => {
   });
 
   it("refuses a file others can read, a missing file, and a file of another shape, naming keys only", () => {
-    expect(() => readAssuranceFile(write(JSON.stringify(data), 0o640))).toThrow(/ICC_ASSURANCE_FILE: the file is readable by others/);
+    if (process.platform !== "win32") expect(() => readAssuranceFile(write(JSON.stringify(data), 0o640))).toThrow(/ICC_ASSURANCE_FILE: the file is readable by others/); // Windows has no POSIX file modes
     expect(() => readAssuranceFile(join(tmpdir(), "icc-none", "assurance.json"))).toThrow(/could not be opened \(ENOENT\)/);
     expect(() => readAssuranceFile(write("fp-session-value"))).toThrow(/not JSON/);
     expect(() => readAssuranceFile(write(""))).toThrow(/empty/);

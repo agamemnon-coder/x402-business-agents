@@ -26,7 +26,7 @@
 // The logic takes its phone as a parameter (ControllerPhone), so test/test-controller.test.ts runs it without a
 // browser; test/browser/test-controller.check.ts drives the real Chromium phone against a local relay.
 
-import { closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, fsyncSync, openSync, readFileSync, renameSync, rmSync, statSync, writeSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -108,12 +108,13 @@ export function saveCredential(file: string, c: StoredCredential): void {
   rmSync(tmp, { force: true });
   const fd = openSync(tmp, "wx", mode);
   try { writeSync(fd, `${JSON.stringify(c, null, 2)}\n`); fsyncSync(fd); } finally { closeSync(fd); }
+  if (process.platform === "win32" && existsSync(file)) chmodSync(file, 0o600); // Windows: a read-only file cannot be renamed over
   renameSync(tmp, file);
 }
 
 export function loadCredential(file: string): StoredCredential {
   if (!existsSync(file) || statSync(file).size === 0) throw new Refused(`no credential of the ${LABEL} in the keys folder (${CREDENTIAL_FILE}): run enrol first`);
-  if (statSync(file).mode & 0o077) throw new Refused(`${CREDENTIAL_FILE} in the keys folder is readable by others; it holds a private key: chmod 600 it, or enrol again`);
+  if (process.platform !== "win32" && statSync(file).mode & 0o077) /* Windows has no POSIX modes (ACLs are not read here) */ throw new Refused(`${CREDENTIAL_FILE} in the keys folder is readable by others; it holds a private key: chmod 600 it, or enrol again`);
   let c: Partial<StoredCredential>;
   try { c = JSON.parse(readFileSync(file, "utf8")) as Partial<StoredCredential>; } catch { c = {}; }
   const k = c.credential;

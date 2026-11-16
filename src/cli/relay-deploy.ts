@@ -4,18 +4,19 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { buildPages, pagesModule } from "../relay/assets.js";
 import { relayConfig, relayToken } from "../relay/config.js";
 
 const worker = resolve(import.meta.dirname, "../../worker");
-const wrangler = resolve(worker, "node_modules/.bin/wrangler");
+// wrangler through node: node_modules/.bin/wrangler is a sh script that Windows cannot start.
+const wrangler = resolve(worker, "node_modules/wrangler/bin/wrangler.js");
 const env = { ...process.env, WRANGLER_SEND_METRICS: "false" };
 
 function run(cmd: string, args: string[], input?: string): void {
-  const r = spawnSync(cmd, args, { cwd: worker, env, input, stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"] });
+  const r = spawnSync(cmd, args, { cwd: worker, env, input, shell: cmd === "npm" && process.platform === "win32", stdio: [input === undefined ? "inherit" : "pipe", "inherit", "inherit"] });
   if (r.status !== 0) {
-    console.error(`${cmd.split("/").pop()} ${args[0]} failed (exit ${r.status})`);
+    console.error(`${basename(args[0] === wrangler ? "wrangler" : cmd)} ${args[0] === wrangler ? args[1] : args[0]} failed (exit ${r.status})`);
     process.exit(1);
   }
 }
@@ -29,8 +30,10 @@ if (!token) throw new Error("no relay token");
 
 writeFileSync(resolve(worker, "src/pages.gen.ts"), pagesModule(buildPages()));
 if (!existsSync(wrangler)) run("npm", ["ci", "--no-audit", "--no-fund"]);
-run(wrangler, ["deploy"]);
-run(wrangler, ["secret", "put", "RELAY_TOKEN"], token);
+/** wrangler with these arguments, through node. */
+const wr = (args: string[], input?: string) => run(process.execPath, [wrangler, ...args], input);
+wr(["deploy"]);
+wr(["secret", "put", "RELAY_TOKEN"], token);
 
 const cfg = await relayConfig();
 const res = await fetch(`${cfg.url}/api/snapshot`).catch((e: Error) => ({ status: 0, statusText: e.message }));

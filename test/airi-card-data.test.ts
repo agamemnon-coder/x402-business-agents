@@ -137,7 +137,7 @@ describe("the Airi credential: gone after use, and in no record", () => {
     expect(file).toBe(join(dir, CREDENTIAL_FILE_NAME));
     expect(dir.startsWith(join(tmpRoot, TMP_PREFIX))).toBe(true);
     expect(seen[0]!.inDir).toEqual([CREDENTIAL_FILE_NAME]);
-    expect(seen[0]!.dirMode.toString(8)).toBe(CREDENTIAL_DIR_MODE.toString(8));
+    if (process.platform !== "win32") expect(seen[0]!.dirMode.toString(8)).toBe(CREDENTIAL_DIR_MODE.toString(8)); // Windows has no POSIX file modes
     // The card went into the checkout's one request, and into no other.
     const confirmCall = calls.find((c) => c.path.endsWith("/confirm"))!;
     expect((confirmCall.body as { payment_method: { card: { number: string; cvc: string } } }).payment_method.card).toMatchObject({ number: PAN, cvc: CVC });
@@ -158,7 +158,7 @@ describe("the Airi credential: gone after use, and in no record", () => {
     expect(ledger).not.toContain(CREDENTIAL_FILE_NAME);
   });
 
-  it.each([["0644", 0o644], ["0640", 0o640], ["0604", 0o604], ["0660", 0o660]] as const)("a credential file with mode %s is refused unread, the card is not sent, and the file is removed all the same", async (_label, mode) => {
+  it.skipIf(process.platform === "win32").each([["0644", 0o644], ["0640", 0o640], ["0604", 0o604], ["0660", 0o660]] as const)("a credential file with mode %s is refused unread, the card is not sent, and the file is removed all the same", async (_label, mode) => {
     expect(mode & CREDENTIAL_OTHERS_MASK).not.toBe(0);
     const { co, calls, seen } = checkout(() => ({ id: "int_test1", status: "SUCCEEDED" }));
     const { db, out } = await purchase(co, new CardAiri(mode));

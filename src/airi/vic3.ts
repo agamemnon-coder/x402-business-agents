@@ -842,17 +842,17 @@ export function vic3LiveRefusals(cmd: string, env: NodeJS.ProcessEnv | Record<st
   if (run === "vic-4" || run === "vic-5") {
     // The same refusals, for vic-4's (or vic-5's) own go, ledger and keys folder.
     const n = run.slice(-1), go = `VIC${n}_GO`;
-    const mapped = { ...env, VIC3_GO: env[go], KIT11_DB: (env.KIT11_DB ?? "").replace(new RegExp(`${run}([^/]*\\.sqlite)$`), "vic-3$1"), KIT11_KEYS_DIR: (env.KIT11_KEYS_DIR ?? "").replace(new RegExp(`/${run}([^/]*)$`), "/vic-3$1") };
-    if (!new RegExp(`${run}[^/]*\\.sqlite$`).test(env.KIT11_DB ?? "")) mapped.KIT11_DB = "";
-    if (!new RegExp(`/${run}[^/]*$`).test(env.KIT11_KEYS_DIR ?? "")) mapped.KIT11_KEYS_DIR = "";
+    const mapped = { ...env, VIC3_GO: env[go], KIT11_DB: (env.KIT11_DB ?? "").replace(new RegExp(`${run}([^\\\\/]*\\.sqlite)$`), "vic-3$1"), KIT11_KEYS_DIR: (env.KIT11_KEYS_DIR ?? "").replace(new RegExp(`([\\\\/])${run}([^\\\\/]*)$`), "$1vic-3$2") };
+    if (!new RegExp(`${run}[^\\\\/]*\\.sqlite$`).test(env.KIT11_DB ?? "")) mapped.KIT11_DB = "";
+    if (!new RegExp(`[\\\\/]${run}[^\\\\/]*$`).test(env.KIT11_KEYS_DIR ?? "")) mapped.KIT11_KEYS_DIR = "";
     return vic3LiveRefusals(cmd, mapped).map((w) => w.replaceAll("VIC3_GO", go).replaceAll("vic-3", run));
   }
   const why: string[] = [];
   if (!["preflight", "live", "recover"].includes(cmd)) why.push(`unknown command ${JSON.stringify(cmd.slice(0, 20))}`);
   if (env.KIT11_AIRI_RAIL !== "on") why.push("KIT11_AIRI_RAIL=on (the conductor's rail; the runner runs without it)");
   if (env.VIC3_GO !== "yes") why.push("VIC3_GO=yes (the owner's go)");
-  if (!/vic-3[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-3*.sqlite)");
-  if (!/\/vic-3[^/]*$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-3*)");
+  if (!/vic-3[^\\/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/vic-3*.sqlite)");
+  if (!/[\\/]vic-3[^\\/]*$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/vic-3*)");
   if (env.METAL_RPC_URL) why.push("METAL_RPC_URL must be unset: vic-3 makes no Metal call");
   if (!env.AIRWALLEX_CLIENT_ID || !env.AIRWALLEX_API_KEY) why.push("AIRWALLEX_CLIENT_ID and AIRWALLEX_API_KEY must be set (the Airwallex sandbox keys)");
   const budget = env.AIRWALLEX_CALL_BUDGET;

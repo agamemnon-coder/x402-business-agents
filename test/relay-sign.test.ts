@@ -50,7 +50,7 @@ describe("runner-signed approvals (M3)", () => {
   it("keeps the runner's key in one private file and reuses it", () => {
     const path = join(mkdtempSync(join(tmpdir(), "kit11-sign-")), "relay-display-key.pem");
     const a = displayKey(path);
-    expect(statSync(path).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32") expect(statSync(path).mode & 0o777).toBe(0o600); // Windows has no POSIX file modes
     expect(displayKey(path).publicSpki).toBe(a.publicSpki);
   });
 });

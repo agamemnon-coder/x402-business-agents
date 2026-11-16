@@ -23,8 +23,8 @@ export function liveRefusals(env: NodeJS.ProcessEnv, o: { keysDirHasHookSecret: 
   const why: string[] = [];
   if (!env.AIRWALLEX_CLIENT_ID || !env.AIRWALLEX_API_KEY) why.push("AIRWALLEX_CLIENT_ID and AIRWALLEX_API_KEY must be set");
   if (!env.AIRWALLEX_CALL_BUDGET || !env.AIRWALLEX_CALL_LOG) why.push("AIRWALLEX_CALL_BUDGET (the number Max approved) and AIRWALLEX_CALL_LOG must be set");
-  if (!/awx-1[^/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/awx-1*.sqlite)");
-  if (!/\/awx-1[^/]*$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/awx-1*)");
+  if (!/awx-1[^\\/]*\.sqlite$/.test(env.KIT11_DB ?? "")) why.push("KIT11_DB must be this world's own ledger (data/awx-1*.sqlite)");
+  if (!/[\\/]awx-1[^\\/]*$/.test(env.KIT11_KEYS_DIR ?? "")) why.push("KIT11_KEYS_DIR must be this world's own keys folder (…/awx-1*)");
   if (env.METAL_RPC_URL) why.push("METAL_RPC_URL must be unset: awx-1 makes no Metal call");
   if (env.KIT11_AGENTS !== "on") why.push("KIT11_AGENTS=on: the agents meet the declines and advise on the invoices");
   if (env.KIT11_AUTONOMY === "on") why.push("KIT11_AUTONOMY must be off: the autonomous loops reach Metal");

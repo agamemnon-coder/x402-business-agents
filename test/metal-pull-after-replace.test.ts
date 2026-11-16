@@ -2,6 +2,7 @@
 // sent under, so "a retry ... under a credential that renewed or replaced it, signs a new payout" (metal-agent 0.3.3,
 // `mandate pull`). A refund or sweep retried after a mandate replace first asks the old credential how its pull ended,
 // and pays under the new one only when the old pull was refused.
+import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -65,6 +66,6 @@ describe("a pull retried after its mandate was replaced", () => {
     expect(src).toContain("`payment-${createHash(\"sha256\").update(args.paymentId).digest(\"hex\")}`");
     expect(keystore).toContain('join(agentHome(), "pulls", reference)');
     expect(keystore).toContain('join(home, ".metal-agent")');
-    expect(keptPullDir("/h", OLD.reference, "refund-7")).toBe(`/h/.metal-agent/pulls/${OLD.reference}/payment-${createHash("sha256").update("refund-7").digest("hex")}`);
+    expect(keptPullDir("/h", OLD.reference, "refund-7")).toBe(join("/h", ".metal-agent", "pulls", OLD.reference, `payment-${createHash("sha256").update("refund-7").digest("hex")}`)); // the CLI joins with the platform separator
   });
 });

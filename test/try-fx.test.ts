@@ -15,6 +15,7 @@ import { AirwallexCallNotAllowed, AWX_ALLOWED, AWX_SANDBOX_HOST, QuoteUnavailabl
 import { FIXED_PROPOSALS, TRY_SIGN_FX_ALL_PER_MINUTE, TRY_SIGN_FX_PER_HOUR, TRY_TERMS_SCHEMA, canonical, proposalTerms, wellFormed } from "../worker/src/trySign.js";
 import { StandInQuotes } from "./support/fxStandIn.js";
 import { BASE, RP, call, challengeOf, desk, signBody, t0, walkAgents, type Proposal } from "./support/trySign.js";
+import { fileURLToPath } from "node:url";
 
 const KEY = "test-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ID = "test-client-id-aaaa";
@@ -50,7 +51,7 @@ describe("the key: Max's scoped sandbox key, set by Max, never by the repo", () 
       return statSync(p).isDirectory() ? files(p) : [p];
     });
   }
-  const root = new URL("..", import.meta.url).pathname;
+  const root = fileURLToPath(new URL("..", import.meta.url));
   const all = [...files(join(root, "src")), ...files(join(root, "worker/src")), ...files(join(root, ".github")), join(root, "package.json"), join(root, "worker/package.json"), join(root, "worker/wrangler.jsonc")]
     .filter((f) => /\.(ts|js|mjs|cjs|json|jsonc|toml|ya?ml|sh)$/.test(f) && !f.endsWith(".gen.js"));
 

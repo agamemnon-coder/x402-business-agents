@@ -5,6 +5,8 @@
 //   signature no longer matches: refused → it starts again.
 // An illustration of the flow, said so on the drawing; the amount is the Airwallex two-locks run's (airwallexHold).
 // Written by `npx tsx scripts/readme-flow-svg.ts`; test/readme-flow.test.ts redraws both and compares.
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { airwallexHold } from "../src/visuals/facts.js";
 
@@ -97,7 +99,7 @@ ${[0, 1, 2].map(lock).join("\n")}
 `;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   mkdirSync(FLOW_DIR, { recursive: true });
   for (const t of ["light", "dark"] as const) writeFileSync(FLOW_FILES[t], flowSvg(t));
   console.log(`wrote ${FLOW_FILES.light} and ${FLOW_FILES.dark}`);

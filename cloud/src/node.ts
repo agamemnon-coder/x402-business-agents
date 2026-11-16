@@ -3,7 +3,7 @@
 
 import Database from "better-sqlite3";
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, existsSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import type { Blobs, Sql } from "./store.js";
 
 export function sqliteSql(path = ":memory:"): Sql & { close(): void } {
@@ -27,7 +27,7 @@ export function dirBlobs(root: string): Blobs {
   };
   const walk = (dir: string): string[] => existsSync(dir) ? readdirSync(dir).flatMap((n) => {
     const p = join(dir, n);
-    return statSync(p).isDirectory() ? walk(p) : [relative(root, p)];
+    return statSync(p).isDirectory() ? walk(p) : [relative(root, p).split(sep).join("/")]; // keys use "/", on Windows too
   }) : [];
   return {
     put: async (key, bytes) => { const p = at(key); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, bytes); },

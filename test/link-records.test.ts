@@ -9,8 +9,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { buildPages } from "../src/relay/assets.js";
+import { fileURLToPath } from "node:url";
 
-const ROOT = new URL("..", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const read = (p: string) => readFileSync(join(ROOT, p), "utf8");
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => { const p = join(d, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
 const RECORDS = [...walk(join(ROOT, "docs/runs")), ...walk(join(ROOT, "docs/demo")), ...walk(join(ROOT, "docs/proof"))].map((f) => readFileSync(f, "latin1").toLowerCase()).join("\n");

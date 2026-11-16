@@ -8,6 +8,9 @@ export default defineConfig({
     exclude: [...configDefaults.exclude, ".claude/**"],
     // 0 external calls and no live key, whatever this machine holds (test/support/noNetwork.ts).
     setupFiles: ["test/support/noNetwork.ts"],
+    // Windows laptops start child processes and read files slower than CI's Linux runners: 30 s per test there
+    // (16 Nov, the owner's laptop: six page builds took over 5 s). Linux keeps the default 5 s.
+    ...(process.platform === "win32" ? { testTimeout: 30_000, hookTimeout: 60_000 } : {}),
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],

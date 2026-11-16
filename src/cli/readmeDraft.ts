@@ -6,7 +6,6 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { airwallexHold, railRefusals } from "../visuals/facts.js";
 import { agentRun, faceIdDecisions, split } from "../redesign/run.js";
 import { metalStory } from "../redesign/metalStory.js";
@@ -37,7 +36,7 @@ const summary: TestSummary | null = report
 // The repository, counted.
 function files(dir: string, re: RegExp): string[] {
   return readdirSync(dir).flatMap((f) => {
-    const p = join(dir, f);
+    const p = `${dir}/${f}`; // "/" on Windows too: the counts filter on "docs/assets/"
     if (f === "node_modules" || f.startsWith(".")) return [];
     return statSync(p).isDirectory() ? files(p, re) : re.test(f) ? [p] : [];
   });

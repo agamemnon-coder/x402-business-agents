@@ -3,6 +3,7 @@
 
 import { autonomyOn } from "../config/agents.js";
 import { readFileSync } from "node:fs";
+import { basename, dirname } from "node:path";
 import { extractTerms, hashCredential, parseCredential } from "@metalntwx/metal-pay/mandates";
 import type { Address } from "viem";
 import { audit } from "../audit/log.js";
@@ -126,7 +127,7 @@ export async function proposePriceRise(db: DB, addr: Addresses, sellCents: numbe
 
   const notice = readFileSync(ev.noticePath, "utf8");
   const evidence = [
-    { type: "supplier_notice", ref: ev.noticePath.split("/").slice(-2).join("/"), sha256: sha256Hex(notice) },
+    { type: "supplier_notice", ref: [basename(dirname(ev.noticePath)), basename(ev.noticePath)].join("/"), sha256: sha256Hex(notice) },
     { type: "live_offer", ref: `upstream price ${fromCents(ev.liveOfferCents)}`, sha256: sha256Hex(fromCents(ev.liveOfferCents)) },
     blockEvidence(ev.refusal),
   ];

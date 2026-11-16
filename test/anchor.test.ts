@@ -75,7 +75,7 @@ describe("npm run anchor --live, then npm run verify-anchor", () => {
     expect(chain.sent).toBe(1);
     expect(record).toMatchObject({ tx: TX, block: 1234, from: FROM, chain_id: 63825, head: computeAnchorHead(dir).head });
     const files = writeRecord(dir, record);
-    expect(files.json).toMatch(/docs\/runs\/2026-11-13-anchor\.json$/);
+    expect(files.json).toMatch(/docs[\\/]runs[\\/]2026-11-13-anchor\.json$/);
     expect(readFileSync(files.md, "utf8")).toContain(record.head);
     expect(readFileSync(files.md, "utf8")).toContain("npm run verify-anchor");
     expect(latestRecordFile(dir)).toBe(files.json);

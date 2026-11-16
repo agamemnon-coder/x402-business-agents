@@ -5,9 +5,10 @@
 // reaches the record; if the command needs the owner's go or the endpoint, or runs without the call log; or if it
 // overwrites another world's record. Software passkeys and the stand-in chain; no network.
 import { execFile } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { rmTemp } from "./support/rmTemp.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { audit } from "../src/audit/log.js";
 import { EXPLORER_TX } from "../src/metal/network.js";
@@ -17,13 +18,15 @@ import { buildOwnersRecord, CLI_NOTE, DEVICE_NOTE, NO_STAND_IN, RecordRefused, r
 import { PASSKEY_VERIFIER } from "../src/metal/passkeyRelay.js";
 import { loadVerifier } from "../src/metal/verifierCompile.js";
 import { ownersWorld, T0, type TestWorld } from "./support/ownersWorld.js";
+/** A path as a regex: Windows paths hold backslashes. */
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 vi.setConfig({ testTimeout: 30_000 });
 const REPO = resolve(import.meta.dirname, "..");
 let w: TestWorld;
 const temps: string[] = [];
 const temp = () => { const d = mkdtempSync(join(tmpdir(), "owners-record-")); temps.push(d); return d; };
-afterEach(() => { vi.useRealTimers(); w?.close(); for (const d of temps.splice(0)) rmSync(d, { recursive: true, force: true }); });
+afterEach(() => { vi.useRealTimers(); w?.close(); for (const d of temps.splice(0)) rmTemp(d); });
 async function world(o: Parameters<typeof ownersWorld>[0] = {}): Promise<TestWorld> {
   w = await ownersWorld(o);
   w.node.code.set(PASSKEY_VERIFIER.toLowerCase(), "0x60");
@@ -453,7 +456,7 @@ describe("npm run owners -- record", () => {
     expect(ok.code, ok.err).toBe(0);
     const base = join(out, "2026-11-12-faceid-onchain");
     const calls = readOwnersCalls(w.log).length;
-    expect(ok.out.trimEnd().split("\n").at(-1)).toMatch(new RegExp(`^RECORD           ${base}\\.json and ${base}\\.md written from \\d+ audit rows and ${calls} call-log lines; no call was made$`));
+    expect(ok.out.trimEnd().split("\n").at(-1)).toMatch(new RegExp(`^RECORD           ${esc(base)}\\.json and ${esc(base)}\\.md written from \\d+ audit rows and ${calls} call-log lines; no call was made$`));
     const written = JSON.parse(readFileSync(`${base}.json`, "utf8")) as OwnersRecord;
     expect(written.account).toBe(rows("owners.account_created")[0]!.p.account);
     expect(readFileSync(`${base}.md`, "utf8")).toMatch(/^# The passkey account on chain: run record\n/);

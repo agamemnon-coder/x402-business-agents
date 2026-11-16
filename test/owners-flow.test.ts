@@ -52,7 +52,7 @@ describe("owners setup in a fresh world (no npm run bootstrap)", () => {
     expect(before.filter((f) => f.endsWith(".json"))).toEqual([]);
     for (const f of ["passkey-sponsor.key.json", "supplier.key.json", AGENT_KEY]) {
       expect(existsSync(join(w.keys, f)), f).toBe(true);
-      expect(statSync(join(w.keys, f)).mode & 0o077, f).toBe(0);
+      if (process.platform !== "win32") expect(statSync(join(w.keys, f)).mode & 0o077, f).toBe(0); // Windows has no POSIX file modes
     }
     expect((JSON.parse(readFileSync(join(w.keys, AGENT_KEY), "utf8")) as { publicJwk: { crv: string } }).publicJwk.crv).toBe("P-256");
     expect(w.keys.startsWith(REPO)).toBe(false);

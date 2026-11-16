@@ -8,7 +8,7 @@
 // The record carries its labels: prototype, Metal testnet, test money, the financier simulated, the face value scaled.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import Database from "better-sqlite3";
 import type { Address, Hex } from "viem";
 import { CHAIN_ID, EXPLORER_TX } from "../metal/network.js";
@@ -142,7 +142,7 @@ export function buildRunRecord(i: RecordInputs): TokenizeRunRecord {
   if (env.TOKENIZE_APPROVAL_RECORD) {
     const path = resolve(env.TOKENIZE_APPROVAL_RECORD);
     if (!readFileSync(path, "utf8").includes(passkey.fingerprint)) throw new Error("TOKENIZE_APPROVAL_RECORD does not name the passkey that approved this invoice");
-    describedIn = relative(repo, path);
+    describedIn = relative(repo, path).split(sep).join("/"); // a link in the record: "/" on Windows too
     if (describedIn.startsWith("..")) throw new Error("TOKENIZE_APPROVAL_RECORD must be a file in this repository");
   }
   const testPasskey = TEST_PASSKEY_LABEL.test(passkey.label);
@@ -187,7 +187,7 @@ export function runRecordMarkdown(rec: TokenizeRunRecord): string {
   const amount = `${rec.invoice.currency} ${rec.invoice.amount}`;
   const approvedBy = a.test_passkey
     ? `a labelled test passkey ("${a.passkey_label}"), not a phone`
-    : `not a labelled test passkey${a.described_in ? `; who approved, and on what device, is in [${a.described_in}](${relative("docs/runs", a.described_in)})` : ""}`;
+    : `not a labelled test passkey${a.described_in ? `; who approved, and on what device, is in [${a.described_in}](${posix.relative("docs/runs", a.described_in)})` : ""}`;
   // EXECUTED: the payment the approval was given for was already made in the source run. The token run is not that payment.
   const sourceStatus = rec.invoice.source_status === "EXECUTED"
     ? "the payment this approval was given for was already carried out there. This run reuses the approval to show the token path; its settlement in test money is not the invoice's payment"

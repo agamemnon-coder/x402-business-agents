@@ -7,14 +7,14 @@
 // - At proposal time the Treasury flow has the owner's issuer sign the replacement credential off chain: it moves
 //   nothing until `mandate replace` binds it, and the CFO's Face ID approves exactly that credential (its hash).
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "..");
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? files(p) : /\.(ts|html)$/.test(f) ? [p] : []; });
 }
-const SRC = files(join(ROOT, "src")).map((p) => ({ path: relative(ROOT, p), text: readFileSync(p, "utf8") }));
+const SRC = files(join(ROOT, "src")).map((p) => ({ path: relative(ROOT, p).split(sep).join("/"), text: readFileSync(p, "utf8") }));
 const AGENT_DIRS = /^src\/(agents|autonomy|claude|try|evals|mcp|platform)\//;
 
 describe("no agent has or can use an owner key", () => {

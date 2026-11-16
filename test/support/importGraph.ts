@@ -3,7 +3,7 @@
 // to pin that an agent's core (src/ap/checkerCore.ts) stays Worker-safe: no node: built-in and no native package
 // anywhere below it.
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, relative, resolve } from "node:path";
+import { dirname, relative, resolve, sep } from "node:path";
 import ts from "typescript";
 
 export interface ImportGraph {
@@ -15,6 +15,8 @@ export interface ImportGraph {
 
 const ROOT = resolve(import.meta.dirname, "../..");
 const isFile = (p: string) => existsSync(p) && statSync(p).isFile();
+/** A path relative to the repository root, with "/" on every platform (16 Nov: Windows). */
+const rel = (p: string) => relative(ROOT, p).split(sep).join("/");
 
 /** The file a relative specifier names: this repository writes "./x.js" for x.ts. */
 function fileOf(from: string, spec: string): string {
@@ -36,8 +38,8 @@ export function importGraph(entry: string): ImportGraph {
     seen.add(file);
     for (const { fileName: spec } of ts.preProcessFile(readFileSync(file, "utf8"), true, true).importedFiles) {
       if (spec.startsWith(".")) todo.push(fileOf(file, spec));
-      else (packages[spec] ??= []).push(relative(ROOT, file));
+      else (packages[spec] ??= []).push(rel(file));
     }
   }
-  return { files: [...seen].map((f) => relative(ROOT, f)).sort(), packages };
+  return { files: [...seen].map(rel).sort(), packages };
 }

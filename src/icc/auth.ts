@@ -22,7 +22,7 @@ import {
   constants, createCipheriv, createDecipheriv, createHash, createHmac, createPrivateKey, privateDecrypt, publicEncrypt,
   randomBytes, sign, X509Certificate, type KeyObject,
 } from "node:crypto";
-import { closeSync, fstatSync, openSync, readSync, constants as fsConstants } from "node:fs";
+import { closeSync, fstatSync, lstatSync, openSync, readSync, constants as fsConstants } from "node:fs";
 
 export type IccAuthScheme = "jwt-p12" | "jwt-shared-secret" | "http-signature";
 export type IccDigestForm = "raw" | "hex";
@@ -229,6 +229,8 @@ const MAX_KEY_FILE = 64 * 1024;
 /** A file's bytes: a regular file (no symlink), at most 64 KiB; with `privateOnly`, this user's and nobody else's to read. */
 function readKeyFileBytes(file: string, name: string, privateOnly: boolean): Buffer {
   let fd: number;
+  // O_NOFOLLOW refuses a symlink atomically where it exists; Windows has none, so look first there too.
+  try { if (lstatSync(file).isSymbolicLink()) throw new IccCryptoError(`${name}: the file is a symlink; refused`); } catch (e) { if (e instanceof IccCryptoError) throw e; }
   try {
     fd = openSync(file, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
   } catch (e) {
@@ -237,7 +239,7 @@ function readKeyFileBytes(file: string, name: string, privateOnly: boolean): Buf
   try {
     const st = fstatSync(fd);
     if (!st.isFile()) throw new IccCryptoError(`${name}: not a regular file`);
-    if (privateOnly && (st.mode & 0o077) !== 0) throw new IccCryptoError(`${name}: the file is readable by others; refused (chmod 600)`);
+    if (privateOnly && process.platform !== "win32" && (st.mode & 0o077) !== 0) /* Windows has no POSIX modes (ACLs are not read here) */ throw new IccCryptoError(`${name}: the file is readable by others; refused (chmod 600)`);
     if (privateOnly && typeof process.getuid === "function" && st.uid !== process.getuid()) throw new IccCryptoError(`${name}: the file belongs to another user; refused`);
     if (st.size === 0 || st.size > MAX_KEY_FILE) throw new IccCryptoError(`${name}: the file is empty or too large`);
     const buf = Buffer.alloc(st.size);

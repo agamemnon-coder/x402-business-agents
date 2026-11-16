@@ -5,7 +5,7 @@
 // can carry.
 import { build, type Metafile } from "esbuild";
 import { builtinModules } from "node:module";
-import { relative } from "node:path";
+import { relative, sep } from "node:path";
 import { gzipSync } from "node:zlib";
 import { beforeAll, describe, expect, it } from "vitest";
 import { aliasOf, cloudWranglerConfig, fromConfig, loadersOf } from "./support/wranglerConfig.js";
@@ -54,7 +54,7 @@ beforeAll(async () => {
 
 describe("the cloud Worker's bundle with the engine's Durable Object", () => {
   it("is built from the entry point cloud/wrangler.jsonc names, which exports the Worker and the object's class", () => {
-    expect(relative(process.cwd(), fromConfig(config.main))).toBe(ENTRY);
+    expect(relative(process.cwd(), fromConfig(config.main)).split(sep).join("/")).toBe(ENTRY);
     expect(config.durable_objects.bindings).toEqual([{ name: "ENGINE", class_name: "CompanyEngine" }]);
     expect(config.migrations).toEqual([{ tag: "v1", new_sqlite_classes: ["CompanyEngine"] }]);
     expect(Object.keys(meta.inputs)).toEqual(expect.arrayContaining([ENTRY, "cloud/src/worker.ts", "cloud/src/engine/object.ts", HOST]));

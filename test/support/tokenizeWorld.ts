@@ -6,7 +6,8 @@
 //
 // Every directory made here holds generated key files and ledgers: each is tracked, and whoever uses this module
 // removes them when done (removeTokenizeWorlds, in an afterAll of each test file and at the end of the browser check).
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { rmTemp } from "./rmTemp.js";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
@@ -34,7 +35,7 @@ export function tempDir(prefix: string): string {
 }
 /** Deletes every temp directory made through this module (keys, ledgers, call logs). */
 export function removeTokenizeWorlds(): void {
-  for (const dir of made.splice(0)) rmSync(dir, { recursive: true, force: true });
+  for (const dir of made.splice(0)) rmTemp(dir);
   source = undefined;
 }
 

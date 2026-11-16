@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { EN } from "./fakes/apInvoices.js";
 import { pdfOf } from "./fakes/pdf.js";
@@ -15,7 +16,7 @@ describe("a one-shot command that read a PDF", () => {
       const pdf = join(dir, "a.pdf");
       writeFileSync(pdf, await pdfOf(EN));
       const script = join(dir, "read.mts");
-      writeFileSync(script, `import { readFileSync } from "node:fs";\nimport { pdfText } from ${JSON.stringify(join(process.cwd(), "src/ap/pdfText.ts"))};\nconst r = await pdfText(new Uint8Array(readFileSync(${JSON.stringify(pdf)})));\nconsole.log("pages", r.pages);\n`);
+      writeFileSync(script, `import { readFileSync } from "node:fs";\nimport { pdfText } from ${JSON.stringify(pathToFileURL(join(process.cwd(), "src/ap/pdfText.ts")).href)};\nconst r = await pdfText(new Uint8Array(readFileSync(${JSON.stringify(pdf)})));\nconsole.log("pages", r.pages);\n`);
       const started = Date.now();
       const r = spawnSync(process.execPath, ["--import", "tsx", script], { encoding: "utf8", timeout: 20_000 });
       expect(r.stdout).toContain("pages 1");
