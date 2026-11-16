@@ -723,9 +723,12 @@ const AMT=/^\d{1,9}\.\d{2}$/,CUR=/^[A-Z]{3}$/;
 const money=(a,c)=>{const [w,d]=a.split('.');return c+' '+w.replace(/\B(?=(\d{3})+$)/g,',')+'.'+d};
 const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
+  // A new filing starts the hidden-instruction watch before its request: live, Claude takes seconds and the engine's flag
+  // arrives while the request is still open (16 Nov live run), so a reset after it would erase that flag.
+  try{noteFiling(new URL(typeof input==='string'?input:input.url,location.href).pathname,String(init&&init.method||'GET').toUpperCase())}catch(e){}
   const res=await real(input,init);
   try{
-    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
+    const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'||/^\/v1\/engine\/proposals\/[^/]+\/pay$/.test(p))){
       const at=Date.now();
       res.clone().json().then((j)=>{
@@ -837,8 +840,11 @@ const PC=__PRESENT_CFG__;
 __SHARED__
 const real=window.fetch.bind(window);
 window.fetch=async(input,init)=>{
+  // A new filing starts the hidden-instruction watch before its request: live, Claude takes seconds and the engine's flag
+  // arrives while the request is still open (16 Nov live run), so a reset after it would erase that flag.
+  try{noteFiling(new URL(typeof input==='string'?input:input.url,location.href).pathname,String(init&&init.method||'GET').toUpperCase())}catch(e){}
   const res=await real(input,init);
-  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;noteFiling(p,String(init&&init.method||'GET').toUpperCase());
+  try{const url=new URL(typeof input==='string'?input:input.url,location.href);const p=url.pathname;
     if(res.ok&&(p==='/v1/try/start'||p==='/v1/engine/events'))res.clone().json().then((j)=>{if(!j||typeof j!=='object')return;
       if(p==='/v1/try/start')CALLS.clear();else for(const e of Array.isArray(j.items)?j.items:[])if(e&&typeof e.seq==='number'){takeCall(e,e.fields&&typeof e.fields==='object'?e.fields:{});noteEvent(e)}
       drawUse()}).catch(()=>{});
