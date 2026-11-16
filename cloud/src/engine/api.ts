@@ -9,6 +9,7 @@ import type { EngineEvent } from "../../../src/engine/events.js";
 import type { InvoiceView, NegotiatedFacts, PaySignedResult, ProposalView, Settled, TermsView, UploadResult, VaultFile } from "../../../src/engine/host.js";
 import type { ComposeInput, ComposeRefusal, SupplierOnFile } from "../../../src/engine/tryWorld.js";
 import type { NameCheckView } from "../../../src/engine/host.js";
+import type { PaidAlone } from "../../../src/ap/pay.js";
 import type { AwxView } from "../../../src/engine/awxActions.js";
 
 export type { AwxView, NameCheckView };
@@ -34,7 +35,8 @@ export interface EngineApi {
   invoices(): Promise<InvoiceView[]>;
   invoice(id: string): Promise<InvoiceView | null>;
   /** Files the invoice's payment for approval; a reason not to comes back in the engine's words, and no proposal is made. */
-  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView } | { ok: false; reason: string }>;
+  /** Within the company's limit to pay alone, the agent's payment also runs: `alone` and `settled` say so (src/engine/host.ts propose). */
+  propose(invoiceId: string): Promise<{ ok: true; proposal: ProposalView; alone?: PaidAlone; settled?: Settled } | { ok: false; reason: string }>;
   proposal(id: string): Promise<ProposalView | null>;
   /** `rp`: the relying party of the request's host (cloud/src/hostOrigin.ts); without it, the engine's own. */
   passkeyStart(rp?: { rpId: string; origin: string }): Promise<{ challenge: string; code: string; exclude: string[] }>;

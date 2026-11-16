@@ -1183,16 +1183,19 @@ function drawResult(box,r,ms){
     // 14 Nov (jury): the checks the engine ran and passed (its checks_passed, never a fixed list), then who signs.
     const ran=Array.isArray(inv.checks_passed)?inv.checks_passed.filter((k)=>typeof k==='string'&&C.workChecks[k]):[];
     const ul=el('ul','checks',ran.map((k)=>el('li','ok',[icon('check',15),el('span','',C.workChecks[k])])));
-    if(inv.total)ul.append(el('li','next',[icon('arrow-right',15),el('span','',fill(C.work.signNeeded,{money:cash(inv.currency,inv.total)}))]));
+    // 16 Nov (owner): within the company's limit to pay alone (the engine's alone_limit), the agent pays it on its own: the
+    // Pay filed below runs it when the agents and code's checks say pay (its answer carries alone and settled).
+    const alone=!!(inv.alone_limit&&inv.alone_limit.within===true);
+    if(inv.total)ul.append(el('li','next',[icon('arrow-right',15),el('span','',fill(alone?C.work.aloneNeeded:C.work.signNeeded,{money:cash(inv.currency,inv.total)}))]));
     if(ul.children.length)box.append(ul);
     // The terms are prepared while the visitor reads this answer (try-fixes, 13 Nov: 4 to 6 s on the next screen
     // before anything could be signed): filing them for approval moves no money; only the passkey's signature does.
     if(!(inv.proposal&&inv.proposal.status==='PENDING_APPROVAL')&&!PREP.has(inv.id))PREP.set(inv.id,api('POST','/v1/engine/invoices/'+encodeURIComponent(inv.id)+'/pay'));
-    main=btn(C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
+    main=btn(alone?C.work.payAlone:C.work.pay,true);main.addEventListener('click',()=>show('approve',{invoice:inv}));
     const card=invoiceCard(inv);CLAUDE.slot=card.chip;
     // Judges, 14 Nov: the button at the invoice card's foot, beside what it does not do yet (on a phone, under it).
     // 15 Nov (Max): before the passkey, Purser's agent may negotiate an early-payment discount (cloud/src/try/negotiateKit.ts NEGI).
-    box.append(...(took?[took]:[]),card.node,...(NEGI.eligible(inv)?[NEGI.card(inv,main)]:[]),el('div','payrow',[el('p','paynote',C.work.readySub),main]));chipFill();
+    box.append(...(took?[took]:[]),card.node,...(!alone&&NEGI.eligible(inv)?[NEGI.card(inv,main)]:[]),el('div','payrow',[...(alone?[]:[el('p','paynote',C.work.readySub)]),main]));chipFill();
     return;
   }
   if(r.status===200||r.status===201)box.append(el('p','big',C.work.noInvoice),...(took?[took]:[]));
@@ -1451,6 +1454,8 @@ screen('approve',{heading:C.approve.heading,draw(box,arg){
       top.replaceChildren(note(why));main.set(A.fileAgain,()=>{arg=Object.assign({},arg,{again:true});return file()});return}
     p=r.json.proposal;eng=st.status===200?st.json:{passkey:null};
     S.proposal={id:p.id,challenge:p.challenge,terms_sha256:p.terms_sha256,invoice:inv&&inv.id||(S.proposal&&S.proposal.invoice)||null};S.cred=null;save();
+    // 16 Nov: paid by the agent alone, within the limit (Pay's answer: alone, settled): nothing to sign; on to the books.
+    if(r.json.alone&&r.json.settled&&typeof r.json.settled==='object'){S.proposal.alone=true;S.settled=r.json.settled;save();show('books',{settled:S.settled});return}
     // The stored terms, for the rows of what is signed and the fold (the facts alone, when they could not be read).
     const tr=await api('GET','/v1/engine/proposals/'+encodeURIComponent(p.id)+'/terms');
     if(S.screen!=='approve')return;
@@ -1750,7 +1755,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // 13 Nov: it read as if it opened the visitor's own company).
   main.node.remove();
   // 14 Nov (owner's judges): the one-cent test is the main step on, a primary button; another invoice beside it.
-  const another=btn(B.another,!pid);another.addEventListener('click',()=>show('invoice'));
+  const another=btn(B.another,!pid||!!S.proposal.alone);another.addEventListener('click',()=>show('invoice'));
   const cloud=el('a','btn go-cloud',[el('span','',B.next),icon('external-link',16)]);cloud.href=DIDURL.cloud;cloud.target='_blank';cloud.rel='noopener';
   const what=btn(B.what);what.addEventListener('click',()=>show('did'));
   // Each block shows its skeleton at once and is replaced by what its reads return (never an empty space).
@@ -1760,7 +1765,7 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   // A calm stamp, and the hash of the terms that were signed and paid (the proposal's own, kept from screen 3).
   const sha=S.proposal&&typeof S.proposal.terms_sha256==='string'?S.proposal.terms_sha256:'';
   // The try-to-cheat story, after paid: a quiet link to screen 4's fields, prefilled with the signed terms.
-  const cheat=pid?btn(B.cheat,true):null;if(cheat){cheat.classList.add('cheat');cheat.addEventListener('click',()=>{
+  const cheat=pid&&!S.proposal.alone?btn(B.cheat,true):null;if(cheat){cheat.classList.add('cheat');cheat.addEventListener('click',()=>{
     // At once, the ring and its words while the signed terms load (live QA: about 3 s with nothing to show).
     cheat.disabled=true;cheat.classList.add('asking');cheat.textContent=C.pay.loading;show('pay')})}
   // The way on comes once the three blocks are drawn (final-polish, 13 Nov: at 390 px "File another invoice" showed

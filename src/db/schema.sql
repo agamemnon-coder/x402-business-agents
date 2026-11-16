@@ -191,7 +191,7 @@ CREATE TABLE IF NOT EXISTS approvals (
   decision TEXT NOT NULL CHECK (decision IN ('APPROVED', 'REJECTED')),
   approved_sha256 TEXT NOT NULL,
   approver TEXT NOT NULL,
-  method TEXT NOT NULL CHECK (method IN ('web', 'cli', 'telegram', 'passkey')),
+  method TEXT NOT NULL CHECK (method IN ('web', 'cli', 'telegram', 'passkey', 'policy')),
   typed_prefix TEXT NOT NULL,
   note TEXT,
   created_at TEXT NOT NULL

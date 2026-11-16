@@ -4,7 +4,7 @@ import type { DB } from "../db/open.js";
 import { FX_QUOTE_MAX_MARKUP_BPS } from "../config/policy.js";
 import type { PolicyKey } from "../policy/rules.js";
 
-export type SettingKey = "sell_price" | "upstream_price" | "ridgeline_price" | "stockline_price_rise" | "ridgeline_maintenance_until" | "sourcing.buy_policy" | "usd_floor" | "eur_floor" | "eur_obligations" | "payout.funding_currency" | "fx.max_markup_bps" | PlatformSettingKey | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | WorldOptionKey | PolicyKey;
+export type SettingKey = "sell_price" | "upstream_price" | "ridgeline_price" | "stockline_price_rise" | "ridgeline_maintenance_until" | "sourcing.buy_policy" | "usd_floor" | "eur_floor" | "eur_obligations" | "payout.funding_currency" | "fx.max_markup_bps" | "ap.alone_eur" | PlatformSettingKey | `floor.${string}` | `fee_reserve.${"LOCAL" | "SWIFT"}.${string}` | WorldOptionKey | PolicyKey;
 
 /** A world's own options, set once on a fresh world (npm run world -- setup), read by code; no agent tool writes them. */
 /** Purser as an Airwallex platform (docs/airwallex-platform.md). */
@@ -24,6 +24,16 @@ export function getSetting(db: DB, key: SettingKey, fallback: string): string {
 export function fxMarkupLimitBps(db: DB): number {
   const v = Number(getSetting(db, "fx.max_markup_bps", ""));
   return Number.isInteger(v) && v >= 1 && v <= 1000 ? v : FX_QUOTE_MAX_MARKUP_BPS;
+}
+
+/**
+ * The CFO's limit an agent may pay a supplier invoice alone up to: the company's own setting ap.alone_eur when one is
+ * set (a plain amount in EUR above zero, written by a test company's seed: TRY_ALONE_LIMIT), else none, and the CFO signs
+ * every invoice. No agent tool or policy change writes it.
+ */
+export function aloneLimit(db: DB): { currency: "EUR"; amount: string } | null {
+  const v = getSetting(db, "ap.alone_eur", "");
+  return /^\d{1,9}\.\d{2}$/.test(v) && Number(v) > 0 ? { currency: "EUR", amount: v } : null;
 }
 
 export function setSetting(db: DB, actor: Actor, key: SettingKey, value: string, now = new Date()): void {

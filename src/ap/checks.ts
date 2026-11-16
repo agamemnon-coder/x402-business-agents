@@ -18,6 +18,7 @@ import { fromCents } from "../lib/money.js";
 import { floorCents, fundingCurrency } from "../payouts/plan.js";
 import { payableCurrency, SWIFT_CURRENCIES } from "../payouts/routes.js";
 import { skeleton } from "../policy/fraudCore.js";
+import { aloneLimit } from "../world/settings.js";
 import { suppliersOnFile } from "./bank.js";
 import { accountOfReading, codeFindings, payableAccount, statusOf, type ApStatus, type ExpectedAmount, type Finding, type HistoryInvoice, type InvoiceCase } from "./checkerCore.js";
 import { handledInLedger } from "./ledgerKey.js";
@@ -92,8 +93,9 @@ export function invoiceCase(db: DB, r: ApReading, text: string, ctx: CheckContex
     invoice: { id: ctx.selfId ?? null, reading: r, text, ...(ctx.noText ? { noText: ctx.noText } : {}), receivedAt: self?.received_at ?? null, accountSha256 },
     company: { name: process.env.KIT11_COMPANY ?? COMPANY },
     policy: {
-      // No invoice is paid without the CFO's Face ID (src/ap/pay.ts files every payment for approval): the agent has no limit to pay alone.
-      aloneLimit: null,
+      // The CFO's limit to pay an invoice alone: none unless the company sets one (a test company of /try: TRY_ALONE_LIMIT),
+      // so every payment waits for the CFO's Face ID; within a limit, src/ap/pay.ts lets the agent pay alone (payAlone).
+      aloneLimit: aloneLimit(db),
       cashFloors: Object.fromEntries(floors.map((cur) => [cur, fromCents(floorCents(db, cur))])),
       payees: { allowed: [...new Set(suppliers.map((s) => s.name))].filter((name) => !blocked.includes(name)), blocked },
       currencies: SWIFT_CURRENCIES.filter(payableCurrency),
