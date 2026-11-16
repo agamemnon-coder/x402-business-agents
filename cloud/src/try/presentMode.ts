@@ -62,11 +62,11 @@ export const V2_COPY = {
   start: {
     eyebrow: "Live demo · about 2 minutes",
     heading: "AI agents prepare the transfer. Your Face ID releases the funds.",
-    text: "AI agents read and check every supplier invoice within your limits. Above the limit, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
+    text: "Claude reads and checks every supplier invoice. Inside your limits, the agents pay on their own. Above them, nothing moves until you approve the exact payment with Face ID. Change one cent afterwards and it is blocked.",
     flow: [
-      { name: "The AI agent prepares", line: "Claude reads the invoice and proposes the payment." },
-      { name: "Your rules check it", line: "Above the agent's limit, it waits for you." },
-      { name: "You release it", line: "Face ID on the exact amount, supplier and account." },
+      { name: "Claude reads the invoice", line: "Supplier, amount, bank account, due date: checked against what is on file." },
+      { name: "Your rules decide", line: "Inside your limits the agent pays. Above them, it asks you." },
+      { name: "You sign the exact payment", line: "Face ID on this amount, this supplier, this account. Not a budget." },
     ],
     flowEnd: "Changed by one cent: blocked",
     button: "Launch the live transfer demo",
