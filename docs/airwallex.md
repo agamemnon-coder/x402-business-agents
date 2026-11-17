@@ -172,6 +172,27 @@ Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) (two payouts)
 - One invoice has at most one live payout. The Treasury agent's advice sits outside the hash and cannot change what is paid.
 - **For the bank and the ERP.** `npm run iso20022` exports a paid invoice as a pacs.008 message with Airwallex's transfer id as the UETR. The example is from a rehearsal of 30 October: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml). It is not a message a bank sent.
 
+### A payout that does not stay paid (17 November; tested, not run live)
+
+Airwallex: "`PAID` is not always final. A transfer can still move to `FAILED` after `PAID` if it is later rejected by the
+local clearing system or the recipient bank. After receiving `payout.transfer.paid`, continue listening for
+`payout.transfer.failed`" ([Transfer statuses](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses#late-failures-after-paid)).
+A failed transfer refunds "the transfer amount less transfer fee" ([Handle failed transfers](https://www.airwallex.com/docs/payouts/transfers/manage-transfers/handle-failed-transfers)).
+What Purser does ([src/payouts/follow.ts](../src/payouts/follow.ts), [src/ap/pay.ts](../src/ap/pay.ts)):
+
+- A `payout.transfer.failed` or `.cancelled` webhook on a payout the ledger has as `PAID` asks for a read; the next
+  follow-up reads `GET /transfers/{id}` (the webhook's body is never trusted) and records the return.
+- The invoice goes to a person, with Airwallex's failure type. Nothing is sent again under the old approval: paying it
+  again is a new proposal and a new signature.
+- The books take the payment back (the supplier is owed again); the transfer fee stays booked, as Airwallex keeps it.
+  A bookkeeping sink that took the payment gets the return; the ERP keeps the payment and gets an entry that takes it
+  back, so nothing it already holds is deleted.
+- A payout that fails after `SENT`, before `PAID`, sends its invoice to a person too.
+
+Tested on the stand-in ([test/payout-returned.test.ts](../test/payout-returned.test.ts)); not run against the sandbox:
+a new sandbox payout waits in Airwallex's approval workflow for a person, and the payouts of the runs of record are
+not changed.
+
 ## Transfer approvals
 
 Airwallex has its own lock, which Purser does not control: a transfer approval workflow in the web app that also holds API-created transfers. A payout then needs two approvals that do not depend on each other: the CFO's signature in Purser, and a person in Airwallex's web app. Airwallex docs: [Manage approvals for transfers](https://www.airwallex.com/docs/payouts/transfers/manage-transfers/manage-approvals-for-transfers), [Transfer statuses](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses).
