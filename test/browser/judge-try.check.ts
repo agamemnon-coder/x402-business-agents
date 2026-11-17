@@ -4,6 +4,9 @@
 // repo's own verifier (src/cli/verifyBundle.ts). On the way: the offline label, "no Claude call" and the simulated bank
 // are on screen, and no request leaves localhost.
 //   npx tsx test/browser/judge-try.check.ts [screenshot dir] [--at http://localhost:4311]   (default: a judge started here)
+//   npx tsx test/browser/judge-try.check.ts [screenshot dir] --at https://kit11.max-31b.workers.dev --live
+//     the live site as a judge opens it (17 Nov): the same flow, with Claude on and test money; the offline label and
+//     "no Claude call" are not asked for, and every request must stay on the site's own host instead of localhost.
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -19,6 +22,8 @@ const shots = args[0] && !args[0].startsWith("--") ? args[0] : "test-results/jud
 mkdirSync(shots, { recursive: true });
 const judge = at >= 0 ? null : await startJudge(0);
 const base = at >= 0 ? args[at + 1]!.replace(/\/$/, "") : judge!.url;
+const live = args.includes("--live");
+const home = new URL(base).hostname;
 let failed = 0;
 const ok = (cond: unknown, what: string) => { if (cond) console.log(`ok    ${what}`); else { failed++; console.log(`FAIL  ${what}`); } };
 
@@ -30,7 +35,7 @@ try {
   const page = await ctx.newPage();
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
-  page.on("request", (r) => { const u = new URL(r.url()); if (/^https?:$/.test(u.protocol) && u.hostname !== "localhost" && u.hostname !== "127.0.0.1") outside.push(r.url()); });
+  page.on("request", (r) => { const u = new URL(r.url()); if (/^https?:$/.test(u.protocol) && (live ? u.hostname !== home : u.hostname !== "localhost" && u.hostname !== "127.0.0.1")) outside.push(r.url()); });
   const cdp = await ctx.newCDPSession(page);
   await cdp.send("WebAuthn.enable");
   await cdp.send("WebAuthn.addVirtualAuthenticator", { options: { protocol: "ctap2", transport: "internal", hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true } });
@@ -42,14 +47,16 @@ try {
   };
 
   await gotoLoaded(page, `${base}/try`);
-  ok(await page.locator(".judge-offline").isVisible(), "the offline label is on screen");
-  ok((await page.locator(".judge-offline").innerText()).trim() === OFFLINE_TRY_NOTE, "the offline label says code reads, the simulated bank pays");
+  if (!live) {
+    ok(await page.locator(".judge-offline").isVisible(), "the offline label is on screen");
+    ok((await page.locator(".judge-offline").innerText()).trim() === OFFLINE_TRY_NOTE, "the offline label says code reads, the simulated bank pays");
+  }
   await click(/Launch the live transfer demo/);
   await click(/A small invoice inside the agent's limit/);
   await click(/Give it to the AI agent/);
   await page.getByRole("button", { name: "See the agent pay it" }).waitFor({ timeout: 60_000 });
   await page.waitForTimeout(800);
-  ok(/no Claude call/i.test(await text(page)), "EUR 120.00: the page says no Claude call read it");
+  if (!live) ok(/no Claude call/i.test(await text(page)), "EUR 120.00: the page says no Claude call read it");
   ok(await page.getByText("Checks passed. Approved by your policy.").isVisible(), "EUR 120.00: within the limit, approved by the policy");
   await page.screenshot({ path: join(shots, "1-agent-alone.png") });
   await click("See the agent pay it");
@@ -93,7 +100,7 @@ try {
   try { out = execFileSync(process.execPath, [tsx, verifier, file], { encoding: "utf8" }); } catch (e) { out = String((e as { stdout?: string }).stdout ?? e); }
   console.log(out.trim().split("\n").map((l) => `      ${l}`).join("\n"));
   ok(/\bVALID\b/.test(out) && !/INVALID/.test(out), "npm run verify-bundle on the downloaded proof: VALID");
-  ok(outside.length === 0, `no request left localhost${outside.length ? `: ${[...new Set(outside)].slice(0, 5).join(", ")}` : ""}`);
+  ok(outside.length === 0, `no request left ${live ? home : "localhost"}${outside.length ? `: ${[...new Set(outside)].slice(0, 5).join(", ")}` : ""}`);
   ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();
 } finally {

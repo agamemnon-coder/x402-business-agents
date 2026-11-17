@@ -278,13 +278,18 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
   for (const inv of apInvoices(db, { status: "paid" })) {
     const back = returnedPayout(db, inv);
     if (!back) continue;
-    const next = setStatus(db, inv.id, "needs_review", "awx-executor", { reason: failedPayoutReason(db, null, inv.proposal_id!, "came back after Airwallex had it PAID", back.failure_type) }, now);
+    changed.push(setStatus(db, inv.id, "needs_review", "awx-executor", { reason: failedPayoutReason(db, null, inv.proposal_id!, "came back after Airwallex had it PAID", back.failure_type) }, now));
     clearStaleNote(db, inv.id);
-    // The sink holds the payment only if it took it; then the return goes too, so its books match.
-    if (opts.sink && db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = 'payment' AND sink = ? AND ${SINK_TOOK}`).get(inv.id, opts.sink.name)) {
-      await pushOnce(db, opts.sink, "return", returnEntries(next, back), next, now);
+  }
+  // The sink holds the payment only if it took it; then the return goes too, so its books match. Tried on every sync
+  // until the sink takes it (independent review, 17 Nov: a sink down at that moment never got it).
+  if (opts.sink) {
+    for (const inv of apInvoices(db, { status: "needs_review" })) {
+      const back = returnedPayout(db, inv);
+      if (!back) continue;
+      const took = (event: string) => !!db.prepare(`SELECT 1 FROM ap_sink_events WHERE invoice_id = ? AND event = ? AND sink = ? AND ${SINK_TOOK}`).get(inv.id, event, opts.sink!.name);
+      if (took("payment") && !took("return")) await pushOnce(db, opts.sink, "return", returnEntries(inv, back), inv, now);
     }
-    changed.push(next);
   }
   return changed;
 }
@@ -292,7 +297,7 @@ export async function syncPayments(db: DB, opts: { now?: () => Date; sink?: Book
 /** Why a payout that was sent did not stay paid: Airwallex's own failure type when it gave one. */
 function failedPayoutReason(db: DB, requestId: string | null, proposalId: string, what: string, failureType: string | null = null): string {
   const type = failureType ?? (requestId ? (db.prepare("SELECT failure_type FROM transfers WHERE request_id = ?").get(requestId) as { failure_type: string | null } | undefined)?.failure_type ?? null : null);
-  return `the payout under ${proposalId} ${what}${type ? ` (${type})` : ""}; nothing is sent again under that approval: a person checks the supplier's bank details, then files it again for a new signature`;
+  return `the payout under ${proposalId} ${what}${type ? ` (${type})` : ""}; Purser sends nothing again for this invoice: a person checks the supplier's bank details with the supplier and decides what happens next`;
 }
 
 /** The states a person may reject an invoice from on the page: never one filed for the CFO, paid or rejected. */

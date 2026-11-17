@@ -91,7 +91,7 @@ describe("a payout that came back after Airwallex had it PAID", () => {
     const inv = apInvoice(db, id)!;
     expect(inv.status).toBe("needs_review");
     const why = JSON.parse((db.prepare("SELECT payload_json FROM audit_log WHERE event = 'ap.status' AND subject = ? ORDER BY seq DESC LIMIT 1").get(id) as { payload_json: string }).payload_json) as { reason: string };
-    expect(why.reason).toMatch(/came back after Airwallex had it PAID \(BENEFICIARY_BANK_RETURNED\); nothing is sent again under that approval/);
+    expect(why.reason).toMatch(/came back after Airwallex had it PAID \(BENEFICIARY_BANK_RETURNED\); Purser sends nothing again for this invoice/);
 
     // A second sync and a second webhook record nothing twice.
     checkEvent(db, "payout.transfer.cancelled", { id: transferId, status: "CANCELLED" }, now);
@@ -114,6 +114,40 @@ describe("a payout that came back after Airwallex had it PAID", () => {
     // The fee: paid out and not refunded.
     expect(sum(es, "debit", "6800")).toBe(1340);
     expect(sum(es, "debit")).toBe(sum(es, "credit"));
+  });
+
+  it("keeps the fee's line as it was booked when paid: same day, same words, so the ERP entry that holds it is unchanged", async () => {
+    const { transferId } = await paidInvoice();
+    await syncPayments(db, { ...deps, rail: awx });
+    const feeOf = () => ledgerItems(db).filter((i) => i.kind === "journal" && (i.object as { id: string }).id.startsWith("transfer-fee:")).map((i) => JSON.stringify(i.object));
+    const glFee = () => journal(db).filter((l) => l.proof === transferId && l.gl_account === "6800").map((l) => [l.date.slice(0, 10), l.description, l.amount]);
+    const before = { erp: feeOf(), gl: glFee() };
+    expect(before.gl).toHaveLength(1);
+    await awx.transitionTransfer(transferId, "FAILED");
+    checkEvent(db, "payout.transfer.failed", { id: transferId, status: "FAILED" }, now);
+    // The return is read a month later: nothing about the fee may move with it.
+    await syncPayments(db, { ...deps, rail: awx, now: () => new Date(now.getTime() + 35 * 86_400_000) });
+    expect(glFee()).toEqual(before.gl);
+    expect(feeOf()).toEqual(before.erp);
+  });
+
+  it("a sink that was down when the payout came back gets the return on a later sync, once", async () => {
+    const path = join(dir, "flaky.csv");
+    const csv = new CsvFileSink(path);
+    let down = false;
+    const sink = { name: "csv", push: (es: ApEntry[]) => { if (down && es.some((e) => e.event === "return")) throw new Error("sink down"); csv.push(es); } };
+    const { id, transferId } = await paidInvoice();
+    await syncPayments(db, { ...deps, rail: awx, sink });
+    await awx.transitionTransfer(transferId, "FAILED");
+    checkEvent(db, "payout.transfer.failed", { id: transferId, status: "FAILED" }, now);
+    down = true;
+    await syncPayments(db, { ...deps, rail: awx, sink });
+    expect(apInvoice(db, id)!.status).toBe("needs_review");
+    expect(readFileSync(path, "utf8").split("\n").filter((l) => l.includes(",return,"))).toHaveLength(0);
+    down = false;
+    await syncPayments(db, { ...deps, rail: awx, sink });
+    await syncPayments(db, { ...deps, rail: awx, sink });
+    expect(readFileSync(path, "utf8").split("\n").filter((l) => l.includes(",return,"))).toHaveLength(2);
   });
 
   it("the sink that took the payment gets the return, once", async () => {
@@ -153,7 +187,6 @@ describe("a payout that came back after Airwallex had it PAID", () => {
     if (before.length) {
       // Wherever the ledger books this payout, its fee is the only line left once it came back.
       expect(after.map((l) => l.gl_account)).toEqual(["6800"]);
-      expect(after[0]!.description).toMatch(/the payout came back; Airwallex keeps the fee/);
     }
     const items = ledgerItems(db);
     const pay = items.filter((i) => i.kind === "payment" && (i.object as { airwallexTransferId?: string }).airwallexTransferId === transferId);

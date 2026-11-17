@@ -212,7 +212,7 @@ export function paymentEntries(db: DB, inv: ApInvoiceRow, returned: ReturnedPayo
     { transfer_id: string | null; amount: string; fee_actual: string | null; updated_at: string } | undefined : undefined);
   if (!t) return [];
   // Dated as the ledger dates the payment (a month closed before it was posted is never posted into: red team round 3).
-  const date = returned ? (inv.paid_at ?? t.updated_at).slice(0, 10) : inv.paid_at ? paymentDay(db, inv) : t.updated_at.slice(0, 10);
+  const date = inv.paid_at ? paymentDay(db, inv) : (returned?.updated_at ?? t.updated_at).slice(0, 10);
   const memo = `${inv.vendor} invoice ${inv.invoice_no}, Airwallex transfer ${t.transfer_id ?? "(no id)"}`;
   const amount = toCents(t.amount);
   const bank = bankAccountFor(inv.currency);
