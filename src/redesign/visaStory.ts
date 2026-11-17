@@ -14,6 +14,7 @@ import { airiRun, AIRI_RUN_FILE } from "./airiRun.js";
 import { REPO_BLOB } from "./metalStory.js";
 import { tapRun } from "./run.js";
 import { esc } from "./ui.js";
+import { vic2Run } from "./vic2Run.js";
 import { VIC3_PREV_FILE, VIC3_RUN_FILE, VIC_LATER_FILES, vic3Run, vic3Summary, type Vic3Record } from "./vic3Run.js";
 
 export const VISA_ASKS_ID = "visa-asks";
@@ -127,15 +128,16 @@ export function visaReuseHtml(): string {
 export function visaThreeRunsHtml(): string {
   const airi = airiRun(), runs = VIC_LATER_FILES.map((f) => [f, vic3Run(f)] as const).filter((x): x is readonly [typeof x[0], Vic3Record] => !!x[1]);
   if (!airi) return "";
+  // Jury, 17 Nov: "4 Visa runs" beside vic-1 to vic-5 read as a clash; each row names its run, and vic-2 is said apart.
   const rows: { day: string; paid: number; notConfirmed: number; refused: number; file: string }[] = [
-    { day: day(airi.started_at), paid: airi.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length, notConfirmed: 0, refused: airi.purchases.filter((p) => (p as { by?: string }).by === "purser").length, file: AIRI_RUN_FILE },
-    ...runs.map(([file, r]) => { const s = vic3Summary(r); return { day: day(r.started_at), paid: s.paid, notConfirmed: s.other.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, refused: s.byPurser.length, file }; }),
+    { day: `${day(airi.started_at)} · ${airi.run}`, paid: airi.purchases.filter((p) => (p as { status?: string }).status === "SETTLED").length, notConfirmed: 0, refused: airi.purchases.filter((p) => (p as { by?: string }).by === "purser").length, file: AIRI_RUN_FILE },
+    ...runs.map(([file, r]) => { const s = vic3Summary(r); return { day: `${day(r.started_at)} · ${r.run}`, paid: s.paid, notConfirmed: s.other.filter((p) => p.outcome?.code === "PURSER_NO_TAP").length, refused: s.byPurser.length, file }; }),
   ];
   const sum = (k: "paid" | "notConfirmed" | "refused") => rows.reduce((n, r) => n + r[k], 0);
   return `<section class="card vs" id="${VISA_RUNS3_ID}"><h2>${esc(`The ${rows.length} Visa runs: ${sum("paid")} paid, ${sum("notConfirmed")} not confirmed in Airi`)}</h2>
 <table class="vs-runs"><thead><tr><th>${esc("Run")}</th><th>${esc("Paid")}</th><th>${esc("Not confirmed in Airi")}</th><th>${esc("Refused by Purser")}</th><th>${esc("Record")}</th></tr></thead>
 <tbody>${rows.map((r) => `<tr><td>${esc(r.day)}</td><td>${r.paid}</td><td>${r.notConfirmed}</td><td>${r.refused}</td><td>${recLink(r.file)}</td></tr>`).join("")}</tbody></table>
-<p class="vh-src">${esc("Not confirmed in Airi: the owner did not tap in Airi within 5 minutes; Purser cancelled the mandate and nothing was charged. Airwallex sandbox, Airi's test card, test money.")}</p></section>`;
+<p class="vh-src">${esc(`Not confirmed in Airi: the owner did not tap in Airi within 5 minutes; Purser cancelled the mandate and nothing was charged. Airwallex sandbox, Airi's test card, test money.${vic2Run()?.run ? ` Not counted: ${vic2Run()!.run}, a control test of Purser's own checks.` : ""}`)}</p></section>`;
 }
 
 /** 4. TAP, openly: its status first (outside the entry), what the run proves, and its record. */

@@ -118,7 +118,7 @@ export function visaHashHtml(r: Vic3Record): string {
   const eqAiri = !!b.read_back.mandate?.equal && inAiri === signed;
   const eqAwx = !!b.read_back.payment_intent?.equal && inAwx === signed;
   return `<section class="vh-hash card" id="${VISA_HASH_ID}"><h2 class="vh-h">${esc(`The hash the CFO signed for ${b.step}, read back`)}</h2>
-<ol class="vh-hl">${cell("Purser", `signed with Face ID (${b.proposal_id ?? ""})`, signed, null)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airi", "the mandate, before the credential", inAiri, eqAiri)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airwallex", "the PaymentIntent's metadata", inAwx, eqAwx)}</ol>
+<ol class="vh-hl">${cell("Purser", `signed with Face ID (${r.run} ${b.proposal_id ?? ""})`, signed, null)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airi", "the mandate, before the credential", inAiri, eqAiri)}<li class="vh-eq" aria-hidden="true">=</li>${cell("Airwallex", "the PaymentIntent's metadata", inAwx, eqAwx)}</ol>
 <p class="vh-src">${esc(`${countOf([eqAiri, eqAwx].filter(Boolean).length, 2)} read-backs equal to the signed hash (SHA-256 ${signed}).`)}</p></section>`;
 }
 

@@ -282,7 +282,7 @@ describe("the copy", () => {
   });
 
   it("says what the visitor uses in the band, and what reads the invoice from the start answer's mode", () => {
-    expect(COPY.BAND.line).toBe("Your test company · test money · simulated bank");
+    expect(COPY.BAND.line).toBe("Test money · Airwallex sandbox or simulated bank"); // 17 Nov: the payout goes to the sandbox when the switch allows
     expect(COPY.BAND.claudeLive).toBe("Claude, live");
     expect(COPY.BAND.claudeCode).toBe("Purser's code reads today");
     expect(COPY.START.heading).toBe("AI agents pay your suppliers. You approve the big ones with Face ID.");

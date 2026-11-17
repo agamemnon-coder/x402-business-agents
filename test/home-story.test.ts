@@ -247,8 +247,9 @@ describe("Home, the enterprise pass", () => {
   // "Visa Intelligent Commerce via Airwallex Airi (sandbox)" (+7), the Visa line 2 shorter (360 as built). 378 on
   // 14 Nov (Max, Airwallex at the centre): one line on the live Airwallex sandbox FX quote in /try's signed terms (378 as built).
   // 398 since 15 Nov (Max): /try/negotiate's card under the features, its headline and button (392 as built); +3, the refusals label (#390).
-  it("A11: stays within 398 visible words", () => {
-    expect(visibleWords(ON)).toBeLessThanOrEqual(398);
-    expect(visibleWords(OFF)).toBeLessThanOrEqual(398);
+  // 418 since the jury of 17 Nov: the x402 line under the hero, #24's caveat, "a passkey (Face ID on iPhone)" (417 as built).
+  it("A11: stays within 418 visible words", () => {
+    expect(visibleWords(ON)).toBeLessThanOrEqual(418);
+    expect(visibleWords(OFF)).toBeLessThanOrEqual(418);
   });
 });

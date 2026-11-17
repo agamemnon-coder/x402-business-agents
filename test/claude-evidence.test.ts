@@ -78,7 +78,7 @@ describe("/claude's split, agents and proof tiles (13 Nov: more visuals and data
     expect(text(nar).replace(/\s+/g, " ").trim()).toBe("106 payment requests 82 routine payments by code 24 exceptions, decided by Claude 5 of those, high-risk: the CFO's Face ID");
     expect([...nar.matchAll(/<rect class="(sk-\w+)" width="([\d.]+)"/g)].map((m) => [m[1], m[2]])).toEqual([["sk-code", "77.4"], ["sk-claude", "22.6"], ["sk-face", "4.7"]]);
     expect(splitSentence(f)).toBe("Payment requests: 82 routine payments by code; 24 exceptions decided by Claude; 5 high-risk ones on to the CFO's Face ID.");
-    // Jury review, 13 Nov: 82 + 24 here, "Metal: 86 payments" and "x402: 41 paid requests" in the footer read as three
+    // Jury review, 13 Nov: 82 + 24 here, "Metal: 86 payments" and "x402: 41 paid requests" (now "41 requests sold, 41 bought") in the footer read as three
     // counts of one thing. One line says how they relate, from the record (metalStory's payments and the split).
     const chain = metalStory(run.record).payments;
     expect([chain.sales + chain.purchases, chain.total]).toEqual([f.routine, f.routine + chain.refunds + chain.sweeps]);

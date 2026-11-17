@@ -88,7 +88,8 @@ describe("/visa, the reuse finding and the four runs", () => {
     expect([paid, notConfirmed]).toEqual([6, 2]);
     const s = text(section(VISA_RUNS3_ID));
     expect(s).toContain(`The 4 Visa runs: ${paid} paid, ${notConfirmed} not confirmed in Airi`);
-    expect(s).toMatch(/7 Nov 2 0 1 airi-run\.json ↗ 12 Nov 1 1 3 2026-11-12-vic-3\.json ↗ 13 Nov 2 1 5 2026-11-13-vic-4\.json ↗ 14 Nov 1 0 4 2026-11-14-vic-5\.json ↗/);
+    expect(s).toMatch(/7 Nov · vic-1 2 0 1 airi-run\.json ↗ 12 Nov · vic-3 1 1 3 2026-11-12-vic-3\.json ↗ 13 Nov · vic-4 2 1 5 2026-11-13-vic-4\.json ↗ 14 Nov · vic-5 1 0 4 2026-11-14-vic-5\.json ↗/);
+    expect(s).toContain("Not counted: vic-2, a control test of Purser's own checks.");
     expect(visaStoryFacts()!.v4.run).toBe("vic-5");
   });
 });

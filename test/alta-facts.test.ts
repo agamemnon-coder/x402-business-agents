@@ -47,7 +47,7 @@ describe("/alta: the three facts", () => {
     const main = /<main[\s\S]*<\/main>/.exec(METAL_PAGE)![0];
     const words = text(main);
     expect(main.indexOf(`id="${ALTA_FACTS_ID}"`)).toBeGreaterThan(main.indexOf("</h1>"));
-    expect(main.indexOf(`id="${ALTA_FACTS_ID}"`)).toBeLessThan(main.indexOf("entry for the Alta Award"));
+    expect(main.indexOf(`id="${ALTA_FACTS_ID}"`)).toBeLessThan(main.indexOf("entry for the Metal Award"));
     expect(metalTxs()).toHaveLength(86);
     expect(words).toContain("86 Alta payments in the main run, each its own transaction. 3 Nov record");
     expect(main).toContain(`title="docs/runs/2026-11-03-main-run-metal-transactions.md"`);

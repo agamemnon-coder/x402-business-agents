@@ -2,7 +2,7 @@
 //
 // Phase 1A (6 November): one reliability run, the full Kit 11 flow in a FRESH world rel-N, on the Airwallex sandbox and
 // the Metal testnet with test money, with real Claude agents, in the same order as the main run of 3 November
-// (docs/runs/2026-11-03-main-run.md; the runbook docs/archive/internal/draaiboek-wereld-donderdag.md). It is the dry-run driver
+// (docs/runs/2026-11-03-main-run.md; the owner's world runbook, an internal note not in this repository). It is the dry-run driver
 // (docs/runs/driver/thursday-dry.ts, the order dry-180 and the main run followed) made repeatable for rel-1 … rel-N:
 //   - its own world: ledger data/rel-N.sqlite, keys <keys root>/rel-N (KIT11_KEYS_ROOT, default ../x402-business-agents-keys
 //     beside the main checkout), refused when either already exists; never main-1, a dry-N or the reserve world;

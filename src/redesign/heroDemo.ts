@@ -24,7 +24,7 @@ export const DEMO_STEPS = ["Ask", "Face ID", "Paid", "+1 cent"] as const;
 /** One short line per step, shown while it is current: what docs/runs/2026-11-07-awx-1.md and the record show. */
 export const DEMO_LINES = [
   "Over its limit, the agent asks.",
-  "The CFO signs with Face ID.",
+  "The CFO signs with a passkey (Face ID on iPhone).",
   "Airwallex pays, the hash on record.",
   "Your turn: change one cent.",
 ] as const;
@@ -81,7 +81,7 @@ const short = (s: string, n: number) => `${s.slice(0, n)}…`;
 export function heroDemoHtml(f: HeroDemoFacts | null = heroDemoFacts(), r: HeroReceipt | null = heroReceipt(f)): string {
   if (!f || !r) return "";
   const t = r.shown, signed = r.data.terms_sha256;
-  return `<figure class="hd" id="${DEMO_ID}" data-phase="4" data-verdict="valid" data-amount="${esc(f.amount)}" data-hash="${esc(short(f.hash, 16))}" aria-label="${esc(`How Purser works, in four steps. The ${f.agent} asks to pay invoice ${f.invoice}, ${t.currency} ${f.amount}. The CFO signs the exact terms with Face ID. Airwallex pays by SWIFT, with the terms hash in its own record. Then you change one cent, and the signature no longer matches.`)}">
+  return `<figure class="hd" id="${DEMO_ID}" data-phase="4" data-verdict="valid" data-amount="${esc(f.amount)}" data-hash="${esc(short(f.hash, 16))}" aria-label="${esc(`How Purser works, in four steps. The ${f.agent} asks to pay invoice ${f.invoice}, ${t.currency} ${f.amount}. The CFO signs the exact terms with a passkey (Face ID on iPhone). Airwallex pays by SWIFT, with the terms hash in its own record. Then you change one cent, and the signature no longer matches.`)}">
 <ol class="hd-steps">${DEMO_STEPS.map((s, i) => `<li data-p="${i + 1}"><span>${i + 1}</span>${esc(s)}</li>`).join("")}</ol>
 <div class="hd-lines">${DEMO_LINES.map((l, i) => `<p data-p="${i + 1}">${esc(l)}</p>`).join("")}</div>
 <div class="hd-stage">

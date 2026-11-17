@@ -62,17 +62,25 @@ describe("the first screen (section D, 6 Nov)", () => {
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.
     const kit = lines.indexOf("## Kit 11, step by step");
     // 15 Nov (Max: "the tags on top of the readme"): the two badge rows sit under the links, inside the centred top.
-    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: LIVE"));
+    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: "));
     // 15 Nov (Max): "At a glance" under the badges, six lines, each with its record (test/readme-glance.test.ts), then Kit 11.
     const glance = lines.indexOf("## At a glance");
     // 15 Nov (readme-wow): two GitHub alerts between the centred top and "At a glance": Try it (/try), then test money only.
-    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
+    // 17 Nov (coordinator, the four things every entry must show, docs/rules.md): a six-line "For judges" table under the
+    // links, each row with where to check it, before the badges.
+    // 17 Nov (owner): under it, one line on what stood at the submission tag and what came after.
+    const judges = lines.slice(12, badges - 1);
+    expect(judges).toHaveLength(8);
+    expect(judges[7]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
+    expect(judges[0]!.startsWith("| **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes))")).toBe(true);
+    expect(judges.slice(2, 6).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls"]);
+    expect(lines.slice(5, glance - 6)).toEqual(["", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[badges]!, "", lines[partners]!, "", "</div>", ""]);
     expect(lines.slice(glance - 6, glance)).toEqual(["> [!TIP]", lines[glance - 5]!, "", "> [!IMPORTANT]", lines[glance - 2]!, ""]);
     expect(lines[glance - 5]).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(lines[glance - 2]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
     expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(40); // 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
+    expect(kit).toBeLessThan(48); // 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -84,7 +92,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
     // Five project badges, then the partners' row.
     expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
-    expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(6); // 15 Nov (Max): four partners LIVE, Claude's decisions, the worst-case AI test
+    expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(6); // 15 Nov (Max): four partners (Sandbox / Testnet since 17 Nov), Claude's decisions, the worst-case AI test
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.
@@ -108,7 +116,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(260); // 260 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(270); // 270 since 17 Nov, later (+7: the For judges table; +1: the film's figures dated); 260 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with the idea, its proof line, the hands-on demo as the one primary button, the film second, one reassurance line", () => {

@@ -166,7 +166,7 @@ export function hashBlockHtml(h: HashTravel | null): string {
   if (!h) return "";
   const by = h.method === "passkey" ? "Face ID" : h.method;
   return `<div class="card" id="${AWX_HASH_ID}"><h3>${icon("file-check", 18)}${esc(HASH_TRAVELS)}</h3>
-<div class="awh"><b>${esc(`The CFO signed, with ${by} (${h.proposalId}, ${h.signedAt.slice(11, 16)} UTC)`)}</b><code>${esc(h.signed)}</code></div>
+<div class="awh"><b>${esc(`The CFO signed, with ${by} (main run ${h.proposalId}, ${day(h.signedAt)}, ${h.signedAt.slice(11, 16)} UTC)`)}</b><code>${esc(h.signed)}</code></div>
 <div class="awh"><b>${esc(`Airwallex returns, in transfer ${h.transferId.slice(0, 8)}…'s metadata.approval_sha256`)}</b><code>${esc(h.carried ?? "none")}</code></div>
 ${badge(h.match, "Match: the same hash", "No match")}
 <p>${esc(`${h.currency} ${h.amount} by ${h.transferMethod}, ${h.transferStatus} at Airwallex.`)}</p>

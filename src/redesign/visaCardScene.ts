@@ -31,7 +31,7 @@ interface Rec { run?: string; mode?: string; started_at?: string; purchases?: St
 
 export interface CardScene {
   from: string; to: string; record: string;
-  paid: { amount: string; currency: string; merchant: string; merchantUrl: string | null; proposal: string; mandate: string; intent: string; hash: string };
+  paid: { amount: string; currency: string; merchant: string; merchantUrl: string | null; proposal: string; run: string; mandate: string; intent: string; hash: string };
   amount: { asked: string; code: string };
   reuse: { code: string };
   merchantRefused: { code: string } | null;
@@ -53,7 +53,7 @@ export function cardScene(raw: unknown = readRecord(), firstIso: string | null =
   if (!f2 || f2.mandate_id !== b.mandate_id || f2.outcome?.code !== "PURSER_CREDENTIAL_ALREADY_USED" || !noCalls(f2)) return null;
   return {
     from: day(firstIso ?? r.started_at), to: day(r.started_at), record: VIC3_RUN_FILE,
-    paid: { amount: b.request?.amount ?? "", currency: b.request?.currency ?? "", merchant: b.request?.merchant ?? "", merchantUrl: merchantById(b.rail_choice?.offer?.merchant ?? "")?.url ?? null, proposal: b.proposal_id, mandate: b.mandate_id, intent: b.payment_intent_id, hash: b.terms_sha256 },
+    paid: { amount: b.request?.amount ?? "", currency: b.request?.currency ?? "", merchant: b.request?.merchant ?? "", merchantUrl: merchantById(b.rail_choice?.offer?.merchant ?? "")?.url ?? null, proposal: b.proposal_id, run: r.run ?? "", mandate: b.mandate_id, intent: b.payment_intent_id, hash: b.terms_sha256 },
     amount: { asked: `${f1.request?.amount ?? ""} ${f1.request?.currency ?? ""}`.trim(), code: f1.outcome.code },
     reuse: { code: f2.outcome.code },
     merchantRefused: d?.outcome?.status === "refused" && d.outcome.code && noCalls(d) ? { code: d.outcome.code } : null,
@@ -137,7 +137,7 @@ export function visaCardSceneHtml(s: CardScene | null = cardScene()): string {
 <h2 id="${VISA_CARD_SCENE_ID}-h">${esc(`${VISA_CARD_SCENE_HEADING} (test card, sandbox; recorded run of ${range})`)}</h2>
 <p class="vcs-label"><b>${esc("Recorded, not live")}</b> ${esc("Airi's credential is the agent's Visa card rail: Airwallex sandbox, test card, test money. Purser adds its checks to every credential.")}</p>
 <ol>
-<li><b>${esc("Signed terms")}</b><span>${esc(`The agent asks to buy for ${p.currency} ${p.amount} at ${p.merchant}. Purser writes the exact terms (${p.proposal}).`)}</span></li>
+<li><b>${esc("Signed terms")}</b><span>${esc(`The agent asks to buy for ${p.currency} ${p.amount} at ${p.merchant}. Purser writes the exact terms (${p.run ? `${p.run} ` : ""}${p.proposal}).`)}</span></li>
 <li><b>${esc("Face ID")}</b><span>${esc("Above the CFO's limit, the CFO signs the SHA-256 of those terms with Face ID.")}</span><span class="vcs-say">${code(`${p.hash.slice(0, 16)}…`)}</span></li>
 <li><b>${esc("Airi tap")}</b><span>${esc("Airi's mandate carries that hash. Purser reads it back, equal, before a tap in Airi releases the credential.")}</span><span class="vcs-say">${code(p.mandate)}</span></li>
 <li><b>${esc("Paid")}</b><span>${esc("The credential pays on Airwallex's checkout.")} <span class="ok">${esc("SUCCEEDED")}</span></span><span class="vcs-say">${code(p.intent)}</span><span class="vcs-say vh-headless">${esc(HEADLESS_FIRST)}</span></li>

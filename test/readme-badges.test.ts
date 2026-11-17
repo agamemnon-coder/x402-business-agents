@@ -25,10 +25,10 @@ describe("README badges", () => {
   it("is CI, CodeQL, the tests read from test-summary.json, MIT and the MCP server; then a row of the five partners", () => {
     // 14 Nov (Max, the README and repo upgrade): CI, CodeQL, the tests, MIT and the MCP server; the partners on their own row.
     expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", "MCP server: read, propose only"]);
-    // 15 Nov (Max): the second row says each partner's status, then Claude's decisions and the worst-case AI test, every
+    // 17 Nov (jury): "Sandbox" / "Testnet", not "LIVE · sandbox", for the partners. 15 Nov (Max): the second row says each partner's status, then Claude's decisions and the worst-case AI test, every
     // value read from its record in test/readme-glance.test.ts.
-    const partnerLine = readme.split("\n").find((l) => l.startsWith("[![Airwallex: LIVE")) ?? "";
-    expect([...partnerLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Airwallex: LIVE · sandbox", "Alta (formerly Metal): LIVE · testnet", "Visa VIC via Airi: LIVE · sandbox", "T:0: LIVE · sandbox ledger", "Claude: LIVE · 24 decisions", "worst-case AI, offline eval: 0 wrong payments"]);
+    const partnerLine = readme.split("\n").find((l) => l.startsWith("[![Airwallex: ")) ?? "";
+    expect([...partnerLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Airwallex: Sandbox", "Alta (formerly Metal): Testnet", "Visa VIC via Airi: Sandbox", "T:0: Sandbox ledger", "Claude: LIVE · 24 decisions", "worst-case AI, offline eval: 0 wrong payments"]);
     expect(partnerLine).not.toMatch(/[?&]logo=/);
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
     expect(badgeLine).toContain("https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed");

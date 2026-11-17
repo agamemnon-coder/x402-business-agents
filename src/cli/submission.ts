@@ -10,7 +10,6 @@
 // `npm run submission -- --deck-only` renders only the deck (PDF and PNGs) from the screenshots already in
 // docs/submission/screens, with no server and no browser visit: for a change to the deck's words alone.
 //   docs/media/try-sign-qr.png           the QR code to /try/sign, as on the deck's QR slide (src/submission/qr.ts)
-//   docs/archive/internal/spiekkaart-demo.pdf    Max's one-page cheat sheet for Demo Day, from spiekkaart-demo.html
 //   out/submission/purser-source.zip     git archive of the current commit: code and docs, no keys, no ledger
 // Nothing is sent anywhere; Max uploads them.
 
@@ -49,14 +48,8 @@ const judge = deckOnly ? null : await startJudge(0);
 const browser = await chromium.launch();
 try {
   if (!deckOnly) await takeScreens();
+  // The owner's Dutch cheat sheet left the public repository with docs/archive/internal/ (17 Nov); it is no longer printed here.
   await renderDeck();
-  if (!deckOnly) {
-    // Max's cheat sheet: one A4 from its HTML source (docs/archive/internal/spiekkaart-demo.html), the QR code beside it.
-    const card = await browser.newPage();
-    await card.goto(`file://${resolve(root, "docs/archive/internal/spiekkaart-demo.html")}`, { waitUntil: "load" });
-    await card.pdf({ path: resolve(root, "docs/archive/internal/spiekkaart-demo.pdf"), format: "A4", printBackground: true, preferCSSPageSize: true });
-    console.log("docs/archive/internal/spiekkaart-demo.pdf");
-  }
 } finally {
   await browser.close();
   judge?.server.close();

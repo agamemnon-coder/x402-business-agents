@@ -661,16 +661,15 @@ describe("docs/video/ holds what the code writes", () => {
     const words = voiceTimeline(asWritten).reduce((k, l) => k + l.text.split(/\s+/).length, 0);
     const length = clock(premiereSeconds());
     expect([words, length]).toEqual([438, "3:58"]);
-    // The README, the claims and Max's checklist describe the film on YouTube: v8 (8 November), the length the code has.
+    // The README and the claims describe the film on YouTube: v8 (8 November), the length the code has.
     const published = { words, length };
     expect(read("docs/claims.md")).toContain(`| Pace | The film is the premiere, v8: ${published.words} words in ${published.length} (`);
     // Since 13 Nov (the enterprise README) the walkthrough (film v10) is the link on the live demo's line at the top; no
     // duration in its words since 14 Nov (owner).
     expect(README).not.toContain("https://youtu.be/mp9fmOYfBWc"); // 15 Nov: the walkthrough is off YouTube
-    expect(read("docs/archive/internal/checklist-max.md")).toContain(`de film duurt ${published.length} (v8).`);
     // The voice-over is an AI voice and the music AI-generated, both ElevenLabs; nowhere does Max voice the film.
     const docs = ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/video/elevenlabs-studio-prompt-v6.md", "docs/video-script.md", "docs/requirements-matrix.md", "docs/claims.md",
-      "docs/submission/README.md", "docs/submission/release-notes.md", "docs/archive/internal/checklist-max.md", "docs/video/premiere-script.md", "docs/video/script.md"];
+      "docs/submission/README.md", "docs/submission/release-notes.md", "docs/video/premiere-script.md", "docs/video/script.md"];
     for (const f of docs) expect({ f, max: /Max (records|reads|speaks|voices)\b|his (own )?voice|Max on camera|on Max's voice|\*\*Max:\*\*/i.test(read(f)) }).toEqual({ f, max: false });
     for (const f of ["docs/video/README.md", "docs/video/narrator-script.md", "docs/video/narrator-script-v6.md", "docs/submission/README.md", "docs/requirements-matrix.md"]) expect({ f, eleven: /AI-generated voice[^.]*ElevenLabs/.test(read(f).replace(/\s+/g, " ")) }).toEqual({ f, eleven: true });
   });
