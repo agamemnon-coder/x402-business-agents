@@ -4,7 +4,7 @@
 
 # Purser · AI agents spend. You sign off.
 
-**AI agents pay your suppliers. Above their limit, you sign the exact terms with a passkey (Face ID on iPhone), and one changed cent breaks the signature.**
+**AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.**
 
 **Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
 
