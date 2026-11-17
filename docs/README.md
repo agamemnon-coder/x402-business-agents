@@ -19,6 +19,7 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 ## Juror
 
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
+- [finance-value.md](finance-value.md): for a CFO or finance reader: the invoice job step by step, measured cost and time per invoice, the controls mapped, the books, and what is not proven yet.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
 - [in-depth.md](in-depth.md): the README's sections in full: what ran live with one id per rail, where each judging criterion is proven, the Kit 11 runs with every id, Try step by step, what is real and what is mock.
 - [runs/](runs/): every run log, dated, newest first in [runs/README.md](runs/README.md).
