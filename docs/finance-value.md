@@ -1,5 +1,8 @@
 # Purser for the finance team
 
+> Supplier invoices in; checked, paid inside the CFO's limits, booked and ready for VAT and month-end. No payment leaves
+> without a rule in code or the CFO's signature over its exact terms.
+
 **Who:** the CFO or finance lead of a small company that banks with Airwallex and pays suppliers abroad. In the test
 runs: Dutch books, a German supplier paid in EUR. The buyer is a hypothesis ([business/model.md](business/model.md)).
 Test money only; every figure links its record.
@@ -19,8 +22,8 @@ Test money only; every figure links its record.
 
 | What | Figure | Record |
 |---|---|---|
-| Claude, one invoice on live /try (read, check, code, plan the payment; all Claude Haiku 5.5) | USD 0.0025 (324 + 713 + 788 + 638 micro-USD) | [runs/2026-11-13-try-sample.json](runs/2026-11-13-try-sample.json) |
-| Claude, a month of 20 test invoices (16 paid, 4 sent to a person, books balanced) | USD 1.02 in all, about USD 0.05 an invoice | [runs/2026-11-13-books-month.json](runs/2026-11-13-books-month.json) |
+| Claude, /try's one sample invoice (read, check, code, plan the payment; all Claude Haiku 5.5) | USD 0.0025 (324 + 713 + 788 + 638 micro-USD) | [runs/2026-11-13-try-sample.json](runs/2026-11-13-try-sample.json) |
+| Claude, a month of 20 test invoices as PDFs (16 paid, 4 sent to a person, books balanced): the figure to plan with | USD 1.02 in all, about USD 0.05 an invoice | [runs/2026-11-13-books-month.json](runs/2026-11-13-books-month.json) |
 | Checker, Payer and Coder on Haiku, eval cases | USD 0.0006 an invoice each; Checker p50 3.9 s | [agent-evals.md](agent-evals.md) |
 | Deployed /try (purser-try), start to PAID (bot speed, virtual passkey, simulated bank) | 17.9 to 25.7 s, 10 runs | [evidence/try-timed-2026-11-15.json](evidence/try-timed-2026-11-15.json) |
 | Airwallex sandbox: CFO's Face ID to PAID (settlement simulated) | 6.3 s and 6.4 s | [runs/2026-11-07-awx-1.md](runs/2026-11-07-awx-1.md) |
