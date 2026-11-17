@@ -103,7 +103,7 @@ ${pic("architecture", "AI agents propose; three layers that do not trust each ot
 4. **The rail checks on its own.** Airwallex (transfer approvals, card controls), Alta (a mandate cap on chain) and
    Visa Intelligent Commerce via Airwallex's Airi (the cardholder's passkey per purchase) each keep their own limit.
 5. **Recorded.** Every step goes to the ledger's hash-chained audit log. Books were posted to T:0 and Moneybird in
-   sandbox runs; Purser Cloud (a private preview, no customer) keeps invoices, suppliers and payments with every
+   sandbox runs; Purser Cloud (a public test preview, no customer) keeps invoices, suppliers and payments with every
    version.
 
 ## Security model

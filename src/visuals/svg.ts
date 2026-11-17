@@ -115,10 +115,10 @@ ${o.body}
 // Wording held to the records (review, 12 Nov): the CFO signs above the limits and every change to them, not every
 // payment; each layer can stop a payment on its own; the rails' limits are set by Purser's runner with the CFO's
 // signature, so they hold against an agent, not against a compromised runner (said in the README draft); books ran in
-// sandbox runs (T:0, Moneybird) and the archive is Purser Cloud's, a private preview.
+// sandbox runs (T:0, Moneybird) and the archive is Purser Cloud's, a public test preview.
 
 export const ARCH_TITLE = "Purser: who can stop a payment";
-export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Alta, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a private preview.";
+export const ARCH_DESC = "AI agents propose payments. Three layers that do not trust each other can each stop one on its own: Purser's checks in code; the CFO's Face ID, a passkey over the exact terms, above the limits and on every change to them; and the rail's own controls (Airwallex, Alta, Visa Intelligent Commerce via Airi). Then the ledger and its hash-chained audit log; the books in sandbox runs; the archive in Purser Cloud, a public test preview.";
 export const LAYERS_LINE = "Three layers that do not trust each other: each can stop a payment on its own.";
 export const FOOT = "Sandbox and testnet runs, test money.";
 
@@ -134,7 +134,7 @@ const RAILS = [
 ] as const;
 const RAIL_REFUSES = "Refuses over its own limits, even after Purser's yes";
 const BOOKS = { h: "Ledger", body: ["Hash-chained audit log", "Books: T:0 and Moneybird, sandbox runs"] } as const;
-const ARCHIVE = { h: "Archive", body: ["Purser Cloud (private preview): invoices, suppliers, payments, every version kept"] } as const;
+const ARCHIVE = { h: "Archive", body: ["Purser Cloud (public test preview): invoices, suppliers, payments, every version kept"] } as const;
 
 function archWide(): { w: number; h: number; body: string } {
   const W = 1200, top = 74, bh = 410, mid = top + 170, out: string[] = [];
