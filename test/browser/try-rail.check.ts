@@ -85,7 +85,7 @@ function sideChecks(g: Geo, tag: string) {
   ok(g.links === 0, `${tag}: no navigation links in the rail (${g.links})`);
 }
 function moduleChecks(g: Geo, tag: string) {
-  for (const w of ["Live engine", "Claude", "Invoice Reader", "Policy Guard", "Settlement Executor", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.includes(w), `${tag}: the rail shows "${w}"`);
+  for (const w of ["Live engine", "Claude", "Reader agent", "Checker agent", "Payer agent", "Under the hood", "Airwallex", "Alta", "Visa Intelligent Commerce"]) ok(g.text.includes(w), `${tag}: the rail shows "${w}"`);
   ok(g.visa && /rgb\(255, 255, 255\)/.test(g.visa.bg), `${tag}: Visa Intelligent Commerce in a white pill (${g.visa?.bg})`);
 }
 

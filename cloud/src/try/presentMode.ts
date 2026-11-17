@@ -872,7 +872,7 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   const det=mk('details','',[mk('summary','','Each call'),list]);
   rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' calls this run':'No Claude call yet'),...(calls.length?[det]:[]),...(extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
   // 2. Agents and the mandate: who acts now, and whether the agent may pay alone.
-  const al=g==='workAlone'||g==='booksAlone';const S3=[['Invoice Reader','Claude reads the PDF'],['Policy Guard','checks, limits, signature'],['Settlement Executor','pays and books']];
+  const al=g==='workAlone'||g==='booksAlone';const S3=[['Reader agent','Claude reads the PDF'],['Checker agent','checks, limits, signature'],['Payer agent','pays; the Coder agent books']];
   const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='approve')return i===0?'done':i===1?'wait':'';
     if(g==='books'||g==='booksAlone'||g==='done')return 'done';if(g==='pay')return i===1?'cur':'done';if(g==='refused')return i===1?'bad':'done';return ''};
   const mode=al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO Face ID required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO Face ID');

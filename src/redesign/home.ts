@@ -248,8 +248,12 @@ const NEGOTIATE_CSS = `
 /** The records behind the stat row (test/home-story.test.ts checks each figure against them). */
 export const STAT_RECORDS = "docs/runs/2026-11-12-faceid-onchain.json docs/demo/main-run.json docs/demo/airwallex-run.json docs/runs/2026-11-13-vic-4.json";
 export const STAT_NOTE = "All runs and test companies on record, counted at build.";
-/** Which agents these are (review, 13 Nov: two sets of agents on one site read as one). */
-export const AGENT_SETS_NOTE = "These are the payables agents, in Purser Cloud and /try.";
+/**
+ * Which agents these are, and how they fit with the Kit 11 run's (review, 13 Nov: two sets of agents on one site read as
+ * one; competitor review, 17 Nov: say outright that it is one engine, under the same limits, as the core run below, whose
+ * agents Sourcing, Support and Treasury trade data; Home names no kit and keeps its word budget, so the line stays short).
+ */
+export const AGENT_SETS_NOTE = "Same engine, same limits: these pay invoices; the core run's agents trade data.";
 
 /**
  * The Kit 11 core run in one line (review, 13 Nov: Home told only the payables story): the main run of 3 Nov, its
