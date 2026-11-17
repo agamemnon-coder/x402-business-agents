@@ -40,7 +40,7 @@ Test money only; every figure links its record.
 - **Duplicates:** the same invoice is paid once ([test](../test/invoice-duplicate-key.test.ts)); the same supplier and total within 45 days waits for a person.
 - **Cash floor:** available = balance − holds − payouts under way ([src/policy/available.ts](../src/policy/available.ts)); a payment below the floor is held.
 - **Due dates:** the Payer may pay later, never past the due date unless the policy allows it; [/try/negotiate](https://kit11.max-31b.workers.dev/try/negotiate) agrees an early-payment discount (the supplier's agent simulated).
-- **Returned payouts:** a payout that fails after PAID is booked back and its invoice goes to a person; tested ([test](../test/payout-returned.test.ts)), not run live.
+- **Returned payouts:** a payout that fails after PAID goes to a person and is never sent again: in the Airwallex sandbox on 17 Nov, two PAID payouts failed by the simulation endpoint, both invoices to a person, no transfer resent ([record](runs/2026-11-17-airwallex-late-failure.json)). Booking the payment back: tested only ([test](../test/payout-returned.test.ts)).
 
 ## The books
 
