@@ -4,15 +4,26 @@
 
 # Purser · AI agents spend. You sign off.
 
-**AI agents pay your suppliers. Above their limit, you sign the exact terms with Face ID, and one changed cent breaks the signature.**
+**AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.**
 
 **Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
 
 **[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/PNLuqhRzVfE) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)
 
-[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=brightgreen)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-0b1220)](#connect-any-ai)
+| **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes)) | Check it |
+|---|---|
+| **User:** a CFO whose AI agents pay suppliers; above an agent's limit, the CFO signs | [/try](https://kit11.max-31b.workers.dev/try) |
+| **Airwallex action:** a SWIFT transfer that carries the hash of the signed terms in `metadata.approval_sha256` (main run, 3 Nov) | [record](docs/runs/airwallex-transfer-approval-2026-11-06.json) |
+| **Financial context:** the agent spends only what is available (balance − holds − payouts in flight), above a cash floor; FX buys only the shortfall | [available.ts](src/policy/available.ts) · [treasury.ts](src/policy/treasury.ts) |
+| **Controls:** per-agent limits; a passkey over the exact terms; duplicates held; a payout that fails after PAID goes back to a person | [approvals.ts](src/policy/approvals.ts) · [euroBill.ts](src/agents/euroBill.ts) · [follow.ts](src/payouts/follow.ts) |
 
-[![Airwallex: LIVE · sandbox](https://img.shields.io/badge/Airwallex-LIVE_%C2%B7_sandbox-ff8a4c)](https://kit11.max-31b.workers.dev/airwallex) [![Alta (formerly Metal): LIVE · testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-LIVE_%C2%B7_testnet-2dd4bf)](https://kit11.max-31b.workers.dev/alta) [![Visa VIC via Airi: LIVE · sandbox](https://img.shields.io/badge/Visa_VIC_via_Airi-LIVE_%C2%B7_sandbox-1a1f71)](https://kit11.max-31b.workers.dev/visa) [![T:0: LIVE · sandbox ledger](https://img.shields.io/badge/T%3A0-LIVE_%C2%B7_sandbox_ledger-475569)](https://kit11.max-31b.workers.dev/t0) [![Claude: LIVE · 24 decisions](https://img.shields.io/badge/Claude-LIVE_%C2%B7_24_decisions-ef9a76)](https://kit11.max-31b.workers.dev/claude) [![worst-case AI, offline eval: 0 wrong payments](https://img.shields.io/badge/worst--case_AI_%28offline_eval%29-0_wrong_payments-0b7d43)](docs/worst-case-ai.md)
+**What stood at the submission:** the tag `v1.0-submission` (8 Nov) holds the Kit 11 main run of 3 Nov and /try/sign; the payables inbox (`src/ap/`), Purser Cloud and today's /try came after, with run records dated 10 to 17 Nov ([CHANGELOG.md](CHANGELOG.md), [v1.1 notes](docs/releases/v1.1-submission.md)).
+
+[![CI](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/ci.yml?query=branch%3Amain) [![CodeQL](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/agamemnon-coder/x402-business-agents/actions/workflows/github-code-scanning/codeql) [![Tests: from docs/assets/test-summary.json](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed&label=tests&suffix=%20passing&color=16a34a&style=flat-square&labelColor=1f2937)](docs/assets/test-summary.json) [![License: MIT](https://img.shields.io/badge/license-MIT-2563eb?style=flat-square&labelColor=1f2937)](LICENSE)<br>
+[![Airwallex: sandbox](https://img.shields.io/badge/Airwallex-sandbox-ff6b35?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/airwallex) [![Alta (formerly Metal): testnet](https://img.shields.io/badge/Alta_%28formerly_Metal%29-testnet-0d9488?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/alta) [![Visa VIC via Airi: sandbox](https://img.shields.io/badge/Visa_VIC_via_Airi-sandbox-1a1f71?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/visa) [![T:0: sandbox ledger](https://img.shields.io/badge/T%3A0-sandbox_ledger-475569?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/t0) [![Claude: 24 decisions](https://img.shields.io/badge/Claude-24_decisions-d97757?style=flat-square&labelColor=1f2937)](https://kit11.max-31b.workers.dev/claude)<br>
+[![worst-case AI, offline eval: 0 wrong payments](https://img.shields.io/badge/worst--case_AI_%28offline_eval%29-0_wrong_payments-16a34a?style=flat-square&labelColor=1f2937)](docs/worst-case-ai.md) [![MCP server: read, propose only](https://img.shields.io/badge/MCP_server-read%2C_propose_only-6366f1?style=flat-square&labelColor=1f2937)](#connect-any-ai) [![Test money only](https://img.shields.io/badge/money-test_only-ca8a04?style=flat-square&labelColor=1f2937)](#whats-live-whats-simulated)
+
+<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="From the records, test money: Airwallex sandbox; Alta (formerly Metal) testnet; Visa via Airi sandbox; T:0 sandbox ledger; Claude 24 decisions, live. 7,242 tests passing; 189 checks passed, 0 failed; 37 of 39 attacks stopped, 2 caught after (test world)." width="100%"></picture></a>
 
 </div>
 
@@ -26,7 +37,7 @@
 
 <a href="https://kit11.max-31b.workers.dev/try"><img src="docs/assets/readme/promo.webp" alt="Animated, from a live /try run of 16 Nov 2026 (test money): the agent pays EUR 120.00 alone, within its EUR 500.00 limit; EUR 1,850.00 needs the CFO's Face ID on sha256 c0c8a884…, then Airwallex's sandbox marks it PAID; changed by one cent to EUR 1,850.01, its hash 664215b0… does not match: refused, EUR 0.00 moved." width="100%"></a>
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 7,199 tests passing in the last full run; 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/stats-dark.svg"><img src="docs/assets/readme/stats-light.svg" alt="Four figures from the records: 7,242 tests passing in the last full run; 24 Claude decisions and 86 Alta payments in the main run of 3 November; 0 wrong payments in the worst-case AI test" width="100%"></picture>
 
 - **The agent trace, live:** on [/try](https://kit11.max-31b.workers.dev/try), each Claude call, its lookups and its decision, as the engine recorded them ([record](docs/evidence/try-agentic-2026-11-15/README.md)).
 - **Agents negotiate:** on [/try](https://kit11.max-31b.workers.dev/try) (the Clean invoice) and [/try/negotiate](https://kit11.max-31b.workers.dev/try/negotiate), two Claude agents agree a deal; code holds the limits, you sign it ([the rails](src/negotiate/rails.ts)).
@@ -78,7 +89,7 @@ Does not prove: who holds the key, or that it was Face ID (no attestation is che
 `npm run verify-approval` reads that receipt; change one cent in it and it says NOT VALID. `npm run verify-receipt -- receipt.json`
 checks any receipt of the same format. `npm run airwallex-trail` lists the Airwallex sandbox API calls in the run records it reads and re-checks, offline, that each transfer carries the hash the passkey signed (exit 1 on any mismatch; the same list is on [/airwallex/calls](https://kit11.max-31b.workers.dev/airwallex/calls)). Pay on [/try](https://kit11.max-31b.workers.dev/try), download the proof (JSON), and check it on [/verify](https://kit11.max-31b.workers.dev/verify) in your browser, or with `npm run verify-bundle -- purser-proof.json`: the same checks, the same code, no server ([samples](docs/proof/)).
 
-The full suite, `npm test` (about 8 to 9 min on a laptop): **7199 tests passing**, 4 skipped, in 647 files (the last full run, on commit `47c3d9e5`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
+The full suite, `npm test` (about 8 to 9 min on a laptop): **7242 tests passing**, 4 skipped, in 653 files (the last full run, on commit `844690d9`: [summary](docs/assets/test-summary.json)), on stand-ins for Airwallex, Alta and Claude. The skipped ones run only on local D1 (`npm run test:d1`). Two kinds of line in its output are expected noise, not failures: Node's "ExperimentalWarning: SQLite is an experimental feature" and "try-sign: a live agent call failed" (a test that checks the fallback when the model is down).
 
 CI runs these checks on every push; the CI badge at the top shows the result of the latest run on main.
 
@@ -98,11 +109,13 @@ CI runs these checks on every push; the CI badge at the top shows the result of 
 |---|---|
 | <a href="https://youtu.be/PNLuqhRzVfE"><img src="docs/assets/readme/film-thumb.jpg" alt="Purser, under the hood: the film on YouTube" width="100%"></a> | <a href="https://youtu.be/n3HLVGROJc4"><img src="docs/assets/readme/trailer-thumb.jpg" alt="Purser: the trailer on YouTube" width="100%"></a> |
 
+The film was recorded on 15 November, so its test count (6,932) is older than the one above. Its "87 payments" is right for what it says: the main run's payments the agents made alone, 86 on Alta plus 1 card charge (`counts.alone` in [the record](docs/demo/main-run.json)).
+
 ## In 30 seconds
 
 - **Within the CFO's limits the agent pays alone**, and each rail holds the limit again: Airwallex's card controls, Alta's mandate on chain.
 - **Above a limit, the CFO signs the exact terms** with a passkey (Face ID on iPhone); change one cent and the signature no longer verifies.
-- **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 25 live runs to 14 November, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
+- **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 27 live runs to 17 November, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
 
 ## Airwallex at the centre
 
@@ -169,7 +182,7 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 | **Tamper-evident log** | Every decision is hash-chained, and the chain's head is anchored on Alta testnet (`npm run verify-anchor`). |
 | **The payee's bank checks the name** | Before a new supplier or changed bank details reach the CFO, Airwallex's account verification (`POST /beneficiaries/verify_account`) must match: a mismatch is refused, a partial match held (live, 12 Nov: [run](docs/runs/2026-11-12-airwallex-payee-check.md)). |
 | **Money spoken for before it moves** | Available = balance − holds − payouts under way, the same everywhere, so two payments never count on the same euro ([src/policy/available.ts](src/policy/available.ts)). |
-| **A payout that comes back** | PAID is not final at Airwallex: a `payout.transfer.failed` webhook gets the payout read again; the invoice goes to a person, the books take the payment back (the fee stays, Airwallex keeps it), and nothing is sent again under the old approval ([src/payouts/follow.ts](src/payouts/follow.ts); tested, not run live). |
+| **A payout that comes back** | PAID is not final at Airwallex: a `payout.transfer.failed` webhook gets the payout read again; the invoice goes to a person, the books take the payment back (the fee stays, Airwallex keeps it), and nothing is sent again under the old approval ([src/payouts/follow.ts](src/payouts/follow.ts)). Sandbox, 17 Nov: two PAID payouts failed by the simulation endpoint, a read of each in place of the webhook; both invoices went to a person, nothing was sent again ([record](docs/runs/2026-11-17-airwallex-late-failure.json)). The books taking a payment back: tested only. |
 
 ## Built with
 
@@ -229,7 +242,7 @@ sequenceDiagram
 ## For judges: 3 minutes
 
 **What it is:** the control layer between a company's AI agents and its money on Airwallex and Alta, built for
-Starter Kit 11 (x402 Business Agents) and entered for the Founder's Choice Award, the Judges' Choice Award, the Alta (formerly Metal) Award and the Visa Award.
+Starter Kit 11 (x402 Business Agents) and entered for the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award.
 The Kit 11 scenario, run live on 3 November.\
 **1. [Try it](https://kit11.max-31b.workers.dev/try):** a test company of your own; approve the exact terms with your
 passkey, then change them: refused.\
@@ -245,7 +258,7 @@ One column per rail in [Built with](#built-with); every run, live or simulated, 
 
 Purser's Visa Award entry: [docs/visa-award.md](docs/visa-award.md).
 
-## Alta Award
+## Metal Award
 
 Each agent pays x402 under its own mandate on Alta testnet, and Alta refuses what is over it: in the main run of 3 November, 86 Alta payments and purchase #24 refused on chain ([tx](https://testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871), [run](docs/runs/2026-11-03-main-run.md)). On 12 November a passkey account with two owners (the CFO's passkey and a labelled test passkey) changed the mandate only when both signed, and Alta refused a payment over its cap ([record](docs/runs/2026-11-12-faceid-onchain.md), [diagram](docs/diagrams.md#3-the-mandate-on-alta-bound-refused-raised-revoked)). [/alta](https://kit11.max-31b.workers.dev/alta) · [docs/metal-award.md](docs/metal-award.md)
 
@@ -329,7 +342,7 @@ CI runs it on every push, with CodeQL and gitleaks; `npm run test:coverage` meas
 
 ## Awards entered
 
-The Founder's Choice Award, the Judges' Choice Award, the Alta Award and the Visa Award (Starter Kit 11, x402 Business Agents).
+The Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award (Starter Kit 11, x402 Business Agents).
 
 ## Links
 

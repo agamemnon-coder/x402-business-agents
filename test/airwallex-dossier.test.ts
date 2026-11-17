@@ -289,7 +289,9 @@ describe("a calm document", () => {
   // transfer, payee check, financial transactions), and their rows in the key's permissions; nothing else grew.
   // +2 on 14 Nov (the final pass): "Alta (formerly Metal)" at the chain partner's first mention, after its rename.
   // +80 on 17 Nov: "A payout that does not stay paid" under Transfers (Airwallex's late failures after PAID).
+  // +110 the same day: that section's run of record (what ran in the sandbox, what is tested only) and its row in "The
+  // runs of record" (5,390 as built).
   it("is no longer than it was before the three sections came in", () => {
-    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80);
+    expect(DOSSIER.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(4886 + 316 + 2 + 80 + 110);
   });
 });

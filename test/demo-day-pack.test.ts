@@ -187,12 +187,6 @@ describe("the Demo Day runbook, cheat sheet and after-submission list", () => {
     const md = prose(read("docs/submission/cheat-sheet.md"));
     for (const d of DIFFERENTIATORS) expect(md).toContain(d);
   });
-
-  it("keeps the after-submission list a list, nothing done", () => {
-    const t = read("docs/archive/internal/after-submission.md");
-    expect(t).not.toMatch(/\[x\]/i);
-    for (const s of ["Film v4", "VIC", "MFA", "Dependabot", "Playwright", "branch", "T:0"]) expect({ s, has: t.includes(s) }).toEqual({ s, has: true });
-  });
 });
 
 describe("the Demo Day video script (docs/submission/demo-day-video.md)", () => {

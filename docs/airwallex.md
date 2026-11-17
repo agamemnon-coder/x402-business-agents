@@ -18,6 +18,7 @@ All calls go to the Airwallex sandbox (`https://api.sandbox.airwallex.com/api/v1
 | 10 Nov | Payment acceptance: an invoice paid by test card | [log](runs/2026-11-10-payment-acceptance-sandbox.md) |
 | 10 Nov | Two locks: Airwallex's approval workflow | [log](runs/2026-11-10-airwallex-two-locks.md) |
 | 12 Nov | Two locks: approved, then PAID | [log](runs/2026-11-12-airwallex-two-locks-paid.md) |
+| 17 Nov | A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation | [record](runs/2026-11-17-airwallex-late-failure.json) |
 
 Runs of 29 and 30 October are cited only where no later run shows the step, each with its date. Every live run: [docs/runs/README.md](runs/README.md).
 
@@ -172,14 +173,20 @@ Runs of record: [the Airwallex-only run](runs/2026-11-07-awx-1.md) (two payouts)
 - One invoice has at most one live payout. The Treasury agent's advice sits outside the hash and cannot change what is paid.
 - **For the bank and the ERP.** `npm run iso20022` exports a paid invoice as a pacs.008 message with Airwallex's transfer id as the UETR. The example is from a rehearsal of 30 October: [`docs/iso20022/pacs008-BTX-2026-11.xml`](iso20022/pacs008-BTX-2026-11.xml). It is not a message a bank sent.
 
-### A payout that does not stay paid (17 November; tested, not run live)
+### A payout that does not stay paid (17 November; sandbox, test money)
 
 "`PAID` is not always final" ([Airwallex](https://www.airwallex.com/docs/payouts/transfers/create-a-transfer/transfer-statuses#late-failures-after-paid)):
 a payout can still fail, and the amount less the transfer fee comes back. A `payout.transfer.failed` webhook on a paid
 payout makes Purser read it again (`GET /transfers/{id}`, never the webhook's body). The invoice then goes to a person,
 the books take the payment back (the fee stays), and nothing is sent again under the old approval
-([src/payouts/follow.ts](../src/payouts/follow.ts), [test](../test/payout-returned.test.ts)). Not run in the sandbox:
-a new sandbox payout waits in Airwallex's approval workflow for a person.
+([src/payouts/follow.ts](../src/payouts/follow.ts), [test](../test/payout-returned.test.ts)).
+
+Run of record, 17 November (`npm run late-failure`, [record](runs/2026-11-17-airwallex-late-failure.json)): two
+Stockline invoices of EUR 240.00 through the payables inbox, signed by a labelled virtual test passkey, taken to `PAID`
+and then to `FAILED` (`INCORRECT_ROUTING`) by the sandbox's simulation endpoint; Airwallex cancelled both. A `GET` of
+each transfer stood in for the webhook. Purser read both again, recorded the return, sent both invoices to a person and
+sent nothing again: 2 transfers created, 30 calls of a budget of 30. Tested only, not run live: the books taking the
+payment back. No payment was booked before the failure; the run's journal holds the two accruals only.
 
 ## Transfer approvals
 

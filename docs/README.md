@@ -1,4 +1,19 @@
+<a href="../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/brand/purser-mark-dark.svg"><img src="assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # The docs, by reader
+
+Every Purser document, grouped by who reads it; test money only throughout.
+
+| At a glance | Record |
+|---|---|
+| **7,242 tests passing**, 0 failed, in the last full run | [assets/test-summary.json](assets/test-summary.json) |
+| **27 live runs**, the last on 17 Nov 2026 | [runs/README.md](runs/README.md) |
+| **189 checks passed**, 3 could not run here, 0 failed | [evidence/verification-2026-11-15.md](evidence/verification-2026-11-15.md) |
+| **37 of 39** red-team attacks stopped, 2 caught afterwards (a test world) | [redteam/report.json](redteam/report.json) |
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/architecture-wide-dark.svg"><img src="assets/architecture-wide-light.svg" alt="AI agents propose; three layers that do not trust each other can each stop a payment: Purser's checks in code, the CFO's Face ID over the exact terms above a limit, the rail's own controls; then the ledger. Sandbox and testnet runs, test money." width="100%"></picture>
+
+## Start here
 
 Read these five first, in this order:
 
@@ -8,17 +23,16 @@ Read these five first, in this order:
 4. [controls-matrix.md](controls-matrix.md): each risk, its control, its test and its evidence.
 5. [business/README.md](business/README.md): the business case, a hypothesis: not validated with customers yet.
 
-Back to the [README](../README.md). Test money only throughout: the Airwallex sandbox and Alta (formerly Metal) testnet;
-the chain partner renamed itself on 14 November, and records and file names from before keep "Metal".
-
-Moved out of the README on 14 November (the README upgrade): the run-by-run table of what is live and what is
-simulated ([in-depth.md](in-depth.md#whats-live-whats-simulated-run-by-run)) and the diagram of where it runs
-([architecture.md](architecture.md#where-it-runs)). The release notes: [releases/v1.1-submission.md](releases/v1.1-submission.md);
+Back to the [README](../README.md). The rails: the Airwallex sandbox and Alta (formerly Metal) testnet; the chain
+partner renamed itself on 14 November, and records and file names from before keep "Metal". What is live and what is
+simulated, run by run: [in-depth.md](in-depth.md#whats-live-whats-simulated-run-by-run); where it runs:
+[architecture.md](architecture.md#where-it-runs); the release notes: [releases/v1.1-submission.md](releases/v1.1-submission.md);
 every pull request: [CHANGELOG.md](../CHANGELOG.md).
 
 ## Juror
 
 - [submission/README.md](submission/README.md): the submission text, with the short Description and the jury's instructions.
+- [finance-value.md](finance-value.md): for a CFO or finance reader: the invoice job step by step, measured cost and time per invoice, the controls mapped, the books, and what is not proven yet.
 - [submission/long-description.md](submission/long-description.md): the long form text, with the separate live tests.
 - [in-depth.md](in-depth.md): the README's sections in full: what ran live with one id per rail, where each judging criterion is proven, the Kit 11 runs with every id, Try step by step, what is real and what is mock.
 - [runs/](runs/): every run log, dated, newest first in [runs/README.md](runs/README.md).
@@ -85,8 +99,6 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 
 - [archive/](archive/): kept for history; each file says what replaced it. Working files moved out of the docs root on
   13 November, kept as evidence because a test, a script or a run log still cites them:
-  - [archive/internal/](archive/internal/): the working notes, in Dutch (two runbooks, a restart plan, a requirements
-    audit, a cheat sheet), the Demo Day card and the after-submission list. Not part of the submission.
   - [archive/superpowers/specs/](archive/superpowers/specs/): the design specs of 8 November for what was built after the kit.
   - [archive/readme-v2-draft.md](archive/readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
   - [archive/runs/](archive/runs/): two notes of the dry runs: the acceptance list (in Dutch) and the recycling of test money.

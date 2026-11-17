@@ -605,7 +605,7 @@ export function airwallexBody(run: AgentRun, o: AirwallexBody): string {
   const tiles = productTiles(run), platform = platformRunOfRecord(), locks = twoLocksOfRecord(), q = fxQuote(run.record), accept = acceptanceRunOfRecord();
   const firstRow = liveRuns().find((r) => r.key === CONNECTED_KEY), first = firstConnectedRunOfRecord();
   const testPasskeys = [...(platform?.testPasskey ? ["the platform run"] : []), ...(locks?.testPasskey ? ["the two-locks run"] : [])];
-  const fxLine = q ? [`<li id="${MAIN_RUN_FX_ID}" data-rec="${esc(run.file)}">${esc(`FX: only ${q.buyCurrency} ${q.buy} bought for ${q.sellCurrency} ${q.sell}, on quote ${q.quoteId}, valid to ${q.validTo.slice(11, 16)} UTC. Both are in the terms of ${q.proposal}, which the CFO signed with ${q.approvedWith}.`)}</li>`] : [];
+  const fxLine = q ? [`<li id="${MAIN_RUN_FX_ID}" data-rec="${esc(run.file)}">${esc(`FX: only ${q.buyCurrency} ${q.buy} bought for ${q.sellCurrency} ${q.sell}, on quote ${q.quoteId}, valid to ${q.validTo.slice(11, 16)} UTC. Both are in the terms of main run ${q.proposal}, which the CFO signed with ${q.approvedWith}.`)}</li>`] : [];
   const folds = [
     o.awx1 ? foldHtml("Airwallex-only run: every step and id", `<div class="awrb">${o.awx1}</div>`) : "",
     o.airi ? foldHtml("Airi runs: every step and id", `<div class="awrb">${o.airi}</div>`) : "",

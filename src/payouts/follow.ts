@@ -15,12 +15,13 @@ import type { PayoutRail, Transfer } from "../airwallex/port.js";
 import { audit } from "../audit/log.js";
 import type { DB } from "../db/open.js";
 import { takePlatformFee } from "../executors/supplierPayment.js";
+import { RETURNED_AFTER_PAID } from "./feeKept.js";
 import type { PlatformFields, SupplierPaymentTerms } from "./plan.js";
 
 /** The audit event a payout.transfer.failed or .cancelled webhook writes for a payout the ledger has as PAID. */
 export const RECHECK_EVENT = "transfer.recheck_requested";
 /** The audit event written when a payout Airwallex had marked PAID came back (FAILED, then CANCELLED). */
-export const RETURNED_EVENT = "transfer.returned_after_paid";
+export const RETURNED_EVENT = RETURNED_AFTER_PAID;
 
 /** Whether a webhook asked for this paid payout to be read again, after its last read. */
 export function recheckDue(db: DB, transferId: string): boolean {

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { openDb } from "../src/db/open.js";
 import { audit } from "../src/audit/log.js";
 import { towerView } from "../src/dashboard/tower.js";
+import { journal } from "../src/accounting/gl.js";
+import { fromCents, toCents } from "../src/lib/money.js";
 
 const T = "2026-11-05T10:00:00.000Z";
 function world() {
@@ -37,6 +39,25 @@ describe("the control tower", () => {
     const db = world();
     db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES ('t1', 'r1', 'BTX-1', '1850.00', 'EUR', 'SWIFT', '20.00', 'EUR 13.41', 'PAID', 'h', ?)").run(T);
     expect(towerView(db, inputs).pnl.eur).toEqual({ card_spend: "19.99", payouts: "1850.00", fees: "13.41", out: "1883.40" });
+  });
+
+  // Review gap, 17 Nov: the books keep the fee of a payout that came back after PAID (src/accounting/gl.ts); the tower's
+  // fees counted PAID transfers only. A payout that failed before PAID is not one whose fee the books keep.
+  it("counts a returned payout's fee, as the books keep it, and its fees equal the books' transfer fees", () => {
+    const db = world();
+    const inv = db.prepare("INSERT INTO invoices (invoice_no, vendor, amount, currency, due_date, iban_sha256, bic, doc_sha256, status) VALUES (?, 'Stockline Data GmbH', '240.00', 'EUR', '2026-12-15', 'x', 'B', 'd', 'paid')");
+    const tr = db.prepare("INSERT INTO transfers (transfer_id, request_id, invoice_no, amount, currency, method, fee_estimate, fee_actual, status, approval_sha256, updated_at) VALUES (?, ?, ?, '240.00', 'EUR', 'SWIFT', '20.00', ?, ?, 'h', ?)");
+    for (const no of ["R0", "R1", "R2"]) inv.run(no);
+    tr.run("t-paid", "r0", "R0", "EUR 13.41", "PAID", T);
+    tr.run("t-returned", "r1", "R1", "EUR 13.53", "CANCELLED", T);
+    tr.run("t-failed", "r2", "R2", "EUR 13.60", "FAILED", T);
+    audit(db, "awx-executor", "transfer.status", "t-returned", { status: "PAID" });
+    audit(db, "awx-executor", "transfer.returned_after_paid", "t-returned", { status: "CANCELLED", failure_type: "INCORRECT_ROUTING" });
+    const t = towerView(db, inputs);
+    expect(t.pnl.eur).toEqual({ card_spend: "19.99", payouts: "240.00", fees: "26.94", out: "286.93" });
+    const books = journal(db).filter((l) => l.source === "transfer" && l.gl_account === "6800").map((l) => l.amount.replace(/^-/, ""));
+    expect(books.sort()).toEqual(["13.41", "13.53"]);
+    expect(t.pnl.eur.fees).toBe(fromCents(books.reduce((n, a) => n + toCents(a), 0)));
   });
 
   it("keeps each rail's P&L in its own unit", () => {

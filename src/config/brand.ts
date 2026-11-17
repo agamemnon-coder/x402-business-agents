@@ -61,8 +61,8 @@ export const VISA_CLAIM = "Visa: the Sourcing agent signs its card checkout with
  * Only what is merged and live (#333): the sandbox quote is real, the conversion and the payment are on a simulated bank.
  */
 /** Home's shorter form: Home says "live" only on its button, "simulated" once, and no new date (test/home-story.test.ts). */
-export const AWX_HOME_LINE = "In /try, the Airwallex sandbox quotes the FX, and the quote is part of the terms you sign.";
-export const AWX_LIVE_LINE = "New on 14 Nov: in /try, the Airwallex sandbox quotes the FX live, and the quote is part of the terms you sign. The conversion and payment run on a simulated bank.";
+export const AWX_HOME_LINE = "In /try, the Airwallex sandbox quotes the FX inside the terms you sign.";
+export const AWX_LIVE_LINE = "New on 14 Nov: in /try, the Airwallex sandbox quotes the FX live, and the quote is part of the terms you sign. The conversion runs on a simulated bank; the payment also goes to the Airwallex sandbox as one transfer when the deployment allows it.";
 /** The one name /visa gives the card credential Airi hands out (partner scan, 14 Nov): what it is, and that it is a test card. */
 export const AIRI_CREDENTIAL = "Airi credential (test card)";
 export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's public reference verifier; not part of this entry.";
@@ -70,9 +70,9 @@ export const VISA_TAP_STATUS = "Visa TAP: built and verified against Visa's publ
  * The big line under the heading: the kit, the track and the awards entered. The Visa Award since 7 Nov (Visa: the VIC
  * run counts), on the Airi run, not on TAP.
  */
-export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Alta (formerly Metal) Award and the Visa Award";
+export const KIT_LINE = "Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award";
 /** Home's badge (Max's mega-prompt v4, C2): the kit, the awards entered (the Visa Award since 7 Nov, on the Airi run, as KIT_LINE), what it is built on. Visa TAP is never in it. */
-export const HOME_BADGE = "Kit 11 · Alta (formerly Metal) Award and Visa Award · built on Airwallex, Alta, Claude";
+export const HOME_BADGE = "Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude";
 /** D3, in one sentence: who decides what. */
 export const SPLIT_LINE = "Claude decides the exceptions; routine buying and selling per query is code.";
 /**
@@ -147,7 +147,7 @@ export const TRY_SIGN_URL = "https://kit11.max-31b.workers.dev/try/sign";
  * The idea in one sentence (15 Nov, Founder's and Judges' Choice: one sharp idea, understood in 10 seconds): Home's
  * sentence under its heading, the README's bold line under its title, package.json's description.
  */
-export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with Face ID, and one changed cent breaks the signature.";
+export const IDEA = "AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.";
 export const README_WHAT = IDEA;
 export const WHAT_IT_IS = "For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign the exact terms with a passkey (Face ID on iPhone).";
 /**

@@ -109,14 +109,17 @@ const CI_URL = "https://github.com/agamemnon-coder/x402-business-agents/actions/
 export const testsTitle = (t: TestSummary): string =>
   `${fmt(t.passed)} tests passed${t.failed ? `, ${fmt(t.failed)} failed` : ""}${t.skipped ? `, ${fmt(t.skipped)} skipped` : ""}, in the last full run, on commit ${t.commit} (${TEST_SUMMARY}); CI runs them on every push`;
 
-/** The band's figures, each with its words and its link; a figure whose source is missing drops out. */
+/**
+ * The band's figures, each with its words and its link; a figure whose source is missing drops out. Jury, 17 Nov: the
+ * chain and Claude figures say they count every run (233 beside the main run's 86 payments, 451 beside its 24 decisions).
+ */
 export function scaleStats(f: ScaleFigures = scaleFigures()): ScaleStat[] {
   const out: ScaleStat[] = [];
   if (f.tests && f.tests.passed > 0) out.push({ n: f.tests.passed, label: "tests passing", title: testsTitle(f.tests), icon: "shield-check", href: CI_URL, external: true, tone: "ok" });
   if (f.liveRuns) out.push({ n: f.liveRuns, label: "sandbox and testnet runs", title: "Every run with the partners' sandboxes or Alta's testnet, each with its record; rehearsals, control tests and partial runs not counted", icon: "calendar-range", href: "runs" });
   if (f.airwallexCalls.calls) out.push({ n: f.airwallexCalls.calls, label: AWX_CALLS_LABEL, title: `Airwallex sandbox API calls in ${f.airwallexCalls.records} committed run records, each listed on /airwallex/calls with what came back`, icon: "landmark", href: "airwallex/calls" });
-  if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
-  if (f.claudeCalls) out.push({ n: f.claudeCalls, label: "Claude calls with request ids", title: "Distinct Anthropic request ids in the run and eval records", icon: "bot", href: "claude" });
+  if (f.metalTx) out.push({ n: f.metalTx, label: "Alta testnet transactions, all runs", title: "Distinct transactions linked to Alta's testnet explorer from the run records and run logs", icon: "link-2", href: "alta" });
+  if (f.claudeCalls) out.push({ n: f.claudeCalls, label: "Claude calls with request ids, all runs and evals", title: "Distinct Anthropic request ids in the run and eval records", icon: "bot", href: "claude" });
   if (f.refusals) out.push({ n: f.refusals, label: "refusals on record", title: "Audit rows of a refusal, a decline, a rejection or a fraud stop in the run records: over a limit, at the rail, on chain", icon: "ban", href: "proof#stops", tone: "bad" });
   return out;
 }

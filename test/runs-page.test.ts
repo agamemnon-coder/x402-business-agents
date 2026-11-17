@@ -35,7 +35,8 @@ describe("/runs", () => {
 
   it("lists the live runs newest first, the last one on top", () => {
     // 12 Nov (jury check): the eight live runs whose records were missing here, each in date order.
-    expect(rows.map((r) => r.key)).toEqual(["vic-5", "anchor-1", "vic-4", "awx-faceid-1", "vic-3", "real-customers-1", "tokenize-1", "batch-1", "payee-check-1", "faceid-onchain-1", "moneybird-1", "two-locks-1", "metal-hold-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "metal-passkey-owners", "friday-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
+    // 17 Nov: the late-failure run (docs/runs/2026-11-17-airwallex-late-failure.json) on top.
+    expect(rows.map((r) => r.key)).toEqual(["late-failure-1", "card-cent-1", "vic-5", "anchor-1", "vic-4", "awx-faceid-1", "vic-3", "real-customers-1", "tokenize-1", "batch-1", "payee-check-1", "faceid-onchain-1", "moneybird-1", "two-locks-1", "metal-hold-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-2", "vic-1", "awx-1", "main-1", "agent-1", "tap-1", "metal-passkey-owners", "friday-1", "metal-four-eyes", "metal-clearing-load", "metal-receive", "metal-compliance", "metal-clearing"]);
     // The connected-accounts row, held to its run log: every id and amount on it is in the log.
     const cx = rows.find((r) => r.key === "connected-1")!;
     const cxLog = readFileSync("docs/runs/2026-11-10-connected-accounts-sandbox.md", "utf8");
@@ -125,10 +126,10 @@ describe("/runs", () => {
     expect(tl.files.map((f) => f.href)).toEqual(["../../docs/runs/2026-11-12-airwallex-two-locks-paid.md", "../../docs/runs/2026-11-10-airwallex-two-locks.md"]);
     for (const f of tl.files) expect(existsSync(f.href.replace("../../", ""))).toBe(true);
     // The page dates the last live run by it and shows it as the newest entry, under its plain name.
-    expect(text(pages.runs!)).toContain("Last live run: 14 Nov 2026.");
-    // The newest entry is vic-5 since 14 Nov, 05:41 (docs/runs/2026-11-14-vic-5.json); then the records' anchor (13 Nov,
-    // 14:05) and vic-4.
-    expect(entriesOf(liveList(pages.runs!)).slice(0, 3).map((x) => x.key)).toEqual(["vic-5", "anchor-1", "vic-4"]);
+    expect(text(pages.runs!)).toContain("Last live run: 17 Nov 2026.");
+    // The newest entry is the late-failure run since 17 Nov, 14:05 (docs/runs/2026-11-17-airwallex-late-failure.json);
+    // vic-5 before it since 14 Nov, 05:41 (docs/runs/2026-11-14-vic-5.json); then the records' anchor (13 Nov, 14:05).
+    expect(entriesOf(liveList(pages.runs!)).slice(0, 3).map((x) => x.key)).toEqual(["late-failure-1", "card-cent-1", "vic-5"]);
     const first = entriesOf(liveList(pages.runs!)).find((x) => x.key === "two-locks-1")!;
     expect(inSight(first.html)).toContain(`<h2>${escAttr(tl.name!)}</h2>`);
     expect(inSight(first.html)).toContain('<time datetime="2026-11-12T09:43:58.000Z" title="12 Nov 2026">12 Nov</time>');
@@ -227,7 +228,7 @@ describe("/runs as a timeline", () => {
   // The kind of each run listed on 12 Nov. A row added later (in the old shape or the new) is held by the tests that
   // go over every row; the ones that name runs go over these.
   const KINDS: Record<string, RunKind> = {
-    "vic-5": "sandbox", "anchor-1": "testnet", "vic-4": "sandbox", "awx-faceid-1": "sandbox", "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "control", "vic-1": "sandbox",
+    "late-failure-1": "sandbox", "card-cent-1": "sandbox", "vic-5": "sandbox", "anchor-1": "testnet", "vic-4": "sandbox", "awx-faceid-1": "sandbox", "vic-3": "sandbox", "two-locks-1": "sandbox", "platform-e2e-1": "sandbox", "t0-1": "sandbox", "connected-1": "sandbox", "vic-2": "control", "vic-1": "sandbox",
     "awx-1": "sandbox", "main-1": "both", "agent-1": "rehearsal", "tap-1": "sandbox", "friday-1": "rehearsal",
     "real-customers-1": "sandbox", "tokenize-1": "testnet", "batch-1": "sandbox", "payee-check-1": "sandbox", "faceid-onchain-1": "testnet", "moneybird-1": "sandbox",
     "metal-hold-1": "testnet", "acceptance-1": "sandbox",
@@ -235,10 +236,10 @@ describe("/runs as a timeline", () => {
     "metal-passkey-owners": "testnet", "metal-four-eyes": "testnet", "metal-clearing-load": "testnet", "metal-receive": "testnet", "metal-compliance": "testnet", "metal-clearing": "testnet",
   };
   const known = (keys: string[]) => keys.filter((k) => k in KINDS);
-  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|vic-3|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1|real-customers-1|tokenize-1|batch-1|payee-check-1|faceid-onchain-1|moneybird-1|metal-hold-1|acceptance-1|metal-[a-z-]+)\b|\brun 1\b|\bsecond run\b/i;
+  const CODE_NAMES = /\b(awx-1|vic-1|vic-2|vic-3|main-1|agent-1|friday-1|tap-1|rel-1b?|two-locks-1|platform-e2e-1|connected-1|t0-1|real-customers-1|tokenize-1|batch-1|payee-check-1|late-failure-1|faceid-onchain-1|moneybird-1|metal-hold-1|acceptance-1|metal-[a-z-]+)\b|\brun 1\b|\bsecond run\b/i;
   // Two rows a later session could add: a series of payouts reported as one entry, and a row in the old shape.
   const series: RunRow = {
-    key: "series-x", iso: "2026-11-14T18:00:00.000Z", date: "14 Nov 2026", title: "A series of payouts", name: "Twenty supplier payouts in a row",
+    key: "series-x", iso: "2026-11-17T18:00:00.000Z", date: "17 Nov 2026", title: "A series of payouts", name: "Twenty supplier payouts in a row",
     line: "Twenty payouts were created; two were refused by the bank.", kind: "sandbox", rate: { done: 18, of: 20, what: "paid" },
     rails: "Airwallex sandbox (payouts)", what: "Twenty payouts.", checks: "Each read back.", money: "Sandbox · test money",
     ids: [{ label: "First payout", value: "pay-0001" }], files: [{ label: "run log", href: "../../docs/runs/series-x.md" }],
@@ -321,7 +322,8 @@ describe("/runs as a timeline", () => {
       // whose money words say simulated (review 12 Nov, DC-4): the TAP run's merchant was simulated, so without its own
       // kind it can claim no more than Simulated; its explicit kind keeps it a live sandbox run.
       // vic-2's own kind is "control" (0 outside calls, review 12 Nov); its money words alone say nothing was bought.
-      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" ? "simulated" : r.key === "vic-2" ? "nothing" : KINDS[r.key]);
+      // The card test of 15 Nov (17 Nov) names its simulated card transactions in its rails, as the TAP run names its merchant.
+      expect(kindOf({ ...r, kind: undefined }), r.key).toBe(r.key === "tap-1" || r.key === "card-cent-1" ? "simulated" : r.key === "vic-2" ? "nothing" : KINDS[r.key]);
     }
     expect(row("tap-1").money).toBe("Simulated merchant · test money");
     // What the records say: the main run ran on Alta testnet and in the Airwallex sandbox; the second Airi run was live
@@ -415,7 +417,7 @@ describe("/runs as a timeline", () => {
     expect(text(html)).toContain(`${live.length} live runs, newest first`);
     // vic-2 is a local control test since 12 Nov (review); since 13 Nov (jury pass) the two partial runs are listed apart;
     // the records' anchor on Alta testnet joined on 13 Nov.
-    expect(known(live.map((e) => e.key))).toHaveLength(25); // vic-5, 14 Nov
+    expect(known(live.map((e) => e.key))).toHaveLength(27); // the late-failure run, 17 Nov; the card test of 15 Nov (17 Nov); vic-5, 14 Nov
   });
 
   it("marks exactly one run as the product: the main run", () => {
@@ -447,7 +449,7 @@ describe("/runs as a timeline", () => {
     // Airi run made 0 Airi and 0 Airwallex calls: no Airwallex, no Visa. Visa: the runs that used a Visa credential.
     // TAP is outside the Visa entry (the jury check, 12 Nov): its row is not counted under Visa.
     expect(carrying("visa")).toEqual(["vic-5", "vic-4", "vic-3", "vic-1"]);
-    expect(carrying("airwallex")).toEqual(["vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(carrying("airwallex")).toEqual(["late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "two-locks-1", "platform-e2e-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     const v2 = JSON.parse(raw("docs/demo/vic-2-run.json")) as { outside_calls: { airi: number; airwallex: number } };
     expect([v2.outside_calls.airi, v2.outside_calls.airwallex]).toEqual([0, 0]);
     const v2e = [...live, ...entriesOf(rehGroup(html))].find((e) => e.key === "vic-2")!;
@@ -455,8 +457,8 @@ describe("/runs as a timeline", () => {
     expect(v2e.html).not.toMatch(/class="rl (awx|visa)"/);
     expect(row("vic-2").partners).toEqual([]);
     expect(links.find((l) => l.id === "visa")!.n).toBe(4);
-    expect(links.find((l) => l.id === "airwallex")!.n).toBe(14);
-    expect(carrying("sandbox")).toEqual(["vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
+    expect(links.find((l) => l.id === "airwallex")!.n).toBe(16); // 16 since 17 Nov: the late-failure run and the card test of 15 Nov
+    expect(carrying("sandbox")).toEqual(["late-failure-1", "card-cent-1", "vic-5", "vic-4", "awx-faceid-1", "vic-3", "batch-1", "payee-check-1", "moneybird-1", "two-locks-1", "platform-e2e-1", "t0-1", "acceptance-1", "connected-1", "vic-1", "awx-1", "main-1", "tap-1"]);
     // Each filter is an empty anchor before the list (a sibling the CSS can select from), and so is "All".
     const listAt = html.indexOf('<ol class="tl">');
     for (const l of links) {
@@ -484,8 +486,8 @@ describe("/runs as a timeline", () => {
     expect(css).not.toMatch(/#all:target[^{]*\{[^}]*display:\s*none/);
     // The first row is the newest: it carries the class and a small mark.
     expect(live.filter((e) => e.cls.includes("newest")).map((e) => e.key)).toEqual([live[0]!.key]);
-    // Since 14 Nov, 05:41 UTC the newest is vic-5 (its purchases as a rate), then the records' anchor (no rate).
-    expect(known(live.map((e) => e.key)).slice(0, 2)).toEqual(["vic-5", "anchor-1"]);
+    // Since 17 Nov, 14:05 UTC the newest is the late-failure run (no rate), then vic-5 (its purchases as a rate).
+    expect(known(live.map((e) => e.key)).slice(0, 2)).toEqual(["late-failure-1", "card-cent-1"]);
     expect(inSight(live[0]!.html)).toContain('<span class="mk new">Newest</span>');
     expect(inSight(live.find((e) => e.key === "vic-4")!.html)).toMatch(/\d+ of \d+ purchases paid/);
     // Nothing in the filtering depends on the script: it only names the active link and copies ids.
@@ -526,11 +528,11 @@ describe("/runs as a timeline", () => {
     expect(e.key).toBe("series-x");
     expect(e.cls).toContain("newest");
     expect(inSight(e.html)).toContain('<span class="rt">18 of 20 paid</span>');
-    expect(text(page)).toContain("Last live run: 14 Nov 2026.");
+    expect(text(page)).toContain("Last live run: 17 Nov 2026.");
     expect(entriesOf(page).filter((x) => x.cls.includes("newest"))).toHaveLength(1);
     const readme = runsReadme([...rows, series]);
     expect(readme).toContain("18 of 20 paid");
-    expect(readme).toContain("**Last live run:** 14 Nov 2026.");
+    expect(readme).toContain("**Last live run:** 17 Nov 2026.");
     expect(readme).toContain("Twenty supplier payouts in a row");
   });
 

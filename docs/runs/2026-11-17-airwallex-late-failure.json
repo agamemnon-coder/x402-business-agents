@@ -1,0 +1,603 @@
+{
+  "stream": "airwallex-late-failure",
+  "capability": "late-failure",
+  "sandbox": "api.sandbox.airwallex.com",
+  "test_money": true,
+  "source": "built by `npm run late-failure -- record` from the run ledger's audit rows, its CSV journal and AIRWALLEX_CALL_LOG only",
+  "signer": "late-failure virtual test passkey",
+  "simulated": "SENT, PAID and FAILED came from the sandbox's simulation endpoint; a GET of each transfer stood in for the webhook (Airwallex's webhooks go to the hosted relay, not to this local ledger)",
+  "budget": {
+    "approved": 30,
+    "used": 30
+  },
+  "invoices": [
+    "SLL-2026-11R1",
+    "SLL-2026-11R2"
+  ],
+  "proposals": [
+    {
+      "proposal_id": "P-0001",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "d819986b557d166f444374b09146dcf512b750671ff3b026bf66f6ea8b775949",
+      "approver": "late-failure virtual test passkey (passkey o_M2totM)",
+      "method": "passkey"
+    },
+    {
+      "proposal_id": "P-0002",
+      "kind": "invoice_payment",
+      "status": "EXECUTED",
+      "terms_sha256": "1df1aed2cb786f382e7419486bad6a2136698a420f06ef9d8bc8fe3da13e22f8",
+      "approver": "late-failure virtual test passkey (passkey o_M2totM)",
+      "method": "passkey"
+    }
+  ],
+  "transfers": [
+    {
+      "transfer_id": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "request_id": "6b3a54f2-5490-48d2-8f67-72c7d06c1b77",
+      "invoice_no": "SLL-2026-11R1 · Stockline Data GmbH",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "CANCELLED",
+      "failure_type": "INCORRECT_ROUTING",
+      "approval_sha256": "d819986b557d166f444374b09146dcf512b750671ff3b026bf66f6ea8b775949",
+      "updated_at": "2026-11-17T14:05:26.689Z"
+    },
+    {
+      "transfer_id": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "request_id": "d67e2179-9c29-4252-8db8-ce03cacd0768",
+      "invoice_no": "SLL-2026-11R2 · Stockline Data GmbH",
+      "amount": "240.00",
+      "currency": "EUR",
+      "status": "CANCELLED",
+      "failure_type": "INCORRECT_ROUTING",
+      "approval_sha256": "1df1aed2cb786f382e7419486bad6a2136698a420f06ef9d8bc8fe3da13e22f8",
+      "updated_at": "2026-11-17T14:05:26.689Z"
+    }
+  ],
+  "ap_invoices": [
+    {
+      "id": "AP-0001",
+      "invoice_no": "SLL-2026-11R1",
+      "vendor": "Stockline Data GmbH",
+      "currency": "EUR",
+      "total": "240.00",
+      "status": "needs_review",
+      "proposal_id": "P-0001"
+    },
+    {
+      "id": "AP-0002",
+      "invoice_no": "SLL-2026-11R2",
+      "vendor": "Stockline Data GmbH",
+      "currency": "EUR",
+      "total": "240.00",
+      "status": "needs_review",
+      "proposal_id": "P-0002"
+    }
+  ],
+  "audit": [
+    {
+      "seq": 5,
+      "ts": "2026-11-17T14:03:20.666Z",
+      "actor": "system",
+      "event": "late_failure.ingested",
+      "subject": "AP-0001",
+      "payload": {
+        "invoice_no": "SLL-2026-11R1",
+        "read_by": "the parser (no model asked)",
+        "status": "ready",
+        "total": "EUR 240.00"
+      }
+    },
+    {
+      "seq": 7,
+      "ts": "2026-11-17T14:03:20.692Z",
+      "actor": "system",
+      "event": "late_failure.ingested",
+      "subject": "AP-0002",
+      "payload": {
+        "invoice_no": "SLL-2026-11R2",
+        "read_by": "the parser (no model asked)",
+        "status": "ready",
+        "total": "EUR 240.00"
+      }
+    },
+    {
+      "seq": 13,
+      "ts": "2026-11-17T14:03:20.709Z",
+      "actor": "treasury",
+      "event": "ap.status",
+      "subject": "AP-0001",
+      "payload": {
+        "from": "ready",
+        "proposal_id": "P-0001",
+        "reason": "payment filed for the CFO's Face ID",
+        "to": "waiting_cfo"
+      }
+    },
+    {
+      "seq": 18,
+      "ts": "2026-11-17T14:03:26.018Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "status": "SENT"
+      }
+    },
+    {
+      "seq": 19,
+      "ts": "2026-11-17T14:03:27.041Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "status": "PAID"
+      }
+    },
+    {
+      "seq": 22,
+      "ts": "2026-11-17T14:03:27.587Z",
+      "actor": "system",
+      "event": "late_failure.created",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "ap_invoice": "AP-0001",
+        "invoice_no": "SLL-2026-11R1",
+        "proposal_id": "P-0001",
+        "signer": "late-failure virtual test passkey",
+        "status": "PAID",
+        "terms_sha256": "d819986b557d166f444374b09146dcf512b750671ff3b026bf66f6ea8b775949"
+      }
+    },
+    {
+      "seq": 24,
+      "ts": "2026-11-17T14:03:27.587Z",
+      "actor": "treasury",
+      "event": "ap.status",
+      "subject": "AP-0002",
+      "payload": {
+        "from": "ready",
+        "proposal_id": "P-0002",
+        "reason": "payment filed for the CFO's Face ID",
+        "to": "waiting_cfo"
+      }
+    },
+    {
+      "seq": 29,
+      "ts": "2026-11-17T14:03:30.725Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "status": "SENT"
+      }
+    },
+    {
+      "seq": 30,
+      "ts": "2026-11-17T14:03:31.465Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "status": "PAID"
+      }
+    },
+    {
+      "seq": 33,
+      "ts": "2026-11-17T14:03:31.775Z",
+      "actor": "system",
+      "event": "late_failure.created",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "ap_invoice": "AP-0002",
+        "invoice_no": "SLL-2026-11R2",
+        "proposal_id": "P-0002",
+        "signer": "late-failure virtual test passkey",
+        "status": "PAID",
+        "terms_sha256": "1df1aed2cb786f382e7419486bad6a2136698a420f06ef9d8bc8fe3da13e22f8"
+      }
+    },
+    {
+      "seq": 34,
+      "ts": "2026-11-17T14:05:17.576Z",
+      "actor": "system",
+      "event": "late_failure.fail_accepted",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "asked": "FAILED",
+        "failure_type": "INCORRECT_ROUTING",
+        "from": "PAID",
+        "invoice_no": "SLL-2026-11R1",
+        "ledger": "not changed: the ledger reads Airwallex in recheck",
+        "simulated": "Airwallex sandbox simulation endpoint",
+        "status": "FAILED"
+      }
+    },
+    {
+      "seq": 35,
+      "ts": "2026-11-17T14:05:18.179Z",
+      "actor": "system",
+      "event": "late_failure.fail_accepted",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "asked": "FAILED",
+        "failure_type": "INCORRECT_ROUTING",
+        "from": "PAID",
+        "invoice_no": "SLL-2026-11R2",
+        "ledger": "not changed: the ledger reads Airwallex in recheck",
+        "simulated": "Airwallex sandbox simulation endpoint",
+        "status": "FAILED"
+      }
+    },
+    {
+      "seq": 36,
+      "ts": "2026-11-17T14:05:26.327Z",
+      "actor": "system",
+      "event": "transfer.recheck_requested",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "invoice_no": "SLL-2026-11R1 · Stockline Data GmbH",
+        "webhook_status": "CANCELLED",
+        "why": "a payout the ledger has as PAID was reported failed; Airwallex is asked again"
+      }
+    },
+    {
+      "seq": 37,
+      "ts": "2026-11-17T14:05:26.337Z",
+      "actor": "system",
+      "event": "late_failure.webhook_stand_in",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "agrees": false,
+        "airwallex_status": "CANCELLED",
+        "event": "payout.transfer.cancelled",
+        "how": "a GET of the transfer at Airwallex, handed to checkEvent in place of the payout.transfer webhook: Airwallex's webhooks go to the hosted relay, not to this local ledger",
+        "invoice_no": "SLL-2026-11R1",
+        "ledger_status": "PAID",
+        "outcome": "payout for SLL-2026-11R1 · Stockline Data GmbH is CANCELLED at Airwallex, which differs from the ledger (PAID)"
+      }
+    },
+    {
+      "seq": 38,
+      "ts": "2026-11-17T14:05:26.687Z",
+      "actor": "system",
+      "event": "transfer.recheck_requested",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "invoice_no": "SLL-2026-11R2 · Stockline Data GmbH",
+        "webhook_status": "CANCELLED",
+        "why": "a payout the ledger has as PAID was reported failed; Airwallex is asked again"
+      }
+    },
+    {
+      "seq": 39,
+      "ts": "2026-11-17T14:05:26.688Z",
+      "actor": "system",
+      "event": "late_failure.webhook_stand_in",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "agrees": false,
+        "airwallex_status": "CANCELLED",
+        "event": "payout.transfer.cancelled",
+        "how": "a GET of the transfer at Airwallex, handed to checkEvent in place of the payout.transfer webhook: Airwallex's webhooks go to the hosted relay, not to this local ledger",
+        "invoice_no": "SLL-2026-11R2",
+        "ledger_status": "PAID",
+        "outcome": "payout for SLL-2026-11R2 · Stockline Data GmbH is CANCELLED at Airwallex, which differs from the ledger (PAID)"
+      }
+    },
+    {
+      "seq": 40,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.rechecked",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "read": "read again at Airwallex after a webhook",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 41,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "read": "followed up at Airwallex",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 42,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.returned_after_paid",
+      "subject": "4f1692f4-d641-4fcd-a652-260c9559199d",
+      "payload": {
+        "failure_reason": "Other",
+        "failure_type": "INCORRECT_ROUTING",
+        "note": "Airwallex had it PAID; the supplier's bank returned it. Airwallex refunds the amount less the transfer fee. Nothing is sent again under this approval.",
+        "proposal_id": "P-0001",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 43,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.rechecked",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "read": "read again at Airwallex after a webhook",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 44,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.status",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "read": "followed up at Airwallex",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 45,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "transfer.returned_after_paid",
+      "subject": "a90b1ef2-62cd-4f48-a15d-2fbf2ffe31ff",
+      "payload": {
+        "failure_reason": "Other",
+        "failure_type": "INCORRECT_ROUTING",
+        "note": "Airwallex had it PAID; the supplier's bank returned it. Airwallex refunds the amount less the transfer fee. Nothing is sent again under this approval.",
+        "proposal_id": "P-0002",
+        "status": "CANCELLED"
+      }
+    },
+    {
+      "seq": 46,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "ap.status",
+      "subject": "AP-0001",
+      "payload": {
+        "from": "waiting_cfo",
+        "reason": "the payout under P-0001 failed at Airwallex after it was sent (INCORRECT_ROUTING); Purser sends nothing again for this invoice: a person checks the supplier's bank details with the supplier and decides what happens next",
+        "to": "needs_review"
+      }
+    },
+    {
+      "seq": 47,
+      "ts": "2026-11-17T14:05:26.689Z",
+      "actor": "awx-executor",
+      "event": "ap.status",
+      "subject": "AP-0002",
+      "payload": {
+        "from": "waiting_cfo",
+        "reason": "the payout under P-0002 failed at Airwallex after it was sent (INCORRECT_ROUTING); Purser sends nothing again for this invoice: a person checks the supplier's bank details with the supplier and decides what happens next",
+        "to": "needs_review"
+      }
+    }
+  ],
+  "sink_csv": [
+    "date,invoice_id,event,account,account_name,debit,credit,currency,memo,doc_sha256",
+    "2026-10-01,AP-0001,accrual,6350,\"Data licence (Stockline, monthly)\",240.00,,EUR,Stockline Data GmbH invoice SLL-2026-11R1,83cf2d14a6d81465f7e5a4e85d6d0d8d3872661bcca9c485ef75ebef163a0404",
+    "2026-10-01,AP-0001,accrual,2100,Accounts payable (supplier invoices),,240.00,EUR,Stockline Data GmbH invoice SLL-2026-11R1,83cf2d14a6d81465f7e5a4e85d6d0d8d3872661bcca9c485ef75ebef163a0404",
+    "2026-11-17,AP-0002,accrual,6350,\"Data licence (Stockline, monthly)\",240.00,,EUR,Stockline Data GmbH invoice SLL-2026-11R2,0275fcb4217ec5b8a5be59d620990c4e9c134f878bd91c0d267bb1980adc24f5",
+    "2026-11-17,AP-0002,accrual,2100,Accounts payable (supplier invoices),,240.00,EUR,Stockline Data GmbH invoice SLL-2026-11R2,0275fcb4217ec5b8a5be59d620990c4e9c134f878bd91c0d267bb1980adc24f5"
+  ],
+  "calls": {
+    "total": 30,
+    "by_endpoint": [
+      {
+        "endpoint": "POST /authentication/login",
+        "calls": 4
+      },
+      {
+        "endpoint": "GET /balances/current",
+        "calls": 6
+      },
+      {
+        "endpoint": "POST /transfers/create",
+        "calls": 2
+      },
+      {
+        "endpoint": "GET /transfers/{id}",
+        "calls": 12
+      },
+      {
+        "endpoint": "POST /simulation/transfers/{id}/transition",
+        "calls": 6
+      }
+    ],
+    "first": "2026-11-17T14:03:20.724Z",
+    "last": "2026-11-17T14:05:26.995Z",
+    "lines": [
+      {
+        "at": "2026-11-17T14:03:20.724Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:21.343Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:22.038Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:22.390Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:23.589Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:24.213Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:25.643Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:26.019Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:26.743Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:27.043Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:27.611Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:28.002Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:28.323Z",
+        "method": "POST",
+        "endpoint": "/transfers/create",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:29.158Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:29.453Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:30.423Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:30.726Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:31.179Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:31.466Z",
+        "method": "GET",
+        "endpoint": "/balances/current",
+        "pid": 29869
+      },
+      {
+        "at": "2026-11-17T14:03:41.565Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 30331
+      },
+      {
+        "at": "2026-11-17T14:03:42.129Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 30331
+      },
+      {
+        "at": "2026-11-17T14:03:42.842Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 30331
+      },
+      {
+        "at": "2026-11-17T14:05:15.982Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 961
+      },
+      {
+        "at": "2026-11-17T14:05:16.683Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 961
+      },
+      {
+        "at": "2026-11-17T14:05:17.592Z",
+        "method": "POST",
+        "endpoint": "/simulation/transfers/{id}/transition",
+        "pid": 961
+      },
+      {
+        "at": "2026-11-17T14:05:25.444Z",
+        "method": "POST",
+        "endpoint": "/authentication/login",
+        "pid": 1196
+      },
+      {
+        "at": "2026-11-17T14:05:25.959Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1196
+      },
+      {
+        "at": "2026-11-17T14:05:26.338Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1196
+      },
+      {
+        "at": "2026-11-17T14:05:26.691Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1196
+      },
+      {
+        "at": "2026-11-17T14:05:26.995Z",
+        "method": "GET",
+        "endpoint": "/transfers/{id}",
+        "pid": 1196
+      }
+    ]
+  }
+}

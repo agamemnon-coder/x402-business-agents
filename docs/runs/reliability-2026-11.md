@@ -2,7 +2,7 @@
 
 **Kind: reliability run.** Each row is the full Kit 11 flow, run again in a **fresh world** of its own, to show that
 Purser works every time and not once. The flow and its order are the main run's (3 November,
-[2026-11-03-main-run.md](2026-11-03-main-run.md); the runbook `docs/archive/internal/draaiboek-wereld-donderdag.md`).
+[2026-11-03-main-run.md](2026-11-03-main-run.md); the runbook an internal working note, not published).
 
 - **Rails:** Airwallex sandbox and Metal testnet, test money only. The customer (Summit), the suppliers (Stockline,
   Ridgeline Data) and the merchant (Packwise) are simulated, as in the main run.

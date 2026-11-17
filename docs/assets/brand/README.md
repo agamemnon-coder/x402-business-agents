@@ -1,11 +1,23 @@
-# Purser's mark
+<a href="../../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="purser-mark-dark.svg"><img src="purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
+# Brand assets
+
+Purser's mark and the "Built on Airwallex" badge: what each file is, where it is used, and what checks it.
+
+| At a glance | Record |
+|---|---|
+| **One mark**, the site header's own: a white feather on a dark rounded square | [purser-mark.svg](purser-mark.svg) · `test/brand-mark.test.ts` |
+| **"Built on Airwallex"**, the official logo unaltered; no partnership or endorsement implied | [SOURCES.md](../logos/SOURCES.md) · `src/ui/builtOn.ts` |
+
+## Purser's mark
 
 `purser-mark.svg` is the mark in the site's header (`src/ui/nav.ts`, `MARK` and `header.top .brand .mark`): a white
 feather, 16 of 30 units wide, centred on a dark rounded square (`#0b1220`, corner radius 9 of 30). The README's top
 uses it; `test/brand-mark.test.ts` checks it against the header's own paths and proportions. The social preview
-(`docs/assets/social-preview.svg`) carries the same mark.
+(`docs/assets/social-preview.svg`) carries the same mark. `purser-mark-dark.svg` is the same mark in reverse (a light square, a dark
+feather), for the dark theme of the READMEs' headers.
 
-# Built on Airwallex (14 Nov 2026)
+## Built on Airwallex (14 Nov 2026)
 
 One badge, "Built on" and the official Airwallex logo (`src/ui/logos/airwallex.png`, unaltered;
 [SOURCES.md](../logos/SOURCES.md)), from `src/ui/builtOn.ts`: in the site's header on every page that carries it (Home,

@@ -19,6 +19,7 @@ const HOSTILE_CLAIM = hostileClaimText();
 // Since 13 Nov the same record's figures are a proof tile on /claude (src/redesign/claudePage.ts).
 const HOSTILE_TILE = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
 import { esc } from "../src/redesign/ui.js";
+import { apiTrail } from "../src/airwallex/apiTrail.js";
 
 const { file, record } = loadRecord();
 const RAW = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -56,7 +57,10 @@ function recount(r: RunRecord): string[] {
     // /claude's phone figures (final jury, 13 Nov): the payment requests in all, routine plus exceptions, from the same split.
     String(split(r).routine), String(split(r).routine + split(r).decisions), String(faceIdDecisions(r)), String(s.reduce((n, a) => n + a.claude_calls, 0)), String(onChain), String(atAirwallex), ...calls].filter(Boolean);
 }
-const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord)]);
+// /proof's count of Airwallex sandbox calls (src/redesign/scale.ts), counted from the run records by the API trail
+// (src/airwallex/apiTrail.ts, held to each record by test/airwallex-api-trail.test.ts). 154 matched a number in the main
+// run's record by chance until the late-failure run of 17 Nov added its 30 calls.
+const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord), String(apiTrail().calls)]);
 
 /** The words a person reads on a page as served (scripts, styles and markup left out), without the fixed names that carry digits. */
 const visibleText = (html: string) => html
@@ -293,8 +297,8 @@ describe("the redesigned public pages", () => {
     // "Visa (VIC via Airi)" in "Built on" since 12 Nov (jury panel): the Visa entry is the Airi run. Never "Visa TAP":
     // TAP is not the eligible tooling. (The switch was VISA_AWARD_ON, off.)
     expect(VISA_VIC_BUILT_ON).toBe(true);
-    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Alta (formerly Metal) Award and the Visa Award");
-    expect(HOME_BADGE).toBe("Kit 11 · Alta (formerly Metal) Award and Visa Award · built on Airwallex, Alta, Claude");
+    expect(KIT_LINE).toBe("Kit 11 · x402 Business Agents · entered for the Metal Award and the Visa Award");
+    expect(HOME_BADGE).toBe("Kit 11 · Metal Award and Visa Award · built on Airwallex, Alta, Claude");
     // Home said both "entered for the Visa Award" and "not an award entry" (jury panel, 12 Nov): it now says nothing
     // about awards or Visa, and carries no chip, strip or "Built on" row. /visa and /proof say what is true there.
     // The footer's "Built on" list is on every page since the review of 12 Nov; Home's main still carries no such row.

@@ -1,17 +1,23 @@
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # Submission pack (HackerEarth form)
 
-Copy each block into the form. Max submits; nothing here is sent by itself. Every run figure comes from the main run
-of 3 November (`docs/demo/main-run.json`, log `docs/runs/2026-11-03-main-run.md`) and the reports in this repo
-(`src/submission/facts.ts`); `test/submission.test.ts` checks this page against them. The Description tells the demo in
-the site's order (Home, Try, Proof), then the main run, plus one labelled sentence on the reliability run of
-6 November (in Claude's proof sentence), one on awx-1, the Airwallex-only run of 7 November (its record:
-`docs/demo/airwallex-run.json`, log `docs/runs/2026-11-07-awx-1.md`), and one on the Airi run of 7 November, Visa
-Intelligent Commerce via Airwallex's Airi (its record: `docs/demo/airi-run.json`, log
-`docs/runs/2026-11-07-vic-1.md`); the long text ([long-description.md](long-description.md)) has every other live run under "Other live tests
-(separate worlds, dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources
-for each claim: [docs/claims.md](../claims.md), section "The submission pack".
+The text of Purser's entry, block by block as it goes into the form, each figure checked against its record.
 
-The video link is in. The owner's working checklist (in Dutch, not part of the submission) is kept in [archive/internal/checklist-max.md](../archive/internal/checklist-max.md).
+| At a glance | Record |
+|---|---|
+| **Description: 3,972 characters**, under the 4,000 `test/submission.test.ts` holds it to | [the Description](#description) |
+| **Entered for** the Founder's Choice Award, the Judges' Choice Award, the Metal Award and the Visa Award | [rules.md](../rules.md) · [evidence/README.md](../evidence/README.md) |
+| Every run figure from **the main run of 3 November** | [main-run.json](../demo/main-run.json) · [run log](../runs/2026-11-03-main-run.md) · [`src/submission/facts.ts`](../../src/submission/facts.ts) |
+
+Copy each block into the form; nothing here is sent by itself. `test/submission.test.ts` checks this page against the
+records. The Description tells the demo in the site's order (Home, Try, Proof), then the main run, plus one labelled
+sentence each on the reliability run of 6 November, awx-1 (the Airwallex-only run of 7 November: its record
+`docs/demo/airwallex-run.json`, log `docs/runs/2026-11-07-awx-1.md`) and the Airi run of 7 November, Visa Intelligent
+Commerce via Airwallex's Airi (its record `docs/demo/airi-run.json`, log `docs/runs/2026-11-07-vic-1.md`). The long
+text ([long-description.md](long-description.md)) has every other live run under "Other live tests (separate worlds,
+dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources for each claim:
+[docs/claims.md](../claims.md), section "The submission pack".
 
 ## Title
 
@@ -25,45 +31,27 @@ For CFOs whose AI agents pay suppliers: above its limit, an agent asks; you sign
 
 ## Description
 
-Characters: **3,972** (the text between the markers, as pasted; 3,998 if the form counts each line break as two). Max's target is 3,000–4,000; the form's own limit is
-not known yet. `test/submission.test.ts` checks this count and keeps the text under 4,000. The long text, as it stood on
-5 November, with Airwallex, Metal, Claude, the controls and the other live tests in full: [long-description.md](long-description.md).
-The Airi run of 7 November (Visa Intelligent Commerce via Airwallex's Airi; Airwallex sandbox, test card, test money)
-has one sentence in the Description since 7 November (the owner's decision to name Visa Intelligent Commerce), at the
-end of "Airwallex, Metal and Claude", and its full story in the long text under "Other live tests". To fit it, other
-sentences were tightened, no fact dropped: the solution keeps the card and the mandate (the CFO's
-signature over the exact terms is the next line); the demo line keeps the fake invoice and the rule (signing and the
-one-cent cheat are in the first bullet); the euro bill drops the repeated "after the CFO's Face ID" and the settlement
-note ("What's real" says the settlement is simulated); awx-1's line is shorter. After the jury review of 7 November
-(the hook "are starting to", "Try it in a minute.", the CFO's passkey without a name or "his") a few more words went:
-"sits", "once the money left", "AI" before "agent" in the solution (the problem says it), the supplier by its name (Stockline), the demo's order with commas, figures for "two". Since 7 November (Visa, in the hackathon Slack: the VIC run counts) the award wording is: entered for
-the Metal Award and the Visa Award; to fit it, awx-1's line became "7 of 7 checks; 2 Airwallex card declines; the CFO's
-hash in 2 SWIFT payouts." (no fact dropped).
-After the jury review of 9 November: a paragraph "After the kit (not live)" (the payables inbox, stand-ins only, not
-deployed; its page is [after-the-kit.md](../after-the-kit.md), linked from the README); the buyer back in the
-business line; option A says what it was (the test passkey as second approver is in Metal's sentence and "What's
-real"). To fit them: the demo line went (the first bullet links /try/sign) and awx-1's line went (it stays in the
-README, on /airwallex and in the long text). The text stays under 4,000 characters even with CRLF line breaks.
-On 10 November that paragraph became one line: the two-locks run (Airwallex's approval workflow held a
-passkey-signed payout `IN_APPROVAL`; nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md))
-and the inbox's status (its sandbox run is in [after-the-kit.md](../after-the-kit.md); the console is not public).
-On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated, so the
-line now says so in the same number of characters ([record](../runs/2026-11-12-airwallex-two-locks-paid.md)).
-The same day the owner decided that no quotes appear anywhere, so the CFO's quote left the business paragraph (the
-text went from 3,971 to 3,826 characters).
-On 12 November the owner decided to merge the product's code into `main` now ([decisions.md](../decisions.md), D29), so
-the line's last sentence, "Payables inbox: not public.", became "Payables: in repo, not live.": the code is in this
-repository, the hosted preview stays private, and nothing is said to be live.
-Later on 12 November (jury check) the claims were made to agree: Purser Cloud runs publicly as a test preview at
-purser-try (test companies, test money on a simulated bank), so the sentence became "Purser Cloud: a public test preview
-(test companies, simulated bank)." ([cloud.md](../cloud.md)).
-On 14 November (jury, round 3) the Visa line covers all four Visa runs from their records (7 to 14 November, 6 paid)
-and the reused credential Purser refused (vic-5) that the sandbox had accepted (vic-3), in place of the 7 November run
-alone ([visa-1114.md](../plans/visa-1114.md)).
-Later on 14 November Metal renamed itself Alta (its team, in the hackathon's Slack): the text says Alta, with
-"Alta (formerly Metal)" at the first mention; the award keeps the hackathon's name, the Metal Award.
-Entered for (Max's decision, 14 November): the Founder's Choice Award, the Judges' Choice Award, the Metal Award and
-the Visa Award. The Description keeps its Kit 11 sentence as it is (3,972 characters).
+Characters: **3,972** (the text between the markers, as pasted; 3,998 if the form counts each line break as two).
+The form's own limit is not known; `test/submission.test.ts` checks this count and keeps the text under 4,000, even
+with CRLF line breaks. Alta (formerly Metal) at the first mention; the award keeps the hackathon's name, the Metal
+Award. The long text, with Airwallex, Alta, Claude, the controls and the other live tests in full:
+[long-description.md](long-description.md).
+
+<details><summary>How the Description changed, dated</summary>
+
+- 9 November (jury review): a line "After the kit (not live)" for the payables inbox, stand-ins only; the buyer back in
+  the business line. To fit it, the demo line and awx-1's line went (both stay in the README, on /airwallex and in the
+  long text).
+- 10 November: that line became the two-locks run (Airwallex's approval workflow held a passkey-signed payout
+  `IN_APPROVAL`; nobody approved it there, so it is unpaid; [record](../runs/2026-11-10-airwallex-two-locks.md)).
+- On 12 November the owner approved that transfer in Airwallex's web app and it went PAID, settlement simulated, so the
+  line now says so in the same number of characters ([record](../runs/2026-11-12-airwallex-two-locks-paid.md)). The
+  same day: no quotes anywhere (3,971 to 3,826 characters); "Payables: in repo, not live." once the product's code was
+  merged into `main` ([decisions.md](../decisions.md), D29); Purser Cloud as a public test preview ([cloud.md](../cloud.md)).
+- 14 November: the Visa line covers all four Visa runs from their records (7 to 14 November, 6 paid) and the reused
+  credential Purser refused; Metal renamed itself Alta, so the text says "Alta (formerly Metal)" at the first mention.
+
+</details>
 
 <!-- description -->
 **The problem.** AI agents are starting to spend company money.

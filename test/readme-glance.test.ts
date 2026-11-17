@@ -47,13 +47,14 @@ describe("the README's At a glance", () => {
     expect(lines[5]).toContain(`the live report: ${v.summary} (`);
   });
 
-  it("backs each status badge in the second row with its record", () => {
-    const row = README.split("\n").find((l) => l.startsWith("[![Airwallex: LIVE")) ?? "";
+  // 17 Nov (owner): the partners' status badges became cells of the proof strip (scripts/readme-proof-strip.ts); its alt
+  // text says what the picture shows.
+  it("backs each status cell of the proof strip with its record", () => {
+    const row = README.split("\n").find((l) => l.includes("docs/assets/readme/proof-strip-light.svg")) ?? "";
     const live = Object.fromEntries(partnerTiles().map((t) => [t.name, t.runs]));
-    // LIVE for a partner: at least one live run of that partner in the run records (the tiles on /proof count them).
+    // Sandbox or Testnet for a partner (LIVE until 17 Nov): at least one live run of that partner in the run records (the tiles on /proof count them).
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
-    expect(row).toContain(`Claude-LIVE_%C2%B7_${split(agentRun().record).byClaude}_decisions`);
-    const w = JSON.parse(read("docs/evals/worst-case-summary.json")) as { purser_script: Record<string, { wrong_payments: number }> };
-    expect(row).toContain(`worst--case_AI_%28offline_eval%29-${Math.max(...Object.values(w.purser_script).map((r) => r.wrong_payments))}_wrong_payments`);
+    for (const s of ["Airwallex sandbox", "Alta (formerly Metal) testnet", "Visa via Airi sandbox", "T:0 sandbox ledger"]) expect(row).toContain(s);
+    expect(row).toContain(`Claude ${split(agentRun().record).byClaude} decisions, live`);
   });
 });

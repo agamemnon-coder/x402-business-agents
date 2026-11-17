@@ -117,6 +117,7 @@ export const PRESENT_GUIDE = {
   work: { k: "Step 1 of 4", t: "The AI agent read the invoice and checked it.", d: "It is above the agent's limit, so the agent can't pay it alone. It asks the CFO." },
   approve: { k: "Step 2 of 4", t: "You are the CFO. Approve this exact payment.", d: "Your Face ID locks the amount, the supplier and the bank account. Nothing moves before." },
   workAlone: { k: "Inside the limit", t: "The agent may pay this one on its own.", d: "It is within the agent's EUR 500.00 limit and every check passed. No Face ID needed: your rules already allow it." },
+  workCash: { k: "Inside the limit", t: "Cash says wait: the agent does not pay this one now.", d: "Paying it would take available EUR below the cash floor. Purser's code checked the figures, not the AI." },
   booksAlone: { k: "Paid by the agent", t: "The agent paid it on its own.", d: "Within your limit, booked, and logged as approved by your policy, not by a person. Now try an invoice above the limit." },
   books: { k: "Step 3 of 4", t: "Approved, so the money went out.", d: "Paid with test money, booked in the accounts and filed. Next: try to cheat." },
   pay: { k: "Step 4 of 4", t: "Now play the fraudster: change one cent.", d: "Try to pay a slightly different amount with the CFO's earlier approval." },
@@ -794,7 +795,7 @@ function stageOf(){const m=document.getElementById('main');if(!m)return -1;const
   if(has('start'))return -1;if(has('invoice')||has('work'))return 0;if(has('approve'))return 1;if(has('books'))return 2;if(has('pay'))return m.querySelector('.refusal')?4:3;if(has('company')||has('did'))return 4;return -1}
 const cap=mk('div','pv-cap',[mk('span','k',''),mk('b','',''),mk('span','d','')]);cap.setAttribute('role','status');
 function guideKey(){const m=document.getElementById('main');if(!m)return '';const has=(c)=>!!m.querySelector('.screen.'+c);
-  if(has('invoice'))return 'invoice';if(has('work')){if(m.querySelector('.screen.work .skel'))return 'reading';const pb=m.querySelector('.screen.work .payrow .btn');if(!pb)return '';const pt=(pb.textContent||'').trim();return pt===PC.payAlone||pt===PC.payingAlone?'workAlone':INJ.flag?'workInj':'work'}if(has('approve'))return 'approve';if(has('books'))return aloneRun()?'booksAlone':'books';
+  if(has('invoice'))return 'invoice';if(has('work')){if(m.querySelector('.screen.work .skel'))return 'reading';if(m.querySelector('.screen.work .why.cashctx'))return 'workCash';const pb=m.querySelector('.screen.work .payrow .btn');if(!pb)return '';const pt=(pb.textContent||'').trim();return pt===PC.payAlone||pt===PC.payingAlone?'workAlone':INJ.flag?'workInj':'work'}if(has('approve'))return 'approve';if(has('books'))return aloneRun()?'booksAlone':'books';
   if(has('pay'))return m.querySelector('.card.refusal')?'refused':'pay';if(has('company')||has('did'))return 'done';return ''}
 
 // "Under the hood": the step's real flow in a few lines, this run's own values filled in as they appear.
@@ -824,6 +825,11 @@ function hoodLines(g,m){const C=[...CALLS.values()];const rd=C.find((c)=>c.who==
     c('checks = [notPaidBefore ✓, ibanOnFile ✓, knownSupplier ✓]','code checks it, not the AI','ok');
     if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
     c('approveWithinLimit(terms) → method: "policy"','your policy approves it; no person, no Face ID','ok');c('payer.pay(terms)','the agent pays it now, on its own')}
+  else if(g==='workCash'){const o=inv();const a=amt(o.amount);const v=[...m.querySelectorAll('.screen.work .why.cashctx .cmp dd')].map((d)=>(d.textContent||'').replace(/^[A-Z]{3}\s*/,'').trim());
+    if(a)c('amount <= agent_limit  →  '+a.n+' <= '+PC.limit+'  →  true','inside the limit','ok');
+    if(v.length>=6)c('available - payment >= floor  →  '+v[2]+' - '+v[4]+' >= '+v[3]+'  →  false','available after: '+v[5]+', below the floor','bad');
+    c('enforceProposal(case, proposal: "pay now")  →  hold','code decides: a prompt is not a financial control','bad');
+    c('airwallex.transfer(…)  →  not called','no transfer, nothing booked as paid','ok')}
   else if(g==='booksAlone'){let st={};try{st=JSON.parse(sessionStorage.getItem('purser.try')||'{}')||{}}catch(e){}const se=st.settled&&typeof st.settled==='object'?st.settled:{};
     const wl=EVT.find((e)=>e.event==='proposal.within_limit');
     c('audit: proposal.within_limit { method: "policy", limit: "'+(wl&&typeof wl.f.limit==='string'?wl.f.limit:'EUR '+PC.limit)+'" }','approved by your rules, not a person','ok');
@@ -873,9 +879,9 @@ function railDraw(){const g=cap.dataset.k||'';const calls=[...CALLS.entries()].s
   rClaude.replaceChildren(mk('h3','',[mk('span','sp','✦'),'Claude · live cost & calls']),mk('div','tot',calls.length?usd(tot):'$0.0000'),mk('div','sub',calls.length?calls.length+' calls this run':'No Claude call yet'),...(calls.length?[det]:[]),...(extra>=0?[mk('p','x'+(extra===0?' ok':''),extra===0?'0 extra calls · blocked locally by SHA-256':extra+' extra calls since the change')]:[]));
   // 2. Agents and the mandate: who acts now, and whether the agent may pay alone.
   const al=g==='workAlone'||g==='booksAlone';const S3=[['Reader agent','Claude reads the PDF'],['Checker agent','checks, limits, signature'],['Payer agent','pays; the Coder agent books']];
-  const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='approve')return i===0?'done':i===1?'wait':'';
+  const state=(i)=>{if(g==='reading')return i===0?'cur':'';if(g==='work'||g==='workInj')return i===0?'done':i===1?'cur':'';if(g==='workAlone')return i<2?'done':'cur';if(g==='workCash')return i<2?'done':'';if(g==='approve')return i===0?'done':i===1?'wait':'';
     if(g==='books'||g==='booksAlone'||g==='done')return 'done';if(g==='pay')return i===1?'cur':'done';if(g==='refused')return i===1?'bad':'done';return ''};
-  const mode=al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO Face ID required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO Face ID');
+  const mode=g==='workCash'?mk('span','mode warn','Inside EUR '+PC.limit+' · held by the cash floor'):al?mk('span','mode ok','Auto-pay ≤ EUR '+PC.limit):g&&g!=='invoice'&&g!=='reading'?mk('span','mode warn','Above EUR '+PC.limit+' · CFO Face ID required'):mk('span','mode','Auto-pay ≤ EUR '+PC.limit+' · above it, CFO Face ID');
   rAgents.replaceChildren(mk('h3','','Agents & mandate'),mode,mk('ol','',S3.map(([n,d],i)=>mk('li',state(i),[mk('b','',n),mk('span','',state(i)==='wait'?'waiting for the CFO’s Face ID':state(i)==='bad'?'blocked: the fingerprint does not match':d)]))));
   // 3. Partner rails: lit when this run used them; the recorded runs said as such.
   const fx=EVT.some((e)=>e.event==='fx.rate_checked'||e.event==='airwallex.quote');
@@ -926,6 +932,7 @@ function v2(){
   const hp=m.querySelector('.screen.approve .hashpill');if(hp&&!hp.dataset.v2){hp.dataset.v2='1';hp.title=hp.textContent;hp.textContent='Your Face ID seals these exact terms'}
   const ps=m.querySelector('.screen.books .paidstamp');if(ps&&!ps.querySelector('.pv-tag'))ps.append(mk('span','pv-tag ok',aloneRun()?'Paid by the agent · test money':'Signed & paid · test money'));
   for(const h of m.querySelectorAll('.screen.books .paidstamp .hashpill'))if(!h.dataset.v2){h.dataset.v2='1';h.title=h.textContent;h.textContent=aloneRun()?'Approved by your policy · within EUR '+PC.limit:'Sealed by your Face ID · any change breaks the seal'}
+  {const cc=m.querySelector('.screen.work .why.cashctx');if(cc&&!cc.querySelector('.pv-tag'))cc.prepend(mk('span','pv-tag amber','Inside the agent\'s limit · held by Purser\'s code'))}
   const pr=m.querySelector('.screen.work .payrow');if(pr){const card=pr.closest('.card')||pr.parentElement;if(card&&!card.querySelector('.pv-tag'))card.prepend(cap.dataset.k==='workAlone'?mk('span','pv-tag ok','Inside the agent\'s limit · no Face ID needed'):mk('span','pv-tag amber','Above the agent\'s limit · CFO approval required'))}
   if(!m.querySelector('.card.refusal'))for(const b of m.querySelectorAll('.screen.pay button.btn'))if(b.textContent.trim()===PC.payButton&&!b.classList.contains('primary'))b.classList.add('primary','big');
   if(!document.body.classList.contains('present')){const bk=m.querySelector('.screen.books .blk.booked');if(bk&&!bk.querySelector(':scope > details.v2fold')){const kids=[...bk.children].filter((c)=>!c.classList.contains('bh')&&!c.classList.contains('bal'));if(kids.length){const d=mk('details','v2fold',mk('summary','',PC.ledgerFold));d.append(...kids);bk.append(d)}}}

@@ -27,6 +27,7 @@ import { countOf, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
 import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, VIC4_FILE, VIC4_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
+import { centHolds, centLine, centRecord } from "./cardCent.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
 export const RUNS_URL = "runs";
@@ -418,6 +419,35 @@ function extraRuns(): RunRow[] {
     });
   }
 
+  // 17 Nov: a payout that does not stay paid (npm run late-failure). The failure is the sandbox's simulation, and a GET of
+  // each transfer stood in for the webhook; the books taking a payment back did not run (nothing was booked as paid).
+  type Lf = {
+    audit: { ts: string; event: string; payload: { from?: string } }[]; transfers: { transfer_id: string; invoice_no: string; amount: string; currency: string; failure_type: string | null }[];
+    ap_invoices: { status: string }[]; sink_csv: string[]; budget: { approved: number }; calls: { total: number; by_endpoint: { endpoint: string; calls: number }[] };
+  };
+  const LF_FILE = "docs/runs/2026-11-17-airwallex-late-failure.json";
+  const lf = has(LF_FILE) ? readJson<Lf>(LF_FILE) : null;
+  if (lf?.transfers.length) {
+    const t = lf.transfers, first = lf.audit[0]!.ts, last = lf.audit[lf.audit.length - 1]!.ts;
+    const created = lf.calls.by_endpoint.find((e) => e.endpoint === "POST /transfers/create")?.calls ?? 0;
+    const from = [...new Set(lf.audit.filter((a) => a.event === "late_failure.fail_accepted").map((a) => a.payload.from))].join(" or ");
+    const review = lf.ap_invoices.filter((a) => a.status === "needs_review").length;
+    const journal = lf.sink_csv.slice(1).map((l) => l.split(","));
+    const accrued = new Set(journal.filter((c) => c[2] === "accrual").map((c) => c[1])).size, booked = journal.filter((c) => c[2] !== "accrual").length;
+    const amount = `${t[0]!.currency} ${t[0]!.amount}`, both = t.length === 2 ? "both" : `all ${t.length}`;
+    out.push({
+      key: "late-failure-1", iso: last, date: day(first), kind: "sandbox", partners: ["Airwallex"],
+      name: "A payout that does not stay paid",
+      line: `${t.length === 2 ? "Two" : t.length} payouts of ${amount} went PAID, then FAILED by the sandbox's simulation. ${both[0]!.toUpperCase()}${both.slice(1)} invoices to a person, none sent again; a test passkey signed.`,
+      title: "Payout returned after PAID", rails: "Airwallex sandbox (SWIFT transfers), test passkey",
+      what: `Two Stockline Data GmbH invoices (${t.map((x) => x.invoice_no.split(" · ")[0]).join(", ")}; ${amount} each) came in through the payables inbox, read by the parser (no model), each signed by a labelled virtual test passkey (not a person's Face ID). Purser's sandbox executor took each transfer to PAID through the simulation endpoint, which then moved ${both} to FAILED from ${from} (${[...new Set(t.map((x) => x.failure_type))].join(", ")}); Airwallex cancelled them. A GET of each transfer stood in for the webhook: Purser asked Airwallex again, recorded the return and sent the invoices to a person.`,
+      checks: `${created} transfers created, none sent again; ${review} invoices needs_review. Not run live: the books taking a payment back${booked ? "" : `, as none was booked before it failed (the journal holds the ${accrued} accruals only)`}; tested only. ${lf.calls.total} Airwallex calls, within the budget of ${lf.budget.approved}.`,
+      money: "Sandbox · test money",
+      ids: t.map((x) => ({ label: `Transfer (${x.invoice_no.split(" · ")[0]})`, value: x.transfer_id })),
+      files: [{ label: "record (JSON)", href: blob(LF_FILE) }],
+    });
+  }
+
   type Mb = { reconciliation: { read_at: string; documents: number; differences: number } };
   const mb = has("docs/runs/2026-11-12-moneybird-sandbox.json") ? readJson<Mb>("docs/runs/2026-11-12-moneybird-sandbox.json") : null;
   if (mb) out.push({
@@ -430,6 +460,25 @@ function extraRuns(): RunRow[] {
     // No id in sight: the administration's number is 18 digits, which the privacy scans read as a card number; it is in the record.
     ids: [], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-moneybird-sandbox.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-moneybird-sandbox.md") }],
   });
+
+  // One cent over the limit, at Airwallex itself (15 Nov; jury, 17 Nov: /airwallex and /proof showed it while /runs ended
+  // on 14 Nov). Counted only when its record shows L approved and L + 0.01 declined (src/redesign/cardCent.ts).
+  const cent = centRecord();
+  if (cent && centLine(cent.rec) && centHolds(cent.rec)) {
+    const c = cent.rec, [a, b] = c.attempts as [typeof c.attempts[0], typeof c.attempts[0]];
+    const eur = (n: number) => `EUR ${(n / 100).toFixed(2)}`;
+    const signer = c.signed_by && /test passkey/i.test(c.signed_by.name) ? "a software test passkey" : "a passkey";
+    out.push({
+      key: "card-cent-1", iso: c.ran_at, date: day(c.ran_at), kind: "sandbox", partners: ["Airwallex"],
+      name: "One cent over an agent card's limit: Airwallex declines it",
+      line: `${eur(a.amount_cents)} approved, ${eur(b.amount_cents)} declined by Airwallex (${b.failure_reason ?? "declined"}). Simulated card charges; ${signer} signed.`,
+      title: "One cent over: declined", rails: `Airwallex sandbox (Issuing, simulated card transactions), ${signer}`,
+      what: `On the ${c.agent} agent's live card, limit ${eur(c.card.per_tx_cents)} a purchase, two test purchases at the Airwallex sandbox: exactly the limit, then one cent more, after ${signer} signed the action in Purser Cloud.`,
+      checks: `Airwallex's own answers, read back: ${a.status} then ${b.status}${b.failure_reason ? ` (${b.failure_reason})` : ""}.`, money: "Sandbox · test money",
+      ids: c.attempts.flatMap((x) => (x.id ? [{ label: x.approved ? "Approved" : "Declined", value: x.id }] : [])),
+      files: [{ label: "record (JSON)", href: blob(cent.file) }],
+    });
+  }
 
   if (has("docs/runs/2026-11-12-real-customers.md")) out.push({
     key: "real-customers-1", iso: "2026-11-12T14:18:42.959Z", date: day("2026-11-12T14:18:42.959Z"), kind: "sandbox", partners: ["Airwallex"],
@@ -841,13 +890,24 @@ export function runsReadme(all: RunRow[] = liveRuns()): string {
   const money = (r: RunRow) => r.money.split(" · ").filter((w) => !KIND_LABEL[kindOf(r)].toLowerCase().includes(w.toLowerCase()));
   // The plain name, the name the docs use where they use one, then the kind, the mark, the rate and the money words.
   const run = (r: RunRow) => `**${cell(nameOf(r))}**${DOC_NAMES.has(r.key) ? ` (in the docs: \`${r.key}\`)` : ""}<br>${[KIND_LABEL[kindOf(r)], ...(r.product ? [PRODUCT_MARK] : []), ...(r.rate ? [rateWords(r.rate)] : []), ...money(r)].map(cell).join(" · ")}`;
-  return `# Live runs
+  // 17 Nov (owner): the header every judge-facing README shares: the mark, the title, one sentence, then At a glance.
+  return `<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
 
-Every live run, newest first, generated from the records by \`src/redesign/runs.ts\` (\`npx tsx src/cli/runs-readme.ts\`).
-The same list is on the site at [/runs](https://kit11.max-31b.workers.dev/runs). Test money only; what is simulated is
-said per run. The other files in this folder are build notes, dry runs and rehearsals.
+# Live runs
 
-**Last live run:** ${lastLive(live).date}.
+Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.
+
+| At a glance | Record |
+|---|---|
+| **${live.length} live runs**; what is simulated is said per run | the table below, generated from the records by \`src/redesign/runs.ts\` (\`npx tsx src/cli/runs-readme.ts\`) |
+| **Last live run:** ${lastLive(live).date}. | [/runs](https://kit11.max-31b.workers.dev/runs) on the site: the same list |
+| **${partial.length} partial runs, ${rehearsals.length} rehearsals and dry runs**, not counted as live | [Partial runs](#partial-runs) · [Rehearsals and dry runs](#rehearsals-and-dry-runs) |
+
+<img src="../assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, counted from the table below (scripts/repo-charts.ts)" width="720">
+
+The other files in this folder are build notes, dry runs and rehearsals.
+
+## Every live run
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|

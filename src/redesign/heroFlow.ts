@@ -53,7 +53,7 @@ export const READER_CHIP = rec.mode.reader === "claude" ? "Claude reader" : "Rea
 export function heroFlowHtml(): string {
   const f = FLOW;
   const field = (k: string, v: string, i: number) => `<div class="hf-row hf-t${i}"><dt>${esc(k)}</dt><dd>${esc(v)}<span class="hf-tick">${icon("check", 14)}</span></dd></div>`;
-  return `<figure class="hf" data-rec="${TRY_SAMPLE_RECORD}" aria-label="${esc(`One payment in Purser: an invoice from ${f.supplier}, ${f.amount}, comes in; the reader reads it; the check says ready to pay; the CFO signs the exact terms with Face ID; it is paid and booked. Values from a /try run.`)}">
+  return `<figure class="hf" data-rec="${TRY_SAMPLE_RECORD}" aria-label="${esc(`One payment in Purser: an invoice from ${f.supplier}, ${f.amount}, comes in; the reader reads it; the check says ready to pay; the CFO signs the exact terms with a passkey (a test passkey in this run); it is paid and booked. Values from a /try run.`)}">
   <ol class="hf-steps" aria-hidden="true">${FLOW_STEPS.map((s, i) => `<li class="hf-s${i}">${esc(s)}</li>`).join("")}</ol>
   <div class="hf-card" aria-hidden="true">
     <div class="hf-inv">

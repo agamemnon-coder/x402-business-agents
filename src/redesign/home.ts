@@ -11,7 +11,7 @@ import { AWX_HOME_BADGE_CSS, awxHomeBadgeHtml } from "./awxLive.js";
 import { VISA_REUSE_ID } from "./visaStory.js";
 import { AWX_HOME_LINE, FILM_URL, IDEA, designPartnerHtml, DESIGN_PARTNER_URL, BUSINESS_CASE_LINK, BUSINESS_DOCS, CAVEAT_LINE, CHAIN_TEST, CORE_SENTENCE, HERO, SMALL_COMPANY_DEMO_URL, WHY_COMPANY, WHY_COMPANY_NOTE_LAST } from "../config/brand.js";
 import type { Awx1Record } from "../awx/scenario.js";
-import { agentRun, split, type AgentRun } from "./run.js";
+import { agentRun, payments, split, type AgentRun } from "./run.js";
 import { AWX_RUN_FILE, AWX_RUN_STEPS_ID, awxRun } from "./awxRun.js";
 import { metalStory, REPO_BLOB } from "./metalStory.js";
 import { heroDemoFacts } from "./heroDemo.js";
@@ -42,6 +42,9 @@ main.ent section.e-hero { padding: 72px 0 88px; border-top: 0; }
 .btn.ghost { background: transparent; }
 .btn.ghost:hover { border-color: var(--text); }
 .reassure { margin: 16px 0 0; font-size: 15px; color: var(--muted); }
+/* The x402 line (jury, 17 Nov), a 44 px target like every link on Home. */
+.x402l { margin: 8px 0 0; font-size: 15px; line-height: 1.4; max-width: 36em; }
+.x402l a { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
 /* Live measurement, 15 Nov: the two links wrap flush left on a phone (a margin indented the trailer on its own line). */
 .walk { margin: 4px 0 0; font-size: 15px; display: flex; flex-wrap: wrap; column-gap: 14px; }
 .walk a.film { color: var(--accent); font-weight: 650; text-decoration: none; display: inline-flex; gap: 6px; align-items: center; min-height: 44px; }
@@ -103,6 +106,8 @@ main.ent ul.stats { margin-top: 48px; grid-template-columns: repeat(auto-fit, mi
 main.ent ul.stats li { padding: 20px; border-radius: 16px; }
 main.ent ul.stats b { font-size: 32px; }
 .statnote { margin: 16px 0 0; font-size: 14px; color: var(--faint); }
+/* Jury, 17 Nov (390 px): the note under the five steps sat flush against step 5; 32 px clears its 44 px link target. */
+.statnote.flownote { margin-top: 32px; }
 .statnote.visal a { display: inline-flex; align-items: center; min-height: 44px; } /* a tap target of 44 px (Visa line, 14 Nov) */
 .kit11 { margin: 20px 0 0; max-width: 46em; font-size: 15.5px; line-height: 1.5; color: var(--muted); }
 .kit11 b { color: var(--text); font-weight: 650; }
@@ -219,11 +224,14 @@ export const LOCKS_HEAD = "Each lock, on record";
 export const FLOW_HEAD = "Claude agents decide. Code and the rails enforce.";
 export const FEATURES_HEAD = "Agents do the work. The CFO keeps the say.";
 /** What Claude adds, from the worst-case run (docs/worst-case-ai.md, "What code alone sends to the CFO"). */
-export const CLAUDE_ADDS = "With a script always saying pay, code sent seven invoices to the CFO; with Claude reading, Purser held them.";
+// Jury, 17 Nov: one plain before/after, from the same record (docs/evals/scorecard-2026-11-15.json: the seven cases the
+// script arm sent to the CFO, each held by the Purser arm with Claude reading, in both runs).
+export const CLAUDE_ADDS = "Offline eval: code alone sent seven invoices to the CFO that had to be held; with Claude, Purser held all seven.";
 /** Four features, one line each; each says only what the runs and the code show (see /proof). */
 export const FEATURES = [
   // Jury panel, 15 Nov: the hero already says a changed cent breaks the signature; this card keeps the terms.
-  { icon: "scan-face", title: "Face ID on the exact terms", text: "Above a limit, the CFO signs the exact terms." },
+  // Jury, 17 Nov: "passkey", not "Face ID": several runs were signed with test passkeys, and the check proves a passkey.
+  { icon: "scan-face", title: "Passkey on the exact terms", text: "Above a limit, the CFO signs the exact terms." },
   // Jury panel, 15 Nov ("what does Claude add?"): docs/worst-case-ai.md, its figure word for word (test/home-about.test.ts).
   { icon: "shield-check", title: "What Claude adds", text: CLAUDE_ADDS },
   { icon: "ban", title: "Rails that refuse too", text: "Airwallex, Alta and Visa via Airi apply their own controls." },
@@ -266,8 +274,21 @@ export function kit11Html(run: AgentRun = agentRun()): string {
   const st = metalStory(run.record), sp = split(run.record), r = st.refusal;
   const company = (run.record as { company?: unknown }).company;
   if (!st.payments.total || !sp.decisions) return "";
-  const who = `${run.record.run}${typeof company === "string" ? `, ${company}` : ""}`;
-  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support and Treasury): ${st.payments.total} Alta testnet payments, ${countOf(sp.byClaude, sp.decisions, true)} decisions by Claude${r ? `, purchase #${r.seq} refused on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
+  // "The core run" says which run; its day stays (jury, 17 Nov: the words "the main run" went for the caveat below).
+  const who = `${run.record.run.replace(/^the main run, /, "")}${typeof company === "string" ? `, ${company}` : ""}`;
+  // Jury, 17 Nov: #24 with the caveat /alta and /proof give (CHAIN_TEST): our own check was off for that one test.
+  return `<p class="kit11" data-rec="${esc(run.file)}"><b>${esc("The core run")}</b> ${esc(`(${who}; agents Sourcing, Support, Treasury): ${st.payments.total} Alta testnet payments, ${countOf(sp.byClaude, sp.decisions, true)} decisions by Claude${r ? `; with our own check off for a test, Alta refused purchase #${r.seq} on chain` : ""}.`)} <a class="film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${esc(FILM_HOME)}&nbsp;↗</a></p>`;
+}
+/**
+ * Kit 11's fit, under the hero (jury, 17 Nov: x402 sat only in the footer, agents getting paid only on /alta): one line
+ * to /alta, shown only when the main run's record has the agents both paying (supplier purchases) and paid (sales) per
+ * request on Alta, earnings swept to Airwallex, and an Airwallex payout. Home names no kit (A10).
+ */
+export const X402_LINE = "Agents with mandates on Alta pay and get paid over x402; Airwallex moves the fiat.";
+export function x402LineHtml(run: AgentRun = agentRun()): string {
+  const p = payments(run.record);
+  if (!p.sales || !p.purchases || !p.sweeps || !p.transfers) return "";
+  return `<p class="x402l" data-rec="${esc(run.file)}"><a href="alta">${esc(X402_LINE)}${icon("arrow-right", 16)}</a></p>`;
 }
 /** Home's second and last button. */
 export const PROOF_BUTTON = "See the proof";
@@ -288,7 +309,7 @@ export const AGENT_FLOW: readonly FlowStep[] = [
   { verb: "Read", who: "Claude reader agent" },
   { verb: "Check", who: "Checker agent (Claude) decides, code enforces the limits", evals: AP_EVALS },
   { verb: "Code", who: "Coder agent (Claude) books account and VAT" },
-  { verb: "Sign", who: "You, with Face ID" },
+  { verb: "Sign", who: "You, with a passkey" },
   { verb: "Pay", who: "Payer agent (Claude) proposes, the rail and code enforce", evals: AP_EVALS },
 ];
 export const WORKS_WITH = "Works with";
@@ -300,7 +321,7 @@ function aboutHtml(): string {
   return `<p class="eyebrow">${esc(ABOUT_HEAD)}</p>
   <h2 class="e-h reveal" id="about">${esc(FLOW_HEAD)}</h2>
   <ol class="flow reveal">${AGENT_FLOW.map((f) => `<li${f.verb === "Sign" ? ' class="you"' : ""}><b>${esc(f.verb)}</b><span>${esc(f.who)}${f.evals ? ` (<a href="${esc(f.evals)}" target="_blank" rel="noopener">see evals</a>)` : ""}</span></li>`).join("")}</ol>
-  <p class="statnote">${esc(AGENT_SETS_NOTE)}</p>
+  <p class="statnote flownote">${esc(AGENT_SETS_NOTE)}</p>
 `;
 }
 
@@ -368,7 +389,7 @@ export function faceIdTile(owners: OwnersRun | null = ownersRun()): Stat[] {
  */
 export function visaLineHtml(rows: ProofRow[]): string {
   const v = rows.find((r) => r.partner === "Visa");
-  return v ? `<p class="statnote visal"><a href="${esc(v.href)}">${esc("Visa via Airwallex Airi: a reused credential refused; Purser binds each to one purchase.")}</a></p>` : "";
+  return v ? `<p class="statnote visal"><a href="${esc(v.href)}">${esc("Visa via Airwallex Airi: Purser binds each credential to one purchase; reuse refused.")}</a></p>` : "";
 }
 
 export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: OwnersRun | null = ownersRun()): Stat[] {
@@ -379,7 +400,7 @@ export function homeStats(_run: AgentRun, _rows: ProofRow[] = [], owners: Owners
 }
 
 /** The product for small companies, as docs/after-the-kit.md says it: its code in this repository, not live. */
-export const NEXT_NEXT = "Next, not live yet: an invoice inbox for small companies, with the same Face ID control.";
+export const NEXT_NEXT = "Next, not live yet: an invoice inbox for small companies, with the same passkey control.";
 export const AFTER_KIT_URL = `${REPO_BLOB}docs/after-the-kit.md`;
 /** One line and one link, only when the demo has a public https address (SMALL_COMPANY_DEMO_URL). */
 export function nextHtml(url: string = SMALL_COMPANY_DEMO_URL): string {
@@ -413,6 +434,7 @@ export function homePage(run: AgentRun = agentRun(), opts: { trySign?: boolean; 
     ${proofLineHtml()}
     <div class="ctas"><a class="btn primary big start" href="${tryHref}">${esc(START)}${icon("arrow-right", 18)}</a><a class="btn big ghost film" href="${esc(FILM_URL)}" target="_blank" rel="noopener">${icon("play", 18)}${esc(FILM_BUTTON)}</a>${verifyUrl ? `<a class="btn big ghost" href="${esc(verifyUrl)}">${esc(VERIFY_BUTTON)}</a>` : ""}</div>
     <p class="reassure">${esc(opts.trySign ? REASSURE.sign : REASSURE.world)}</p>
+    ${x402LineHtml(run)}
     <div class="trust"><span>${esc(WORKS_WITH)}</span>${partners.map(([src, alt, w, h, cls]) => src ? `<span class="tile"><img src="assets/${src}" alt="${esc(alt)}" width="${w}" height="${h}"${cls ? ` class="${cls}"` : ""}></span>` : `<span class="tile tname ${cls}">${esc(alt)}</span>`).join("")}<small>${esc(NO_ENDORSEMENT)}</small></div>
   </div>
   <div class="show">${heroFlowHtml()}

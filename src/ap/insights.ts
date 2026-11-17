@@ -8,6 +8,7 @@ import { skeleton } from "../policy/fraudCore.js";
 import { bookable } from "./books.js";
 import { asAmounts, creditUnverified, net } from "./credits.js";
 import { ledgerInvoiceNo } from "./ledgerKey.js";
+import { feeKeptSql } from "../payouts/feeKept.js";
 import { apInvoices, type ApInvoiceRow } from "./store.js";
 
 export interface Amounts { currency: string; total: string; count: number }
@@ -97,9 +98,12 @@ export function insights(db: DB, asOf = new Date()): Insights {
   const hours = paid.map((i) => (Date.parse(i.paid_at!) - Date.parse(i.received_at)) / 3_600_000);
 
   // What Airwallex charged for the payables it paid: the SWIFT fee on each transfer, and the FX bought for the shortfall.
+  // A payout that came back after PAID keeps its fee too (Airwallex does not refund it; the books keep it: feeKeptSql),
+  // though its invoice is no longer paid: it is counted for any payables invoice, a PAID one's for a paid invoice.
   const paidNos = new Set(paid.map((i) => ledgerInvoiceNo(i.invoice_no, i.vendor)));
-  const fees = (db.prepare("SELECT invoice_no, fee_actual FROM transfers WHERE status = 'PAID' AND fee_actual IS NOT NULL").all() as { invoice_no: string; fee_actual: string }[])
-    .filter((t) => paidNos.has(t.invoice_no) && /^[A-Z]{3} \d+\.\d{2}$/.test(t.fee_actual))
+  const apNos = new Set(all.map((i) => ledgerInvoiceNo(i.invoice_no, i.vendor)));
+  const fees = (db.prepare(`SELECT invoice_no, fee_actual, status FROM transfers WHERE ${feeKeptSql()} AND fee_actual IS NOT NULL`).all() as { invoice_no: string; fee_actual: string; status: string }[])
+    .filter((t) => (t.status === "PAID" ? paidNos : apNos).has(t.invoice_no) && /^[A-Z]{3} \d+\.\d{2}$/.test(t.fee_actual))
     .map((t) => ({ currency: t.fee_actual.slice(0, 3), total: t.fee_actual.slice(4) }));
   let conversions = 0;
   let bought = 0;

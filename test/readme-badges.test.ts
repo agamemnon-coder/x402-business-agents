@@ -1,40 +1,27 @@
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-// The badge row under the README's first lines: at most five badges, no logos of others, and the tests badge says the
-// same count as the README's own test line (which in turn is the real `npx vitest run` count).
+// The badge row under the README's first lines: the two live GitHub badges, then the proof strip.
 const readme = readFileSync(new URL("../README.md", import.meta.url), "utf8");
 const badgeLine = readme.split("\n").find((l) => l.includes("actions/workflows/ci.yml/badge.svg")) ?? "";
 
 describe("README badges", () => {
-  // One row since 13 Nov (owner, after the live README); every badge real or read from the repository (13 with T:0 and
-  // the MCP Registry listing).
-  it("has at most thirteen badges, on one line", () => {
-    const badges = badgeLine.match(/!\[[^\]]*\]\(/g) ?? [];
-    expect(badges.length).toBeGreaterThan(1);
-    expect(badges.length).toBeLessThanOrEqual(5);
-  });
-
-  it("uses no logos", () => {
-    expect(badgeLine).not.toMatch(/[?&]logo=/);
-  });
-
-  // Since 13 Nov (owner, after the live README): CI and CodeQL (GitHub's own), the tests from docs/assets/test-summary.json
-  // on main (a dynamic badge, so it cannot drift), MIT, the Node version package.json requires, TypeScript strict as
-  // tsconfig.json sets it, the MCP server, and one static shield per partner in the site's own colours, no logos.
-  it("is CI, CodeQL, the tests read from test-summary.json, MIT and the MCP server; then a row of the five partners", () => {
-    // 14 Nov (Max, the README and repo upgrade): CI, CodeQL, the tests, MIT and the MCP server; the partners on their own row.
-    expect([...badgeLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT", "MCP server: read, propose only"]);
-    // 15 Nov (Max): the second row says each partner's status, then Claude's decisions and the worst-case AI test, every
-    // value read from its record in test/readme-glance.test.ts.
-    const partnerLine = readme.split("\n").find((l) => l.startsWith("[![Airwallex: LIVE")) ?? "";
-    expect([...partnerLine.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1])).toEqual(["Airwallex: LIVE · sandbox", "Alta (formerly Metal): LIVE · testnet", "Visa VIC via Airi: LIVE · sandbox", "T:0: LIVE · sandbox ledger", "Claude: LIVE · 24 decisions", "worst-case AI, offline eval: 0 wrong payments"]);
-    expect(partnerLine).not.toMatch(/[?&]logo=/);
+  // 17 Nov (owner: "one calm, branded set"): only the live GitHub badges stay, CI and CodeQL; the static shields (the
+  // partners' status, the tests, MIT, the MCP server) went into the proof strip under them, one picture drawn from the
+  // records by scripts/readme-proof-strip.ts (test/readme-proof-strip.test.ts).
+  it("is one row of the two live badges, CI and CodeQL, then the proof strip linked to /proof", () => {
+    // 17 Nov, later (owner: "keep all the badges, tidy and grouped"): three rows under one style (flat-square, one
+    // label colour): build (CI, CodeQL, tests, licence), the partners as they ran live, and the proof; then the strip.
+    const lines = readme.split("\n");
+    const at = lines.indexOf(badgeLine);
+    const names = (l: string) => [...l.matchAll(/\[!\[([^\]]+)\]/g)].map((m) => m[1]);
+    expect(names(badgeLine)).toEqual(["CI", "CodeQL", "Tests: from docs/assets/test-summary.json", "License: MIT"]);
+    expect(names(lines[at + 1]!)).toEqual(["Airwallex: sandbox", "Alta (formerly Metal): testnet", "Visa VIC via Airi: sandbox", "T:0: sandbox ledger", "Claude: 24 decisions"]);
+    expect(names(lines[at + 2]!)).toEqual(["worst-case AI, offline eval: 0 wrong payments", "MCP server: read, propose only", "Test money only"]);
     expect(badgeLine).toContain("actions/workflows/github-code-scanning/codeql/badge.svg");
-    expect(badgeLine).toContain("https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fagamemnon-coder%2Fx402-business-agents%2Fmain%2Fdocs%2Fassets%2Ftest-summary.json&query=%24.passed");
-    expect((JSON.parse(readFileSync(new URL("../tsconfig.json", import.meta.url), "utf8")) as { compilerOptions: { strict: boolean } }).compilerOptions.strict).toBe(true);
-    expect(badgeLine).not.toMatch(/badge\/tests-\d/);
-    expect(badgeLine).not.toMatch(/[?&]logo=/);
+    for (const l of lines.slice(at, at + 3)) for (const u of l.matchAll(/img\.shields\.io\/[^)]+/g)) expect(u[0]).toContain("style=flat-square");
+    const strip = lines[at + 4] ?? "";
+    expect(strip.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/proof-strip-dark.svg"><img src="docs/assets/readme/proof-strip-light.svg" alt="')).toBe(true);
     expect(readme).toMatch(/\*\*\d+ tests passing\*\*/);
   });
 
