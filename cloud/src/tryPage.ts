@@ -923,7 +923,7 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
     const sk=el('div','samples');sk.setAttribute('aria-hidden','true');
     // As many bars as the demo has samples (five), the loading word for screen readers only: no jump when they come.
     for(let i=0;i<5;i++)sk.append(el('span','btn skel'));
-    pick.replaceChildren(el('p','sr',C.invoice.loading),sk);
+    pick.replaceChildren(el('p','sr',r0?C.invoice.loading:C.invoice.loadingAgain),sk);
     (r0||api('GET','/v1/engine/samples')).then((r)=>{
       if(S.screen!=='invoice')return;
       const all=r.status===200&&Array.isArray(r.json.items)?r.json.items.filter((s)=>s&&typeof s.key==='string'):[];
@@ -1283,6 +1283,9 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     return;
   }
   const sk=skeleton();result.append(sk.node);
+  // Jury, 17 Nov: the previous invoice's late rows (its Coder agent books it after the payment) are not this one's.
+  const earlier=new Set([S.cost&&S.cost.invoice,S.proposal&&S.proposal.invoice].filter((x)=>typeof x==='string'));
+  const ours=(items)=>items.filter((e)=>!(e&&typeof e.subject==='string'&&earlier.has(e.subject)));
   S.cost={micros:0,models:[],invoice:null};S.settled=null;S.cred=null;S.awx=null;save();
   const t0=performance.now();
   // A line aimed at the AI that the engine flagged while it filed this invoice (its own event, read by the poller):
@@ -1290,7 +1293,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
   let flagged=false,drawn=false;
   const flag=()=>{if(!flagged||!drawn||S.screen!=='work'||result.querySelector('.flagged'))return;
     const p=el('p','flagged',[icon('shield-check',18),el('span','',C.work.injected)]);const at=result.querySelector('.acts');if(at)at.before(p);else result.append(p)};
-  pollStart((items)=>{live.add(items,t0);claudeSeen(items);sk.see(items);ag.add(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
+  pollStart((all)=>{const items=ours(all);live.add(items,t0);claudeSeen(items);sk.see(items);ag.add(items);if(items.some((e)=>e&&e.event==='document.injection_flagged')){flagged=true;flag()}});
   const req=arg.kind==='sample'?api('POST','/v1/engine/samples/'+encodeURIComponent(arg.key)):api('POST','/v1/engine/compose',arg.body);
   req.then((r)=>{
     if(!box.isConnected)return;
@@ -1416,9 +1419,11 @@ function payoutCard(n,sha){
   const X=C.payoutCard;if(!n||typeof n!=='object'||n.terms_sha256!==sha)return null;
   const live=n.source==='airwallex-sandbox';const d=el('dl','');
   const row=(k,v,cls)=>d.append(el('dt','',k),el('dd',cls||'',v));
-  if(live){row(X.transfer,String(n.transfer_id),'mono');row(X.status,String(n.status).replace(/_/g,' '));row(X.amount,cash(n.currency,n.amount));row(X.hash,String(sha),'mono')}
+  // Jury, 17 Nov: within the agent's limit nobody approved it, so the hash is named for the terms it paid.
+  const alone=!!(S.proposal&&S.proposal.alone&&S.proposal.terms_sha256===sha);
+  if(live){row(X.transfer,String(n.transfer_id),'mono');row(X.status,String(n.status).replace(/_/g,' '));row(X.amount,cash(n.currency,n.amount));row(alone?X.hashAlone:X.hash,String(sha),'mono')}
   const box=el('section','awx'+(live?' live':''),[el('h3','',live?X.live:X.simulated),...(live?[d]:[]),
-    el('p','',live?X.liveNote:fill(X.simulatedNote,{why:(typeof n.reason==='string'&&X.why[n.reason])||X.why.unavailable}))]);
+    el('p','',live?(alone?X.liveNoteAlone:X.liveNote):fill(X.simulatedNote,{why:(typeof n.reason==='string'&&X.why[n.reason])||X.why.unavailable}))]);
   box.setAttribute('data-awx-payout',live?'live':'simulated');
   if(live&&n.status!=='PAID'){
     const said=el('p','hint',X.simulateNote);const b=btn(X.simulate);
@@ -1837,7 +1842,9 @@ screen('books',{heading:(arg)=>settledErr(arg)?C.books.headingError:C.books.head
   const drawn=[];
   // A block whose reads ended without drawing it (a draw threw) says so; none stays a skeleton. Then the way on. Every
   // read ends: call() answers status 0 when the network fails, it never throws.
-  const reveal=()=>{if(S.screen!=='books'||!tail.hidden)return;for(const k of [paid,booked,filed])if(k.querySelector('.sk-blk'))k.replaceChildren(note(B.failed));tail.hidden=false};
+  // Jury, 17 Nov: after the agent's own payment the way on (an invoice above the limit, signed with a passkey) is the
+  // main button, and it takes the focus once shown.
+  const reveal=()=>{if(S.screen!=='books'||!tail.hidden)return;for(const k of [paid,booked,filed])if(k.querySelector('.sk-blk'))k.replaceChildren(note(B.failed));tail.hidden=false;if(above)try{another.focus({preventScroll:true})}catch(e){}};
   // A block: its icon and heading, then what its read returned.
   const block=(name,head,kids,tone)=>el('section','card blk '+name,[el('p','bh'+(tone?' '+tone:''),[icon(name==='paid'?'landmark':name==='booked'?'database':'file-lock-2',20),el('span','',head)]),...kids.filter(Boolean)]);
   const wait=(words)=>el('p','wait',[icon('clock',18),el('span','',words)]);
@@ -2023,7 +2030,7 @@ const escAttr = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<":
 const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
 /** What /try is, for a search engine or a link preview (final jury, 13 Nov: the page had no meta description). */
-export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read and check each invoice, and you approve what is above their limit with your passkey. Test money on a simulated bank, deleted after 24 hours.";
+export const TRY_DESCRIPTION = "Run a test company's payables: AI agents read and check each invoice, and you approve what is above their limit with your passkey. Test money: paid through the Airwallex sandbox when this deployment allows it, else on a simulated bank; deleted after 24 hours.";
 
 /** The suite's count from its last full run (docs/assets/test-summary.json, written by npm run test-count), as words. */
 export const testsPassing = (): string => (SUITE as { passed: number }).passed.toLocaleString("en-US");

@@ -11,7 +11,7 @@ Intelligent Commerce via Airwallex's Airi (its record: `docs/demo/airi-run.json`
 (separate worlds, dated)", with its date, and what ran only on stand-ins under "Tested on stand-ins (not live)". Sources
 for each claim: [docs/claims.md](../claims.md), section "The submission pack".
 
-The video link is in. The owner's working checklist (in Dutch, not part of the submission) is kept in [archive/internal/checklist-max.md](../archive/internal/checklist-max.md).
+The video link is in. The owner's working checklist (in Dutch, not part of the submission) is not published.
 
 ## Title
 

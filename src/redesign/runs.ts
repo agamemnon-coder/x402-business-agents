@@ -27,6 +27,7 @@ import { countOf, OPEN_TARGET_JS, esc, icon, page } from "./ui.js";
 import { VIC2_RUN_FILE, VIC2_RUN_LOG, vic2Run } from "./vic2Run.js";
 import { VIC3_PREV_FILE, VIC3_PREV_LOG, VIC3_RUN_FILE, VIC3_RUN_LOG, VIC4_FILE, VIC4_LOG, vic3Finding, vic3Lead, vic3Run, vic3Summary } from "./vic3Run.js";
 import { CAVEAT_LINE } from "../config/brand.js";
+import { centHolds, centLine, centRecord } from "./cardCent.js";
 import { EXPLORER_TX } from "../metal/network.js";
 
 export const RUNS_URL = "runs";
@@ -430,6 +431,25 @@ function extraRuns(): RunRow[] {
     // No id in sight: the administration's number is 18 digits, which the privacy scans read as a card number; it is in the record.
     ids: [], files: [{ label: "record (JSON)", href: blob("docs/runs/2026-11-12-moneybird-sandbox.json") }, { label: "run log", href: blob("docs/runs/2026-11-12-moneybird-sandbox.md") }],
   });
+
+  // One cent over the limit, at Airwallex itself (15 Nov; jury, 17 Nov: /airwallex and /proof showed it while /runs ended
+  // on 14 Nov). Counted only when its record shows L approved and L + 0.01 declined (src/redesign/cardCent.ts).
+  const cent = centRecord();
+  if (cent && centLine(cent.rec) && centHolds(cent.rec)) {
+    const c = cent.rec, [a, b] = c.attempts as [typeof c.attempts[0], typeof c.attempts[0]];
+    const eur = (n: number) => `EUR ${(n / 100).toFixed(2)}`;
+    const signer = c.signed_by && /test passkey/i.test(c.signed_by.name) ? "a software test passkey" : "a passkey";
+    out.push({
+      key: "card-cent-1", iso: c.ran_at, date: day(c.ran_at), kind: "sandbox", partners: ["Airwallex"],
+      name: "One cent over an agent card's limit: Airwallex declines it",
+      line: `${eur(a.amount_cents)} approved, ${eur(b.amount_cents)} declined by Airwallex (${b.failure_reason ?? "declined"}). Simulated card charges; ${signer} signed.`,
+      title: "One cent over: declined", rails: `Airwallex sandbox (Issuing, simulated card transactions), ${signer}`,
+      what: `On the ${c.agent} agent's live card, limit ${eur(c.card.per_tx_cents)} a purchase, two test purchases at the Airwallex sandbox: exactly the limit, then one cent more, after ${signer} signed the action in Purser Cloud.`,
+      checks: `Airwallex's own answers, read back: ${a.status} then ${b.status}${b.failure_reason ? ` (${b.failure_reason})` : ""}.`, money: "Sandbox · test money",
+      ids: c.attempts.flatMap((x) => (x.id ? [{ label: x.approved ? "Approved" : "Declined", value: x.id }] : [])),
+      files: [{ label: "record (JSON)", href: blob(cent.file) }],
+    });
+  }
 
   if (has("docs/runs/2026-11-12-real-customers.md")) out.push({
     key: "real-customers-1", iso: "2026-11-12T14:18:42.959Z", date: day("2026-11-12T14:18:42.959Z"), kind: "sandbox", partners: ["Airwallex"],

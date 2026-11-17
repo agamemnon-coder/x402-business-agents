@@ -3,7 +3,7 @@
 // counted by src/redesign/run.ts), say the core line and Max's lines word for word (the rule, the stops, the refusal,
 // the T:0 sentence, the passkey), keep each spoken sentence short and the 3-minute pitch near 280 words. The QR code in
 // docs/media/ opens /try/sign. Breaks when a figure, a line or the QR code drifts.
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import jsQRModule from "jsqr";
 import { describe, expect, it } from "vitest";
@@ -29,7 +29,7 @@ const SOURCES: Record<string, string> = {
   pitch: read("docs/submission/pitch.md"),
   qa: read("docs/submission/qa.md"),
   "demo-day": read("docs/submission/demo-day.md"),
-  spiekkaart: read("docs/archive/internal/spiekkaart-demo.html"),
+  // The cheat sheet (docs/archive/internal/) left the public repository on 17 Nov (owner): its own checks went with it.
   deck: DECK,
   form: read("docs/submission/README.md"),
   // The long form text the short Description replaced (5 Nov), linked from it: its figures are checked as before.
@@ -122,7 +122,7 @@ describe("the pitch's sentences", () => {
 
 describe("the core line", () => {
   it("is word for word in the pitch, the runbook, the cheat sheet and the deck; the README opens with the first of the three sentences instead (jury panel, 12 Nov: the pitch once)", () => {
-    for (const name of ["pitch", "demo-day", "spiekkaart", "deck"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
+    for (const name of ["pitch", "demo-day", "deck"]) expect({ name, has: TEXT[name]!.includes(CORE_LINE) }).toEqual({ name, has: true });
     // The owner's centred top (13 Nov): the logo, the title, the pitch, the first sentence, the links, the badges, all in
     // the first 16 lines.
     const top = words(SOURCES.README!.split("\n").slice(0, 16).join("\n").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1"));
@@ -150,14 +150,14 @@ describe("one set of figures, the main run's record (3 November)", () => {
     for (const name of Object.keys(TEXT)) {
       expect({ name, figure: /\d+ stopped at a limit|over its cap; the CFO rejected|\b1 \+ 1\b/i.test(TEXT[name]!) }).toEqual({ name, figure: false });
       for (const m of all(/(\d+) stops, nothing paid over a limit: one buy rule Claude set stopped (\d+) overpriced checks?, Alta refused (\d+) purchases? on chain, the CFO rejected (\d+) proposals?, and (\d+) planted/g, name)) expect({ name, parts: m.slice(1).map(Number) }).toEqual({ name, parts: [st.total, st.claude, st.metal, st.cfo, st.planted] });
-      if (["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
+      if (["pitch", "deck", "form", "form (long)", "in-depth"].includes(name)) expect({ name, said: TEXT[name]!.includes(line.slice(0, -1)) }).toEqual({ name, said: true });
     }
   });
 
   it("says Alta's refusal one way, and the passkey as Max's (Max, 5 Nov)", () => {
-    for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
+    for (const name of ["pitch", "qa", "deck"]) expect({ name, has: TEXT[name]!.includes(REFUSAL_LINE) }).toEqual({ name, has: true });
     for (const name of ["form", "form (long)", "in-depth"]) expect({ name, has: /the refusal is recorded on chain/i.test(TEXT[name]!) }).toEqual({ name, has: true });
-    for (const name of ["deck", "spiekkaart", "form (long)"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
+    for (const name of ["deck", "form (long)"]) expect({ name, has: TEXT[name]!.includes("Max's passkey (Face ID on his phone)") }).toEqual({ name, has: true });
     // The README's run sections in docs/in-depth.md (12 Nov): the passkey is Max's, with no "his" (as the form since 7 Nov).
     expect(TEXT["in-depth"]).toContain("Max's passkey (Face ID on a phone)");
     // The form's short Description since the jury review of 7 Nov (#17): no name twice, no "his".
@@ -167,9 +167,9 @@ describe("one set of figures, the main run's record (3 November)", () => {
     // test/proof-sentences.test.ts).
     const formRaw = readFileSync(new URL("../docs/submission/README.md", import.meta.url), "utf8");
     for (const p of PROOF_SENTENCES) expect(formRaw).toContain(p.text);
-    for (const name of ["pitch", "deck", "spiekkaart", "form", "form (long)", "in-depth", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
+    for (const name of ["pitch", "deck", "form", "form (long)", "in-depth", "qa"]) expect({ name, plays: /(Max|I)(, the builder,)? plays? the CFO/.test(TEXT[name]!) }).toEqual({ name, plays: true });
     // "published" for the ids (Airwallex's cannot be looked up by a juror); Alta's are on chain, checkable.
-    for (const name of ["pitch", "qa", "deck", "spiekkaart"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });
+    for (const name of ["pitch", "qa", "deck"]) expect({ name, public: /\bids? (?:is|are) public\b/i.test(TEXT[name]!) }).toEqual({ name, public: false });
     expect(TEXT.deck).toContain("Every id is published");
     expect(TEXT.deck).toContain("On chain, checkable:");
   });
@@ -178,7 +178,7 @@ describe("one set of figures, the main run's record (3 November)", () => {
     for (const name of Object.keys(TEXT)) for (const m of all(/(\d+)(?: of |\/)(\d+) decisions/g, name)) expect({ name, said: [Number(m[1]), Number(m[2])] }).toEqual({ name, said: [sp.byClaude, sp.decisions] });
     // A whole count may read "all 24 decisions" (no N/N fraction, 13 Nov): then all of them were Claude's.
     for (const name of Object.keys(TEXT)) for (const m of all(/\ball (\d+) decisions/gi, name)) expect({ name, said: [Number(m[1]), Number(m[1])] }).toEqual({ name, said: [sp.byClaude, sp.decisions] });
-    for (const name of ["pitch", "deck", "spiekkaart"]) expect({ name, said: all(/(?:(\d+)(?: of |\/)|\ball )(\d+) decisions/gi, name).length > 0 }).toEqual({ name, said: true });
+    for (const name of ["pitch", "deck"]) expect({ name, said: all(/(?:(\d+)(?: of |\/)|\ball )(\d+) decisions/gi, name).length > 0 }).toEqual({ name, said: true });
   });
 
   it("says the seconds from Face ID to PAID as measured, and says the settlement is simulated wherever it says them", () => {
@@ -193,7 +193,7 @@ describe("one set of figures, the main run's record (3 November)", () => {
 
   it("says the Face ID decisions as the record counts them", () => {
     for (const name of Object.keys(TEXT)) for (const m of all(/(\d+) Face ID decisions|signed (\d+) times with Face ID|(\d+) decisions signed with Face ID/g, name)) expect({ name, n: Number(m[1] ?? m[2] ?? m[3]) }).toEqual({ name, n: faceIdDecisions(record) });
-    for (const name of ["deck", "spiekkaart"]) expect({ name, said: all(/(\d+) Face ID decisions|(\d+) decisions signed with Face ID/g, name).length > 0 }).toEqual({ name, said: true });
+    for (const name of ["deck"]) expect({ name, said: all(/(\d+) Face ID decisions|(\d+) decisions signed with Face ID/g, name).length > 0 }).toEqual({ name, said: true });
   });
 
   it("says the options' 40 s, the dispute's 12 and 9, and the euros as the record has them", () => {
@@ -219,7 +219,7 @@ describe("T:0 in one sentence, Alta counted (Max, 5 Nov)", () => {
     expect(words(read("docs/submission/README.md").split("<!-- description -->")[1]!.split("<!-- /description -->")[0]!)).not.toContain("CAPI");
     // The README's "What is real" (docs/in-depth.md since 12 Nov) says it in its own words since the jury review of 7 Nov (#16), with the same codes and days.
     expect(flat("docs/in-depth.md")).toContain(words("T:0 books: 95 journal entries posted to T:0's shared sandbox entity on 10 Nov (first je_prod_z7kTCuZ1iiwad01q); debits equal credits, and T:0 matches our books line by line"));
-    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md", "docs/archive/internal/spiekkaart-demo.html"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
+    for (const p of ["docs/submission/long-description.md", "docs/claims.md", "docs/t0.md", "docs/runs/2026-11-10-t0-journal-sandbox.md", "docs/submission/qa.md"]) expect({ p, has: flat(p).includes(words(T0_STATUS)) }).toEqual({ p, has: true });
     // The codes as the run logs have them.
     expect(read("docs/runs/2026-11-03-t0-sandbox.md")).toMatch(/refused the first POST with `403 CAPI71`/);
     expect(read("docs/runs/2026-11-05-t0-live.md")).toMatch(/on 5 November[\s\S]*?`401 CAPI11`/i);
@@ -227,7 +227,7 @@ describe("T:0 in one sentence, Alta counted (Max, 5 Nov)", () => {
   });
 
   it("every marked T:0 block says what was posted, to the sandbox; none says it is live", () => {
-    for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
+    for (const name of ["pitch", "qa", "deck"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- T0-STATUS -->([\s\S]*?)<!-- \/T0-STATUS -->/g)].map((b) => words(b[1]!));
       expect({ name, blocks: blocks.length > 0 }).toEqual({ name, blocks: true });
       for (const b of blocks) {
@@ -258,7 +258,7 @@ describe("T:0 in one sentence, Alta counted (Max, 5 Nov)", () => {
     // The README's line (docs/in-depth.md since 12 Nov), checked against the chain on 5 November, says the same.
     expect(words(read("docs/in-depth.md"))).toContain("86 test-USD payments, each its own transaction (41 sales, 41 supplier purchases, 3 refunds, 1 sweep)");
     expect(METAL_LINE).toBe(`Alta testnet: ${pay.onChain} payments and 6 mandate transactions, on chain, checkable; no clearing in this run.`);
-    for (const name of ["pitch", "qa", "deck", "spiekkaart"]) {
+    for (const name of ["pitch", "qa", "deck"]) {
       const blocks = [...SOURCES[name]!.matchAll(/<!-- METAL-ONCHAIN -->([\s\S]*?)<!-- \/METAL-ONCHAIN -->/g)].map((b) => words(b[1]!));
       expect({ name, blocks: blocks.length > 0 }).toEqual({ name, blocks: true });
       for (const b of blocks) {
@@ -367,24 +367,5 @@ describe("the hook (Max, 5 November): \"So who signs off?\"", () => {
     expect(TEXT.deck).toContain("AI agents are starting to spend money. So who signs off?");
     expect(TEXT.pitch).toContain("So who signs off?");
     expect(read("docs/video/narrator-script.md")).toContain("AI agents can now spend money. … So who signs off?");
-  });
-});
-
-describe("the cheat sheet", () => {
-  it("is one A4 page, printed from its HTML", () => {
-    const pdf = new URL("../docs/archive/internal/spiekkaart-demo.pdf", import.meta.url);
-    expect(existsSync(pdf)).toBe(true);
-    expect((readFileSync(pdf).toString("latin1").match(/\/Type\s*\/Page(?!s)/g) ?? []).length).toBe(1);
-  });
-
-  it("has the opening and the close word for word, the three figures and the URLs", () => {
-    const s = TEXT.spiekkaart!;
-    expect(s).toContain("AI agents are starting to spend money. So who signs off? I'm Max Geurtsen, and this is Purser.");
-    expect(s).toContain(`${CORE_LINE} On mine, signed before, I change the amount by one cent. The same signature is refused. One cent. Worthless.`);
-    expect(s).toContain(`${RULE_LINE} In this demo, I play the CFO.`);
-    expect(s).toContain(stopsLine(st));
-    expect(s).toContain("6 seconds from Face ID to PAID");
-    expect(s).toContain("5 Face ID decisions");
-    for (const u of ["kit11.max-31b.workers.dev/try/sign", "kit11.max-31b.workers.dev/watch", "kit11.max-31b.workers.dev/proof", "npm run judge"]) expect(s).toContain(u);
   });
 });

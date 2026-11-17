@@ -22,7 +22,9 @@ export const CHROME = { brand: "Purser" };
 
 /** The band on every screen after the start; the second part follows the start answer's mode.claude. */
 export const BAND = {
-  line: "Your test company · test money · simulated bank",
+  // Jury, 17 Nov: a signed payment is also sent to the Airwallex sandbox as one transfer when the deployment's switch
+  // awx_payout allows it (cloud/src/engine/livePayout.ts); otherwise the simulated bank alone pays. Same word count.
+  line: "Test money · Airwallex sandbox or simulated bank",
   claudeLive: "Claude, live",
   claudeCode: "Purser's code reads today",
 };
@@ -130,6 +132,8 @@ export const INVOICE = {
   tabWrite: "Write your own",
   /** While the start's company is made and its samples load (judges, 14 Nov: up to 7 s on a phone, with no words). */
   loading: "Setting up your test company…",
+  /** Jury, 17 Nov: on every later visit to this screen the company exists already; only its samples are read again. */
+  loadingAgain: "Loading the samples…",
   /** Judges, 14 Nov: one muted line per sample on what it shows (by key; the titles are the engine's), and where to start. */
   hints: {
     clean: "Ready to pay · the agents can negotiate a discount",
@@ -525,9 +529,12 @@ export const FX_CARD = {
  * simulated bank alone paid. Outside the word budget, as the terms' labels are. {why}: one of `why`.
  */
 export const PAYOUT_CARD = {
-  live: "Also sent through Airwallex · test account", simulated: "Practice bank only",
+  live: "Sent to the Airwallex sandbox as one transfer · test money", simulated: "Simulated bank only: not sent to Airwallex",
   transfer: "Transfer", status: "Airwallex status", amount: "Amount", hash: "Fingerprint of your approval",
   liveNote: "Test money. Airwallex stores a fingerprint of what you approved with this transfer.",
+  /** Jury, 17 Nov: paid by the agent within its limit, nobody approved it: the fingerprint is of the terms it paid. */
+  hashAlone: "Fingerprint of the paid terms",
+  liveNoteAlone: "Test money. Airwallex stores a fingerprint of the paid terms with this transfer.",
   /** The labelled step: the sandbox's own simulation moves the transfer on; no money anywhere. */
   simulate: "Approve it in Airwallex (test)", simulating: "Asking the sandbox…", simulateNote: "Airwallex's sandbox simulation, not a payment.",
   simWhy: {
@@ -779,6 +786,8 @@ export const VISIBLE = {
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.startHere, INVOICE.heldGroup, ...Object.values(INVOICE.hints), INVOICE.writeHint, INVOICE.tabWrite, INVOICE.send],
     // 15 Nov: the note filled by the trick link (the visitor's own text once it is in the field).
     [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, ...FORM_WORDS, INVOICE.trickNote, INVOICE.send],
+    // Jury, 17 Nov: on a later visit to this screen the company exists; only the samples are read again.
+    [INVOICE.heading, INVOICE.tabSample, INVOICE.tabWrite, INVOICE.loadingAgain, INVOICE.send],
   ],
   work: [
     [WORK.heading, WORK.reading, WORK.invoiceFold],

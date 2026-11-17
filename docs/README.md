@@ -85,8 +85,6 @@ every pull request: [CHANGELOG.md](../CHANGELOG.md).
 
 - [archive/](archive/): kept for history; each file says what replaced it. Working files moved out of the docs root on
   13 November, kept as evidence because a test, a script or a run log still cites them:
-  - [archive/internal/](archive/internal/): the working notes, in Dutch (two runbooks, a restart plan, a requirements
-    audit, a cheat sheet), the Demo Day card and the after-submission list. Not part of the submission.
   - [archive/superpowers/specs/](archive/superpowers/specs/): the design specs of 8 November for what was built after the kit.
   - [archive/readme-v2-draft.md](archive/readme-v2-draft.md): a generated draft of the README's structure (`npm run readme-draft`), not the README.
   - [archive/runs/](archive/runs/): two notes of the dry runs: the acceptance list (in Dutch) and the recycling of test money.

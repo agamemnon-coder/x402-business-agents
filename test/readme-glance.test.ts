@@ -48,9 +48,9 @@ describe("the README's At a glance", () => {
   });
 
   it("backs each status badge in the second row with its record", () => {
-    const row = README.split("\n").find((l) => l.startsWith("[![Airwallex: LIVE")) ?? "";
+    const row = README.split("\n").find((l) => l.startsWith("[![Airwallex: ")) ?? "";
     const live = Object.fromEntries(partnerTiles().map((t) => [t.name, t.runs]));
-    // LIVE for a partner: at least one live run of that partner in the run records (the tiles on /proof count them).
+    // Sandbox or Testnet for a partner (LIVE until 17 Nov): at least one live run of that partner in the run records (the tiles on /proof count them).
     for (const n of ["Airwallex", "Alta", "Visa via Airi", "T:0"]) expect({ n, runs: (live[n] ?? 0) > 0 }).toEqual({ n, runs: true });
     expect(row).toContain(`Claude-LIVE_%C2%B7_${split(agentRun().record).byClaude}_decisions`);
     const w = JSON.parse(read("docs/evals/worst-case-summary.json")) as { purser_script: Record<string, { wrong_payments: number }> };

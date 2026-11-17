@@ -42,7 +42,7 @@ dispute. Tests: `test/awx1.test.ts`, `test/awx1-world.test.ts`, `test/awx1-plan.
 ## Environment (names only)
 
 Present in this environment on 6 November (checked without printing a value): `AIRWALLEX_CLIENT_ID`,
-`AIRWALLEX_API_KEY`, `KIT11_ANTHROPIC_API_KEY`, `CLOUDFLARE_API_TOKEN`; the relay token file `/home/user/.kit11/relay-token`;
+`AIRWALLEX_API_KEY`, `KIT11_ANTHROPIC_API_KEY`, `CLOUDFLARE_API_TOKEN`; the relay token in a local token file (never printed);
 the webhook secret file `airwallex-webhook-secret` in the default keys folder `x402-business-agents-keys/testnet`.
 Also present, and **unset for the run**: `METAL_RPC_URL`, `METAL_ENDPOINT_SECRET`, `T0_API_KEY`.
 

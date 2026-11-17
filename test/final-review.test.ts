@@ -32,7 +32,9 @@ describe("the final review (13 Nov)", () => {
     expect(root.filter((f) => f.endsWith(".png"))).toEqual([]);
     for (const gone of ["internal", "superpowers", "readme-v2-draft.md"]) expect({ gone, there: root.includes(gone) }).toEqual({ gone, there: false });
     for (const f of ["dry-run-acceptatie.md", "testgeld-recycling.md"]) expect(existsSync(new URL(`../docs/runs/${f}`, import.meta.url))).toBe(false);
-    for (const kept of ["docs/archive/internal/spiekkaart-demo.html", "docs/archive/superpowers/specs", "docs/archive/readme-v2-draft.md", "docs/archive/runs/testgeld-recycling.md", "docs/screens/approve-view.png"])
+    // 17 Nov (owner): the Dutch working notes (docs/archive/internal/) left the public repository.
+    expect(existsSync(new URL("../docs/archive/internal", import.meta.url))).toBe(false);
+    for (const kept of ["docs/archive/superpowers/specs", "docs/archive/readme-v2-draft.md", "docs/archive/runs/testgeld-recycling.md", "docs/screens/approve-view.png"])
       expect({ kept, there: existsSync(new URL(`../${kept}`, import.meta.url)) }).toEqual({ kept, there: true });
   });
 
@@ -53,12 +55,12 @@ describe("the final review (13 Nov)", () => {
     expect(readme).toContain('"components do not initiate money-out actions (transfers, FX conversions, or payouts) on\nyour behalf" ([docs](https://www.airwallex.com/docs/developer-tools/ai/agentos), read 13 November 2026)');
   });
 
-  it("has a Visa Award and an Alta Award section, each with its live dates and records", () => {
+  it("has a Visa Award and a Metal Award section, each with its live dates and records", () => {
     const readme = readmeFull();
     const sec = (h: string) => readme.slice(readme.indexOf(`## ${h}`), readme.indexOf("\n## ", readme.indexOf(`## ${h}`) + 5));
     for (const f of ["docs/runs/2026-11-07-vic-1.md", "docs/runs/2026-11-13-vic-4.md"]) expect(sec("Visa Award")).toContain(`](${f})`);
-    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Alta Award")).toContain(`](${f})`);
-    expect(sec("Alta Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
+    for (const f of ["docs/runs/2026-11-03-main-run.md", "docs/runs/2026-11-12-faceid-onchain.md"]) expect(sec("Metal Award")).toContain(`](${f})`);
+    expect(sec("Metal Award")).toContain("testnet.metalntwx.com/tx/0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(read("docs/demo/main-run.json")).toContain("0x2e92f9cb4549246f58b9b888881c258bf117c6233c1d8f126f4833ae6ae41871");
     expect(sec("Visa Award")).toContain("Visa TAP is an extra, not part of the entry.");
   });

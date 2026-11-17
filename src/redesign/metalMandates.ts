@@ -122,6 +122,7 @@ const MT_CSS = `.mt { padding: 16px 18px 6px; display: grid; gap: 8px; }
 .mtab td a.pf, .mcov td a.pf { display: inline-flex; align-items: center; min-height: 44px; }
 .mtab .sub { display: block; font-size: 13.5px; color: var(--muted); }
 .mnote { margin: 0; font-size: 14.5px; color: var(--muted); line-height: 1.45; }
+.mrun { margin: 24px 0 8px; } /* the main run's label, where its part starts (jury, 17 Nov) */
 .mnote b { color: var(--text); }
 .mc { padding: 16px 18px; display: grid; gap: 6px; align-content: start; }
 .mc p { margin: 0; font-size: 15.5px; line-height: 1.5; }
@@ -235,7 +236,7 @@ const VIZ_CSS = `.mtp { --c-sourcing: #2a78d6; --c-support: #eb6834; --c-treasur
 export const FACEID_SEPARATE_RUN = "In a separate 12 Nov run, a passkey account checked both passkeys on chain (the second a labelled test passkey).";
 export const METAL_CSS = `${MT_CSS}\n${VIZ_CSS}`;
 /** Under /alta's heading (partner scan, 14 Nov): what this page is for the jury. The award keeps the hackathon's name. */
-export const METAL_AWARD_LINE = "Purser's entry for the Alta Award.";
+export const METAL_AWARD_LINE = "Purser's entry for the Metal Award.";
 
 /**
  * The page's one script: the live read replaces the recorded spend only when the chain answered, and only then shows
@@ -391,10 +392,13 @@ ${x.revoked ? `<li class="no"><span class="st">${icon("ban", 18)}${esc("Old mand
 ${revoked ? `<p class="mnote"><b>${esc(`A revoked credential, ${day(revoked.block_time)}, a separate run, block ${revoked.block}`)}</b> ${a(tx(revoked.tx), "tx")}</p>${ev(revoked)}${raw(revoked)}` : ""}
 <pre class="mcmd">${esc(`npm run metal-inspect -- refusal ${decoded.tx}`)}</pre></details>` : "";
 
+  // Jury, 17 Nov: the opening facts are dated runs of their own (12 and 13 Nov), so the main run's label ("Replay of the
+  // main run, 3 Nov") moves down to where the main run's part starts; without them it stays in the heading.
+  const runPill = `<span class="pill run">${icon("database", 14)}${esc(o.label)}</span>`;
   return `<main class="pp mtp"><div class="wrap">
-  <div class="phd">${o.logo}${o.logoNote ? `<span class="noend">${esc(o.logoNote)}</span>` : ""}<span class="pill run">${icon("database", 14)}${esc(o.label)}</span><h1>${esc("A limit the agent cannot talk past")}</h1></div>
+  <div class="phd">${o.logo}${o.logoNote ? `<span class="noend">${esc(o.logoNote)}</span>` : ""}${o.intro ? "" : runPill}<h1>${esc("A limit the agent cannot talk past")}</h1></div>
   ${o.intro ?? ""}<p class="mnote">${esc(METAL_AWARD_LINE)}</p>
-  ${hero}
+  ${o.intro ? `<p class="mrun">${runPill}</p>` : ""}${hero}
   <div class="mcharts">${budgetChart}${payChart}${moment}</div>
   ${cards}
   ${replace}

@@ -471,7 +471,8 @@ export function builtOnItems(run: AgentRun = agentRun()): { name: string; href: 
     ...(visaRunsLine() ? [{ name: "Visa (VIC through Airwallex's Airi)", href: "visa", proof: visaRunsLine()! }] : []),
     { name: "Claude", href: "claude", proof: `${decisions} decisions (main run)` },
     ...(t0 ? [{ name: "T:0", href: "t0", proof: `${t0.posted} journal entries (main run)` }] : []),
-    { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} paid requests (main run)` },
+    // Jury, 17 Nov: "41 paid requests" beside /alta's 41 sales and 41 purchases read as a clash; both sides are x402.
+    { name: "x402", href: `${REPO_BLOB}${METAL_TX_LIST}`, proof: `${st.payments.sales} requests sold, ${st.payments.purchases} bought (main run)` },
   ];
 }
 export const ICC_LINE = "Visa Intelligent Commerce Connect (access requested)";
