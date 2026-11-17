@@ -1,4 +1,14 @@
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # The premiere: edit guide
+
+How Purser's premiere films (v5 to v10) are made: scenes, clips, voice-over, music and where each figure comes from.
+
+| At a glance | Record |
+|---|---|
+| **The film the README links:** Purser, under the hood (3:29); the trailer (1:30); test money only | [YouTube](https://youtu.be/PNLuqhRzVfE) · [trailer](https://youtu.be/n3HLVGROJc4) · [script](../film/under-the-hood/script.md) |
+| **Film v10** (13 Nov, 4:58), the enterprise hand-in | [its section below](#film-v10-13-nov-enterprise-hand-in) |
+| Every on-screen figure read from its run's record by code; the render stops when one is missing | [main run log](../runs/2026-11-03-main-run.md) · `src/film/premiere.ts` |
 
 **Film v10 (13 November), the enterprise hand-in, is the hand-in video now: [its section below](#film-v10-13-nov-enterprise-hand-in).**
 **Purser in 3:58**, film v8 (7 November), the earlier submission video: the premiere-style film made
@@ -8,7 +18,7 @@ Commerce via Airwallex's Airi, [run log](../runs/2026-11-07-vic-1.md)) and a rec
 Dark, large and slow, letterboxed to 2.39:1. Every figure on screen is read from its run's record by code, and the
 render stops when one is missing. The voice-over is [narrator-script-v6.md](narrator-script-v6.md) read by an
 AI-generated voice (ElevenLabs), a narrator in the third person, with AI-generated music (ElevenLabs); the film needs no
-recording of Max. The end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
+recording of anyone. The end card credits both: “Voice-over: an AI-generated voice (ElevenLabs) · Music: AI-generated (ElevenLabs)”.
 The render has **no music and no audio track**, and the mix (voice, music, loudness) is done afterwards to the scene
 times in `scenes-v6.json`; [elevenlabs-studio-prompt-v6.md](elevenlabs-studio-prompt-v6.md) is the prompt for ElevenLabs
 Studio, written from the same times. The script with every picture, line and source is

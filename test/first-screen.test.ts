@@ -62,7 +62,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // the film, verify it yourself), then the Kit 11 table, within the first 25 lines. Everything else follows it.
     const kit = lines.indexOf("## Kit 11, step by step");
     // 15 Nov (Max: "the tags on top of the readme"): the two badge rows sit under the links, inside the centred top.
-    const partners = lines.findIndex((l) => l.startsWith("[![Airwallex: "));
+    // 17 Nov (owner: "one calm, branded set"): the partners' row is the proof strip, one picture linked to /proof.
+    const partners = lines.findIndex((l) => l.startsWith('<a href="https://kit11.max-31b.workers.dev/proof"><picture>') && l.includes("proof-strip-light.svg"));
     // 15 Nov (Max): "At a glance" under the badges, six lines, each with its record (test/readme-glance.test.ts), then Kit 11.
     const glance = lines.indexOf("## At a glance");
     // 15 Nov (readme-wow): two GitHub alerts between the centred top and "At a glance": Try it (/try), then test money only.
@@ -90,9 +91,9 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.slice(live - 3, live)).toEqual(["", DIFFERENTIATORS[0], ""]);
     expect(read("docs/submission/long-description.md").split("\n").slice(0, 3)).toEqual(["# Purser: the long description", "", README_BUILT_ON.replace("(docs/airwallex.md)", "(../airwallex.md)")]);
     expect(README_BUILT_ON).not.toMatch(/partner|endors|certif|official|approved/i);
-    // Five project badges, then the partners' row.
-    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(5);
-    expect(lines[badges + 2]!.match(/\[!\[/g)).toHaveLength(6); // 15 Nov (Max): four partners (Sandbox / Testnet since 17 Nov), Claude's decisions, the worst-case AI test
+    // The two live GitHub badges (CI, CodeQL), then the proof strip (17 Nov, owner: the static shields went into it).
+    expect(lines[badges]!.match(/\[!\[/g)).toHaveLength(2);
+    expect(partners).toBe(badges + 2);
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.

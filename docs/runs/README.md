@@ -1,10 +1,20 @@
+<a href="../../README.md"><picture><source media="(prefers-color-scheme: dark)" srcset="../assets/brand/purser-mark-dark.svg"><img src="../assets/brand/purser-mark.svg" alt="Purser" width="36" height="36"></picture></a>
+
 # Live runs
 
-Every live run, newest first, generated from the records by `src/redesign/runs.ts` (`npx tsx src/cli/runs-readme.ts`).
-The same list is on the site at [/runs](https://kit11.max-31b.workers.dev/runs). Test money only; what is simulated is
-said per run. The other files in this folder are build notes, dry runs and rehearsals.
+Every live run, newest first, with what ran, what was checked, its ids and its files; test money only.
 
-**Last live run:** 17 Nov 2026.
+| At a glance | Record |
+|---|---|
+| **27 live runs**; what is simulated is said per run | the table below, generated from the records by `src/redesign/runs.ts` (`npx tsx src/cli/runs-readme.ts`) |
+| **Last live run:** 17 Nov 2026. | [/runs](https://kit11.max-31b.workers.dev/runs) on the site: the same list |
+| **2 partial runs, 3 rehearsals and dry runs**, not counted as live | [Partial runs](#partial-runs) · [Rehearsals and dry runs](#rehearsals-and-dry-runs) |
+
+<img src="../assets/charts/live-runs-per-rail.svg" alt="Live runs per rail, counted from the table below (scripts/repo-charts.ts)" width="720">
+
+The other files in this folder are build notes, dry runs and rehearsals.
+
+## Every live run
 
 | Date | Run | Rails | What ran | Checks | Key ids | Files |
 |---|---|---|---|---|---|---|

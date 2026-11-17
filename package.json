@@ -36,6 +36,7 @@
     "changelog": "tsx scripts/changelog.ts",
     "charts": "tsx scripts/repo-charts.ts",
     "finance:svg": "tsx scripts/finance-svg.ts",
+    "readme:strip": "tsx scripts/readme-proof-strip.ts",
     "test-count": "tsx scripts/test-count.ts",
     "site:check": "tsx scripts/site-check.ts",
     "test:shim": "vitest run --config vitest.shim.config.ts",
