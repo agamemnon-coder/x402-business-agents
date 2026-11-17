@@ -20,3 +20,9 @@ const BERGTEX = SEEDED_SUPPLIERS.find((s) => s.key === "bergtex")!;
 /** The clean sample, on file and payable; the others are variations of it, so each tells one thing. The pages'
  * illustration shows this invoice (cloud/src/scene.ts). */
 export const CLEAN: InvoiceFields = { supplier: BERGTEX, invoiceNo: "BTX-2026-21", amountCents: 185_000, issueDate: "2026-11-09", dueDate: "2027-01-08", iban: BERGTEX.iban };
+
+/**
+ * 17 Nov: the cash sample's context (src/engine/tryWorld.ts CASH_SAMPLE): filing it adds this much, once, to the test
+ * company's EUR committed to other bills (a test value), so its EUR above the floor is spoken for. Data only: the page says it.
+ */
+export const CASH_COMMITTED = "1050.00";

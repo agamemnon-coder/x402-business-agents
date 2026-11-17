@@ -39,7 +39,7 @@ describe("the generated samples file", () => {
 });
 
 describe("the sample tray", () => {
-  it("lists six samples, the clean one first, each titled by what the visitor does", async () => {
+  it("lists seven samples, the clean one first, each titled by what the visitor does", async () => {
     const s = await visitor();
     const r = await c.req("GET", "/v1/engine/samples", { key: s });
     expect(r.status).toBe(200);
@@ -50,6 +50,7 @@ describe("the sample tray", () => {
       { key: "bank", title: "An invoice with new bank details", filename: "bergtex-BTX-2026-22.pdf" },
       { key: "unknown", title: "An invoice from a new supplier", filename: "zeeland-ZV-4471.pdf" },
       { key: "within", title: "A small invoice inside the agent's limit", filename: "bergtex-BTX-2026-23.pdf" },
+      { key: "cash", title: "Inside the limit — but cash says wait", filename: "bergtex-BTX-2026-24.pdf" },
     ]);
     // 14 Nov (inbox table): each sample's row as its document says it, and the engine's measured outcome for it.
     expect((r.json.items as { key: string; row: unknown; expect: unknown }[]).map((x) => [x.key, x.row, x.expect])).toEqual(SAMPLE_SOURCES.map((x) => [x.key, rowOf(x), x.expect]));

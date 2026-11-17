@@ -1,7 +1,8 @@
 // The hands-on /try on `npm run judge` (src/cli/judgeTry.ts), in Chromium with a virtual passkey, as a judge without
 // internet runs it: launch, the EUR 120.00 invoice paid by the agent alone, the EUR 1,850.00 invoice sent to the CFO and
 // approved with the passkey, the one-cent change refused, the result, and the proof downloaded and verified by the
-// repo's own verifier (src/cli/verifyBundle.ts). On the way: the offline label, "no Claude call" and the simulated bank
+// repo's own verifier (src/cli/verifyBundle.ts); then, in a second tab, the EUR 480.00 invoice inside the limit that code's
+// cash check holds (17 Nov): its financial context on screen and no payout made. On the way: the offline label, "no Claude call" and the simulated bank
 // are on screen, and no request leaves localhost.
 //   npx tsx test/browser/judge-try.check.ts [screenshot dir] [--at http://localhost:4311]   (default: a judge started here)
 //   npx tsx test/browser/judge-try.check.ts [screenshot dir] --at https://kit11.max-31b.workers.dev --live
@@ -104,6 +105,40 @@ try {
   try { out = execFileSync(process.execPath, [tsx, verifier, file], { encoding: "utf8" }); } catch (e) { out = String((e as { stdout?: string }).stdout ?? e); }
   console.log(out.trim().split("\n").map((l) => `      ${l}`).join("\n"));
   ok(/\bVALID\b/.test(out) && !/INVALID/.test(out), "npm run verify-bundle on the downloaded proof: VALID");
+  // 17 Nov: the sample inside the limit that code's cash check holds ("Inside the limit — but cash says wait"), in a
+  // second tab (a test company of its own): the financial context on screen, code's decision, and no payout made.
+  {
+    const p2 = await ctx.newPage();
+    p2.on("pageerror", (e) => errors.push(e.message));
+    p2.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource/.test(m.text())) errors.push(m.text()); });
+    p2.on("request", (r) => { const u = new URL(r.url()); if (/^https?:$/.test(u.protocol) && (live ? u.hostname !== home : u.hostname !== "localhost" && u.hostname !== "127.0.0.1")) outside.push(r.url()); });
+    const press = async (name: string | RegExp) => { const b = p2.getByRole("button", { name }).first(); await b.waitFor({ timeout: 60_000 }); await b.click(); };
+    await gotoLoaded(p2, `${base}/try`);
+    await press(/Launch the live transfer demo/);
+    await press(/Inside the limit — but cash says wait/);
+    ok(/480\.00/.test(await p2.locator(".samples button[aria-pressed=true]").first().innerText()), "cash sample: the EUR 480.00 invoice is picked");
+    await press(/Give it to the AI agent/);
+    const panel = p2.locator(".why.cashctx");
+    await panel.waitFor({ timeout: 60_000 });
+    await p2.waitForTimeout(800);
+    const said = await panel.innerText();
+    ok(/below the cash floor/.test(said) && /Available after paying/.test(said) && /Cash floor/.test(said) && /Spoken for/.test(said), "cash sample: the financial context and the hold are on screen");
+    ok(/Decided by Purser's code, not the agent/.test(said), "cash sample: code's check decided, not the agent");
+    ok(/No transfer was sent to Airwallex/.test(said), "cash sample: the page says no transfer was sent");
+    ok((await panel.locator(".cmp mark").count()) === 1, "cash sample: the figure below the floor is marked");
+    await p2.screenshot({ path: join(shots, "5-cash-held.png") });
+    // The engine's own record: no transfer, no approval within the limit, nothing executed; the invoice still open.
+    const rec = await p2.evaluate(async () => {
+      const st = JSON.parse(sessionStorage.getItem("purser.try") || "{}") as { session?: string };
+      const h = { authorization: `Bearer ${st.session ?? ""}` };
+      const ev = await (await fetch("/v1/engine/events?after=0&limit=200", { headers: h })).json() as { items: { event: string }[] };
+      const inv = await (await fetch("/v1/engine/invoices", { headers: h })).json() as { items: { invoice_no: string; status: string }[] };
+      return { events: ev.items.map((e) => e.event), status: inv.items.find((i) => i.invoice_no === "BTX-2026-24")?.status ?? null };
+    });
+    ok(!rec.events.some((e) => /^(transfer\.|airwallex\.transfer|proposal\.executed|proposal\.within_limit)/.test(e)), "cash sample: no payout made (no transfer, nothing approved or executed)");
+    ok(rec.status === "ready", `cash sample: the invoice stays open (${String(rec.status)})`);
+    await p2.close();
+  }
   ok(outside.length === 0, `no request left ${live ? home : "localhost"}${outside.length ? `: ${[...new Set(outside)].slice(0, 5).join(", ")}` : ""}`);
   ok(errors.length === 0, `no console or page error${errors.length ? `: ${errors.join(" | ")}` : ""}`);
   await ctx.close();

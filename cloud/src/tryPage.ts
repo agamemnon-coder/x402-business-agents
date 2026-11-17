@@ -29,6 +29,7 @@ import { ICON_LINKS, PREVIEW_TAGS } from "./brand.js";
 import { consoleCsp } from "./console.js";
 import { SITE_HEADER_CSS, SITE_ORIGIN, siteHeader } from "./siteHeader.js";
 import { SCRIPT as SCRIPT_COPY, TRACE } from "./tryCopy.js";
+import { CASH } from "./tryCopy.js";
 import { APPROVE, BAND, INBOX, RECEIPT, FX_HOLD, WORK_CHECKS, BOOKS, COMPANY, ENDED, FX_CARD, GONE, GUIDE, PAYOUT_CARD, INVOICE, INVOICE_FIELDS, LIVE, METHOD, OPEN, FINISH_LINKS, PAY, PROOF_BAND, PROPOSAL_FIELDS, RECORDED, RUN, SAME_STEP, START, STEPS, TAMPER, WHY, WORK } from "./tryCopy.js";
 import { VERIFY_YOURSELF } from "./tryCopy.js";
 import { TRY_ALONE_LIMIT } from "../../src/config/policy.js";
@@ -183,6 +184,16 @@ input, select { width: 100%; min-width: 0; height: 46px; padding: 0 12px; font: 
 .why .cmp mark { background: var(--bad-soft); color: var(--bad); border-radius: 4px; padding: 0 3px; box-shadow: inset 0 0 0 1px var(--bad); }
 .why .said { margin: 0 0 12px; font-weight: 600; }
 .why .rule { margin: 0; color: var(--muted); }
+/* 17 Nov: the cash check's hold (drawCash): the reason in the text colour, the figures in a calm grid, the one that breaks the floor marked. */
+.why.cashctx .head { color: var(--text); }
+.why.cashctx .head .i { color: var(--bad); }
+.why.cashctx .cmp { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.why.cashctx .cashnext { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+.why.cashctx .cashnext .nh { margin: 0 0 6px; font-weight: 650; }
+.why.cashctx .cashnext ul { margin: 0; padding-left: 20px; }
+.why.cashctx .cashnext li + li { margin-top: 4px; }
+.why.cashctx .cashtest { margin: 10px 0 0; }
+.why.cashctx details { margin-top: 12px; }
 .why details ul { margin: 8px 0 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
 .note { padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); color: var(--text); }
 details { margin: 12px 0; }
@@ -930,7 +941,9 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       // 16 Nov (owner: the held ones read as "not working"): the two that get paid first, the agent's own first; then,
       // under their own heading, the ones Purser holds on purpose.
       const paid=(s)=>s.key==='within'||s.key==='clean';
-      const items=[...all.filter(paid).sort((a,b)=>(a.key==='within'?0:1)-(b.key==='within'?0:1)),...all.filter((s)=>!paid(s))];
+      // 17 Nov: the one inside the limit that code's cash check holds, right after them, before the held group.
+      const cashK=(s)=>s.key==='cash';
+      const items=[...all.filter(paid).sort((a,b)=>(a.key==='within'?0:1)-(b.key==='within'?0:1)),...all.filter(cashK),...all.filter((s)=>!paid(s)&&!cashK(s))];
       if(!items.length){
         // Calmly, with a retry that reads them again; a kept tap is dropped, the button stays off.
         queued=false;gate();
@@ -942,11 +955,11 @@ screen('invoice',{heading:C.invoice.heading,draw(box,arg){
       for(const s of items){
         // Judges, 14 Nov: each sample says in one muted line what it shows; the first is where to start.
         const hint=C.invoice.hints[s.key];const first=!list.children.length;
-        if(!paid(s)&&!list.querySelector('.igroup'))list.append(el('div','igroup',C.invoice.heldGroup));
+        if(!paid(s)&&!cashK(s)&&!list.querySelector('.igroup'))list.append(el('div','igroup',C.invoice.heldGroup));
         const title=String(s.title??s.key),sh=hint?el('span','sh',hint):null;
         // 14 Nov (inbox table): the row is the button: supplier (with the sample's title and its line), number, amount,
         // due date and the risk the engine measured for it.
-        const rw=s.row&&typeof s.row==='object'?s.row:null,rk=riskOf(s.expect);
+        const rw=s.row&&typeof s.row==='object'?s.row:null,rk=cashK(s)?{label:C.cash.risk,tone:'warn'}:riskOf(s.expect);
         const b=btn([el('span','c sup',[el('span','vn',[rw?String(rw.vendor):title,first?el('span','here',C.invoice.startHere):null]),sh]),
           el('span','c no mono',rw?String(rw.invoice_no):''),el('span','c amt',rw?cash(rw.currency,rw.amount):''),el('span','c due',rw&&rw.due_date?dateOf(rw.due_date):''),
           el('span','c risk',rk?el('span','rchip '+rk.tone,rk.label):'')]);if(rw)b.classList.add('row');b.setAttribute('aria-pressed','false');
@@ -1155,6 +1168,9 @@ function drawResult(box,r,ms){
   const inv=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;
   let main;
   if((r.status===200||r.status===201)&&inv){
+    // 17 Nov: inside the limit, but code's cash check holds it (the answer's cash, while the invoice is still ready).
+    const ck=r.json.cash&&typeof r.json.cash==='object'&&r.json.cash.outcome==='hold'&&inv.status==='ready'?r.json.cash:null;
+    if(ck){drawCash(box,inv,ck,took);return}
     const why=whyKit.whyOf(C.why,r.json,{money:cash,date:dateOf});
     if(why){
       // Held or refused (14 Nov, owner): why, big and first; the evidence; the rule; the engine's words, the round trip and
@@ -1238,6 +1254,23 @@ function drawResult(box,r,ms){
   main=btn(C.work.another,true);main.addEventListener('click',()=>show('invoice'));
   box.append(main);
 }
+// 17 Nov (judging: "financial context influences what the agent decides"): an invoice inside the agent's limit that
+// code's cash check holds (src/ap/cashCheck.ts). As every hold: the reason big and first, the figures side by side (the
+// test company's own, from the engine's answer), the rule, what was not sent; then what would make it payable, and the
+// invoice folded. Nothing is filed or paid from here: the way on is another invoice.
+function drawCash(box,inv,k,took){
+  const X=C.cash,cur=typeof k.currency==='string'?k.currency:String(inv.currency||'EUR');const m=(v)=>cash(cur,String(v??''));
+  const days=typeof k.days_to_due==='number'&&k.days_to_due>=0?k.days_to_due:null;
+  const R=X.rows,rows=[[R.balance,m(k.balance),''],[R.spoken,m(k.spoken_for),''],[R.available,m(k.available),''],[R.floor,m(k.floor),''],[R.payment,m(k.need),''],[R.after,m(k.after),m(k.after)]];
+  if(typeof k.due_date==='string'&&k.due_date)rows.push([R.due,days!==null?fill(X.due,{date:dateOf(k.due_date),days}):dateOf(k.due_date),'']);
+  const card=invoiceCard(inv);CLAUDE.slot=card.chip;
+  const node=whyNode({tone:'hold',head:fill(X.head,{money:m(k.short_by)}),rows,said:X.said,rule:X.rule},[...(took?[took]:[]),card.node]);
+  node.classList.add('cashctx');
+  const next=el('div','cashnext',[el('p','nh',X.next),el('ul','',[el('li','',X.nextFunds),el('li','',X.nextCfo)])]);
+  const det=node.querySelector('details');if(det)det.before(next,el('p','hint cashtest',X.test));else node.append(next,el('p','hint cashtest',X.test));
+  const another=btn(C.work.another,true);another.addEventListener('click',()=>show('invoice'));
+  box.append(node,el('div','acts hold',[another]));chipFill();
+}
 // 15 Nov (jury: "what does Claude add?"): under the answer, the Checker agent's own steps on this invoice, folded,
 // one line each (AT.traceOf, from this request's events only), and one button: the same invoice through the always-pay
 // script, as the engine recorded it beside the decision (AT.compareOf: no Claude call), side by side with Claude's.
@@ -1273,7 +1306,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     call('GET','/v1/engine/events?after=0&limit=200').then((r)=>{if(r.status===200&&Array.isArray(r.json.items)){const it=r.json.items.filter(mine);live.add(it);claudeSeen(it);ag.add(it)}});
     // A copy caught as the same file comes back as that answer (kept with the page's history), never as its paid original.
     const drawIt=(inv)=>{if(S.screen!=='work'||!box.isConnected)return;result.replaceChildren();
-      drawResult(result,{status:200,json:Object.assign({invoice:inv},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{})},null);
+      drawResult(result,{status:200,json:Object.assign({invoice:inv},arg.upload&&typeof arg.upload==='object'?{kind:String(arg.upload.kind||''),sha256:String(arg.upload.sha256||'')}:{},arg.cash&&typeof arg.cash==='object'?{cash:arg.cash}:{})},null);
       result.append(ag.node)};
     // 16 Nov (review): the invoice as the server has it now, not as it was filed: paid since (the agent's payment runs in
     // the background) opens its paid screen; filed for the CFO since carries its terms, so Send to CFO opens them.
@@ -1301,7 +1334,7 @@ screen('work',{heading:C.work.heading,draw(box,arg){
     if(arg.kind==='compose'&&r.status===400){show('invoice',{draft:arg.body,said:words(r.json,C.work.failed)});return}
     result.replaceChildren();drawResult(result,r,ms);if(r.status===200||r.status===201)result.append(ag.node);drawn=r.status===200;flag();
     // Back from the next step returns to this answer, never files the invoice again.
-    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed&&S.cost){S.cost.invoice=filed.id;save()}if(filed)remember('work',{invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},'replace');
+    const filed=r.json&&r.json.invoice&&typeof r.json.invoice==='object'?r.json.invoice:null;if(filed&&S.cost){S.cost.invoice=filed.id;save()}if(filed)remember('work',Object.assign({invoice:filed,upload:{kind:r.json.kind,sha256:r.json.sha256}},r.json.cash&&typeof r.json.cash==='object'?{cash:r.json.cash}:{}),'replace');
     const b=result.querySelector('.btn.primary');if(b)b.focus();
   });
 }});
@@ -2039,7 +2072,7 @@ const TESTS_HREF = "https://github.com/agamemnon-coder/x402-business-agents/blob
 /** extra: the app shell and "How Purser works" (cloud/src/try/presentMode.ts); recording mode's too with /try?present=1. */
 /** over: the v2 preview's words (cloud/src/try/presentMode.ts V2_COPY), merged over the copy key by key; none on plain /try. */
 export function tryPage(n: string, cfg: { origin: string; rpId: string }, extra?: { css: string; script: string }, over?: Record<string, Record<string, unknown>>): string {
-  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL } };
+  const copy = { limitAmount: TRY_ALONE_LIMIT.amount, limitCurrency: TRY_ALONE_LIMIT.currency, run: RUN, same: SAME_STEP, proofBand: PROOF_BAND, guide: GUIDE, film: FILM_URL, trailer: { url: TRAILER_URL, label: TRAILER_LINK }, finish: FINISH_LINKS, band: BAND, steps: STEPS, start: START, invoice: INVOICE, work: WORK, fields: INVOICE_FIELDS, approve: APPROVE, open: OPEN, proposal: PROPOSAL_FIELDS, fxCard: FX_CARD, inbox: INBOX, receipt: RECEIPT, payoutCard: PAYOUT_CARD, workChecks: WORK_CHECKS, fxHold: FX_HOLD, method: METHOD, pay: PAY, why: WHY, tamper: TAMPER, books: BOOKS, company: COMPANY, recorded: RECORDED, gone: GONE, ended: ENDED, live: LIVE, trace: TRACE, script: SCRIPT_COPY, verifyYourself: { ...VERIFY_YOURSELF, url: VERIFY_URL }, cash: CASH };
   if (over) for (const [k, v] of Object.entries(over)) { const c = copy as unknown as Record<string, Record<string, unknown>>; c[k] = { ...(c[k] ?? {}), ...v }; }
   const icons = { "key-round": MORE["key-round"], "circle-check": ICONS["circle-check"], landmark: ICONS.landmark, database: ICONS.database, "file-lock-2": ICONS["file-lock-2"],
     clock: ICONS.clock, check: ICONS.check, "triangle-alert": ICONS["triangle-alert"], "file-text": MORE["file-text"], download: MORE.download,
