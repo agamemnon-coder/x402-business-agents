@@ -29,14 +29,14 @@ describe("the Airwallex API trail", () => {
     for (const f of ["docs/runs/2026-11-12-airwallex-batch-transfer.json", "docs/runs/2026-11-12-airwallex-batch-transfer-2.json", "docs/runs/2026-11-12-airwallex-payee-check.json",
       "docs/runs/2026-11-12-airwallex-financial-transactions.json", "docs/runs/2026-11-13-airwallex-deposits.json", "docs/runs/2026-11-13-airwallex-switch-on.json",
       "docs/runs/airwallex-cards-2026-11-06.json", "docs/runs/airwallex-transfer-approval-2026-11-06.json", "docs/runs/airwallex-vic-payment-intents-2026-11-12.json",
-      "docs/runs/airwallex-readback.json", "docs/demo/airwallex-run.json"]) expect(records).toContain(f);
+      "docs/runs/airwallex-readback.json", "docs/demo/airwallex-run.json", "docs/runs/2026-11-17-airwallex-late-failure.json"]) expect(records).toContain(f);
     const isos = t.runs.map((r) => r.iso);
     expect([...isos].sort().reverse()).toEqual(isos);
   });
 
   it("counts each record's calls as the record does", () => {
     const by = new Map(t.runs.map((r) => [r.record, r.calls.reduce((n, c) => n + c.count, 0)]));
-    for (const f of ["2026-11-12-airwallex-batch-transfer.json", "2026-11-12-airwallex-batch-transfer-2.json", "2026-11-12-airwallex-payee-check.json", "2026-11-12-airwallex-financial-transactions.json", "2026-11-13-airwallex-deposits.json", "2026-11-13-airwallex-switch-on.json"]) {
+    for (const f of ["2026-11-12-airwallex-batch-transfer.json", "2026-11-12-airwallex-batch-transfer-2.json", "2026-11-12-airwallex-payee-check.json", "2026-11-12-airwallex-financial-transactions.json", "2026-11-13-airwallex-deposits.json", "2026-11-13-airwallex-switch-on.json", "2026-11-17-airwallex-late-failure.json"]) {
       expect(by.get(`docs/runs/${f}`)).toBe((json(`docs/runs/${f}`).calls as { total: number }).total);
     }
     expect(by.get("docs/demo/airwallex-run.json")).toBe((json("docs/demo/airwallex-run.json").calls as { airwallex_total: number }).airwallex_total);
@@ -62,6 +62,17 @@ describe("the Airwallex API trail", () => {
     const awx1 = t.runs.find((r) => r.key === "awx-1")!.checks.find((c) => c.recomputed)!;
     expect(awx1.recomputed).toBe(termsHash(receipt.terms as Terms));
     expect(awx1.carried).toBe(awx1.recomputed);
+  });
+
+  it("lists the late-failure run of 17 Nov as its record holds it: the simulated moves, the stand-in reads, the signed hashes", () => {
+    const rec = json("docs/runs/2026-11-17-airwallex-late-failure.json") as { calls: { lines: { at: string }[] }; transfers: { transfer_id: string }[] };
+    const run = t.runs.find((r) => r.key === "late-failure-1117")!;
+    expect(run.calls.map((c) => c.at).sort()).toEqual(rec.calls.lines.map((l) => l.at).sort());
+    const moves = run.calls.filter((c) => c.path.endsWith("/simulation/transfers/{id}/transition")).reverse().map((c) => c.outcome);
+    expect(moves).toEqual(["SENT", "PAID", "SENT", "PAID", "FAILED", "FAILED"].map((s) => `${s} (simulated)`));
+    expect(run.calls.filter((c) => /in place of the webhook/.test(c.outcome ?? "")).map((c) => c.objectId).sort()).toEqual(rec.transfers.map((x) => x.transfer_id).sort());
+    expect(run.calls.filter((c) => c.path.endsWith("/transfers/create"))).toHaveLength(2);
+    expect(run.checks.map((c) => c.match)).toEqual([true, true]);
   });
 
   it("says match only where the carried hash is the signed one (and the recomputed one, where there is one)", () => {

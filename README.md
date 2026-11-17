@@ -113,7 +113,7 @@ The film was recorded on 15 November, so its test count (6,932) is older than th
 
 - **Within the CFO's limits the agent pays alone**, and each rail holds the limit again: Airwallex's card controls, Alta's mandate on chain.
 - **Above a limit, the CFO signs the exact terms** with a passkey (Face ID on iPhone); change one cent and the signature no longer verifies.
-- **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 26 live runs to 15 November, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
+- **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 27 live runs to 17 November, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
 
 ## Airwallex at the centre
 
@@ -180,7 +180,7 @@ Test money only: Alta testnet, Airwallex sandbox, Visa via Airwallex Airi (sandb
 | **Tamper-evident log** | Every decision is hash-chained, and the chain's head is anchored on Alta testnet (`npm run verify-anchor`). |
 | **The payee's bank checks the name** | Before a new supplier or changed bank details reach the CFO, Airwallex's account verification (`POST /beneficiaries/verify_account`) must match: a mismatch is refused, a partial match held (live, 12 Nov: [run](docs/runs/2026-11-12-airwallex-payee-check.md)). |
 | **Money spoken for before it moves** | Available = balance − holds − payouts under way, the same everywhere, so two payments never count on the same euro ([src/policy/available.ts](src/policy/available.ts)). |
-| **A payout that comes back** | PAID is not final at Airwallex: a `payout.transfer.failed` webhook gets the payout read again; the invoice goes to a person, the books take the payment back (the fee stays, Airwallex keeps it), and nothing is sent again under the old approval ([src/payouts/follow.ts](src/payouts/follow.ts); tested, not run live). |
+| **A payout that comes back** | PAID is not final at Airwallex: a `payout.transfer.failed` webhook gets the payout read again; the invoice goes to a person, the books take the payment back (the fee stays, Airwallex keeps it), and nothing is sent again under the old approval ([src/payouts/follow.ts](src/payouts/follow.ts)). Sandbox, 17 Nov: two PAID payouts failed by the simulation endpoint, a read of each in place of the webhook; both invoices went to a person, nothing was sent again ([record](docs/runs/2026-11-17-airwallex-late-failure.json)). The books taking a payment back: tested only. |
 
 ## Built with
 

@@ -112,7 +112,7 @@ const WORDS: Record<string, string> = {
   "POST /transfers/create": "Creates a SWIFT payout with the signed terms hash in its metadata",
   "GET /transfers/{id}": "Reads a transfer back (status, amounts, metadata)",
   "GET /transfers": "Lists transfers",
-  "POST /simulation/transfers/{id}/transition": "Asks the sandbox to move a payout to SENT or PAID (settlement is simulated)",
+  "POST /simulation/transfers/{id}/transition": "Asks the sandbox to move a payout to SENT or PAID (settlement is simulated), or to FAILED (a late failure, simulated)",
   "GET /fx/rates/current": "Reads the market rate, to compare with the quote",
   "POST /fx/quotes/create": "Locks an FX quote for the currency the payment needs",
   "GET /fx/quotes/{id}": "Reads an FX quote back",
@@ -307,6 +307,30 @@ export function trailRuns(): TrailRun[] {
     if (seen) tag(calls, "GET", "/deposits", 1, str((seen.payload as J).status), str(seen.subject));
     if (agreed) { const p = agreed.payload as J; tag(calls, "GET", "/financial_transactions", 0, `agrees: ${str(p.airwallex)}`, arr(p.items).map((i) => str(i.id)!).join(", ")); }
     runs.push({ key: "deposits-1113", iso: str(calls[0]?.at)!, title: "A simulated deposit, followed into the ledger", record: "docs/runs/2026-11-13-airwallex-deposits.json", alsoReads: [], calls, checks: [] });
+  }
+
+  // 17 Nov late failure: two payouts taken to PAID, then FAILED, by the sandbox's simulation; a GET of each transfer
+  // stood in for the webhook, then syncPayments read each again. The record itemises its calls; the rows are tagged in
+  // the order of the record's audit rows (the transitions; the stand-in reads, then the re-reads, are the last GETs).
+  const lf = readJson("docs/runs/2026-11-17-airwallex-late-failure.json");
+  if (lf) {
+    const calls = lineCalls(lf), transfers = arr(lf.transfers);
+    transfers.forEach((t, i) => tag(calls, "POST", "/transfers/create", i, `${str(t.invoice_no)}, ${str(t.currency)} ${str(t.amount)}`, str(t.transfer_id)));
+    const moves = audit(lf).filter((a) => (a.event === "transfer.status" && a.actor === "awx-executor" && ["SENT", "PAID"].includes(str((a.payload as J).status) ?? "") && !(a.payload as J).read)
+      || a.event === "late_failure.fail_accepted");
+    const sims = calls.filter((x) => x.method === "POST" && x.path === `${API_BASE}/simulation/transfers/{id}/transition`);
+    if (moves.length === sims.length) moves.forEach((m, i) => { sims[i]!.outcome = `${str((m.payload as J).status)} (simulated)`; sims[i]!.objectId = str(m.subject); });
+    const reads = [...ev(lf, "late_failure.webhook_stand_in").map((a) => ({ a, how: "read in place of the webhook" })), ...ev(lf, "transfer.rechecked").map((a) => ({ a, how: "read again by syncPayments" }))];
+    const gets = calls.filter((x) => x.method === "GET" && x.path === `${API_BASE}/transfers/{id}`).slice(-reads.length);
+    if (reads.length && gets.length === reads.length) reads.forEach(({ a, how }, i) => { const p = a.payload as J; gets[i]!.outcome = `${str(p.airwallex_status ?? p.status)}, ${how}`; gets[i]!.objectId = str(a.subject); });
+    const signed = new Map(arr(lf.proposals).map((p) => [str(p.proposal_id)!, str(p.terms_sha256)]));
+    const pidOf = new Map(ev(lf, "late_failure.created").map((a) => [str(a.subject)!, str((a.payload as J).proposal_id)]));
+    const checks: HashCheck[] = transfers.filter((t) => str(t.approval_sha256)).map((t) => {
+      const pid = pidOf.get(str(t.transfer_id)!) ?? null, carried = str(t.approval_sha256)!, s = pid ? signed.get(pid) ?? null : null;
+      return { kind: "transfer", label: `late failure: transfer ${str(t.transfer_id)} (${pid ?? "?"}, ${str(t.invoice_no)})`, carried, signed: s, recomputed: null, match: !!s && s === carried,
+        how: "approval_sha256 against the terms hash the labelled virtual test passkey signed (the run's proposals)" };
+    });
+    runs.push({ key: "late-failure-1117", iso: str(calls[0]?.at)!, title: "A payout that does not stay paid: PAID, then FAILED by the sandbox's simulation", record: "docs/runs/2026-11-17-airwallex-late-failure.json", alsoReads: [], calls, checks });
   }
 
   for (const r of runs) r.calls.sort(byTimeDesc);

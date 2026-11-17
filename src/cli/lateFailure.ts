@@ -8,6 +8,11 @@
 // transfer, handed to checkEvent, stands in for the webhook (Airwallex's webhooks go to the hosted relay, not to this
 // local ledger), and syncPayments follows: R1 returned after PAID, R2 failed after SENT, both invoices to a person.
 //
+// Run live on 17 Nov (docs/runs/2026-11-17-airwallex-late-failure.json), not as planned in two places: the record shows
+// no IN_APPROVAL (the executor took both transfers to PAID by the simulation right after creating them), so R2 failed
+// from PAID too; and no payment was booked before the failures, so the books taking a payment back did not run live
+// (tested only: test/payout-returned.test.ts).
+//
 //   stand-in   the whole flow on the in-memory Airwallex stand-in with its approval workflow on; 0 network.
 //              `stand-in --refused`: the stand-in refuses FAILED after PAID, as the sandbox may; that refusal is recorded.
 //              Each step prints its rail calls as the live adapter sends them (+1 login per live process); --facts prints facts.

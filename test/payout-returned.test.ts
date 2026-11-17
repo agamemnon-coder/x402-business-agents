@@ -4,7 +4,8 @@
 // paid payout again when a payout.transfer.failed webhook asks (never trusting its body), sends the invoice to a
 // person, takes the payment back in the books (the fee stays: Airwallex keeps it), corrects the ERP without deleting,
 // and never sends anything again under the old approval. A payout that fails after SENT, before PAID, no longer leaves
-// its invoice waiting for good.
+// its invoice waiting for good. The sandbox run of 17 Nov (docs/runs/2026-11-17-airwallex-late-failure.json) ran the
+// read again, the person and the no-resend live; taking a booked payment back in the books is held here only.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";

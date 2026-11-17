@@ -19,6 +19,7 @@ const HOSTILE_CLAIM = hostileClaimText();
 // Since 13 Nov the same record's figures are a proof tile on /claude (src/redesign/claudePage.ts).
 const HOSTILE_TILE = claudeEvidence().hostile ? hostileTileLabel(claudeEvidence().hostile!) : "\u0000";
 import { esc } from "../src/redesign/ui.js";
+import { apiTrail } from "../src/airwallex/apiTrail.js";
 
 const { file, record } = loadRecord();
 const RAW = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
@@ -56,7 +57,10 @@ function recount(r: RunRecord): string[] {
     // /claude's phone figures (final jury, 13 Nov): the payment requests in all, routine plus exceptions, from the same split.
     String(split(r).routine), String(split(r).routine + split(r).decisions), String(faceIdDecisions(r)), String(s.reduce((n, a) => n + a.claude_calls, 0)), String(onChain), String(atAirwallex), ...calls].filter(Boolean);
 }
-const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord)]);
+// /proof's count of Airwallex sandbox calls (src/redesign/scale.ts), counted from the run records by the API trail
+// (src/airwallex/apiTrail.ts, held to each record by test/airwallex-api-trail.test.ts). 154 matched a number in the main
+// run's record by chance until the late-failure run of 17 Nov added its 30 calls.
+const ALLOWED = new Set([...RECORD_NUMBERS, ...recount(JSON.parse(RAW) as RunRecord), String(apiTrail().calls)]);
 
 /** The words a person reads on a page as served (scripts, styles and markup left out), without the fixed names that carry digits. */
 const visibleText = (html: string) => html
