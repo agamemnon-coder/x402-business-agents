@@ -9,6 +9,7 @@ import { fromCents } from "../lib/money.js";
 import { frozen, paused } from "../policy/rules.js";
 import { stopped } from "../policy/velocity.js";
 import { REASON_WORDS } from "../agents/declineAgent.js";
+import { feeKeptSql } from "../payouts/feeKept.js";
 
 // A refusal in plain words for the CFO; the code itself stays beside it, small (design review, 1 Nov).
 const MANDATE_WORDS: Record<string, string> = {
@@ -86,8 +87,9 @@ export function towerView(db: DB, inp: TowerInputs): Tower {
     flow(db, "Card spend", "airwallex", "EUR", "SELECT SUM(amount_cents) AS s, COUNT(*) AS c FROM card_transactions WHERE approved = 1", "SELECT transaction_id FROM card_transactions WHERE approved = 1 ORDER BY occurred_at DESC LIMIT 1", "awx", "software on the agents' company cards"),
     flow(db, "Supplier payouts", "airwallex", "EUR", "SELECT SUM(CAST(ROUND(CAST(amount AS REAL) * 100) AS INTEGER)) AS s, COUNT(*) AS c FROM transfers WHERE status = 'PAID'", "SELECT transfer_id FROM transfers WHERE status = 'PAID' ORDER BY updated_at DESC LIMIT 1", "awx", "SWIFT, after the CFO's Face ID"),
   ];
-  // Airwallex's fee is stored as it reported it ("EUR 13.41"), the way the books read it (src/accounting/gl.ts).
-  const feeSql = "SELECT fee_actual FROM transfers WHERE status = 'PAID' AND fee_actual IS NOT NULL";
+  // Airwallex's fee is stored as it reported it ("EUR 13.41"), the way the books read it (src/accounting/gl.ts), and
+  // counted where the books keep it: a PAID payout's, and a returned payout's, which Airwallex keeps (feeKeptSql).
+  const feeSql = `SELECT fee_actual FROM transfers WHERE ${feeKeptSql()} AND fee_actual IS NOT NULL`;
   const fees = (has(db, feeSql) ? db.prepare(feeSql).all() as { fee_actual: string }[] : [])
     .map((r) => /^EUR (\d+\.\d{2})$/.exec(r.fee_actual)).reduce((sum, m) => sum + (m ? cents(m[1]!) : 0), 0);
   const v = (f: Flow) => cents(f.amount);

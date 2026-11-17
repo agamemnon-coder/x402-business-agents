@@ -18,6 +18,8 @@ import { ingestDocument, type InboxDeps } from "../src/ap/inbox.js";
 import { payApInvoice, syncPayments } from "../src/ap/pay.js";
 import type { Asker } from "../src/ap/read.js";
 import { apInvoice } from "../src/ap/store.js";
+import { insights } from "../src/ap/insights.js";
+import { towerView } from "../src/dashboard/tower.js";
 import { openDb, type DB } from "../src/db/open.js";
 import { ledgerItems } from "../src/erp/source.js";
 import { executeInvoicePayment } from "../src/executors/invoicePayment.js";
@@ -260,5 +262,35 @@ describe("a ledger made before the return event", () => {
     } finally {
       db = saved;
     }
+  });
+});
+
+// Review gap (17 Nov): the books keep a returned payout's transfer fee (src/accounting/gl.ts), but the payables insight
+// panel and the control tower counted only PAID transfers' fees, so their totals were below the books' after a return.
+describe("the dashboards count the fee the books keep", () => {
+  /** The transfer fees the books hold, in cents: the 6800 lines of source "transfer". */
+  const glFees = () => journal(db).filter((l) => l.source === "transfer" && l.gl_account === "6800").reduce((n, l) => n + toCents(l.amount.replace(/^-/, "")), 0);
+  const returned = async () => {
+    const { transferId } = await paidInvoice();
+    await syncPayments(db, { ...deps, rail: awx });
+    await awx.transitionTransfer(transferId, "FAILED");
+    checkEvent(db, "payout.transfer.failed", { id: transferId, status: "FAILED" }, now);
+    await syncPayments(db, { ...deps, rail: awx });
+    expect(events("transfer.returned_after_paid", transferId)).toHaveLength(1);
+  };
+
+  it("the payables insights: a returned payout's fee is in the SWIFT fees, which equal the books' transfer fees", async () => {
+    await returned();
+    expect(glFees()).toBe(1340);
+    expect(insights(db, now).costs.swift_fees).toEqual([{ currency: "EUR", total: "13.40", count: 1 }]);
+  });
+
+  it("the control tower: a returned payout's fee is in the P&L's fees, which equal the books' transfer fees", async () => {
+    await returned();
+    const t = towerView(db, { budgets: [], cards: [] });
+    expect(toCents(t.pnl.eur.fees)).toBe(glFees());
+    expect(t.pnl.eur.fees).toBe("13.40");
+    // The payout itself is no longer money out (it came back); its fee is.
+    expect(t.pnl.eur.payouts).toBe("0.00");
   });
 });
