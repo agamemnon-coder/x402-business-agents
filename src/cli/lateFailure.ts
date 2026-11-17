@@ -181,11 +181,13 @@ async function settle(db: DB, rail: Rail, sink: Sink) {
 
 /** Why fail must not run: R1 PAID and R2 SENT in the ledger (settle first). */
 function failRefusal(db: DB): string | undefined {
-  const want: Record<string, string> = { [R1]: "PAID", [R2]: "SENT" };
+  // R2 is asked from SENT where it stopped there; the executor may already have taken it to PAID (the sandbox's
+  // simulation right after the transfer), and then it fails from PAID too: the record says which.
+  const want: Record<string, string[]> = { [R1]: ["PAID"], [R2]: ["SENT", "PAID"] };
   for (const no of LATE_FAILURE_INVOICES) {
     const t = transferOf(db, no)!;
     const tried = db.prepare("SELECT 1 FROM audit_log WHERE event IN ('late_failure.fail_accepted', 'late_failure.fail_refused') AND subject = ?").get(t.transfer_id);
-    if (!tried && t.status !== want[no]) return `${no} (${t.transfer_id}) is ${t.status} in the ledger, not ${want[no]!} (settle first)`;
+    if (!tried && !want[no]!.includes(t.status)) return `${no} (${t.transfer_id}) is ${t.status} in the ledger, not ${want[no]!.join(" or ")} (settle first)`;
   }
   return undefined;
 }
