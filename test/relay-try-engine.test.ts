@@ -3,6 +3,8 @@
 // site's (/try/sign and under it above all), and without the binding the site answers as before.
 import { readFileSync } from "node:fs";
 import { LOGO_FILES } from "../cloud/src/try/logos.gen.js";
+import { AIRWALLEX_LOGO_DATA_URL } from "../cloud/src/awxLogo.gen.js";
+import { AIRWALLEX_LOGO_PATH } from "../src/ui/builtOn.js";
 import { LOGOS } from "../src/servers/dashboard.js";
 import { describe, expect, it } from "vitest";
 import { isTryEngineRequest, tryEngineResponse, TRY_ENGINE_PATHS, type TryEngine } from "../worker/src/tryEngine.js";
@@ -53,14 +55,17 @@ describe("the paths the site passes to purser-try", () => {
     const html = tryPage("n", { origin: "https://x.test", rpId: "x.test" });
     const named = [...new Set([...html.matchAll(/['"`(](\/(?:v1|try|assets)\/?[A-Za-z0-9_./-]*)/g)].map((m) => m[1]!))].sort();
     expect(named).toEqual([
-      "/assets/inter.woff2", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/try/negotiate", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
+      "/assets/inter.woff2", "/assets/logo-airwallex.png", "/assets/logo-alta.svg", "/assets/logo-claude-slate.svg", "/try", "/try/negotiate", "/v1/engine", "/v1/engine/compose", "/v1/engine/events", "/v1/engine/export", "/v1/engine/export.pdf", "/v1/engine/invoices", "/v1/engine/invoices/",
       "/v1/engine/passkey/finish", "/v1/engine/passkey/start", "/v1/engine/proposals/", "/v1/engine/samples", "/v1/engine/samples/", "/v1/engine/suppliers",
       "/v1/engine/vault", "/v1/engine/vault/file", "/v1/ledger/entries", "/v1/payments", "/v1/transactions", "/v1/try/negotiate", "/v1/try/negotiate/agreed", "/v1/try/negotiate/recorded", "/v1/try/session", "/v1/try/start",
     ]);
     // The start's partner logos (14 Nov) are the site's own files too, the same bytes purser-try serves (logos.gen.ts).
+    // The header's Airwallex badge (17 Nov) is the site's own file as well, the same bytes purser-try serves (awxLogo.gen.ts).
     for (const p of named.filter((x) => x.startsWith("/assets/logo-"))) {
       expect(isTryEngineRequest("GET", p), p).toBe(false);
-      expect(Buffer.from(LOGO_FILES[p]!.b64, "base64").equals(LOGOS[p.slice("/assets/".length)]!.body), p).toBe(true);
+      const ours = p === AIRWALLEX_LOGO_PATH ? Buffer.from(AIRWALLEX_LOGO_DATA_URL.slice(AIRWALLEX_LOGO_DATA_URL.indexOf(",") + 1), "base64") : Buffer.from(LOGO_FILES[p]!.b64, "base64");
+      const site = p === AIRWALLEX_LOGO_PATH ? readFileSync(new URL("../src/ui/logos/airwallex.png", import.meta.url)) : LOGOS[p.slice("/assets/".length)]!.body;
+      expect(ours.equals(site), p).toBe(true);
     }
     for (const p of named) if (!p.endsWith("/") && !p.startsWith("/assets/")) expect(PAGE_CALLS.some(([, c]) => new URL(c, SITE).pathname === p), p).toBe(true);
   });

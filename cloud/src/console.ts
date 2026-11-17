@@ -13,6 +13,7 @@ import { fromB64 } from "./crypto.js";
 import { LEDGER_ACCOUNTS } from "../../src/ledger/accounts.js";
 import { INTER_WOFF2_B64 } from "./font.gen.js";
 import { AIRWALLEX_LOGO_PATH, builtOnBadge } from "../../src/ui/builtOn.js";
+import { AIRWALLEX_LOGO_DATA_URL } from "./awxLogo.gen.js";
 import { tryPageResponse, VERIFY_URL } from "./tryPage.js";
 import { LOGO_FILES } from "./try/logos.gen.js";
 import { stagePageResponse } from "./try/stagePage.js";
@@ -371,7 +372,7 @@ ol.stepper li.done .n .ic { display: inline-flex; }
 const BODY = `
 ${siteHeader(null)}
 <div class="appbar"><div class="wrap"><nav class="apptabs" id="tabs" aria-label="${tr("en", "app.pages")}"><a href="#/overview" data-tab="overview" data-t="cs.nav.overview">${tr("en", "cs.nav.overview")}</a><a href="#/agents" data-tab="agents" data-t="cs.nav.agents">${tr("en", "cs.nav.agents")}</a><a href="#/invoices" data-tab="invoices" data-t="nav.invoices">${tr("en", "nav.invoices")}</a><a href="#/books" data-tab="books" data-t="cs.nav.ledger">${tr("en", "cs.nav.ledger")}</a><a href="#/transactions" data-tab="transactions" data-t="nav.transactions">${tr("en", "nav.transactions")}</a><a href="#/tokenisation" data-tab="tokenisation" data-t="cs.nav.tokens">${tr("en", "cs.nav.tokens")}</a><a href="#/airwallex" data-tab="airwallex" data-t="cs.nav.awx">${tr("en", "cs.nav.awx")}</a><a href="#/settings" data-tab="settings" data-t="cs.nav.settings">${tr("en", "cs.nav.settings")}</a></nav>
-<span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</span><span class="spacer"></span>
+<span class="awx-app">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_PATH })}</span><span class="spacer"></span>
 <span class="who-am-i"><a class="co" id="co" href="#/settings"></a><span id="who"></span><button type="button" id="out" title="${tr("en", "cs.sign_out")}" aria-label="${tr("en", "cs.sign_out")}">${svg("log-out", 16)}</button></span>
 <span class="test" title="${escAttr(tr("en", "test.title"))}">${svg("flask", 14)}<span class="tl" data-t="test.label"> ${tr("en", "test.label")}</span></span></div></div>
 <div class="demo-ribbon" id="demo" hidden><div class="wrap">${svg("flask", 15)}<span data-t="cs.demo.ribbon">${tr("en", "cs.demo.ribbon")}</span><a href="#/sign-in" id="demo-out" data-t="cs.demo.leave">${tr("en", "cs.demo.leave")}</a></div></div>
@@ -379,7 +380,7 @@ ${siteHeader(null)}
 <main><div class="wrap" id="view" aria-live="polite"></div></main>
 <p class="trust"><span data-t="cs.trust_works">${tr("en", "cs.trust_works")}</span><span data-t="cs.trust_test">${tr("en", "cs.trust_test")}</span></p>
 <p class="foot wrap" id="foot">${tr("en", "cs.foot")}</p>
-<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: `${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}` })}</p>`;
+<p class="foot-awx wrap">${builtOnBadge({ href: `${SITE_ORIGIN}/airwallex`, src: AIRWALLEX_LOGO_PATH })}</p>`;
 
 // The client: plain JS (no template literals in it, so it can sit in this file as a raw string).
 const SCRIPT = String.raw`
@@ -1805,6 +1806,9 @@ export async function consoleResponse(req: Request, url: URL, env: CloudEnv): Pr
   }
   // The partners' official logos for /try's start screen (cloud/src/try/logos.gen.ts, the files unaltered): the paths and
   // bytes the site serves, so the page shows them on kit11 (the site's own /assets) and on purser-try alike.
+  // The Airwallex logo of the "Built on" badge, from this origin (17 Nov: from the live site, it made every page's load wait
+  // on another host, and the judge job's /try load timed out on it). The official file, unaltered (awxLogo.gen.ts).
+  if (url.pathname === AIRWALLEX_LOGO_PATH) return new Response(fromB64(AIRWALLEX_LOGO_DATA_URL.slice(AIRWALLEX_LOGO_DATA_URL.indexOf(",") + 1)), { status: 200, headers: { "content-type": "image/png", "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   const logo = LOGO_FILES[url.pathname];
   if (logo) return new Response(fromB64(logo.b64), { status: 200, headers: { "content-type": logo.type, "cache-control": "public, max-age=86400", "x-content-type-options": "nosniff" } });
   // pdf.js, to draw a supplier's PDF on a canvas in the invoice's page (eval off; the PDF is data, never a page). Only this

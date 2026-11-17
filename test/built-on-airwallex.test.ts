@@ -48,13 +48,14 @@ describe("the Built on Airwallex badge", () => {
     }
   });
 
-  it("is in /try's header (both screens: the header stays) and in Purser Cloud's header and console footer, the logo from the site", () => {
+  it("is in /try's header (both screens: the header stays) and in Purser Cloud's header and console footer, the logo from the page's own host", () => {
     for (const [name, html] of [["/try", cloudTry], ["console", cloudConsole]] as const) {
       const h = headerOf(html);
       expect({ name, inHeader: badges(h).length }).toEqual({ name, inHeader: 2 });
       for (const b of badges(h)) {
         expect(b).toContain(`href="${SITE_ORIGIN}/airwallex"`);
-        expect(b).toContain(`src="${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}"`);
+        // Relative: from the site's address it made /try's load wait on another host (CI timeouts, 17 Nov).
+        expect(b).toContain(`src="${AIRWALLEX_LOGO_PATH}"`);
       }
     }
     expect(cloudConsole).toMatch(/<p class="foot-awx wrap"><a class="awx-badge" href="https:\/\/kit11\.max-31b\.workers\.dev\/airwallex"/);
@@ -67,7 +68,7 @@ describe("the Built on Airwallex badge", () => {
     // The cloud's pages may load images from the site, for this logo; nothing else in the policy moved.
     expect(consoleCsp("N")).toContain(`img-src 'self' data: blob: ${SITE_ORIGIN};`);
     // The header is the site's own function, so every page draws it alike.
-    expect(header("try", { base: SITE_ORIGIN, here: { try: "/try" } })).toContain(`src="${SITE_ORIGIN}${AIRWALLEX_LOGO_PATH}"`);
+    expect(header("try", { base: SITE_ORIGIN, here: { try: "/try" } })).toContain(`src="${AIRWALLEX_LOGO_PATH}"`);
   });
 
   it("shows the logo file the site serves, byte for byte (src/ui/logos/airwallex.png, docs/assets/logos/SOURCES.md)", () => {
