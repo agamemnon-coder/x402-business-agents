@@ -73,8 +73,9 @@ describe("the three sentences (jury review, 6 Nov, #1)", () => {
     // 150 since 14 Nov (Max, Airwallex at the centre): the new section after "In 30 seconds" moves the judges' 3 minutes down;
     // 160 once it lists every live Airwallex upgrade of 14 Nov and its calls (the Kit 11 line at 155 as built).
     // 175 since 15 Nov: the Kit 11 table under the header (the Kit 11 line at 171 as built).
+    // 260 since 17 Nov, owner: strongest proof first (+8 lines: the six-row proof table under the links; the Kit 11 line at 255 as built).
     // 250 since 17 Nov, later (+10 lines: the For judges table, the submission line, the film's figures dated). 240 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 230 since 15 Nov (+the invariants table); 220 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram and the system map; the Kit 11 line at 215 as built).
-    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 250).filter((l) => !l.startsWith("**Built on Airwallex.**") && !l.startsWith("[![")).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here
+    const top = words(lines.slice(lines.indexOf("# Purser · AI agents spend. You sign off.") + 1, 260).filter((l) => !l.startsWith("**Built on Airwallex.**") && !l.startsWith("[![")).join("\n")); // 17 Nov, owner: the badges at the very top, right under the title, so they are left out here
     // Since 13 Nov (the enterprise README): what Purser is in README_WHAT; the form and the deck keep WHAT_IT_IS. Since
     // 15 Nov (clarity) README_WHAT is the idea in one sentence, then the three links; the first sentence follows the Kit 11
     // table, under "At a glance".

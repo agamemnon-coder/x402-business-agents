@@ -73,18 +73,39 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 17 Nov, owner: the badges at the very top: the three badge rows right under the title, then the idea, Built on
     // Airwallex, the links and the For judges table; the proof strip stays at the foot of the centred top.
     expect(badges).toBe(6);
-    const judges = lines.slice(16, partners - 1);
+    // 17 Nov, owner: strongest proof first. Under the links, a six-row table, each row one line with where to check it
+    // (one click each); "Built on Airwallex" moved, word for word, to the top of "Airwallex at the centre" (below).
+    const proof = lines.slice(14, 22);
+    expect(proof[0]).toBe("| **The strongest proof, one click each** (test money) | Check it |");
+    expect(proof[1]).toBe("|---|---|");
+    expect(proof.slice(2).map((l) => /^\| \*\*(\d) · /.exec(l)?.[1])).toEqual(["1", "2", "3", "4", "5", "6"]);
+    const proofLinks = proof.slice(2).map((l) => [...l.split(" | ").at(-1)!.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]!));
+    expect(proofLinks).toEqual([
+      ["https://kit11.max-31b.workers.dev/try"],
+      ["https://kit11.max-31b.workers.dev/alta", "docs/runs/2026-11-03-main-run.md"],
+      ["docs/runs/airwallex-transfer-approval-2026-11-06.json"],
+      ["docs/runs/2026-11-17-airwallex-late-failure.json"],
+      ["docs/worst-case-ai.md"],
+      ["docs/finance-value.md"],
+    ]);
+    for (const f of proofLinks.flat().filter((u) => u.startsWith("docs/"))) expect(existsSync(new URL(`../${f}`, import.meta.url))).toBe(true);
+    // x402 and Airwallex both named in the proof rows, test money in its header.
+    expect(proof.join("\n")).toMatch(/x402/);
+    expect(proof.join("\n")).toMatch(/Airwallex/);
+    const centre = lines.indexOf("## Airwallex at the centre");
+    expect(lines.slice(centre + 1, centre + 3)).toEqual(["", README_BUILT_ON]);
+    const judges = lines.slice(23, partners - 1);
     expect(judges).toHaveLength(8);
     expect(judges[7]!.startsWith("**What stood at the submission:** the tag `v1.0-submission` (8 Nov)")).toBe(true);
     expect(judges[0]!.startsWith("| **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes))")).toBe(true);
     expect(judges.slice(2, 6).map((l) => /^\| \*\*([^:]+):/.exec(l)?.[1])).toEqual(["User", "Airwallex action", "Financial context", "Controls"]);
-    expect(lines.slice(5, glance - 6)).toEqual(["", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", `**${README_WHAT}**`, "", README_BUILT_ON, "", README_LINKS, "", ...judges, "", lines[partners]!, "", "</div>", ""]);
+    expect(lines.slice(5, glance - 6)).toEqual(["", lines[badges]!, lines[badges + 1]!, lines[badges + 2]!, "", `**${README_WHAT}**`, "", README_LINKS, "", ...proof, "", ...judges, "", lines[partners]!, "", "</div>", ""]);
     expect(lines.slice(glance - 6, glance)).toEqual(["> [!TIP]", lines[glance - 5]!, "", "> [!IMPORTANT]", lines[glance - 2]!, ""]);
     expect(lines[glance - 5]).toContain("(https://kit11.max-31b.workers.dev/try)");
     expect(lines[glance - 2]).toMatch(/^> \*\*Test money only\.\*\* Live: .* Simulated: /);
     expect(lines.slice(glance + 1, kit).filter((l) => l.startsWith("- **"))).toHaveLength(6);
     expect(README_WHAT).toBe(HOME_SUB);
-    expect(kit).toBeLessThan(50); // 50 since 17 Nov later (owner: all the badges back, in three grouped rows: +2 lines; 48 as built); 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
+    expect(kit).toBeLessThan(58); // 58 since 17 Nov, owner: strongest proof first (+8 lines: the proof table; "Built on Airwallex" moved down; 55 as built); 50 since 17 Nov later (owner: all the badges back, in three grouped rows: +2 lines; 48 as built); 48 since 17 Nov (the For judges table and the submission line, 9 lines; 46 as built); 40 since 15 Nov (readme-wow: the two alerts and the stat strip; 36 as built); 35 before
     // Under the Kit 11 table: the sentence every juror repeated, then the badges (the old row of buttons went: the three
     // links above say Try and the film; the trailer is in "Watch it", the proof in the live demo's line).
     // 15 Nov (Max): the badges moved to the top; the sentence every juror repeated stays under the Kit 11 table, then
@@ -98,7 +119,8 @@ describe("the first screen (section D, 6 Nov)", () => {
     // 17 Nov later (owner: all the badges, grouped): build (4), partners (5), proof (3), then the strip.
     expect([0, 1, 2].map((i) => lines[badges + i]!.match(/\[!\[/g)?.length)).toEqual([4, 5, 3]);
     // 17 Nov, owner: the badges at the very top; the strip stays at the foot of the centred top, under the judges' table.
-    expect(partners).toBe(badges + 19);
+    // 17 Nov, owner: strongest proof first: +7 (the proof table, 8 lines with its blank; "Built on Airwallex" and its blank moved down).
+    expect(partners).toBe(badges + 26);
     expect(lines[live]).toMatch(/^\*\*Live demo: \[kit11\.max-31b\.workers\.dev\/try\]\(https:\/\/kit11\.max-31b\.workers\.dev\/try\)\*\*/);
     // 14 Nov (jury scan): the 3-command quick start on the first screens, then where things are. 15 Nov: the Kit 11 table
     // first under the header; the badges and the live demo's line after it ("At a glance"), then the quick start.
@@ -122,7 +144,7 @@ describe("the first screen (section D, 6 Nov)", () => {
     expect(lines.indexOf("## For judges: 3 minutes")).toBeGreaterThan(badges);
     expect(TRY_IT).toBe("Try it in 2 minutes.");
     expect(FILM_URL).toBe("https://youtu.be/PNLuqhRzVfE");
-    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(270); // 270 since 17 Nov, later (+7: the For judges table; +1: the film's figures dated); 260 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
+    expect(lines.findIndex((l) => l === "## The business hypothesis")).toBeLessThan(280); // 280 since 17 Nov, owner: strongest proof first (+8 lines: the proof table; 273 as built); 270 since 17 Nov, later (+7: the For judges table; +1: the film's figures dated); 260 since 17 Nov (+7 lines: one engine, two jobs; what the sandbox taught us; three invariants); 250 since 15 Nov (+the invariants table); 240 since 15 Nov (readme-wow: the alerts, the stat strip, the terminal, the sequence diagram, the system map; 233 as built); 200 since 15 Nov, the clarity pass (195 as built); 195 since 15 Nov (the Kit 11 table, 194 as built); 180 since 14 Nov (Max: Airwallex at the centre, 177 as built); after the Visa and Metal Award sections (13 Nov); 170 since the README upgrade
   });
 
   it("opens Home under its heading with the idea, its proof line, the hands-on demo as the one primary button, the film second, one reassurance line", () => {

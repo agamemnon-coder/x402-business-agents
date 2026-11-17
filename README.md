@@ -10,9 +10,16 @@
 
 **AI agents pay your suppliers. Above their limit, you sign the exact terms with your passkey, and one changed cent breaks the signature.**
 
-**Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
-
 **[Try it in 2 minutes](https://kit11.max-31b.workers.dev/try)** · [Watch the film](https://youtu.be/PNLuqhRzVfE) · [Verify a payment yourself](#verify-it-yourself-in-3-commands)
+
+| **The strongest proof, one click each** (test money) | Check it |
+|---|---|
+| **1 · Try it live:** the agent pays EUR 120.00 alone; you sign EUR 1,850.00 with a passkey; one cent changed is refused | [/try](https://kit11.max-31b.workers.dev/try) |
+| **2 · x402 business agents on Alta (formerly Metal):** agents buy and sell data over x402 under on-chain mandates; main run of 3 Nov: 86 Alta payments, purchase #24 refused on chain (Purser's own check off for that one purchase) | [/alta](https://kit11.max-31b.workers.dev/alta) · [run](docs/runs/2026-11-03-main-run.md) |
+| **3 · The CFO's signature inside Airwallex's own record:** the transfer carries the hash of the signed terms in `metadata.approval_sha256`, read back from Airwallex on 6 Nov | [record](docs/runs/airwallex-transfer-approval-2026-11-06.json) |
+| **4 · A payout that fails after PAID goes to a person:** Airwallex sandbox, 17 Nov, two PAID payouts failed by its simulation endpoint; nothing was sent again | [record](docs/runs/2026-11-17-airwallex-late-failure.json) |
+| **5 · 0 wrong payments** with an AI that always says pay, against 35 for a payer with no rules (50 cases, offline eval) | [eval](docs/worst-case-ai.md) |
+| **6 · For the CFO:** invoice to month-end, measured per invoice | [finance](docs/finance-value.md) |
 
 | **For judges:** the four things every entry shows ([the 3-minute path](#for-judges-3-minutes)) | Check it |
 |---|---|
@@ -118,6 +125,8 @@ The film was recorded on 15 November, so its test count (6,932) is older than th
 - **Run live on test money:** the main run of 3 November (24 decisions by Claude, 86 Alta payments, 16 stops, nothing paid over a limit) and 27 live runs to 17 November, every id on [/proof](https://kit11.max-31b.workers.dev/proof).
 
 ## Airwallex at the centre
+
+**Built on Airwallex.** Purser calls Airwallex's API for a card per agent with the CFO's limits (Issuing), FX quotes inside the signed terms, transfers that carry the hash the CFO signed, the payee's bank check, Airwallex's own approval as a second lock, and signed webhooks (the sandbox, test money: [docs/airwallex.md](docs/airwallex.md)).
 
 The live FX quote in the signed terms, the sandbox transfer, the Cloud's Airwallex tab, the signed events and the agent cards: [docs/airwallex-centre.md](docs/airwallex-centre.md).
 
