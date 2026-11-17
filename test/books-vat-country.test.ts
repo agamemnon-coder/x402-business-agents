@@ -44,10 +44,9 @@ describe("VAT charged by a supplier abroad is never Dutch input VAT", () => {
 });
 
 describe("the Coder's coding of a supplier abroad", () => {
-  it("never books a P21 line of a Belgian supplier as Dutch input VAT", () => {
-    const inv = { ...row("BE0123456789"), coding: { total_cents: 121000, lines: [{ description: "beer", account: "6100", cost_centre: "OPS", vat_code: "P21", net_cents: 100000, vat_cents: 21000 }] } } as unknown as ApInvoiceRow;
+  it("books a line it left uncoded at 21% to foreign VAT (1515), and keeps a line it coded P21 (vat-foreign-account)", () => {
+    const inv = { ...row("BE0123456789"), coding: { total_cents: 121000, lines: [{ description: "beer", account: "6100", cost_centre: "OPS", vat_code: null, net_cents: 100000, vat_cents: 21000 }] } } as unknown as ApInvoiceRow;
     const es = accrualEntries(inv);
     expect(es.map((e) => `${e.account} ${e.debit || "-"}/${e.credit || "-"}`)).toEqual(["6100 1000.00/-", "1515 210.00/-", "2100 -/1210.00"]);
-    expect(es.find((e) => e.account === "6100")?.vat_code).toBeUndefined();
   });
 });

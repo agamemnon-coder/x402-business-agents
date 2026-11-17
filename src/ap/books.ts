@@ -135,14 +135,14 @@ export const codedAccrual = (inv: ApInvoiceRow): boolean => bookedCoding(inv) !=
  */
 function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: string): ApEntry[] {
   const groups: { account: string; cost_centre: string; vat_code: string | null; net: number; vat: number }[] = [];
-  // A Dutch charged-VAT code (P21, P9) on a supplier abroad is that country's VAT at the same rate, never Dutch input VAT.
+  // A line the Coder (or a person) coded P21/P9 keeps it: a supplier abroad may be registered for Dutch VAT too. A line
+  // left uncoded is Dutch only from a Dutch supplier, or one with no VAT id read (round 3 review, 17 Nov).
   const dutch = dutchSupplier(inv.reading?.vat_id);
-  const ownCode = (l: StoredCoding["lines"][number]) => (!dutch && (l.vat_code === "P21" || l.vat_code === "P9") ? null : l.vat_code);
   for (const l of c.lines) {
     // A line the Coder left without a VAT code (its codes are the Dutch return's): the books set the foreign one from the
     // supplier's own VAT id, as the engine's own accrual does, so a German supplier's 19% goes to 1515, never to 1510
     // (final-polish, 13 Nov). Anything else stays uncoded for a person.
-    const code = ownCode(l) ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id);
+    const code = l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id);
     let g = groups.find((x) => x.account === l.account && x.cost_centre === l.cost_centre && x.vat_code === code);
     if (!g) groups.push(g = { account: l.account, cost_centre: l.cost_centre, vat_code: code, net: 0, vat: 0 });
     g.net += l.net_cents;
@@ -164,7 +164,7 @@ function codedEntries(inv: ApInvoiceRow, c: StoredCoding, date: string, memo: st
   // CFO review, 14 Nov: a German 19% with no VAT id read went to 1510 while the Coder's own line said "no VAT code").
   // Line by line, so two Dutch rates on one uncoded group stay Dutch.
   const abroad = groups.reduce((s, g) => s + (g.vat_code !== null && VAT_CODES[g.vat_code]?.foreign ? g.vat : 0), 0)
-    + c.lines.reduce((s, l) => s + ((ownCode(l) ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id)) === null && l.vat_cents > 0 && l.net_cents > 0 && (!dutch || !dutchVat(l.net_cents, l.vat_cents)) ? l.vat_cents : 0), 0);
+    + c.lines.reduce((s, l) => s + ((l.vat_code ?? foreignVat(l.net_cents, l.vat_cents, inv.reading?.vat_id)) === null && l.vat_cents > 0 && l.net_cents > 0 && (!dutch || !dutchVat(l.net_cents, l.vat_cents)) ? l.vat_cents : 0), 0);
   if (vat - abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.inputVat, vat - abroad, 0, `${memo}: input VAT`));
   if (abroad) out.push(line(inv, "accrual", date, AP_ACCOUNTS.foreignVat, abroad, 0, `${memo}: foreign VAT to reclaim`));
   for (const self of owed) {
