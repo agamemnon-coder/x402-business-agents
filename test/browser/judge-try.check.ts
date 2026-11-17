@@ -73,10 +73,14 @@ try {
   }
   await page.waitForTimeout(1_200);
   await page.screenshot({ path: join(shots, "2-approve.png") });
-  await click(/Approve & sign/);
-  await page.getByRole("button", { name: "Now try to change it" }).waitFor({ timeout: 60_000 });
+  // The page's own passkey button may already have signed (live: its "Face ID" button matched above); else sign here.
+  const next = page.getByRole("button", { name: "Now try to change it" });
+  const sign = page.getByRole("button", { name: /Approve & sign/ }).first();
+  await Promise.race([next.waitFor({ timeout: 60_000 }), sign.waitFor({ timeout: 60_000 })]).catch(() => undefined);
+  if (!(await next.count())) await click(/Approve & sign/);
+  await next.waitFor({ timeout: 60_000 });
   await page.waitForTimeout(800);
-  ok(/simulated bank/i.test(await text(page)), "EUR 1,850.00 paid: the page says the simulated bank paid");
+  ok(live ? /Paid · test money/i.test(await text(page)) : /simulated bank/i.test(await text(page)), live ? "EUR 1,850.00 paid: the page says test money" : "EUR 1,850.00 paid: the page says the simulated bank paid");
   await click("Now try to change it");
   await page.waitForFunction(() => (document.querySelector("#p-amt") as HTMLInputElement | null)?.value === "1850.01", null, { timeout: 20_000 });
   await click("Try to pay with my earlier approval");
