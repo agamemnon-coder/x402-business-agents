@@ -13,8 +13,8 @@ import { pdfOf } from "../e2e/documents.js";
 import { invoicePdf } from "./invoicePdf.js";
 // The clean sample and the suppliers on file, as data (src/config/trySample.ts): the cloud Worker's illustration
 // shows the clean sample without loading the engine.
-import { CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields } from "../config/trySample.js";
-export { CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields };
+import { CASH_COMMITTED, CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields } from "../config/trySample.js";
+export { CASH_COMMITTED, CLEAN, SEEDED_SUPPLIERS, supplierKey, type InvoiceFields };
 
 export interface Sample {
   key: string;
@@ -83,6 +83,16 @@ export const CLEAN_SAMPLE = "clean";
 /** The sample the agent pays alone: Bergtex's small invoice, EUR 120.00, within the test company's limit (owner, 16 Nov). */
 export const ALONE_SAMPLE = "within";
 const WITHIN_LIMIT: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-23", amountCents: 12_000 };
+/**
+ * 17 Nov (judging: "financial context influences what the agent decides"): an invoice inside the agent's limit that the
+ * agent does not pay now, because paying it from EUR would take the test company's EUR below its cash floor
+ * (src/ap/cashCheck.ts). A fresh company has EUR 1,500.00 free above its floor and commitments, more than any invoice
+ * inside the EUR 500.00 limit needs; so this sample brings its own cash context: when it is filed, the test company's
+ * commitments rise once by CASH_COMMITTED (a test value, src/engine/host.ts commitForCashSample). The other samples are
+ * untouched unless this one is filed first; the agent's EUR 120.00 still fits after it (TRY_ALONE_LIMIT).
+ */
+export const CASH_SAMPLE = "cash";
+const CASH_WAITS: InvoiceFields = { ...CLEAN, invoiceNo: "BTX-2026-24", amountCents: 48_000, issueDate: "2026-11-12", dueDate: "2027-01-15" };
 
 /**
  * The tray, in order. Each outcome holds in a fresh test company, in any order: the duplicates meet the seeded paid
@@ -97,6 +107,8 @@ export const SAMPLE_SOURCES: { key: string; title: string; filename: string; tex
   // 16 Nov (owner): a small invoice from the supplier on file, to its account on file, inside the agent's limit to pay
   // alone (TRY_ALONE_LIMIT, EUR 500.00): ready like the clean one, and on Pay the agent pays it alone (src/ap/pay.ts payAlone).
   { key: ALONE_SAMPLE, title: "A small invoice inside the agent's limit", filename: "bergtex-BTX-2026-23.pdf", text: invoiceText(WITHIN_LIMIT), fields: WITHIN_LIMIT, expect: { kind: "invoice", status: "ready" } },
+  // 17 Nov: inside the limit, ready like the small one, but the cash check holds it (CASH_SAMPLE above): nothing is sent.
+  { key: CASH_SAMPLE, title: "Inside the limit — but cash says wait", filename: "bergtex-BTX-2026-24.pdf", text: invoiceText(CASH_WAITS), fields: CASH_WAITS, expect: { kind: "invoice", status: "ready" } },
 ];
 
 /** Who a demo invoice is billed to: the visitor's test company (a sample is made once, for any company). */

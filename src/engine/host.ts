@@ -11,7 +11,10 @@
 // It has no payables folder: the ledger must have its own document store (src/ap/docStore.ts useDocStore) before a
 // host is made over it, so no file is ever written.
 import type Anthropic from "@anthropic-ai/sdk";
-import { seedTreasury } from "../agents/euroBill.js";
+import { measuredSwiftFeesCents, seedTreasury, treasuryState } from "../agents/euroBill.js";
+import { cashCheck, type CashView } from "../ap/cashCheck.js";
+import { feeReserveCents } from "../policy/treasury.js";
+import { toCents } from "../lib/money.js";
 import { limitRule, payableAccount } from "../ap/checkerCore.js";
 import { aloneLimit, fxMarkupLimitBps, getSetting, setSetting } from "../world/settings.js";
 import { actionsFor } from "../ap/detail.js";
@@ -44,7 +47,7 @@ import { sha256, type VaultSink } from "../vault/sink.js";
 import { actionBudget, type ClaudeAccess } from "./budget.js";
 import { publicEvent, type EngineEvent, type EventRow } from "./events.js";
 import { invoicePdf } from "./invoicePdf.js";
-import { BILL_TO_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
+import { BILL_TO_SAMPLE, CASH_COMMITTED, CASH_SAMPLE, CLEAN, CLEAN_SAMPLE, checkCompose, PAID_SAMPLE, SEEDED_SUPPLIERS, supplierKey, type ComposeInput, type InvoiceFields, type ComposeRefusal, type Sample, type SupplierOnFile } from "./tryWorld.js";
 import { ibanSha } from "../agents/invoice.js";
 import { canonicalTerms, termsHash, type Terms } from "../lib/terms.js";
 import { proofBundle } from "./proofBundle.js";
@@ -125,7 +128,14 @@ export interface EngineDeps {
 }
 
 /** What an upload, a sample or a composed invoice answers. */
-export interface UploadResult { kind: string; sha256: string; invoice: InvoiceView | null }
+export interface UploadResult {
+  kind: string; sha256: string; invoice: InvoiceView | null;
+  /**
+   * 17 Nov: an invoice ready to pay inside the agent's limit: its financial context and code's cash check (src/ap/cashCheck.ts),
+   * read from the company's ledger and bank now. outcome hold: the agent does not pay it alone, and nothing is sent.
+   */
+  cash?: CashView;
+}
 
 export interface ProposalView {
   id: string;
@@ -466,11 +476,50 @@ export class EngineHost {
     const out = await this.withClaude(`engine.upload:${sha256(bytes).slice(0, 16)}`, (reader, agents) =>
       // Task A6: the Checker decides on the invoice as it is read, and the Coder codes it before its accrual is booked.
       ingestDocument(db, { dir: NO_FOLDER, reader, now: () => this.now(), agents: agents.on, claude: agents.client, coder: agents.client, readInParallel: true }, { bytes, filename: doc.filename, ...(doc.mime ? { mime: doc.mime } : {}), source: "upload" }));
-    if (out.kind === "duplicate_document") return { kind: out.kind, sha256: out.sha256, invoice: out.invoice_id ? this.invoice(out.invoice_id) : null };
+    if (out.kind === "duplicate_document") {
+      // The same file again: its invoice as it stands, with its cash check while the agent could still pay it (a second filing of the cash sample).
+      const was = out.invoice_id ? this.invoice(out.invoice_id) : null;
+      const cash = was ? await this.cashOf(was) : null;
+      return { kind: out.kind, sha256: out.sha256, invoice: was, ...(cash ? { cash } : {}) };
+    }
     const inv = firstInvoice(out);
     if (inv) this.startEarlyPayer(inv.id);
     // Read again: a note written after the checks is on the row, not on what the inbox returned.
-    return { kind: out.kind, sha256: out.kind === "invoice" ? out.invoice.doc_sha256 : sha256(bytes), invoice: inv ? this.invoice(inv.id) : null };
+    const view = inv ? this.invoice(inv.id) : null;
+    const cash = view ? await this.cashOf(view) : null;
+    return { kind: out.kind, sha256: out.kind === "invoice" ? out.invoice.doc_sha256 : sha256(bytes), invoice: view, ...(cash ? { cash } : {}) };
+  }
+
+  /**
+   * The cash check on an invoice the agent may pay alone (ready, inside the company's limit): the EUR position as the
+   * treasury reads it now (the bank's balance, the commitments, the payouts in flight, the floor) and the fee reserve the
+   * engine would hold back; null for any other invoice, or a company with no limit to pay alone. Reads only.
+   */
+  private async cashOf(inv: InvoiceView): Promise<CashView | null> {
+    const { db, rails } = this.deps;
+    const limit = aloneLimit(db);
+    if (!limit || inv.status !== "ready" || !inv.alone_limit?.within || inv.currency !== limit.currency) return null;
+    const s = treasuryState(db, await rails.rail.balances());
+    return cashCheck({
+      invoice: { id: inv.id, invoiceNo: inv.invoice_no, payee: inv.vendor, iban: "", amount: inv.total, currency: inv.currency, dueDate: inv.due_date ?? "" },
+      position: { currency: "EUR", balance: signedCents(s.eurAvailableCents), committed: signedCents(s.eurObligationsCents), inFlight: signedCents(s.eurInFlightCents ?? 0), floor: signedCents(s.eurFloorCents) },
+      feeReserve: fromCents(feeReserveCents(measuredSwiftFeesCents(db))), aloneLimit: limit, today: this.now().toISOString().slice(0, 10),
+    });
+  }
+
+  /**
+   * The cash sample's own context (CASH_SAMPLE, src/engine/tryWorld.ts): the company's commitments rise once by
+   * CASH_COMMITTED, a test value, so its EUR above the floor is spoken for; recorded as treasury.commitment_added and
+   * the setting's own change. Safe to repeat: a second filing adds nothing.
+   */
+  private commitForCashSample(): void {
+    const { db } = this.deps;
+    if (db.prepare("SELECT 1 FROM audit_log WHERE event = 'treasury.commitment_added' AND subject = ?").get(CASH_SAMPLE)) return;
+    const now = this.now();
+    const before = getSetting(db, "eur_obligations", "0.00");
+    const after = fromCents(toCents(before) + toCents(CASH_COMMITTED));
+    audit(db, "system", "treasury.commitment_added", CASH_SAMPLE, { currency: "EUR", amount: CASH_COMMITTED, before, after, note: "test value: the cash sample's context, EUR committed to other bills" }, now);
+    setSetting(db, "treasury", "eur_obligations", after, now);
   }
 
   invoices(): InvoiceView[] {
@@ -825,6 +874,7 @@ export class EngineHost {
       const s = (this.deps.samples ?? []).find((x) => x.key === key);
       if (!s) return null;
       const bytes = Buffer.from(s.base64, "base64");
+      if (key === CASH_SAMPLE) { this.roomFor(sha256(bytes)); this.commitForCashSample(); }
       if (key === CLEAN_SAMPLE && this.deps.db.prepare("SELECT 1 FROM ap_documents WHERE sha256 = ?").get(sha256(bytes))) {
         const fields = this.freshClean();
         const pdf = await invoicePdf({ fields, supplierKey: supplierKey(fields.supplier.name), billTo: BILL_TO_SAMPLE });
@@ -1156,3 +1206,6 @@ function claudeCost(db: DB, afterSeq: number): number {
   }
   return n;
 }
+
+/** Cents as a two-decimal amount, "-" first when negative (a position below zero is shown as it is). */
+const signedCents = (c: number): string => (c < 0 ? `-${fromCents(-c)}` : fromCents(c));

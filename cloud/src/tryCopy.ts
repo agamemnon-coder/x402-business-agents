@@ -6,6 +6,7 @@
 import { WORST_CASE_HEADLINE, WORST_CASE_LINE } from "../../src/evals/worstCase.js";
 import { TWIN_DAYS, UNUSUAL_FACTOR } from "../../src/config/checkNumbers.js";
 import { FX_QUOTE_MAX_MARKUP_BPS, TRY_ALONE_LIMIT } from "../../src/config/policy.js";
+import { CASH_COMMITTED } from "../../src/config/trySample.js";
 
 /** The test company's limit to pay alone as the page writes an amount ("EUR 500.00"; src/config/policy.ts TRY_ALONE_LIMIT). */
 const ALONE = `${TRY_ALONE_LIMIT.currency} ${TRY_ALONE_LIMIT.amount}`;
@@ -142,6 +143,7 @@ export const INVOICE = {
     bank: "New bank details: held for your check",
     unknown: "A new supplier: held until checked",
     within: "Inside the agent's limit: paid by the agent alone",
+    cash: "Inside the limit, but cash is tight: held",
   } as Record<string, string>,
   startHere: "Start here",
   /** 16 Nov: the heading over the samples Purser holds on purpose (so they do not read as broken). */
@@ -748,6 +750,25 @@ export const ENDED = {
 };
 
 /**
+ * 17 Nov (judging: "financial context influences what the agent decides"): screen 2's answer for an invoice inside the
+ * agent's limit that code's cash check holds (src/ap/cashCheck.ts): the financial context in figures from the test
+ * company's ledger and bank, code's decision, what was not sent, and what would make it payable. {money}, {date} and
+ * {days} are the engine's figures; the committed bills this sample adds are a test value (CASH_COMMITTED).
+ */
+export const CASH = {
+  risk: "Cash floor",
+  head: "Held: paying it now would take {money} below the cash floor.",
+  rows: { balance: "EUR balance (seeded test value)", spoken: "Spoken for (bills, payouts in flight)", available: "Available", floor: "Cash floor", payment: "This payment, with fee reserve", after: "Available after paying", due: "Due" },
+  due: "{date}, in {days} days",
+  rule: "Decided by Purser's code, not the agent: an agent pays alone only while available EUR stays at or above the floor.",
+  said: "No transfer was sent to Airwallex. The invoice stays open, not booked as paid.",
+  next: "What would make it payable",
+  nextFunds: "More EUR above the floor, such as incoming payments. It is not due yet.",
+  nextCfo: "Or the CFO approves it with a passkey. The agent cannot.",
+  test: `Test money. This sample added EUR ${Number(CASH_COMMITTED).toLocaleString("en-US", { minimumFractionDigits: 2 })} of committed bills to your test company.`,
+};
+
+/**
  * What each screen shows at once, in each of its states: the word budget is counted per state, with the brand and,
  * after the start, the band. The server's own sentences and the invoice's data are not copy.
  */
@@ -821,6 +842,9 @@ export const VISIBLE = {
       SCRIPT.claude, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.script, SCRIPT.said, TRACE.rails.ask_cfo!, SCRIPT.same, SCRIPT.line, SCRIPT.close],
     // 16 Nov (owner): an invoice within the agent's limit: the agent pays it on its own (no "until you sign" line).
     [WORK.heading, WORK.readyAlone, ...Object.values(WORK_CHECKS), WORK.aloneNeeded, WORK.took, WORK.invoiceFold, WORK.claudeChip, WORK.payAlone, ...AGENTIC],
+    // 17 Nov: inside the limit, held by code's cash check (CASH): the reason, the figures' labels, the rule, what was not
+    // sent, what would make it payable and the test value; the invoice folded (WHY.more).
+    [WORK.heading, CASH.head, ...Object.values(CASH.rows), CASH.due, CASH.said, CASH.rule, CASH.next, CASH.nextFunds, CASH.nextCfo, CASH.test, WHY.more, WORK.another, ...AGENTIC],
   ],
   approve: [
     [APPROVE.heading, APPROVE.filing],
@@ -971,7 +995,7 @@ export const VISIBLE = {
 // 16 Nov (owner: the agent pays alone up to EUR 500.00 in a test company): "Ready to pay" says who signs in fewer words
 // (-8: "work 2", "work 12", "work 15", "work 16"); "work 17" is an invoice within the limit, which the agent pays on its
 // own; "invoice 6" carries the sample inside the limit (+9). Each pinned at its count.
-export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 95 /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 73 /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */ };
+export const OVER_BUDGET: Record<string, number> = { "start 0": 190, "start 1": 186, "start 2": 189, "start 3": 183, "pay 7": 103, "pay 8": 153, "invoice 4": 60, "invoice 5": 61, "books 0": 75, "books 1": 68, "work 4": 83, "work 5": 65, "work 6": 77, "books 3": 60, "books 4": 58, "books 5": 55, "company 0": 189, "company 1": 179, "company 2": 195, "company 3": 205, "approve 2": 72, "approve 4": 72, "approve 9": 64, "approve 10": 65, "approve 11": 71, "approve 12": 70, "approve 13": 65, "approve 14": 64, "approve 15": 74, "approve 5": 62, "invoice 6": 103 /* +8, 17 Nov: the cash sample's line; */ /* +3, 15 Nov (Max): the Clean sample says the agents can negotiate it; +9, 16 Nov: the sample inside the agent's limit; +7, 16 Nov (owner): "Held on purpose" over the four Purser stops */, "approve 6": 60, "approve 7": 58, "approve 8": 55, "approve 16": 60, "company 4": 190, "approve 3": 48, "invoice 2": 52, "invoice 3": 56, "work 15": 109, "pay 1": 60, "pay 2": 64, "pay 3": 64, "pay 4": 88, "pay 5": 59, "pay 6": 69, "pay 9": 103, "work 2": 90, "work 3": 73, "work 10": 104, "work 11": 86, "work 12": 93, "invoice 7": 67, "pay 10": 166, "company 5": 201 , "work 7": 57, "work 16": 211, "books 7": 73 /* 16 Nov (owner): paid by the agent, two words fewer than books 0 */, "work 17": 87 /* +3, 16 Nov (owner): "Checks passed. Approved by your policy." in place of "Ready to pay." */, "work 18": 155 /* 17 Nov: inside the limit, held by the cash check (CASH): the figures' labels, the rule, what was not sent, what would make it payable */ };
 
 /**
  * The live panel (outside the word budget): who did a step, and one line per engine event (cloud/src/tryEvents.ts).
