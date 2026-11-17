@@ -17,7 +17,8 @@ import { EN, NL } from "./fakes/apInvoices.js";
 import { FakeAirwallex } from "./fakes/airwallex.js";
 import { pdfOf } from "./fakes/pdf.js";
 
-const now = new Date();
+// A fixed day between the sample invoice's issue (2 Nov) and due date (16 Nov): with the real clock it turned overdue on 17 Nov.
+const now = new Date("2026-11-10T09:00:00Z");
 type Role = "classify" | "act" | "review";
 /** A stand-in for the three models: per role, an answer (as Claude), or the fallback when none is given. */
 function models(answers: Partial<Record<Role, unknown>>): Asker & { calls: Role[] } {

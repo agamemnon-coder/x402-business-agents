@@ -17,13 +17,15 @@ import { pdfOf } from "./fakes/pdf.js";
 
 const parserOnly: Asker = { ask: async (_a, fallback) => ({ value: fallback(), source: "fallback", model: null, note: "no key" }) } as Asker;
 
+// A fixed day between the sample invoice's issue (2 Nov) and due date (16 Nov): with the real clock it turned overdue on 17 Nov.
+const NOW = new Date("2026-11-10T09:00:00Z");
 let dir: string;
 let db: DB;
 let awx: FakeAirwallex;
 let base: string;
 let close: () => void;
 async function start(withRail: boolean, rateLimit?: { windowMs: number; limit: number }, inboxAddress?: string) {
-  const server = payablesApp(db, { inbox: { dir, reader: parserOnly }, rail: withRail ? awx : null, ...(rateLimit ? { rateLimit } : {}), ...(inboxAddress !== undefined ? { inboxAddress } : {}) }).listen(0, "127.0.0.1");
+  const server = payablesApp(db, { inbox: { dir, reader: parserOnly, now: () => NOW }, rail: withRail ? awx : null, ...(rateLimit ? { rateLimit } : {}), ...(inboxAddress !== undefined ? { inboxAddress } : {}) }).listen(0, "127.0.0.1");
   await new Promise<void>((r) => server.once("listening", () => r()));
   close = () => server.close();
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

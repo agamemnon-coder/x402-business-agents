@@ -50,9 +50,10 @@ once; run it as often as you like.
 ## FX differences and token financing
 
 - **Realised FX** (`src/ledger/fx.ts`): an invoice in another currency is carried at its booked rate. When the
-  conversion that paid it sold more or less of the functional currency, the difference is posted against money in
-  transit (1590) and 7900 "FX differences, realised". The booked value is rounded half up to a whole cent; a property
-  test holds that booked value plus difference is always what was paid.
+  conversion that paid it sold more or less of the functional currency, `postFxDifference` posts the difference
+  against money in transit (1590) and 7900 "FX differences, realised". The booked value is rounded half up to a whole
+  cent; a property test holds that booked value plus difference is always what was paid. **Not wired in yet:** the
+  ledger feed does not call it, so today 7900 stays empty and a conversion leaves a balance on 1590 per currency.
 - **Invoice token financing** (`src/ledger/financing.ts`), for a company's own sales invoice that was tokenized. With
   recourse (the default): on the financier's accept, the bank receives the price and 2150 holds what is owed to the
   financier; at settlement the receivable (1300) and 2150 are cleared and the discount is posted to 7100 "Finance

@@ -35,4 +35,15 @@ describe("the ledger as an ERP source", () => {
     for (const j of journals) expect((j.object as { currency: string }).currency).toMatch(/^[A-Z]{3}$/);
     expect(journals.some((j) => j.object.id.startsWith("transfer:"))).toBe(false);
   });
+
+  // Round 3 review (17 Nov): the transfer's fee was skipped with the payout, so every SWIFT fee was missing in the ERP and
+  // its bank account drifted from Airwallex's and the ledger's. The fee goes as its own journal entry.
+  it("sends a payout's transfer fee as its own journal entry: fee expense against the bank", () => {
+    const fee = ledgerItems(seeded()).find((i) => i.kind === "journal" && i.object.id === "transfer-fee:req-1");
+    expect(fee).toBeTruthy();
+    const j = fee!.object as { currency: string; lines: { glAccount: string; debitCents: number; creditCents: number }[] };
+    expect(j.currency).toBe("EUR");
+    expect(j.lines.map((l) => [l.glAccount, l.debitCents, l.creditCents])).toEqual([["6800", 1342, 0], [j.lines[1]!.glAccount, 0, 1342]]);
+    expect(j.lines[1]!.glAccount).toMatch(/^1\d{3}$/);
+  });
 });

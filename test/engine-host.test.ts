@@ -3,7 +3,7 @@
 // memory store, the bank is the stand-in (test money, kept as text in a memory store), the parser reads (no model),
 // the vault is a sink in memory and the CFO's phone is a software passkey. Nothing reaches the network.
 import { createHash } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { useDocStore, type DocStore } from "../src/ap/docStore.js";
 import { pdfText } from "../src/ap/pdfText.js";
 import { verifyAuditChain } from "../src/audit/log.js";
@@ -19,6 +19,12 @@ import { FakeAuthenticator } from "../src/redteam/authenticator.js";
 import type { VaultSink } from "../src/vault/sink.js";
 import { EN } from "./fakes/apInvoices.js";
 import { emlWith, pdfOf } from "./fakes/pdf.js";
+
+// The sample invoice is due 16 Nov 2026 and the engine reads the real date for "overdue": from 17 Nov every run here
+// failed (a date bomb). The real date is held at the day this file was written for; the rest of the clock still runs.
+beforeAll(() => { vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true }); vi.setSystemTime(new Date("2026-11-10T09:00:00Z")); });
+afterAll(() => { vi.useRealTimers(); });
+
 
 const RP = "engine.example.invalid";
 const ORIGIN = `https://${RP}`;
